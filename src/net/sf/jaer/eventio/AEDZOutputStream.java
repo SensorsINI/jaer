@@ -52,6 +52,10 @@ import net.sf.jaer.util.EngineeringFormat;
  * standard AEDAT-2 ASCII header (including the chip-specific preference lines)
  * captured once at construction.
  *
+ * <p>The API is backward-compatible: callers that cannot supply a configuration
+ * snapshot use {@link #AEDZOutputStream(FileOutputStream, AEChip)} and the
+ * embedded header is captured from the chip at construction.
+ *
  * @author jAER
  */
 public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
@@ -106,13 +110,32 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      * @throws IOException on write error
      */
     public AEDZOutputStream(FileOutputStream fos, AEChip chip) throws IOException {
+        this(fos, chip, null);
+    }
+
+    /**
+     * Creates a new AEDZOutputStream. If {@code snapshot} is supplied it is used
+     * to produce the embedded AEDAT preference entries (a recording-start
+     * snapshot reflects the immutable captured values and is never reread at
+     * close); otherwise the header is captured from the chip at construction.
+     *
+     * @param fos the FileOutputStream to write to
+     * @param chip the AEChip providing header info (may be {@code null})
+     * @param snapshot optional immutable recording-start configuration; may be {@code null}
+     * @throws IOException on write error
+     */
+    public AEDZOutputStream(FileOutputStream fos, AEChip chip, RecordingConfigurationSnapshot snapshot) throws IOException {
         this.fos = fos;
         this.channel = fos.getChannel();
         this.startDate = new Date();
         this.startTimeMs = System.currentTimeMillis();
 
         // Build the AEDAT-2 header in memory.
-        aedatHeader = buildAedatHeader(chip);
+        if (snapshot != null) {
+            aedatHeader = buildAedatHeaderFromSnapshot(snapshot);
+        } else {
+            aedatHeader = buildAedatHeader(chip);
+        }
 
         // Write AEDZ binary header.
         writeAedzHeader();
@@ -135,6 +158,33 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         return baos.toByteArray();
     }
 
+    /**
+     * Build the standard AEDAT-2 header as bytes from an immutable recording
+     * snapshot, so the header preference entries reflect the frozen values and
+     * never reread mutable preferences. Serialized directly (the {@code '#'}
+     * comment lines, each terminated by CRLF) without any intermediate
+     * {@link AEFileOutputStream}; the entry lines are byte-for-byte equivalent to
+     * {@link RecordingConfigurationSnapshot#writeLegacyEntries} and are framed by
+     * the same recognizable {@code Start/End of Preferences} markers the legacy
+     * writer emits, so the embedded AEDZ header reads as a conventional AEDAT-2
+     * header.
+     */
+    private static byte[] buildAedatHeaderFromSnapshot(RecordingConfigurationSnapshot snapshot) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(4096);
+        writeMinimalAedatHeaderPreamble(baos);
+        // Frame the snapshot entries with the same recognizable markers the legacy
+        // writer emits, so the embedded AEDZ header is structurally a recognizable
+        // AEDAT header (sans chip-class line, which the snapshot does not carry).
+        writeCommentLine(baos, "Start of Preferences for this AEChip (search for \"End of Preferences\" to find end of this block)");
+        for (SnapshotCodec.Entry e : snapshot.entries()) {
+            writeCommentLine(baos, "<entry key=\"" + SnapshotCodec.escape(e.getKey())
+                    + "\" value=\"" + SnapshotCodec.escape(e.getValue()) + "\"/>");
+        }
+        writeCommentLine(baos, "End of Preferences for this AEChip");
+        writeMinimalAedatHeaderTrailer(baos);
+        return baos.toByteArray();
+    }
+
     /** Write one {@code '#'}-prefixed comment header line terminated by CRLF. */
     private static void writeCommentLine(ByteArrayOutputStream baos, String line) throws IOException {
         baos.write(AEDataFile.COMMENT_CHAR);
@@ -144,9 +194,9 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
 
     /**
      * Write a standards-shaped AEDAT-2 ASCII header (all mandatory lines except
-     * the chip-specific preference block) without requiring a real chip and
-     * with no preference block, suitable for headless tests. Mirrors the line
-     * set AEFileOutputStream writes.
+     * the chip-specific preference block) without requiring a real chip, and
+     * with no preference block, suitable for headless tests and snapshot-built
+     * headers. Mirrors the line set AEFileOutputStream writes.
      */
     private static byte[] buildMinimalAedatHeader() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream(4096);
@@ -177,7 +227,9 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         writeCommentLine(baos, AEDataFile.END_OF_HEADER_STRING);
     }
 
-    /** Write the AEDZ file header. */
+    /**
+     * Write the AEDZ file header.
+     */
     private void writeAedzHeader() throws IOException {
         ByteBuffer buf = ByteBuffer.allocate(8 + 8 + 4 + 1 + 4 + aedatHeader.length + 4);
         buf.order(ByteOrder.LITTLE_ENDIAN);
@@ -252,10 +304,12 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
     private final byte[] crcBuf = new byte[8];
 
     private void updateCRC(int addr, int ts) {
+        // big-endian addr
         crcBuf[0] = (byte) ((addr >> 24) & 0xFF);
         crcBuf[1] = (byte) ((addr >> 16) & 0xFF);
         crcBuf[2] = (byte) ((addr >> 8) & 0xFF);
         crcBuf[3] = (byte) (addr & 0xFF);
+        // big-endian ts
         crcBuf[4] = (byte) ((ts >> 24) & 0xFF);
         crcBuf[5] = (byte) ((ts >> 16) & 0xFF);
         crcBuf[6] = (byte) ((ts >> 8) & 0xFF);
@@ -263,7 +317,9 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         crc32.update(crcBuf, 0, 8);
     }
 
-    /** Flush the current buffer as a compressed chunk. */
+    /**
+     * Flush the current buffer as a compressed chunk.
+     */
     private void flushChunk() throws IOException {
         if (bufCount == 0) {
             return;
@@ -326,11 +382,16 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         ByteBuffer chunkBuf = ByteBuffer.allocate(4 + 4 + chunkDataSize);
         chunkBuf.order(ByteOrder.LITTLE_ENDIAN);
 
+        // Chunk header
         chunkBuf.putInt(n);
         chunkBuf.putInt(chunkDataSize);
+
+        // Plane sizes
         for (int p = 0; p < 8; p++) {
             chunkBuf.putInt(compressed[p].length);
         }
+
+        // Compressed plane data
         for (int p = 0; p < 8; p++) {
             chunkBuf.put(compressed[p]);
         }
@@ -343,6 +404,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         }
         lastTs = tsBuf[n - 1];
 
+        // Record chunk index entry.
         chunkIndex.add(new long[]{chunkOffset, n, tsBuf[0], tsBuf[n - 1]});
 
         totalEvents += n;
@@ -362,6 +424,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
             return;
         }
         closed = true;
+        // Flush remaining buffered events.
         flushChunk();
 
         // Write chunk index (legacy 12-byte records: offset + n_events, matching
@@ -370,8 +433,8 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         ByteBuffer indexBuf = ByteBuffer.allocate(nChunks * INDEX_ENTRY_LEGACY);
         indexBuf.order(ByteOrder.LITTLE_ENDIAN);
         for (long[] entry : chunkIndex) {
-            indexBuf.putLong(entry[0]);
-            indexBuf.putInt((int) entry[1]);
+            indexBuf.putLong(entry[0]); // offset
+            indexBuf.putInt((int) entry[1]); // n_events
         }
         indexBuf.flip();
         writeFully(indexBuf);
@@ -380,7 +443,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         long summaryOffset = channel.position();
         ByteBuffer summaryBuf = ByteBuffer.allocate(4);
         summaryBuf.order(ByteOrder.LITTLE_ENDIAN);
-        summaryBuf.putInt(0);
+        summaryBuf.putInt(0); // summary_len = 0
         summaryBuf.flip();
         writeFully(summaryBuf);
 
@@ -403,6 +466,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         patchBuf.flip();
         writeFully(patchBuf);
 
+        // Flush and close the channel/stream exactly once.
         channel.close();
         fos.close();
 
@@ -411,19 +475,30 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         log.info(String.format("wrote %s", toString()));
     }
 
-    /** Write all remaining bytes from {@code buf}. */
+    /**
+     * Write the remaining bytes of {@code buf} to the channel, returning only
+     * when all bytes are written or an {@link IOException} is thrown.
+     */
     private void writeFully(ByteBuffer buf) throws IOException {
         while (buf.hasRemaining()) {
             channel.write(buf);
         }
     }
 
-    /** @return total event count */
+    /**
+     * Return number of events written.
+     *
+     * @return total event count
+     */
     public long getNumEvents() {
         return totalEvents;
     }
 
-    /** @return duration in milliseconds */
+    /**
+     * Return duration in ms.
+     *
+     * @return duration in milliseconds
+     */
     public long getDurationMs() {
         if (endTimeMs > 0) {
             return endTimeMs - startTimeMs;
