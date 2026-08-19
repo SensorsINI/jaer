@@ -219,7 +219,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
-        log.setLevel(Level.FINE);
 
         log.info("reading rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);

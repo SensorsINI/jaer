@@ -567,6 +567,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             renderer.draw3D(s, 1f, 1f, 0f, (float) (chip.getSizeX() / 2 / r.getWidth()));
             renderer.end3DRendering();
         }
+        drawRecordingOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
         gl.glFlush();
         // gl.glPopMatrix();
@@ -580,6 +581,55 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     float[] rgbVec = new float[3];
+
+    /** Semi-transparent red for the Recording overlay. */
+    private static final Color RECORDING_OVERLAY_COLOR = new Color(1f, 0.12f, 0.12f, 0.55f);
+
+    /**
+     * Overlay while logging: transparent red {@code Recording}, elapsed
+     * {@code Recorded XXhYYmZZs}, plus total and remaining when a logging time
+     * limit is set. Gated by {@link AEViewer#isShowRecordingOverlay()}.
+     */
+    private void drawRecordingOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || !viewer.isShowRecordingOverlay() || !viewer.isLoggingEnabled()) {
+            return;
+        }
+        String recordingLine = viewer.isLoggingPaused() ? "Recording paused" : "Recording";
+        String limitText = viewer.getLoggingTimeLimitOverlayText();
+        String[] limitLines = (limitText == null || limitText.isEmpty()) ? new String[0] : limitText.split("\n");
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            int fontsize = Math.max(8, Math.round(14 * (chip.getSizeX() / 346f)));
+            float scale = 1f;
+            if (fontsize < 10) {
+                fontsize *= 2;
+                scale = .5f;
+            }
+            int limitFontsize = Math.max(8, Math.round(fontsize * 0.75f));
+            gl.glPushMatrix();
+            gl.glScalef(scale, scale, scale);
+            float lineSpace = fontsize * 1.35f;
+            float xpos = (chip.getSizeX() / 2f) / scale;
+            float y = (chip.getSizeY() * 0.92f) / scale;
+            DrawGL.drawString(fontsize, xpos, y, .5f, RECORDING_OVERLAY_COLOR, recordingLine);
+            y -= lineSpace;
+            for (String line : limitLines) {
+                DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.yellow, line);
+                y -= limitFontsize * 1.4f;
+            }
+            gl.glPopMatrix();
+        } catch (GLException e) {
+            log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
 
     /**
      * Centered welcome text when waiting with no open hardware (blank AEChip view).
