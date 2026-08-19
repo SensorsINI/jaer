@@ -258,7 +258,7 @@ public final class SciDVSGaerDecoderDemo {
         require(oddSink.external.size() == 1, "odd buffer decodes complete words only");
         require(oddSink.external.get(0).timestamp == 9, "odd buffer complete-word timestamp");
         require(odd.limit() == 4, "legacy odd-buffer truncation permanently reduces caller limit");
-        require(odd.position() < odd.limit(), "legacy decoder leaves complete words readable");
+        require(odd.position() == 0, "legacy decoder leaves caller position unchanged");
         require(odd.order() == ByteOrder.LITTLE_ENDIAN, "legacy decoder leaves caller byte order little-endian");
     }
 

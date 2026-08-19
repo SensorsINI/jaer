@@ -56,6 +56,7 @@ final class SciDVSGaerDecoder {
     private static final int CHIP_DAVISRGB = 7;
 
     private final Config config;
+    private final String logIdentity;
     private int wrapAdd;
     private int lastTimestamp;
     private int currentTimestamp;
@@ -77,6 +78,7 @@ final class SciDVSGaerDecoder {
 
     SciDVSGaerDecoder(final Config config, final String logIdentity) {
         this.config = config;
+        this.logIdentity = logIdentity;
         initFrame();
     }
 
@@ -465,7 +467,8 @@ final class SciDVSGaerDecoder {
 
     private void checkMonotonicTimestamp() {
         if (currentTimestamp <= lastTimestamp) {
-            LOG.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp="
+            LOG.severe((logIdentity == null ? toString() : logIdentity)
+                    + ": non strictly-monotonic timestamp detected: lastTimestamp="
                     + lastTimestamp + ", currentTimestamp=" + currentTimestamp
                     + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
         }
