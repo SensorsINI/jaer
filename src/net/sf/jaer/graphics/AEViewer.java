@@ -42,6 +42,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -6410,6 +6411,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     + " to make filename=" + choice.filename);
         }
         filename = choice.filename;
+        OpenedLogStream opened = null;
+        Closeable writer = null;
         try {
             loggingFile = new File(filename);
             // Freeze the configuration once at recording start; the same immutable
@@ -6421,10 +6424,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (aedat4) {
                 loggingOutputStream = null;
                 aedzLoggingOutputStream = null;
-                OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                opened = openWithFrozenSnapshot(chip, loggingFile);
                 constructLoggingWriter(chip, opened, (stream, snapshot) -> {
                     aedat4LoggingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
                 });
+                writer = aedat4LoggingOutputStream;
                 log.info(String.format("AEDAT-4 logging compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of logged events)",
                         net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
                         isLogFilteredEventsEnabled()
@@ -6432,19 +6436,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else if (aedz) {
                 aedat4LoggingOutputStream = null;
                 loggingOutputStream = null;
-                OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                opened = openWithFrozenSnapshot(chip, loggingFile);
                 // Hand the owner-captured object explicitly to AEDZ; the writer must not
                 // rediscover it through mutable chip state or recapture live preferences.
                 constructLoggingWriter(chip, opened, (stream, snapshot) -> {
                     aedzLoggingOutputStream = new AEDZOutputStream(stream, chip, snapshot);
                 });
+                writer = aedzLoggingOutputStream;
             } else {
                 aedat4LoggingOutputStream = null;
                 aedzLoggingOutputStream = null;
-                OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                opened = openWithFrozenSnapshot(chip, loggingFile);
                 constructLoggingWriter(chip, opened, (stream, snapshot) -> {
                     loggingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
                 });
+                writer = loggingOutputStream;
             }
 
             if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop logging
@@ -6477,17 +6483,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             //            aemon.resetTimestamps();
         } catch (FileNotFoundException e) {
-            // Release the frozen recording-start snapshot so a failed start can never
-            // leave a stale snapshot on the chip for a later recording to reuse.
-            chip.setRecordingConfigurationSnapshot(null);
-            loggingFile = null;
+            cleanupFailedLoggingStart(opened, writer, e);
             log.log(Level.WARNING, "In trying open a logging output file, caught: " + e.toString(), e);
 
         } catch (IOException ioe) {
-            // Release the frozen recording-start snapshot on every open-failure path.
-            chip.setRecordingConfigurationSnapshot(null);
-            loggingFile = null;
+            cleanupFailedLoggingStart(opened, writer, ioe);
             log.log(Level.WARNING, "In trying open a logging output file, caught: " + ioe.toString(), ioe);
+        } catch (RuntimeException runtime) {
+            // Runtime failures can occur after a writer has taken ownership (for
+            // example playback listener setup or EVENT_LOGGING_STARTED listeners).
+            // Preserve that failure while deterministically releasing this start.
+            cleanupFailedLoggingStart(opened, writer, runtime);
+            throw runtime;
         }
 
         return loggingFile;
@@ -6502,10 +6509,74 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         final FileOutputStream stream;
         final RecordingConfigurationSnapshot snapshot;
+        private boolean ownershipTransferred;
+        private boolean rawStreamClosed;
 
         OpenedLogStream(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) {
             this.stream = stream;
             this.snapshot = snapshot;
+        }
+
+        synchronized void transferOwnership() {
+            ownershipTransferred = true;
+        }
+
+        synchronized void closeRawStreamOnFailure(Throwable primary) {
+            if (ownershipTransferred || rawStreamClosed) {
+                return;
+            }
+            rawStreamClosed = true;
+            try {
+                stream.close();
+            } catch (IOException | RuntimeException cleanupFailure) {
+                addCleanupFailure(primary, cleanupFailure,
+                        "closing raw log stream after failed writer construction");
+            }
+        }
+    }
+
+    /**
+     * Release a failed logging start without firing secondary property events.
+     * The selected writer owns the file only after construction returns; before
+     * then {@link OpenedLogStream} still owns the raw stream. All fields are
+     * cleared in {@code finally}, even if writer close itself fails.
+     */
+    private void cleanupFailedLoggingStart(OpenedLogStream opened, Closeable writer, Throwable primary) {
+        try {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException | RuntimeException cleanupFailure) {
+                    addCleanupFailure(primary, cleanupFailure,
+                            "closing logging writer after failed logging start");
+                }
+            } else if (opened != null) {
+                opened.closeRawStreamOnFailure(primary);
+            }
+        } finally {
+            loggingOutputStream = null;
+            aedat4LoggingOutputStream = null;
+            aedzLoggingOutputStream = null;
+            loggingEnabled = false;
+            loggingPaused = false;
+            loggingFile = null;
+            if (opened != null) {
+                clearCapturedSnapshotByIdentity(chip, opened.snapshot);
+            }
+        }
+    }
+
+    private static void addCleanupFailure(Throwable primary, Throwable cleanupFailure, String message) {
+        if (primary != null && cleanupFailure != primary) {
+            primary.addSuppressed(cleanupFailure);
+        }
+        log.log(Level.FINE, message, cleanupFailure);
+    }
+
+    private static void clearCapturedSnapshotByIdentity(AEChip chip,
+            RecordingConfigurationSnapshot capturedSnapshot) {
+        if (chip != null && chip.getRecordingConfigurationSnapshot() == capturedSnapshot) {
+            chip.setRecordingConfigurationSnapshot(null);
         }
     }
 
@@ -6529,7 +6600,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             stream = new FileOutputStream(file);
         } catch (FileNotFoundException | RuntimeException e) {
-            chip.setRecordingConfigurationSnapshot(null);
+            clearCapturedSnapshotByIdentity(chip, snapshot);
             throw e;
         }
         return new OpenedLogStream(stream, snapshot);
@@ -6577,10 +6648,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // The writer constructor failed before taking ownership: close the raw
             // stream exactly once and clear the frozen chip snapshot so a later
             // recording can never reuse a leaked file handle or stale metadata.
-            closeQuietly(opened.stream);
-            chip.setRecordingConfigurationSnapshot(null);
+            opened.closeRawStreamOnFailure(e);
+            clearCapturedSnapshotByIdentity(chip, opened.snapshot);
             throw e;
         }
+        opened.transferOwnership();
         // Normal return: ownership transferred to the writer; never close here.
     }
 

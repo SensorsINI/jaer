@@ -3,6 +3,7 @@ package net.sf.jaer.graphics;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,10 +58,15 @@ public class AEViewerSnapshotProbe {
         testRepeatedFailedOpenStaysClear();
         testSuccessfulStartAfterFailureCapturesFresh();
         testWriterConstructionFailureClosesStream();
+        testUncheckedWriterConstructionFailureClosesStream();
         testWriterConstructionFailureReleasesFileAndSnapshot();
         testRepeatedWriterFailureLeaksNoState();
         testWriterFailureThenSuccessCapturesFresh();
         testSuccessfulWriterConstructionKeepsStreamOpen();
+        testStartLoggingListenerFailureCleansOwnedWriter();
+        testStartLoggingPlaybackFailureCleansOwnedWriter();
+        testStartLoggingSuccessKeepsWriterOwnership();
+        testWriterConstructionFailurePreservesReplacementSnapshot();
         testResolveLogFormatSelectsAedzWriter();
         testNormalizeLoggingDataFileVersion();
         testPreferenceIndexRoundTrip();
@@ -173,11 +179,14 @@ public class AEViewerSnapshotProbe {
         AEChip chip = bareChip();
         chip.getPrefs().put("AEChip.level", "37");
         File out = File.createTempFile("jaer-aeviewer-wcfail", ".aedat");
-        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
+        CountingFileOutputStream stream = new CountingFileOutputStream(out);
+        RecordingConfigurationSnapshot snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
+        chip.setRecordingConfigurationSnapshot(snapshot);
+        AEViewer.OpenedLogStream opened = new AEViewer.OpenedLogStream(stream, snapshot);
         try {
             boolean threw = false;
             try {
-                AEViewer.constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                AEViewer.constructLoggingWriter(chip, opened, (raw, frozen) -> {
                     throw new IOException("injected writer-construction failure");
                 });
             } catch (IOException expected) {
@@ -187,10 +196,68 @@ public class AEViewerSnapshotProbe {
             // The stream must have been closed exactly once by the production seam.
             assertTrue(!opened.stream.getChannel().isOpen(),
                     "opened stream closed after writer-constructor failure (no leaked handle)");
+            assertTrue(stream.closeCalls == 1,
+                    "checked writer-constructor failure closes raw stream exactly once, got " + stream.closeCalls);
         } finally {
             out.delete();
         }
         System.out.println("PASS testWriterConstructionFailureClosesStream");
+    }
+
+    /** An unchecked writer-constructor failure has the same exactly-once raw-stream ownership cleanup. */
+    private static void testUncheckedWriterConstructionFailureClosesStream() throws Exception {
+        AEChip chip = bareChip();
+        File out = File.createTempFile("jaer-aeviewer-wcruntime", ".aedat");
+        CountingFileOutputStream stream = new CountingFileOutputStream(out);
+        RecordingConfigurationSnapshot snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
+        chip.setRecordingConfigurationSnapshot(snapshot);
+        AEViewer.OpenedLogStream opened = new AEViewer.OpenedLogStream(stream, snapshot);
+        RuntimeException injected = new RuntimeException("injected unchecked writer-construction failure");
+        try {
+            try {
+                AEViewer.constructLoggingWriter(chip, opened, (raw, frozen) -> {
+                    throw injected;
+                });
+                throw new AssertionError("expected injected RuntimeException");
+            } catch (RuntimeException actual) {
+                assertTrue(actual == injected, "unchecked writer-constructor exception identity preserved");
+            }
+            assertTrue(stream.closeCalls == 1,
+                    "unchecked writer-constructor failure closes raw stream exactly once, got " + stream.closeCalls);
+            assertTrue(!stream.getChannel().isOpen(), "unchecked writer failure releases channel");
+            assertTrue(chip.getRecordingConfigurationSnapshot() == null,
+                    "unchecked writer failure clears its captured snapshot");
+        } finally {
+            out.delete();
+        }
+        System.out.println("PASS testUncheckedWriterConstructionFailureClosesStream");
+    }
+
+    /** Failure cleanup must not erase a newer snapshot installed after this start captured its own object. */
+    private static void testWriterConstructionFailurePreservesReplacementSnapshot() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        File out = File.createTempFile("jaer-aeviewer-wcidentity", ".aedat");
+        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
+        chip.getPrefs().put("AEChip.level", "99");
+        RecordingConfigurationSnapshot replacement = RecordingConfigurationSnapshot.captureFromChip(chip);
+        try {
+            try {
+                AEViewer.constructLoggingWriter(chip, opened, (raw, frozen) -> {
+                    chip.setRecordingConfigurationSnapshot(replacement);
+                    throw new IOException("injected failure after replacement snapshot");
+                });
+                throw new AssertionError("expected IOException");
+            } catch (IOException expected) {
+                // expected
+            }
+            assertTrue(chip.getRecordingConfigurationSnapshot() == replacement,
+                    "failure clears only its captured snapshot by identity");
+        } finally {
+            chip.setRecordingConfigurationSnapshot(null);
+            out.delete();
+        }
+        System.out.println("PASS testWriterConstructionFailurePreservesReplacementSnapshot");
     }
 
     /** The failed writer construction must release the file (reopenable/deletable) and clear the chip snapshot. */
@@ -313,6 +380,115 @@ public class AEViewerSnapshotProbe {
             out.delete();
         }
         System.out.println("PASS testSuccessfulWriterConstructionKeepsStreamOpen");
+    }
+
+    /** A RuntimeException from the real logging-start property notification closes the constructed writer. */
+    private static void testStartLoggingListenerFailureCleansOwnedWriter() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        HeadlessAEViewer viewer = headlessViewer(chip, AEViewer.PlayMode.WAITING);
+        File out = File.createTempFile("jaer-aeviewer-listener-runtime", ".aedz");
+        out.delete();
+        final AEDZOutputStream[] constructed = new AEDZOutputStream[1];
+        final int[] notifications = new int[1];
+        RuntimeException injected = new RuntimeException("injected logging-start listener failure");
+        java.beans.PropertyChangeListener listener = evt -> {
+            notifications[0]++;
+            constructed[0] = viewer.aedzLoggingOutputStream;
+            throw injected;
+        };
+        viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_LOGGING_STARTED, listener);
+        try {
+            try {
+                viewer.startLogging(out.getAbsolutePath(), AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ);
+                throw new AssertionError("expected logging-start listener RuntimeException");
+            } catch (RuntimeException actual) {
+                assertTrue(actual == injected, "listener RuntimeException identity preserved");
+            }
+            assertTrue(notifications[0] == 1, "failure cleanup fires no additional property event");
+            assertTrue(constructed[0] != null, "listener observed the post-construction AEDZ writer");
+            assertViewerStartFailureCleared(viewer, chip, "listener failure");
+            assertTrue(constructed[0].getEndDate() != null, "listener failure finalized and closed owned writer");
+            constructed[0].close(); // idempotent: failure cleanup already closed it
+
+            chip.getPrefs().put("AEChip.level", "99");
+            viewer.getSupport().removePropertyChangeListener(AEViewer.EVENT_LOGGING_STARTED, listener);
+            File retry = File.createTempFile("jaer-aeviewer-listener-retry", ".aedz");
+            retry.delete();
+            try {
+                File started = viewer.startLogging(retry.getAbsolutePath(), AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ);
+                assertTrue(retry.equals(started), "later start succeeds fresh after listener failure");
+                assertTrue("99".equals(chip.getRecordingConfigurationSnapshot().get("AEChip.level")),
+                        "later start captured fresh 99 after listener failure");
+                closeSuccessfulStart(viewer, chip);
+            } finally {
+                retry.delete();
+            }
+        } finally {
+            viewer.getSupport().removePropertyChangeListener(AEViewer.EVENT_LOGGING_STARTED, listener);
+            out.delete();
+        }
+        System.out.println("PASS testStartLoggingListenerFailureCleansOwnedWriter");
+    }
+
+    /** PLAYBACK with no input stream fails after writer construction and must release all start state. */
+    private static void testStartLoggingPlaybackFailureCleansOwnedWriter() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        HeadlessAEViewer viewer = headlessViewer(chip, AEViewer.PlayMode.PLAYBACK);
+        File out = File.createTempFile("jaer-aeviewer-playback-runtime", ".aedz");
+        out.delete();
+        try {
+            boolean threw = false;
+            try {
+                viewer.startLogging(out.getAbsolutePath(), AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ);
+            } catch (RuntimeException expected) {
+                threw = true;
+            }
+            assertTrue(threw, "null playback stream throws after writer construction");
+            assertViewerStartFailureCleared(viewer, chip, "playback failure");
+
+            // The failed file handle is gone and a later production start can own a fresh file.
+            try (FileOutputStream reopened = new FileOutputStream(out, true)) {
+                reopened.write(0);
+            }
+            setField(viewer, "playMode", AEViewer.PlayMode.WAITING);
+            chip.getPrefs().put("AEChip.level", "99");
+            File retry = File.createTempFile("jaer-aeviewer-playback-retry", ".aedz");
+            retry.delete();
+            try {
+                assertTrue(retry.equals(viewer.startLogging(retry.getAbsolutePath(), AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ)),
+                        "later start succeeds fresh after playback failure");
+                closeSuccessfulStart(viewer, chip);
+            } finally {
+                retry.delete();
+            }
+        } finally {
+            out.delete();
+        }
+        System.out.println("PASS testStartLoggingPlaybackFailureCleansOwnedWriter");
+    }
+
+    /** The real success path leaves exactly one selected writer owning the file until its owner closes it. */
+    private static void testStartLoggingSuccessKeepsWriterOwnership() throws Exception {
+        AEChip chip = bareChip();
+        HeadlessAEViewer viewer = headlessViewer(chip, AEViewer.PlayMode.WAITING);
+        File out = File.createTempFile("jaer-aeviewer-start-success", ".aedz");
+        out.delete();
+        try {
+            assertTrue(out.equals(viewer.startLogging(out.getAbsolutePath(), AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ)),
+                    "production start returns selected file");
+            assertTrue(viewer.isLoggingEnabled(), "success sets logging enabled");
+            assertTrue(viewer.aedzLoggingOutputStream != null, "success keeps AEDZ writer ownership");
+            assertTrue(viewer.loggingOutputStream == null && viewer.aedat4LoggingOutputStream == null,
+                    "success has exactly one selected writer field");
+            assertTrue(viewer.aedzLoggingOutputStream.getEndDate() == null,
+                    "success-path writer remains open before owner closes it");
+            closeSuccessfulStart(viewer, chip);
+        } finally {
+            out.delete();
+        }
+        System.out.println("PASS testStartLoggingSuccessKeepsWriterOwnership");
     }
 
     /**
@@ -471,6 +647,76 @@ public class AEViewerSnapshotProbe {
         AEChip chip = new org.objenesis.ObjenesisStd().newInstance(AEChip.class);
         chip.setPrefs(new MapBackedPreferences(null, ""));
         return chip;
+    }
+
+    /** AEViewer without JFrame construction; only the production logging-start fields are initialized. */
+    private static HeadlessAEViewer headlessViewer(AEChip chip, AEViewer.PlayMode playMode) throws Exception {
+        HeadlessAEViewer viewer = new org.objenesis.ObjenesisStd().newInstance(HeadlessAEViewer.class);
+        setField(viewer, "support", new java.beans.PropertyChangeSupport(viewer));
+        setField(viewer, "chip", chip);
+        setField(viewer, "playMode", playMode);
+        return viewer;
+    }
+
+    private static void assertViewerStartFailureCleared(HeadlessAEViewer viewer, AEChip chip, String tag)
+            throws Exception {
+        assertTrue(viewer.loggingOutputStream == null && viewer.aedat4LoggingOutputStream == null
+                        && viewer.aedzLoggingOutputStream == null,
+                tag + " clears every writer field");
+        assertTrue(!viewer.isLoggingEnabled() && !viewer.isLoggingPaused(),
+                tag + " leaves coherent disabled/unpaused logging state");
+        assertTrue(getField(viewer, "loggingFile") == null, tag + " clears loggingFile");
+        assertTrue(chip.getRecordingConfigurationSnapshot() == null,
+                tag + " clears its captured chip snapshot");
+    }
+
+    private static void closeSuccessfulStart(HeadlessAEViewer viewer, AEChip chip) throws Exception {
+        AEDZOutputStream writer = viewer.aedzLoggingOutputStream;
+        assertTrue(writer != null, "successful start owns AEDZ writer before test cleanup");
+        writer.close();
+        viewer.aedzLoggingOutputStream = null;
+        setField(viewer, "loggingEnabled", false);
+        setField(viewer, "loggingFile", null);
+        chip.setRecordingConfigurationSnapshot(null);
+    }
+
+    private static void setField(Object target, String name, Object value) throws Exception {
+        Field field = AEViewer.class.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private static Object getField(Object target, String name) throws Exception {
+        Field field = AEViewer.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
+    private static final class HeadlessAEViewer extends AEViewer {
+
+        private HeadlessAEViewer() {
+            super(null);
+        }
+
+        @Override
+        void fixLoggingControls() {
+            // Headless probe: production lifecycle is exercised without scheduling Swing widget updates.
+        }
+    }
+
+    private static final class CountingFileOutputStream extends FileOutputStream {
+
+        int closeCalls;
+
+        CountingFileOutputStream(File file) throws IOException {
+            super(file);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closeCalls++;
+            super.close();
+        }
     }
 
     /** Minimal in-memory {@link Preferences} so the probe needs no user store and mutates nothing. */
