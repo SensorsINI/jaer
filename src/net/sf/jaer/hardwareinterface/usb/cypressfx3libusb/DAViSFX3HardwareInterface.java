@@ -18,8 +18,8 @@ import org.usb4java.Device;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisUsbPacketBundleBuilder;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import eu.seebetter.ini.chips.davis.SciDVS;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.PacketBundle;
@@ -266,7 +266,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     this::handleGaerTimestampReset,
                     () -> !usbTypedDemuxActive || dualWriteApsImuAe);
             gaerTypedSink = new SciDVSGaerTypedSink(
-                    typedBuilder, gaerRawSink, () -> getChip().getSizeX(),
+                    typedBuilder, gaerRawSink,
+                    () -> getChip() != null ? getChip().getSizeX() : dvsSizeX,
                     this::handleGaerTimestampReset);
         }
 
@@ -318,21 +319,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 }
 
                 final boolean gaerModeUnresolved = gaerResolved == null;
-                if (gaerModeUnresolved) {
+                if (gaerModeUnresolved && getChip() != null) {
                     gaerResolved = SciDVSGaerMode.resolveFromSystemProperty(
                             getChip() instanceof SciDVS, CypressFX3.log);
                     CypressFX3.log.info("DAViSFX3 SciDVS GAER selected=" + gaerResolved
                             + " rawProperty=" + System.getProperty(SciDVSGaerMode.PROPERTY)
                             + " chipClass=" + (getChip() == null ? "null" : getChip().getClass().getName()));
-                    if (getChip() != null
-                            && (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY)) {
+                    if (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY) {
                         CypressFX3.log.warning("DAViSFX3 chip geometry " + getChip().getSizeX() + "x"
                                 + getChip().getSizeY() + " differs from FPGA DVS geometry "
                                 + dvsSizeX + "x" + dvsSizeY);
                     }
                 }
 
-                if (gaerResolved) {
+                if (gaerResolved != null && gaerResolved) {
                     gaerRawSink.begin(buffer, eventCounter);
                     gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink);
                     eventCounter = gaerRawSink.end();

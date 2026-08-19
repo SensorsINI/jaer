@@ -36,6 +36,7 @@ public final class SciDVSGaerFx3WiringDemo {
         testExpectedFields();
         testProtectedTranslateAndNoDuplicateGaerParserState();
         testEagerConstructionReusesExistingConfiguration(source);
+        testLazyHarden(source);
         testLazyResolutionAndEarlyGaerBranch(source);
         testStandardDavisLoopHash(source);
         System.out.println("SCIDVS_GAER_FX3_WIRING ASSERTIONS=" + assertions);
@@ -110,6 +111,24 @@ public final class SciDVSGaerFx3WiringDemo {
                 "GAER mode is not resolved eagerly before chip attachment");
         require(count(source, "SciDVSGaerMode.PROPERTY") == 1,
                 "reader uses the mode resolver's owned property constant once");
+    }
+
+    private static void testLazyHarden(final String source) {
+        final String constructor = between(source,
+                "public RetinaAEReader(final CypressFX3 cypress)",
+                "private void checkMonotonicTimestamp()");
+        final String compact = constructor.replaceAll("\\s+", " ");
+        require(compact.contains("() -> getChip() != null ? getChip().getSizeX() : dvsSizeX"),
+                "typed X supplier falls back to configured DVS width while chip is null");
+
+        final String translate = between(source,
+                "protected void translateEvents(final ByteBuffer b)",
+                "public void propertyChange(final PropertyChangeEvent arg0)");
+        require(translate.substring(0, translate.indexOf("gaerResolved = SciDVSGaerMode.resolveFromSystemProperty"))
+                .contains("gaerModeUnresolved && getChip() != null"),
+                "lazy resolution waits for a nonnull chip and therefore retries");
+        require(translate.contains("if (gaerResolved != null && gaerResolved)"),
+                "active GAER branch is null-safe while mode is unresolved");
     }
 
     private static void testLazyResolutionAndEarlyGaerBranch(final String source) {
