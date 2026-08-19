@@ -132,6 +132,7 @@ import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
@@ -366,6 +367,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private File loggingFile = null;
     AEFileOutputStream loggingOutputStream;
     Aedat4FileOutputStream aedat4LoggingOutputStream;
+    AEDZOutputStream aedzLoggingOutputStream;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
 
@@ -3635,7 +3637,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
-            Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream : loggingOutputStream;
+            Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream
+                    : (aedzLoggingOutputStream != null ? aedzLoggingOutputStream : loggingOutputStream);
             synchronized (streamLock) {
                 try {
                     if (aedat4LoggingOutputStream != null) {
@@ -3646,6 +3649,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         boolean skipFilteredOut = isLogFilteredEventsEnabled()
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
                         aedat4LoggingOutputStream.writeBundle(bundle, skipFilteredOut);
+                    } else if (aedzLoggingOutputStream != null) {
+                        aedzLoggingOutputStream.writePacket(isLogFilteredEventsEnabled()
+                                ? extractor.reconstructRawPacket(cookedPacket)
+                                : rawPacket);
                     } else if (!isLogFilteredEventsEnabled()) {
                         loggingOutputStream.writePacket(rawPacket); // log all events
                     } else {
@@ -3660,6 +3667,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try {
                         if (aedat4LoggingOutputStream != null) {
                             aedat4LoggingOutputStream.close();
+                        } else if (aedzLoggingOutputStream != null) {
+                            aedzLoggingOutputStream.close();
                         } else {
                             loggingOutputStream.close();
                         }
@@ -6321,6 +6330,55 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Decide the recording-stream format for a requested data-file version and
+     * filename, and the effective filename to hand to the writer (appending the
+     * format's extension when the filename has none). Package-private static so
+     * the headless probe can verify the version/extension/log-writer selection
+     * without constructing a full {@link AEViewer} (a JFrame, which needs a
+     * display).
+     *
+     * @param filename the requested log filename
+     * @param dataFileVersionNum the requested data-file version ("2.0", "4.0" or the "aedz" sentinel)
+     * @return the resolved format version and effective filename
+     */
+    static LogFormatChoice resolveLogFormat(String filename, String dataFileVersionNum) {
+        boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(dataFileVersionNum)
+                || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ);
+        boolean aedat4 = !aedz && (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)
+                || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4));
+        String version;
+        if (aedz) {
+            version = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ;
+        } else if (aedat4) {
+            version = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+        } else {
+            version = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2;
+        }
+        String effective = filename;
+        if (!AEDataFile.hasDataFileExtension(filename)) {
+            String extension = AEDataFile.extensionForVersion(version);
+            effective = filename + extension;
+        }
+        return new LogFormatChoice(version, effective);
+    }
+
+    /**
+     * Immutable resolution result from {@link #resolveLogFormat(String, String)}:
+     * the format version to write and the effective filename (with any appended
+     * extension).
+     */
+    static final class LogFormatChoice {
+
+        final String version;
+        final String filename;
+
+        LogFormatChoice(String version, String filename) {
+            this.version = version;
+            this.filename = filename;
+        }
+    }
+
+    /**
      * Starts logging AE data to a file.
      *
      * @param filename the filename to log to, including all path information.
@@ -6344,34 +6402,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning(String.format("Already logging to file %s", loggingFile.getAbsolutePath()));
             return loggingFile;
         }
-        boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)
-                || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
-        if (!AEDataFile.hasDataFileExtension(filename)) {
-            String extension = AEDataFile.extensionForVersion(aedat4
-                    ? AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4
-                    : AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
-            filename = filename + extension;
-            log.info("Appended extension " + extension + " to make filename=" + filename);
+        LogFormatChoice choice = resolveLogFormat(filename, dataFileVersionNum);
+        boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(choice.version);
+        boolean aedat4 = !aedz && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(choice.version);
+        if (!choice.filename.equals(filename)) {
+            log.info("Appended extension " + AEDataFile.extensionForVersion(choice.version)
+                    + " to make filename=" + choice.filename);
         }
+        filename = choice.filename;
         try {
             loggingFile = new File(filename);
             // Freeze the configuration once at recording start; the same immutable
             // snapshot is handed to the AEDAT-4 writer and placed on the chip so the
-            // legacy writer uses identical recording-start values. The helper clears
-            // the chip snapshot if opening the file fails.
+            // legacy writer and readers use the identical recording-start values.
+            // The snapshot is captured and the file opened atomically by the helper,
+            // which clears the chip snapshot if the open fails so a later recording
+            // can never reuse stale metadata.
             if (aedat4) {
                 loggingOutputStream = null;
+                aedzLoggingOutputStream = null;
                 OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
                 constructLoggingWriter(chip, opened, (stream, snapshot) -> {
-                    aedat4LoggingOutputStream = new Aedat4FileOutputStream(
-                            stream, chip, getAedat4Compression(), snapshot);
+                    aedat4LoggingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
                 });
                 log.info(String.format("AEDAT-4 logging compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of logged events)",
                         net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
                         isLogFilteredEventsEnabled()
                         || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled())));
+            } else if (aedz) {
+                aedat4LoggingOutputStream = null;
+                loggingOutputStream = null;
+                OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                    // The compatibility constructor reads the immutable snapshot that
+                    // openWithFrozenSnapshot placed on the chip before opening the file.
+                    aedzLoggingOutputStream = new AEDZOutputStream(stream, chip);
+                });
             } else {
                 aedat4LoggingOutputStream = null;
+                aedzLoggingOutputStream = null;
                 OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
                 constructLoggingWriter(chip, opened, (stream, snapshot) -> {
                     loggingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
@@ -6408,12 +6477,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             //            aemon.resetTimestamps();
         } catch (FileNotFoundException e) {
-            // A failed start must never leave metadata for a later recording.
+            // Release the frozen recording-start snapshot so a failed start can never
+            // leave a stale snapshot on the chip for a later recording to reuse.
             chip.setRecordingConfigurationSnapshot(null);
             loggingFile = null;
             log.log(Level.WARNING, "In trying open a logging output file, caught: " + e.toString(), e);
 
         } catch (IOException ioe) {
+            // Release the frozen recording-start snapshot on every open-failure path.
             chip.setRecordingConfigurationSnapshot(null);
             loggingFile = null;
             log.log(Level.WARNING, "In trying open a logging output file, caught: " + ioe.toString(), ioe);
@@ -6424,7 +6495,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * The opened raw log stream together with the immutable recording-start
-     * snapshot frozen (and placed on the chip) just before the file was opened.
+     * snapshot that was frozen (and placed on the chip) just before the file was
+     * opened.
      */
     static final class OpenedLogStream {
 
@@ -6438,9 +6510,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Freeze recording-start configuration, place it on the chip, and open the
-     * raw log file. If open fails, clear the chip snapshot so a later recording
-     * captures fresh metadata.
+     * Freeze the recording-start configuration snapshot, place it on the chip,
+     * and open the raw log file. The snapshot is captured BEFORE the file open
+     * so the recorded header reflects recording-start values; if the open fails,
+     * the chip's cached snapshot is cleared so a later recording can never reuse
+     * stale metadata (regression: a failed start used to leave the stale
+     * snapshot set, which the next start could then hand to a writer).
      *
      * @param chip the chip whose live configuration is frozen
      * @param file the file to open for logging
@@ -6460,40 +6535,60 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return new OpenedLogStream(stream, snapshot);
     }
 
-    /** Constructs a recording writer around an already-opened raw stream. */
+    /**
+     * The step that takes ownership of an already-opened raw log stream and
+     * snapshot to build the recording writer around them. Thrown exceptions
+     * propagate as {@link IOException} (or {@link RuntimeException}); the caller
+     * owns closing the stream exactly once on the failure path.
+     */
     @FunctionalInterface
     public interface LoggingWriterFactory {
 
         /**
-         * @param stream raw stream; ownership transfers only on normal return
-         * @param snapshot frozen recording-start snapshot
-         * @throws IOException if writer construction fails
+         * Construct the writer around the given opened stream and recording-start
+         * snapshot.
+         *
+         * @param stream the already-opened raw log stream (stream ownership passes
+         *               to the writer only if this returns normally)
+         * @param snapshot the frozen recording-start snapshot
+         * @throws IOException if the writer cannot be constructed
          */
         void construct(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) throws IOException;
     }
 
     /**
-     * Hand an opened stream to a writer constructor. If construction fails before
-     * ownership transfers, close the raw stream and clear the frozen chip
-     * snapshot. On success the writer owns the stream and it remains open.
+     * Open the raw log stream (freezing the recording-start snapshot onto the
+     * chip), then hand it to the given writer factory. If the writer constructor
+     * throws after the stream was successfully opened, the stream is closed
+     * exactly once and the chip snapshot released so neither the leaked file
+     * handle nor stale recording metadata survives a failed start. On a normal
+     * return the writer has taken ownership of the stream and it is never closed
+     * here.
      *
-     * @param chip the chip whose snapshot is active
-     * @param opened opened stream and frozen snapshot
-     * @param factory writer construction step
-     * @throws IOException if writer construction fails
+     * @param chip the chip whose live configuration is frozen
+     * @param opened the opened stream together with its frozen snapshot
+     * @param factory the writer-construction step that takes over the stream
+     * @throws IOException if opening or writer construction fails
      */
-    static void constructLoggingWriter(AEChip chip, OpenedLogStream opened,
-            LoggingWriterFactory factory) throws IOException {
+    static void constructLoggingWriter(AEChip chip, OpenedLogStream opened, LoggingWriterFactory factory) throws IOException {
         try {
             factory.construct(opened.stream, opened.snapshot);
         } catch (IOException | RuntimeException e) {
+            // The writer constructor failed before taking ownership: close the raw
+            // stream exactly once and clear the frozen chip snapshot so a later
+            // recording can never reuse a leaked file handle or stale metadata.
             closeQuietly(opened.stream);
             chip.setRecordingConfigurationSnapshot(null);
             throw e;
         }
+        // Normal return: ownership transferred to the writer; never close here.
     }
 
-    /** Close a raw log stream while suppressing a secondary close failure. */
+    /**
+     * Close a raw log stream, suppressing any {@link IOException} from close.
+     *
+     * @param stream the stream to close
+     */
     static void closeQuietly(FileOutputStream stream) {
         if (stream == null) {
             return;
@@ -6558,8 +6653,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String filename;
 
         do {
-            // log files to tmp folder initially, later user will move or delete file on end of logging
-            filename = lastLoggingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.DATA_FILE_EXTENSION_AEDAT4;
+            // log files to tmp folder initially, later user will move or delete file on end of logging.
+            // Use the extension for the preferred data-file version so the selected format (e.g. AEDAT-2
+            // or AEDZ) is actually honored; previously this was hardcoded to .aedat4, which made startLogging
+            // route to AEDAT-4 regardless of the preference.
+            filename = lastLoggingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.extensionForVersion(dataFileVersionNum);
             File lf = new File(filename);
             if (!lf.isFile()) {
                 succeeded = true;
@@ -6766,22 +6864,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + loggingFile);
                 final boolean wasAedat4 = aedat4LoggingOutputStream != null;
+                final boolean wasAedz = aedzLoggingOutputStream != null;
                 final String preferredSaveExt = wasAedat4
                         ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4
-                        : AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
-                Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream : loggingOutputStream;
+                        : (wasAedz
+                        ? AEDataFile.DATA_FILE_EXTENSION_AEDZ
+                        : AEDataFile.DATA_FILE_EXTENSION_AEDAT2);
+                Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream
+                        : (aedzLoggingOutputStream != null ? aedzLoggingOutputStream : loggingOutputStream);
                 synchronized (streamLock) {
                     setLoggingEnabled(false);
                     if (aedat4LoggingOutputStream != null) {
                         aedat4LoggingOutputStream.close();
                         fileInfo = aedat4LoggingOutputStream.toString();
                         aedat4LoggingOutputStream = null;
+                    } else if (aedzLoggingOutputStream != null) {
+                        aedzLoggingOutputStream.close();
+                        fileInfo = aedzLoggingOutputStream.toString();
+                        aedzLoggingOutputStream = null;
                     } else {
                         loggingOutputStream.close();
                         fileInfo = loggingOutputStream.toString();
                     }
-                    // Release the recording-start snapshot so the next recording
-                    // captures fresh values.
+                    // Release the frozen recording-start snapshot so a later recording
+                    // captures fresh values again.
                     chip.setRecordingConfigurationSnapshot(null);
                 }
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
@@ -6801,6 +6907,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     for (String ext : new String[]{
                         AEDataFile.DATA_FILE_EXTENSION_AEDAT4,
                         AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
+                        AEDataFile.DATA_FILE_EXTENSION_AEDZ,
                         AEDataFile.DATA_FILE_EXTENSION,
                         AEDataFile.OLD_DATA_FILE_EXTENSION}) {
                         if (fnLower.endsWith(ext)) {
@@ -8498,13 +8605,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return loggingDataFileVersion;
     }
 
-    public void setLoggingDataFileVersion(String loggingDataFileVersion) {
-        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2.equals(loggingDataFileVersion)
-                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(loggingDataFileVersion)) {
-            this.loggingDataFileVersion = loggingDataFileVersion;
-        } else {
-            this.loggingDataFileVersion = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+    /**
+     * Validate a requested logging data-file version and return the value to
+     * use, defaulting any unrecognised (or null/empty) input to AEDAT-4. This is
+     * the exact decision {@link #setLoggingDataFileVersion(String)} applies;
+     * extracted as a package-private static so the headless probe can verify the
+     * selection/default without constructing an {@link AEViewer} (a JFrame).
+     *
+     * @param version the requested data-file version string
+     * @return the accepted version, or {@link AEDataFile#DATA_FILE_VERSION_NUMBER_AEDAT4}
+     */
+    static String normalizeLoggingDataFileVersion(String version) {
+        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2.equals(version)
+                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version)
+                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(version)) {
+            return version;
         }
+        return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+    }
+
+    public void setLoggingDataFileVersion(String loggingDataFileVersion) {
+        this.loggingDataFileVersion = normalizeLoggingDataFileVersion(loggingDataFileVersion);
         prefs.put("AEViewer.loggingDataFileVersion", this.loggingDataFileVersion);
     }
 
