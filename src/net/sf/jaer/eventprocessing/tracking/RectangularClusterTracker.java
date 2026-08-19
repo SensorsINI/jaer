@@ -3509,8 +3509,9 @@ public class RectangularClusterTracker extends EventFilter2D
     }
 
     private void unzoom() {
-        if (getChip().getAeViewer().isZoomed()) {
-            getChip().getAeViewer().unzoom();
+        AEViewer v = getChip() != null ? getChip().getAeViewer() : null;
+        if (v != null && v.isZoomed()) {
+            v.unzoom();
         }
         zoomHUDObject = null;
     }
