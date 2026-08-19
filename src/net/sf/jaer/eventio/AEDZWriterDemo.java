@@ -47,6 +47,8 @@ public class AEDZWriterDemo {
         }
         partialChunk();
         deterministicOutput();
+        closeFinalizationFailureStillCleansResources();
+        normalCloseClosesTrackingStreamOnce();
         closeIdempotenceAndWriteAfterClose();
         explicitSnapshotMetadata();
         System.out.println("ALL AEDZ WRITER TESTS PASS");
@@ -205,6 +207,63 @@ public class AEDZWriterDemo {
         System.out.println("PASS deterministicOutput len=" + b1.length);
         f1.delete();
         f2.delete();
+    }
+
+    /** A real finalization failure keeps its identity, suppresses cleanup failure, and never claims a footer. */
+    private static void closeFinalizationFailureStillCleansResources() throws Exception {
+        File file = tempFile();
+        TrackingFileOutputStream stream = new TrackingFileOutputStream(file);
+        AEDZOutputStream out = new AEDZOutputStream(stream, null);
+        out.writePacket(makePacket(3, 17)); // buffered: close must enter flushChunk
+
+        // Force the real production flush path to fail at channel.position().
+        stream.getChannel().close();
+        stream.closeCalls = 0; // count only cleanup owned by AEDZOutputStream.close()
+        stream.failAfterClose = true;
+        IOException primary;
+        try {
+            out.close();
+            throw new AssertionError("expected close finalization failure on externally closed channel");
+        } catch (IOException expected) {
+            primary = expected;
+        }
+        assertTrue(primary instanceof java.nio.channels.ClosedChannelException,
+                "real flush failure remains the primary ClosedChannelException, got " + primary);
+        assertTrue(primary.getSuppressed().length == 1
+                        && primary.getSuppressed()[0] == stream.injectedCloseFailure,
+                "cleanup close failure is suppressed on original finalization failure");
+        assertTrue(stream.closeCalls == 1, "failure cleanup closes FileOutputStream exactly once");
+        assertTrue(!stream.getChannel().isOpen(), "failure cleanup leaves underlying channel closed");
+        assertTrue(out.getEndDate() == null, "failed finalization records no successful close date");
+
+        byte[] bytes = readAll(file);
+        assertTrue(!endsWithFooterMagic(bytes), "failed finalization writes no successful AEDZ footer magic");
+        out.close();
+        assertTrue(stream.closeCalls == 1, "second close after failure is an idempotent no-op");
+        try {
+            out.writePacket(makePacket(1, 2));
+            throw new AssertionError("write after failed close was accepted");
+        } catch (IOException expected) {
+            // expected
+        }
+        file.delete();
+        System.out.println("PASS closeFinalizationFailureStillCleansResources closeCalls=" + stream.closeCalls);
+    }
+
+    /** Successful close also invokes the supplied stream once and retains the normal footer/wire contract. */
+    private static void normalCloseClosesTrackingStreamOnce() throws Exception {
+        File file = tempFile();
+        TrackingFileOutputStream stream = new TrackingFileOutputStream(file);
+        AEDZOutputStream out = new AEDZOutputStream(stream, null);
+        out.writePacket(makePacket(3, 19));
+        out.close();
+        assertTrue(stream.closeCalls == 1, "normal close closes supplied FileOutputStream exactly once");
+        assertTrue(!stream.getChannel().isOpen(), "normal close closes channel");
+        assertTrue(endsWithFooterMagic(readAll(file)), "normal close retains AEDZ footer magic");
+        out.close();
+        assertTrue(stream.closeCalls == 1, "normal second close is a no-op");
+        file.delete();
+        System.out.println("PASS normalCloseClosesTrackingStreamOnce closeCalls=" + stream.closeCalls);
     }
 
     /** close() is idempotent; writePacket after close throws a controlled IOException. */
@@ -370,6 +429,46 @@ public class AEDZWriterDemo {
 
     private static byte[] readAll(File f) throws IOException {
         return java.nio.file.Files.readAllBytes(f.toPath());
+    }
+
+    private static boolean endsWithFooterMagic(byte[] bytes) {
+        return bytes.length >= 4
+                && bytes[bytes.length - 4] == 'A'
+                && bytes[bytes.length - 3] == 'E'
+                && bytes[bytes.length - 2] == 'D'
+                && bytes[bytes.length - 1] == 'Z';
+    }
+
+    private static final class TrackingFileOutputStream extends FileOutputStream {
+
+        final IOException injectedCloseFailure = new IOException("injected AEDZ cleanup close failure");
+        boolean failAfterClose;
+        boolean closing;
+        int closeCalls;
+
+        TrackingFileOutputStream(File file) throws IOException {
+            super(file);
+        }
+
+        @Override
+        public void close() throws IOException {
+            // FileOutputStream/FileChannel close can re-enter the parent stream on
+            // this JDK; count owner-level close invocations rather than recursion.
+            if (closing) {
+                super.close();
+                return;
+            }
+            closeCalls++;
+            closing = true;
+            try {
+                super.close();
+            } finally {
+                closing = false;
+            }
+            if (failAfterClose) {
+                throw injectedCloseFailure;
+            }
+        }
     }
 
     private static void awaitClosed() throws InterruptedException {

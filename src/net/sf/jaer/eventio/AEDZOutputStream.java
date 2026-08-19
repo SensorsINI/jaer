@@ -266,7 +266,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      * @param ae the raw event packet to write
      * @throws IOException on write error
      */
-    public void writePacket(AEPacketRaw ae) throws IOException {
+    public synchronized void writePacket(AEPacketRaw ae) throws IOException {
         if (closed) {
             throw new IOException("AEDZOutputStream is closed");
         }
@@ -419,60 +419,107 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      *
      * @throws IOException on write error
      */
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         if (closed) {
             return;
         }
         closed = true;
-        // Flush remaining buffered events.
-        flushChunk();
+        Throwable failure = null;
+        try {
+            // Flush remaining buffered events.
+            flushChunk();
 
-        // Write chunk index (legacy 12-byte records: offset + n_events, matching
-        // the SciDVS branch writer; the reader also accepts the newer 20-byte form).
-        long indexOffset = channel.position();
-        ByteBuffer indexBuf = ByteBuffer.allocate(nChunks * INDEX_ENTRY_LEGACY);
-        indexBuf.order(ByteOrder.LITTLE_ENDIAN);
-        for (long[] entry : chunkIndex) {
-            indexBuf.putLong(entry[0]); // offset
-            indexBuf.putInt((int) entry[1]); // n_events
+            // Write chunk index (legacy 12-byte records: offset + n_events, matching
+            // the SciDVS branch writer; the reader also accepts the newer 20-byte form).
+            long indexOffset = channel.position();
+            ByteBuffer indexBuf = ByteBuffer.allocate(nChunks * INDEX_ENTRY_LEGACY);
+            indexBuf.order(ByteOrder.LITTLE_ENDIAN);
+            for (long[] entry : chunkIndex) {
+                indexBuf.putLong(entry[0]); // offset
+                indexBuf.putInt((int) entry[1]); // n_events
+            }
+            indexBuf.flip();
+            writeFully(indexBuf);
+
+            // Write summary block (none for streaming).
+            long summaryOffset = channel.position();
+            ByteBuffer summaryBuf = ByteBuffer.allocate(4);
+            summaryBuf.order(ByteOrder.LITTLE_ENDIAN);
+            summaryBuf.putInt(0); // summary_len = 0
+            summaryBuf.flip();
+            writeFully(summaryBuf);
+            long footerPosition = channel.position();
+
+            // Patch the header before writing the footer. Successful output is
+            // byte-identical, while a patch failure cannot leave footer magic that
+            // falsely presents an incompletely finalized file as successful.
+            channel.position(headerPatchOffset);
+            ByteBuffer patchBuf = ByteBuffer.allocate(8 + 4);
+            patchBuf.order(ByteOrder.LITTLE_ENDIAN);
+            patchBuf.putLong(totalEvents);
+            patchBuf.putInt(nChunks);
+            patchBuf.flip();
+            writeFully(patchBuf);
+            channel.position(footerPosition);
+
+            // Footer is the final successful-finalization write.
+            ByteBuffer footerBuf = ByteBuffer.allocate(8 + 8 + 4 + 4);
+            footerBuf.order(ByteOrder.LITTLE_ENDIAN);
+            footerBuf.putLong(indexOffset);
+            footerBuf.putLong(summaryOffset);
+            footerBuf.putInt((int) (crc32.getValue() & 0xFFFFFFFFL));
+            footerBuf.put(FOOTER_MAGIC);
+            footerBuf.flip();
+            writeFully(footerBuf);
+        } catch (IOException | RuntimeException e) {
+            failure = e;
+        } finally {
+            // The FileOutputStream is the owning layer. Invoke it exactly once;
+            // if a custom stream throws before releasing its FileChannel, close
+            // that still-open channel as the fallback. Never mask the primary
+            // flush/index/summary/header/footer failure.
+            try {
+                fos.close();
+            } catch (IOException | RuntimeException closeFailure) {
+                failure = appendFailure(failure, closeFailure);
+            }
+            if (channel.isOpen()) {
+                try {
+                    channel.close();
+                } catch (IOException | RuntimeException closeFailure) {
+                    failure = appendFailure(failure, closeFailure);
+                }
+            }
         }
-        indexBuf.flip();
-        writeFully(indexBuf);
 
-        // Write summary block (none for streaming).
-        long summaryOffset = channel.position();
-        ByteBuffer summaryBuf = ByteBuffer.allocate(4);
-        summaryBuf.order(ByteOrder.LITTLE_ENDIAN);
-        summaryBuf.putInt(0); // summary_len = 0
-        summaryBuf.flip();
-        writeFully(summaryBuf);
-
-        // Write footer.
-        ByteBuffer footerBuf = ByteBuffer.allocate(8 + 8 + 4 + 4);
-        footerBuf.order(ByteOrder.LITTLE_ENDIAN);
-        footerBuf.putLong(indexOffset);
-        footerBuf.putLong(summaryOffset);
-        footerBuf.putInt((int) (crc32.getValue() & 0xFFFFFFFFL));
-        footerBuf.put(FOOTER_MAGIC);
-        footerBuf.flip();
-        writeFully(footerBuf);
-
-        // Patch header: write final n_events and n_chunks at the header patch offset.
-        channel.position(headerPatchOffset);
-        ByteBuffer patchBuf = ByteBuffer.allocate(8 + 4);
-        patchBuf.order(ByteOrder.LITTLE_ENDIAN);
-        patchBuf.putLong(totalEvents);
-        patchBuf.putInt(nChunks);
-        patchBuf.flip();
-        writeFully(patchBuf);
-
-        // Flush and close the channel/stream exactly once.
-        channel.close();
-        fos.close();
+        rethrowCloseFailure(failure);
 
         endDate = new Date();
         endTimeMs = System.currentTimeMillis();
         log.info(String.format("wrote %s", toString()));
+    }
+
+    private static Throwable appendFailure(Throwable primary, Throwable next) {
+        if (primary == null) {
+            return next;
+        }
+        if (next != primary) {
+            primary.addSuppressed(next);
+        }
+        return primary;
+    }
+
+    private static void rethrowCloseFailure(Throwable failure) throws IOException {
+        if (failure == null) {
+            return;
+        }
+        if (failure instanceof IOException) {
+            throw (IOException) failure;
+        }
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        throw new IOException("Unexpected AEDZ close failure", failure);
     }
 
     /**
