@@ -492,7 +492,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             try {
                 open_minimal_close(); // populates stringDescription and sets
                 // numberOfStringDescriptors!=0
-            } catch (final HardwareInterfaceException e) {
+            } catch (final Exception e) {
+                // Must not throw: AEViewer catch blocks stringify this interface.
+                CypressFX2.log.fine("toString(): could not populate descriptors: " + e);
             }
         }
         return stringDescription;
@@ -723,28 +725,66 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     synchronized public void close() {
-        if (!isOpen()) {
+        try {
+            if (isOpen()) {
+                try {
+                    setEventAcquisitionEnabled(false);
+
+                    if (asyncStatusThread != null) {
+                        asyncStatusThread.stopThread();
+                    }
+                } catch (final HardwareInterfaceException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    LibUsb.releaseInterface(deviceHandle, 0);
+                } catch (final IllegalStateException e) {
+                    CypressFX2.log.fine("close(): releaseInterface: " + e.getMessage());
+                }
+            }
+        } finally {
+            discardLibUsbHandle();
+            inEndpointEnabled = false;
+            isOpened = false;
+        }
+    }
+
+    /**
+     * Opens the native libusb handle. The Java {@link DeviceHandle} is assigned
+     * only after {@link LibUsb#open} succeeds, so a failed open cannot leave a
+     * handle whose {@code deviceHandlePointer} is still null.
+     */
+    private void openLibUsbDeviceHandle() throws HardwareInterfaceException {
+        if (deviceHandle != null) {
             return;
         }
-
+        final DeviceHandle handle = new DeviceHandle();
         try {
-            setEventAcquisitionEnabled(false);
-
-            if (asyncStatusThread != null) {
-                asyncStatusThread.stopThread();
+            final int status = LibUsb.open(device, handle);
+            if (status != LibUsb.SUCCESS) {
+                throw new HardwareInterfaceException("failed to open device: " + LibUsb.errorName(status));
             }
-        } catch (final HardwareInterfaceException e) {
-            e.printStackTrace();
+        } catch (final IllegalStateException e) {
+            throw new HardwareInterfaceException("failed to open device: " + e.getMessage(), e);
         }
+        deviceHandle = handle;
+    }
 
-        LibUsb.releaseInterface(deviceHandle, 0);
-        LibUsb.close(deviceHandle);
-
-        deviceHandle = null;
+    /**
+     * Closes and nulls the libusb handle if present. Safe if the handle was
+     * never natively opened.
+     */
+    private void discardLibUsbHandle() {
+        if (deviceHandle != null) {
+            try {
+                LibUsb.close(deviceHandle);
+            } catch (final IllegalStateException e) {
+                CypressFX2.log.fine("discardLibUsbHandle: " + e.getMessage());
+            }
+            deviceHandle = null;
+        }
         deviceDescriptor = null;
-
-        inEndpointEnabled = false;
-        isOpened = false;
     }
 
     // not really necessary to stop this thread, i believe, because close will
@@ -1559,18 +1599,18 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      * checks if device has a string identifier that is a non-empty string
      *
      * @return false if not, true if there is one
+     * @throws HardwareInterfaceException if the native handle is not open
      */
-    private boolean hasStringIdentifier() {
-        // getString string descriptor
-        final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
-
-        if (stringDescriptor1 == null) {
-            return false;
-        } else if (stringDescriptor1.length() > 0) {
-            return true;
+    private boolean hasStringIdentifier() throws HardwareInterfaceException {
+        if (deviceHandle == null) {
+            throw new HardwareInterfaceException("hasStringIdentifier(): deviceHandle is null");
         }
-
-        return false;
+        try {
+            final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
+            return stringDescriptor1 != null && stringDescriptor1.length() > 0;
+        } catch (final IllegalStateException e) {
+            throw new HardwareInterfaceException("hasStringIdentifier(): " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -1599,92 +1639,97 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         int status;
 
-        // Open device.
-        if (deviceHandle == null) {
-            deviceHandle = new DeviceHandle();
-            status = LibUsb.open(device, deviceHandle);
-            if (status != LibUsb.SUCCESS) {
-                throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
+        try {
+            openLibUsbDeviceHandle();
+
+            // Check for blank devices (must first get device descriptor).
+            if (deviceDescriptor == null) {
+                deviceDescriptor = new DeviceDescriptor();
+                LibUsb.getDeviceDescriptor(device, deviceDescriptor);
             }
-        }
 
-        // Check for blank devices (must first get device descriptor).
-        if (deviceDescriptor == null) {
-            deviceDescriptor = new DeviceDescriptor();
-            LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        }
+            if (isBlankDevice()) {
+                CypressFX2.log.warning("open(): blank device detected, downloading preferred firmware");
 
-        if (isBlankDevice()) {
-            CypressFX2.log.warning("open(): blank device detected, downloading preferred firmware");
+                isOpened = true;
+                CypressFX2.log.severe("USE FLASHY FOR FIRMWARE UPLOAD!");
+                isOpened = false;
+
+                boolean success = false;
+                int triesLeft = 10;
+                status = 0;
+
+                while (!success && (triesLeft > 0)) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (final InterruptedException e) {
+                    }
+
+                    try {
+                        LibUsb.close(deviceHandle);
+
+                        status = LibUsb.open(device, deviceHandle);
+                        if (status != LibUsb.SUCCESS) {
+                            triesLeft--;
+                        } else {
+                            success = true;
+                        }
+                    } catch (final IllegalStateException e) {
+                        // Ignore.
+                    }
+                }
+
+                if (!success) {
+                    throw new HardwareInterfaceException(
+                            "open(): couldn't reopen device after firmware download and re-enumeration: "
+                            + LibUsb.errorName(status));
+                } else {
+                    throw new HardwareInterfaceException(
+                            "open(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
+                }
+            }
+
+            // Initialize device.
+            if (deviceDescriptor.bNumConfigurations() != 1) {
+                throw new HardwareInterfaceException("number of configurations=" + deviceDescriptor.bNumConfigurations()
+                        + " is not 1 like it should be");
+            }
+
+            final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
+            LibUsb.getConfiguration(deviceHandle, activeConfig);
+
+            if (activeConfig.get() != 1) {
+                LibUsb.setConfiguration(deviceHandle, 1);
+            }
+
+            LibUsb.claimInterface(deviceHandle, 0);
+
+            populateDescriptors();
 
             isOpened = true;
-            CypressFX2.log.severe("USE FLASHY FOR FIRMWARE UPLOAD!");
-            isOpened = false;
 
-            boolean success = false;
-            int triesLeft = 10;
-            status = 0;
+            CypressFX2.log.info("open(): device opened");
 
-            while (!success && (triesLeft > 0)) {
-                try {
-                    Thread.sleep(1000);
-                } catch (final InterruptedException e) {
-                }
-
-                try {
-                    LibUsb.close(deviceHandle);
-
-                    status = LibUsb.open(device, deviceHandle);
-                    if (status != LibUsb.SUCCESS) {
-                        triesLeft--;
-                    } else {
-                        success = true;
-                    }
-                } catch (final IllegalStateException e) {
-                    // Ignore.
-                }
+            if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
+                CypressFX2.log
+                        .warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
             }
 
-            if (!success) {
-                throw new HardwareInterfaceException(
-                        "open(): couldn't reopen device after firmware download and re-enumeration: "
-                        + LibUsb.errorName(status));
-            } else {
-                throw new HardwareInterfaceException(
-                        "open(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
+            // start the thread that listens for device status information (e.g.
+            // timestamp reset)
+            asyncStatusThread = new AsyncStatusThread(this);
+            asyncStatusThread.startThread();
+        } catch (final IllegalStateException e) {
+            if (!isOpened) {
+                discardLibUsbHandle();
             }
+            throw new HardwareInterfaceException("open(): " + e.getMessage(), e);
+        } catch (final HardwareInterfaceException e) {
+            if (!isOpened) {
+                discardLibUsbHandle();
+            }
+            throw e;
         }
-
-        // Initialize device.
-        if (deviceDescriptor.bNumConfigurations() != 1) {
-            throw new HardwareInterfaceException("number of configurations=" + deviceDescriptor.bNumConfigurations()
-                    + " is not 1 like it should be");
-        }
-
-        final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
-        LibUsb.getConfiguration(deviceHandle, activeConfig);
-
-        if (activeConfig.get() != 1) {
-            LibUsb.setConfiguration(deviceHandle, 1);
-        }
-
-        LibUsb.claimInterface(deviceHandle, 0);
-
-        populateDescriptors();
-
-        isOpened = true;
-
-        CypressFX2.log.info("open(): device opened");
-
-        if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
-            CypressFX2.log
-                    .warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
-        }
-
-        // start the thread that listens for device status information (e.g.
-        // timestamp reset)
-        asyncStatusThread = new AsyncStatusThread(this);
-        asyncStatusThread.startThread();
     }
 
     /**
@@ -1715,69 +1760,66 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         int status;
 
-        // Open device.
-        if (deviceHandle == null) {
-            deviceHandle = new DeviceHandle();
-            status = LibUsb.open(device, deviceHandle);
-            if (status != LibUsb.SUCCESS) {
-                throw new HardwareInterfaceException("open_minimal_close(): failed to open device: "
-                        + LibUsb.errorName(status));
+        try {
+            openLibUsbDeviceHandle();
+
+            // Check for blank devices (must first get device descriptor).
+            if (deviceDescriptor == null) {
+                deviceDescriptor = new DeviceDescriptor();
+                LibUsb.getDeviceDescriptor(device, deviceDescriptor);
             }
-        }
 
-        // Check for blank devices (must first get device descriptor).
-        if (deviceDescriptor == null) {
-            deviceDescriptor = new DeviceDescriptor();
-            LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        }
+            if (isBlankDevice()) {
+                throw new BlankDeviceException("Blank Cypress FX2");
+            }
 
-        if (isBlankDevice()) {
-            throw new BlankDeviceException("Blank Cypress FX2");
-        }
+            if (!hasStringIdentifier()) { // TODO: does this really ever happen, a
+                // non-blank device with invalid fw?
+                CypressFX2.log.warning("open_minimal_close(): blank device detected, downloading preferred firmware");
 
-        if (!hasStringIdentifier()) { // TODO: does this really ever happen, a
-            // non-blank device with invalid fw?
-            CypressFX2.log.warning("open_minimal_close(): blank device detected, downloading preferred firmware");
+                CypressFX2.log.severe("USE FLASHY FOR FIRMWARE UPLOAD!");
 
-            CypressFX2.log.severe("USE FLASHY FOR FIRMWARE UPLOAD!");
+                boolean success = false;
+                int triesLeft = 10;
+                status = 0;
 
-            boolean success = false;
-            int triesLeft = 10;
-            status = 0;
+                while (!success && (triesLeft > 0)) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (final InterruptedException e) {
+                    }
 
-            while (!success && (triesLeft > 0)) {
-                try {
-                    Thread.sleep(1000);
-                } catch (final InterruptedException e) {
+                    try {
+                        LibUsb.close(deviceHandle);
+                    } catch (final IllegalStateException e) {
+                        CypressFX2.log.fine("open_minimal_close(): close during firmware retry: " + e.getMessage());
+                    }
+
+                    status = LibUsb.open(device, deviceHandle);
+                    if (status != LibUsb.SUCCESS) {
+                        triesLeft--;
+                    } else {
+                        success = true;
+                    }
                 }
 
-                LibUsb.close(deviceHandle);
-
-                status = LibUsb.open(device, deviceHandle);
-                if (status != LibUsb.SUCCESS) {
-                    triesLeft--;
+                if (!success) {
+                    throw new HardwareInterfaceException(
+                            "open_minimal_close(): couldn't reopen device after firmware download and re-enumeration: "
+                            + LibUsb.errorName(status));
                 } else {
-                    success = true;
+                    throw new HardwareInterfaceException(
+                            "open_minimal_close(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
                 }
             }
 
-            if (!success) {
-                throw new HardwareInterfaceException(
-                        "open_minimal_close(): couldn't reopen device after firmware download and re-enumeration: "
-                        + LibUsb.errorName(status));
-            } else {
-                throw new HardwareInterfaceException(
-                        "open_minimal_close(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
-            }
+            populateDescriptors();
+        } catch (final IllegalStateException e) {
+            throw new HardwareInterfaceException("open_minimal_close(): " + e.getMessage(), e);
+        } finally {
+            // Always drop the handle; this method only reads descriptors.
+            discardLibUsbHandle();
         }
-
-        populateDescriptors();
-
-        // And close opened resources again.
-        LibUsb.close(deviceHandle);
-
-        deviceHandle = null;
-        deviceDescriptor = null;
     }
 
     /**

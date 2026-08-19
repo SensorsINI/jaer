@@ -1552,10 +1552,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     private boolean hasStringIdentifier() throws IllegalStateException {
 
-        log.fine(String.format("Getting string identifier for deviceHandle %s", deviceHandle.toString()));
         if (deviceHandle == null) {
             throw new IllegalStateException("null deviceHandle");
         }
+        log.fine(String.format("Getting string identifier for deviceHandle %s", deviceHandle.toString()));
         final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
 
         if (stringDescriptor1 == null) {
@@ -1595,17 +1595,19 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // Open device.
         if (deviceHandle == null) {
-            deviceHandle = new DeviceHandle();
+            final DeviceHandle handle = new DeviceHandle();
             try {
-                status = LibUsb.open(device, deviceHandle);
+                status = LibUsb.open(device, handle);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
                 }
+                deviceHandle = handle;
                 status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
                 }
             } catch (IllegalStateException e) {
+                deviceHandle = null;
                 throw new HardwareInterfaceException(String.format("Got %s", e.toString()));
             }
         }
@@ -1735,18 +1737,20 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // Open device.
         if (deviceHandle == null) {
-            deviceHandle = new DeviceHandle();
+            final DeviceHandle handle = new DeviceHandle();
             try {
-                status = LibUsb.open(device, deviceHandle);
+                status = LibUsb.open(device, handle);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
                 }
+                deviceHandle = handle;
                 // do not reset device because this method is called when menu is built, even while device is open and giving data
 //                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
 //                if (status != LibUsb.SUCCESS) {
 //                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
 //                }
             } catch (IllegalStateException e) {
+                deviceHandle = null;
                 throw new HardwareInterfaceException(e.toString());
             }
         }
