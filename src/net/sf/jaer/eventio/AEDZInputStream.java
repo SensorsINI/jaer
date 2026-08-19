@@ -30,7 +30,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.TreeSet;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.github.luben.zstd.Zstd;
@@ -120,7 +119,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         this.raf = new RandomAccessFile(file, "r");
         try {
             readFile();
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException e) {
             // Never leak the open handle on a malformed file.
             try {
                 raf.close();
@@ -128,6 +127,16 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             }
             raf = null;
             throw e;
+        } catch (RuntimeException e) {
+            // Parsing/decompression implementation exceptions are part of the
+            // malformed-input boundary, never an unchecked public-file result.
+            try {
+                raf.close();
+            } catch (IOException closeFailure) {
+                e.addSuppressed(closeFailure);
+            }
+            raf = null;
+            throw new IOException("Malformed AEDZ file: " + e.getMessage(), e);
         }
         parseAbsoluteStartingTime();
     }
@@ -489,9 +498,16 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
      * Read a single event at the given global position.
      */
     private void readEvent(long eventIdx, int[] addrOut, int[] tsOut, int outIdx) throws IOException {
+        if (eventIdx < 0 || eventIdx >= totalEvents) {
+            throw new IOException("Event index " + eventIdx + " out of range [0," + totalEvents + ")");
+        }
         int chunkIdx = findChunkForEvent(eventIdx);
         decodeChunk(chunkIdx);
         int localIdx = (int) (eventIdx - chunkEventStarts[chunkIdx]);
+        if (localIdx < 0 || localIdx >= cachedAddr.length || localIdx >= cachedTs.length) {
+            throw new IOException("Event index " + eventIdx + " maps outside chunk " + chunkIdx
+                    + " at local index " + localIdx);
+        }
         addrOut[outIdx] = cachedAddr[localIdx];
         tsOut[outIdx] = cachedTs[localIdx];
     }
@@ -505,12 +521,8 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             support.firePropertyChange(AEInputStream.EVENT_INIT, 0, 0);
         }
 
-        int an = Math.abs(n);
         int cap = packet.getCapacity();
-        if (an > cap) {
-            an = cap;
-            n = (n > 0) ? cap : -cap;
-        }
+        int requested = (int) Math.min(Math.abs((long) n), (long) cap);
 
         // An empty recording has no events to read regardless of the repeat flag:
         // return an empty packet rather than rewind-looping into a read.
@@ -526,22 +538,19 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
 
         try {
             if (n > 0) {
-                for (int i = 0; i < n; i++) {
-                    if (position >= totalEvents) {
-                        if (repeat) {
-                            position = markIn;
-                            support.firePropertyChange(AEInputStream.EVENT_REWOUND, totalEvents, 0);
-                        } else {
-                            throw new EOFException("end of AEDZ file");
-                        }
+                for (int i = 0; i < requested; i++) {
+                    long lower = lowerReadBound();
+                    long upper = upperReadBound();
+                    if (position < lower) {
+                        position = lower;
                     }
-                    if (markOutSet && position >= markOut) {
-                        if (repeat) {
-                            position = markIn;
-                            support.firePropertyChange(AEInputStream.EVENT_REWOUND, markOut, markIn);
-                        } else {
+                    if (position >= upper) {
+                        if (!repeat || upper <= lower) {
                             break;
                         }
+                        long boundary = position;
+                        position = lower;
+                        support.firePropertyChange(AEInputStream.EVENT_REWOUND, boundary, position);
                     }
                     readEvent(position, addr, ts, i);
                     mostRecentTimestamp = ts[i];
@@ -549,18 +558,27 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
                     position++;
                     count++;
                 }
-            } else {
-                n = -n;
-                for (int i = 0; i < n; i++) {
-                    if (position <= 0) {
-                        if (repeat) {
-                            position = markOutSet ? markOut : totalEvents;
-                        } else {
+            } else if (n < 0) {
+                for (int i = 0; i < requested; i++) {
+                    long lower = lowerReadBound();
+                    long upper = upperReadBound();
+                    if (position > upper) {
+                        position = upper;
+                    }
+                    if (position <= lower) {
+                        if (!repeat || upper <= lower) {
                             break;
                         }
+                        long boundary = position;
+                        position = upper;
+                        support.firePropertyChange(AEInputStream.EVENT_REWOUND, boundary, position);
                     }
-                    position--;
-                    readEvent(position, addr, ts, i);
+                    long eventPosition = position - 1;
+                    if (eventPosition < lower) {
+                        break;
+                    }
+                    readEvent(eventPosition, addr, ts, i);
+                    position = eventPosition;
                     mostRecentTimestamp = ts[i];
                     currentStartTimestamp = ts[i];
                     count++;
@@ -582,7 +600,8 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             support.firePropertyChange(AEInputStream.EVENT_INIT, 0, 0);
         }
 
-        int endTimestamp = currentStartTimestamp + dt;
+        int windowStartTimestamp = currentStartTimestamp;
+        int endTimestamp = windowStartTimestamp + dt;
         currentStartTimestamp = endTimestamp;
 
         int[] addr = packet.getAddresses();
@@ -591,43 +610,52 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         int count = 0;
         boolean rewound = false;
 
+        if (totalEvents == 0 || dt == 0) {
+            packet.setNumEvents(0);
+            support.firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position);
+            return packet;
+        }
+
         try {
             if (dt > 0) {
                 while (count < addr.length) {
-                    // Handle end of file / mark out
-                    if (position >= totalEvents || (markOutSet && position >= markOut)) {
-                        if (repeat) {
-                            long oldPos = position;
-                            position = markIn;
-                            // Reset time tracking to match rewound position
-                            if (position < totalEvents) {
-                                int chunkIdx = findChunkForEvent(position);
-                                decodeChunk(chunkIdx);
-                                int localIdx = (int) (position - chunkEventStarts[chunkIdx]);
-                                currentStartTimestamp = cachedTs[localIdx];
-                                endTimestamp = currentStartTimestamp + dt;
-                                mostRecentTimestamp = currentStartTimestamp;
-                            }
-                            rewound = true;
-                            support.firePropertyChange(AEInputStream.EVENT_REWOUND, oldPos, position);
-                            break; // return empty packet on rewind, next call gets fresh data
-                        } else {
+                    long lower = lowerReadBound();
+                    long upper = upperReadBound();
+                    if (position < lower) {
+                        position = lower;
+                    }
+                    if (position >= upper) {
+                        if (!repeat || upper <= lower) {
+                            break;
+                        }
+                        long oldPos = position;
+                        position = lower;
+                        if (position < upper) {
+                            currentStartTimestamp = timestampAt(position);
+                            mostRecentTimestamp = currentStartTimestamp;
+                        }
+                        rewound = true;
+                        support.firePropertyChange(AEInputStream.EVENT_REWOUND, oldPos, position);
+                        break; // do not mix events from opposite sides of a rewind
+                    }
+
+                    // Peek at next event timestamp
+                    int eventTs = timestampAt(position);
+
+                    if (!isInForwardTimeWindow(windowStartTimestamp, eventTs, dt)) {
+                        break;
+                    }
+                    if (count > 0) {
+                        int previous = ts[count - 1];
+                        if (isForwardTimestampWrap(previous, eventTs)) {
+                            support.firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME, previous, eventTs);
+                        } else if (nonMonotonicTimeExceptionsChecked && eventTs < previous) {
+                            support.firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, previous, eventTs);
                             break;
                         }
                     }
 
-                    // Peek at next event timestamp
-                    int chunkIdx = findChunkForEvent(position);
-                    decodeChunk(chunkIdx);
-                    int localIdx = (int) (position - chunkEventStarts[chunkIdx]);
-                    int eventTs = cachedTs[localIdx];
-
-                    if (eventTs > endTimestamp) {
-                        break;
-                    }
-
-                    addr[count] = cachedAddr[localIdx];
-                    ts[count] = eventTs;
+                    readEvent(position, addr, ts, count);
                     mostRecentTimestamp = eventTs;
                     position++;
                     count++;
@@ -635,41 +663,101 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
 
                 // If no events matched the time window but we haven't reached EOF,
                 // snap currentStartTimestamp to the next event's timestamp.
-                if (count == 0 && !rewound && position < totalEvents) {
-                    int chunkIdx = findChunkForEvent(position);
-                    decodeChunk(chunkIdx);
-                    int localIdx = (int) (position - chunkEventStarts[chunkIdx]);
-                    currentStartTimestamp = cachedTs[localIdx];
+                if (count == 0 && !rewound && position < upperReadBound()) {
+                    currentStartTimestamp = timestampAt(position);
                 }
             } else {
                 // Read backwards
-                while (count < addr.length && position > 0) {
-                    position--;
-                    int chunkIdx = findChunkForEvent(position);
-                    decodeChunk(chunkIdx);
-                    int localIdx = (int) (position - chunkEventStarts[chunkIdx]);
-                    int eventTs = cachedTs[localIdx];
-
-                    if (eventTs < endTimestamp) {
-                        position++;
+                while (count < addr.length) {
+                    long lower = lowerReadBound();
+                    long upper = upperReadBound();
+                    if (position > upper) {
+                        position = upper;
+                    }
+                    if (position <= lower) {
+                        if (!repeat || upper <= lower) {
+                            break;
+                        }
+                        long oldPos = position;
+                        position = upper;
+                        if (position > lower) {
+                            currentStartTimestamp = timestampAt(position - 1);
+                            mostRecentTimestamp = currentStartTimestamp;
+                        }
+                        rewound = true;
+                        support.firePropertyChange(AEInputStream.EVENT_REWOUND, oldPos, position);
                         break;
                     }
 
-                    addr[count] = cachedAddr[localIdx];
-                    ts[count] = eventTs;
+                    long eventPosition = position - 1;
+                    int eventTs = timestampAt(eventPosition);
+                    if (!isInBackwardTimeWindow(windowStartTimestamp, eventTs, dt)) {
+                        break;
+                    }
+                    if (count > 0) {
+                        int previous = ts[count - 1];
+                        if (isBackwardTimestampWrap(previous, eventTs)) {
+                            support.firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME, previous, eventTs);
+                        } else if (nonMonotonicTimeExceptionsChecked && eventTs > previous) {
+                            support.firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, previous, eventTs);
+                            break;
+                        }
+                    }
+
+                    readEvent(eventPosition, addr, ts, count);
+                    position = eventPosition;
                     mostRecentTimestamp = eventTs;
                     count++;
                 }
             }
-        } catch (IOException e) {
-            throw e;
-        } catch (Exception e) {
-            log.log(Level.WARNING, "Exception reading AEDZ: " + e.toString(), e);
+        } catch (RuntimeException e) {
+            throw new IOException("Unexpected AEDZ time-read failure at event " + position, e);
         }
 
         packet.setNumEvents(count);
         support.firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position);
         return packet;
+    }
+
+    private long lowerReadBound() {
+        return markInSet ? markIn : 0;
+    }
+
+    private long upperReadBound() {
+        return markOutSet ? Math.min(markOut, totalEvents) : totalEvents;
+    }
+
+    private int timestampAt(long eventPosition) throws IOException {
+        if (eventPosition < 0 || eventPosition >= totalEvents) {
+            throw new IOException("Timestamp event index " + eventPosition
+                    + " out of range [0," + totalEvents + ")");
+        }
+        int chunkIdx = findChunkForEvent(eventPosition);
+        decodeChunk(chunkIdx);
+        int localIdx = (int) (eventPosition - chunkEventStarts[chunkIdx]);
+        if (localIdx < 0 || localIdx >= cachedTs.length) {
+            throw new IOException("Timestamp event index " + eventPosition
+                    + " maps outside chunk " + chunkIdx);
+        }
+        return cachedTs[localIdx];
+    }
+
+    private static boolean isInForwardTimeWindow(int start, int timestamp, int dt) {
+        long elapsed = Integer.toUnsignedLong(timestamp - start);
+        return elapsed <= (long) dt;
+    }
+
+    private static boolean isInBackwardTimeWindow(int start, int timestamp, int dt) {
+        long elapsed = Integer.toUnsignedLong(start - timestamp);
+        return elapsed <= -(long) dt;
+    }
+
+    private static boolean isForwardTimestampWrap(int previous, int timestamp) {
+        return previous > 0 && timestamp <= 0;
+    }
+
+    private static boolean isBackwardTimestampWrap(int previous, int timestamp) {
+        return previous < 0 && timestamp >= 0;
     }
 
     @Override
@@ -833,6 +921,9 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             } catch (IOException e) {
                 log.warning("Error seeking in AEDZ file: " + e);
             }
+        } else if (totalEvents > 0) {
+            mostRecentTimestamp = firstTimestamp;
+            currentStartTimestamp = firstTimestamp;
         }
     }
 
@@ -864,7 +955,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     }
 
     @Override
-    public void clearMarks() {
+    public synchronized void clearMarks() {
         markIn = 0;
         markOut = Long.MAX_VALUE;
         markInSet = false;
@@ -873,56 +964,58 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     }
 
     @Override
-    public long setMarkIn() {
-        if (markInSet) {
-            markIn = 0;
-            markInSet = false;
-        } else {
-            markIn = position;
-            markInSet = true;
+    public synchronized long setMarkIn() {
+        long here = position;
+        if (markOutSet && here >= markOut) {
+            return markIn;
         }
+        long old = markIn;
+        markIn = here;
+        markInSet = here > 0;
+        support.firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, markIn);
         return markIn;
     }
 
     @Override
-    public long setMarkOut() {
-        if (markOutSet) {
-            markOut = Long.MAX_VALUE;
-            markOutSet = false;
-        } else {
-            markOut = position;
-            markOutSet = true;
+    public synchronized long setMarkOut() {
+        long here = position;
+        if (here <= lowerReadBound()) {
+            return getMarkOutPosition();
         }
+        long old = getMarkOutPosition();
+        markOut = here;
+        markOutSet = true;
+        support.firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, markOut);
         return markOut;
     }
 
     @Override
-    public long getMarkInPosition() {
+    public synchronized long getMarkInPosition() {
         return markIn;
     }
 
     @Override
-    public long getMarkOutPosition() {
+    public synchronized long getMarkOutPosition() {
         return markOutSet ? markOut : totalEvents;
     }
 
     @Override
-    public boolean isMarkInSet() {
+    public synchronized boolean isMarkInSet() {
         return markInSet;
     }
 
     @Override
-    public boolean isMarkOutSet() {
+    public synchronized boolean isMarkOutSet() {
         return markOutSet;
     }
 
     @Override
-    public void setRepeat(boolean repeat) {
+    public synchronized void setRepeat(boolean repeat) {
         this.repeat = repeat;
     }
 
     @Override
-    public boolean isRepeat() {
+    public synchronized boolean isRepeat() {
         return repeat;
     }
 

@@ -36,6 +36,11 @@ public class AEDZRoundtripDemo {
         for (int n : COUNTS) {
             roundtripCount(n);
         }
+        markOutZeroBackwardRegression();
+        backwardNumberAndMarkSemantics();
+        backwardAcrossChunkBoundary();
+        timeWindowSemantics();
+        timeWrapAndNonMonotonicSemantics();
         roundtripPartialChunk();
         seekAcrossChunkBoundary();
         extendedIndexFixture();
@@ -105,6 +110,174 @@ public class AEDZRoundtripDemo {
         }
         System.out.println("PASS seekAcrossChunkBoundary");
         file.delete();
+    }
+
+    /** Exact reviewer trace: OUT cannot be set at IN=0, and a repeated backward read never reaches index -1. */
+    private static void markOutZeroBackwardRegression() throws IOException {
+        AEPacketRaw source = makePacket(3, 41);
+        File file = writeFixture(source);
+        try (AEDZInputStream in = new AEDZInputStream(file)) {
+            in.setRepeat(true);
+            in.position(0);
+            long mark = in.setMarkOut();
+            AEPacketRaw packet = in.readPacketByNumber(-1);
+            assertTrue(!in.isMarkOutSet() && mark == in.size(),
+                    "position(0) setMarkOut is rejected like AEFileInputStream");
+            assertPacketIndices(packet, source, 2);
+            assertTrue(in.position() == 2, "repeated backward read from zero wraps without negative position");
+        }
+        file.delete();
+        System.out.println("PASS markOutZeroBackwardRegression markOut=unmodified index>=0");
+    }
+
+    /** Backward count, accumulation, mark boundaries, and repeat true/false semantics on empty/single/small files. */
+    private static void backwardNumberAndMarkSemantics() throws IOException {
+        File empty = writeFixture(makePacket(0, 2));
+        try (AEDZInputStream in = new AEDZInputStream(empty)) {
+            assertTrue(in.readPacketByNumber(-3).getNumEvents() == 0, "empty backward read is empty");
+        }
+        empty.delete();
+
+        AEPacketRaw singleSource = makePacket(1, 3);
+        File single = writeFixture(singleSource);
+        try (AEDZInputStream in = new AEDZInputStream(single)) {
+            in.setRepeat(false);
+            in.position(1);
+            AEPacketRaw accumulated = in.readPacketByNumber(-2);
+            assertPacketIndices(accumulated, singleSource, 0);
+            assertTrue(in.position() == 0, "repeat=false returns accumulated packet at BOF");
+            assertTrue(in.readPacketByNumber(-1).getNumEvents() == 0,
+                    "repeat=false backward at BOF returns empty without unchecked failure");
+        }
+        single.delete();
+
+        AEPacketRaw source = makePacket(6, 5);
+        File file = writeFixture(source);
+        try (AEDZInputStream in = new AEDZInputStream(file)) {
+            in.setRepeat(false);
+            in.position(6);
+            assertPacketIndices(in.readPacketByNumber(-3), source, 5, 4, 3);
+            assertTrue(in.position() == 3, "backward count leaves next-forward position at 3");
+
+            in.clearMarks();
+            in.position(1);
+            assertTrue(in.setMarkIn() == 1 && in.isMarkInSet(), "markIn set at 1");
+            in.position(4);
+            assertTrue(in.setMarkOut() == 4 && in.isMarkOutSet(), "markOut set at exclusive 4");
+
+            in.setRepeat(true);
+            in.position(4);
+            assertPacketIndices(in.readPacketByNumber(1), source, 1);
+            assertTrue(in.position() == 2, "forward repeat wraps OUT to IN");
+            in.position(1);
+            assertPacketIndices(in.readPacketByNumber(-1), source, 3);
+            assertTrue(in.position() == 3, "backward repeat wraps IN to exclusive OUT");
+
+            in.setRepeat(false);
+            in.position(4);
+            assertTrue(in.readPacketByNumber(1).getNumEvents() == 0 && in.position() == 4,
+                    "repeat=false forward stops at OUT");
+            in.position(1);
+            assertTrue(in.readPacketByNumber(-1).getNumEvents() == 0 && in.position() == 1,
+                    "repeat=false backward stops at IN");
+
+            in.clearMarks();
+            in.position(4);
+            in.setMarkOut();
+            in.position(5);
+            assertTrue(in.setMarkIn() == 0 && !in.isMarkInSet(),
+                    "markIn beyond OUT is rejected");
+        }
+        file.delete();
+        System.out.println("PASS backwardNumberAndMarkSemantics empty/single/marks/repeat");
+    }
+
+    /** A negative count crosses the 65536 chunk boundary without changing order or indexing below zero. */
+    private static void backwardAcrossChunkBoundary() throws IOException {
+        AEPacketRaw source = makePacket(CHUNK_EVENTS + 2, 9);
+        File file = writeFixture(source);
+        try (AEDZInputStream in = new AEDZInputStream(file)) {
+            in.setRepeat(false);
+            in.position(source.getNumEvents());
+            assertPacketIndices(in.readPacketByNumber(-4), source,
+                    CHUNK_EVENTS + 1, CHUNK_EVENTS, CHUNK_EVENTS - 1, CHUNK_EVENTS - 2);
+            assertTrue(in.position() == CHUNK_EVENTS - 2,
+                    "backward multichunk position remains nonnegative and exact");
+        }
+        file.delete();
+        System.out.println("PASS backwardAcrossChunkBoundary");
+    }
+
+    /** Forward/backward inclusive time windows and mark/repeat boundaries use the same position contract as count reads. */
+    private static void timeWindowSemantics() throws IOException {
+        AEPacketRaw source = packetWithTimestamps(100, 110, 120, 130, 140);
+        File file = writeFixture(source);
+        try (AEDZInputStream in = new AEDZInputStream(file)) {
+            in.setRepeat(false);
+            assertPacketIndices(in.readPacketByTime(20), source, 0, 1, 2);
+            assertTrue(in.position() == 3, "forward time window includes endpoint");
+            assertPacketIndices(in.readPacketByTime(10), source, 3);
+
+            in.position(5);
+            assertPacketIndices(in.readPacketByTime(-20), source, 4, 3, 2);
+            assertTrue(in.position() == 2, "backward time window includes endpoint");
+
+            in.clearMarks();
+            in.position(1);
+            in.setMarkIn();
+            in.position(4);
+            in.setMarkOut();
+            in.setRepeat(true);
+            in.position(4);
+            assertTrue(in.readPacketByTime(10).getNumEvents() == 0 && in.position() == 1,
+                    "forward time read at OUT rewinds to IN without mixing windows");
+            in.position(1);
+            assertTrue(in.readPacketByTime(-10).getNumEvents() == 0 && in.position() == 4,
+                    "backward time read at IN rewinds to OUT without negative indexing");
+
+            in.setRepeat(false);
+            in.position(1);
+            assertTrue(in.readPacketByTime(-10).getNumEvents() == 0 && in.position() == 1,
+                    "repeat=false backward time stops at IN");
+        }
+        file.delete();
+        System.out.println("PASS timeWindowSemantics forward/backward/marks/repeat");
+    }
+
+    /** Time reads cross signed int timestamp wrap and deliberately stop at checked non-monotonic input. */
+    private static void timeWrapAndNonMonotonicSemantics() throws IOException {
+        AEPacketRaw wrappedSource = packetWithTimestamps(
+                Integer.MAX_VALUE - 5, Integer.MAX_VALUE - 1, Integer.MIN_VALUE + 2, Integer.MIN_VALUE + 8);
+        File wrapped = writeFixture(wrappedSource);
+        try (AEDZInputStream in = new AEDZInputStream(wrapped)) {
+            in.setRepeat(false);
+            final int[] wraps = new int[1];
+            in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_WRAPPED_TIME, evt -> wraps[0]++);
+            assertPacketIndices(in.readPacketByTime(20), wrappedSource, 0, 1, 2, 3);
+            in.position(4);
+            assertPacketIndices(in.readPacketByTime(-20), wrappedSource, 3, 2, 1, 0);
+            assertTrue(wraps[0] == 2, "forward and backward time reads each report one timestamp wrap");
+        }
+        wrapped.delete();
+
+        AEPacketRaw nonMonotonicSource = packetWithTimestamps(100, 110, 105, 115);
+        File nonMonotonic = writeFixture(nonMonotonicSource);
+        try (AEDZInputStream in = new AEDZInputStream(nonMonotonic)) {
+            in.setRepeat(false);
+            final int[] notices = new int[1];
+            in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,
+                    evt -> notices[0]++);
+            assertPacketIndices(in.readPacketByTime(20), nonMonotonicSource, 0, 1);
+            assertTrue(in.position() == 2 && notices[0] == 1,
+                    "checked non-monotonic time returns intentional partial packet at offending event");
+
+            in.setNonMonotonicTimeExceptionsChecked(false);
+            in.position(0);
+            in.setCurrentStartTimestamp(100);
+            assertPacketIndices(in.readPacketByTime(20), nonMonotonicSource, 0, 1, 2, 3);
+        }
+        nonMonotonic.delete();
+        System.out.println("PASS timeWrapAndNonMonotonicSemantics wraps=2 checked-partial/unchecked-all");
     }
 
     /**
@@ -311,6 +484,36 @@ public class AEDZRoundtripDemo {
             throw new IOException("AEPacketRaw setNumEvents did not hold " + n);
         }
         return p;
+    }
+
+    private static AEPacketRaw packetWithTimestamps(int... timestamps) {
+        AEPacketRaw packet = new AEPacketRaw(Math.max(1, timestamps.length));
+        for (int i = 0; i < timestamps.length; i++) {
+            packet.getAddresses()[i] = 0x5000 + i;
+            packet.getTimestamps()[i] = timestamps[i];
+        }
+        packet.setNumEvents(timestamps.length);
+        return packet;
+    }
+
+    private static File writeFixture(AEPacketRaw source) throws IOException {
+        File file = tempFile(".aedz");
+        try (AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null)) {
+            out.writePacket(source);
+        }
+        return file;
+    }
+
+    private static void assertPacketIndices(AEPacketRaw actual, AEPacketRaw source, int... indices) {
+        assertTrue(actual.getNumEvents() == indices.length,
+                "packet count " + actual.getNumEvents() + " expected " + indices.length);
+        for (int i = 0; i < indices.length; i++) {
+            int sourceIndex = indices[i];
+            assertTrue(actual.getAddresses()[i] == source.getAddresses()[sourceIndex],
+                    "packet address " + i + " matches source index " + sourceIndex);
+            assertTrue(actual.getTimestamps()[i] == source.getTimestamps()[sourceIndex],
+                    "packet timestamp " + i + " matches source index " + sourceIndex);
+        }
     }
 
     private static File tempFile(String ext) throws IOException {
