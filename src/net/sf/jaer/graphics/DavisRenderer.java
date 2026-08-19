@@ -174,7 +174,9 @@ public class DavisRenderer extends AEChipRenderer {
             log.fine("Resetting grayBuffer for colorMode=" + colorMode.name());
             grayBuffer.rewind();
             // note below preserves transparency for DVS frame pixels with no events
-            int alpha = (isDisplayFrames() || colorMode == ColorMode.HotCode || getChip().getCanvas().is3DEnabled()) ? 0 : 1; // HotCode uses alpha channel to store events for count to map to hot code
+            final ChipCanvas canvas = getChip().getCanvas();
+            int alpha = (isDisplayFrames() || colorMode == ColorMode.HotCode
+                    || ((canvas != null) && canvas.is3DEnabled())) ? 0 : 1; // HotCode uses alpha channel to store events for count to map to hot code
             float gray = colorMode.getBackgroundGrayLevel();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
