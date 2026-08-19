@@ -6433,10 +6433,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aedat4LoggingOutputStream = null;
                 loggingOutputStream = null;
                 OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                // Hand the owner-captured object explicitly to AEDZ; the writer must not
+                // rediscover it through mutable chip state or recapture live preferences.
                 constructLoggingWriter(chip, opened, (stream, snapshot) -> {
-                    // The compatibility constructor reads the immutable snapshot that
-                    // openWithFrozenSnapshot placed on the chip before opening the file.
-                    aedzLoggingOutputStream = new AEDZOutputStream(stream, chip);
+                    aedzLoggingOutputStream = new AEDZOutputStream(stream, chip, snapshot);
                 });
             } else {
                 aedat4LoggingOutputStream = null;

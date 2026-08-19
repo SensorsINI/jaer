@@ -398,22 +398,22 @@ public class AEViewerSnapshotProbe {
         System.out.println("PASS testPreferenceIndexRoundTrip");
     }
 
-    /** The AEDZ compatibility route uses the recording-start snapshot cached on the chip. */
+    /** The AEDZ route passes the exact owner snapshot even when mutable chip state cannot supply it. */
     private static void testAedzWriterPathConstructsWriter() throws IOException {
         AEChip chip = bareChip();
         chip.getPrefs().put("AEChip.level", "37");
-        File out = File.createTempFile("jaer-aeviewer-aedzwriter", ".aedz");
-        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
-        RecordingConfigurationSnapshot ownerSnapshot = opened.snapshot;
+        RecordingConfigurationSnapshot ownerSnapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
         chip.getPrefs().put("AEChip.level", "41");
-        assertTrue(chip.getRecordingConfigurationSnapshot() == ownerSnapshot,
-                "recording-start snapshot remains cached on chip by identity");
+        assertTrue(chip.getRecordingConfigurationSnapshot() == null,
+                "explicit-identity precondition: owner did not place snapshot on chip");
+        File out = File.createTempFile("jaer-aeviewer-aedzwriter", ".aedz");
+        AEViewer.OpenedLogStream opened = new AEViewer.OpenedLogStream(new FileOutputStream(out), ownerSnapshot);
         final AEDZOutputStream[] writer = new AEDZOutputStream[1];
         try {
             // Same construction expression the .aedz branch of startLogging uses.
             AEViewer.constructLoggingWriter(chip, opened, (stream, snapshot) -> {
                 assertTrue(snapshot == ownerSnapshot, "factory received exact owner snapshot object");
-                writer[0] = new AEDZOutputStream(stream, chip);
+                writer[0] = new AEDZOutputStream(stream, chip, snapshot);
             });
             assertTrue(writer[0] != null, "AEDZ writer constructed on the production seam");
             assertTrue(opened.stream.getChannel().isOpen(),
@@ -425,13 +425,12 @@ public class AEViewerSnapshotProbe {
                 RecordingConfigurationSnapshot reopened = RecordingConfigurationSnapshot.parseLegacyEntries(
                         java.util.Arrays.asList(header.split("\\r?\\n")));
                 assertTrue("37".equals(reopened.get("AEChip.level")),
-                        "cached recording-start 37 reached AEDZ instead of live 41");
+                        "explicit owner 37 reached AEDZ instead of live 41");
             }
         } finally {
             if (writer[0] != null) {
                 writer[0].close();
             }
-            chip.setRecordingConfigurationSnapshot(null);
             out.delete();
         }
         assertTrue(out.exists() == false, "temp AEDZ recording cleaned up");
