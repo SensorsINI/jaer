@@ -176,6 +176,7 @@ import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ExceptionListener;
+import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
@@ -631,10 +632,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         lastLoggingFolder = new File(prefs.get("AEViewer.lastLoggingFolder", defaultLoggingFolderName));
         log.info("AEViewer.lastLoggingFolder=" + lastLoggingFolder);
 
-        // check lastLoggingFolder to see if it really exists, if not, default to user.dir
-        if (!lastLoggingFolder.exists() || !lastLoggingFolder.isDirectory()) {
-            log.warning("lastLoggingFolder " + lastLoggingFolder + " no good, defaulting to " + defaultLoggingFolderName);
+        // exists()/isDirectory() can stall for minutes on a wedged Dropbox/NFS path.
+        FileAccessTimeout.Kind loggingKind = FileAccessTimeout.kind(lastLoggingFolder);
+        if (loggingKind != FileAccessTimeout.Kind.DIRECTORY) {
+            log.warning("lastLoggingFolder " + lastLoggingFolder + " no good (" + loggingKind
+                    + " within " + FileAccessTimeout.timeoutMs() + " ms), defaulting to " + defaultLoggingFolderName);
             lastLoggingFolder = new File(defaultLoggingFolderName);
+            if (loggingKind == FileAccessTimeout.Kind.TIMEOUT) {
+                try {
+                    prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
+                } catch (IOException e) {
+                    prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getAbsolutePath());
+                }
+            }
         }
 
         // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
@@ -649,7 +659,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.info("opening folder for " + evt.getActionCommand());
                         try {
                             File f = new File(evt.getActionCommand());
-                            if (f.isFile()) {
+                            if (FileAccessTimeout.isFile(f)) {
                                 f = f.getParentFile();
                             }
                             Desktop.getDesktop().open(f);
@@ -2716,7 +2726,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 WinUsbDriverHelp.maybeShowDialog(this, aemon, e);
                 MacosLibusbHelp.maybeShowDialog(this, e);
                 if (aemon != null) {
-                    log.info("closing Monitor" + aemon);
+                    log.info("closing Monitor " + aemon.getClass().getSimpleName());
                     aemon.close();
                 }
                 nullifyHardware();
@@ -3790,8 +3800,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return lastTimeExpansionFactor;
         }
         //        private String statLabel = null;
-        private StringBuilder sb = new StringBuilder(100);
+        private StringBuilder sb = new StringBuilder(160);
         private float thisTime = Float.NaN;
+        /** Do not rebuild the status line faster than this; String.format + setText every packet was the JFR allocation hotspot. */
+        private static final long STATISTICS_LABEL_MIN_INTERVAL_MS = 200;
+        private long lastStatisticsLabelMs = 0;
         /** Empty live polls before status shows "waiting for events" (not one empty swap). */
         private static final int LIVE_WAITING_LABEL_EMPTY_PACKET_THRESHOLD = 50;
         private int consecutiveEmptyLivePackets = 0;
@@ -3817,9 +3830,70 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             appendStatisticsLabelForPacket(packet);
         }
 
+        private static final char[] STATS_PAD = "                    ".toCharArray();
+
+        private static void padLeft(StringBuilder buf, int fieldStart, int width) {
+            int need = width - (buf.length() - fieldStart);
+            if (need > 0) {
+                buf.insert(fieldStart, STATS_PAD, 0, Math.min(need, STATS_PAD.length));
+            }
+        }
+
+        private static void padRight(StringBuilder buf, int fieldStart, int width) {
+            int need = width - (buf.length() - fieldStart);
+            while (need-- > 0) {
+                buf.append(' ');
+            }
+        }
+
+        /** {@code %.3f} without {@link String#format}. */
+        private static void appendFixed3(StringBuilder buf, float v) {
+            if (Float.isNaN(v)) {
+                buf.append("NaN");
+                return;
+            }
+            if (v < 0) {
+                buf.append('-');
+                v = -v;
+            }
+            int ip = (int) v;
+            int frac = Math.round((v - ip) * 1000f);
+            if (frac >= 1000) {
+                ip++;
+                frac = 0;
+            }
+            buf.append(ip).append('.');
+            if (frac < 100) {
+                buf.append('0');
+            }
+            if (frac < 10) {
+                buf.append('0');
+            }
+            buf.append(frac);
+        }
+
+        /** {@code %.1f} without {@link String#format}. */
+        private static void appendFixed1(StringBuilder buf, float v) {
+            if (v < 0) {
+                buf.append('-');
+                v = -v;
+            }
+            int ip = (int) v;
+            int frac = Math.round((v - ip) * 10f);
+            if (frac >= 10) {
+                ip++;
+                frac = 0;
+            }
+            buf.append(ip).append('.').append(frac);
+        }
+
         private void appendStatisticsLabelForPacket(EventPacket packet) {
+                long nowMs = System.currentTimeMillis();
+                if (nowMs - lastStatisticsLabelMs < STATISTICS_LABEL_MIN_INTERVAL_MS) {
+                    return;
+                }
+                lastStatisticsLabelMs = nowMs;
                 float dtMs = getDtMs(packet);
-                String timeSliceString = String.format("%10ss", engFmt.format(dtMs / 1000));
 
                 switch (getPlayMode()) {
                     case SEQUENCING:
@@ -3837,77 +3911,85 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         thisTime = packet.getLastTimestamp() * 1e-6f; // just use the raw timestamp from the data file, but this will not account for wrapping.
                         break;
                 }
-                String thisTimeString = String.format("%5.3fs ", thisTime);
 
-                String rateString = String.format("%9seps ", engFmt.format(packet.getEventRateHz()));
+                sb.setLength(0);
 
-                int cs = getRenderer().getColorScale();
+                int field = sb.length();
+                engFmt.append(sb, dtMs / 1000.0);
+                padLeft(sb, field, 10);
+                sb.append('s').append('@');
 
-                String ovstring = droppedDataInfo.getStatsLineToken();
+                field = sb.length();
+                appendFixed3(sb, thisTime);
+                padLeft(sb, field, 5);
+                sb.append("s ");
 
-                //                if(numEvents==0) s=thisTimeString+ "s: No events";
-                //                else {
-                String timeExpansionString;
+                if (chip.getFilterChain().isAnyFilterEnabled()) {
+                    field = sb.length();
+                    sb.append(numEvents);
+                    padLeft(sb, field, 5);
+                    sb.append('/');
+                    field = sb.length();
+                    sb.append(numFilteredEvents);
+                    padRight(sb, field, 5);
+                    if (filterChain.isTimedOut()) {
+                        sb.append(" TO  ");
+                    } else {
+                        sb.append("evts");
+                    }
+                } else {
+                    field = sb.length();
+                    sb.append(numEvents);
+                    padLeft(sb, field, 5);
+                    sb.append("evts ");
+                }
+
+                sb.append(droppedDataInfo.getStatsLineToken());
+
+                field = sb.length();
+                engFmt.append(sb, packet.getEventRateHz());
+                padLeft(sb, field, 9);
+                sb.append("eps ");
+
                 if (isPaused()) {
-                    timeExpansionString = "Paused ";
+                    sb.append("Paused ");
                 } else if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
-                    timeExpansionString = "Live/Seq ";
+                    sb.append("Live/Seq ");
                 } else {
                     float expansion = getTimeExpansion(dtMs);
                     if (expansion == 0) {
-                        timeExpansionString = "??? ";
+                        sb.append("??? ");
                     } else {
-                        timeExpansionString = String.format("%7sX", engFmt.format(expansion));
+                        field = sb.length();
+                        engFmt.append(sb, expansion);
+                        padLeft(sb, field, 7);
+                        sb.append('X');
                     }
-                }
-
-                String numEventsString;
-                if (chip.getFilterChain().isAnyFilterEnabled()) {
-                    if (filterChain.isTimedOut()) {
-                        numEventsString = String.format("%5d/%-5d TO  ", numEvents, numFilteredEvents);
-                    } else {
-                        numEventsString = String.format("%5d/%-5devts", numEvents, numFilteredEvents);
-                    }
-                } else {
-                    numEventsString = String.format("%5devts ", numEvents);
                 }
 
                 FrameRater fr = getFrameRater();
+                field = sb.length();
+                sb.append(Math.round(fr.getAverageFPS()));
+                padLeft(sb, field, 3);
+                sb.append('/').append(fr.getDesiredFPS()).append("fps,");
+                field = sb.length();
+                sb.append(fr.getLastDelayMs());
+                padLeft(sb, field, 2);
+                sb.append("ms");
+
                 AEChipRenderer renderer = getRenderer();
-                String arsString;
                 if (renderer.isAdaptiveRenderSkippingEnabled()) {
-                    arsString = String.format(" ARS lvl=%d/%d sk=%d ld=%.1f",
-                            renderer.getSkipFrameRenderingNumberCurrent(),
-                            renderer.getSkipFrameRenderingNumberMax(),
-                            renderer.getSkipPacketsRenderingCount(),
-                            fr.getLastLoopLoad());
+                    sb.append(" ARS lvl=").append(renderer.getSkipFrameRenderingNumberCurrent())
+                            .append('/').append(renderer.getSkipFrameRenderingNumberMax())
+                            .append(" sk=").append(renderer.getSkipPacketsRenderingCount())
+                            .append(" ld=");
+                    appendFixed1(sb, fr.getLastLoopLoad());
                 } else {
-                    arsString = " ARS off";
+                    sb.append(" ARS off");
                 }
 
-                String frameRateString = String.format("%3.0f/%dfps,%2dms",
-                        fr.getAverageFPS(),
-                        fr.getDesiredFPS(),
-                        fr.getLastDelayMs());
+                sb.append(renderer.isAutoscaleEnabled() ? " AS=" : " FS=").append(renderer.getColorScale());
 
-                String colorScaleString = (getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=") + Integer.toString(cs);
-
-                sb.delete(0, sb.length());
-                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString).append(timeExpansionString).append(frameRateString).append(arsString).append(' ').append(colorScaleString);
-
-                //               statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
-                //                        timeSliceString,
-                //                        thisTimeString,
-                //                        numEventsString,
-                //                        ovstring,
-                //                        rateString,
-                //                        frameRateString,
-                //                        timeExpansionString,
-                //                        frameRateString,
-                //                        colorScaleString // auto or fullscale rendering color
-                //                        );
-                //                }
-                //                System.out.println(statLabel.length());
                 setStatisticsLabel(sb.toString());
                 if (droppedDataInfo.any()) {
                     statisticsLabel.setForeground(Color.RED);
@@ -4058,13 +4140,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    void setStatisticsLabel(final String s) {
-        //        statisticsLabel.setText(s); // can cause flashing if label changes size
-        SwingUtilities.invokeLater(new Runnable() {
+    /** Latest status-line text from ViewLoop; EDT reads this in a coalesced invokeLater. */
+    private volatile String pendingStatisticsLabelText;
+    private final AtomicBoolean statisticsLabelUpdateScheduled = new AtomicBoolean(false);
 
+    void setStatisticsLabel(final String s) {
+        pendingStatisticsLabelText = s;
+        if (!statisticsLabelUpdateScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                statisticsLabel.setText(s);
+                statisticsLabelUpdateScheduled.set(false);
+                String text = pendingStatisticsLabelText;
+                if (text != null && !text.equals(statisticsLabel.getText())) {
+                    statisticsLabel.setText(text);
+                }
             }
         });
         // for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
@@ -6692,7 +6784,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
                 if (confirmFilename && !jaerViewer.isSyncEnabled()) {
-//                    new RecordingSaverWorker(this, loggingFile).execute();
+                    // Pause live acquisition/rendering while the modal save UI is up so
+                    // USB packets are not cooked/rendered into unbounded memory.
+                    final boolean wasPausedForSaveDialog = isPaused();
+                    if (!wasPausedForSaveDialog) {
+                        setPaused(true);
+                    }
+                    try {
                     JFileChooser chooser = new JFileChooser();
                     chooser.setCurrentDirectory(lastLoggingFolder);
                     chooser.setFileFilter(new DATFileFilter());
@@ -6777,6 +6875,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                     } while (doneSavingOrCancelling == false); // keep trying until user is happy (unless they deleted some crucial data!)
+                    } finally {
+                        if (!wasPausedForSaveDialog) {
+                            setPaused(false);
+                            synchronized (viewLoopPauseLock) {
+                                viewLoopPauseLock.notifyAll();
+                            }
+                        }
+                    }
                 }
 
             } catch (IOException e) {

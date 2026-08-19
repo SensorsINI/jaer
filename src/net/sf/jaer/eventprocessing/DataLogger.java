@@ -21,6 +21,7 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.graphics.LoggingSaveDialogGuard;
 import net.sf.jaer.util.DATFileFilter;
+import net.sf.jaer.util.FileAccessTimeout;
 
 /**
  * Logs data to disk according to various criteria.
@@ -55,8 +56,9 @@ public class DataLogger extends EventFilter2D {
         setPropertyTooltip(params, "loggingFolder", "directory to store logged data files");
         // check lastLoggingFolder to see if it really exists, if not, default to user.dir
         File lf = new File(loggingFolder);
-        if (!lf.exists() || !lf.isDirectory()) {
-            log.warning("loggingFolder " + lf + " doesn't exist or isn't a directory, defaulting to " + lf);
+        if (FileAccessTimeout.directoryOrNull(lf) == null) {
+            log.warning("loggingFolder " + lf + " doesn't exist, isn't a directory, or was not reachable within "
+                    + FileAccessTimeout.timeoutMs() + " ms, defaulting to " + defaultLoggingFolderName);
             setLoggingFolder(defaultLoggingFolderName);
         }
     }

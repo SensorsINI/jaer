@@ -46,8 +46,10 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
+import net.sf.jaer.util.SplashStartupAbort;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
@@ -334,6 +336,8 @@ public class JAERViewer {
                 log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,win64,linux32,linux64,etc...). The jAER project must be set to use a JVM that matches the project runtime configuration, e.g., if you are using a 32 bit JVM to run jAER (as selected in the project properties/Libraries/Java Platform), then you must choose the \"win\" configuration so that java.libray.path is set so that your DLLs come from host/java/jars/win32.");
 
                 err.printStackTrace();
+            } finally {
+                SplashStartupAbort.disarm();
             }
 
         }
@@ -356,6 +360,7 @@ public class JAERViewer {
             this.g = splashScreen.createGraphics();
             logger = Logger.getLogger("net.sf.jaer");
             logger.addHandler(this);
+            drawEscHint();
         }
 
         @Override
@@ -379,7 +384,7 @@ public class JAERViewer {
             g.setColor(Color.blue);
             g.drawString(s, x, starty + cursor);
             cursor += ystep;
-            if ((starty + cursor) > (d.height - textheight)) {
+            if ((starty + cursor) > (d.height - textheight - 22)) {
                 cursor = 0;
             }
             try {
@@ -387,7 +392,23 @@ public class JAERViewer {
             } catch (IllegalStateException e) {
                 System.err.println(e.toString());
             }
+            drawEscHint();
+        }
 
+        private void drawEscHint() {
+            if ((splashScreen == null) || !splashScreen.isVisible() || g == null) {
+                return;
+            }
+            try {
+                Dimension d = splashScreen.getSize();
+                int y = Math.max(20, d.height - 18);
+                g.setComposite(AlphaComposite.SrcOver);
+                g.setColor(Color.blue);
+                g.drawString(SplashStartupAbort.HINT, 45, y);
+                splashScreen.update();
+            } catch (IllegalStateException e) {
+                // splash already closed
+            }
         }
 
         @Override
@@ -783,11 +804,11 @@ public class JAERViewer {
         } else {
             log.warning("no Java 6 splash screen to animate (don't worry; this happens if you run from development environment)");
         }
-
         log.info("jAERViewer starting up");
         if (!confirmStartIfPossiblyAlreadyRunning()) {
             System.exit(0);
         }
+        SplashStartupAbort.install();
         net.sf.jaer.util.TensorFlowNativeSupport.installDownloadedJarsOnClasspath();
         log.info("java.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
         net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);
@@ -813,7 +834,7 @@ public class JAERViewer {
 
         if (fileArgs.length > 0) {
             final File f = new File(fileArgs[0]);
-            if (!f.isFile()) {
+            if (FileAccessTimeout.kind(f) != FileAccessTimeout.Kind.FILE) {
                 log.warning("Ignoring non-file launch argument \"" + fileArgs[0]
                         + "\" (from PowerShell quote -D flags, use --%, or set JAER_JVM_ARGS)");
                 SwingUtilities.invokeLater(() -> new JAERViewer());

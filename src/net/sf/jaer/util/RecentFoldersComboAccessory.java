@@ -60,7 +60,14 @@ public class RecentFoldersComboAccessory extends JPanel {
                 return;
             }
             Object item = combo.getSelectedItem();
-            if (!(item instanceof File folder) || !folder.isDirectory()) {
+            if (!(item instanceof File folder)) {
+                return;
+            }
+            if (!FileAccessTimeout.isDirectory(folder)) {
+                if (recentFiles != null) {
+                    recentFiles.removeFile(folder);
+                }
+                rebuildModel();
                 return;
             }
             File current = chooser.getCurrentDirectory();
@@ -86,13 +93,13 @@ public class RecentFoldersComboAccessory extends JPanel {
     private void rebuildModel() {
         LinkedHashSet<File> folders = new LinkedHashSet<>();
         File current = chooser.getCurrentDirectory();
-        if (current != null && current.isDirectory()) {
+        if (current != null && FileAccessTimeout.isDirectory(current)) {
             folders.add(current.getAbsoluteFile());
         }
         if (recentFiles != null) {
             List<File> recent = recentFiles.getRecentFolders();
             for (File f : recent) {
-                if (f != null && f.isDirectory()) {
+                if (f != null) {
                     folders.add(f.getAbsoluteFile());
                 }
             }
