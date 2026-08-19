@@ -79,9 +79,7 @@ jAER relies on many open source projects, including:
 - [Apache Ant](https://ant.apache.org/) – Java-based build tool.
 - [Apache Ivy](https://ant.apache.org/ivy/) – Dependency manager integrated with Ant.
 - [JNA (Java Native Access)](https://github.com/java-native-access/jna) – Java wrapper for native libraries.
-- [Log4J](https://logging.apache.org/log4j/2.x/) – Logging utility.
 - [JUnit](https://junit.org/) – Unit testing framework.
-- [commons-cli](https://commons.apache.org/proper/commons-cli/) – Apache Commons Command Line Interface.
 - [jna-platform](https://github.com/java-native-access/jna/tree/master/contrib/platform) – Platform-specific native library access.
 - [JCodec](https://github.com/jcodec/jcodec) – Pure Java video/audio encoding/decoding.
 - [Guava](https://github.com/google/guava) – Google core Java libraries.
