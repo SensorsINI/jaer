@@ -94,6 +94,7 @@ import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.ClassNameWithDescriptionAndDevelopmentStatus;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.math3.stat.descriptive.MultivariateSummaryStatistics;
@@ -392,7 +393,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             noiseFilterClasses = new Class[preferredDenoiserClassNames.size()];
             int i = 0;
             for (String clName : preferredDenoiserClassNames) {
-                Class cl = Class.forName(clName);
+                Class cl = JaerAllowedSubclasses.load(clName, AbstractNoiseFilter.class);
                 noiseFilterClasses[i++] = cl;
                 sb.append(cl.getSimpleName()).append(" ");
             }
@@ -1355,7 +1356,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 rocHistoryCurrent = new ROCHistory(null);
             } else {
                 try {
-                    Class c = Class.forName(initialFilterName);
+                    Class c = JaerAllowedSubclasses.load(initialFilterName, AbstractNoiseFilter.class);
                     noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
                     rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
 
@@ -1832,7 +1833,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     continue; // don't add NTF to denoiser list!
                 }
                 try {
-                    Class cl = Class.forName(denoiserClassname);
+                    Class cl = JaerAllowedSubclasses.load(denoiserClassname, AbstractNoiseFilter.class);
 
                     newClassList.add(cl);
                 } catch (ClassNotFoundException ex) {

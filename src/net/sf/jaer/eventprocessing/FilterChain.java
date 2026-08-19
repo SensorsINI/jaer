@@ -27,6 +27,7 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.util.ClassChooserDialog;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 
 /**
  * A chain of EventFilter that serially filters or processes packets of
@@ -480,7 +481,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             ArrayList<String> toRemove = new ArrayList<String>();
             for (String s : classNames) {
                 try {
-                    Class cl = Class.forName(s);
+                    Class cl = JaerAllowedSubclasses.load(s, EventFilter2D.class);
                     Constructor co = cl.getConstructor(filterConstructorParams);
                     EventFilter2D fi = (EventFilter2D) co.newInstance(chip);
                     add(fi);

@@ -134,12 +134,26 @@ and put it on PATH (or set JAVA_HOME).</fail>
         </j2seproject1:java>
     </target>
 
-    <target name="-post-compile">
+    <target name="-post-compile" depends="-generate-allowed-subclasses">
         <antcall target="-revert-project-properties-if-only-datestamp"/>
     </target>
 
-    <target name="-post-compile-single">
+    <target name="-post-compile-single" depends="-generate-allowed-subclasses">
         <antcall target="-revert-project-properties-if-only-datestamp"/>
+    </target>
+
+    <!-- Concrete AEChip/EventFilter/DisplayMethod FQCNs packed into jAER.jar. -->
+    <target name="-generate-allowed-subclasses" depends="init">
+        <echo message="Generating allowed-subclasses resources under ${build.classes.dir}"/>
+        <java classname="net.sf.jaer.util.GenerateAllowedSubclasses" fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath>
+                <pathelement location="${build.classes.dir}"/>
+                <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
+                <fileset dir="jars" includes="*.jar"/>
+            </classpath>
+            <arg value="${build.classes.dir}"/>
+        </java>
     </target>
     <!-- Build jaer module -->
 
@@ -756,5 +770,42 @@ and put it on PATH (or set JAVA_HOME).</fail>
     <target name="jaer-sign-jar" depends="jar">
         <echo message="Self-signing jar"/>
         <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
+    </target>
+
+    <!-- Empty default; command-line -Djaer.install.dir=... overrides. Windows Program Files
+         copy is elevated via scripts/replace-installed-jaer-jar.ps1 (UAC / -Verb RunAs). -->
+    <property name="jaer.install.dir" value=""/>
+
+    <target name="-require-dist-jar" depends="init">
+        <available file="${dist.jar}" property="dist.jar.exists"/>
+        <fail unless="dist.jar.exists"
+              message="Missing ${dist.jar}. Build it first: ant jar   or   ant jar-fast"/>
+        <available file="${basedir}/jaer.install4j" property="jaer.install4j.exists"/>
+        <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
+    </target>
+
+    <target name="replace-installed-jar" depends="-require-dist-jar,checkos"
+            description="Copy dist/jAER.jar over the install4j install (Windows UAC). Example: ant jar-fast replace-installed-jar">
+        <echo message="Replacing install4j jAER.jar with ${dist.jar}"/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <env key="JAER_INSTALL_DIR" value="${jaer.install.dir}"/>
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/replace-installed-jaer-jar.ps1"/>
+            <arg value="-SourceJar"/>
+            <arg file="${dist.jar}"/>
+            <arg value="-Install4jProject"/>
+            <arg file="${basedir}/jaer.install4j"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <env key="JAER_INSTALL_DIR" value="${jaer.install.dir}"/>
+            <arg file="${basedir}/scripts/replace-installed-jaer-jar.sh"/>
+            <arg file="${dist.jar}"/>
+            <arg file="${basedir}/jaer.install4j"/>
+        </exec>
     </target>
 </project>

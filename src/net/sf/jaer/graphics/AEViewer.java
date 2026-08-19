@@ -181,6 +181,7 @@ import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
@@ -1098,7 +1099,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private static Class forName(String name) throws ClassNotFoundException {
             Class c = null;
             if ((c = map.get(name)) == null) {
-                c = Class.forName(name);
+                c = JaerAllowedSubclasses.load(name, AEChip.class);
                 map.put(name, c);
                 return c;
             } else {
@@ -1781,7 +1782,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         for (String name : fqcn) {
             try {
-                Class<?> c = Class.forName(name);
+                Class<?> c = JaerAllowedSubclasses.load(name, AEChip.class);
                 if (AEChip.class.isAssignableFrom(c)) {
                     out.add((Class<? extends AEChip>) c);
                 }

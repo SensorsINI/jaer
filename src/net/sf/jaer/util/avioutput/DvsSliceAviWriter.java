@@ -42,6 +42,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -851,7 +852,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 log.info("from " + chipname + " found fully qualified class name " + className);
             }
             log.info("constructing AEChip " + className);
-            Class chipClass = Class.forName(className);
+            Class chipClass = JaerAllowedSubclasses.load(className, AEChip.class);
             Constructor<AEChip> constructor = chipClass.getConstructor();
             chip = constructor.newInstance((java.lang.Object[]) null);
         } catch (Exception ex) {

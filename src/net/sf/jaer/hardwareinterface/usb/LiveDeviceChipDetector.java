@@ -14,6 +14,7 @@ import net.sf.jaer.UsbDevice;
 import net.sf.jaer.UsbDevices;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 
 /**
  * Resolves which loaded {@link AEChip} classes match a live USB device's
@@ -119,7 +120,7 @@ public final class LiveDeviceChipDetector {
             return null;
         }
         try {
-            Class<?> c = Class.forName(fqcn);
+            Class<?> c = JaerAllowedSubclasses.load(fqcn, AEChip.class);
             if (AEChip.class.isAssignableFrom(c)) {
                 return (Class<? extends AEChip>) c;
             }
