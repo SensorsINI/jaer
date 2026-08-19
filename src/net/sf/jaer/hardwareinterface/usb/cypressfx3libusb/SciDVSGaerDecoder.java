@@ -57,6 +57,7 @@ final class SciDVSGaerDecoder {
 
     private final Config config;
     private final String logIdentity;
+    private final SciDVSGaerLogThrottle throttle;
     private int wrapAdd;
     private int lastTimestamp;
     private int currentTimestamp;
@@ -77,8 +78,14 @@ final class SciDVSGaerDecoder {
     }
 
     SciDVSGaerDecoder(final Config config, final String logIdentity) {
+        this(config, logIdentity, SciDVSGaerLogThrottle.ALWAYS);
+    }
+
+    SciDVSGaerDecoder(final Config config, final String logIdentity,
+            final SciDVSGaerLogThrottle throttle) {
         this.config = config;
         this.logIdentity = logIdentity;
+        this.throttle = throttle;
         initFrame();
     }
 
@@ -111,7 +118,9 @@ final class SciDVSGaerDecoder {
 
             case 1:
                 if (data >= config.dvsSizeY) {
-                    LOG.severe("DVS: Y address out of range (0-" + (config.dvsSizeY - 1) + "): " + data + ".");
+                    if (throttle.shouldLog()) {
+                        LOG.severe("DVS: Y address out of range (0-" + (config.dvsSizeY - 1) + "): " + data + ".");
+                    }
                     break;
                 }
                 dvsLastY = config.dvsSizeY - 1 - data;
@@ -143,7 +152,9 @@ final class SciDVSGaerDecoder {
                 break;
 
             default:
-                LOG.severe("Caught event that can't be handled. code: " + code);
+                if (throttle.shouldLog()) {
+                    LOG.severe("Caught event that can't be handled. code: " + code);
+                }
                 break;
         }
     }
@@ -151,7 +162,9 @@ final class SciDVSGaerDecoder {
     private void decodeSpecial(final short data, final SciDVSGaerSink sink) {
         switch (data) {
             case 0:
-                LOG.severe("Caught special reserved event!");
+                if (throttle.shouldLog()) {
+                    LOG.severe("Caught special reserved event!");
+                }
                 break;
 
             case 1:
@@ -178,7 +191,7 @@ final class SciDVSGaerDecoder {
                 LOG.fine("IMU End event received.");
                 if (imuCount == (2 * IMU_DATA_LENGTH)) {
                     sink.onImuSample(new IMUSample(currentTimestamp, imuEvents), currentTimestamp);
-                } else {
+                } else if (throttle.shouldLog()) {
                     LOG.info("IMU End: failed to validate IMU sample count (" + imuCount
                             + "), discarding samples.");
                 }
@@ -202,9 +215,11 @@ final class SciDVSGaerDecoder {
                 LOG.fine("APS Frame End event received.");
                 for (int i = 0; i < APS_READOUT_TYPES_NUM; i++) {
                     if (apsCountX[i] != config.apsSizeX) {
-                        LOG.severe("APS Frame End: wrong column count [" + i + " - " + apsCountX[i]
-                                + "/" + config.apsSizeX
-                                + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                        if (throttle.shouldLog()) {
+                            LOG.severe("APS Frame End: wrong column count [" + i + " - " + apsCountX[i]
+                                    + "/" + config.apsSizeX
+                                    + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                        }
                     }
                 }
                 sink.onFrameEnd(rollingShutterFrame, currentTimestamp);
@@ -229,9 +244,11 @@ final class SciDVSGaerDecoder {
             case 13:
                 LOG.fine("APS Column End event received.");
                 if (apsCountY[apsCurrentReadoutType] != config.apsSizeY) {
-                    LOG.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
-                            + apsCountY[apsCurrentReadoutType] + "/" + config.apsSizeY
-                            + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                    if (throttle.shouldLog()) {
+                        LOG.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
+                                + apsCountY[apsCurrentReadoutType] + "/" + config.apsSizeY
+                                + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                    }
                 }
                 apsCountX[apsCurrentReadoutType]++;
                 break;
@@ -258,7 +275,9 @@ final class SciDVSGaerDecoder {
                 break;
 
             default:
-                LOG.severe("Caught special event that can't be handled: " + data);
+                if (throttle.shouldLog()) {
+                    LOG.severe("Caught special event that can't be handled: " + data);
+                }
                 break;
         }
     }
@@ -268,8 +287,10 @@ final class SciDVSGaerDecoder {
         final byte allEvents = (byte) (event & 0x00FF);
         final int dvsAddrOffsetX = groupAddr * GAER_EVENT_WIDTH;
         if (dvsAddrOffsetX >= config.dvsSizeX) {
-            LOG.severe("DVS: X address out of range (0-" + (config.dvsSizeX - 1)
-                    + "): groupAddr: " + groupAddr + ", addrY: " + dvsAddrOffsetX + ".");
+            if (throttle.shouldLog()) {
+                LOG.severe("DVS: X address out of range (0-" + (config.dvsSizeX - 1)
+                        + "): groupAddr: " + groupAddr + ", addrY: " + dvsAddrOffsetX + ".");
+            }
             return;
         }
 
@@ -442,7 +463,9 @@ final class SciDVSGaerDecoder {
                 break;
 
             default:
-                LOG.severe("Caught Misc8 event that can't be handled.");
+                if (throttle.shouldLog()) {
+                    LOG.severe("Caught Misc8 event that can't be handled.");
+                }
                 break;
         }
     }
@@ -460,17 +483,21 @@ final class SciDVSGaerDecoder {
                 sink.onAddressPatch(data & 0x07FF);
                 break;
             default:
-                LOG.severe("Caught Misc10 event that can't be handled.");
+                if (throttle.shouldLog()) {
+                    LOG.severe("Caught Misc10 event that can't be handled.");
+                }
                 break;
         }
     }
 
     private void checkMonotonicTimestamp() {
         if (currentTimestamp <= lastTimestamp) {
-            LOG.severe((logIdentity == null ? toString() : logIdentity)
-                    + ": non strictly-monotonic timestamp detected: lastTimestamp="
-                    + lastTimestamp + ", currentTimestamp=" + currentTimestamp
-                    + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
+            if (throttle.shouldLog()) {
+                LOG.severe((logIdentity == null ? toString() : logIdentity)
+                        + ": non strictly-monotonic timestamp detected: lastTimestamp="
+                        + lastTimestamp + ", currentTimestamp=" + currentTimestamp
+                        + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
+            }
         }
     }
 
