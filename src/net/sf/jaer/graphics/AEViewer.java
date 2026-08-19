@@ -371,8 +371,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DropTarget myDraggedFileDropTarget = null; // added back after losing somehow
     private File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
+    private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
-    private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
+    private volatile long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
+    /** Cached overlay for logging time limit; refreshed at most once per second. */
+    private volatile String loggingTimeLimitOverlayText = null;
+    private volatile long loggingTimeLimitOverlayLastMs = 0;
     private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
     /** Logging format version string, e.g. {@code "4.0"} or {@code "2.0"}. */
     private String loggingDataFileVersion = prefs.get("AEViewer.loggingDataFileVersion",
@@ -386,6 +390,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Nonmodal File/Show file info dialog; reused while this viewer is open. */
     private JDialog fileInfoDialog;
     private JTextArea fileInfoTextArea;
+    /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
+    private AEViewerPreferencesDialog preferencesDialog;
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
     private String rememberLastInterfaceDeviceID = null;
@@ -6388,9 +6394,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             fixLoggingControls();
 
-            if (loggingTimeLimit > 0) {
-                loggingStartTime = System.currentTimeMillis();
-            }
+            loggingStartTime = System.currentTimeMillis();
+            loggingTimeLimitOverlayText = null;
+            loggingTimeLimitOverlayLastMs = 0;
             log.info("starting logging to " + loggingFile.getAbsolutePath());
             getSupport().firePropertyChange(EVENT_LOGGING_STARTED, null, loggingFile);
 
@@ -6943,6 +6949,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Overlay detail while logging: elapsed {@code Recorded XXhYYmZZs}, plus
+     * total and remaining when a time limit is set. Refreshed at most once per
+     * second.
+     *
+     * @return overlay lines, or {@code null} when not logging or overlay is off
+     */
+    public String getLoggingTimeLimitOverlayText() {
+        if (!isShowRecordingOverlay() || !isLoggingEnabled()) {
+            loggingTimeLimitOverlayText = null;
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        if (loggingTimeLimitOverlayText != null && (now - loggingTimeLimitOverlayLastMs) < 1000) {
+            return loggingTimeLimitOverlayText;
+        }
+        loggingTimeLimitOverlayLastMs = now;
+        long elapsedMs = Math.max(0L, now - loggingStartTime);
+        StringBuilder sb = new StringBuilder("Recorded ");
+        sb.append(formatLoggingDurationHms(elapsedMs));
+        if (loggingTimeLimit > 0) {
+            long remainingMs = Math.max(0L, loggingTimeLimit - elapsedMs);
+            sb.append('\n').append(formatLoggingDurationHms(loggingTimeLimit)).append(" total");
+            sb.append('\n').append(formatLoggingDurationHms(remainingMs)).append(" left to record");
+        }
+        loggingTimeLimitOverlayText = sb.toString();
+        return loggingTimeLimitOverlayText;
+    }
+
+    /**
+     * Formats a duration as {@code XXhYYmZZs} (hours, minutes, seconds).
+     *
+     * @param durationMs duration in milliseconds
+     * @return padded hours, minutes, and seconds
+     */
+    private static String formatLoggingDurationHms(long durationMs) {
+        long totalSec = Math.max(0L, durationMs) / 1000L;
+        long h = totalSec / 3600L;
+        long m = (totalSec % 3600L) / 60L;
+        long s = totalSec % 60L;
+        return String.format("%02dh%02dm%02ds", h, m, s);
+    }
+
+    /**
      * Returns true if currently logging (recording data to file)
      *
      * @return the loggingEnabled
@@ -6960,6 +7009,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void setLoggingEnabled(boolean loggingEnabled) {
         this.loggingEnabled = loggingEnabled;
+        if (!loggingEnabled) {
+            loggingTimeLimitOverlayText = null;
+        }
     }
 
     /**
@@ -7597,7 +7649,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
 	private void preferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferencesMenuItemActionPerformed
-            new AEViewerPreferencesDialog(this).setVisible(true);
+            if (preferencesDialog == null || !preferencesDialog.isDisplayable()) {
+                preferencesDialog = new AEViewerPreferencesDialog(this);
+            }
+            if (!preferencesDialog.isVisible()) {
+                preferencesDialog.setVisible(true);
+            } else {
+                preferencesDialog.toFront();
+            }
 	}//GEN-LAST:event_preferencesMenuItemActionPerformed
 
 	private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
@@ -8195,6 +8254,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (consoleHandler != null) {
                         consoleHandler.setLevel(level);
                     }
+                    if (loggingHandler != null) {
+                        loggingHandler.setLevel(level);
+                    }
                 }
             });
         }
@@ -8384,6 +8446,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (loggingPlaybackImmediatelyCheckBoxMenuItem != null) {
             loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(loggingPlaybackImmediatelyEnabled);
         }
+    }
+
+    /**
+     * Whether to draw the on-canvas Recording overlay while logging.
+     *
+     * @return true if the overlay should be shown (default)
+     */
+    public boolean isShowRecordingOverlay() {
+        return showRecordingOverlay;
+    }
+
+    /**
+     * Enables or disables the on-canvas Recording overlay while logging.
+     *
+     * @param showRecordingOverlay true to show the overlay
+     */
+    public void setShowRecordingOverlay(boolean showRecordingOverlay) {
+        this.showRecordingOverlay = showRecordingOverlay;
+        prefs.putBoolean("AEViewer.showRecordingOverlay", showRecordingOverlay);
     }
 
     /**

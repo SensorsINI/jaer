@@ -46,8 +46,8 @@ import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.JaerPreferencesStore;
 
 /**
- * Preferences dialog for AEViewer. First tab groups preference-backed AEViewer
- * menu settings by menu section. Filters tab covers global FilterFrame /
+ * Nonmodal preferences dialog for AEViewer. First tab groups preference-backed
+ * AEViewer menu settings by menu section. Filters tab covers global FilterFrame /
  * FilterChain preferences (individual AEFilter property sheets come later).
  * Export/Reset tab exports, imports, or deletes the {@code /jaer} Preferences tree.
  */
@@ -58,6 +58,7 @@ public class AEViewerPreferencesDialog extends JDialog {
 
     private JCheckBox loggingPlaybackImmediatelyCB;
     private JCheckBox logFilteredEventsCB;
+    private JCheckBox showRecordingOverlayCB;
     private JCheckBox checkNonMonotonicCB;
     private JCheckBox syncEnabledCB;
     private JTextField timestampResetBitmaskTF;
@@ -86,9 +87,9 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JLabel filtersNoteLabel;
 
     public AEViewerPreferencesDialog(AEViewer viewer) {
-        super(viewer, "Preferences", true);
+        super(viewer, "Preferences", false);
         this.viewer = viewer;
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(HIDE_ON_CLOSE);
         buildUi();
         pack();
         setLocationRelativeTo(viewer);
@@ -118,7 +119,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         closeButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                dispose();
+                setVisible(false);
             }
         });
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -534,6 +535,19 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         p.add(logFilteredEventsCB, gbc(y++));
 
+        showRecordingOverlayCB = new JCheckBox("Show recording overlay");
+        showRecordingOverlayCB.setToolTipText("Show a transparent red Recording overlay on the chip view while logging");
+        showRecordingOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowRecordingOverlay(showRecordingOverlayCB.isSelected());
+            }
+        });
+        p.add(showRecordingOverlayCB, gbc(y++));
+
         checkNonMonotonicCB = new JCheckBox("Check for non-monotonic time in input streams");
         checkNonMonotonicCB.setToolTipText("If enabled, nonmonotonic timestamps are checked for in input streams from file or network");
         checkNonMonotonicCB.addActionListener(new ActionListener() {
@@ -792,6 +806,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         try {
             loggingPlaybackImmediatelyCB.setSelected(viewer.isLoggingPlaybackImmediatelyEnabled());
             logFilteredEventsCB.setSelected(viewer.isLogFilteredEventsEnabled());
+            showRecordingOverlayCB.setSelected(viewer.isShowRecordingOverlay());
             checkNonMonotonicCB.setSelected(viewer.isCheckNonMonotonicTimeExceptionsEnabled());
             JAERViewer jaerViewer = viewer.getJaerViewer();
             syncEnabledCB.setSelected(jaerViewer != null && jaerViewer.isSyncEnabled());
