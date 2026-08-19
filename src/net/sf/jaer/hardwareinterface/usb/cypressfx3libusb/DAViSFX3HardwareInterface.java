@@ -19,6 +19,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisUsbPacketBundleBuilder;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import eu.seebetter.ini.chips.davis.SciDVS;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.PacketBundle;
@@ -204,6 +205,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         private final DavisUsbPacketBundleBuilder typedBuilder = new DavisUsbPacketBundleBuilder();
         private boolean rollingShutterFrame;
 
+        /** SciDVS GAER decode path: eager decoder and sinks, lazy resolved mode flag. */
+        private final SciDVSGaerDecoder gaerDecoder;
+        private final SciDVSGaerRawSink gaerRawSink;
+        private final SciDVSGaerTypedSink gaerTypedSink;
+        private Boolean gaerResolved;
+
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
 
@@ -249,6 +256,28 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             imuFlipZ = (imuOrientation & 0x01) != 0;
 
             updateTimestampMasterStatus();
+
+            gaerDecoder = new SciDVSGaerDecoder(new SciDVSGaerDecoder.Config(
+                    chipID, dvsSizeX, dvsSizeY, dvsInvertXY,
+                    apsSizeX, apsSizeY, apsInvertXY, apsFlipX, apsFlipY,
+                    imuFlipX, imuFlipY, imuFlipZ), super.toString(), this::shouldLogGaerWarning);
+            gaerRawSink = new SciDVSGaerRawSink(
+                    DAViSFX3HardwareInterface.this::getAEBufferSize,
+                    this::handleGaerTimestampReset,
+                    () -> !usbTypedDemuxActive || dualWriteApsImuAe);
+            gaerTypedSink = new SciDVSGaerTypedSink(
+                    typedBuilder, gaerRawSink, () -> getChip().getSizeX(),
+                    this::handleGaerTimestampReset);
+        }
+
+        private boolean shouldLogGaerWarning() {
+            return (warningCount++ % WARNING_INTERVAL) == 0;
+        }
+
+        private void handleGaerTimestampReset() {
+            updateTimestampMasterStatus();
+            CypressFX3.log.info("Timestamp reset event received on " + super.toString()
+                    + " at System.currentTimeMillis()=" + System.currentTimeMillis());
         }
 
         private void checkMonotonicTimestamp() {
@@ -286,6 +315,32 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
                 if (typedOut != null) {
                     typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY);
+                }
+
+                final boolean gaerModeUnresolved = gaerResolved == null;
+                if (gaerModeUnresolved) {
+                    gaerResolved = SciDVSGaerMode.resolveFromSystemProperty(
+                            getChip() instanceof SciDVS, CypressFX3.log);
+                    CypressFX3.log.info("DAViSFX3 SciDVS GAER selected=" + gaerResolved
+                            + " rawProperty=" + System.getProperty(SciDVSGaerMode.PROPERTY)
+                            + " chipClass=" + (getChip() == null ? "null" : getChip().getClass().getName()));
+                    if (getChip() != null
+                            && (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY)) {
+                        CypressFX3.log.warning("DAViSFX3 chip geometry " + getChip().getSizeX() + "x"
+                                + getChip().getSizeY() + " differs from FPGA DVS geometry "
+                                + dvsSizeX + "x" + dvsSizeY);
+                    }
+                }
+
+                if (gaerResolved) {
+                    gaerRawSink.begin(buffer, eventCounter);
+                    gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink);
+                    eventCounter = gaerRawSink.end();
+                    if (typedOut != null) {
+                        typedBuilder.flushAll();
+                        typedOut.setRawPacket(buffer);
+                    }
+                    return;
                 }
 
                 // Truncate off any extra partial event.
