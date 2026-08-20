@@ -344,6 +344,7 @@ public class JAERViewer {
 
     }
 
+    /** Optional scrolling log overlay on {@link java.awt.SplashScreen}. Off unless {@code -Djaer.splashLogOverlay=true}. */
     private static class SplashHandler extends java.util.logging.Handler {
 
         SplashScreen splashScreen;
@@ -799,10 +800,10 @@ public class JAERViewer {
         log = Logger.getLogger("net.sf.jaer");
 
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
-        if (splash != null) {
+        if (splash != null && SplashStartupAbort.isLogOverlayEnabled()) {
             new SplashHandler(splash);
-        } else {
-            log.warning("no Java 6 splash screen to animate (don't worry; this happens if you run from development environment)");
+        } else if (splash != null) {
+            log.info("Java splash present; log overlay off (-Djaer.splashLogOverlay=true to enable)");
         }
         log.info("jAERViewer starting up");
         if (!confirmStartIfPossiblyAlreadyRunning()) {

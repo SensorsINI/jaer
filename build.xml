@@ -50,7 +50,8 @@ macOS
                           Skip: -Dskip.macos.libusb=true
 
 Release / installers    (see README-releasing-tagging.md)
-  release                 confirm VERSION.txt, splash, install4j media (all OS)
+  install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
+  release                 confirm VERSION.txt, splash, clean/jar, then install4jc
   release-windows-ci      Windows-only media, no confirm (SignPath CI)
   generate-splash         VERSION.txt overlay on splash PNGs
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
@@ -737,6 +738,22 @@ and put it on PATH (or set JAVA_HOME).</fail>
 
     <target name="-run-install4jc"
             depends="split-opencv-natives,-run-install4jc-with-license,-run-install4jc-without-license"/>
+
+    <target name="-require-opencv-slim">
+        <available type="dir" file="${opencv.slim.dir}" property="opencv.slim.dir.exists"/>
+        <fail unless="opencv.slim.dir.exists"
+              message="Missing ${opencv.slim.dir}. Run ant split-opencv-natives first (or ant release)."/>
+    </target>
+
+    <!-- Public name: Ant treats CLI args starting with "-" as options, so
+         ant -run-install4jc-with-license does not work. -->
+    <target name="install4j"
+            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="Run install4jc only (existing dist/jAER.jar; no splash/clean/jar).">
+        <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
+        <echo message="Output: currentInstallers/${jaer.version}/"/>
+        <echo message="Did not regenerate splash, clean, or jar. Full pipeline: ant release"/>
+    </target>
 
     <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
     <target name="-run-install4jc-windows-with-license"

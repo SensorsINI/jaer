@@ -73,7 +73,8 @@
                not treat ${build.dir} as a compiler variable. -->
           <entry location="$${build.dir}" />
           <entry location="$${build.generated.sources.dir}" />
-          <!-- Repo art / demos (~29MB); splash for installers is read at build time from images/1024w. -->
+          <!-- Repo art / demos (~29MB). Splash PNGs are added as fileEntries after this dirEntry
+               so they sit next to the exe / under jaer/ for Java -splash and the Swing fallback. -->
           <entry location="images" />
           <entry location="installers" />
           <entry location="currentInstallers" />
@@ -154,6 +155,10 @@
           <entry location="lib/test-interface-1.0.jar" />
         </exclude>
       </dirEntry>
+      <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 1024w
+           next to the exe for -splash: and install4j.exeDir. 256h is compile-time only
+           (iconImageFiles); fileEntry.subDirectory does not relocate it. -->
+      <fileEntry mountPoint="24" file="./images/1024w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
       <dirEntry mountPoint="9021" file="./build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
       <dirEntry mountPoint="9022" file="./build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
@@ -166,9 +171,15 @@
       <executable name="jaer" iconSet="true" iconFile="./jaer.ico" executableMode="gui">
         <versionInfo fileDescription="jAER event sensor application" />
       </executable>
-      <splashScreen show="true" bitmapFile="./images/1024w/SplashScreen.png" />
+      <!-- Native splash: not java.awt.SplashScreen. writeMessage() updates statusLine
+           off the EDT. Do not show a Swing window until AEViewer or this splash closes. -->
+      <splashScreen show="true" width="1024" height="1024" bitmapFile="./images/1024w/SplashScreen.png" textOverlay="true">
+        <text>
+          <statusLine x="45" y="1000" text="Press ESC to abort startup" />
+        </text>
+      </splashScreen>
       <!-- add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+). Valid on 9+. -->
-      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g -XX:+UseCompactObjectHeaders --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED">
+      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -Xmx10g -XX:+UseCompactObjectHeaders --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED">
         <classPath>
           <!-- First on classpath so Loader is 1.5.10 even if leftover javacpp-1.4.jar remains in lib/. -->
           <jarFile location="lib/javacpp-1.5.10.jar" failOnError="false" />
@@ -819,16 +830,6 @@ context.goForward(1, true, true);
                   <formComponent id="8017" beanClass="com.install4j.runtime.beans.formcomponents.KeyValuePairComponent">
                     <serializedBean>
                       <property name="labelText" type="string">${i18n:updater.CurrentVersionLabel}</property>
-                      <property name="valueLabelColor">
-                        <object class="java.awt.Color">
-                          <int>128</int>
-                          <int>0</int>
-                          <int>0</int>
-                          <int>255</int>
-                        </object>
-                      </property>
-                      <property name="valueLabelFontStyle" type="enum" class="com.install4j.runtime.beans.formcomponents.FontStyle" value="BOLD" />
-                      <property name="valueLabelFontType" type="enum" class="com.install4j.runtime.beans.formcomponents.FontType" value="DERIVED" />
                       <property name="valueLabelText" type="string">${installer:sys.version}</property>
                     </serializedBean>
                   </formComponent>
@@ -837,16 +838,6 @@ context.goForward(1, true, true);
                       <formComponent id="8018" beanClass="com.install4j.runtime.beans.formcomponents.KeyValuePairComponent">
                         <serializedBean>
                           <property name="labelText" type="string">${i18n:updater.NewVersionLabel}</property>
-                          <property name="valueLabelColor">
-                            <object class="java.awt.Color">
-                              <int>0</int>
-                              <int>128</int>
-                              <int>0</int>
-                              <int>255</int>
-                            </object>
-                          </property>
-                          <property name="valueLabelFontStyle" type="enum" class="com.install4j.runtime.beans.formcomponents.FontStyle" value="BOLD" />
-                          <property name="valueLabelFontType" type="enum" class="com.install4j.runtime.beans.formcomponents.FontType" value="DERIVED" />
                           <property name="valueLabelText" type="string">${installer:updaterNewVersion}</property>
                         </serializedBean>
                       </formComponent>
