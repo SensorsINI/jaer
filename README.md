@@ -1,17 +1,14 @@
 # jAER
 
-[See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest)
-
-Cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas. 
-
-**Permanent link:** http://jaerproject.org
-
 **Welcome to the jAER Open Source Project for
-Real time sensory-motor processing for event sensors and systems**
+real time sensory-motor processing for event sensors and systems**
 
-Developed since 2007 by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch) to support event sensors and robot demonstrators.
+[See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
-jAER is a full-fledged desktop application that captures event camera output, displays it, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
+Why use proprietary vendor camera software? jAER is a Full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
+
+jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. It can record your datasets and serve event sensor output to your favorite DNN back-end.
+
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
 ## Installation
@@ -66,6 +63,9 @@ Hardware docs in Help menu: iniVation cameras, Prophesee sensors, NRV cameras.
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 
 ## Citation and credits
+
+jAER was developed since 2007 by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch) to support event sensors and robot demonstrators.
+
 T. Delbruck, “Frame-free dynamic digital vision,” 
 in International Symposium on Secure-Life Electronics, University of Tokyo, 
 Mar. 2008, pp. 21–26. 
