@@ -84,7 +84,7 @@ jobs:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: jaer
-          signing-policy-slug: test-signing
+          signing-policy-slug: test-signing2
           artifact-configuration-slug: windows-installer-2
           github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
           wait-for-completion: true
