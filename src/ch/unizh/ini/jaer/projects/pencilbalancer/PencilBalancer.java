@@ -16,10 +16,12 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -29,12 +31,64 @@ import net.sf.jaer.util.TobiLogger;
 
 /**
  * Uses a pair of DVS cameras to control an XY table to balance a pencil.
+ * jAER 3.0: {@link #processPolarity} tracks in place (stereo {@link BinocularEvent}
+ * or a single DVS polarity stream).
  *
- * @author jc
- *
+ * @author Jorg Conradt, Matt Cook, Tobi Delbruck
  */
-@Description("Pencil balancing robot which uses a pair of DVS128 and a USBServoController")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("Stereo DVS pencil/pole balancer: line tracker plus servo XY table. Conradt et al. ICCVW 2009; related to PigTracker.")
+@Help("""
+<html>
+<body>
+<h2>PencilBalancer</h2>
+<p>Closed-loop <b>pencil / pole balancer</b> that demonstrates low-latency single-line 
+tracking using event-driven update of continous (not binned)Hough space line model. 
+
+A pair of DVS128 cameras tracks the
+stick as a line in each view. A PD-style controller commands a USB servo XY table to
+keep the pole upright. Overlay: <span style="color:red">red</span> = X / right camera,
+<span style="color:green">green</span> = Y / left camera, with a thin band of
+<code>polyStddev</code>.</p>
+<p>On a <i>single</i> DVS (file playback), both trackers are fed the same events so you
+can still see line lock without stereo hardware.</p>
+<p>Demo video:
+<a href="https://www.youtube.com/watch?v=yCOnDc5r7p8">YouTube</a>.</p>
+<p>Paper:
+J. Conradt, R. Berner, M. Cook, and T. Delbruck,
+&ldquo;An embedded AER dynamic vision sensor for low-latency pole balancing,&rdquo;
+IEEE ICCV Workshops, Sep. 2009.
+<a href="https://doi.org/10.1109/iccvw.2009.5457625">doi:10.1109/iccvw.2009.5457625</a>.</p>
+<p>Sample recording: open <b>Orientation stimulus</b> from the
+<a href="https://sensors.ini.ch/datasets#h.3e6ntc261gha">DVS09 dataset</a>
+(a high-contrast bar/edge; the red/green lines should lock onto it).</p>
+<p>Related line-segment object tracker (Telluride 2010 pig):
+<code>PigTracker</code> (<code>org.ine.telluride.jaer.tell2010.pigtracker</code>).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li><b>Playback / tracker only.</b> Load DVS09 <b>Orientation stimulus</b>, enable this
+filter. The red and green lines should snap to the bar. If they wander, hit the
+filter <b>Reset</b> (restores a vertical seed line).</li>
+<li><b>Live stereo + table.</b> Use a DVS128 stereo pair and the USB servo controller.
+Set <code>comPortNumber</code> (Windows) or <code>comPortName</code> (Linux
+<code>/dev/ttyUSB*</code>), then <b>Connect Servo</b>. Optional
+<code>obtainTrueTablePosition</code> reads the table pots.</li>
+<li><code>polyMixingFactor</code> / <code>polyStddev</code> &mdash; how fast the line
+follows new events and how wide the attraction basin is (pixels).</li>
+<li>Controller: <code>gainAngle</code> (tilt), <code>gainBase</code> (centering),
+<code>gainMotion</code> / <code>motionMixingFactor</code> (damping).
+<code>offsetX</code> / <code>offsetY</code> (or <code>offsetAutomatic</code>) correct
+camera–table misalignment.</li>
+<li><code>ignoreTimestampOrdering</code> for stereo USB if timestamps are not monotonic.
+<code>displayXEvents</code> / <code>displayYEvents</code> toggle the overlay.
+<code>enableLogging</code> writes a CSV (console shows the path).</li>
+</ol>
+<p>jAER 3 processes typed polarity packets in place via <code>processPolarity</code>.
+Frames and IMU pass through.</p>
+</body>
+</html>
+""")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Observer {
 
     /* ***************************************************************************************************** */
@@ -104,10 +158,27 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         setPropertyTooltip("enableLogging", "log state to logging file; check console output for location and name of file");
     }
 
+    @Override
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY;
+    }
+
+    /**
+     * Legacy / mixed-packet path; delegates to {@link #processPolarity}.
+     */
+    @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        return processPolarity(in);
+    }
+
+    /**
+     * jAER 3.0 typed polarity path: update line fits in place (stereo or mono).
+     */
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
         int nleft = 0, nright = 0;
 
-        if (!isFilterEnabled()) {
+        if (in == null || in.isEmpty()) {
             return in;
         }
 
@@ -238,12 +309,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         return null;
     }
 
+    @Override
     synchronized public void resetFilter() {
 //        log.info("RESET called");
         resetPolynomial();
         setIgnoreTimestampOrdering(ignoreTimestampOrdering); // to set hardware interface correctly in case we have a hw interface here.
     }
 
+    @Override
     synchronized public void initFilter() {
         resetFilter();
     }
