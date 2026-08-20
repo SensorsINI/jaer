@@ -103,6 +103,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     private float desiredTableXLowPass, desiredTableYLowPass;
     private ServoConnection sc = null;
     private long lastTimeNS = 0;
+    private int sx, sy;
+    private float cx, cy; // chip center (pixels)
+    private float xr, yr; // camera baseline in current-chip pixels (266 on DVS128)
 
     /* ***************************************************************************************************** */
  /* **  The follwing stuff are variables displayed on GUI *********************************************** */
@@ -318,6 +321,11 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
     @Override
     synchronized public void initFilter() {
+        sx = chip.getSizeX();
+        sy = chip.getSizeY();
+        cx = (sx - 1) * 0.5f;
+        cy = (sy - 1) * 0.5f;
+        xr = yr = 266f * sx / 128f; // DVS128 baseline 266 px, scaled to this chip
         resetFilter();
     }
 
@@ -414,27 +422,12 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyEY = 0;
         polyFY = 0;
 
-        // append two "imaginary" events to filter, resulting in an initial vertical line
-        float x, y;
-        // append point 64/0
-        x = 64;
-        y = 0;
-        polyAX += (y * y);
-        polyBX += (2.0 * y);
-        polyCX += (1.0);
-        polyDX += (-2.0 * x * y);
-        polyEX += (-2.0 * x);
-        polyFX += (x * x);
-        polyAY += (y * y);
-        polyBY += (2.0 * y);
-        polyCY += (1.0);
-        polyDY += (-2.0 * x * y);
-        polyEY += (-2.0 * x);
-        polyFY += (x * x);
+        // initial vertical line at chip center, spanning full height
+        addSeedPoint(cx, 0);
+        addSeedPoint(cx, sy - 1);
+    }
 
-        // append point 64/127
-        x = 64;
-        y = 127;
+    private void addSeedPoint(float x, float y) {
         polyAX += (y * y);
         polyBX += (2.0 * y);
         polyCX += (1.0);
@@ -477,10 +470,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // Well that is very nice!  Let's calculate it!
         // First, we have to convert to the coordinate system with origin at the
         // crossing point of the axes of the retinas, somewhat above table center.
-        float xr = 266;  // distance from center to camera in pixel units of other camera
-        float yr = 266; // was 450, 280, ... I hope we can optimize these over time!
-        float b1 = ((currentBaseX - 63.5f) + 63.5f * currentSlopeX) / xr;
-        float b2 = ((currentBaseY - 63.5f) + 63.5f * currentSlopeY) / yr;
+        float b1 = ((currentBaseX - cx) + cy * currentSlopeX) / xr;
+        float b2 = ((currentBaseY - cx) + cy * currentSlopeY) / yr;
         float s1 = currentSlopeX;
         float s2 = currentSlopeY;
         float den = 1 / (b1 * b2 + 1);

@@ -118,7 +118,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 	}
 
 	private void checkInit() {
-		if((sx==0) || (sy==0) || (captureEventMatrix==null) || (captureEventMatrix.length==0)){
+		if ((sx == 0) || (sy == 0) || (captureEventMatrix == null) || (captureEventMatrix.length == 0)) {
 			initFilter();
 		}
 	}
@@ -132,6 +132,8 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 	private int numberOfLinesInUse = 60;
 	private double m1, m2, m3, m4, m5, m6, m7, m8, m9;  // global transform matrix coefficients
 	private double[] cm=new double[9]; // cummulative transform matrix
+	/** DVS128 half-width used when Square/A/I templates were authored in pixels. */
+	private static final double TEMPLATE_HALF_PX = 64.0;
 	private int sx = 0, sy = 0, sx2 = 0, sy2 = 0, sx1 = 0, sy1 = 0;
 
 	enum TrackingMode {
@@ -453,7 +455,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 					lsx[numberOfLinesInUse] = (2.0 * (x / (double) sx)) - 1.0;
 					lsy[numberOfLinesInUse] = (2.0 * (y / (double) sy)) - 1.0;
 					lex[numberOfLinesInUse] = (2.0 * ((x + (int) (c * linelength)) / (double) sx)) - 1.0;
-					ley[numberOfLinesInUse] = (2.0 * ((y + (int) (s * linelength)) / (double) sx)) - 1.0;
+					ley[numberOfLinesInUse] = (2.0 * ((y + (int) (s * linelength)) / (double) sy)) - 1.0;
 					numberOfLinesInUse++;
 				}
 			}
@@ -1083,18 +1085,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
 		numberOfLinesInUse = 4;
 
-		// initialize a[], b[], c[], cx[], cy[]
-			for (int n = 0; n < numberOfLinesInUse; n++) {
-				lsx[n] = (lsx[n] / sx2) - 1.0;
-				lsy[n] = (lsy[n] / sy2) - 1.0;
-				lex[n] = (lex[n] / sx2) - 1.0;
-				ley[n] = (ley[n] / sy2) - 1.0;
-			}
-
-			for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
-				lsy[fy] = -lsy[fy];
-				ley[fy] = -ley[fy];
-			}
+		normalizeAuthoredTemplate();
 	}
 
 	private void initA() {
@@ -1115,18 +1106,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
 		numberOfLinesInUse = 3;
 
-		// initialize a[], b[], c[], cx[], cy[]
-		for (int n = 0; n < numberOfLinesInUse; n++) {
-			lsx[n] = (lsx[n] / 64.0) - 1.0;
-			lsy[n] = (lsy[n] / 64.0) - 1.0;
-			lex[n] = (lex[n] / 64.0) - 1.0;
-			ley[n] = (ley[n] / 64.0) - 1.0;
-		}
-
-		for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
-			lsy[fy] = -lsy[fy];
-			ley[fy] = -ley[fy];
-		}
+		normalizeAuthoredTemplate();
 	}
 
 	private void initI() {
@@ -1147,14 +1127,20 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
 		numberOfLinesInUse = 3;
 
-		// initialize a[], b[], c[], cx[], cy[]
-		for (int n = 0; n < numberOfLinesInUse; n++) {
-			lsx[n] = (lsx[n] / 64.0) - 1.0;
-			lsy[n] = (lsy[n] / 64.0) - 1.0;
-			lex[n] = (lex[n] / 64.0) - 1.0;
-			ley[n] = (ley[n] / 64.0) - 1.0;
-		}
+		normalizeAuthoredTemplate();
+	}
 
+	/**
+	 * Square/A/I endpoints were authored in DVS128 pixels (origin LL, 0..127).
+	 * Map to normalized [-1,+1] so they occupy the same fraction of any chip.
+	 */
+	private void normalizeAuthoredTemplate() {
+		for (int n = 0; n < numberOfLinesInUse; n++) {
+			lsx[n] = (lsx[n] / TEMPLATE_HALF_PX) - 1.0;
+			lsy[n] = (lsy[n] / TEMPLATE_HALF_PX) - 1.0;
+			lex[n] = (lex[n] / TEMPLATE_HALF_PX) - 1.0;
+			ley[n] = (ley[n] / TEMPLATE_HALF_PX) - 1.0;
+		}
 		for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
 			lsy[fy] = -lsy[fy];
 			ley[fy] = -ley[fy];
