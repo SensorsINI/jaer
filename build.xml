@@ -8,7 +8,65 @@
     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-    
+
+    <!-- Ant DefaultLogger prefixes every line of a multiline <echo> with [echo].
+         Write the block to a temp file and print via PrintFileToStdout (raw fd 1). -->
+    <target name="help" description="List main Ant tasks (curated; ant -p dumps every described target).">
+        <mkdir dir="${java.io.tmpdir}/jaer-ant-help-tool"/>
+        <javac srcdir="${basedir}/scripts"
+               includes="PrintFileToStdout.java"
+               destdir="${java.io.tmpdir}/jaer-ant-help-tool"
+               includeantruntime="false"
+               release="11">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+        <tempfile property="jaer.help.tmp" destDir="${java.io.tmpdir}" prefix="jaer-ant-help-" suffix=".txt" deleteonexit="true"/>
+        <echo file="${jaer.help.tmp}" encoding="UTF-8"><![CDATA[
+Main jAER Ant tasks    ant help     (this list)
+                       ant -p      every target that has a description
+Default with no args:  ant         same as ant jar
+
+Everyday (git checkout)
+  compile                 Ivy retrieve + javac. First-time / after ivy.xml changes.
+  run                     compile, then launch JAERViewer. Needs JDK 25+.
+  compile-fast            javac only (lib/ already filled by compile or download-deps).
+  jar                     compile + dist/jAER.jar
+  jar-fast                compile-fast + store-only dist/jAER.jar (optional 7z sidecar)
+  replace-installed-jar   copy dist/jAER.jar onto the install4j install (Windows UAC).
+                          Example:  ant jar-fast replace-installed-jar
+                          Override: -Djaer.install.dir=C:\Program Files\jAER
+  clean                   delete build/ products (not lib/)
+  javadoc                 build Javadoc
+  test                    unit tests
+
+Dependencies (Ivy)
+  download-deps           resolve/retrieve jars into lib/
+  clean-deps              delete lib/
+  clean-ivy               clean-deps
+  clean-ivy-cache         delete ivy/ cache (next compile re-downloads)
+
+macOS
+  install-macos-libusb    Homebrew libusb on Apple Silicon (also runs from ant run).
+                          Skip: -Dskip.macos.libusb=true
+
+Release / installers    (see README-releasing-tagging.md)
+  release                 confirm VERSION.txt, splash, install4j media (all OS)
+  release-windows-ci      Windows-only media, no confirm (SignPath CI)
+  generate-splash         VERSION.txt overlay on splash PNGs
+  copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
+  upload-release-notes    GitHub Release body from release-notes/ (needs gh)
+  split-opencv-natives    per-OS slim OpenCV jars for install4j
+  jaer-runtime-archive    zip a runtime tree (legacy; prefer install4j)
+
+Scripts (not Ant)
+  scripts/run-jaer-fast.bat|.sh    launch from build/classes without ant
+]]></echo>
+        <java classname="PrintFileToStdout" classpath="${java.io.tmpdir}/jaer-ant-help-tool"
+              fork="false" failonerror="true">
+            <arg file="${jaer.help.tmp}"/>
+        </java>
+    </target>
+
     <!--Override default to replace target with release -->
 <!--    <target depends="init,deps-jar,-pre-pre-compile" name="-do-compile-single">
         <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
