@@ -9,21 +9,75 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
-/** Tracks generalized objects made of line segments.
+/**
+ * Tracks generalized objects made of line segments with an event-driven homography.
+ * jAER 3.0: {@link #processPolarity} updates the model in place and does not rewrite
+ * event polarity (the old copy-to-output path painted unmatched events as Off).
  *
- * @author Matthew Coook, Tobias Glasmachers, Jorg Conradt, Telluride Neuromorphic Cognition Engnineering Workshop, 2010. Adapted for jAER by Tobi Delbruck.
+ * @author Matthew Cook, Tobias Glasmachers, Jorg Conradt, Telluride Neuromorphic Cognition Engineering Workshop, 2010. Adapted for jAER by Tobi Delbruck.
  */
+@Description("Tracks line-segment objects (toy pig, letters, captured shapes) with an event-driven homography. Telluride 2010; related to PencilBalancer.")
+@Help("""
+<html>
+<body>
+<h2>PigTracker</h2>
+<p>Event-driven tracker for objects modeled as <b>line segments</b> (a toy pig, letters
+A/I, a square, or a shape captured from events). Each DVS event near a segment updates a
+global homography (rotation, scale, optional shear/perspective). The overlay draws the
+current segments in cyan and prints the accumulated transform.</p>
+<p>Demo video:
+<a href="https://www.youtube.com/watch?v=yCOnDc5r7p8">PigTracker on YouTube</a>.</p>
+<p>Related hardware/control paper (stereo DVS pole balancing; see also
+<code>PencilBalancer</code>):
+J. Conradt, R. Berner, M. Cook, and T. Delbruck,
+&ldquo;An embedded AER dynamic vision sensor for low-latency pole balancing,&rdquo;
+IEEE ICCV Workshops, Sep. 2009.
+<a href="https://doi.org/10.1109/iccvw.2009.5457625">doi:10.1109/iccvw.2009.5457625</a>.</p>
+<p>Sample recordings (DVS09, including PigTracker clips) are in the
+<a href="https://sensors.ini.ch/datasets#h.3e6ntc261gha">DVS09 dataset</a>.</p>
+<p><code>PencilBalancer</code> (<code>ch.unizh.ini.jaer.projects.pencilbalancer</code>)
+is the closed-loop pencil/pole balancer that uses related line tracking on a stereo DVS
+pair and a servo XY table. PigTracker is the more general line-segment object tracker
+from Telluride 2010.</p>
+<p><b>If pig tracking is lost</b> (cyan segments drift off the outline or tangle), click
+<b>Reset Object</b> on the filter panel to restore the template below, then wait for the
+object to re-enter roughly this pose.</p>
+<p>Template pose (<a href="pig.png">pig.png</a>):</p>
+<p><img src="pig.png" alt="PigTracker pig line-segment template" width="520"></p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Open a DVS09 PigTracker sample (or live DVS looking at a pig / high-contrast outline).
+Enable this filter. The cyan overlay should lock onto the object.</li>
+<li><code>objectToTrack</code> &mdash; <code>Pig56</code> (detailed pig), <code>Pig22</code>
+(coarser), <code>Square</code> / <code>A</code> / <code>I</code>, or <code>Capture</code>
+to build a template from the next <code>numberOfCaptureEvents</code> events
+(<code>linelength</code> / <code>fractionOfEventsRequired</code> control extraction).</li>
+<li><code>distanceThreshold</code> &mdash; how close an event must be to a segment
+(fraction of sensor size) to update the pose. Raise if lock is lost; lower to reject clutter.</li>
+<li><code>perspectiveEnabled</code> / <code>shearEnabled</code> / <code>scalingEnabled</code>
+constrain the homography. Turn them off for a more rigid (rotation-only or similarity) model.</li>
+<li>Optional <code>filterUnmatchedEvents</code> hides events that miss the model
+(does <i>not</i> change ON/OFF polarity).</li>
+</ol>
+<p>jAER 3 processes typed polarity packets in place via <code>processPolarity</code>.
+Frames and IMU pass through. Matching is shown by the overlay, not by rewriting polarity.</p>
+</body>
+</html>
+""")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PigTracker extends EventFilter2D implements Observer, FrameAnnotater {
 
 	private double globalUpdateRate = 0.1;
@@ -41,6 +95,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 		setPropertyTooltip("fractionOfEventsRequired", "a segment is only formed when this faction of bins is filled during capture");
 		setPropertyTooltip("numberOfCaptureEvents", "this many events are captured for the capture mode");
 		setPropertyTooltip("objectToTrack", "predefined object or captured object choice");
+		setPropertyTooltip("filterUnmatchedEvents", "if enabled, events that miss the line-segment model are filtered out; polarity is never rewritten");
 		addObserver(this);
 	}
 	private boolean perspectiveEnabled = getBoolean("perspectiveEnabled", true);
@@ -97,6 +152,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 	private double ley[] = new double[maxNumberOfLines];
 	private int trackCaptureEventCounter = 0;
 	private int numberOfCaptureEvents = getInt("numberOfCaptureEvents", 10000);
+	private boolean filterUnmatchedEvents = getBoolean("filterUnmatchedEvents", false);
 	private boolean captureEventMatrix[][] = null;
 
 	private void resetIdentityMatrix() {
@@ -129,22 +185,39 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 	}
 
 	@Override
+	public boolean accepts(PacketType type) {
+		return type == PacketType.POLARITY;
+	}
+
+	/**
+	 * Legacy / mixed-packet path; delegates to {@link #processPolarity}.
+	 */
+	@Override
 	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-		checkOutputPacketEventType(PolarityEvent.class);
-		checkInit();
-		OutputEventIterator outItr = out.outputIterator();
-		for (BasicEvent e : in) {
-			PolarityEvent ev = (PolarityEvent) e;
-			PolarityEvent oe = (PolarityEvent) outItr.nextOutput();
-			oe.copyFrom(ev);
-			if (processNewEvent(ev)) {
-				oe.polarity = PolarityEvent.Polarity.On;
-			} else {
-				oe.polarity = PolarityEvent.Polarity.Off;
-			}
-			maybeCallUpdateObservers(in, ev.timestamp);
+		return processPolarity(in);
+	}
+
+	/**
+	 * jAER 3.0 typed polarity path: update the line-segment homography in place.
+	 * Does not copy events or rewrite ON/OFF polarity.
+	 */
+	@Override
+	synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
+		if (in == null || in.isEmpty()) {
+			return in;
 		}
-		return out;
+		checkInit();
+		for (BasicEvent e : in) {
+			if (e == null || e.isSpecial() || e.isFilteredOut()) {
+				continue;
+			}
+			boolean matched = processEvent(e);
+			if (filterUnmatchedEvents && !matched) {
+				e.setFilteredOut(true);
+			}
+			maybeCallUpdateObservers(in, e.timestamp);
+		}
+		return in;
 	}
 
 	@Override
@@ -470,12 +543,17 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 		MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
 	}
 
-	public boolean processNewEvent(TypedEvent ev) {
+	/**
+	 * Updates the homography from one polarity event. Returns true if the event
+	 * is near a model segment (or is being captured into a new template).
+	 */
+	public boolean processEvent(BasicEvent ev) {
 		int eventX = ev.x, eventY = ev.y;
-		//        int eventP = ev.type;
+		if ((eventX < 0) || (eventX >= sx) || (eventY < 0) || (eventY >= sy)) {
+			return false;
+		}
 
 		if (trackCaptureEventCounter != 0) {
-			//log.info("Collecting this event " + trackCaptureEventCounter);
 			captureEventMatrix[eventX][eventY] = true;
 			trackCaptureEventCounter++;
 			if (trackCaptureEventCounter == getNumberOfCaptureEvents()) {
@@ -484,8 +562,10 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 			return true;
 		}
 
-		double eX = (((double) eventX) / (sx / 2)) - 1.0;
-		double eY = (((double) eventY) / (sy / 2)) - 1.0;
+		double halfX = sx2 > 0 ? sx2 : 1.0;
+		double halfY = sy2 > 0 ? sy2 : 1.0;
+		double eX = (eventX / halfX) - 1.0;
+		double eY = (eventY / halfY) - 1.0;
 
 		double minErr = 100000;
 		int minDistIndex = -1;
@@ -1213,6 +1293,23 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
 	synchronized public void doResetObject() {
 		initTemplate();
+	}
+
+	/**
+	 * @return the filterUnmatchedEvents
+	 */
+	public boolean isFilterUnmatchedEvents() {
+		return filterUnmatchedEvents;
+	}
+
+	/**
+	 * @param filterUnmatchedEvents if true, events that miss the model are marked filteredOut
+	 */
+	public void setFilterUnmatchedEvents(boolean filterUnmatchedEvents) {
+		boolean old = this.filterUnmatchedEvents;
+		this.filterUnmatchedEvents = filterUnmatchedEvents;
+		putBoolean("filterUnmatchedEvents", filterUnmatchedEvents);
+		getSupport().firePropertyChange("filterUnmatchedEvents", old, filterUnmatchedEvents);
 	}
 
 	/**
