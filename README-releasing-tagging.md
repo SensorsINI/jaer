@@ -5,7 +5,7 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 | What | Where | Who writes it |
 |------|--------|----------------|
 | Update descriptor | `https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml` | git: commit and push repo-root `updates.xml` |
-| Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `scripts/upload-github-release-installers.ps1` |
+| Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `scripts/upload-github-release-installers.ps1` / `.sh` |
 
 `updates.xml` `baseUrl` must be `https://github.com/SensorsINI/jaer/releases/latest/download/`. `ant copy-updates-xml` sets that; do not edit it by hand. The in-app checker reads the raw GitHub file, then downloads `baseUrl` + `fileName` (for example `jAER_windows-x64_3_2_0.exe`).
 
@@ -19,8 +19,10 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 3. Upload binaries (creates the GitHub Release for that tag if it is missing):
 
        powershell -File scripts/upload-github-release-installers.ps1
+       bash scripts/upload-github-release-installers.sh
 
-   Dry run: add `-WhatIf`. Re-upload after a rebuild: same command (`--clobber`).
+   Dry run: `-WhatIf` (PowerShell and bash) or `--what-if` (bash).
+   Re-upload after a rebuild: same command (`--clobber`).
    Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`).
    Put the download table and concise OS notes at the **top** (see 3.2.0 notes). GitHub
    always appends **Assets** at the bottom of the Release page — do not duplicate a long
