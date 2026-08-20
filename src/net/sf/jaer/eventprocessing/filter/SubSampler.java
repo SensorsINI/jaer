@@ -14,6 +14,7 @@ package net.sf.jaer.eventprocessing.filter;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -26,6 +27,25 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Subsamples X and Y addresses, by right shifting the X and Y addresses. Does not decrease event rate.")
+@Help("""
+<html>
+<body>
+<h2>SubSampler</h2>
+<p>Coarsens the pixel grid by right-shifting <code>x</code> and <code>y</code>. Event <b>rate is unchanged</b>;
+several neighboring pixels collapse onto the same output address (useful before trackers or for a
+low-resolution view). Special events are left unchanged.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li>Set <code>bits</code> (0&ndash;8). Each bit halves linear resolution
+(1 &rarr; 2&times;2 bins, 2 &rarr; 4&times;4, &hellip;).</li>
+<li><code>shiftToCenterEnabled</code> recenters the subsampled addresses in the chip;
+off leaves them in the lower-left corner.</li>
+</ol>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SubSampler extends EventFilter2D {
 

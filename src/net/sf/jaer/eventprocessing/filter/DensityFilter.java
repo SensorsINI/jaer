@@ -27,6 +27,7 @@ import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -43,6 +44,29 @@ import net.sf.jaer.util.RemoteControlCommand;
  * @author tobi
  */
 @Description("Filters out uncorrelated background activity noise according to the paper Event Density Based Denoising Method for Dynamic Vision Sensor, that describes a variant of the standard spatiotemporal filter.")
+@Help("""
+<html>
+<body>
+<h2>DensityFilter</h2>
+<p>BA denoiser that keeps an event if enough of the 3&times;3 neighborhood had recent spikes
+(<code>numMustBeCorrelated</code>), i.e. a <b>density</b> test rather than a single supporting
+neighbor. Variant of the standard spatiotemporal filter.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li><code>correlationTimeS</code> &mdash; window for &ldquo;recent&rdquo; (from
+<code>AbstractNoiseFilter</code>).</li>
+<li><code>numMustBeCorrelated</code> &mdash; how many of the 9 pixels (including the event
+itself unless hot-pixel self-exclusion is on) must have fired in that window. Raise to
+reject more noise.</li>
+</ol>
+<p>Default denoiser in jAER is <code>SpatioTemporalCorrelationFilter</code> (Guo &amp; Delbruck 2023);
+use this when you specifically want the density variant. Evaluate with
+<code>NoiseTesterFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DensityFilter extends AbstractNoiseFilter {
 

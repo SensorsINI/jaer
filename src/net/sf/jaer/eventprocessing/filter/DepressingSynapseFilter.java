@@ -16,6 +16,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
@@ -43,6 +44,27 @@ import net.sf.jaer.util.DrawGL;
  * (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Filters out rapidly firing input using depressing probabalistic synapse model")
+@Help("""
+<html>
+<body>
+<h2>DepressingSynapseFilter</h2>
+<p>Each pixel has a <b>depressing synapse</b>: an event is transmitted with probability
+equal to the current synaptic weight, then the weight is reduced. Weight recovers with
+time constant <code>tauMs</code>. Steady high rates (flicker, hot pixels) are suppressed;
+bursts recover between volleys faster than a constant-rate source at the same mean.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b> (typical place: after or instead of a BA denoiser for flicker).</li>
+<li>Increase <code>weight</code> to knock down more spikes inside a <code>tauMs</code> window.</li>
+<li>Increase <code>tauMs</code> to keep depression longer (stronger suppression of sustained firing).</li>
+</ol>
+<p><code>showStateAtMouse</code> overlays the weight at the cursor (costly).
+<code>saveState</code> / <code>loadState</code> / <code>clearState</code> persist or reset
+per-pixel depression.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DepressingSynapseFilter extends AbstractNoiseFilter implements FrameAnnotater {
 

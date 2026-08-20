@@ -17,6 +17,7 @@ import java.util.Arrays;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -30,6 +31,26 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  */
 @Description("Tracks a single object by median event location, and computes std deviations of object event cloud")
+@Help("""
+<html>
+<body>
+<h2>MedianTracker</h2>
+<p>Tracks <b>one</b> object as the median of event <code>x</code>/<code>y</code> in each packet,
+plus mean and std-dev of the cloud. Cheap and robust for a single compact blob; not a
+multi-object tracker (use <code>RectangularClusterTracker</code> for that).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>. Crop with <code>XYTypeFilter</code> first if there is clutter.</li>
+<li><code>tauUs</code> &mdash; low-pass time constant of the median (0 = instantaneous per packet).</li>
+<li><code>numStdDevsForBoundingBox</code> &mdash; scale of the drawn / returned bounding box
+around the median.</li>
+</ol>
+<p>The overlay shows median, mean, and box. Downstream code can call
+<code>getMedianPoint()</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class MedianTracker extends EventFilter2D implements FrameAnnotater {
 

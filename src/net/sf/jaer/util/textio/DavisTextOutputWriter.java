@@ -32,6 +32,7 @@ import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -52,6 +53,30 @@ import net.sf.jaer.graphics.AEViewer;
 @Description("<html>Writes out text CSV (comma separated values or space separate values) format files with DVS and IMU data from DAVIS and DVS cameras."
         + " <p>Previous filtering affects the output. "
         + "<p>Output format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html \">rpg.ifi.uzh.ch/davis_data.html</a>")
+@Help("""
+<html>
+<body>
+<h2>DavisTextOutputWriter</h2>
+<p>Writes DVS (and optionally IMU) to a <b>text / CSV</b> file in
+<a href="http://rpg.ifi.uzh.ch/davis_data.html">RPG DAVIS text</a> style.
+<b>Upstream filters affect what is written.</b></p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Put this filter last in the chain. Enable it.</li>
+<li>Choose <code>dvsEvents</code> and/or <code>imuSamples</code>.</li>
+<li><code>startRecordingAndSaveAs</code>, play the stream, then <code>closeFiles</code>.</li>
+<li><code>rewindBeforeRecording</code> / <code>closeOnRewind</code> for unattended file conversion.</li>
+<li><code>maxEvents</code> auto-closes after that many events (0 = unlimited).</li>
+</ol>
+<p>DVS line: <code>timestamp(&micro;s) x y polarity</code> (0=OFF, 1=ON; see
+<code>useUsTimestamps</code> / <code>useSignedPolarity</code> on the text-IO base class).
+IMU line: timestamp plus accel (g) and gyro (deg/s).
+<code>writeOnlyWhenMousePressed</code> / <code>writeEnabled</code> gate output.
+<code>showFolderInDesktop</code> opens the last folder.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisTextOutputWriter extends AbstractDavisTextIo implements PropertyChangeListener {
 

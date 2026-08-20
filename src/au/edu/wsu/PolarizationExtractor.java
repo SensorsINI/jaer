@@ -14,6 +14,7 @@ import javax.swing.JFrame;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -37,6 +38,27 @@ import au.edu.wsu.PolarizationUtils;
  * @author Damien Joubert inspired by Christian Brändli
  */
 @Description("Method to extract polarization information from a stream of APS sample events")
+@Help("""
+<html>
+<body>
+<h2>PolarizationExtractor</h2>
+<p>Builds Angle of Polarization (AoP) and Degree of Linear Polarization (DoLP) from a
+polarization DAVIS whose APS pixels are a 2&times;2 mosaic (0&deg;, 45&deg;, 90&deg;, 135&deg;).
+Works from APS sample events. Sister filter <code>PolarizationComplementaryFilter</code>
+fuses APS+DVS with a complementary filter.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Select the polarization AEChip and play APS frames (live or recording).</li>
+<li>Check <b>Enabled</b>.</li>
+<li><code>showPolarizationFrameDisplay</code> opens a window with the reconstructed
+polarization image (hover for pixel values).</li>
+</ol>
+<p>Call <code>hasNewFrame()</code> / <code>getNewFrame()</code> from other code if you need
+the buffers programmatically.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PolarizationExtractor extends EventFilter2D {
 

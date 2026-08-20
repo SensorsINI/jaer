@@ -8,6 +8,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -21,6 +22,29 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobi
  */
 @Description("Top level labyinth game class")
+@Help("""
+<html>
+<body>
+<h2>LabyrinthGame</h2>
+<p>Top-level maze / ball-on-plate demo: DVS tracks the ball, a controller tilts the table
+via servos (or a virtual ball). Encloses <code>LabyrinthBallController</code> and optional
+<code>LabyrinthVirtualBall</code>.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable this filter. Connect Labyrinth hardware (or use the virtual ball).</li>
+<li><code>loadMap</code> an SVG maze, or <code>clearMap</code> for a bare table.</li>
+<li><code>captureBackgroundImage</code> / <code>collectBackgroundEventMask</code> then
+<code>freezeBackgroundEventMask</code> for a static ball / idle scene.</li>
+<li><code>enableControl</code> to close the loop; <code>disableControl</code> to stop.
+<code>centerTilts</code> / <code>controlTilts</code> (mouse GUI) / <code>disableServos</code>.</li>
+<li><code>jiggleTable</code> / <code>stopJiggle</code> for hardware jitter tests.
+<code>startLogging</code> / <code>stopLogging</code> record controller output.</li>
+</ol>
+<p>Expand enclosed filters for tracker, PID, and servo settings.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class LabyrinthGame extends EventFilter2DMouseAdaptor {
 

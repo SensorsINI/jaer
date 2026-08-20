@@ -12,6 +12,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -26,6 +27,27 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi
  */
 @Description("Display control filter that sets accumulate mode on AEViewer display and resets at fixed DVS event count")
+@Help("""
+<html>
+<body>
+<h2>AccumulateAndResetFilter</h2>
+<p>Puts the AEViewer renderer in <b>accumulate</b> mode and clears the accumulated image
+after a fixed number of DVS events or a time interval. Events themselves are not filtered;
+this is a display helper (constant-count or constant-time &ldquo;frames&rdquo;).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b> (accumulate mode is turned on; disabling restores the previous renderer state).</li>
+<li><code>method</code> <b>EventCount</b> resets after
+<code>numDvsEventsToResetAccumulation</code> events.</li>
+<li><code>method</code> <b>TimeInterval</b> resets after
+<code>timeIntervalToResetAccumulationUs</code>.</li>
+</ol>
+<p><code>showEventsAccumulatedBar</code> / <code>showTimeElapsedText</code> overlay progress.
+Special events are ignored in the count.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnnotater {
 

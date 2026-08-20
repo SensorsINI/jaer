@@ -15,6 +15,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -29,6 +30,26 @@ import net.sf.jaer.util.EngineeringFormat;
  * @author Tobi Delbruck
  */
 @Description("A simple utility to do hand measurements of velocity using mouse")
+@Help("""
+<html>
+<body>
+<h2>Speedometer</h2>
+<p>Hand-measure velocity on the display: click a <b>start</b> (green) then an <b>end</b> (red)
+pixel. Speed in px/s uses the event timestamps at those clicks. Events are not filtered.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Expand this filter so mouse clicks go to it. Check <b>Enabled</b> so timestamps update.</li>
+<li>Play events (live or file) so <code>currentTimestamp</code> is valid.</li>
+<li>Click the object at time A, then again at time B. The overlay shows distance, &Delta;t,
+speed, and <code>vx</code>/<code>vy</code>.</li>
+<li>Click again to start a new pair. Points are saved in preferences.</li>
+</ol>
+<p><code>fontSize</code> scales the overlay text. For automatic multi-object speed see
+<code>RectangularClusterTracker</code> or <code>PatchMatchFlow</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 

@@ -65,6 +65,7 @@ import java.io.LineNumberReader;
 import java.util.Iterator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -85,6 +86,31 @@ import net.sf.jaer.util.PrefObj;
  */
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @Description("Labels location of target using mouse GUI in recorded data for later supervised learning.")
+@Help("""
+<html>
+<body>
+<h2>TargetLabeler</h2>
+<p>Click-to-label tool for <b>supervised learning</b> on recordings: stores target location,
+radius, and class ID vs time. Labels can be saved/loaded and exported with
+<code>DvsSliceAviWriter</code> (<code>writeTargetLocations</code>).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Open a recording. Enable and expand this filter (mouse/keys go to it).</li>
+<li>Set <code>currentTargetTypeID</code> (you keep the mapping, e.g. 0=dog, 1=cat).</li>
+<li>Click (or drag) on the object while playing. Samples are stored at least
+<code>minTargetPointIntervalUs</code> apart. Mouse wheel with
+<code>editTargetRadius</code> changes box size.</li>
+<li><code>saveLocations</code> / <code>saveLocationsAs</code> / <code>loadLocations</code>.
+<code>clearLocations</code> wipes the list.</li>
+</ol>
+<p><code>showLabeledFraction</code> bar: red unlabeled, green labeled, blue playhead.
+<code>eraseSamplesEnabled</code> deletes samples back to the interval before now.
+<code>resampleLabeling</code> fills gaps with the last location.
+<code>maxTimeLastTargetLocationValidUs</code> is how long a sample stays valid after it was set.</p>
+</body>
+</html>
+""")
 public class TargetLabeler extends EventFilter2DMouseAdaptor implements PropertyChangeListener, KeyListener {
 
     private boolean mousePressed = false;

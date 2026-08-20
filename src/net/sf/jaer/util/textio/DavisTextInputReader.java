@@ -39,6 +39,7 @@ import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -65,6 +66,28 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
         + "<p>Input format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>"
         + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on"
         + "<p> DavisTextInputReader uses the current time slice duration or event count depending on FlexTime setting in View/Flextime enabled menu")
+@Help("""
+<html>
+<body>
+<h2>DavisTextInputReader</h2>
+<p>Plays a <b>text</b> DVS file as if it were an AEDAT recording. Format matches
+<a href="http://rpg.ifi.uzh.ch/davis_data.html">RPG DAVIS text</a>: one event per line
+<code>timestamp x y polarity</code>, timestamp in seconds (float), polarity 0=OFF, 1=ON.
+Packet size follows the AEViewer time slice or FlexTime event count.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable the filter. Click <code>openFile</code> and choose the <code>.txt</code>.</li>
+<li><code>rewind</code> reopens from the start; <code>closeFile</code> stops.</li>
+<li><code>flipPolarity</code> swaps ON/OFF if the file uses the opposite convention.</li>
+<li><code>checkNonMonotonicTimestamps</code> warns if time goes backwards.</li>
+<li><code>openFileAndRecordAedat</code> converts the text file to <code>.aedat2</code>
+with the same base name.</li>
+</ol>
+<p>To export text from jAER, use <code>DavisTextOutputWriter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisTextInputReader extends AbstractDavisTextIo implements PropertyChangeListener, FrameAnnotater {
 

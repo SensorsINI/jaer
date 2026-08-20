@@ -40,6 +40,7 @@ import ml.options.Options.Multiplicity;
 import ml.options.Options.Separator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.JaerAllowedSubclasses;
@@ -66,6 +67,31 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author Tobi Delbruck
  */
 @Description("Writes out AVI movie with DVS constant-number-of-event subsampled 2D histogram slices as AVI frame images with desired output resolution")
+@Help("""
+<html>
+<body>
+<h2>DvsSliceAviWriter</h2>
+<p>Renders DVS events as <b>time or event slices</b> (2D histograms, optional subsample /
+output size) and writes them to AVI. Can put APS on the left and DVS on the right, or APS+DVS
+in RG channels. Recording start/stop is the same as <code>AbstractAviWriter</code>.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable the filter. Expand enclosed <code>DvsFramer</code> to set slice method
+(event count vs time), output resolution, and polarity rendering.</li>
+<li><code>writeDvsFrames</code> / <code>writeApsFrames</code>. If both are on, DVS is the
+right half unless <code>writeAPSDVSToRGChannels</code> (APS in R, DVS in G).</li>
+<li><code>writeDvsSliceImageOnApsFrame</code> emits a DVS slice at each APS frame end
+(playback must be slow enough to render every frame).</li>
+<li><code>startRecordingAndSaveAs</code>, play, <code>finishRecording</code>.</li>
+</ol>
+<p><code>showOutput</code> previews the slice. <code>showStatistics</code> shows ON/OFF
+counts, slice FPS, sparsity.
+<code>writeDvsEventsToTextFile</code> dumps timestamp,x,y,pol.
+<code>writeTargetLocations</code> writes <code>TargetLabeler</code> boxes if present.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 

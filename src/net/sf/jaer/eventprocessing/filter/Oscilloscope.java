@@ -17,6 +17,7 @@ import java.util.Observable;
 import java.util.Observer;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -50,6 +51,30 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("<html>A real-time oscilloscope, which can do instant replay of selected time or event slices during live or recorded playback in slow motion."
         + "<p>Trigger input provide possibilites for synchronizing on special events or bias changes.")
+@Help("""
+<html>
+<body>
+<h2>Oscilloscope</h2>
+<p>Captures a slice of events after a <b>trigger</b>, then replays that capture in slow motion
+(small time or event chunks) while waiting for the next trigger. Use it live or on a recording
+to inspect a brief burst.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li>Set <code>triggerType</code>: <b>Manual</b> (click <code>doTrigger</code>),
+<b>TimeInterval</b> / <b>EventInterval</b>, <b>SpecialEvent</b> (raw address
+<code>triggerSpecialEventRawAddress</code>), or <b>BiasChange</b>.</li>
+<li><code>triggerMode</code> Auto retriggers; Normal waits for a trigger like a scope.</li>
+<li><code>captureType</code> + <code>lengthOfTimeToCaptureUs</code> or
+<code>numberOfEventsToCapture</code> size the buffer.</li>
+<li><code>playbackType</code> + <code>playbackTimeIntervalUs</code> /
+<code>playbackNumEvents</code> set how slowly the capture is shown.
+<code>playbackNumberOfCycles</code> repeats each capture.</li>
+</ol>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnotater, PropertyChangeListener {
 

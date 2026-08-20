@@ -11,6 +11,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Color;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -28,6 +29,28 @@ import net.sf.jaer.util.DrawGL;
  * @author Tobi
  */
 @Description("Writes AVI file AEViewer displayed OpenGL graphics")
+@Help("""
+<html>
+<body>
+<h2>JaerAviWriter</h2>
+<p>Records the <b>AEViewer OpenGL canvas</b> (events, APS overlay, annotations) to AVI.
+Each rendered frame is captured from the ViewLoop before the player advances, so the file
+can be slower than real time. Playback FPS follows the viewer when
+<code>matchViewerFrameRate</code> is on (see <code>AbstractAviWriter</code>).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable the filter. Arrange the window (optionally
+<code>resizeWindowTo16To9Format</code> / <code>resizeWindowTo4To3Format</code>).</li>
+<li><code>startRecordingAndSaveAs</code>, play the stream, then <code>finishRecording</code>.</li>
+<li><code>showTimeFactor</code> burns in the realtime slowdown/speedup factor
+(<code>fontSize</code>).</li>
+</ol>
+<p>For DVS histogram slices at chip resolution use <code>DvsSliceAviWriter</code>.
+For DAVIS APS frames (not the OpenGL view) use <code>DavisFrameAviWriter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class JaerAviWriter extends AbstractAviWriter {
 

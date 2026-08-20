@@ -37,6 +37,7 @@ import java.awt.Desktop;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
@@ -64,6 +65,42 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  */
 @Description("Tracks multiple moving compact (not linear) objects")
+@Help("""
+<html>
+<body>
+<h2>RectangularClusterTracker</h2>
+<p>Multi-object tracker: each cluster is a rectangle (or ellipse) that absorbs nearby events,
+updates position (and optionally velocity, size, angle), and dies when mass / event-rate
+per pixel falls below threshold. Best for compact blobs, not long lines
+(see <code>HoughLineTracker</code>).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Denoise first (<code>SpatioTemporalCorrelationFilter</code>). Enable this filter.</li>
+<li><code>maxNumClusters</code> caps how many hypotheses exist.</li>
+<li>Visibility: prefer <code>useEventRatePerPixelForVisibilty</code> with
+<code>thresholdEventRatePerPixelForVisibleClusterHz</code> and
+<code>eventRatePerPixelLowpassTauS</code>; or mass with
+<code>thresholdMassForVisibleCluster</code> / <code>clusterMassDecayTauUs</code>.</li>
+<li><code>clusterSize</code> / <code>aspectRatio</code> set the initial box.
+<code>locationMixingFactor</code> is how far each event pulls the cluster
+(smaller = smoother / slower).</li>
+<li>Turn on <code>useVelocity</code> and <code>showClusterVelocityVector</code> once tracking
+is stable. <code>limitSpeedByNearbyClusters</code> rejects speed outliers.</li>
+</ol>
+<h3>Useful options</h3>
+<ul>
+<li><code>dynamicSizeEnabled</code> / <code>dynamicAspectRatioEnabled</code> /
+<code>dynamicAngleEnabled</code> let the box follow the object.</li>
+<li><code>highwayPerspectiveEnabled</code> shrinks clusters toward a vanishing point
+(traffic).</li>
+<li><code>filterEventsEnabled</code> outputs only events assigned to clusters.</li>
+<li><code>showAllClusters</code> draws hypotheses that are not yet &ldquo;visible&rdquo;.</li>
+<li><code>logging</code> writes cluster CSV; <code>zoomOnTrackedCluster</code> follows one cluster.</li>
+</ul>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RectangularClusterTracker extends EventFilter2D
         implements Observer, ClusterTrackerInterface, FrameAnnotater, MouseListener/* , PreferenceChangeListener */ {

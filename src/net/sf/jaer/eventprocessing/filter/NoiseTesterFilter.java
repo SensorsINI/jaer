@@ -48,6 +48,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
@@ -106,6 +107,37 @@ import org.jdesktop.el.MethodNotFoundException;
  * @author Tobi Delbruck, Shasha Guo, Oct-Jan 2020-2025
  */
 @Description("Tests background BA denoising filters by injecting known noise and measuring how much signal and noise is filtered. jAER 3.0: processPolarity (DVS) only.")
+@Help("""
+<html>
+<body>
+<h2>NoiseTesterFilter</h2>
+<p>Benchmarks DVS <b>BA denoisers</b> (<code>AbstractNoiseFilter</code> subclasses). It can
+inject known shot/leak noise (or play a noise file), run one or more denoisers, and score
+TP/FP/TN/FN plus ROC. jAER 3.0 path is DVS polarity only.</p>
+<p>Related paper:
+<a href="https://doi.org/10.1109/TPAMI.2022.3152999">Low Cost and Latency Event Camera
+Background Activity Denoising</a> (Guo &amp; Delbruck, 2023).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Open a relatively clean recording (or live). Enable this filter.</li>
+<li><code>doChooseDenoisers</code> picks which algorithms appear. Select one with
+<code>selectedNoiseFilterEnum</code> (or enable a chain with
+<code>enableMultipleMethods</code>).</li>
+<li>Set <code>shotNoiseRateHz</code> / <code>leakNoiseRateHz</code> (or
+<code>useNoiseRecording</code>). <code>disableAddingNoise</code> if the file already
+has labeled noise (e.g. v2e). <code>disableSignal</code> for FPR on noise only.</li>
+<li>Watch overlays: TP/TN/FP/FN colors (<code>overlayPositives</code> /
+<code>overlayNegatives</code> and the individual TP/TN/FP/FN switches).</li>
+<li>ROC sweep: set start/end/step of a denoiser property, click <code>ROCSweep</code>
+over a Marked section or the whole file. <code>doExportROCs</code> writes CSV.</li>
+</ol>
+<p><code>photoreceptorNoiseSimulation</code> and <code>noiseRateCoVDecades</code> make
+more realistic shot noise. <code>maxProcessingTimeLimitMs</code> aborts a packet that
+takes too long at high noise rates.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
 
