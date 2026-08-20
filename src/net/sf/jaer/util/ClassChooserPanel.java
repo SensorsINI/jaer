@@ -115,7 +115,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
                 ClassDescription des = new ClassDescription(descriptionString, devStatus);
                 put(name, des);
-            } catch (Exception e) {
+            } catch (Exception | LinkageError e) {
                 log.warning("trying to put class named " + name + " caught " + e.toString());
             }
 

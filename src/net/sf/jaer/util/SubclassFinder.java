@@ -38,13 +38,13 @@ public class SubclassFinder {
 
         static HashMap<String, Class<?>> map = new HashMap<>();
 
-        static synchronized Class<?> forName(String name) throws ExceptionInInitializerError, NoClassDefFoundError, UnsatisfiedLinkError {
+        static synchronized Class<?> forName(String name) {
             Class<?> c = map.get(name);
             if (c == null) {
                 try {
                     c = Class.forName(name, false, SubclassFinder.class.getClassLoader());
                     map.put(name, c);
-                } catch (ClassNotFoundException e) {
+                } catch (ClassNotFoundException | LinkageError e) {
                     log.warning("caught " + e + " when trying to get class named " + name);
                 }
             }
@@ -106,8 +106,13 @@ public class SubclassFinder {
                                 = new ClassNameWithDescriptionAndDevelopmentStatus(c);
                         classes.add(found);
                         publish(found);
-                    } catch (ClassNotFoundException e) {
-                        log.warning("allowlist entry skipped: " + e.getMessage());
+                    } catch (ClassNotFoundException | LinkageError | RuntimeException e) {
+                        // One broken optional dep (e.g. TensorFlow) must not empty the chooser.
+                        log.warning("Could not load " + fqcn + " for description (still listing): " + e);
+                        ClassNameWithDescriptionAndDevelopmentStatus found
+                                = new ClassNameWithDescriptionAndDevelopmentStatus(fqcn, null, null);
+                        classes.add(found);
+                        publish(found);
                     }
                 }
                 log.info("Read " + classes.size() + " subclasses of " + clazz.getName()
@@ -193,7 +198,7 @@ public class SubclassFinder {
                         found.accept(myFoundClass);
                     }
                 }
-            } catch (ExceptionInInitializerError | NoClassDefFoundError | UnsatisfiedLinkError t) {
+            } catch (LinkageError t) {
                 log.fine(t + " while seeing if " + superClass + " isAssignableFrom " + s);
             } catch (Exception t) {
                 log.fine(t + " while scanning " + s);

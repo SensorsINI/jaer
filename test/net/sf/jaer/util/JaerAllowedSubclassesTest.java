@@ -35,6 +35,19 @@ public class JaerAllowedSubclassesTest {
     }
 
     @Test
+    public void tensorflowFilterLoadDoesNotAbortAsError() {
+        try {
+            Class<?> c = JaerAllowedSubclasses.load(
+                    "net.sf.jaer.eventprocessing.filter.MLPNoiseFilter", EventFilter2D.class);
+            assertNotNull(c);
+            assertTrue(EventFilter2D.class.isAssignableFrom(c));
+        } catch (ClassNotFoundException e) {
+            // TensorFlow LinkageError must be wrapped so SubclassFinder can continue.
+            assertTrue(e.getMessage() != null && !e.getMessage().isEmpty());
+        }
+    }
+
+    @Test
     public void tensorflowOnlyAllowsNativeArtifacts() {
         assertTrue(TensorFlowNativeSupport.isAllowedNativeJarName(
                 TensorFlowNativeSupport.nativeJarFileName()));

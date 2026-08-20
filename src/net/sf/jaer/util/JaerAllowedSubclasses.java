@@ -141,6 +141,14 @@ public final class JaerAllowedSubclasses {
     /**
      * {@link Class#forName} only after the allowlist and
      * {@code superType.isAssignableFrom} (and not abstract).
+     * <p>
+     * Does not initialize the class ({@code initialize=false}), matching
+     * {@link GenerateAllowedSubclasses} and {@link SubclassFinder}. Listing
+     * filters must not run static initializers or link optional native deps
+     * such as TensorFlow. Callers that construct instances still initialize
+     * via {@code newInstance}. {@link LinkageError} (including
+     * {@link IncompatibleClassChangeError}) is wrapped so one broken optional
+     * dependency cannot abort the whole subclass list.
      */
     public static Class<?> load(String fqcn, Class<?> superType) throws ClassNotFoundException {
         if (fqcn == null || fqcn.isBlank()) {
@@ -152,9 +160,11 @@ public final class JaerAllowedSubclasses {
         }
         Class<?> c;
         try {
-            c = Class.forName(name);
-        } catch (ExceptionInInitializerError | NoClassDefFoundError e) {
-            throw new ClassNotFoundException("Could not initialize " + name + ": " + e, e);
+            c = Class.forName(name, false, JaerAllowedSubclasses.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw e;
+        } catch (LinkageError e) {
+            throw new ClassNotFoundException("Could not load " + name + ": " + e, e);
         }
         if (!superType.isAssignableFrom(c)) {
             throw new ClassNotFoundException(name + " is not assignable to " + superType.getName());
