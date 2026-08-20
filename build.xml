@@ -18,6 +18,9 @@
                destdir="${java.io.tmpdir}/jaer-ant-help-tool"
                includeantruntime="false"
                release="11">
+            <classpath>
+                <pathelement path="${ant.core.lib}"/>
+            </classpath>
             <compilerarg value="-Xlint:-options"/>
         </javac>
         <tempfile property="jaer.help.tmp" destDir="${java.io.tmpdir}" prefix="jaer-ant-help-" suffix=".txt" deleteonexit="true"/>
@@ -62,10 +65,9 @@ Release / installers    (see README-releasing-tagging.md)
 Scripts (not Ant)
   scripts/run-jaer-fast.bat|.sh    launch from build/classes without ant
 ]]></echo>
-        <java classname="PrintFileToStdout" classpath="${java.io.tmpdir}/jaer-ant-help-tool"
-              fork="false" failonerror="true">
-            <arg file="${jaer.help.tmp}"/>
-        </java>
+        <taskdef name="printfilestostdout" classname="PrintFileToStdout"
+                 classpath="${java.io.tmpdir}/jaer-ant-help-tool"/>
+        <printfilestostdout file="${jaer.help.tmp}"/>
     </target>
 
     <!--Override default to replace target with release -->
