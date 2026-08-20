@@ -151,7 +151,8 @@ Start jAER from the install directory or the desktop / GNOME entry the installer
   * Bundled JRE is Adoptium Temurin **25.0.4** (same as `ant run`; noticeably faster startup than 3.2.0’s Temurin 21). Ivy no longer retrieves `*-javadoc.jar` / `*-sources.jar` (~177 MB, including OpenCV sources and ant-commons-net sources). Installers also omit NetBeans source zips in `jars/` (`apache-ant-*-src.zip`, `jogamp-fat-java-src.zip`, usb4java sources).
   * Installed copies use the **install4j native splash** (`SplashScreen.writeMessage`); no Java/Swing overlay by default (`-Djaer.splashLogOverlay=true` restores it). ESC aborts during splash (Windows `GetAsyncKeyState`). Do not pass `-splash:` in install4j `vmParameters`.
 
-* **Packaged class loading**
+* **Packaged class loading for secure operation outside sandbox**
+Since jAER must run outside sandbox, now:
   * `ant compile` writes a compile-time allowlist of AEChip / EventFilter / DisplayMethod FQCNs into `jAER.jar`. Packaged installs (`install4j.appDir` or `jAER.jar`) load only those types; missing resource fail-closes (no directory classpath walk). Git/`ant run` still scans if the resource is absent; `-Djaer.scanClasspath=true` forces a rescan.
   * Customize stays populated if an allowlisted class fails to link (e.g. optional TensorFlow). TensorFlow native install adds only `tensorflow-core-native-…jar` from `~/.jaer/lib`.
   * `ant replace-installed-jar` copies `dist/jAER.jar` over an existing install4j tree (Windows UAC elevation when needed).
