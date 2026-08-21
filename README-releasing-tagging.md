@@ -140,10 +140,10 @@ Keep secrets in Dropbox under signpath/ (gitignored except signpath/README.txt).
 Do not commit tokens or license keys.
 
   signpath/signpath-organization-id.txt   — org UUID (yours may already be filled)
-  signpath/signpath-api-token.txt         — CI builds API token (stub; fill in)
+  signpath/signpath-api-token.txt         — API token of SignPath CI user "CI builds" (not your personal token)
   signpath/install4j-license.txt          — install4j license key (stub; fill in)
   signpath/signpath-project-slug.txt      — default jaer
-  signpath/signpath-signing-policy-slug.txt — default test-signing
+  signpath/signpath-signing-policy-slug.txt — test-signing2 (workflow hardcodes this; use release-signing later when VALID)
 
 Recreate stubs if needed:
 
@@ -162,29 +162,66 @@ That sets secrets INSTALL4J_LICENSE + SIGNPATH_API_TOKEN and variables
 SIGNPATH_ORGANIZATION_ID (+ project/policy). Values never enter the repo.
 
 Or paste the same values manually in GitHub → Settings → Secrets and variables → Actions.
+GitHub Actions has **no submitter field**. SignPath treats whoever owns
+`SIGNPATH_API_TOKEN` as the submitter.
 
-SignPath UI (project "jaer" / "jaer [OSS]"):
+### SignPath UI: CI user submits, you approve
+
+GitHub itself is not a SignPath user. The GitHub App is **trusted build system /
+origin verification**. The submitter is the SignPath **CI user** whose API token
+is in `SIGNPATH_API_TOKEN`.
+
+| Place | Role |
+|--------|------|
+| SignPath policy **Submitters** | CI user **CI builds** (not your personal account) |
+| GitHub secret `SIGNPATH_API_TOKEN` | API token of **CI builds** |
+| SignPath policy **Approvers** | you (interactive login, e.g. Tobi Delbruck) |
+
+Open-source SignPath requires trusted build system verification. With that on,
+interactive users cannot submit even if listed under Submitters. Putting yourself
+in Submitters and using your personal token produces:
+
+  The user does not have sufficient privileges to submit the signing request
+  ... signing policy "test-signing2"
+
+Create or reuse the CI user (https://app.signpath.io):
+
+  1. Users and Groups → CI users (not Invite user)
+  2. Open **CI builds**, or Create CI user with that name
+  3. Generate token (shown once). Put it in `signpath/signpath-api-token.txt`
+     and re-run `scripts/sync-signpath-secrets-to-github.ps1`
+
+Then edit project **jaer** → signing policy **test-signing2**:
 
   1. Install SignPath GitHub App on SensorsINI/jaer; link Trusted Build System GitHub.com
-  2. Ensure "CI builds" has submitter role on policy test-signing
-  3. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
+  2. **Submitters:** **CI builds** only (remove your personal user)
+  3. **Approvers:** your interactive user; **Use approval process**, required approvals 1
+  4. Certificate: test-signing cert (e.g. Test certificate 2026)
+  5. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
      .signpath/artifact-configurations/windows-installer-2.xml)
-  4. Leave release-signing until its INVALID status is fixed
+  6. Leave **release-signing** until its INVALID status is fixed. Switch the
+     workflow `signing-policy-slug` to `release-signing` only after that policy
+     is VALID; keep **CI builds** as submitter and yourself as approver.
 
 ### Workflow
 
   File: .github/workflows/sign-windows-test.yml
   Triggers: workflow_dispatch, or push of tags matching 3.*
-  Steps: JDK 21 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
-  PE → SignPath test-signing → upload signed artifact; on tag, attach to GitHub Release
+  Policy slug is hardcoded: `test-signing2` (GitHub variable
+  SIGNPATH_SIGNING_POLICY_SLUG is unused).
+  Steps: JDK 25 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
+  PE → SignPath test-signing2 → job waits up to 1 hour for your SignPath approval
+  → upload signed artifact; on tag, attach to GitHub Release
 
 ### First dry run (recommended before tagging)
 
-  1. Push the workflow + Ant target to master (or your working branch)
+  1. Confirm SignPath submitter/approver and GitHub `SIGNPATH_API_TOKEN` as above
   2. Actions → "Sign Windows (SignPath test-signing)" → Run workflow
-  3. If SignPath waits on approval, approve in the SignPath UI
+     (the Actions page does not set the submitter)
+  3. When the job waits on SignPath, open the signing-request URL from the job
+     summary / SignPath email and **Approve** (as yourself, not as CI builds)
   4. Download the jaer-windows-signed artifact; check Properties → Digital Signatures
-     (publisher SignPath Foundation)
+     (test-signing publisher is the test certificate, not yet SignPath Foundation)
   5. For a tagged release, push tag matching VERSION.txt; workflow attaches the signed
      Windows exe to the GitHub Release
 

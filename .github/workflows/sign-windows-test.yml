@@ -3,7 +3,9 @@
 #   Secrets: INSTALL4J_LICENSE, SIGNPATH_API_TOKEN
 #   Variables: SIGNPATH_ORGANIZATION_ID
 # SignPath UI: GitHub App on SensorsINI/jaer, artifact config slug windows-installer-2,
-# CI builds user submitter on test-signing. See README-releasing-tagging.md.
+# CI user "CI builds" as Submitter on policy test-signing2; your login as Approver.
+# SIGNPATH_API_TOKEN must be the CI builds token (Actions has no submitter field).
+# See README-releasing-tagging.md.
 
 name: Sign Windows (SignPath test-signing)
 
