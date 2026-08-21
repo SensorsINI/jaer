@@ -7,7 +7,7 @@ real time sensory-motor processing for event sensors and systems**
 
 **Why use proprietary vendor camera software?** jAER is a Full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
 
-jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. It can record your datasets and serve event sensor output to your favorite DNN back-end.
+jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. It can record your datasets and serve event sensor output to your favorite DNN or [ROS](https://www.ros.org/) back-end.
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
