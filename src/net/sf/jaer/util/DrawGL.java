@@ -247,6 +247,9 @@ public final class DrawGL {
         TextRenderer r = textRenderers.get(fontSize);
         if (r == null) {
             r = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+            // Intel Arc (igxelpgicd64.dll) can ACCESS_VIOLATION in glDrawArrays from
+            // TextRenderer's Pipelined_QuadRenderer; ChipCanvas already disables this.
+            r.setUseVertexArrays(false);
             textRenderers.put(fontSize, r);
         }
         return r;

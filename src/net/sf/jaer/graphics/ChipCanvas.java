@@ -234,6 +234,9 @@ public class ChipCanvas implements GLEventListener, Observer {
                 glCanvas.setAutoSwapBufferMode(true);
             } else {
                 reusedGlCanvas = false;
+                // Do not construct ChipCanvas from file-dialog preview (ChipDataFilePreview): a
+                // second GLCanvas crashes Intel Arc (igxelpgicd64.dll) in SetPixelFormat or in
+                // TextRenderer glDrawArrays while the welcome overlay paints.
 //            final GLProfile glp = GLProfile.getMaxProgrammable(true);//GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
@@ -644,6 +647,11 @@ public class ChipCanvas implements GLEventListener, Observer {
             viewer = aeViewer;
         }
         if (viewer == null || viewer.getPlayMode() != PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
+            return;
+        }
+        // File-dialog preview used to construct a second ChipCanvas that still saw WAITING;
+        // skip if this canvas is not the chip's live view.
+        if (chip.getCanvas() != null && chip.getCanvas() != this) {
             return;
         }
         HardwareInterface hw = aeChip.getHardwareInterface();

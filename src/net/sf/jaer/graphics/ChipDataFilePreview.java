@@ -7,10 +7,14 @@ package net.sf.jaer.graphics;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
@@ -21,7 +25,6 @@ import java.io.IOException;
 import java.util.logging.Logger;
 
 import javax.swing.JFileChooser;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -41,10 +44,11 @@ import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
- * Provides preview of recorded AE data file in file dialogs. It uses the
- * default renderer, extractor and display method for the AEChip to generate a
- * preview and the 2d histograms of event activity over (by default) 40ms time
- * windows.
+ * Provides preview of recorded AE data file in file dialogs. Renders the
+ * chip pixmap with AWT (not a second {@link ChipCanvas}/{@code GLCanvas}):
+ * constructing another JOGL canvas while the viewer is already displaying
+ * crashes some GPU drivers (Intel Arc {@code igxelpgicd64.dll}) during
+ * {@code SetPixelFormat} or {@code TextRenderer} {@code glDrawArrays}.
  *
  * @author tobi
  */
@@ -52,9 +56,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
 
     JFileChooser chooser;
     EventExtractor2D extractor;
-    ChipCanvas canvas;
     AEChipRenderer renderer;
-    JLabel infoLabel;
     AEChip chip;
     volatile boolean indexFileEnabled = false;
     Logger log = Logger.getLogger("net.sf.jaer");
@@ -66,6 +68,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     private boolean newFileSelected = false;
     /** True when the accessory should play events/frames, not only overlay text. */
     private volatile boolean videoPreview = false;
+    private BufferedImage previewImage;
 
     /**
      * Creates new form ChipDataFilePreview
@@ -75,17 +78,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         this.chip = chip;
-        canvas = new ChipCanvas(chip);
-        canvas.setAnnotationEnabled(false); // some filters use OpenGL code that crashes the JVM
-        canvas.setDisplayMethod(chip.getPreferredDisplayMethod()); // construct a new private display method to avoid using objects in different OpenGL contexts, e.g. TextRenderer's, which cause Error 1281 GL errors
-        setLayout(new BorderLayout());
         this.chooser = jfc;
         extractor = chip.getEventExtractor();
         renderer = chip.getRenderer();
-        canvas.getCanvas().setSize(300, 300);
-        add(canvas.getCanvas(), BorderLayout.CENTER);
-        canvas.getCanvas().addKeyListener(new KeyAdapter() {
+        setLayout(new BorderLayout());
+        setBackground(Color.BLACK);
+        setOpaque(true);
+        setPreferredSize(new Dimension(300, 300));
+        setFocusable(true);
+        addKeyListener(new KeyAdapter() {
 
+            @Override
             public void keyReleased(KeyEvent e) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_S:
@@ -206,6 +209,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 indexFileString = getIndexFileCount(file);
             }
             stop = false;
+            requestFocusInWindow();
             repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
         } catch (Exception e) {
             log.warning(e.toString());
@@ -216,12 +220,13 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     EventPacket ae;
 
     /**
-     * Paints the file preview using {@link ChipCanvas#paintFrame() }.
+     * Paints the file preview from the chip pixmap using AWT, not OpenGL.
      *
      * @param g the graphics context
      */
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         if (stop || deleteIt) {
             try {
                 if (ais != null) {
@@ -246,12 +251,9 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
             return;
         }
-        Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
+        Graphics2D g2 = (Graphics2D) g;
         if (newFileSelected) { // erases old text, otherwise draws over it
             newFileSelected = false;
-            if (g2 != null) {
-                g2.clearRect(0, 0, getWidth(), getHeight());
-            }
             clearPreviewImage();
         }
 
@@ -275,7 +277,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                             renderer.render(ae);
                         }
                     }
-                    canvas.paintFrame();
+                    blitRendererToPreviewImage();
                 } catch (EOFException e) {
                     try {
                         if (ais != null) {
@@ -293,9 +295,11 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
         } else {
             fileSizeString = indexFileString;
-            if (g2 != null) {
-                g2.clearRect(0, 0, getWidth(), getHeight());
-            }
+            previewImage = null;
+        }
+        if (previewImage != null) {
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            g2.drawImage(previewImage, 0, 0, getWidth(), getHeight(), this);
         }
         drawOverlay(g2);
         try {
@@ -367,16 +371,77 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     private void clearPreviewImage() {
         ae = null;
         aeRaw = null;
+        previewImage = null;
         try {
             if (renderer != null) {
                 renderer.resetFrame(renderer.getGrayValue());
             }
-            if (canvas != null) {
-                canvas.paintFrame();
-            }
         } catch (Exception e) {
             log.fine("preview frame reset: " + e);
         }
+    }
+
+    /**
+     * Copies the chip renderer pixmap into {@link #previewImage} (AWT, y-up
+     * chip coords flipped to image coords).
+     */
+    private void blitRendererToPreviewImage() {
+        if (renderer == null || chip == null) {
+            previewImage = null;
+            return;
+        }
+        renderer.ensurePixmapReadyForDisplay();
+        float[] pix = renderer.getPixmapArray();
+        if (pix == null) {
+            previewImage = null;
+            return;
+        }
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        if (sx <= 0 || sy <= 0) {
+            previewImage = null;
+            return;
+        }
+        final boolean rgba = renderer instanceof DavisRenderer;
+        final int stride = rgba ? 4 : 3;
+        final int rowWidth = Math.max(1, renderer.getWidth());
+        if (previewImage == null || previewImage.getWidth() != sx || previewImage.getHeight() != sy) {
+            previewImage = new BufferedImage(sx, sy, BufferedImage.TYPE_INT_RGB);
+        }
+        int[] out = ((DataBufferInt) previewImage.getRaster().getDataBuffer()).getData();
+        for (int y = 0; y < sy; y++) {
+            int dstRow = (sy - 1 - y) * sx;
+            int srcRow = y * rowWidth;
+            for (int x = 0; x < sx; x++) {
+                int idx = stride * (srcRow + x);
+                if (idx + 2 >= pix.length) {
+                    break;
+                }
+                out[dstRow + x] = packRgb(pix[idx], pix[idx + 1], pix[idx + 2]);
+            }
+        }
+    }
+
+    private static int packRgb(float rf, float gf, float bf) {
+        int r = (int) (rf * 255f);
+        int g = (int) (gf * 255f);
+        int b = (int) (bf * 255f);
+        if (r < 0) {
+            r = 0;
+        } else if (r > 255) {
+            r = 255;
+        }
+        if (g < 0) {
+            g = 0;
+        } else if (g > 255) {
+            g = 255;
+        }
+        if (b < 0) {
+            b = 0;
+        } else if (b > 255) {
+            b = 255;
+        }
+        return (r << 16) | (g << 8) | b;
     }
 
     private String overlayText(AEFileInputStreamInterface stream) {
