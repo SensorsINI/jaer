@@ -349,6 +349,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * {@link #openAEMonitor()} during USB open, which deadlocks EDT file open.
      */
     private final Object viewLoopPauseLock = new Object();
+    /**
+     * File → Save As owns the playback stream. ViewLoop must not grabInput,
+     * extract, filter, or paint until this is cleared — {@link #setPaused}
+     * alone is not enough ({@code wait(1000)} still re-renders, and a 150 ms
+     * sleep can overlap an in-flight AEDAT-4 {@code grabInput}).
+     */
+    private volatile boolean viewLoopSuspendedForOfflineExport = false;
+    /** ViewLoop has left grabInput and is waiting on {@link #viewLoopPauseLock}. */
+    private volatile boolean viewLoopParkedForOfflineExport = false;
     /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
     private static final long VIEWLOOP_EXIT_JOIN_TIMEOUT_MS = 3000;
     /**
@@ -3033,6 +3042,63 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /**
+     * Pause playback and keep ViewLoop out of grabInput/paint for File → Save As.
+     * Does not {@link #interruptViewloop()}: interrupt closes the playback
+     * {@code FileChannel}.
+     */
+    public void suspendViewLoopForOfflineExport() {
+        viewLoopSuspendedForOfflineExport = true;
+        setPaused(true);
+    }
+
+    /**
+     * Block until ViewLoop has finished any in-flight grabInput and is parked,
+     * or until {@code timeoutMs}. Call from the Save As worker, not the ViewLoop
+     * thread.
+     *
+     * @return true if ViewLoop is parked and will not touch the stream
+     */
+    public boolean waitUntilViewLoopParkedForOfflineExport(long timeoutMs) {
+        if (Thread.currentThread() == viewLoop) {
+            throw new IllegalStateException("cannot wait for ViewLoop park from ViewLoop");
+        }
+        long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMs);
+        synchronized (viewLoopPauseLock) {
+            while (!viewLoopParkedForOfflineExport && viewLoopSuspendedForOfflineExport) {
+                long left = deadline - System.currentTimeMillis();
+                if (left <= 0) {
+                    log.warning("ViewLoop did not park for Save As within " + timeoutMs
+                            + " ms; export may still contend with grabInput");
+                    return false;
+                }
+                try {
+                    viewLoopPauseLock.wait(Math.min(left, 200L));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return viewLoopParkedForOfflineExport;
+                }
+            }
+        }
+        return viewLoopParkedForOfflineExport;
+    }
+
+    /**
+     * End Save As exclusive use of the stream and restore the previous pause
+     * state. Wakes ViewLoop with notify, not interrupt.
+     */
+    public void resumeViewLoopAfterOfflineExport(boolean restorePaused) {
+        setPaused(restorePaused); // still suspended so setPaused will not interrupt FileChannel
+        viewLoopSuspendedForOfflineExport = false;
+        synchronized (viewLoopPauseLock) {
+            viewLoopPauseLock.notifyAll();
+        }
+    }
+
+    public boolean isViewLoopSuspendedForOfflineExport() {
+        return viewLoopSuspendedForOfflineExport;
+    }
+
     void setPlaybackControlsEnabledState(boolean yes) {
         //        log.info("*****************************************************       setting playback controls enabled = "+yes);
         recordingButton.setEnabled(!yes);
@@ -3112,6 +3178,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (stop) {
                     log.info("breaking out of view loop after pauseIdleWaitIfNeeded() because stop=true");
                     break;
+                }
+                if (viewLoopSuspendedForOfflineExport) {
+                    // Still owned by Save As (spurious wakeup). Do not grabInput/render.
+                    continue;
                 }
                 stopRecordingIfTimeLimitReached();
                 // Heartbeat when FINE: proves ViewLoop is alive vs stuck in USB/JOGL.
@@ -3776,6 +3846,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         /** Idle wait while paused (no acquisition). */
         void pauseIdleWaitIfNeeded() {
+            if (viewLoopSuspendedForOfflineExport) {
+                // Park until Save As finishes. Do not use interruptViewloop(): it
+                // closes FileChannel. Do not honor interrupted() by skipping the
+                // wait — that busy-spins paintFrame() and keeps sharing the stream.
+                interrupted(); // clear stale interrupt from contrast/zoom/etc.
+                synchronized (viewLoopPauseLock) {
+                    if (!viewLoopParkedForOfflineExport) {
+                        log.info("ViewLoop parked for File → Save As (no grabInput/paint until export finishes)");
+                    }
+                    viewLoopParkedForOfflineExport = true;
+                    viewLoopPauseLock.notifyAll();
+                    try {
+                        while (viewLoopSuspendedForOfflineExport && !stop) {
+                            try {
+                                viewLoopPauseLock.wait();
+                            } catch (java.lang.InterruptedException e) {
+                                interrupted();
+                            }
+                        }
+                    } finally {
+                        viewLoopParkedForOfflineExport = false;
+                    }
+                }
+                return;
+            }
             if (isPaused() && !interrupted()) {
                 synchronized (viewLoopPauseLock) {
                     try {
@@ -7080,21 +7175,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Shows the post-save confirmation dialog with Show folder / Playback / OK.
+     * Shared confirmation after recording or File → Save As: add to Recent
+     * Files, then Show folder / Playback / OK. {@code htmlMessage} should be
+     * produced by {@link ShowFolderSaveConfirmation#htmlRecordingSavedMessage}
+     * or {@link ShowFolderSaveConfirmation#htmlSaveAsMessage}.
      */
-    private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
+    public void showSavedFileConfirmation(File savedFile, String htmlMessage) {
+        if (savedFile != null && recentFiles != null) {
+            recentFiles.addFile(savedFile);
+        }
         final File toPlay = savedFile;
-        String msg = "<html>Done saving recording as<br> " + savedFile.getAbsolutePath() + "<br>" + fileInfo;
+        String msg = htmlMessage != null ? htmlMessage
+                : ShowFolderSaveConfirmation.htmlRecordingSavedMessage(savedFile, null);
         ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(this, savedFile, msg, () -> {
             try {
-                getAePlayer().startPlayback(toPlay);
+                if (toPlay != null) {
+                    getAePlayer().startPlayback(toPlay);
+                }
             } catch (IOException e) {
-                log.log(Level.WARNING, "In trying play a file, caught: " + e.toString(), e);
+                log.log(Level.WARNING, "Could not play saved file: " + e.toString(), e);
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage() != null ? e.getMessage() : e.toString(),
+                        "Could not play file", JOptionPane.ERROR_MESSAGE);
             } catch (InterruptedException ex) {
                 log.info("playback interrupted");
             }
         });
         dialog.setVisible(true);
+    }
+
+    /**
+     * Shows the post-save confirmation dialog with Show folder / Playback / OK.
+     */
+    private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
+        showSavedFileConfirmation(savedFile, ShowFolderSaveConfirmation.htmlRecordingSavedMessage(savedFile, fileInfo));
     }
 
     /**
@@ -8611,7 +8725,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean old = isPaused();
         getAePlayer().setPaused(paused);
         pauseRenderingCheckBoxMenuItem.setSelected(paused);
-        if (!isSingleStep() && (getJaerViewer().getNumViewers() > 1)) {
+        // Do not interrupt during Save As: Thread.interrupt closes FileChannel and
+        // also makes pauseIdleWaitIfNeeded() skip its wait (interrupted()==true).
+        if (!viewLoopSuspendedForOfflineExport && !isSingleStep()
+                && (getJaerViewer().getNumViewers() > 1)) {
             interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         }
         getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());

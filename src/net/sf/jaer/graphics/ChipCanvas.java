@@ -590,7 +590,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     private static final Color RECORDING_OVERLAY_COLOR = new Color(1f, 0.12f, 0.12f, 0.55f);
 
     /**
-     * Overlay while recording: transparent red {@code Recording}, elapsed
+     * Overlay while recording: transparent red {@code Recording}, Apply Filters
+     * flag ({@link AEViewer#isRecordFilteredEventsEnabled()}), elapsed
      * {@code Recorded XXhYYmZZs}, plus total and remaining when a recording time
      * limit is set. Gated by {@link AEViewer#isShowRecordingOverlay()}.
      */
@@ -607,6 +608,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         String recordingLine = viewer.isRecordingPaused() ? "Recording paused" : "Recording";
+        boolean applyFilters = viewer.isRecordFilteredEventsEnabled();
+        String applyFiltersLine = applyFilters ? "Apply filters: ON" : "Apply filters: OFF";
         String limitText = viewer.getRecordingTimeLimitOverlayText();
         String[] limitLines = (limitText == null || limitText.isEmpty()) ? new String[0] : limitText.split("\n");
         try {
@@ -625,6 +628,9 @@ public class ChipCanvas implements GLEventListener, Observer {
             float y = (chip.getSizeY() * 0.92f) / scale;
             DrawGL.drawString(fontsize, xpos, y, .5f, RECORDING_OVERLAY_COLOR, recordingLine);
             y -= lineSpace;
+            DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f,
+                    applyFilters ? Color.yellow : Color.lightGray, applyFiltersLine);
+            y -= limitFontsize * 1.4f;
             for (String line : limitLines) {
                 DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.yellow, line);
                 y -= limitFontsize * 1.4f;

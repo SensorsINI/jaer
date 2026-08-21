@@ -397,6 +397,19 @@ public class Aedat4FileOutputStream implements Closeable {
                 eng.format((double) events).trim(),
                 eng.format((double) frames).trim(),
                 eng.format((double) imuSamples).trim()));
+        long tMin = Long.MAX_VALUE;
+        long tMax = Long.MIN_VALUE;
+        for (DataDefinition d : dataDefinitions) {
+            if (d.timestampStart > 0 && d.timestampStart < tMin) {
+                tMin = d.timestampStart;
+            }
+            if (d.timestampEnd > tMax) {
+                tMax = d.timestampEnd;
+            }
+        }
+        if (tMax > tMin && tMin != Long.MAX_VALUE) {
+            sb.append(", duration=").append(eng.format((tMax - tMin) * 1e-6).trim()).append("s");
+        }
         if (uncompressedPayloadBytes > 0) {
             double pct = 100.0 * compressedPayloadBytes / (double) uncompressedPayloadBytes;
             sb.append(String.format("; compressed to %.0f%% of raw (%sB -> %sB)",

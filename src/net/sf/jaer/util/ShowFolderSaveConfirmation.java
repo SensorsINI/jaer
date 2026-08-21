@@ -123,6 +123,53 @@ public class ShowFolderSaveConfirmation extends JDialog {
     }
 
     /**
+     * Convert plain text (newlines OK) to HTML body fragments for {@link JLabel}.
+     */
+    public static String plainToHtml(String text) {
+        return escapeHtml(text).replace("\n", "<br>");
+    }
+
+    /**
+     * Message for the recording-finished confirmation (path + stream summary).
+     */
+    public static String htmlRecordingSavedMessage(File savedFile, String fileInfo) {
+        StringBuilder sb = new StringBuilder("<html>Done saving recording as<br>");
+        if (savedFile != null) {
+            sb.append(escapeHtml(savedFile.getAbsolutePath()));
+        }
+        if (fileInfo != null && !fileInfo.isEmpty()) {
+            sb.append("<br>").append(plainToHtml(fileInfo));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Message for File → Save As: original recording stats (when available) and
+     * the saved file summary.
+     */
+    public static String htmlSaveAsMessage(File savedFile, String afterInfo, String sourceInfo) {
+        StringBuilder sb = new StringBuilder("<html>Done Save As");
+        if (sourceInfo != null && !sourceInfo.isEmpty()) {
+            sb.append("<br><br><b>Original</b><br>").append(plainToHtml(sourceInfo));
+        }
+        sb.append("<br><br><b>Saved as</b>");
+        if (savedFile != null) {
+            sb.append("<br>").append(escapeHtml(savedFile.getAbsolutePath()));
+        }
+        if (afterInfo != null && !afterInfo.isEmpty()) {
+            sb.append("<br>").append(plainToHtml(afterInfo));
+        }
+        return sb.toString();
+    }
+
+    public static String escapeHtml(String s) {
+        if (s == null || s.isEmpty()) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    /**
      * Opens the file manager at {@code file}'s folder (and selects the file
      * when {@link Desktop.Action#BROWSE_FILE_DIR} is supported).
      */

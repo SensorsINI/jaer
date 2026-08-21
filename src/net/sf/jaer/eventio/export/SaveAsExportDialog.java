@@ -8,10 +8,14 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.prefs.Preferences;
@@ -27,11 +31,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
@@ -52,6 +59,9 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private final JComboBox<SaveAsOptions.Format> formatCombo = new JComboBox<>(SaveAsOptions.Format.values());
     private final JCheckBox useMarkersCb = new JCheckBox("Use IN and OUT markers", true);
     private final JCheckBox applyFiltersCb = new JCheckBox("Apply EventFilters", true);
+    private final JPanel filterSummaryPanel = new JPanel(new BorderLayout(6, 0));
+    private final JLabel filterSummaryLabel = new JLabel();
+    private final JButton openFiltersButton = new JButton("Open Filters…");
     private final JCheckBox writeFramesCb = new JCheckBox("Write XXX-frames/ PNGs", true);
     private final JCheckBox writeImuCb = new JCheckBox("Write XXX-imu.csv", true);
     private final JComboBox<String> aedat4CompressionCombo = new JComboBox<>(new String[]{
@@ -78,6 +88,8 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private final JButton startButton = new JButton("Save");
     private final JButton cancelButton = new JButton("Cancel");
     private final JButton closeButton = new JButton("Close");
+    /** Top-level chain filters we listen to for {@code filterEnabled}. */
+    private final List<EventFilter2D> filterEnabledListenTargets = new ArrayList<>();
 
     public SaveAsExportDialog(AEViewer viewer) {
         super(viewer, "Save As", false);
@@ -88,6 +100,7 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         updateFormatUi();
         updateHvsUi();
         updateRecordingUi(false);
+        bindFilterEnabledListeners();
         pack();
         setLocationRelativeTo(viewer);
     }
@@ -108,6 +121,7 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
                 if (d.exporter == null || d.exporter.isDone()) {
                     d.syncToOpenRecording();
                 }
+                d.updateFilterSummary();
                 d.toFront();
                 d.setVisible(true);
                 return;
@@ -182,7 +196,20 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
                 + "Unchecked: write extracted events with no filtering.<br>"
                 + "AEDAT-4 Save As is the preferred way to clip or filter a recording; "
                 + "the recording button still re-records at playback pace.</html>");
+        applyFiltersCb.addItemListener(e -> updateFilterSummary());
         form.add(applyFiltersCb, c);
+
+        row++;
+        c.gridy = row;
+        filterSummaryLabel.setVerticalAlignment(JLabel.TOP);
+        openFiltersButton.setToolTipText("Open the Filters window to enable, disable, or reorder EventFilters before saving");
+        openFiltersButton.addActionListener(e -> {
+            viewer.showFilters(true);
+            updateFilterSummary();
+        });
+        filterSummaryPanel.add(filterSummaryLabel, BorderLayout.CENTER);
+        filterSummaryPanel.add(openFiltersButton, BorderLayout.EAST);
+        form.add(filterSummaryPanel, c);
 
         JPanel csvPanel = new JPanel(new GridBagLayout());
         csvPanel.setBorder(BorderFactory.createTitledBorder("CSV / text options"));
@@ -310,6 +337,18 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         getContentPane().add(form, BorderLayout.CENTER);
         getContentPane().add(buttons, BorderLayout.SOUTH);
         updateCsvHint();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowActivated(WindowEvent e) {
+                bindFilterEnabledListeners();
+                updateFilterSummary();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                unbindFilterEnabledListeners();
+            }
+        });
     }
 
     private void loadPrefs() {
@@ -339,6 +378,8 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private void syncToOpenRecording() {
         pathField.setText(defaultOutputPath());
         updateHvsUi();
+        bindFilterEnabledListeners();
+        updateFilterSummary();
     }
 
     private String defaultOutputPath() {
@@ -409,6 +450,83 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
             writeFramesCb.setSelected(false);
             writeImuCb.setSelected(false);
         }
+    }
+
+    /**
+     * Show which EventFilters would run if Apply EventFilters is checked.
+     * Updates immediately when {@link EventFilter#setFilterEnabled} fires
+     * {@code filterEnabled}, and when this dialog is activated.
+     */
+    private void updateFilterSummary() {
+        boolean apply = applyFiltersCb.isSelected();
+        boolean wasVisible = filterSummaryPanel.isVisible();
+        filterSummaryPanel.setVisible(apply);
+        openFiltersButton.setEnabled(apply && (exporter == null || exporter.isDone()));
+        boolean textChanged = false;
+        if (apply) {
+            String html = buildEnabledFiltersHtml();
+            textChanged = !html.equals(filterSummaryLabel.getText());
+            if (textChanged) {
+                filterSummaryLabel.setText(html);
+            }
+        }
+        if ((wasVisible != apply || textChanged) && isDisplayable()) {
+            pack();
+        }
+    }
+
+    /**
+     * Listen to each top-level filter's {@code filterEnabled} so the summary
+     * updates while FilterFrame and this dialog are both open.
+     */
+    private void bindFilterEnabledListeners() {
+        unbindFilterEnabledListeners();
+        FilterChain chain = viewer.getChip() != null ? viewer.getChip().getFilterChain() : null;
+        if (chain == null) {
+            return;
+        }
+        for (EventFilter2D f : chain) {
+            if (f == null) {
+                continue;
+            }
+            f.getSupport().addPropertyChangeListener("filterEnabled", this);
+            filterEnabledListenTargets.add(f);
+        }
+    }
+
+    private void unbindFilterEnabledListeners() {
+        for (EventFilter2D f : filterEnabledListenTargets) {
+            if (f != null) {
+                f.getSupport().removePropertyChangeListener("filterEnabled", this);
+            }
+        }
+        filterEnabledListenTargets.clear();
+    }
+
+    private String buildEnabledFiltersHtml() {
+        FilterChain chain = viewer.getChip() != null ? viewer.getChip().getFilterChain() : null;
+        if (chain == null) {
+            return "<html>No filter chain on this chip.";
+        }
+        if (!chain.isFilteringEnabled()) {
+            return "<html><b>Filter processing is globally off.</b> Export will be unfiltered.<br>"
+                    + "Turn it on in the Filters window, or uncheck Apply EventFilters.";
+        }
+        List<String> names = new ArrayList<>();
+        for (EventFilter2D f : chain) {
+            if (f != null && f.isFilterEnabled()) {
+                names.add(f.getShortName());
+            }
+        }
+        if (names.isEmpty()) {
+            return "<html>No EventFilters are enabled — export will be <b>unfiltered</b>.<br>"
+                    + "Enable a denoiser in Filters if you meant to clean the file.";
+        }
+        StringBuilder sb = new StringBuilder("<html>Will apply in chain order:");
+        for (String name : names) {
+            sb.append("<br>&nbsp;&nbsp;").append(ShowFolderSaveConfirmation.escapeHtml(name));
+        }
+        return sb.toString();
     }
 
     private void updatePathExtension() {
@@ -507,10 +625,27 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         formatCombo.setEnabled(!running);
         pathField.setEnabled(!running);
         aedat4CompressionCombo.setEnabled(!running);
+        applyFiltersCb.setEnabled(!running);
+        useMarkersCb.setEnabled(!running);
+        updateFilterSummary();
+    }
+
+    @Override
+    public void dispose() {
+        unbindFilterEnabledListeners();
+        super.dispose();
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if ("filterEnabled".equals(evt.getPropertyName())) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                updateFilterSummary();
+            } else {
+                SwingUtilities.invokeLater(this::updateFilterSummary);
+            }
+            return;
+        }
         if ("progress".equals(evt.getPropertyName())) {
             progressBar.setValue((Integer) evt.getNewValue());
         } else if (SaveAsExporter.PROP_STATUS.equals(evt.getPropertyName())) {
@@ -520,34 +655,18 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
             try {
                 SaveAsExporter.Result r = exporter.get();
                 progressBar.setValue(100);
-                String msg = String.format("<html>Wrote %,d events", r.events);
-                if (r.frames > 0) {
-                    msg += String.format(", %,d frames", r.frames);
-                }
-                if (r.imuSamples > 0) {
-                    msg += String.format(", %,d IMU samples", r.imuSamples);
-                }
-                if (r.badEvents > 0) {
-                    msg += String.format("<br>Skipped %,d bad events", r.badEvents);
-                }
-                msg += " to " + r.outputFile.getName();
                 statusLabel.setText(r.badEvents > 0
                         ? String.format("Done (skipped %,d bad events).", r.badEvents)
                         : "Done.");
                 final File exported = r.outputFile;
-                new ShowFolderSaveConfirmation(this, exported, msg, () -> {
-                    try {
-                        SaveAsExportDialog.this.dispose();
-                        viewer.getAePlayer().startPlayback(exported);
-                    } catch (IOException e) {
-                        JOptionPane.showMessageDialog(viewer,
-                                e.getMessage() != null ? e.getMessage() : e.toString(),
-                                "Could not play exported file", JOptionPane.ERROR_MESSAGE);
-                    } catch (InterruptedException ex) {
-                        Thread.currentThread().interrupt();
-                    }
-                }, "Play exported file", "Save As finished",
-                        "Open this file in AEViewer (replaces the current recording)").setVisible(true);
+                String after = r.outputFileInfo;
+                if (r.badEvents > 0) {
+                    after = (after == null ? "" : after + "\n")
+                            + String.format("Skipped %,d bad events", r.badEvents);
+                }
+                String msg = ShowFolderSaveConfirmation.htmlSaveAsMessage(exported, after, r.sourceFileInfo);
+                dispose();
+                viewer.showSavedFileConfirmation(exported, msg);
             } catch (CancellationException | InterruptedException cancel) {
                 statusLabel.setText("Cancelled.");
                 progressBar.setValue(0);
