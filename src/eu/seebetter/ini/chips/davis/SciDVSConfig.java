@@ -58,6 +58,8 @@ import net.sf.jaer.util.RemoteControlled;
  * @author rpgraca
  */
 public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInterface, DavisTweaks, ChipControlPanel, RemoteControlled {
+
+    private static final String LEGACY_PREFERENCE_PREFIX = "SciDVS.";
     // these pots for DVSTweaks
     protected AddressedIPotCF refrChAmp, lpBuf;
 
@@ -178,12 +180,38 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 
     @Override
     public void loadPreferences() {
+        migrateLegacyPreferenceKeys();
         super.loadPreferences();
         // DavisConfig invokes this override from its constructor before the SciDVS fields
         // are initialized. Once they exist, APS.GlobalShutter is the source of truth for
         // the corresponding on-chip bit, including after imported preferences are loaded.
         if ((chipGlobalShutter != null) && (globalShutter != null)) {
             chipGlobalShutter.set(globalShutter.isSet());
+        }
+    }
+
+    /**
+     * The SciDVS profile was historically exported from a shared package node,
+     * where keys were namespaced with {@code SciDVS.}. The current chip-specific
+     * node already provides that namespace, while the live configuration objects
+     * read keys such as {@code DVS.Run} and {@code APS.Exposure}. Normalize an
+     * imported or migrated profile before any configuration object reads it.
+     * Existing canonical values win over legacy aliases.
+     */
+    private void migrateLegacyPreferenceKeys() {
+        try {
+            for (final String key : getChip().getPrefs().keys()) {
+                if (!key.startsWith(LEGACY_PREFERENCE_PREFIX)) {
+                    continue;
+                }
+                final String canonicalKey = key.substring(LEGACY_PREFERENCE_PREFIX.length());
+                if (getChip().getPrefs().get(canonicalKey, null) == null) {
+                    getChip().getPrefs().put(canonicalKey, getChip().getPrefs().get(key, ""));
+                }
+                getChip().getPrefs().remove(key);
+            }
+        } catch (final Exception e) {
+            Biasgen.log.warning("Could not normalize legacy SciDVS preferences: " + e);
         }
     }
 

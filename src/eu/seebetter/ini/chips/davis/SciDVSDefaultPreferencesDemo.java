@@ -45,7 +45,8 @@ public class SciDVSDefaultPreferencesDemo {
 
     private static final String PREFS_PATH = "jaer/chips/SciDVS";
     private static final String DESIRED_PATH = "biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml";
-    private static final String EXPOSURE_KEY = "SciDVS.APS.Exposure";
+    private static final String EXPOSURE_KEY = "APS.Exposure";
+    private static final String DVS_RUN_KEY = "DVS.Run";
     private static final String EXPECTED_EXPOSURE = "5000";
     private static final int EXPECTED_IMPORTED_KEYS = 273;
     private static final Logger LOG = Logger.getLogger("net.sf.jaer");
@@ -163,9 +164,12 @@ public class SciDVSDefaultPreferencesDemo {
             System.out.println("[U1.explicit-path] FAIL: did not import canonical settings "
                     + "(asset absent / default preferences not wired)");
             failures++;
-        } else if (countSciDVSKeys(node) != EXPECTED_IMPORTED_KEYS) {
+        } else if (countImportedKeys(node) != EXPECTED_IMPORTED_KEYS) {
             System.out.println("[U1.explicit-path] FAIL: imported key count "
-                    + countSciDVSKeys(node) + " != " + EXPECTED_IMPORTED_KEYS);
+                    + countImportedKeys(node) + " != " + EXPECTED_IMPORTED_KEYS);
+            failures++;
+        } else if (countLegacyPrefixedKeys(node) != 0) {
+            System.out.println("[U1.explicit-path] FAIL: legacy SciDVS-prefixed keys remain");
             failures++;
         }
         return failures;
@@ -193,6 +197,15 @@ public class SciDVSDefaultPreferencesDemo {
             failures++;
         }
 
+        final boolean dvsRun = node.getBoolean(DVS_RUN_KEY, false);
+        final boolean configDvsRun = ((SciDVSConfig) chip.getBiasgen()).isCaptureEventsEnabled();
+        System.out.println("[U1.fresh-first-use] " + DVS_RUN_KEY + "=" + dvsRun
+                + " configCaptureEvents=" + configDvsRun);
+        if (!dvsRun || !configDvsRun) {
+            System.out.println("[U1.fresh-first-use] FAIL: canonical DVS.Run did not reach live configuration");
+            failures++;
+        }
+
         final boolean marker = node.getBoolean(Chip.PREFERENCES_LOADED_ONCE_KEY, false);
         System.out.println("[U1.fresh-first-use] " + Chip.PREFERENCES_LOADED_ONCE_KEY + "=" + marker);
         if (!marker) {
@@ -200,8 +213,8 @@ public class SciDVSDefaultPreferencesDemo {
             failures++;
         }
 
-        final int keys = countSciDVSKeys(node);
-        System.out.println("[U1.fresh-first-use] imported SciDVS key count=" + keys);
+        final int keys = countImportedKeys(node);
+        System.out.println("[U1.fresh-first-use] imported canonical key count=" + keys);
         if (keys != EXPECTED_IMPORTED_KEYS) {
             System.out.println("[U1.fresh-first-use] FAIL: imported keys " + keys
                     + " != " + EXPECTED_IMPORTED_KEYS);
@@ -372,7 +385,21 @@ public class SciDVSDefaultPreferencesDemo {
         }
     }
 
-    private static int countSciDVSKeys(final Preferences node) {
+    private static int countImportedKeys(final Preferences node) {
+        try {
+            int n = 0;
+            for (final String key : node.keys()) {
+                if (!Chip.PREFERENCES_LOADED_ONCE_KEY.equals(key)) {
+                    n++;
+                }
+            }
+            return n;
+        } catch (final Exception e) {
+            return -1;
+        }
+    }
+
+    private static int countLegacyPrefixedKeys(final Preferences node) {
         try {
             int n = 0;
             for (final String key : node.keys()) {
