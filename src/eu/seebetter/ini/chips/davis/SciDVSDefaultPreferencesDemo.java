@@ -43,7 +43,7 @@ import org.objenesis.ObjenesisStd;
 /** Headless executable test. Exit 1 => production contract failure (RED). */
 public class SciDVSDefaultPreferencesDemo {
 
-    private static final String PREFS_PATH = "eu/seebetter/ini/chips/davis";
+    private static final String PREFS_PATH = "jaer/chips/SciDVS";
     private static final String DESIRED_PATH = "biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml";
     private static final String EXPOSURE_KEY = "SciDVS.APS.Exposure";
     private static final String EXPECTED_EXPOSURE = "5000";

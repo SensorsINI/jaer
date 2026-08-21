@@ -3,16 +3,12 @@
 <preferences EXTERNAL_XML_VERSION="1.0">
   <root type="user">
     <map/>
-    <node name="eu">
+    <node name="jaer">
       <map/>
-      <node name="seebetter">
+      <node name="chips">
         <map/>
-        <node name="ini">
-          <map/>
-          <node name="chips">
-            <map/>
-            <node name="davis">
-              <map>
+        <node name="SciDVS">
+          <map>
                 <entry key="SciDVS.APS.ColumnSettle" value="30"/>
                 <entry key="SciDVS.APS.Exposure" value="5000"/>
                 <entry key="SciDVS.APS.FrameDelay" value="1000"/>
@@ -286,9 +282,7 @@
                 <entry key="SciDVS.VideoControl.displayEvents" value="true"/>
                 <entry key="SciDVS.VideoControl.displayFrames" value="false"/>
                 <entry key="SciDVS.VideoControl.separateAPSByColor" value="false"/>
-              </map>
-            </node>
-          </node>
+          </map>
         </node>
       </node>
     </node>
