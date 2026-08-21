@@ -1067,7 +1067,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     | ((type & 1) << DavisChip.POLSHIFT);
         }
         if (extractor != null) {
-            return extractor.getAddressFromCell(x, y, type);
+            // getAddressFromCell expects jAER display Y (bottom origin), the inverse of
+            // extractPacket. DV/OpenCV files store top-left Y — convert first. jAER-written
+            // files already store display Y (same as Davis).
+            int py = y;
+            if (dvOpenCvCoordinates) {
+                final int sy = chip.getSizeY();
+                if (sy > 1) {
+                    py = sy - 1 - y;
+                }
+            }
+            return extractor.getAddressFromCell(x, py, type);
         }
         return (x & 0xffff) | ((y & 0xffff) << 16) | (type << 31);
     }

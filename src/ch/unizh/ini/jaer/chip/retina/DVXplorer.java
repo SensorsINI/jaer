@@ -805,12 +805,27 @@ public class DVXplorer extends AETemporalConstastRetina {
             // packing made every event look like Off.
             setTypemask(POLARITY_MASK);
             setTypeshift((byte) POLARITY_SHIFT);
-            
-            boolean isFlipX = (boolean)(dvsFlipX > 0);
-            boolean isFlipY = (boolean)(dvsFlipY > 0);
-            setFlipx(isFlipX);
-            setFlipy(isFlipY);
+
+            // extractPacket always maps raw Y (sensor / top origin) to jAER bottom-origin
+            // and never flips X. getAddressFromCell must be that inverse so AEDAT-4
+            // packAddress → extractPacket matches live view. FPGA dvsFlipX/Y bits are
+            // not applied in extractPacket (only dual-binning in the USB decoder).
+            setFlipx(false);
+            setFlipy(true);
             setFliptype(false);
+        }
+
+        /**
+         * Inverse of {@link #extractPacket}: display (x, y, On=1) → USB / AEDAT-2 raw.
+         * Live extraction sets {@code e.y = (sizeY-1) - rawY}; packing must undo that
+         * or jAER-written AEDAT-4 plays back upside down.
+         */
+        @Override
+        public int getAddressFromCell(int x, int y, int type) {
+            final int rawY = (sizeY - 1) - y;
+            return ((x << XSHIFT) & XMASK)
+                    | ((rawY << YSHIFT) & YMASK)
+                    | ((type << POLARITY_SHIFT) & POLARITY_MASK);
         }
 
         /**
