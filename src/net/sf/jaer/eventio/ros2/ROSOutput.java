@@ -497,12 +497,13 @@ public class ROSOutput extends EventFilter2D {
     }
 
     public synchronized void setPublishRos2(boolean publishRos2) {
+        boolean old = this.publishRos2;
         this.publishRos2 = publishRos2;
         putBoolean("publishRos2", publishRos2);
-        if (isFilterEnabled()) {
+        if (isFilterEnabled() && old != publishRos2) {
             startSinks();
         }
-        getSupport().firePropertyChange("publishRos2", !publishRos2, publishRos2);
+        getSupport().firePropertyChange("publishRos2", old, publishRos2);
     }
 
     public boolean isPublishFoxglove() {
@@ -513,7 +514,7 @@ public class ROSOutput extends EventFilter2D {
         boolean old = this.publishFoxglove;
         this.publishFoxglove = publishFoxglove;
         putBoolean("publishFoxglove", publishFoxglove);
-        if (isFilterEnabled()) {
+        if (isFilterEnabled() && old != publishFoxglove) {
             startSinks();
         }
         getSupport().firePropertyChange("publishFoxglove", old, publishFoxglove);
