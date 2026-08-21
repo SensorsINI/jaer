@@ -1,6 +1,6 @@
 # jAER distribution packaging
 
-Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_macos_*.dmg`, Apple Silicon `jAER_macos_aarch64_*.dmg` from media id 39, `jAER_unix_*.sh`). Each file is ~220–230 MB for 3.3.0 (bundled [Adoptium](https://adoptium.net/) Temurin 25; per-OS OpenCV), which is within GitHub’s 2 GiB-per-asset limit. Keep binaries for the latest 2–3 releases; prune older assets with `scripts/prune-old-release-assets.ps1`.
+Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_macos_*.dmg`, Apple Silicon `jAER_macos_aarch64_*.dmg` from media id 39, `jAER_unix_*.sh`). Each file is ~220–230 MB for 3.3.0 (bundled [Adoptium](https://adoptium.net/) Temurin 25; per-OS OpenCV), which is within GitHub’s 2 GiB-per-asset limit. Keep binaries for the latest 2–3 releases; prune older assets with `scripts/prune-old-release-assets.ps1`. The install4j project is [`../install4j/jaer.install4j`](../install4j/jaer.install4j).
 
 | Channel | Status | Details |
 |---------|--------|---------|

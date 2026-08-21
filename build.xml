@@ -514,7 +514,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <copy file="images/1024w/SplashScreen.png" todir="build/classes"/>
     </target>
 
-    <!-- Windows/macOS/Linux launchers come from install4j (ant release / jaer.install4j).
+    <!-- Windows/macOS/Linux launchers come from install4j (ant release / install4j/jaer.install4j).
          The old exe4j jAERViewer_win64.exe path was removed. -->
 
     <target name="-post-jar" depends="-revert-project-properties-if-only-datestamp">
@@ -618,12 +618,18 @@ and put it on PATH (or set JAVA_HOME).</fail>
         </java>
     </target>
 
+    <!-- install4j project lives in install4j/; media still goes to currentInstallers/. -->
+    <property name="jaer.install4j.dir" value="${basedir}/install4j"/>
+    <property name="jaer.install4j.project" value="${jaer.install4j.dir}/jaer.install4j"/>
+    <property name="jaer.install4j.license.primary" value="${jaer.install4j.dir}/license.txt"/>
+    <property name="jaer.install4j.license.signpath" value="${basedir}/signpath/install4j-license.txt"/>
+
     <target name="-sync-install4j-version" depends="-load-version">
-        <replaceregexp file="${basedir}/jaer.install4j"
+        <replaceregexp file="${jaer.install4j.project}"
                        match='(&lt;application\b[^&gt;]*\bversion=")[^"]*(")'
                        replace="\1${jaer.version}\2"
                        byline="true"/>
-        <echo message="Synced jaer.install4j application version to ${jaer.version}"/>
+        <echo message="Synced install4j/jaer.install4j application version to ${jaer.version}"/>
     </target>
 
     <target name="-confirm-release" depends="-load-version">
@@ -636,22 +642,46 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <fail unless="jaer.release.confirmed" message="Release cancelled (reply y or yes to proceed)."/>
     </target>
 
-    <!-- Optional local license from signpath/install4j-license.txt (gitignored; GH Actions uses secret). -->
+    <!-- Optional local license: install4j/license.txt, else signpath/install4j-license.txt (both gitignored). -->
     <target name="-probe-install4j-license-local">
-        <available file="${basedir}/signpath/install4j-license.txt"
-                   property="jaer.install4j.license.file.exists"/>
-        <condition property="jaer.install4j.license.file.usable">
+        <available file="${jaer.install4j.license.primary}"
+                   property="jaer.install4j.license.primary.exists"/>
+        <available file="${jaer.install4j.license.signpath}"
+                   property="jaer.install4j.license.signpath.exists"/>
+        <condition property="jaer.install4j.license.primary.usable">
             <and>
-                <isset property="jaer.install4j.license.file.exists"/>
-                <length file="${basedir}/signpath/install4j-license.txt" when="greater" length="0"/>
+                <isset property="jaer.install4j.license.primary.exists"/>
+                <length file="${jaer.install4j.license.primary}" when="greater" length="0"/>
+            </and>
+        </condition>
+        <condition property="jaer.install4j.license.signpath.usable">
+            <and>
+                <isset property="jaer.install4j.license.signpath.exists"/>
+                <length file="${jaer.install4j.license.signpath}" when="greater" length="0"/>
             </and>
         </condition>
     </target>
 
-    <target name="-load-install4j-license-local" depends="-probe-install4j-license-local"
-            if="jaer.install4j.license.file.usable">
+    <target name="-load-install4j-license-primary" depends="-probe-install4j-license-local"
+            if="jaer.install4j.license.primary.usable">
         <loadfile property="jaer.install4j.license"
-                  srcFile="${basedir}/signpath/install4j-license.txt">
+                  srcFile="${jaer.install4j.license.primary}">
+            <filterchain>
+                <striplinebreaks/>
+                <tokenfilter>
+                    <trim/>
+                </tokenfilter>
+            </filterchain>
+        </loadfile>
+        <echo message="Using install4j license from install4j/license.txt"/>
+    </target>
+
+    <target name="-load-install4j-license-signpath"
+            depends="-probe-install4j-license-local,-load-install4j-license-primary"
+            if="jaer.install4j.license.signpath.usable"
+            unless="jaer.install4j.license">
+        <loadfile property="jaer.install4j.license"
+                  srcFile="${jaer.install4j.license.signpath}">
             <filterchain>
                 <striplinebreaks/>
                 <tokenfilter>
@@ -662,9 +692,12 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <echo message="Using install4j license from signpath/install4j-license.txt"/>
     </target>
 
+    <target name="-load-install4j-license-local"
+            depends="-load-install4j-license-primary,-load-install4j-license-signpath"/>
+
     <target name="-require-install4j-project">
-        <available file="${basedir}/jaer.install4j" property="jaer.install4j.exists"/>
-        <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
+        <available file="${jaer.install4j.project}" property="jaer.install4j.exists"/>
+        <fail unless="jaer.install4j.exists" message="install4j/jaer.install4j not found"/>
     </target>
 
     <!-- Keep in sync with ivy.xml org.openpnp:opencv rev. Fat jar stays in lib/ for
@@ -725,7 +758,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -734,7 +767,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -765,7 +798,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -775,7 +808,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -857,8 +890,8 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <available file="${dist.jar}" property="dist.jar.exists"/>
         <fail unless="dist.jar.exists"
               message="Missing ${dist.jar}. Build it first: ant jar   or   ant jar-fast"/>
-        <available file="${basedir}/jaer.install4j" property="jaer.install4j.exists"/>
-        <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
+        <available file="${jaer.install4j.project}" property="jaer.install4j.exists"/>
+        <fail unless="jaer.install4j.exists" message="install4j/jaer.install4j not found"/>
     </target>
 
     <target name="replace-installed-jar" depends="-require-dist-jar,checkos"
@@ -875,14 +908,14 @@ and put it on PATH (or set JAVA_HOME).</fail>
             <arg value="-SourceJar"/>
             <arg file="${dist.jar}"/>
             <arg value="-Install4jProject"/>
-            <arg file="${basedir}/jaer.install4j"/>
+            <arg file="${jaer.install4j.project}"/>
         </exec>
         <exec executable="bash" osfamily="unix" searchpath="true"
               failonerror="true" dir="${basedir}">
             <env key="JAER_INSTALL_DIR" value="${jaer.install.dir}"/>
             <arg file="${basedir}/scripts/replace-installed-jaer-jar.sh"/>
             <arg file="${dist.jar}"/>
-            <arg file="${basedir}/jaer.install4j"/>
+            <arg file="${jaer.install4j.project}"/>
         </exec>
     </target>
 </project>

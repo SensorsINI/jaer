@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
-  <directoryPresets config="./images/1024w" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.3.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
+  <directoryPresets config="../images/1024w" />
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.3.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
-      <principalLanguage id="en" customLocalizationFile="./packaging/install4j/install4j-custom-resources.utf8" />
+      <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
     <!-- 3.3.0: Adoptium Temurin 25 LTS (matches ant run). 3.2.0 media stays 21.0.12. -->
     <jreBundles jdkProviderId="Adoptium" release="25/jdk-25.0.4+7">
@@ -35,13 +35,14 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
+      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
         <exclude>
-          <!-- Secrets / gitignored credentials. file="." packs the local tree; a missing
+          <!-- Secrets / gitignored credentials. file=".." packs the repo root; a missing
                exclude here ships Dropbox secrets in every local ant release. CI is safer
                only because these paths are not in git — still exclude them. -->
           <entry location="signpath" />
           <entry location=".signpath" />
+          <entry location="install4j" />
           <entry location="install4j License key  2024-01-02 0834.txt" />
           <entry location="install4j_windows-x64_13_0_2.exe" />
           <!-- VCS / IDE / CI / editor — not needed to run jAER. .install4j is created by
@@ -60,7 +61,6 @@
           <entry location="jaer.code-workspace" />
           <!-- Build system / Ivy / packaging. -->
           <entry location="build" />
-          <entry location="build.cmd" />
           <entry location="build.xml" />
           <entry location="docs" />
           <entry location="dist/javadoc" />
@@ -158,12 +158,12 @@
       <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 1024w
            next to the exe for -splash: and install4j.exeDir. 256h is compile-time only
            (iconImageFiles); fileEntry.subDirectory does not relocate it. -->
-      <fileEntry mountPoint="24" file="./images/1024w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <fileEntry mountPoint="24" file="../images/1024w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
-      <dirEntry mountPoint="9021" file="./build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
-      <dirEntry mountPoint="9022" file="./build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
-      <dirEntry mountPoint="9023" file="./build/opencv-slim/macosx-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
-      <dirEntry mountPoint="9024" file="./build/opencv-slim/macosx-arm64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9021" file="../build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9022" file="../build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9023" file="../build/opencv-slim/macosx-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9024" file="../build/opencv-slim/macosx-arm64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
     </entries>
   </files>
   <launchers>
@@ -173,7 +173,7 @@
       </executable>
       <!-- Native splash: not java.awt.SplashScreen. writeMessage() updates statusLine
            off the EDT. Do not show a Swing window until AEViewer or this splash closes. -->
-      <splashScreen show="true" width="1024" height="1024" bitmapFile="./images/1024w/SplashScreen.png" textOverlay="true">
+      <splashScreen show="true" width="1024" height="1024" bitmapFile="../images/1024w/SplashScreen.png" textOverlay="true">
         <text>
           <statusLine x="45" y="1000" text="Press ESC to abort startup" />
         </text>
@@ -191,8 +191,8 @@
       <vmOptionsFile mode="none" />
       <iconImageFiles>
         <!-- Windows .ico / multi-res icons: keep 256 for shell icons; splash above uses 1024. -->
-        <file path="./images/256h/SplashScreen.png" />
-        <file path="./images/1024w/SplashScreen.png" />
+        <file path="../images/256h/SplashScreen.png" />
+        <file path="../images/1024w/SplashScreen.png" />
       </iconImageFiles>
     </launcher>
   </launchers>
@@ -204,7 +204,7 @@
           <property name="customIconImageFiles">
             <add>
               <object class="com.install4j.api.beans.ExternalFile">
-                <string>./images/256h/SplashScreen.png</string>
+                <string>../images/256h/SplashScreen.png</string>
               </object>
             </add>
           </property>
@@ -430,6 +430,7 @@ leftoverTrees.add(new File(installRoot, "docs"));
 leftoverTrees.add(new File(installRoot, "test"));
 leftoverTrees.add(new File(installRoot, "nbproject"));
 leftoverTrees.add(new File(installRoot, "packaging"));
+leftoverTrees.add(new File(installRoot, "install4j"));
 leftoverTrees.add(new File(installRoot, "installers"));
 leftoverTrees.add(new File(installRoot, "currentInstallers"));
 leftoverTrees.add(new File(installRoot, "jaer-older-installers"));
@@ -459,7 +460,7 @@ String[] leftoverFiles = {
     "_ivy_report.xml", "_ivy_try.xml", "davis-color-renderer-benchmark.sh",
     "dvs-slice-avi-writer.exe", "dvs-slice-avi-writer.sh", "dvs-slice-avi-writer.exe4j",
     "jAERViewer_linux.sh", "jAERViewer_linux.xml", "jAERViewer_win64.exe", "jAERViewer.exe",
-    "build.xml", "build.cmd", "ivy.xml", "ivysettings.xml", "jaer.install4j", "manifest.mf",
+    "build.xml", "build.cmd", "ivy.xml", "ivysettings.xml", "jaer.install4j", "jaer.ico", "jaer.desktop", "manifest.mf",
     "README-releasing-tagging.md", "dist/jAER.jar.7z"
 };
 for (String name : leftoverFiles) {

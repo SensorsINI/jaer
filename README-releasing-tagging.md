@@ -41,7 +41,7 @@ After a rebuild, hashes in `updates.xml` change. Repeat `ant copy-updates-xml`, 
 
 `VERSION.txt` at the repo root is the single source of truth. It drives:
 
-- install4j application version (synced into `jaer.install4j`; also `install4jc --release=...`)
+- install4j application version (synced into `install4j/jaer.install4j`; also `install4jc --release=...`)
 - splash overlay text (full `VERSION.txt`, e.g. 3.2.0)
 - About / `BUILDVERSION.txt` first line on jar build
 
@@ -52,13 +52,13 @@ See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsIN
 Prerequisites:
 
 1. install4j on PATH (`install4jc`) -- https://www.ej-technologies.com/resources/install4j/v/13.0/help/doc/cli/compiler.html
-2. License (local: `signpath/install4j-license.txt`, gitignored)
+2. License (local: `install4j/license.txt`, gitignored; fallback `signpath/install4j-license.txt`)
 3. `VERSION.txt` set
 4. `images/SplashScreen.png` is the text-free 1024x1024 base art (`images/SplashScreen.pdf` when the art changes)
 
     ant release
 
-On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
+On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
 
 Splash only: `ant generate-splash`. install4j launcher splash uses the 1024w PNG; keep 256h for Windows shell / wizard icons.
 
@@ -89,14 +89,14 @@ Splash only (no installer build): ant generate-splash
 Use the install4j IDE when you change installer options other than version
 (screens, file sets, JRE bundles, code signing, media types, etc.):
 
-1. Open jaer.install4j in the install4j GUI
+1. Open install4j/jaer.install4j in the install4j GUI
 2. Confirm General Settings -> Application Info version matches VERSION.txt
    (ant release keeps this in sync; after manual GUI edits, re-check VERSION.txt)
 3. Dry-run / test build from the GUI Build step (or CLI test mode) before a full media build:
-       install4jc --test jaer.install4j
+       install4jc --test install4j/jaer.install4j
    --test does not write media files; use it to validate project config.
    For a faster platform-only smoke test you can also use the IDE "Build" selection
-   or: install4jc --build-selected jaer.install4j
+   or: install4jc --build-selected install4j/jaer.install4j
 4. When config looks good, prefer ant release again so VERSION.txt, splash, clean jar,
    and install4jc --release stay consistent
 
@@ -141,7 +141,8 @@ Do not commit tokens or license keys.
 
   signpath/signpath-organization-id.txt   — org UUID (yours may already be filled)
   signpath/signpath-api-token.txt         — API token of SignPath CI user "CI builds" (not your personal token)
-  signpath/install4j-license.txt          — install4j license key (stub; fill in)
+  install4j/license.txt               — install4j license key (preferred; gitignored)
+  signpath/install4j-license.txt      — same key (fallback for Ant / this sync script)
   signpath/signpath-project-slug.txt      — default jaer
   signpath/signpath-signing-policy-slug.txt — test-signing2 (workflow hardcodes this; use release-signing later when VALID)
 
@@ -149,7 +150,7 @@ Recreate stubs if needed:
 
     powershell -File scripts/init-signpath-local.ps1
 
-Local Ant reads install4j-license.txt when non-empty (`ant release` /
+Local Ant reads `install4j/license.txt` when non-empty, else `signpath/install4j-license.txt` (`ant release` /
 `ant release-windows-ci`) so you need not set session env vars.
 
 ### Push credentials to GitHub Actions (not to git)

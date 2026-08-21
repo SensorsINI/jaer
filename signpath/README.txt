@@ -17,8 +17,9 @@ Fill in these files (one value per file; see stubs created beside this README):
       this same value; GitHub has no separate submitter setting.
 
   install4j-license.txt
-      Your install4j license key (single line). Used by local Ant when
-      present; also synced to GitHub Actions secret INSTALL4J_LICENSE.
+      Your install4j license key (single line). Fallback for local Ant and
+      this folder's sync script when install4j/license.txt is missing.
+      Preferred location: install4j/license.txt (gitignored).
 
   signpath-project-slug.txt
       Default: jaer

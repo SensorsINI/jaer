@@ -244,7 +244,7 @@ if (-not $SourceJar) {
     $SourceJar = Join-Path $repoRoot "dist\jAER.jar"
 }
 if (-not $Install4jProject) {
-    $Install4jProject = Join-Path $repoRoot "jaer.install4j"
+    $Install4jProject = Join-Path $repoRoot "install4j\jaer.install4j"
 }
 $SourceJar = [System.IO.Path]::GetFullPath($SourceJar)
 $Install4jProject = [System.IO.Path]::GetFullPath($Install4jProject)

@@ -20,7 +20,7 @@ if [[ -z "$SOURCE_JAR" ]]; then
     SOURCE_JAR="$REPO_ROOT/dist/jAER.jar"
 fi
 if [[ -z "$INSTALL4J_PROJECT" ]]; then
-    INSTALL4J_PROJECT="$REPO_ROOT/jaer.install4j"
+    INSTALL4J_PROJECT="$REPO_ROOT/install4j/jaer.install4j"
 fi
 
 if [[ ! -f "$SOURCE_JAR" ]]; then
