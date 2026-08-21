@@ -5,6 +5,8 @@ real time sensory-motor processing for event sensors and systems**
 
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
+![jAER supported cameras](/images/supported-cameras-annotated.jpg)
+
 **Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
 
 jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
@@ -44,7 +46,6 @@ drop them onto the jAER window to play them with the *Davis346blue* *AEChip*.
 
 Live USB cameras selectable in the AEViewer **AEChip** menu (default list and related variants). Live USB operation is verified on **Windows, macOS (including Apple Silicon), and Linux**. File playback for many more sensors is listed in [`docs/README-file-formats.md`](docs/README-file-formats.md).
 
-![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
 | Camera / product | Manufacturer | Sensor / resolution | Interface | jAER chip class(es) | Status |
 |------------------|--------------|---------------------|-----------|---------------------|--------|
