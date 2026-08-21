@@ -26,6 +26,12 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JOptionPane;
 import org.usb4java.BufferUtils;
 import org.usb4java.ConfigDescriptor;
@@ -41,6 +47,7 @@ import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
@@ -70,8 +77,11 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     /** dv-processing {@code mDataTransfersNumberNLCK} default. */
     static public final int CX3_USB_NUM_BUFFERS = 32;
     static public final byte CX3_DEBUG_ENDPOINT = (byte) 0x81;
-    static public final int CX3_IMU_TRANSFER_COUNT = 8;
+    /** One URB; firmware returns the latest BMI160 sample whenever the host asks. */
+    static public final int CX3_IMU_TRANSFER_COUNT = 1;
     static public final int CX3_IMU_TRANSFER_SIZE = 64;
+    /** BMI160 gyro/accel ODR 800 Hz; resubmit EP 0x81 at this period. */
+    static public final long CX3_IMU_PERIOD_NS = 1_250_000L;
     static public final byte VR_DATA_CLEANUP = (byte) 0xC6;
     /** Extra Mini/Micro USB/MIPI/IMU logs: {@code -Djaer.dvx.debug=true}. */
     public static final boolean debug = Boolean.getBoolean("jaer.dvx.debug");
@@ -209,6 +219,12 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     private volatile boolean cx3ImuRunning;
     private int cx3ImuPackets;
     private int cx3ImuWritten;
+    private long cx3ImuLastSubmitNs;
+    private ScheduledExecutorService cx3ImuScheduler;
+    private ScheduledFuture<?> cx3ImuResubmitTask;
+    private final ConcurrentLinkedQueue<IMUSample> cx3ImuQueue = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger cx3ImuQueued = new AtomicInteger();
+    private static final int CX3_IMU_QUEUE_MAX = 2000;
 
     /**
      * Mini/Micro IMU is on interrupt EP {@code 0x81} (dv-processing debug
@@ -222,6 +238,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         cx3ImuRunning = true;
         cx3ImuPackets = 0;
         cx3ImuWritten = 0;
+        cx3ImuLastSubmitNs = 0;
         final TransferCallback callback = this::onCx3ImuTransfer;
         for (int i = 0; i < CX3_IMU_TRANSFER_COUNT; i++) {
             final Transfer transfer = LibUsb.allocTransfer();
@@ -237,6 +254,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                 LibUsb.freeTransfer(transfer);
                 continue;
             }
+            cx3ImuLastSubmitNs = System.nanoTime();
             cx3ImuTransfers.add(transfer);
         }
         if (debug) {
@@ -257,16 +275,84 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             CypressFX3.log.warning("Mini/Micro IMU EP 0x81: " + LibUsb.errorName(transfer.status()));
         }
         if (cx3ImuRunning && transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-            final int status = LibUsb.submitTransfer(transfer);
-            if (status == LibUsb.SUCCESS) {
-                return;
-            }
+            scheduleCx3ImuResubmit(transfer);
+        }
+    }
+
+    /**
+     * Do not resubmit on the USB event thread immediately: the CX3 debug EP
+     * completes as fast as the host asks. Wait ~800 Hz so DVS bulk is not starved.
+     */
+    private void scheduleCx3ImuResubmit(final Transfer transfer) {
+        final long now = System.nanoTime();
+        final long waitNs = CX3_IMU_PERIOD_NS - (now - cx3ImuLastSubmitNs);
+        if (waitNs <= 0) {
+            submitCx3ImuNow(transfer);
+            return;
+        }
+        if (cx3ImuScheduler == null || cx3ImuScheduler.isShutdown()) {
+            cx3ImuScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                final Thread t = new Thread(r, "DVXplorer-CX3-IMU");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        // Windows timers are ms-resolution; NANOSECONDS can round to a 0 delay.
+        final long waitMs = Math.max(1L, waitNs / 1_000_000L);
+        cx3ImuResubmitTask = cx3ImuScheduler.schedule(() -> submitCx3ImuNow(transfer), waitMs, TimeUnit.MILLISECONDS);
+    }
+
+    private void submitCx3ImuNow(final Transfer transfer) {
+        if (!cx3ImuRunning) {
+            return;
+        }
+        cx3ImuLastSubmitNs = System.nanoTime();
+        final int status = LibUsb.submitTransfer(transfer);
+        if (status != LibUsb.SUCCESS) {
             CypressFX3.log.warning("Mini/Micro IMU resubmit: " + LibUsb.errorName(status));
         }
     }
 
+    /**
+     * Live Mini/Micro IMU for {@code extractBundle}. Not mixed into the DVS
+     * {@link AEPacketRaw} (that made extractPacket treat thousands of events as IMU).
+     */
+    public int drainCx3Imu(final ImuPacket dest) {
+        if (dest == null) {
+            return 0;
+        }
+        int n = 0;
+        IMUSample s;
+        while ((s = cx3ImuQueue.poll()) != null) {
+            cx3ImuQueued.decrementAndGet();
+            dest.appendCopy(s);
+            if (++n >= CX3_IMU_QUEUE_MAX) {
+                break;
+            }
+        }
+        return n;
+    }
+
+    private void offerCx3Imu(final IMUSample sample) {
+        while (cx3ImuQueued.get() >= CX3_IMU_QUEUE_MAX) {
+            if (cx3ImuQueue.poll() == null) {
+                break;
+            }
+            cx3ImuQueued.decrementAndGet();
+        }
+        cx3ImuQueue.offer(sample);
+        cx3ImuQueued.incrementAndGet();
+    }
+
     private void stopCx3ImuTransfers() {
         cx3ImuRunning = false;
+        final ScheduledFuture<?> pending = cx3ImuResubmitTask;
+        cx3ImuResubmitTask = null;
+        if (pending != null) {
+            pending.cancel(false);
+        }
+        cx3ImuQueue.clear();
+        cx3ImuQueued.set(0);
         for (final Transfer transfer : cx3ImuTransfers) {
             final int status = LibUsb.cancelTransfer(transfer);
             if (debug && status != LibUsb.SUCCESS && status != LibUsb.ERROR_NOT_FOUND) {
@@ -488,6 +574,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private long mipiLastTimestamp;
         private int mipiReferenceOverflow;
         private long cx3ImuLastTimestamp;
+        private long cx3ImuLastHostNs;
+        private int cx3ImuDropped;
 
         // DVXplorer specific
         private final boolean dvsDualBinning = false;
@@ -1164,6 +1252,12 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             if (length < 16) {
                 return;
             }
+            // Safety net if a URB still completes early.
+            final long nowNs = System.nanoTime();
+            if (cx3ImuLastHostNs != 0 && (nowNs - cx3ImuLastHostNs) < CX3_IMU_PERIOD_NS) {
+                cx3ImuDropped++;
+                return;
+            }
             cx3ImuPackets++;
             final int flags = raw.get(1) & 0xFF;
             final int accelSel = (flags >>> 3) & 0x03;
@@ -1192,25 +1286,24 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                 final float tempC = (rawTemp / 512.0f) + 23.0f;
                 imuEvents[3] = clampShort((tempC - 35.0f) / TEMP_DEGC_PER_LSB);
             }
-            synchronized (aePacketRawPool) {
-                final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
-                if (!ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
-                    return;
-                }
-                // Debug packets have no IMU clock. Stamp a 800 Hz microsecond grid
-                // (HighpassFilter dt must be us). Do not follow the MIPI/DVS tick.
-                int ts = cx3ImuLastTimestamp == 0
-                        ? (currentTimestamp > 0 ? currentTimestamp : 1250)
-                        : (int) (cx3ImuLastTimestamp + 1250L);
-                cx3ImuLastTimestamp = ts;
-                eventCounter += IMUSample.fromRawUntracked(ts, imuEvents).writeToPacket(buffer, eventCounter);
-                buffer.setNumEvents(eventCounter);
-                cx3ImuWritten++;
+            int dtUs = cx3ImuLastHostNs == 0 ? 1250
+                    : (int) ((nowNs - cx3ImuLastHostNs) / 1000L);
+            if (dtUs < 1) {
+                dtUs = 1;
+            } else if (dtUs > 20_000) {
+                dtUs = 1250;
             }
+            cx3ImuLastHostNs = nowNs;
+            int ts = cx3ImuLastTimestamp == 0
+                    ? (currentTimestamp > 0 ? currentTimestamp : dtUs)
+                    : (int) (cx3ImuLastTimestamp + dtUs);
+            cx3ImuLastTimestamp = ts;
+            DVXplorerFX3HardwareInterface.this.offerCx3Imu(IMUSample.fromRawUntracked(ts, imuEvents));
+            cx3ImuWritten++;
             if (debug && (cx3ImuPackets <= 4 || (cx3ImuPackets % 400) == 0)) {
                 CypressFX3.log.info(String.format(
-                        "Mini/Micro IMU: packets=%d flags=0x%02x gyroScale=%.1f rawG=%d,%d,%d dps=%.1f,%.1f,%.1f",
-                        cx3ImuPackets, flags, gyroScale, rawGx, rawGy, rawGz,
+                        "Mini/Micro IMU: packets=%d dropped=%d flags=0x%02x gyroScale=%.1f rawG=%d,%d,%d dps=%.1f,%.1f,%.1f",
+                        cx3ImuPackets, cx3ImuDropped, flags, gyroScale, rawGx, rawGy, rawGz,
                         rawGx / gyroScale, rawGy / gyroScale, rawGz / gyroScale));
             }
         }

@@ -24,6 +24,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -1015,10 +1016,20 @@ public class DVXplorer extends AETemporalConstastRetina {
             } else {
                 bundleImu.clear();
             }
+            boolean hwImu = false;
+            if (getChip().getHardwareInterface() instanceof DVXplorerFX3HardwareInterface dvx
+                    && dvx.isNextGenFirmware()) {
+                hwImu = dvx.drainCx3Imu(bundleImu) > 0;
+                if (hwImu && !bundleImu.isEmpty()) {
+                    imuSample = bundleImu.get(bundleImu.getSize() - 1);
+                }
+            }
             final OutputEventIterator polItr = polarity.outputIterator();
             for (Object o : cooked) {
                 if (o instanceof ApsDvsEvent aps && aps.isImuSample() && aps.getImuSample() != null) {
-                    bundleImu.appendCopy(aps.getImuSample());
+                    if (!hwImu) {
+                        bundleImu.appendCopy(aps.getImuSample());
+                    }
                 } else if (o instanceof PolarityEvent pe) {
                     final PolarityEvent e = (PolarityEvent) polItr.nextOutput();
                     e.copyFrom(pe);
@@ -1082,7 +1093,8 @@ public class DVXplorer extends AETemporalConstastRetina {
                 int addr = a[i];
                 
                 // aedat2 format specific
-                if ((incompleteIMUSampleException != null) || ((addr & DVS_IMU_MASK) != 0)) {
+                if ((incompleteIMUSampleException != null)
+                        || ((addr & DavisChip.ADDRESS_TYPE_IMU) == DavisChip.ADDRESS_TYPE_IMU)) {
                     if (IMUSample.extractSampleTypeCode(addr) == 0) { // / only start getting an IMUSample at code 0,
                         // the first sample type
                         try {
