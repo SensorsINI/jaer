@@ -396,7 +396,6 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             initialized = true;
             return null;
         }
-        // HighpassFilter tau is dtUs / tauMs / 1000. A MIPI/DVS tick here makes 1 s look like ~50 ms.
         if (dtUs <= 0 || dtUs > 50_000) {
             return lastTransform;
         }
