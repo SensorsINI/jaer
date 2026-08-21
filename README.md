@@ -5,28 +5,30 @@ real time sensory-motor processing for event sensors and systems**
 
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
-**Why use proprietary vendor camera software?** jAER is a Full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
+**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
 
-jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. It can record your datasets and serve event sensor output to your favorite DNN or [ROS](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → Enable ROS2 / Foxglove frame output; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
+jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
+
+It can record your datasets and serve event sensor output to your favorite DNN (see [`SharedMemoryDVSFrameSender`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/SharedMemoryDVSFrameSender.java)) or [ROS](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → Enable ROS2 / Foxglove frame output; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
 ## Installation
 
-You can find the latest releases and binary [install4j](https://www.ej-technologies.com/products/install4j/overview.html) installers at <https://github.com/SensorsINI/jaer/releases>.
+You can find the latest releases and binary [install4j](https://www.ej-technologies.com/products/install4j/overview.html) installers at <https://github.com/SensorsINI/jaer/releases>. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
 **Installers are GitHub Release assets** (~200 MB each for 3.3.0, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.3.0 is Temurin **25**; 3.2.0 was Temurin 21). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
 
-**Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
-**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
-**Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu. Official apt is not provided (USB cameras need an unsandboxed install); optional `.deb` notes are in [`packaging/deb`](packaging/deb).
+ * **Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu. Official apt is not provided (USB cameras need an unsandboxed install); optional `.deb` notes are in [`packaging/deb`](packaging/deb).
 
-Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…; jAER quits so the new installer can replace files. Package-manager installs should use `winget upgrade` / `brew upgrade --cask jaer` instead. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
+ * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
 
-* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium (3.3.0 is Temurin **25**, noticeably faster startup; 3.2.0 was **21**). `ant run` from a git clone needs [JDK 25+](https://adoptium.net/) (`javac` still targets 21). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
-* Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
-you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
-* You will get the best experience running from lastest bug fixes. 
+ * **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
+
+Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…. 
+
+* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium. `ant run` from a git clone needs [JDK 25+](https://adoptium.net/). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
+* you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 
 
 ## Quick start sample data
@@ -160,4 +162,3 @@ See also
 * **inivation support pages:** https://inivation.com/support/
 
 ![Hotel bar scene with DAVIS140C](/images/HotelBarDavis.png)
-
