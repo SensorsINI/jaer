@@ -312,8 +312,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         for (ImuPacket imu : pendingImu) {
             bundle.add(imu);
-            if (chip instanceof DavisBaseCamera && imu.getSize() > 0) {
-                ((DavisBaseCamera) chip).setImuSample(imu.get(imu.getSize() - 1));
+            if (imu.getSize() > 0) {
+                final IMUSample last = imu.get(imu.getSize() - 1);
+                if (chip instanceof DavisBaseCamera) {
+                    ((DavisBaseCamera) chip).setImuSample(last);
+                } else if (chip instanceof ch.unizh.ini.jaer.chip.retina.DVXplorer dvx) {
+                    dvx.setLatestImuSample(last);
+                }
             }
         }
         if (nFrames > 0 || log.isLoggable(Level.FINER)) {

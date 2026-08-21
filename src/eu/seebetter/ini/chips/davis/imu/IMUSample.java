@@ -300,6 +300,17 @@ public class IMUSample {
         updateStatistics(ts);
     }
 
+    /**
+     * Like {@link #IMUSample(int, short[])} but does not update the static
+     * sample-interval stats. Use when encoding into {@link AEPacketRaw} so
+     * {@link #constructFromAEPacketRaw} is the sole stats update.
+     */
+    public static IMUSample fromRawUntracked(final int ts, final short[] buf) {
+        final IMUSample sample = new IMUSample();
+        sample.setFromShortArrayBuf(ts, buf);
+        return sample;
+    }
+
     private void setFromShortArrayBuf(final int ts, final short[] buf) {
         timestampUs = ts;
         System.arraycopy(buf, 0, data, 0, 7);

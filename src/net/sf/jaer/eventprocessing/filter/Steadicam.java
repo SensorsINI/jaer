@@ -47,7 +47,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
- * Electronic SteadiCam: compensates global scene translation and rotation using
+ * Electronic SteadiCam: derotates global scene translation and rotation using
  * the camera IMU rate gyros. Events (and optionally APS image rendering) are
  * counter-transformed from integrated, high-pass-filtered pan/tilt/roll.
  * <p>
@@ -57,15 +57,15 @@ import net.sf.jaer.util.filter.HighpassFilter;
  *
  * @author tobi
  */
-@Description("Stabilizes the scene using the built-in IMU rate gyros (electronic SteadiCam)")
+@Description("Stabilizes/derotates the scene using the built-in IMU rate gyros (electronic SteadiCam)")
 @Help("""
 <html>
 <body>
 <h2>Steadicam</h2>
 <p>Electronic image stabilization: integrates the camera IMU <b>rate gyros</b>, high-pass
 filters pan/tilt/roll, and counter-warps DVS events (and optionally APS rendering) so a
-rotating/translating camera looks still. Needs a DAVIS (or other chip) that provides
-<code>IMUSample</code>s.</p>
+rotating/translating camera looks still. Needs a DAVIS, DVXplorer, or other chip
+that provides <code>IMUSample</code>s on a typed <code>ImuPacket</code> stream.</p>
 <p>Source paper:
 <a href="https://ieeexplore.ieee.org/document/6865714">Integration of dynamic vision sensor
 with inertial measurement unit for electronically stabilized event-based vision</a>
@@ -96,7 +96,7 @@ packet are unchanged).</li>
 <li><code>transformResetLimitDegrees</code> &mdash; snap the transform to zero if pan/tilt
 grow too large.</li>
 </ul>
-<p>This is not visual odometry: it only undoes IMU-measured rotation/translation of the
+<p>This is not visual odometry: it only derotates IMU-measured rotation/translation of the
 camera, not scene motion.</p>
 </body>
 </html>
@@ -126,6 +126,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     float radPerPixel;
     private volatile boolean resetCalled = false;
     private int lastTransformUpdateTimestamp = 0;
+    /** Microsecond clock for {@link HighpassFilter} (int us). Not the MIPI/DVS tick. */
+    private long hpTimeUs = 0;
     private boolean initialized = false;
     private int transformResetLimitDegrees = getInt("transformResetLimitDegrees", 45);
     private static final int FLUSH_COUNT = 10;
@@ -388,12 +390,17 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             return null;
         }
         int timestamp = imuSample.getTimestampUs();
-        float dtS = (timestamp - lastTransformUpdateTimestamp) * 1e-6f;
+        int dtUs = timestamp - lastTransformUpdateTimestamp;
         lastTransformUpdateTimestamp = timestamp;
         if (!initialized) {
             initialized = true;
             return null;
         }
+        // HighpassFilter tau is dtUs / tauMs / 1000. A MIPI/DVS tick here makes 1 s look like ~50 ms.
+        if (dtUs <= 0 || dtUs > 50_000) {
+            return lastTransform;
+        }
+        float dtS = dtUs * 1e-6f;
         panRate = imuSample.getGyroYawY();
         tiltRate = imuSample.getGyroTiltX();
         rollRate = imuSample.getGyroRollZ();
@@ -421,9 +428,10 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         tiltDC += getTiltRate() * dtS;
         rollDC += getRollRate() * dtS;
 
-        panTranslationDeg = panTranslationFilter.filter(panDC, timestamp);
-        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
-        rollDeg = rollFilter.filter(rollDC, timestamp);
+        hpTimeUs += dtUs;
+        panTranslationDeg = panTranslationFilter.filter(panDC, hpTimeUs);
+        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, hpTimeUs);
+        rollDeg = rollFilter.filter(rollDC, hpTimeUs);
 
         if ((Math.abs(panTranslationDeg) > transformResetLimitDegrees)
                 || (Math.abs(tiltTranslationDeg) > transformResetLimitDegrees)
@@ -602,6 +610,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         rollFilter.reset();
         radPerPixel = (float) Math.atan((getChip().getPixelWidthUm() * 1e-3f) / lensFocalLengthMm);
         lastTransform = null;
+        lastTransformUpdateTimestamp = 0;
+        hpTimeUs = 0;
+        initialized = false;
         eventQueue.clear();
         rewindFlg = true;
     }

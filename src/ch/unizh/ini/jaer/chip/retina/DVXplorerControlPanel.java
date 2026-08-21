@@ -86,16 +86,16 @@ public class DVXplorerControlPanel extends JPanel implements PropertyChangeListe
         add(resetBox, c);
 
         onSlider.addChangeListener(e -> {
-            if (!updating && !onSlider.getValueIsAdjusting()) {
+            onValue.setText(Integer.toString(onSlider.getValue()));
+            if (!updating) {
                 config.setContrastThresholdOn(onSlider.getValue());
             }
-            onValue.setText(Integer.toString(onSlider.getValue()));
         });
         offSlider.addChangeListener(e -> {
-            if (!updating && !offSlider.getValueIsAdjusting()) {
+            offValue.setText(Integer.toString(offSlider.getValue()));
+            if (!updating) {
                 config.setContrastThresholdOff(offSlider.getValue());
             }
-            offValue.setText(Integer.toString(offSlider.getValue()));
         });
         fpsCombo.addActionListener(e -> {
             if (!updating) {
@@ -155,6 +155,9 @@ public class DVXplorerControlPanel extends JPanel implements PropertyChangeListe
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if (onSlider.getValueIsAdjusting() || offSlider.getValueIsAdjusting()) {
+            return;
+        }
         syncFromConfig();
     }
 }

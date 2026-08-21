@@ -14,15 +14,28 @@ public class HighpassFilter extends Filter {
      * value.
      *
      * @param val the new sample
-     * @param time the time in us
+     * @param time absolute sample time in microseconds (not ms, not ns).
+     * {@code dt} used for tau is {@code time - lastTime}.
      * @return the filter output value
      */
     @Override
     public float filter(float val, int time) {
-        lpVal = lpFilter.filter(val, time);
+        return filter(val, (long) time);
+    }
+
+    /**
+     * Same as {@link #filter(float, int)} with a 64-bit microsecond timestamp
+     * so {@code dt} does not wrap when the clock exceeds {@code Integer.MAX_VALUE}.
+     *
+     * @param val the new sample
+     * @param timeUs absolute sample time in microseconds
+     */
+    public float filter(float val, long timeUs) {
+        lpVal = lpFilter.filter(val, timeUs);
         lastVal = val;
         value = val - lpVal;
-        initialized=false;
+        lastTime = (int) timeUs;
+        initialized = true;
         return value;
     }
 
@@ -54,6 +67,7 @@ public class HighpassFilter extends Filter {
 
     @Override
     public void setTauMs(float tauMs) {
+        super.setTauMs(tauMs);
         lpFilter.setTauMs(tauMs);
     }
 

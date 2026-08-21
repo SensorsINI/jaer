@@ -30,6 +30,8 @@ public class LowpassFilter extends Filter {
      * The last value
      */
     protected float lastVal = 0;
+    /** Last sample time in microseconds (64-bit to match {@link #filter(float, long)}). */
+    protected long lastTimeUs = 0;
 
     /**
      * @param val the new input value
@@ -39,10 +41,19 @@ public class LowpassFilter extends Filter {
      */
     @Override
     public float filter(float val, int time) {
+        return filter(val, (long) time);
+    }
+
+    /**
+     * Same as {@link #filter(float, int)} with a 64-bit microsecond timestamp.
+     * {@code tauMs} is applied as {@code fac = dtUs / tauMs / 1000}.
+     */
+    public float filter(float val, long timeUs) {
         if (!initialized) {
             lpVal = val;
             lastVal = val;
-            lastTime = time;
+            lastTime = (int) timeUs;
+            lastTimeUs = timeUs;
             initialized = true;
             return val;
         }
@@ -51,12 +62,13 @@ public class LowpassFilter extends Filter {
             lastVal = val;
             return lpVal;
         }
-        int dt = time - lastTime;
+        long dt = timeUs - lastTimeUs;
         if (dt < 0) {
             dt = 0;
         }
-        lastTime = time;
-        float fac = (float) dt / tauMs / TICK_PER_MS;
+        lastTimeUs = timeUs;
+        lastTime = (int) timeUs;
+        float fac = dt / tauMs / TICK_PER_MS;
         if (fac > 1) {
             fac = 1;
         }
@@ -102,6 +114,7 @@ public class LowpassFilter extends Filter {
      */
     public void set(float val, int timestamp) {
         lpVal = val;
-        lastTime=timestamp;
+        lastTime = timestamp;
+        lastTimeUs = timestamp;
     }
 }
