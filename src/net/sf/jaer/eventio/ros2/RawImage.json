@@ -1,0 +1,31 @@
+{
+  "title": "foxglove.RawImage",
+  "description": "A raw image",
+  "$comment": "From https://github.com/foxglove/foxglove-sdk schemas/jsonschema/RawImage.json",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "object",
+      "title": "time",
+      "properties": {
+        "sec": { "type": "integer", "minimum": 0 },
+        "nsec": { "type": "integer", "minimum": 0, "maximum": 999999999 }
+      },
+      "description": "Timestamp of image"
+    },
+    "frame_id": {
+      "type": "string",
+      "description": "Frame of reference for the image."
+    },
+    "width": { "type": "integer", "minimum": 0, "description": "Image width in pixels" },
+    "height": { "type": "integer", "minimum": 0, "description": "Image height in pixels" },
+    "encoding": { "type": "string", "description": "Encoding of the raw image data." },
+    "step": { "type": "integer", "minimum": 0, "description": "Byte length of a single row." },
+    "data": {
+      "type": "string",
+      "contentEncoding": "base64",
+      "description": "Raw image data."
+    }
+  },
+  "required": ["timestamp", "frame_id", "width", "height", "encoding", "step", "data"]
+}

@@ -571,6 +571,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             renderer.end3DRendering();
         }
         drawRecordingOverlayIfNeeded(drawable);
+        drawRosOutputOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
         gl.glFlush();
         // gl.glPopMatrix();
@@ -631,6 +632,51 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glPopMatrix();
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
+
+    private static final Color ROS_OUTPUT_OVERLAY_COLOR = new Color(0.15f, 0.85f, 0.55f, 0.7f);
+
+    /**
+     * Overlay while ROSOutput is publishing. Gated by
+     * {@link AEViewer#isShowRosOutputOverlay()}.
+     */
+    private void drawRosOutputOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || !viewer.isShowRosOutputOverlay()) {
+            return;
+        }
+        net.sf.jaer.eventio.ros2.ROSOutput ros = net.sf.jaer.eventio.ros2.ROSOutput.find(aeChip);
+        if (ros == null || !ros.isFilterEnabled()) {
+            return;
+        }
+        String text = ros.getOverlayText();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            int fontsize = Math.max(8, Math.round(12 * (chip.getSizeX() / 346f)));
+            float scale = 1f;
+            if (fontsize < 10) {
+                fontsize *= 2;
+                scale = .5f;
+            }
+            gl.glPushMatrix();
+            gl.glScalef(scale, scale, scale);
+            float xpos = (chip.getSizeX() / 2f) / scale;
+            float y = (chip.getSizeY() * 0.08f) / scale;
+            DrawGL.drawString(fontsize, xpos, y, .5f, ROS_OUTPUT_OVERLAY_COLOR, text);
+            gl.glPopMatrix();
+        } catch (GLException e) {
+            log.log(Level.FINE, "ROS overlay: {0}", e.toString());
         }
     }
 

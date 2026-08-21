@@ -189,6 +189,13 @@ MA 02110-1301  USA
 
         <dependency org="com.install4j" name="install4j-runtime" rev="10.0.6" />
 
+        <!-- ROS2 live publisher (IHMC jros2; Fast-DDS natives inside the jar).
+             Resolver: ivysettings.xml ihmc = https://robotlabfiles.ihmc.us/repository/ -->
+        <dependency org="us.ihmc" name="jros2" rev="1.5.1"/>
+
+        <!-- Foxglove WebSocket v1 server for Foxglove Studio (no ROS2 install) -->
+        <dependency org="org.java-websocket" name="Java-WebSocket" rev="1.5.7"/>
+
     </dependencies>
 </ivy-module>
 

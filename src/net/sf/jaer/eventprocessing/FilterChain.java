@@ -567,6 +567,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
     }
 
+    /**
+     * Persist the preferred filter class list for this chip (used to append
+     * default filters such as ROSOutput when missing from saved prefs).
+     */
+    public void storePreferredFiltersForChip(ArrayList<String> names) throws IOException, BackingStoreException {
+        storePreferredFilterPreferences(names);
+    }
+
     private void storePreferredFilterPreferences(ArrayList<String> newClassNames) throws IOException, BackingStoreException {
         log.info("storing preferred filters to preferences");
         // Serialize to a byte array

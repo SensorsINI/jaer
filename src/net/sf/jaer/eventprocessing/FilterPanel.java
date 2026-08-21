@@ -95,6 +95,7 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.eventprocessing.EventFilter.PrefsKeyClassValueDefault;
 import static net.sf.jaer.eventprocessing.FilterFrame.prefs;
 import net.sf.jaer.eventprocessing.filter.PreferencesMover;
+import java.util.prefs.Preferences;
 
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.XMLFileFilter;
@@ -254,6 +255,7 @@ import net.sf.jaer.util.XMLFileFilter;
 public class FilterPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
     private FilterFrame filterFrame = null;
+    private final UndoableEditSupport standaloneUndoSupport = new UndoableEditSupport();
 
     static final float LEFT_ALIGNMENT = Component.LEFT_ALIGNMENT;
     private BeanInfo info;
@@ -336,14 +338,19 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     /**
      * Creates new form FilterPanel
      */
-    public FilterPanel() {
-        initComponents();
+    /**
+     * Filter panel not registered with a {@link FilterFrame} (e.g. ROSOutput dialog).
+     */
+    public FilterPanel(EventFilter f) {
+        this(f, null);
     }
 
     public FilterPanel(EventFilter f, FilterFrame filterFrame) {
         setFilter(f);
         setFilterFrame(filterFrame);
-        filterFrame.filter2FilterPanelMap.put(f, this);
+        if (filterFrame != null) {
+            filterFrame.filter2FilterPanelMap.put(f, this);
+        }
         initComponents();
         Dimension d = enableResetControlsHelpPanel.getPreferredSize();
         enableResetControlsHelpPanel.setMaximumSize(new Dimension(200, d.height)); // keep from stretching
@@ -1197,6 +1204,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
         private UndoableEditSupport getEditSupport() {
+            if (getFilterFrame() == null) {
+                return standaloneUndoSupport;
+            }
             return getFilterFrame().editSupport;
         }
 
@@ -2457,6 +2467,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     /**
+     * {@link FilterFrame#prefs} is only set after a FilterFrame is constructed.
+     * Standalone panels (e.g. ROSOutputDialog) must use the filter's chip prefs.
+     */
+    private Preferences panelPrefs() {
+        if (prefs != null) {
+            return prefs;
+        }
+        if (getFilter() != null && getFilter().getPrefs() != null) {
+            return getFilter().getPrefs();
+        }
+        return Preferences.userRoot().node("jaer");
+    }
+
+    /**
      * @return the filterFrame
      */
     final public FilterFrame getFilterFrame() {
@@ -2522,7 +2546,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private void copyBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyBActionPerformed
         try {
             EventFilter.CopiedProps copiedProps = filter.copyProperties();
-            getFilterFrame().setCopiedProps(copiedProps);
+            if (getFilterFrame() != null) {
+                getFilterFrame().setCopiedProps(copiedProps);
+            }
             filter.showPlainMessageDialogInSwingThread(String.format("Copied %s", copiedProps), "Copy succeeded");
         } catch (IntrospectionException | IllegalAccessException | InvocationTargetException ex) {
             Logger.getLogger(FilterPanel.class.getName()).log(Level.SEVERE, null, ex);
@@ -2531,6 +2557,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }//GEN-LAST:event_copyBActionPerformed
 
     private void pasteBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pasteBActionPerformed
+        if (getFilterFrame() == null) {
+            filter.showWarningDialogInSwingThread("Paste requires the Filters window", "Error");
+            return;
+        }
         EventFilter.CopiedProps copiedProps = getFilterFrame().getCopiedProps();
         if (copiedProps == null || copiedProps.isEmpty()) {
             log.warning("no copied properties to paste");
@@ -3061,7 +3091,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     void importPrefsDialog() {
         JFileChooser fileChooser = new JFileChooser();
-        String lastFilePath = prefs.get("FilterFrame.lastFile", getDefaultPreferencesFolder());
+        String lastFilePath = panelPrefs().get("FilterFrame.lastFile", getDefaultPreferencesFolder());
         File lastFile = new File(lastFilePath);
         if (!lastFile.exists()) {
             log.warning("last file for filter settings " + lastFile + " does not exist, using " + getDefaultPreferencesFolder());
@@ -3074,7 +3104,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         int retValue = fileChooser.showOpenDialog(this);
         if (retValue == JFileChooser.APPROVE_OPTION) {
             File f = fileChooser.getSelectedFile();
-            prefs.put("FilterFrame.lastFile", f.getAbsolutePath());
+            panelPrefs().put("FilterFrame.lastFile", f.getAbsolutePath());
             filter.importPrefs(f);
         }
         PreferencesMover.OldPrefsCheckResult result = PreferencesMover.hasOldChipFilterPreferences(filter);
@@ -3199,7 +3229,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             Dimension d = l.getPreferredSize(); // size of title text of TitledBorder
             mouseHotArea = new Dimension(d.width, d.height + 5); // l.getPreferredSize(); // size of title text of TitledBorder
 
-            collapsed = prefs.getBoolean(collapsedKey, false);
+            collapsed = panelPrefs().getBoolean(collapsedKey, false);
             placeholderPanel.setName("(placeholder)");
             placeholderPanel.setAlignmentX(LEFT_ALIGNMENT);
             placeholderPanel.setMinimumSize(new Dimension(d.width, 2));
@@ -3254,7 +3284,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     if (isMouseInHotArea(e)) {
                         setCollapased(!collapsed);
                         log.info(String.format("Set %s collapsed=%s", getName(), collapsed));
-                        prefs.putBoolean(collapsedKey, GroupPanel.this.isCollapsed());
+                        panelPrefs().putBoolean(collapsedKey, GroupPanel.this.isCollapsed());
                         e.consume();
                     }
                 }

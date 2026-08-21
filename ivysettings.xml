@@ -15,6 +15,8 @@
             <ibiblio name="rosjava_mvn_repo" m2compatible="true" 
                                   root="https://github.com/rosjava/rosjava_mvn_repo" />
             <ibiblio name="install4j" m2compatible="true" root="https://maven.ej-technologies.com/repository/" />
+            <!-- IHMC jros2 (Fast-DDS ROS 2 Java client; natives bundled in the jar) -->
+            <ibiblio name="ihmc" m2compatible="true" root="https://robotlabfiles.ihmc.us/repository/" />
             <!--see https://jogamp.org/wiki/index.php/Maven
                Added this resolver to get latest jogl version that are ony pushed to this test repo, not the main maven repo 
                                     commented out for now because we use static fat jar for jogl stuff

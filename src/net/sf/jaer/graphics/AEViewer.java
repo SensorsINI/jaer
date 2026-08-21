@@ -151,6 +151,8 @@ import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import net.sf.jaer.eventio.ros2.ROSOutput;
+import net.sf.jaer.eventio.ros2.ROSOutputDialog;
 import prophesee.eventio.MetavisionRawFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -384,6 +386,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private File draggedFile;
     private boolean recordingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
+    private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
+    private boolean syncingRosOutputMenu = false;
+    private PropertyChangeListener rosOutputEnabledListener;
+    private javax.swing.JCheckBoxMenuItem rosOutputEnabledCheckBoxMenuItem;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
     private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
@@ -565,6 +571,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        initRosOutputRemoteMenu();
         applyNetworkMenuDescriptionTooltips();
         // Esc cancels queued jog even when focus is on the heavyweight GL canvas
         // (menu accelerators alone are not always delivered in that case).
@@ -1212,12 +1219,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openUnicastInputMenuItem.setToolTipText(descriptionTooltip(AEUnicastInput.class, null));
         openBlockingQueueInputMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "openBlockingQueueInputMenuItemActionPerformed", ActionEvent.class));
         blockingQueueOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed", ActionEvent.class));
+        if (rosOutputEnabledCheckBoxMenuItem != null) {
+            rosOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(ROSOutput.class, null));
+        }
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
                 unicastOutputEnabledCheckBoxMenuItem,
                 openUnicastInputMenuItem,
                 openBlockingQueueInputMenuItem,
-                blockingQueueOutputEnabledCheckBoxMenuItem);
+                blockingQueueOutputEnabledCheckBoxMenuItem,
+                rosOutputEnabledCheckBoxMenuItem);
     }
 
     /**
@@ -1238,7 +1249,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         };
         for (JComponent c : items) {
-            c.addMouseListener(linger);
+            if (c != null) {
+                c.addMouseListener(linger);
+            }
         }
         remoteMenu.addMenuListener(new MenuListener() {
             @Override
@@ -2069,6 +2082,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
             chip.onRegistration();
+            syncRosOutputMenuFromChip();
 
         } catch (Exception e) {
             log.log(Level.SEVERE, e.toString(), e);
@@ -3268,8 +3282,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if ((cookedBundle != null && !cookedBundle.isEmpty()) || (cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
-                        if (!skipRendering) {
+                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering();
+                        if (!skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
+                        } else if (isShowRosOutputOverlay()) {
+                            chipCanvas.paintFrame();
                         }
                     } catch (RuntimeException e) {
                         String cause = " unknown cause";
@@ -8753,6 +8770,81 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setShowRecordingOverlay(boolean showRecordingOverlay) {
         this.showRecordingOverlay = showRecordingOverlay;
         prefs.putBoolean("AEViewer.showRecordingOverlay", showRecordingOverlay);
+    }
+
+    public boolean isShowRosOutputOverlay() {
+        return showRosOutputOverlay;
+    }
+
+    public void setShowRosOutputOverlay(boolean showRosOutputOverlay) {
+        this.showRosOutputOverlay = showRosOutputOverlay;
+        prefs.putBoolean("AEViewer.showRosOutputOverlay", showRosOutputOverlay);
+    }
+
+    private void initRosOutputRemoteMenu() {
+        rosOutputEnabledCheckBoxMenuItem = new JCheckBoxMenuItem("Enable ROS2 / Foxglove frame output...");
+        rosOutputEnabledCheckBoxMenuItem.addActionListener(e -> rosOutputEnabledCheckBoxMenuItemActionPerformed());
+        remoteMenu.add(rosOutputEnabledCheckBoxMenuItem);
+        syncRosOutputMenuFromChip();
+    }
+
+    private ROSOutput findRosOutput() {
+        return ROSOutput.find(getChip());
+    }
+
+    private boolean isRosOutputSkipChipRendering() {
+        ROSOutput r = findRosOutput();
+        return r != null && r.isFilterEnabled() && r.isSkipChipRendering();
+    }
+
+    private void syncRosOutputMenuFromChip() {
+        if (rosOutputEnabledCheckBoxMenuItem == null) {
+            return;
+        }
+        ROSOutput r = findRosOutput();
+        if (rosOutputEnabledListener != null && r != null) {
+            r.getSupport().removePropertyChangeListener("filterEnabled", rosOutputEnabledListener);
+        }
+        rosOutputEnabledListener = evt -> SwingUtilities.invokeLater(this::syncRosOutputMenuFromChip);
+        if (r != null) {
+            r.getSupport().addPropertyChangeListener("filterEnabled", rosOutputEnabledListener);
+        }
+        syncingRosOutputMenu = true;
+        try {
+            rosOutputEnabledCheckBoxMenuItem.setSelected(r != null && r.isFilterEnabled());
+        } finally {
+            syncingRosOutputMenu = false;
+        }
+    }
+
+    private void rosOutputEnabledCheckBoxMenuItemActionPerformed() {
+        if (syncingRosOutputMenu) {
+            return;
+        }
+        AEChip c = getChip();
+        if (c == null) {
+            syncRosOutputMenuFromChip();
+            return;
+        }
+        ROSOutput.ensurePresent(c);
+        ROSOutput r = ROSOutput.find(c);
+        if (r == null) {
+            JOptionPane.showMessageDialog(this, "Could not create ROSOutput filter", "ROS2 / Foxglove",
+                    JOptionPane.ERROR_MESSAGE);
+            syncRosOutputMenuFromChip();
+            return;
+        }
+        if (r.isFilterEnabled()) {
+            r.setFilterEnabled(false);
+            syncRosOutputMenuFromChip();
+            return;
+        }
+        ROSOutputDialog dlg = new ROSOutputDialog(this, r);
+        dlg.setVisible(true);
+        if (dlg.getReturnStatus() == ROSOutputDialog.RET_OK) {
+            r.setFilterEnabled(true);
+        }
+        syncRosOutputMenuFromChip();
     }
 
     /**
