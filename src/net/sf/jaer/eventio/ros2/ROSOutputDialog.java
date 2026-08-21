@@ -34,22 +34,23 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.WindowConstants;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
 
 /**
- * Modal dialog wrapping a {@link FilterPanel} for {@link ROSOutput}.
+ * Modeless control window wrapping a {@link FilterPanel} for {@link ROSOutput}.
+ * Parameter changes apply immediately; closing hides the window and leaves publishing running.
  */
 public class ROSOutputDialog extends JDialog {
 
-    public static final int RET_CANCEL = 0;
-    public static final int RET_OK = 1;
-
-    private int returnStatus = RET_CANCEL;
+    private final ROSOutput filter;
 
     public ROSOutputDialog(Frame parent, ROSOutput filter) {
-        super(parent, "ROS2 / Foxglove frame output", true);
+        super(parent, "ROS2 / Foxglove frame output", false);
+        this.filter = filter;
+        setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
 
         JTextField urlField = new JTextField(filter.getFoxgloveClientUrl(), 22);
         urlField.setEditable(false);
@@ -115,20 +116,18 @@ public class ROSOutputDialog extends JDialog {
         JScrollPane scroll = new JScrollPane(panel);
         scroll.setPreferredSize(new Dimension(640, 480));
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton ok = new JButton("OK");
-        JButton cancel = new JButton("Cancel");
-        ok.addActionListener(e -> doClose(RET_OK));
-        cancel.addActionListener(e -> doClose(RET_CANCEL));
-        buttons.add(ok);
-        buttons.add(cancel);
+        JButton close = new JButton("Close");
+        close.setToolTipText("Hide this window; publishing stays in its current state");
+        close.addActionListener(e -> setVisible(false));
+        buttons.add(close);
         getContentPane().add(north, BorderLayout.NORTH);
         getContentPane().add(scroll, BorderLayout.CENTER);
         getContentPane().add(buttons, BorderLayout.SOUTH);
-        getRootPane().setDefaultButton(ok);
+        getRootPane().setDefaultButton(close);
         Action escape = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                doClose(RET_CANCEL);
+                setVisible(false);
             }
         };
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
@@ -138,13 +137,7 @@ public class ROSOutputDialog extends JDialog {
         setLocationRelativeTo(parent);
     }
 
-    public int getReturnStatus() {
-        return returnStatus;
-    }
-
-    private void doClose(int ret) {
-        returnStatus = ret;
-        setVisible(false);
-        dispose();
+    public ROSOutput getFilter() {
+        return filter;
     }
 }

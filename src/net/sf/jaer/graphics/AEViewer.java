@@ -390,6 +390,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean syncingRosOutputMenu = false;
     private PropertyChangeListener rosOutputEnabledListener;
     private javax.swing.JCheckBoxMenuItem rosOutputEnabledCheckBoxMenuItem;
+    private ROSOutputDialog rosOutputDialog;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
     private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
@@ -1910,6 +1911,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 filterFrame = null;
             }
             filterFrameBuilt = false;
+            disposeRosOutputDialog();
             filtersToggleButton.setVisible(false);
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
@@ -5963,6 +5965,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if ((filterFrame != null) && filterFrame.isVisible()) {
                         filterFrame.dispose();  // close this frame if the window is closed
                     }
+                    disposeRosOutputDialog();
 
                     // TODO should close biasgen window also
                     stopMe();
@@ -8817,6 +8820,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    private void disposeRosOutputDialog() {
+        if (rosOutputDialog != null) {
+            rosOutputDialog.dispose();
+            rosOutputDialog = null;
+        }
+    }
+
+    private void showRosOutputDialog(ROSOutput r) {
+        if (rosOutputDialog != null && rosOutputDialog.getFilter() != r) {
+            disposeRosOutputDialog();
+        }
+        if (rosOutputDialog == null) {
+            rosOutputDialog = new ROSOutputDialog(this, r);
+        }
+        rosOutputDialog.setVisible(true);
+        rosOutputDialog.toFront();
+    }
+
     private void rosOutputEnabledCheckBoxMenuItemActionPerformed() {
         if (syncingRosOutputMenu) {
             return;
@@ -8834,15 +8855,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             syncRosOutputMenuFromChip();
             return;
         }
-        if (r.isFilterEnabled()) {
-            r.setFilterEnabled(false);
-            syncRosOutputMenuFromChip();
-            return;
-        }
-        ROSOutputDialog dlg = new ROSOutputDialog(this, r);
-        dlg.setVisible(true);
-        if (dlg.getReturnStatus() == ROSOutputDialog.RET_OK) {
+        if (rosOutputEnabledCheckBoxMenuItem.isSelected()) {
             r.setFilterEnabled(true);
+            showRosOutputDialog(r);
+        } else {
+            r.setFilterEnabled(false);
         }
         syncRosOutputMenuFromChip();
     }
