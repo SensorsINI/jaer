@@ -66,6 +66,12 @@ height = B×H on <code>/jaer/voxel_grid</code>.</li>
 </ul>
 <p>Place this filter after denoisers if you want filtered events.
 <b>skipChipRendering</b> skips OpenGL pixmap updates while still publishing.</p>
+<h3>Drop detection</h3>
+<p>ROS2 <code>sensor_msgs/Image</code> has no sequence field (ROS2
+<code>Header</code> dropped <code>seq</code>). DDS/RTPS still numbers samples
+on the BEST_EFFORT writer. Foxglove <code>RawImage</code> JSON includes an
+optional <code>sequence</code> integer (same counter as the overlay);
+Studio’s Image panel ignores it. A gap means a dropped frame.</p>
 </body>
 </html>
 """)
@@ -108,7 +114,7 @@ public class ROSOutput extends EventFilter2D {
 
     private volatile double publishHz;
     private volatile String lastError;
-    private volatile String overlayText = "";
+    private volatile long publishedFrameCount;
     private long hzWindowStartNs;
     private int hzCount;
 
@@ -208,7 +214,6 @@ public class ROSOutput extends EventFilter2D {
         } else {
             stopSinks();
         }
-        updateOverlayText();
     }
 
     @Override
@@ -222,6 +227,10 @@ public class ROSOutput extends EventFilter2D {
     @Override
     public void resetFilter() {
         assembler.clear();
+        publishedFrameCount = 0;
+        hzCount = 0;
+        hzWindowStartNs = 0;
+        publishHz = 0;
     }
 
     @Override
@@ -295,7 +304,6 @@ public class ROSOutput extends EventFilter2D {
         } else {
             stopFoxglove();
         }
-        updateOverlayText();
     }
 
     private List<String> currentTopics() {
@@ -373,7 +381,9 @@ public class ROSOutput extends EventFilter2D {
         rosPublisher.close();
         stopFoxglove();
         publishHz = 0;
-        updateOverlayText();
+        publishedFrameCount = 0;
+        hzCount = 0;
+        hzWindowStartNs = 0;
     }
 
     private void publishLoop() {
@@ -389,9 +399,10 @@ public class ROSOutput extends EventFilter2D {
                     }
                 }
                 FoxgloveWebSocketServer fg = foxgloveServer;
+                long seq = publishedFrameCount;
                 if (publishFoxglove && fg != null) {
                     for (EncodedImage img : job.foxglove) {
-                        fg.publish(fullTopic(img), img, job.frameId, job.timestampNs);
+                        fg.publish(fullTopic(img), img, job.frameId, job.timestampNs, seq);
                     }
                 }
                 notePublished();
@@ -410,6 +421,7 @@ public class ROSOutput extends EventFilter2D {
     }
 
     private void notePublished() {
+        publishedFrameCount++;
         hzCount++;
         long now = System.nanoTime();
         if (hzWindowStartNs == 0) {
@@ -420,35 +432,34 @@ public class ROSOutput extends EventFilter2D {
             publishHz = hzCount / dt;
             hzCount = 0;
             hzWindowStartNs = now;
-            updateOverlayText();
         }
     }
 
-    private void updateOverlayText() {
+    /**
+     * Built only when the canvas asks (overlay preference on). Do not call from the publish path.
+     */
+    public String getOverlayText() {
         if (!isFilterEnabled()) {
-            overlayText = "";
-            return;
+            return "";
         }
-        StringBuilder sb = new StringBuilder();
+        String exposure = timeSliceMethod == TimeSliceMethod.TimeIntervalUs ? "DurationUs" : "EventCount";
+        StringBuilder sb = new StringBuilder(96);
+        sb.append("File/Remote/Foxglove ROS2");
+        sb.append('\n').append(publishedFrameCount).append(' ').append(exposure)
+                .append(' ').append(frameType).append(" frames  ");
+        sb.append(String.format("%.0f Hz", publishHz));
         if (publishRos2) {
-            sb.append(String.format("ROS2 %.0f Hz", publishHz));
+            sb.append("\nROS2 DDS");
         }
         if (publishFoxglove) {
-            if (sb.length() > 0) {
-                sb.append("  ");
-            }
             int n = foxgloveServer == null ? 0 : foxgloveServer.getClientCount();
-            sb.append(String.format("Foxglove ws://%s:%d (%d client%s)",
-                    foxgloveBindAddress, foxglovePort, n, n == 1 ? "" : "s"));
+            sb.append("\nFoxglove ws://").append(foxgloveBindAddress).append(':').append(foxglovePort);
+            sb.append(" (").append(n).append(n == 1 ? " client)" : " clients)");
         }
         if (lastError != null && !lastError.isEmpty()) {
-            sb.append("  err: ").append(lastError);
+            sb.append("\nerr: ").append(lastError);
         }
-        overlayText = sb.toString();
-    }
-
-    public String getOverlayText() {
-        return overlayText;
+        return sb.toString();
     }
 
     public double getPublishHz() {

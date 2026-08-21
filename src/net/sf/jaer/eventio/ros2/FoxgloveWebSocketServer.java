@@ -103,7 +103,7 @@ public class FoxgloveWebSocketServer extends WebSocketServer {
         broadcast(advertiseJson());
     }
 
-    public void publish(String topic, EncodedImage image, String frameId, long timestampNs) {
+    public void publish(String topic, EncodedImage image, String frameId, long timestampNs, long sequence) {
         Channel ch = findChannel(topic);
         if (ch == null) {
             return;
@@ -119,6 +119,7 @@ public class FoxgloveWebSocketServer extends WebSocketServer {
         msg.addProperty("encoding", image.encoding);
         msg.addProperty("step", image.step);
         msg.addProperty("data", Base64.getEncoder().encodeToString(image.data));
+        msg.addProperty("sequence", sequence);
         byte[] payload = gson.toJson(msg).getBytes(StandardCharsets.UTF_8);
         long logTime = timestampNs;
         for (WebSocket conn : getConnections()) {

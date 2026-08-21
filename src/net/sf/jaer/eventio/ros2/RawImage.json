@@ -22,9 +22,13 @@
     "encoding": { "type": "string", "description": "Encoding of the raw image data." },
     "step": { "type": "integer", "minimum": 0, "description": "Byte length of a single row." },
     "data": {
-      "type": "string",
-      "contentEncoding": "base64",
+      "type": "string", "contentEncoding": "base64",
       "description": "Raw image data."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional monotonic published-frame counter (jAER). Not in stock foxglove.RawImage; Image panels ignore it. Gaps mean dropped frames."
     }
   },
   "required": ["timestamp", "frame_id", "width", "height", "encoding", "step", "data"]

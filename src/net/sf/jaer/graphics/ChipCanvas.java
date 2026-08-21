@@ -661,6 +661,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (text == null || text.isEmpty()) {
             return;
         }
+        String[] lines = text.split("\n", -1);
         try {
             GL2 gl = drawable.getGL().getGL2();
             int fontsize = Math.max(8, Math.round(12 * (chip.getSizeX() / 346f)));
@@ -671,9 +672,12 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
             gl.glPushMatrix();
             gl.glScalef(scale, scale, scale);
+            float lineSpace = fontsize * 1.35f;
             float xpos = (chip.getSizeX() / 2f) / scale;
             float y = (chip.getSizeY() * 0.08f) / scale;
-            DrawGL.drawString(fontsize, xpos, y, .5f, ROS_OUTPUT_OVERLAY_COLOR, text);
+            for (int i = 0; i < lines.length; i++) {
+                DrawGL.drawString(fontsize, xpos, y + i * lineSpace, .5f, ROS_OUTPUT_OVERLAY_COLOR, lines[i]);
+            }
             gl.glPopMatrix();
         } catch (GLException e) {
             log.log(Level.FINE, "ROS overlay: {0}", e.toString());
