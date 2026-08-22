@@ -7,9 +7,17 @@ real time sensory-motor processing for event sensors and systems**
 
 ![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
-**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
+**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
 
-jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
+(You get plug-and-play, "it just works" for all the cameras above.) 
+
+jAER efficiently 
+ * captures USB event camera output, 
+ * denoises -- with faste accurate algorithms
+ * displays -- with a variety of color and 2d/3d options
+ * records -- in a high-speed compressed format (AEDAT-4)
+ * plays back -- with flexible time/event rate, markers, and IN/OUT points
+ * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)). 
 
 It can record your datasets and serve event sensor output to your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) or [ROS](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → Enable ROS2 / Foxglove frame output; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
 
