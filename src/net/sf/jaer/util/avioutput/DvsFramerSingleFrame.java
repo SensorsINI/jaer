@@ -35,7 +35,7 @@ import net.sf.jaer.event.PolarityEvent;
  * 0-1 range.
  *
  * Enable <i>showFrames</i> to view accumulated frames in an ImageDisplay
- * window. {@link SharedMemoryDVSFrameSender} publishes the same frames to a
+ * window. {@link DNNOutputViaSharedMemory} publishes the same frames to a
  * memory-mapped file for a Python consumer.
  *
  * @author Tobi

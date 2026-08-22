@@ -571,7 +571,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             renderer.end3DRendering();
         }
         drawRecordingOverlayIfNeeded(drawable);
-        drawRosOutputOverlayIfNeeded(drawable);
+        drawRemoteOutputOverlaysIfNeeded(drawable);
         drawSkipChipRenderingOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
         gl.glFlush();
@@ -704,12 +704,15 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     private static final Color ROS_OUTPUT_OVERLAY_COLOR = new Color(0.15f, 0.85f, 0.55f, 0.7f);
+    private static final Color DNN_OUTPUT_OVERLAY_COLOR = new Color(1f, 0.65f, 0.2f, 0.75f);
 
     /**
-     * Overlay while ROSOutput is publishing. Gated by
-     * {@link AEViewer#isShowRosOutputOverlay()}.
+     * Overlay while File → Remote sinks are publishing (ROS2 / Foxglove and DNN mmap).
+     * Stacked from the bottom of the chip view. Gated by
+     * {@link AEViewer#isShowRosOutputOverlay()} and
+     * {@link AEViewer#isShowDnnSharedMemoryOverlay()}.
      */
-    private void drawRosOutputOverlayIfNeeded(final GLAutoDrawable drawable) {
+    private void drawRemoteOutputOverlaysIfNeeded(final GLAutoDrawable drawable) {
         if (!(chip instanceof AEChip)) {
             return;
         }
@@ -718,16 +721,32 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (viewer == null) {
             viewer = aeViewer;
         }
-        if (viewer == null || !viewer.isShowRosOutputOverlay()) {
+        if (viewer == null) {
             return;
         }
-        net.sf.jaer.eventio.ros2.ROSOutput ros = net.sf.jaer.eventio.ros2.ROSOutput.find(aeChip);
-        if (ros == null || !ros.isFilterEnabled()) {
-            return;
+        float y = chip.getSizeY() * 0.08f;
+        if (viewer.isShowRosOutputOverlay()) {
+            net.sf.jaer.eventio.ros2.ROSOutput ros = net.sf.jaer.eventio.ros2.ROSOutput.find(aeChip);
+            if (ros != null && ros.isFilterEnabled()) {
+                y = drawCenteredStatusOverlay(drawable, y, ROS_OUTPUT_OVERLAY_COLOR, ros.getOverlayText());
+            }
         }
-        String text = ros.getOverlayText();
+        if (viewer.isShowDnnSharedMemoryOverlay()) {
+            net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory dnn
+                    = net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory.find(aeChip);
+            if (dnn != null && dnn.isFilterEnabled()) {
+                y = drawCenteredStatusOverlay(drawable, y, DNN_OUTPUT_OVERLAY_COLOR, dnn.getOverlayText());
+            }
+        }
+    }
+
+    /**
+     * Centered multi-line status text. Returns the chip-Y just above the last line
+     * so another overlay can stack on top.
+     */
+    private float drawCenteredStatusOverlay(final GLAutoDrawable drawable, float yChip, Color color, String text) {
         if (text == null || text.isEmpty()) {
-            return;
+            return yChip;
         }
         String[] lines = text.split("\n", -1);
         try {
@@ -742,13 +761,15 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glScalef(scale, scale, scale);
             float lineSpace = fontsize * 1.35f;
             float xpos = (chip.getSizeX() / 2f) / scale;
-            float y = (chip.getSizeY() * 0.08f) / scale;
+            float y = yChip / scale;
             for (int i = 0; i < lines.length; i++) {
-                DrawGL.drawString(fontsize, xpos, y + i * lineSpace, .5f, ROS_OUTPUT_OVERLAY_COLOR, lines[i]);
+                DrawGL.drawString(fontsize, xpos, y + i * lineSpace, .5f, color, lines[i]);
             }
             gl.glPopMatrix();
+            return yChip + lines.length * lineSpace * scale + chip.getSizeY() * 0.02f;
         } catch (GLException e) {
-            log.log(Level.FINE, "ROS overlay: {0}", e.toString());
+            log.log(Level.FINE, "status overlay: {0}", e.toString());
+            return yChip;
         }
     }
 

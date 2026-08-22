@@ -60,6 +60,7 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JCheckBox recordFilteredEventsCB;
     private JCheckBox showRecordingOverlayCB;
     private JCheckBox showRosOutputOverlayCB;
+    private JCheckBox showDnnSharedMemoryOverlayCB;
     private JCheckBox checkNonMonotonicCB;
     private JCheckBox syncEnabledCB;
     private JTextField timestampResetBitmaskTF;
@@ -562,6 +563,19 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         p.add(showRosOutputOverlayCB, gbc(y++));
 
+        showDnnSharedMemoryOverlayCB = new JCheckBox("Show DNN shared memory overlay");
+        showDnnSharedMemoryOverlayCB.setToolTipText("Show mmap publishing status on the chip view while DNNOutputViaSharedMemory is enabled");
+        showDnnSharedMemoryOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowDnnSharedMemoryOverlay(showDnnSharedMemoryOverlayCB.isSelected());
+            }
+        });
+        p.add(showDnnSharedMemoryOverlayCB, gbc(y++));
+
         checkNonMonotonicCB = new JCheckBox("Check for non-monotonic time in input streams");
         checkNonMonotonicCB.setToolTipText("If enabled, nonmonotonic timestamps are checked for in input streams from file or network");
         checkNonMonotonicCB.addActionListener(new ActionListener() {
@@ -822,6 +836,7 @@ public class AEViewerPreferencesDialog extends JDialog {
             recordFilteredEventsCB.setSelected(viewer.isRecordFilteredEventsEnabled());
             showRecordingOverlayCB.setSelected(viewer.isShowRecordingOverlay());
             showRosOutputOverlayCB.setSelected(viewer.isShowRosOutputOverlay());
+            showDnnSharedMemoryOverlayCB.setSelected(viewer.isShowDnnSharedMemoryOverlay());
             checkNonMonotonicCB.setSelected(viewer.isCheckNonMonotonicTimeExceptionsEnabled());
             JAERViewer jaerViewer = viewer.getJaerViewer();
             syncEnabledCB.setSelected(jaerViewer != null && jaerViewer.isSyncEnabled());
