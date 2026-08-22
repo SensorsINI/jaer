@@ -7,11 +7,11 @@ real time sensory-motor processing for event sensors and systems**
 
 ![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
-**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
+**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
 
 jAER efficiently captures event camera output, denoises, displays, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
 
-It can record your datasets and serve event sensor output to your favorite DNN (see [`SharedMemoryDVSFrameSender`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/SharedMemoryDVSFrameSender.java)) or [ROS](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → Enable ROS2 / Foxglove frame output; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
+It can record your datasets and serve event sensor output to your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) or [ROS](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → Enable ROS2 / Foxglove frame output; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
@@ -103,7 +103,7 @@ but has also been used to build many robots:
 5. [pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java))
 6. [bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java))
 7. [slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/virtualslotcar/SlotCarRacer.java))
-8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)) — 3.2.0 hello world: enable **SharedMemoryDVSFrameSender** and run [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap` (see [3.2.0 notes](release-notes/jaer-3.2.0-release-notes.md))
+8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)) — hello world: File → Remote → **DNN shared memory output…** (`DNNOutputViaSharedMemory`, `outputMode=EventCountFrames`) and run [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap` (see [3.2.0 notes](release-notes/jaer-3.2.0-release-notes.md))
 9. [incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoIncremental.java))
 
 jAER was also used to develop many event camera algorithms, including:
