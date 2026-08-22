@@ -157,6 +157,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="openBlockingQueueInputMenuItem">
                   <Properties>
+                    <Property name="mnemonic" type="int" value="98"/>
                     <Property name="text" type="java.lang.String" value="Enable BlockingQueue input from another viewer"/>
                   </Properties>
                   <Events>
@@ -165,6 +166,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="blockingQueueOutputEnabledCheckBoxMenuItem">
                   <Properties>
+                    <Property name="mnemonic" type="int" value="113"/>
                     <Property name="text" type="java.lang.String" value="Enable BlockingQueue output to another viewer"/>
                   </Properties>
                   <Events>

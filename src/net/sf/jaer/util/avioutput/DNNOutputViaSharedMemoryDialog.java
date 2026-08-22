@@ -11,9 +11,11 @@ package net.sf.jaer.util.avioutput;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeListener;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -25,7 +27,9 @@ import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
@@ -35,15 +39,41 @@ import net.sf.jaer.util.MessageWithLink;
  * Modeless control window wrapping a {@link FilterPanel} for
  * {@link DNNOutputViaSharedMemory}. Parameter changes apply immediately;
  * closing hides the window and leaves publishing running.
+ * Enable/disable is the bold toggle at the top; File → Remote only opens this dialog.
  */
 public class DNNOutputViaSharedMemoryDialog extends JDialog {
 
     private final DNNOutputViaSharedMemory filter;
+    private final JToggleButton enableButton;
+    private final PropertyChangeListener enabledSync;
 
     public DNNOutputViaSharedMemoryDialog(Frame parent, DNNOutputViaSharedMemory filter) {
         super(parent, "DNN shared memory output", false);
         this.filter = filter;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+
+        enableButton = new JToggleButton("Enable DNN shared memory output");
+        enableButton.setFont(enableButton.getFont().deriveFont(Font.BOLD));
+        enableButton.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        enableButton.setMnemonic(KeyEvent.VK_E);
+        enableButton.setToolTipText(
+                "Start or stop publishing. Enabled status is shown as an overlay on the chip view.");
+        enableButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, enableButton.getPreferredSize().height + 8));
+        enableButton.setSelected(filter.isFilterEnabled());
+        enableButton.addActionListener(e -> filter.setFilterEnabled(enableButton.isSelected()));
+        enabledSync = evt -> SwingUtilities.invokeLater(() -> {
+            boolean on = filter.isFilterEnabled();
+            if (enableButton.isSelected() != on) {
+                enableButton.setSelected(on);
+            }
+        });
+        filter.getSupport().addPropertyChangeListener("filterEnabled", enabledSync);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                filter.getSupport().removePropertyChangeListener("filterEnabled", enabledSync);
+            }
+        });
 
         MessageWithLink intro = new MessageWithLink(
                 "Publishes DVS data over a memory-mapped file plus localhost TCP "
@@ -58,18 +88,21 @@ public class DNNOutputViaSharedMemoryDialog extends JDialog {
                 + "<code>live_reconstruction.py</code> (TCP 14101).</li>"
                 + "</ul>"
                 + "<p style=\"margin:6px 0 0 0;\">Use the filter <b>?</b> Help for full setup. "
-                + "Closing this window does not stop publishing.</p>");
+                + "Closing this window does not stop publishing; use <b>Enable DNN shared memory output</b> above.</p>");
 
         JPanel north = new JPanel();
         north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
         north.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
         intro.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         howTo.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        north.add(enableButton);
+        north.add(Box.createVerticalStrut(8));
         north.add(intro);
         north.add(Box.createVerticalStrut(6));
         north.add(howTo);
 
         FilterPanel panel = new FilterPanel(filter);
+        panel.setEnabledCheckBoxVisible(false);
         panel.setControlsVisible(true);
         JScrollPane scroll = new JScrollPane(panel);
         scroll.setPreferredSize(new Dimension(640, 520));

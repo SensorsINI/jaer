@@ -33,7 +33,9 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
@@ -42,15 +44,36 @@ import net.sf.jaer.util.MessageWithLink;
 /**
  * Modeless control window wrapping a {@link FilterPanel} for {@link ROSOutput}.
  * Parameter changes apply immediately; closing hides the window and leaves publishing running.
+ * Enable/disable is the bold toggle at the top; File → Remote only opens this dialog.
  */
 public class ROSOutputDialog extends JDialog {
 
     private final ROSOutput filter;
+    private final JToggleButton enableButton;
+    private final PropertyChangeListener enabledSync;
+    private final PropertyChangeListener urlSync;
 
     public ROSOutputDialog(Frame parent, ROSOutput filter) {
         super(parent, "ROS2 / Foxglove frame output", false);
         this.filter = filter;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+
+        enableButton = new JToggleButton("Enable ROS2 / Foxglove output");
+        enableButton.setFont(enableButton.getFont().deriveFont(Font.BOLD));
+        enableButton.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        enableButton.setMnemonic(KeyEvent.VK_E);
+        enableButton.setToolTipText(
+                "Start or stop publishing. Enabled status is shown as an overlay on the chip view.");
+        enableButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, enableButton.getPreferredSize().height + 8));
+        enableButton.setSelected(filter.isFilterEnabled());
+        enableButton.addActionListener(e -> filter.setFilterEnabled(enableButton.isSelected()));
+        enabledSync = evt -> SwingUtilities.invokeLater(() -> {
+            boolean on = filter.isFilterEnabled();
+            if (enableButton.isSelected() != on) {
+                enableButton.setSelected(on);
+            }
+        });
+        filter.getSupport().addPropertyChangeListener("filterEnabled", enabledSync);
 
         JTextField urlField = new JTextField(filter.getFoxgloveClientUrl(), 22);
         urlField.setEditable(false);
@@ -69,7 +92,7 @@ public class ROSOutputDialog extends JDialog {
                     .setContents(new StringSelection(urlField.getText()), null);
             copy.setText("Copied");
         });
-        PropertyChangeListener urlSync = evt -> {
+        urlSync = evt -> {
             String n = evt.getPropertyName();
             if ("foxglovePort".equals(n) || "foxgloveBindAddress".equals(n)) {
                 urlField.setText(filter.getFoxgloveClientUrl());
@@ -81,6 +104,7 @@ public class ROSOutputDialog extends JDialog {
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
                 filter.getSupport().removePropertyChangeListener(urlSync);
+                filter.getSupport().removePropertyChangeListener("filterEnabled", enabledSync);
             }
         });
 
@@ -99,7 +123,9 @@ public class ROSOutputDialog extends JDialog {
                 + "<b>Open connection</b> → <b>Foxglove WebSocket</b> and paste the URL (Copy or Ctrl+C).</li>"
                 + "<li><b>Layouts</b> → <b>Create new layout</b> → choose the <b>Image</b> template.</li>"
                 + "<li>Pick topic <code>/jaer/event_count</code> (or time-surface / voxel).</li>"
-                + "</ol>");
+                + "</ol>"
+                + "<p style=\"margin:6px 0 0 0;\">Use <b>Enable ROS2 / Foxglove output</b> above to start or stop. "
+                + "Closing this window does not stop publishing.</p>");
 
         JPanel north = new JPanel();
         north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
@@ -107,12 +133,15 @@ public class ROSOutputDialog extends JDialog {
         intro.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         urlRow.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         howTo.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        north.add(enableButton);
+        north.add(Box.createVerticalStrut(8));
         north.add(intro);
         north.add(Box.createVerticalStrut(6));
         north.add(urlRow);
         north.add(howTo);
 
         FilterPanel panel = new FilterPanel(filter);
+        panel.setEnabledCheckBoxVisible(false);
         JScrollPane scroll = new JScrollPane(panel);
         scroll.setPreferredSize(new Dimension(640, 480));
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));

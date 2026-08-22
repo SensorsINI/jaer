@@ -404,13 +404,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
     private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
-    private boolean syncingRosOutputMenu = false;
-    private PropertyChangeListener rosOutputEnabledListener;
-    private javax.swing.JCheckBoxMenuItem rosOutputEnabledCheckBoxMenuItem;
+    private javax.swing.JMenuItem rosOutputMenuItem;
     private ROSOutputDialog rosOutputDialog;
-    private boolean syncingDnnSharedMemoryMenu = false;
-    private PropertyChangeListener dnnSharedMemoryEnabledListener;
-    private javax.swing.JCheckBoxMenuItem dnnSharedMemoryEnabledCheckBoxMenuItem;
+    private javax.swing.JMenuItem dnnSharedMemoryMenuItem;
     private DNNOutputViaSharedMemoryDialog dnnSharedMemoryDialog;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
@@ -1242,11 +1238,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openUnicastInputMenuItem.setToolTipText(descriptionTooltip(AEUnicastInput.class, null));
         openBlockingQueueInputMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "openBlockingQueueInputMenuItemActionPerformed", ActionEvent.class));
         blockingQueueOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed", ActionEvent.class));
-        if (rosOutputEnabledCheckBoxMenuItem != null) {
-            rosOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(ROSOutput.class, null));
+        if (rosOutputMenuItem != null) {
+            rosOutputMenuItem.setToolTipText(descriptionTooltip(ROSOutput.class, null));
         }
-        if (dnnSharedMemoryEnabledCheckBoxMenuItem != null) {
-            dnnSharedMemoryEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(DNNOutputViaSharedMemory.class, null));
+        if (dnnSharedMemoryMenuItem != null) {
+            dnnSharedMemoryMenuItem.setToolTipText(descriptionTooltip(DNNOutputViaSharedMemory.class, null));
         }
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
@@ -1254,8 +1250,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 openUnicastInputMenuItem,
                 openBlockingQueueInputMenuItem,
                 blockingQueueOutputEnabledCheckBoxMenuItem,
-                rosOutputEnabledCheckBoxMenuItem,
-                dnnSharedMemoryEnabledCheckBoxMenuItem);
+                rosOutputMenuItem,
+                dnnSharedMemoryMenuItem);
     }
 
     /**
@@ -2111,8 +2107,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
             chip.onRegistration();
-            syncRosOutputMenuFromChip();
-            syncDnnSharedMemoryMenuFromChip();
 
         } catch (Exception e) {
             log.log(Level.SEVERE, e.toString(), e);
@@ -5012,6 +5006,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(openUnicastInputMenuItem);
         remoteMenu.add(jSeparator17);
 
+        openBlockingQueueInputMenuItem.setMnemonic('b');
         openBlockingQueueInputMenuItem.setText("Enable BlockingQueue input from another viewer");
         openBlockingQueueInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -5020,6 +5015,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         remoteMenu.add(openBlockingQueueInputMenuItem);
 
+        blockingQueueOutputEnabledCheckBoxMenuItem.setMnemonic('q');
         blockingQueueOutputEnabledCheckBoxMenuItem.setText("Enable BlockingQueue output to another viewer");
         blockingQueueOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -8968,10 +8964,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void initRosOutputRemoteMenu() {
-        rosOutputEnabledCheckBoxMenuItem = new JCheckBoxMenuItem("Enable ROS2 / Foxglove frame output...");
-        rosOutputEnabledCheckBoxMenuItem.addActionListener(e -> rosOutputEnabledCheckBoxMenuItemActionPerformed());
-        remoteMenu.add(rosOutputEnabledCheckBoxMenuItem);
-        syncRosOutputMenuFromChip();
+        rosOutputMenuItem = new JMenuItem("ROS2 / Foxglove frame output...");
+        rosOutputMenuItem.setMnemonic('r');
+        rosOutputMenuItem.addActionListener(e -> rosOutputMenuItemActionPerformed());
+        remoteMenu.add(rosOutputMenuItem);
     }
 
     private ROSOutput findRosOutput() {
@@ -8981,26 +8977,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean isRosOutputSkipChipRendering() {
         ROSOutput r = findRosOutput();
         return r != null && r.isFilterEnabled() && r.isSkipChipRendering();
-    }
-
-    private void syncRosOutputMenuFromChip() {
-        if (rosOutputEnabledCheckBoxMenuItem == null) {
-            return;
-        }
-        ROSOutput r = findRosOutput();
-        if (rosOutputEnabledListener != null && r != null) {
-            r.getSupport().removePropertyChangeListener("filterEnabled", rosOutputEnabledListener);
-        }
-        rosOutputEnabledListener = evt -> SwingUtilities.invokeLater(this::syncRosOutputMenuFromChip);
-        if (r != null) {
-            r.getSupport().addPropertyChangeListener("filterEnabled", rosOutputEnabledListener);
-        }
-        syncingRosOutputMenu = true;
-        try {
-            rosOutputEnabledCheckBoxMenuItem.setSelected(r != null && r.isFilterEnabled());
-        } finally {
-            syncingRosOutputMenu = false;
-        }
     }
 
     private void disposeRosOutputDialog() {
@@ -9021,13 +8997,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rosOutputDialog.toFront();
     }
 
-    private void rosOutputEnabledCheckBoxMenuItemActionPerformed() {
-        if (syncingRosOutputMenu) {
-            return;
-        }
+    private void rosOutputMenuItemActionPerformed() {
         AEChip c = getChip();
         if (c == null) {
-            syncRosOutputMenuFromChip();
             return;
         }
         ROSOutput.ensurePresent(c);
@@ -9035,47 +9007,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (r == null) {
             JOptionPane.showMessageDialog(this, "Could not create ROSOutput filter", "ROS2 / Foxglove",
                     JOptionPane.ERROR_MESSAGE);
-            syncRosOutputMenuFromChip();
             return;
         }
-        if (rosOutputEnabledCheckBoxMenuItem.isSelected()) {
-            r.setFilterEnabled(true);
-            showRosOutputDialog(r);
-        } else {
-            r.setFilterEnabled(false);
-        }
-        syncRosOutputMenuFromChip();
+        showRosOutputDialog(r);
     }
 
     private void initDnnSharedMemoryRemoteMenu() {
-        dnnSharedMemoryEnabledCheckBoxMenuItem = new JCheckBoxMenuItem("DNN shared memory output...");
-        dnnSharedMemoryEnabledCheckBoxMenuItem.addActionListener(e -> dnnSharedMemoryEnabledCheckBoxMenuItemActionPerformed());
-        remoteMenu.add(dnnSharedMemoryEnabledCheckBoxMenuItem);
-        syncDnnSharedMemoryMenuFromChip();
-    }
-
-    private DNNOutputViaSharedMemory findDnnSharedMemory() {
-        return DNNOutputViaSharedMemory.find(getChip());
-    }
-
-    private void syncDnnSharedMemoryMenuFromChip() {
-        if (dnnSharedMemoryEnabledCheckBoxMenuItem == null) {
-            return;
-        }
-        DNNOutputViaSharedMemory f = findDnnSharedMemory();
-        if (dnnSharedMemoryEnabledListener != null && f != null) {
-            f.getSupport().removePropertyChangeListener("filterEnabled", dnnSharedMemoryEnabledListener);
-        }
-        dnnSharedMemoryEnabledListener = evt -> SwingUtilities.invokeLater(this::syncDnnSharedMemoryMenuFromChip);
-        if (f != null) {
-            f.getSupport().addPropertyChangeListener("filterEnabled", dnnSharedMemoryEnabledListener);
-        }
-        syncingDnnSharedMemoryMenu = true;
-        try {
-            dnnSharedMemoryEnabledCheckBoxMenuItem.setSelected(f != null && f.isFilterEnabled());
-        } finally {
-            syncingDnnSharedMemoryMenu = false;
-        }
+        dnnSharedMemoryMenuItem = new JMenuItem("DNN shared memory output...");
+        dnnSharedMemoryMenuItem.setMnemonic('d');
+        dnnSharedMemoryMenuItem.addActionListener(e -> dnnSharedMemoryMenuItemActionPerformed());
+        remoteMenu.add(dnnSharedMemoryMenuItem);
     }
 
     private void disposeDnnSharedMemoryDialog() {
@@ -9096,13 +9037,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         dnnSharedMemoryDialog.toFront();
     }
 
-    private void dnnSharedMemoryEnabledCheckBoxMenuItemActionPerformed() {
-        if (syncingDnnSharedMemoryMenu) {
-            return;
-        }
+    private void dnnSharedMemoryMenuItemActionPerformed() {
         AEChip c = getChip();
         if (c == null) {
-            syncDnnSharedMemoryMenuFromChip();
             return;
         }
         DNNOutputViaSharedMemory.ensurePresent(c);
@@ -9110,16 +9047,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (f == null) {
             JOptionPane.showMessageDialog(this, "Could not create DNNOutputViaSharedMemory filter",
                     "DNN shared memory output", JOptionPane.ERROR_MESSAGE);
-            syncDnnSharedMemoryMenuFromChip();
             return;
         }
-        if (dnnSharedMemoryEnabledCheckBoxMenuItem.isSelected()) {
-            f.setFilterEnabled(true);
-            showDnnSharedMemoryDialog(f);
-        } else {
-            f.setFilterEnabled(false);
-        }
-        syncDnnSharedMemoryMenuFromChip();
+        showDnnSharedMemoryDialog(f);
     }
 
     /**

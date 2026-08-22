@@ -2569,6 +2569,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         return enclosedFilterPanels.values();
     }
 
+    /**
+     * Hide the built-in enable checkbox when a standalone dialog supplies its
+     * own enable toggle (e.g. File → Remote ROS / DNN output windows).
+     */
+    public void setEnabledCheckBoxVisible(boolean visible) {
+        enabledCheckBox.setVisible(visible);
+    }
+
     private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enabledCheckBoxActionPerformed
         boolean yes = enabledCheckBox.isSelected();
         if (getFilter() != null) {
