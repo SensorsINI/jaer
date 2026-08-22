@@ -12,12 +12,12 @@ real time sensory-motor processing for event sensors and systems**
 (You get plug-and-play, "it just works" for all the cameras above.) 
 
 jAER efficiently 
- * captures USB event camera output, 
- * denoises -- with faste accurate algorithms
+ * captures USB event camera output from [most devices](#device-hardware-support), 
+ * denoises -- with fast, accurate event filtering algorithms
  * displays -- with a variety of color and 2d/3d options
  * records -- in a high-speed compressed format (AEDAT-4)
- * plays back -- with flexible time/event rate, markers, and IN/OUT points
- * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)). 
+ * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
+ * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)).
 
 It can record your datasets and serve recorded or live event sensor output to 
  * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
