@@ -82,6 +82,41 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
     static public final int REQUIRED_LOGIC_REVISION_FX2 = 18;
 
+    /** Cached exact FPGA-geometry fingerprint for the shared DAVIS/SciDVS PID. */
+    private Boolean sciDVSFpgaGeometryMatch;
+
+    /**
+     * Probes the two read-only FPGA DVS geometry registers and caches whether
+     * they match the validated SciDVS bitstream. The register axes are the raw
+     * stream axes, hence {@code 126x112} for the logical {@code 112x126} chip.
+     *
+     * <p>The first read uses the normal Cypress open path when necessary,
+     * including its one USB reset and interface claim. The same interface is
+     * left open, so later chip binding does not perform a second reset. This
+     * method does not start acquisition, write an FPGA register, or close the
+     * device.
+     *
+     * @return true only for the exact validated SciDVS FPGA geometry
+     * @throws HardwareInterfaceException if the FPGA geometry cannot be read
+     */
+    public synchronized boolean probeSciDVSByFpgaGeometry() throws HardwareInterfaceException {
+        if (sciDVSFpgaGeometryMatch != null) {
+            return sciDVSFpgaGeometryMatch;
+        }
+        final int dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+        final int dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+        sciDVSFpgaGeometryMatch = matchesSciDVSFpgaGeometry(dvsSizeX, dvsSizeY);
+        CypressFX3.log.info(String.format(
+                "DAViSFX3 FPGA DVS geometry fingerprint=%dx%d SciDVS=%s",
+                dvsSizeX, dvsSizeY, sciDVSFpgaGeometryMatch));
+        return sciDVSFpgaGeometryMatch;
+    }
+
+    /** Hardware-free exact classifier used by the probe and regression test. */
+    public static boolean matchesSciDVSFpgaGeometry(final int dvsSizeX, final int dvsSizeY) {
+        return dvsSizeX == 126 && dvsSizeY == 112;
+    }
+
     private boolean updatedRealClockValues = false;
     public float logicClockFreq = 90.0f;
     public float adcClockFreq = 30.0f;

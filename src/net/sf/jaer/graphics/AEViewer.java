@@ -172,6 +172,7 @@ import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
@@ -1256,6 +1257,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * <li>Search the AEChip menu, then {@link #DEFAULT_CHIP_CLASS_NAMES} if the
      * leftover Customize list has no VID/PID match (upgrade without clearing
      * Preferences).</li>
+     * <li>When a DAVIS/SciDVS VID/PID match is ambiguous, select SciDVS if the
+     * FPGA reports its exact validated raw DVS geometry.</li>
      * <li>If a remembered AEChip exists for this device key and is still a
      * match, apply it silently.</li>
      * <li>If exactly one AEChip matches and it is already selected,
@@ -1293,6 +1296,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.info("No loaded or default AEChip declares USB " + ids.key()
                     + ". Use AEChip/Customize to add the device class.");
             return;
+        }
+
+        // DAVIS and SciDVS share their USB VID/PID. Only when that ambiguity
+        // would otherwise require a chooser, read the FPGA's two DVS geometry
+        // registers. The validated SciDVS bitstream uniquely reports raw
+        // stream geometry 126x112; unknown geometry or a read failure retains
+        // the existing remembered-choice/chooser behavior.
+        if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface) {
+            try {
+                if (((DAViSFX3HardwareInterface) hw).probeSciDVSByFpgaGeometry()) {
+                    liveChipOfferPromptedKeys.add(deviceKey);
+                    addChipClassesToMenu(java.util.Collections.singletonList(SciDVS.class));
+                    if (!SciDVS.class.equals(getAeChipClass())) {
+                        log.info("FPGA DVS geometry identifies SciDVS for USB device " + deviceKey);
+                        setAeChipClass(SciDVS.class);
+                    }
+                    return;
+                }
+            } catch (HardwareInterfaceException | RuntimeException e) {
+                log.info("Could not read FPGA DVS geometry for USB device " + deviceKey
+                        + "; retaining normal AEChip selection: " + e.getMessage());
+            }
         }
         final java.util.List<Class<? extends AEChip>> matches = found;
 
