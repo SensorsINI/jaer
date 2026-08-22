@@ -146,9 +146,10 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
     public static final int DEFAULT_MAX_EVENTS = 100000;
     public static final byte[] MAGIC = new byte[]{'J', 'A', 'E', 'R'};
 
-    public static final String GROUP_OUTPUT = "Output";
-    public static final String GROUP_FRAMES = "Frames (Roshambo)";
-    public static final String GROUP_EVENTS = "Event windows (FireNet)";
+    public static final String GROUP_OUTPUT = "1. Output";
+    public static final String GROUP_EVENTS = "2. Event windows (FireNet)";
+    public static final String GROUP_FRAMES = "3. Frames (Roshambo)";
+    public static final String GROUP_CROPPING = "4. Cropping";
 
     /**
      * Payload written to each mmap slot.
@@ -228,6 +229,10 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
         setPropertyTooltip(GROUP_FRAMES, "rectifyPolarities", "ignore ON/OFF sign (Roshambo default on)");
         setPropertyTooltip(GROUP_FRAMES, "normalizeFrame", "3-sigma normalize (Roshambo default off)");
         setPropertyTooltip(GROUP_FRAMES, "showFrames", "show accumulated histogram in a separate window");
+        setPropertyTooltip(GROUP_CROPPING, "frameCutTop", "pixels to cut from the top of the original image before downsampling");
+        setPropertyTooltip(GROUP_CROPPING, "frameCutBottom", "pixels to cut from the bottom of the original image before downsampling");
+        setPropertyTooltip(GROUP_CROPPING, "frameCutLeft", "pixels to cut from the left of the original image before downsampling");
+        setPropertyTooltip(GROUP_CROPPING, "frameCutRight", "pixels to cut from the right of the original image before downsampling");
         setPropertyTooltip(GROUP_EVENTS, "eventsPerWindow", "events per window when EventCount; 0 = width*height*numEventsPerPixel");
         setPropertyTooltip(GROUP_EVENTS, "numEventsPerPixel", "used when eventsPerWindow=0 (E2VID default 0.35)");
         setPropertyTooltip(GROUP_EVENTS, "eventWindowTimeSliceMethod", "close a window after N events or after eventWindowDurationUs");

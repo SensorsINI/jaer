@@ -252,7 +252,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             "timeslicemethod=" + dvsFrame.getTimeSliceMethod().toString(),
             "grayScale=" + dvsFrame.getDvsGrayScale(),
             "normalize=" + dvsFrame.isNormalizeFrame(),
-            "normalizeDVSForZsNullhop=" + dvsFrame.isNormalizeDVSForZsNullhop(),
             "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(),
             "timeDurationUsPerFrame=" + dvsFrame.getTimeDurationUsPerFrame(),
             "format=" + format.toString(),
@@ -832,7 +831,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("timeslicemethod", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("rectify", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("normalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("nullhopnormalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writetargetlocations", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -1030,11 +1028,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.getDvsFrame().setNormalizeFrame(b);
         }
 
-        if (opt.getSet().isSet("nullhopnormalize")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("nullhopnormalize").getResultValue(0));
-            writer.getDvsFrame().setNormalizeDVSForZsNullhop(b);
-        }
-
         if (opt.getSet().isSet("showoutput")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
             writer.setShowOutput(b);
@@ -1163,7 +1156,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 + "writeapsframes=%s writedvsframes=%s\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "timeslicemethod=%s numevents=%d framedurationus=%d\n"
-                + " rectify=%s normalize=%s nullhopnormalize=%s showoutput=%s maxframes=%d",
+                + " rectify=%s normalize=%s showoutput=%s maxframes=%d",
                 chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
                 writer.getCompressionQuality(), writer.getFormat().toString(),
                 writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(),
@@ -1173,7 +1166,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 writer.getDvsFrame().getDvsEventsPerFrame(), writer.getDvsFrame().getTimeDurationUsPerFrame(),
                 writer.getDvsFrame().isRectifyPolarities(),
                 writer.getDvsFrame().isNormalizeFrame(),
-                writer.getDvsFrame().isNormalizeDVSForZsNullhop(),
                 writer.isShowOutput(), writer.getMaxFrames()));
         log.info("Successfully wrote file " + outfile.getAbsolutePath() + " with " + writer.getFramesWritten() + " frames");
         System.exit(0);
