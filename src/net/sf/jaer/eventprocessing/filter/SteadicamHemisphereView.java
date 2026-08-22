@@ -3,6 +3,8 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import static net.sf.jaer.eventprocessing.EventFilter.log;
+
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -11,24 +13,31 @@ import java.awt.event.WindowEvent;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /**
- * World-fixed 180° equirectangular hemisphere painted from DVS events using
- * DC-integrated IMU pan/tilt/roll (not the high-passed Steadicam warp).
- * Size follows lensFOV: {@code hemiSize = π / atan(pitch/f)}, capped at
- * {@link #MAX_SIZE}.
+ * World-fixed equirectangular map painted from DVS events using IMU pose.
+ * Horizontal span is 180°; vertical span follows the chip aspect ratio
+ * ({@code 180° * sizeY / sizeX}) so the pixmap matches the sensor.
+ * Width is {@code π / atan(pitch_x / f)}, capped at {@link #MAX_SIZE}.
  */
 class SteadicamHemisphereView {
 
     static final int MAX_SIZE = 2048;
-    private static final float HALF_PI = (float) (Math.PI / 2);
+    private static final int MIN_SIZE = 32;
 
     private final Steadicam owner;
+    private final AEChip chip;
     private ImageDisplay display;
     private JFrame frame;
-    private int hemiSize = 256;
+    private int hemiW = 256;
+    private int hemiH = 256;
+    /** Azimuth coverage (always π). */
+    private float azSpanRad = (float) Math.PI;
+    /** Elevation coverage ({@code azSpan * hemiH / hemiW}). */
+    private float elSpanRad = (float) Math.PI;
     private float lensFocalLengthMm = 8.5f;
     private float pixelWidthUm = 10f;
     private float pixelHeightUm = 10f;
@@ -41,32 +50,62 @@ class SteadicamHemisphereView {
     private float colorStep = 0.5f;
     private float background = 0.5f;
 
-    SteadicamHemisphereView(Steadicam owner) {
+    SteadicamHemisphereView(Steadicam owner, AEChip chip) {
         this.owner = owner;
+        this.chip = chip;
     }
 
     /**
-     * Recompute buffer from lensFOV {@code radPerPixel = atan(pitch_mm / f_mm)}.
+     * Recompute pixmap from the chip size/pitch and lens FOV. Horizontal map
+     * is 180°; height follows {@code sizeY/sizeX}. Called from
+     * {@link Steadicam#initFilter()}.
      */
-    synchronized void resizeFromOptics(float radPerPixel, float lensFocalLengthMm,
-            float pixelWidthUm, float pixelHeightUm) {
+    synchronized void resizeFromOptics(float lensFocalLengthMm) {
         this.lensFocalLengthMm = lensFocalLengthMm;
-        this.pixelWidthUm = pixelWidthUm;
-        this.pixelHeightUm = pixelHeightUm;
-        int size = 256;
-        if (radPerPixel > 1e-6f && !Float.isNaN(radPerPixel) && !Float.isInfinite(radPerPixel)) {
-            size = Math.round((float) Math.PI / radPerPixel);
+        if (chip != null) {
+            pixelWidthUm = chip.getPixelWidthUm();
+            pixelHeightUm = chip.getPixelHeightUm();
         }
-        if (size < 32) {
-            size = 32;
+        int sx = chip != null ? chip.getSizeX() : 0;
+        int sy = chip != null ? chip.getSizeY() : 0;
+        if (sx < 1) {
+            sx = 256;
         }
-        if (size > MAX_SIZE) {
-            size = MAX_SIZE;
+        if (sy < 1) {
+            sy = 256;
         }
-        hemiSize = size;
+        int w = 256;
+        if (lensFocalLengthMm > 0 && pixelWidthUm > 0) {
+            float radPerPixel = (float) Math.atan((pixelWidthUm * 1e-3f) / lensFocalLengthMm);
+            if (radPerPixel > 1e-6f && !Float.isNaN(radPerPixel) && !Float.isInfinite(radPerPixel)) {
+                w = Math.round((float) Math.PI / radPerPixel);
+            }
+        }
+        int h = Math.round(w * (float) sy / (float) sx);
+        if (w < MIN_SIZE) {
+            float s = MIN_SIZE / (float) w;
+            w = MIN_SIZE;
+            h = Math.max(1, Math.round(h * s));
+        }
+        if (h < 1) {
+            h = 1;
+        }
+        if (w > MAX_SIZE || h > MAX_SIZE) {
+            float s = MAX_SIZE / (float) Math.max(w, h);
+            w = Math.max(1, Math.round(w * s));
+            h = Math.max(1, Math.round(h * s));
+        }
+        hemiW = w;
+        hemiH = h;
+        azSpanRad = (float) Math.PI;
+        elSpanRad = azSpanRad * hemiH / (float) hemiW;
         ensureDisplay();
-        display.setImageSize(size, size);
+        display.setImageSize(hemiW, hemiH);
         display.resetFrame(background);
+        log.info(String.format(
+                "Steadicam hemisphere map %dx%d px (chip %dx%d, %.0f° x %.0f°)",
+                hemiW, hemiH, sx, sy,
+                Math.toDegrees(azSpanRad), Math.toDegrees(elSpanRad)));
         SwingUtilities.invokeLater(this::ensureFrame);
     }
 
@@ -169,12 +208,14 @@ class SteadicamHemisphereView {
 
         float az = (float) Math.atan2(xw, zw);
         float el = (float) Math.atan2(yw, (float) Math.hypot(xw, zw));
-        if (az < -HALF_PI || az > HALF_PI || el < -HALF_PI || el > HALF_PI) {
+        float halfAz = azSpanRad * 0.5f;
+        float halfEl = elSpanRad * 0.5f;
+        if (az < -halfAz || az > halfAz || el < -halfEl || el > halfEl) {
             return;
         }
-        int u = Math.round((az + HALF_PI) / (float) Math.PI * (hemiSize - 1));
-        int v = Math.round((el + HALF_PI) / (float) Math.PI * (hemiSize - 1));
-        if (u < 0 || u >= hemiSize || v < 0 || v >= hemiSize) {
+        int u = Math.round((az + halfAz) / azSpanRad * (hemiW - 1));
+        int v = Math.round((el + halfEl) / elSpanRad * (hemiH - 1));
+        if (u < 0 || u >= hemiW || v < 0 || v >= hemiH) {
             return;
         }
         display.checkPixmapAllocation();
@@ -182,7 +223,7 @@ class SteadicamHemisphereView {
         if (p == null) {
             return;
         }
-        int i = 3 * (u + v * hemiSize);
+        int i = 3 * (u + v * hemiW);
         boolean on = e.polarity == PolarityEvent.Polarity.On;
         if (colorMode == Steadicam.HemisphereColorMode.Gray) {
             float a = p[i] + (on ? colorStep : -colorStep);
@@ -229,21 +270,42 @@ class SteadicamHemisphereView {
             return;
         }
         display = ImageDisplay.createOpenGLCanvas();
-        display.setImageSize(hemiSize, hemiSize);
+        display.setImageSize(hemiW, hemiH);
         display.setGrayValue(background);
         display.resetFrame(background);
         display.setxLabel("azimuth (right)");
         display.setyLabel("elevation (up)");
     }
 
+    private Dimension windowSizeForMap() {
+        float ar = hemiH > 0 ? (float) hemiW / hemiH : 1f;
+        int maxDim = Math.min(Math.max(Math.max(hemiW, hemiH), 320), 720);
+        int winW;
+        int winH;
+        if (ar >= 1f) {
+            winW = maxDim;
+            winH = Math.max(1, Math.round(maxDim / ar));
+        } else {
+            winH = maxDim;
+            winW = Math.max(1, Math.round(maxDim * ar));
+        }
+        return new Dimension(winW, winH);
+    }
+
+    private String frameTitle() {
+        return String.format("Steadicam hemisphere (%.0f° × %.0f°)",
+                Math.toDegrees(azSpanRad), Math.toDegrees(elSpanRad));
+    }
+
     private synchronized void ensureFrame() {
         ensureDisplay();
+        Dimension pref = windowSizeForMap();
+        display.setPreferredSize(pref);
         if (frame != null) {
+            frame.setTitle(frameTitle());
             return;
         }
-        int win = Math.min(Math.max(hemiSize, 320), 720);
-        frame = new JFrame("Steadicam hemisphere (180°)");
-        frame.setPreferredSize(new Dimension(win, win));
+        frame = new JFrame(frameTitle());
         frame.getContentPane().add(display, BorderLayout.CENTER);
         frame.pack();
         frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
