@@ -962,9 +962,23 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
         getSupport().firePropertyChange("mmapPath", oldPath, mmapPath);
         getSupport().firePropertyChange("controlPort", oldPort, controlPort);
         getSupport().firePropertyChange("flipY", oldFlip, flipY);
+        if (outputMode == OutputMode.EventWindows) {
+            disposeShowFramesWindow();
+        } else if (isShowFramesPreviewActive() && lastDvsFrame != null) {
+            final DvsFrame f = lastDvsFrame;
+            final float[] pixmapCopy = java.util.Arrays.copyOf(f.getImage(), f.getImage().length);
+            final int w = f.getWidth();
+            final int h = f.getHeight();
+            javax.swing.SwingUtilities.invokeLater(() -> drawCopied(w, h, pixmapCopy));
+        }
         if (wasRunning) {
             startPublisher();
         }
+    }
+
+    @Override
+    protected boolean isShowFramesPreviewActive() {
+        return super.isShowFramesPreviewActive() && outputMode == OutputMode.EventCountFrames;
     }
 
     public String getMmapPath() {

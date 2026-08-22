@@ -579,7 +579,7 @@ abstract public class DvsFramer extends EventFilter2D {
             if (filled) {
                 normalizeFrame();
                 lastDvsFrame = this;
-                if (showFrames) {
+                if (isShowFramesPreviewActive()) {
                     final float[] pixmapCopy = Arrays.copyOf(pixmap, pixmap.length);
                     final int w = width;
                     final int h = height;
@@ -890,6 +890,32 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     /**
+     * Whether the EventCountFrames ImageDisplay preview should exist.
+     * Subclasses can return false to drop the window (e.g. EventWindows mode).
+     */
+    protected boolean isShowFramesPreviewActive() {
+        return showFrames;
+    }
+
+    /**
+     * Disposes the showFrames ImageDisplay window so it can be recreated later.
+     */
+    protected void disposeShowFramesWindow() {
+        Runnable r = () -> {
+            if (activationsFrame != null) {
+                activationsFrame.dispose();
+                activationsFrame = null;
+            }
+            imageDisplay = null;
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
      * Draws a snapshot of a DVS frame on the EDT. Does not block the AE thread.
      *
      * @param width frame width
@@ -897,6 +923,9 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param pixmapCopy gray values 0-1, length width*height
      */
     protected void drawCopied(int width, int height, float[] pixmapCopy) {
+        if (!isShowFramesPreviewActive()) {
+            return;
+        }
         checkActivationsFrame();
         if (imageDisplay == null) {
             JPanel panel = new JPanel();
