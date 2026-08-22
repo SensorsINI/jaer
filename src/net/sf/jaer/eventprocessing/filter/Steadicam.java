@@ -94,7 +94,8 @@ the array center; <code>doEraseCenterOfRotationSelection</code> restores the def
 <li><code>transformImageEnabled</code> &mdash; warp APS display only (pixel data in the
 packet are unchanged).</li>
 <li><code>transformResetLimitDegrees</code> &mdash; snap the transform to zero if pan/tilt
-grow too large.</li>
+grow too large. Hemisphere view raises this to at least 110&deg; and restores
+the previous value when disabled.</li>
 <li><code>hemisphereViewEnabled</code> &mdash; open a 180&deg; world-fixed hemisphere
 <code>ImageDisplay</code> painted from DVS events. <code>useHighpassedTransform</code> (default on) uses the high-passed
 vestibular pose as the stabilizer; off uses DC integrated gyros so looking
@@ -103,7 +104,9 @@ Map size is <code>&pi; / atan(pitch/f)</code> (lensFOV), capped at 2048.
 <code>hemisphereFadeTauMs</code> fades unused pixels toward the mode background.
 <code>hemisphereColorMode</code> <b>Gray</b> accumulates signed ON/OFF like the chip
 renderer; <b>RedGreen</b> accumulates ON green / OFF red.
-<code>colorScale</code> is events to full scale.</li>
+<code>colorScale</code> is events to full scale.
+<code>dontRenderMainDisplay</code> skips AEViewer event rendering while the
+hemisphere is updated (overlay: rendering paused).</li>
 </ul>
 <p>This is not visual odometry: it only derotates IMU-measured rotation/translation of the
 camera, not scene motion.</p>
@@ -138,7 +141,10 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     /** Microsecond clock for {@link HighpassFilter} (int us). Not the MIPI/DVS tick. */
     private long hpTimeUs = 0;
     private boolean initialized = false;
+    private static final int HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG = 110;
     private int transformResetLimitDegrees = getInt("transformResetLimitDegrees", 75);
+    /** Prefs/user value restored when hemisphere view is turned off. */
+    private int transformResetLimitDegreesBeforeHemisphere = transformResetLimitDegrees;
     private static final int FLUSH_COUNT = 10;
     private int flushCounter = 0;
     private boolean calibrating = false;
@@ -172,6 +178,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private int colorScale = getInt("colorScale", 2);
     @Preferred
     private boolean useHighpassedTransform = getBoolean("useHighpassedTransform", true);
+    @Preferred
+    private boolean dontRenderMainDisplay = getBoolean("dontRenderMainDisplay", true);
     private final SteadicamHemisphereView hemisphereView = new SteadicamHemisphereView(this);
 
     ApsDvsEventPacket outputPacket = null;
@@ -193,7 +201,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(transform, "highpassTauMsTranslation", "highpass time constant (ms) relaxing pan/tilt transform to zero");
         setPropertyTooltip(transform, "highpassTauMsRotation", "highpass time constant (ms) relaxing roll transform to zero");
         setPropertyTooltip(transform, "lensFocalLengthMm", "lens focal length (mm) for scaling rotation to pixels");
-        setPropertyTooltip(transform, "transformResetLimitDegrees", "reset transform to 0 if pan/tilt exceed this many degrees");
+        setPropertyTooltip(transform, "transformResetLimitDegrees", "reset transform to 0 if pan/tilt exceed this many degrees (hemisphere view forces at least 110° and restores the previous value when disabled)");
         setPropertyTooltip(display, "showTransformRectangle", "show the red transform rectangle and cross hairs");
         setPropertyTooltip(display, "showGrid", "show a grid to judge stabilization");
         setPropertyTooltip(transform, "disableRotation", "disable rotational part of transform");
@@ -207,6 +215,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(inpaint, "hemisphereColorMode", "Gray: signed ON/OFF accumulation around mid-gray; RedGreen: accumulate ON green / OFF red from black");
         setPropertyTooltip(inpaint, "colorScale", "events to go full scale (Gray ±0.5 or RedGreen 0→1), as in ChipRenderer");
         setPropertyTooltip(inpaint, "clearHemisphere", "clear the hemisphere inpaint map to the background");
+        setPropertyTooltip(inpaint, "dontRenderMainDisplay", "skip AEViewer event render/repaint while the hemisphere is painted (faster); overlay shows rendering is paused");
 
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -226,6 +235,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         hemisphereView.setColorMode(hemisphereColorMode);
         hemisphereView.setColorScale(colorScale);
         updateHemisphereVisibility();
+        updateSkipMainDisplay();
+        applyHemisphereTransformLimit();
     }
 
     @Override
@@ -593,8 +604,30 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         return rollRate - rollOffset;
     }
 
+    /** True when AEViewer should skip chip pixmap render (hemisphere is the live view). */
+    public boolean shouldSkipMainDisplayRender() {
+        return isFilterEnabled() && hemisphereViewEnabled && dontRenderMainDisplay;
+    }
+
+    private void updateSkipMainDisplay() {
+        if (chip.getAeViewer() == null) {
+            return;
+        }
+        if (shouldSkipMainDisplayRender()) {
+            chip.getAeViewer().setSkipChipRenderingOverlay("Main display paused (Steadicam hemisphere)");
+        } else {
+            String cur = chip.getAeViewer().getSkipChipRenderingOverlay();
+            if (cur != null && cur.contains("Steadicam hemisphere")) {
+                chip.getAeViewer().setSkipChipRenderingOverlay(null);
+            }
+        }
+    }
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        if (shouldSkipMainDisplayRender()) {
+            return;
+        }
         if (calibrating) {
             if (imuTextRenderer == null) {
                 imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
@@ -731,6 +764,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             resetFilter();
         }
         updateHemisphereVisibility();
+        updateSkipMainDisplay();
     }
 
     public boolean isElectronicStabilizationEnabled() {
@@ -800,8 +834,24 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     public void setTransformResetLimitDegrees(int transformResetLimitDegrees) {
-        this.transformResetLimitDegrees = transformResetLimitDegrees;
-        putInt("transformResetLimitDegrees", transformResetLimitDegrees);
+        // FilterPanel may echo a programmatic raise to 110°; keep the saved restore value.
+        boolean echoClamp = hemisphereViewEnabled
+                && transformResetLimitDegrees == HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG
+                && this.transformResetLimitDegrees == HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG
+                && transformResetLimitDegreesBeforeHemisphere != transformResetLimitDegrees;
+        if (!echoClamp) {
+            transformResetLimitDegreesBeforeHemisphere = transformResetLimitDegrees;
+            putInt("transformResetLimitDegrees", transformResetLimitDegrees);
+        }
+        int live = transformResetLimitDegrees;
+        if (hemisphereViewEnabled && live < HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG) {
+            live = HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG;
+        }
+        int old = this.transformResetLimitDegrees;
+        this.transformResetLimitDegrees = live;
+        if (old != live) {
+            getSupport().firePropertyChange("transformResetLimitDegrees", old, live);
+        }
     }
 
     public boolean isShowTransformRectangle() {
@@ -903,8 +953,43 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         this.hemisphereViewEnabled = hemisphereViewEnabled;
         putBoolean("hemisphereViewEnabled", hemisphereViewEnabled);
         updateHemisphereVisibility();
+        updateSkipMainDisplay();
         if (old != hemisphereViewEnabled) {
+            applyHemisphereTransformLimit();
             getSupport().firePropertyChange("hemisphereViewEnabled", old, this.hemisphereViewEnabled);
+        }
+    }
+
+    /**
+     * Hemisphere inpaint needs enough headroom that pan/tilt do not snap to
+     * zero; raise the live limit to at least 110° and restore the previous
+     * value when hemisphere is disabled.
+     */
+    private void applyHemisphereTransformLimit() {
+        if (hemisphereViewEnabled) {
+            if (transformResetLimitDegrees < HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG) {
+                int old = transformResetLimitDegrees;
+                transformResetLimitDegrees = HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG;
+                getSupport().firePropertyChange("transformResetLimitDegrees", old, transformResetLimitDegrees);
+            }
+        } else if (transformResetLimitDegrees != transformResetLimitDegreesBeforeHemisphere) {
+            int old = transformResetLimitDegrees;
+            transformResetLimitDegrees = transformResetLimitDegreesBeforeHemisphere;
+            getSupport().firePropertyChange("transformResetLimitDegrees", old, transformResetLimitDegrees);
+        }
+    }
+
+    public boolean isDontRenderMainDisplay() {
+        return dontRenderMainDisplay;
+    }
+
+    public void setDontRenderMainDisplay(boolean dontRenderMainDisplay) {
+        boolean old = this.dontRenderMainDisplay;
+        this.dontRenderMainDisplay = dontRenderMainDisplay;
+        putBoolean("dontRenderMainDisplay", dontRenderMainDisplay);
+        updateSkipMainDisplay();
+        if (old != dontRenderMainDisplay) {
+            getSupport().firePropertyChange("dontRenderMainDisplay", old, this.dontRenderMainDisplay);
         }
     }
 
