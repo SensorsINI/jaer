@@ -115,21 +115,21 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private float rollDeg = 0;
     private float panDC = 0, tiltDC = 0, rollDC = 0;
     @Preferred
-    private float lensFocalLengthMm = getFloat("lensFocalLengthMm", 8.5f);
+    private float lensFocalLengthMm = getFloat("lensFocalLengthMm", 6.0f);
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
     HighpassFilter rollFilter = new HighpassFilter();
     @Preferred
-    private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
+    private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 2500);
     @Preferred
-    private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
+    private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 2500);
     float radPerPixel;
     private volatile boolean resetCalled = false;
     private int lastTransformUpdateTimestamp = 0;
     /** Microsecond clock for {@link HighpassFilter} (int us). Not the MIPI/DVS tick. */
     private long hpTimeUs = 0;
     private boolean initialized = false;
-    private int transformResetLimitDegrees = getInt("transformResetLimitDegrees", 45);
+    private int transformResetLimitDegrees = getInt("transformResetLimitDegrees", 75);
     private static final int FLUSH_COUNT = 10;
     private int flushCounter = 0;
     private boolean calibrating = false;
