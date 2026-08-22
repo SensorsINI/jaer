@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -770,13 +771,17 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
 
     private void startControlServer() throws IOException {
         stopControlServer();
-        serverSocket = new ServerSocket(controlPort, 8, InetAddress.getByName("127.0.0.1"));
+        ServerSocket ss = new ServerSocket();
+        ss.setReuseAddress(true);
+        ss.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), controlPort), 8);
+        serverSocket = ss;
         acceptThread = new Thread(this::acceptLoop, "DNNOutputViaSharedMemory-accept");
         acceptThread.setDaemon(true);
         notifyThread = new Thread(this::notifyLoop, "DNNOutputViaSharedMemory-notify");
         notifyThread.setDaemon(true);
         acceptThread.start();
         notifyThread.start();
+        log.info("DNNOutputViaSharedMemory control server listening on 127.0.0.1:" + controlPort);
     }
 
     private void stopControlServer() {
@@ -789,16 +794,28 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
                 log.fine("closing control server: " + e);
             }
         }
-        if (acceptThread != null) {
-            acceptThread.interrupt();
-            acceptThread = null;
+        Thread acc = acceptThread;
+        acceptThread = null;
+        if (acc != null) {
+            acc.interrupt();
+            try {
+                acc.join(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
-        if (notifyThread != null) {
-            notifyThread.interrupt();
+        Thread ntf = notifyThread;
+        notifyThread = null;
+        if (ntf != null) {
+            ntf.interrupt();
             synchronized (notifyLock) {
                 notifyLock.notifyAll();
             }
-            notifyThread = null;
+            try {
+                ntf.join(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         for (Socket s : clients) {
             try {
@@ -1006,15 +1023,19 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
     }
 
     public synchronized void setControlPort(int controlPort) {
+        int port = Math.max(1, Math.min(65535, controlPort));
         int old = this.controlPort;
-        this.controlPort = controlPort;
-        putInt(controlPortKey(), controlPort);
-        getSupport().firePropertyChange("controlPort", old, controlPort);
-        if (publisherRunning.get()) {
+        this.controlPort = port;
+        putInt(controlPortKey(), this.controlPort);
+        getSupport().firePropertyChange("controlPort", old, this.controlPort);
+        boolean listening = serverSocket != null && !serverSocket.isClosed()
+                && serverSocket.getLocalPort() == this.controlPort;
+        if (isFilterEnabled() && !listening) {
             try {
                 startControlServer();
             } catch (IOException e) {
-                log.warning("could not restart control server on port " + controlPort + ": " + e);
+                lastError = e.toString();
+                log.warning("could not bind control server on 127.0.0.1:" + this.controlPort + ": " + e);
             }
         }
     }

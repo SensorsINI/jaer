@@ -1955,6 +1955,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 @Override
                 public void focusLost(FocusEvent e) {
+                    try {
+                        NumberFormat format = NumberFormat.getNumberInstance();
+                        Integer oldValue = (Integer) read.invoke(getFilter());
+                        int y = format.parse(tf.getText()).intValue();
+                        if (oldValue == null || oldValue != y) {
+                            setUndoableState(y);
+                        }
+                        tf.setBackground(Color.white);
+                    } catch (Exception pe) {
+                        fixIntValue(tf, read);
+                    }
                 }
             }
             );
