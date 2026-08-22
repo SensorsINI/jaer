@@ -2,7 +2,13 @@ package eu.seebetter.ini.chips.davis.imu;
 
 import eu.seebetter.ini.chips.DavisChip;
 
-/** Defines MPU-6150 sample types and bit encodings. Enums are ordered as in sensor output I2C address space. */
+/**
+ * Defines MPU-6150 sample types and bit encodings. Enums are ordered as in
+ * sensor output I2C address space.
+ * <p>
+ * Gyro names are camera-viewpoint rates (see {@link IMUSample}):
+ * {@code gx} tilt-up, {@code gy} pan-right, {@code gz} roll-CW (image rolls CCW).
+ */
 public enum IMUSampleType {
 
     ax("AccelX", 0), ay("AccelY", 1), az("AccelZ", 2), temp("Temperature", 3), gx("GyroTiltX", 4), gy("GyroPanY", 5), gz("GyroRollZ", 6); 

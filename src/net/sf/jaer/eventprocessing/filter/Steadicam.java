@@ -247,7 +247,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             imageTransform = lastTransform;
             lastFrameNumber = frameCounter;
             ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod();
-            displayMethod.setImageTransform(lastTransform.translationPixels, lastTransform.rotationRad);
+            // Display GL is CCW-positive; rotationRad is CW (camera / IMU convention).
+            displayMethod.setImageTransform(lastTransform.translationPixels, -lastTransform.rotationRad);
         }
     }
 
@@ -278,8 +279,10 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
     private void applyTransform(PolarityEvent be, int corx, int cory) {
         int nx = be.x - corx, ny = be.y - cory;
-        be.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + corx);
-        be.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + cory);
+        // Clockwise about +Z (y up), same sign as getGyroRollZ() / TransformAtTime.
+        // Camera CW makes the scene appear CCW; this warp derotates it.
+        be.x = (short) ((((lastTransform.cosAngle * nx) + (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + corx);
+        be.y = (short) (((-(lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny)) + lastTransform.translationPixels.y) + cory);
         be.address = chip.getEventExtractor().getAddressFromCell(be.x, be.y, be.getType());
         if ((be.x > sxm1) || (be.x < 0) || (be.y > sym1) || (be.y < 0)) {
             be.setFilteredOut(true);
@@ -463,11 +466,13 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             tiltTranslationDeg = 0;
         }
 
+        // Same sign as getGyroRollZ(): positive CW from the camera viewpoint.
+        // applyTransform uses a CW matrix (y up); OpenGL callers negate for CCW.
         return new TransformAtTime(timestamp,
                 new Point2D.Float(
                         (float) ((Math.PI / 180) * panTranslationDeg) / radPerPixel,
                         (float) ((Math.PI / 180) * tiltTranslationDeg) / radPerPixel),
-                (-rollDeg * (float) Math.PI) / 180);
+                (rollDeg * (float) Math.PI) / 180);
     }
 
     synchronized public void doEraseGyroZero() {
@@ -540,7 +545,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             gl.glLineWidth(1f);
             gl.glColor3f(1, 0, 0);
             gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
-            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);
+            gl.glRotatef((float) ((-lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
             gl.glVertex2f(sx2, 0);
