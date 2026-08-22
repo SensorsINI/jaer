@@ -95,6 +95,15 @@ the array center; <code>doEraseCenterOfRotationSelection</code> restores the def
 packet are unchanged).</li>
 <li><code>transformResetLimitDegrees</code> &mdash; snap the transform to zero if pan/tilt
 grow too large.</li>
+<li><code>hemisphereViewEnabled</code> &mdash; open a 180&deg; world-fixed hemisphere
+<code>ImageDisplay</code> painted from DVS events. <code>useHighpassedTransform</code> (default on) uses the high-passed
+vestibular pose as the stabilizer; off uses DC integrated gyros so looking
+around paints new pixels.
+Map size is <code>&pi; / atan(pitch/f)</code> (lensFOV), capped at 2048.
+<code>hemisphereFadeTauMs</code> fades unused pixels toward the mode background.
+<code>hemisphereColorMode</code> <b>Gray</b> accumulates signed ON/OFF like the chip
+renderer; <b>RedGreen</b> accumulates ON green / OFF red.
+<code>colorScale</code> is events to full scale.</li>
 </ul>
 <p>This is not visual odometry: it only derotates IMU-measured rotation/translation of the
 camera, not scene motion.</p>
@@ -150,6 +159,20 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private boolean transformImageEnabled = getBoolean("transformImageEnabled", true);
     private int lastFrameNumber = 0;
     protected float imuLagMs = getFloat("imuLagMs", 0);
+    @Preferred
+    private boolean hemisphereViewEnabled = getBoolean("hemisphereViewEnabled", true);
+    @Preferred
+    private float hemisphereFadeTauMs = getFloat("hemisphereFadeTauMs", 2000);
+    public enum HemisphereColorMode {
+        Gray, RedGreen
+    }
+    @Preferred
+    private HemisphereColorMode hemisphereColorMode = HemisphereColorMode.valueOf(getString("hemisphereColorMode", HemisphereColorMode.Gray.name()));
+    @Preferred
+    private int colorScale = getInt("colorScale", 2);
+    @Preferred
+    private boolean useHighpassedTransform = getBoolean("useHighpassedTransform", true);
+    private final SteadicamHemisphereView hemisphereView = new SteadicamHemisphereView(this);
 
     ApsDvsEventPacket outputPacket = null;
     private Point centerOfRotation = null;
@@ -159,7 +182,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     public Steadicam(AEChip chip) {
         super(chip);
         initFilter();
-        String transform = "Transform", display = "Display", imu = "IMU";
+        String transform = "Transform", display = "Display", imu = "IMU", inpaint = "Hemisphere Inpainting";
 
         setPropertyTooltip("electronicStabilizationEnabled", "stabilize by shifting events according to IMU gyros");
         setPropertyTooltip(display, "flipContrast", "flips contrast of output events depending on direction of motion");
@@ -178,6 +201,12 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(transform, "selectCenterOfRotation", "click on the image to set center of rotation");
         setPropertyTooltip(transform, "eraseCenterOfRotationSelection", "reset center of rotation to image center");
         setPropertyTooltip(imu, "imuLagMs", "IMU lag (ms); >0 uses event FIFO on legacy mixed packets only");
+        setPropertyTooltip(inpaint, "hemisphereViewEnabled", "show 180° world-fixed hemisphere ImageDisplay painted from DVS + IMU pose");
+        setPropertyTooltip(inpaint, "useHighpassedTransform", "if selected, inpaint with high-passed pan/tilt/roll (same as stabilizer); if not, use DC integrated gyros");
+        setPropertyTooltip(inpaint, "hemisphereFadeTauMs", "hemisphere pixel fade time constant (ms) toward background");
+        setPropertyTooltip(inpaint, "hemisphereColorMode", "Gray: signed ON/OFF accumulation around mid-gray; RedGreen: accumulate ON green / OFF red from black");
+        setPropertyTooltip(inpaint, "colorScale", "events to go full scale (Gray ±0.5 or RedGreen 0→1), as in ChipRenderer");
+        setPropertyTooltip(inpaint, "clearHemisphere", "clear the hemisphere inpaint map to the background");
 
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -192,6 +221,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             centerOfRotation = new Point(corx, cory);
             log.info("loaded from preferences centerOfRotation=" + centerOfRotation);
         }
+        hemisphereView.resizeFromOptics(radPerPixel, lensFocalLengthMm,
+                chip.getPixelWidthUm(), chip.getPixelHeightUm());
+        hemisphereView.setColorMode(hemisphereColorMode);
+        hemisphereView.setColorScale(colorScale);
+        updateHemisphereVisibility();
     }
 
     @Override
@@ -201,7 +235,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
     @Override
     synchronized public ImuPacket processImu(ImuPacket in) {
-        if (!electronicStabilizationEnabled || in == null) {
+        if ((!electronicStabilizationEnabled && !hemisphereViewEnabled) || in == null) {
             return in;
         }
         for (int i = 0; i < in.getSize(); i++) {
@@ -253,9 +287,6 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     private EventPacket stabilizePolarityPacket(EventPacket in) {
-        if (!electronicStabilizationEnabled) {
-            return in;
-        }
         sx2 = chip.getSizeX() / 2;
         sy2 = chip.getSizeY() / 2;
         int corx = centerOfRotation == null ? this.sx2 : centerOfRotation.x;
@@ -263,7 +294,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         sxm1 = chip.getSizeX() - 1;
         sym1 = chip.getSizeY() - 1;
 
-        if (lastTransform != null) {
+        if (hemisphereViewEnabled) {
+            paintHemisphere(in, corx, cory);
+        }
+
+        if (electronicStabilizationEnabled && lastTransform != null) {
             for (Object o : in) {
                 if (o instanceof PolarityEvent) {
                     applyTransform((PolarityEvent) o, corx, cory);
@@ -275,6 +310,23 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             rewindFlg = false;
         }
         return in;
+    }
+
+    private void paintHemisphere(EventPacket in, int corx, int cory) {
+        if (in == null) {
+            return;
+        }
+        hemisphereView.setCenterOfRotation(corx, cory);
+        setHemispherePose();
+        if (in.getSize() > 0) {
+            hemisphereView.fade(in.getLastTimestamp(), hemisphereFadeTauMs);
+        }
+        for (Object o : in) {
+            if (o instanceof PolarityEvent) {
+                hemisphereView.paint((PolarityEvent) o);
+            }
+        }
+        hemisphereView.displayRepaint();
     }
 
     private void applyTransform(PolarityEvent be, int corx, int cory) {
@@ -300,7 +352,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         if (outputPacket == null) {
             outputPacket = new ApsDvsEventPacket(in.getEventClass());
         }
-        if (!electronicStabilizationEnabled) {
+        if (!electronicStabilizationEnabled && !hemisphereViewEnabled) {
             return in;
         }
         sx2 = chip.getSizeX() / 2;
@@ -309,6 +361,14 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         int cory = centerOfRotation == null ? this.sy2 : centerOfRotation.y;
         sxm1 = chip.getSizeX() - 1;
         sym1 = chip.getSizeY() - 1;
+
+        if (hemisphereViewEnabled) {
+            hemisphereView.setCenterOfRotation(corx, cory);
+            setHemispherePose();
+            if (in.getSize() > 0) {
+                hemisphereView.fade(in.getLastTimestamp(), hemisphereFadeTauMs);
+            }
+        }
 
         OutputEventIterator outItr = outputPacket.outputIterator();
         Iterator itr = in.fullIterator();
@@ -322,13 +382,19 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             if (ev.isImuSample()) {
                 lastTransform = updateTransform(ev.getImuSample());
                 maybeApplyImageTransform();
+                if (hemisphereViewEnabled) {
+                    setHemispherePose();
+                }
             }
             pushEvent(ev);
             ApsDvsEvent be;
             while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
                 be = popEvent();
                 if (!be.isImuSample()) {
-                    if (lastTransform != null) {
+                    if (hemisphereViewEnabled) {
+                        hemisphereView.paint(be);
+                    }
+                    if (electronicStabilizationEnabled && lastTransform != null) {
                         applyTransform(be, corx, cory);
                     }
                     if (be.isFilteredOut()) {
@@ -337,6 +403,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
                 }
                 outItr.nextOutput().copyFrom(be);
             }
+        }
+        if (hemisphereViewEnabled) {
+            hemisphereView.displayRepaint();
         }
         if (rewindFlg) {
             initialized = false;
@@ -500,6 +569,12 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         log.info("select a center point by a mouse click");
     }
 
+    public void doClearHemisphere() {
+        if (hemisphereView != null) {
+            hemisphereView.reset();
+        }
+    }
+
     public void doEraseCenterOfRotationSelection() {
         centerOfRotation = null;
         putInt("centerOfRotationX", -1);
@@ -619,6 +694,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         initialized = false;
         eventQueue.clear();
         rewindFlg = true;
+        if (hemisphereView != null) {
+            hemisphereView.resizeFromOptics(radPerPixel, lensFocalLengthMm,
+                    getChip().getPixelWidthUm(), getChip().getPixelHeightUm());
+            hemisphereView.reset();
+        }
     }
 
     @Override
@@ -650,6 +730,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         } else {
             resetFilter();
         }
+        updateHemisphereVisibility();
     }
 
     public boolean isElectronicStabilizationEnabled() {
@@ -689,7 +770,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     public void setLensFocalLengthMm(float lensFocalLengthMm) {
         this.lensFocalLengthMm = lensFocalLengthMm;
         putFloat("lensFocalLengthMm", lensFocalLengthMm);
-        radPerPixel = (float) Math.asin((getChip().getPixelWidthUm() * 1e-3f) / lensFocalLengthMm);
+        radPerPixel = (float) Math.atan((getChip().getPixelWidthUm() * 1e-3f) / lensFocalLengthMm);
+        if (hemisphereView != null) {
+            hemisphereView.resizeFromOptics(radPerPixel, lensFocalLengthMm,
+                    getChip().getPixelWidthUm(), getChip().getPixelHeightUm());
+        }
     }
 
     @Override
@@ -807,6 +892,83 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     public void setNumCalibrationSamples(int numCalibrationSamples) {
         this.numCalibrationSamples = numCalibrationSamples;
         putInt("numCalibrationSamples", numCalibrationSamples);
+    }
+
+    public boolean isHemisphereViewEnabled() {
+        return hemisphereViewEnabled;
+    }
+
+    public void setHemisphereViewEnabled(boolean hemisphereViewEnabled) {
+        boolean old = this.hemisphereViewEnabled;
+        this.hemisphereViewEnabled = hemisphereViewEnabled;
+        putBoolean("hemisphereViewEnabled", hemisphereViewEnabled);
+        updateHemisphereVisibility();
+        if (old != hemisphereViewEnabled) {
+            getSupport().firePropertyChange("hemisphereViewEnabled", old, this.hemisphereViewEnabled);
+        }
+    }
+
+    public float getHemisphereFadeTauMs() {
+        return hemisphereFadeTauMs;
+    }
+
+    public void setHemisphereFadeTauMs(float hemisphereFadeTauMs) {
+        this.hemisphereFadeTauMs = hemisphereFadeTauMs;
+        putFloat("hemisphereFadeTauMs", hemisphereFadeTauMs);
+    }
+
+    public boolean isUseHighpassedTransform() {
+        return useHighpassedTransform;
+    }
+
+    public void setUseHighpassedTransform(boolean useHighpassedTransform) {
+        this.useHighpassedTransform = useHighpassedTransform;
+        putBoolean("useHighpassedTransform", useHighpassedTransform);
+    }
+
+    private void setHemispherePose() {
+        if (useHighpassedTransform) {
+            hemisphereView.setPoseDeg(panTranslationDeg, tiltTranslationDeg, rollDeg);
+        } else {
+            hemisphereView.setPoseDeg(panDC, tiltDC, rollDC);
+        }
+    }
+
+    public HemisphereColorMode getHemisphereColorMode() {
+        return hemisphereColorMode;
+    }
+
+    public void setHemisphereColorMode(HemisphereColorMode hemisphereColorMode) {
+        HemisphereColorMode old = this.hemisphereColorMode;
+        this.hemisphereColorMode = hemisphereColorMode;
+        putString("hemisphereColorMode", hemisphereColorMode.name());
+        if (hemisphereView != null) {
+            hemisphereView.setColorMode(hemisphereColorMode);
+        }
+        if (old != hemisphereColorMode) {
+            getSupport().firePropertyChange("hemisphereColorMode", old, this.hemisphereColorMode);
+        }
+    }
+
+    public int getColorScale() {
+        return colorScale;
+    }
+
+    public void setColorScale(int colorScale) {
+        if (colorScale < 1) {
+            colorScale = 1;
+        }
+        this.colorScale = colorScale;
+        putInt("colorScale", colorScale);
+        if (hemisphereView != null) {
+            hemisphereView.setColorScale(colorScale);
+        }
+    }
+
+    private void updateHemisphereVisibility() {
+        if (hemisphereView != null) {
+            hemisphereView.updateVisibility(hemisphereViewEnabled && isFilterEnabled());
+        }
     }
 
     @Override
