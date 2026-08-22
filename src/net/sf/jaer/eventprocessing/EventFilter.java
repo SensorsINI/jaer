@@ -72,7 +72,9 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  *
  * Annotate a subclass with {@link Help} to show a nonmodal HTML user-guide
  * dialog the first time the filter is selected (controls expanded) and from the
- * FilterPanel {@code ?} button.
+ * FilterPanel {@code ?} button. While that panel's controls are showing and it
+ * has mouse focus, {@code F1} and {@code ?} toggle the dialog. Collapsing the
+ * controls hides the dialog without disposing it.
  * <p>
  * @see FilterPanel FilterPanel - which is where EventFilter's GUIs are built.
  * @see Help
@@ -1414,6 +1416,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * selection.
      *
      * @see #maybeShowHelpOnFirstActivation()
+     * @see #hideHelpDialog()
+     * @see #toggleHelpDialog()
      */
     public void showHelpDialog() {
         if (!hasHelp()) {
@@ -1446,10 +1450,57 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
+     * Hides the {@link Help} dialog if it is showing, without disposing it so
+     * it can be shown again. Safe to call from any thread.
+     *
+     * @see #showHelpDialog()
+     * @see #toggleHelpDialog()
+     */
+    public void hideHelpDialog() {
+        Runnable r = () -> {
+            if (helpDialog != null && helpDialog.isDisplayable()) {
+                helpDialog.setVisible(false);
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
+     * Toggles the {@link Help} dialog: shows it if hidden or not yet created,
+     * hides it (without disposing) if it is showing. Safe to call from any
+     * thread.
+     *
+     * @see #showHelpDialog()
+     * @see #hideHelpDialog()
+     */
+    public void toggleHelpDialog() {
+        if (!hasHelp()) {
+            return;
+        }
+        Runnable r = () -> {
+            if (helpDialog != null && helpDialog.isDisplayable() && helpDialog.isVisible()) {
+                helpDialog.setVisible(false);
+            } else {
+                showHelpDialog();
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
      * Opens the {@link Help} dialog the first time this filter's controls are
      * selected/expanded. Subsequent selections do nothing until
-     * {@link #showHelpDialog()} is used from the FilterPanel {@code ?} button.
-     * Called from {@link FilterPanel#setControlsVisible(boolean)}.
+     * {@link #showHelpDialog()} or {@link #toggleHelpDialog()} is used from the
+     * FilterPanel {@code ?} button or {@code F1}/{@code ?} keys. Called from
+     * {@link FilterPanel#setControlsVisible(boolean)}.
      */
     public void maybeShowHelpOnFirstActivation() {
         if (!hasHelp() || isHelpDialogShown()) {

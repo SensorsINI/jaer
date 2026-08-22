@@ -15,6 +15,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -53,9 +54,11 @@ public class EventFilterHelpDialog extends JDialog {
     private static final long serialVersionUID = 1L;
     private static final int PREFERRED_WIDTH = 640;
     private static final int PREFERRED_HEIGHT = 520;
+    private final EventFilter filter;
 
     public EventFilterHelpDialog(Window parent, EventFilter filter, String html) {
         super(parent, "Help — " + filter.getClass().getSimpleName(), ModalityType.MODELESS);
+        this.filter = filter;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         JEditorPane pane = new JEditorPane();
@@ -110,6 +113,18 @@ public class EventFilterHelpDialog extends JDialog {
             @Override
             public void actionPerformed(ActionEvent e) {
                 dispose();
+            }
+        });
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "toggle-help");
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_SLASH, InputEvent.SHIFT_DOWN_MASK), "toggle-help");
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke('?'), "toggle-help");
+        getRootPane().getActionMap().put("toggle-help", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                EventFilterHelpDialog.this.filter.toggleHelpDialog();
             }
         });
 

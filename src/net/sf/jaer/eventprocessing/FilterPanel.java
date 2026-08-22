@@ -23,6 +23,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ContainerEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -56,8 +57,9 @@ import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
-
 import javax.swing.AbstractButton;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
 import static javax.swing.Action.ACCELERATOR_KEY;
 import static javax.swing.Action.NAME;
 import static javax.swing.Action.SELECTED_KEY;
@@ -90,6 +92,7 @@ import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.StateEdit;
 import javax.swing.undo.StateEditable;
 import javax.swing.undo.UndoableEditSupport;
+import javax.swing.text.JTextComponent;
 import net.sf.jaer.Description;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.eventprocessing.EventFilter.PrefsKeyClassValueDefault;
@@ -114,7 +117,9 @@ import net.sf.jaer.util.XMLFileFilter;
  * enum constant values.
  * <li> If the filter class is annotated with {@link net.sf.jaer.Help}, a
  * {@code ?} button is added next to Reset / Show controls. Expanding the
- * panel the first time opens that HTML help dialog; the button opens it again.
+ * panel the first time opens that HTML help dialog; the button, {@code F1},
+ * and {@code ?} toggle it while the panel has mouse focus. Collapsing the
+ * controls hides the dialog without disposing it.
  * </ul>
  * <p>
  * If a filter wants to automatically have the GUI controls reflect what the
@@ -396,17 +401,67 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             helpButton = new JButton("?");
             helpButton.setFont(new java.awt.Font("Tahoma", 0, 9));
             helpButton.setMargin(new Insets(1, 5, 1, 5));
-            helpButton.setToolTipText("Show help for this filter");
+            helpButton.setToolTipText("Toggle help for this filter (F1 or ?)");
             helpButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    getFilter().showHelpDialog();
+                    getFilter().toggleHelpDialog();
                 }
             });
             enableResetControlsHelpPanel.add(helpButton);
             Dimension helpPanelSize = enableResetControlsHelpPanel.getPreferredSize();
             enableResetControlsHelpPanel.setMaximumSize(new Dimension(Math.max(240, helpPanelSize.width + 8), helpPanelSize.height));
+            installHelpKeyBindings();
         }
+    }
+
+    /**
+     * {@code F1} and {@code ?} toggle the {@link net.sf.jaer.Help} dialog while
+     * this panel's controls are showing and the mouse is over this panel.
+     */
+    private void installHelpKeyBindings() {
+        InputMap im = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = getActionMap();
+        AbstractAction toggleHelp = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!isControlsVisible() || !panelHasMouseFocus()) {
+                    return;
+                }
+                getFilter().toggleHelpDialog();
+            }
+        };
+        AbstractAction toggleHelpQuestion = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focus instanceof JTextComponent) {
+                    return;
+                }
+                toggleHelp.actionPerformed(e);
+            }
+        };
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "toggle-filter-help");
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_SLASH, InputEvent.SHIFT_DOWN_MASK), "toggle-filter-help-question");
+        im.put(KeyStroke.getKeyStroke('?'), "toggle-filter-help-question");
+        am.put("toggle-filter-help", toggleHelp);
+        am.put("toggle-filter-help-question", toggleHelpQuestion);
+    }
+
+    /**
+     * True when the mouse is over this panel (or a descendant) and not over an
+     * enclosed nested {@link FilterPanel}.
+     */
+    private boolean panelHasMouseFocus() {
+        if (getMousePosition(true) == null) {
+            return false;
+        }
+        for (FilterPanel enclosed : enclosedFilterPanels.values()) {
+            if (enclosed.isShowing() && enclosed.getMousePosition(true) != null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // checks for group container and adds to that if needed.
@@ -2442,6 +2497,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         repaint();
         if (visible) {
             getFilter().maybeShowHelpOnFirstActivation();
+        } else {
+            getFilter().hideHelpDialog();
         }
     }
 
