@@ -1,7 +1,6 @@
 # jAER
 
-**Welcome to the jAER Open Source Project for
-real time sensory-motor processing for event sensors and systems**
+**Welcome to the jAER Project for event sensors**
 
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
