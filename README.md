@@ -19,9 +19,14 @@ jAER efficiently
  * plays back -- with flexible time/event rate, markers, and IN/OUT points
  * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)). 
 
-It can record your datasets and serve event sensor output to your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) or [ROS](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → Enable ROS2 / Foxglove frame output; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
+It can record your datasets and serve recorded or live event sensor output to 
+ * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
+ * or robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → ROS2 / Foxglove frame output…; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
+
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
+*What it looks like to interact with jAER*
+
 
 ## Installation
 
