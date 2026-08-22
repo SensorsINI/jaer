@@ -285,6 +285,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private AEPacketRaw rawPacket; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
+    /**
+     * Non-null overlay text: skip chip pixmap {@code render()} and still
+     * {@code paintFrame()} so this message is drawn on the canvas.
+     */
+    private volatile String skipChipRenderingOverlay = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
     int tickUs = 1;
     public AEPlayer aePlayer;
@@ -2607,6 +2612,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Skip AEViewer chip pixmap rendering and show {@code overlay} on the
+     * canvas (filters still run). Pass {@code null} or empty to resume normal
+     * rendering.
+     *
+     * @param overlay message to draw, or null/empty to stop skipping
+     */
+    public void setSkipChipRenderingOverlay(String overlay) {
+        if (overlay == null || overlay.isEmpty()) {
+            skipChipRenderingOverlay = null;
+        } else {
+            skipChipRenderingOverlay = overlay;
+        }
+    }
+
+    /**
+     * @return overlay set by {@link #setSkipChipRenderingOverlay(String)}, or null
+     */
+    public String getSkipChipRenderingOverlay() {
+        return skipChipRenderingOverlay;
+    }
+
+    /**
+     * @return true when a filter requested skip of chip pixmap rendering
+     */
+    public boolean isSkipChipRenderingRequested() {
+        return skipChipRenderingOverlay != null;
+    }
+
+    /**
      * Sets a flag that rendering this current packet is skipped. Can be used by
      * event filters to skip rendering if results are boring.
      */
@@ -3354,10 +3388,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if ((cookedBundle != null && !cookedBundle.isEmpty()) || (cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
-                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering();
+                        boolean skipRequested = isSkipChipRenderingRequested() && !isJaerAviRecordingActive();
+                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering() || skipRequested;
                         if (!skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
-                        } else if (isShowRosOutputOverlay()) {
+                        } else if (isShowRosOutputOverlay() || skipRequested) {
                             chipCanvas.paintFrame();
                         }
                     } catch (RuntimeException e) {

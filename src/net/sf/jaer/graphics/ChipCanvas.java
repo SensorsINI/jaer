@@ -572,6 +572,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         drawRecordingOverlayIfNeeded(drawable);
         drawRosOutputOverlayIfNeeded(drawable);
+        drawSkipChipRenderingOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
         gl.glFlush();
         // gl.glPopMatrix();
@@ -638,6 +639,67 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glPopMatrix();
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
+
+    private static final Color SKIP_RENDER_OVERLAY_COLOR = new Color(1f, 0.85f, 0.2f, 0.85f);
+
+    /**
+     * Overlay when a filter called
+     * {@link AEViewer#setSkipChipRenderingOverlay(String)}.
+     */
+    private void drawSkipChipRenderingOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || viewer.isJaerAviRecordingActive()) {
+            return;
+        }
+        String text = viewer.getSkipChipRenderingOverlay();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        String[] lines = text.split("\n", -1);
+        try {
+            if (renderer == null) {
+                renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, true);
+                renderer.setUseVertexArrays(false);
+            }
+            renderer.begin3DRendering();
+            renderer.setColor(SKIP_RENDER_OVERLAY_COLOR);
+            float maxW = chip.getSizeX() * 0.9f;
+            float maxH = Math.max(8f, chip.getSizeY() * 0.07f);
+            float scale = Float.MAX_VALUE;
+            Rectangle2D[] bounds = new Rectangle2D[lines.length];
+            for (int i = 0; i < lines.length; i++) {
+                bounds[i] = renderer.getBounds(lines[i]);
+                if (bounds[i].getWidth() > 0) {
+                    scale = Math.min(scale, (float) (maxW / bounds[i].getWidth()));
+                }
+                if (bounds[i].getHeight() > 0) {
+                    scale = Math.min(scale, (float) (maxH / bounds[i].getHeight()));
+                }
+            }
+            if (scale == Float.MAX_VALUE || scale <= 0) {
+                scale = 0.25f;
+            }
+            float lineSpace = 0;
+            if (lines.length > 0 && bounds[0].getHeight() > 0) {
+                lineSpace = (float) bounds[0].getHeight() * scale * 1.25f;
+            }
+            float y = chip.getSizeY() * 0.08f;
+            for (int i = 0; i < lines.length; i++) {
+                float x = (chip.getSizeX() / 2f) - (float) (bounds[i].getWidth() * scale / 2f);
+                renderer.draw3D(lines[i], x, y + i * lineSpace, 0, scale);
+            }
+            renderer.end3DRendering();
+        } catch (GLException e) {
+            log.log(Level.FINE, "skip-render overlay: {0}", e.toString());
         }
     }
 
@@ -2166,6 +2228,15 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         if (!annotationEnabled) {
             return;
+        }
+        if (chip instanceof AEChip) {
+            AEViewer v = ((AEChip) chip).getAeViewer();
+            if (v == null) {
+                v = aeViewer;
+            }
+            if (v != null && v.isSkipChipRenderingRequested() && !v.isJaerAviRecordingActive()) {
+                return;
+            }
         }
         if (getDisplayMethod() == null) {
             return;
