@@ -296,7 +296,8 @@ public class Aedat4FileOutputStream implements Closeable {
         byte[] toWrite = Aedat4Compression.compress(payload, compression);
         uncompressedPayloadBytes += payload.length;
         compressedPayloadBytes += toWrite.length;
-        long byteOffset = channel.position();
+        // DV FileDataTable offsets address the encoded payload, not its PacketHeader.
+        long byteOffset = channel.position() + 8L;
         ByteBuffer header = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         header.putInt(streamId);
         header.putInt(toWrite.length);
@@ -353,7 +354,8 @@ public class Aedat4FileOutputStream implements Closeable {
         Throwable failure = null;
         try {
             long tablePosition = channel.position();
-            channel.write(ByteBuffer.wrap(buildFileDataTable()));
+            byte[] table = Aedat4Compression.compress(buildFileDataTable(), compression);
+            channel.write(ByteBuffer.wrap(table));
             byte[] patchedHeader = buildIOHeader(tablePosition);
             if (patchedHeader.length != headerBytes.length) {
                 throw new IOException(String.format(

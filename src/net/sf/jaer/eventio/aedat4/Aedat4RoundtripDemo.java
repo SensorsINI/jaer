@@ -32,8 +32,13 @@ public class Aedat4RoundtripDemo {
             output.writeBundle(bundle);
         }
 
+        verifyDvFileDataTable(file);
         int decoded = decodeFirstEventPacketLength(file);
-        boolean pass = decoded == 4;
+        File rerecorded = File.createTempFile("jaer-aedat4-rerecord-roundtrip", ".aedat4");
+        Aedat4Lz4Rerecorder.rerecord(file, rerecorded, null);
+        verifyDvFileDataTable(rerecorded);
+        int rerecordedDecoded = decodeFirstEventPacketLength(rerecorded);
+        boolean pass = decoded == 4 && rerecordedDecoded == 4;
         // Verify struct layout: x/y/polarity must survive write (regresses the pad(1) bug).
         net.sf.jaer.eventio.aedat4.dv.EventPacket packet = firstEventPacket(file);
         for (int i = 0; i < 4; i++) {
@@ -48,9 +53,60 @@ public class Aedat4RoundtripDemo {
                         + " expect x=" + expectX + " y=" + expectY + " pol=" + expectOn);
             }
         }
-        System.out.println((pass ? "PASS" : "FAIL") + " AEDAT-4 roundtrip events=" + decoded + " file=" + file.getAbsolutePath());
+        System.out.println((pass ? "PASS" : "FAIL") + " AEDAT-4 roundtrip events=" + decoded
+                + " rerecordedEvents=" + rerecordedDecoded + " file=" + file.getAbsolutePath()
+                + " rerecordedFile=" + rerecorded.getAbsolutePath());
         if (!pass) {
             System.exit(1);
+        }
+    }
+
+    private static void verifyDvFileDataTable(File file) throws Exception {
+        try (FileInputStream input = new FileInputStream(file); FileChannel channel = input.getChannel()) {
+            channel.position(Aedat4FileOutputStream.VERSION_LINE.length);
+            ByteBuffer headerBuffer = readSizePrefixed(channel);
+            net.sf.jaer.eventio.aedat4.dv.IOHeader header =
+                    net.sf.jaer.eventio.aedat4.dv.IOHeader.getSizePrefixedRootAsIOHeader(headerBuffer);
+            int compression = Aedat4Compression.clamp(header.compression());
+            if (compression == net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE) {
+                throw new IllegalStateException("Demo requires compressed output");
+            }
+            long tablePosition = header.dataTablePosition();
+            long tableBytes = channel.size() - tablePosition;
+            if (tablePosition < channel.position() || tableBytes <= 0 || tableBytes > Integer.MAX_VALUE) {
+                throw new IllegalStateException("Invalid FileDataTable region");
+            }
+            channel.position(tablePosition);
+            ByteBuffer encoded = ByteBuffer.allocate((int) tableBytes);
+            readFully(channel, encoded);
+            byte[] compressed = encoded.array();
+            byte[] flat;
+            try {
+                flat = Aedat4Compression.decompress(compressed, compression);
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException("FileDataTable must use IOHeader compression", e);
+            }
+            net.sf.jaer.eventio.aedat4.dv.FileDataTable table =
+                    net.sf.jaer.eventio.aedat4.dv.FileDataTable.getSizePrefixedRootAsFileDataTable(
+                            ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN));
+            if (table.tableLength() != 1) {
+                throw new IllegalStateException("Expected one FileDataTable entry, got " + table.tableLength());
+            }
+            net.sf.jaer.eventio.aedat4.dv.FileDataDefinition definition = table.table(0);
+            long payloadOffset = definition.byteOffset();
+            int payloadSize = definition.packetInfoSize();
+            if (payloadOffset < 8 || payloadOffset + payloadSize > tablePosition) {
+                throw new IllegalStateException("FileDataTable payload offset is out of bounds");
+            }
+            channel.position(payloadOffset - 8);
+            ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+            readFully(channel, packetHeader);
+            packetHeader.flip();
+            if (packetHeader.getInt() != definition.packetInfoStreamID()
+                    || packetHeader.getInt() != payloadSize) {
+                throw new IllegalStateException("FileDataTable byteOffset must point to packet payload");
+            }
+            System.out.println("PASS DV FileDataTable compression and payload offsets");
         }
     }
 

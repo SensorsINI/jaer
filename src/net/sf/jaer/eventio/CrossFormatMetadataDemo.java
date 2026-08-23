@@ -248,7 +248,14 @@ public class CrossFormatMetadataDemo {
             }
             assertTrue(channel.position() == dataTablePosition,
                     "AEDAT-4 packet scan ends exactly at its data table");
-            ByteBuffer tableBuffer = readSizePrefixed(channel);
+            long encodedTableSize = channel.size() - dataTablePosition;
+            assertTrue(encodedTableSize > 0 && encodedTableSize <= Integer.MAX_VALUE,
+                    "AEDAT-4 encoded data table size is bounded");
+            ByteBuffer encodedTable = ByteBuffer.allocate((int) encodedTableSize);
+            readFully(channel, encodedTable);
+            byte[] encodedTableBytes = encodedTable.array();
+            byte[] tableBytes = Aedat4Compression.decompress(encodedTableBytes, compression);
+            ByteBuffer tableBuffer = ByteBuffer.wrap(tableBytes).order(ByteOrder.LITTLE_ENDIAN);
             net.sf.jaer.eventio.aedat4.dv.FileDataTable table =
                     net.sf.jaer.eventio.aedat4.dv.FileDataTable
                             .getSizePrefixedRootAsFileDataTable(tableBuffer);
