@@ -71,6 +71,22 @@ public interface DVSTweaks {
 
     public float getOnOffBalanceTweak();
 
+    default boolean supportsThresholdTweak() {
+        return true;
+    }
+
+    default boolean supportsOnOffBalanceTweak() {
+        return true;
+    }
+
+    default boolean supportsBandwidthTweak() {
+        return true;
+    }
+
+    default boolean supportsMaxFiringRateTweak() {
+        return true;
+    }
+
     /**
      * Returns estimated ON event threshold in log base e units.
      * <p>

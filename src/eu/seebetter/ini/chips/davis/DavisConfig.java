@@ -23,6 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
+import ch.unizh.ini.jaer.chip.retina.DVSAutoControllerPanel;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
@@ -489,6 +490,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         // user-friendly panel so BiasgenFrame.pack() does not open far too wide.
         final Dimension ufPref = userFriendlyControls.getPreferredSize();
         configTabbedPane.addTab("<html><strong><font color=\"red\">User-Friendly Controls", userFriendlyControls);
+        DVSAutoControllerPanel.addTab(configTabbedPane, getChip() instanceof AEChip ae ? ae : null);
         // biasgen
         combinedBiasShiftedSourcePanel = new JPanel();
         combinedBiasShiftedSourcePanel
