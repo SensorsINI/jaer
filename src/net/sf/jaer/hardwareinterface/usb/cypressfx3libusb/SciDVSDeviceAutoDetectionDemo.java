@@ -26,6 +26,7 @@ public final class SciDVSDeviceAutoDetectionDemo {
         testProbeReadsOnlyDvsGeometry();
         testProbeUsesOneNormalOpenLifecycle();
         testViewerUsesProbeBeforeRememberedChoice();
+        testBindingInstallsReverseAssociationFirst();
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION ASSERTIONS=" + assertions);
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION PASS");
     }
@@ -100,6 +101,17 @@ public final class SciDVSDeviceAutoDetectionDemo {
                 "positive fingerprint selects SciDVS directly");
         require(method.contains("catch (HardwareInterfaceException"),
                 "probe failure falls back to existing chooser path");
+    }
+
+    private static void testBindingInstallsReverseAssociationFirst() throws Exception {
+        String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
+        String bind = between(source,
+                "private void bindLiveHardwareIfCompatible(HardwareInterface hw, String logPrefix)",
+                "public boolean ensureChipCompatibleWithRecording(File file)");
+        int reverseAssociation = bind.indexOf(".setChip(chip)");
+        int forwardAssociation = bind.indexOf("chip.setHardwareInterface(hw)");
+        require(reverseAssociation >= 0 && forwardAssociation > reverseAssociation,
+                "live binding installs the monitor's chip association before bias-generator binding");
     }
 
     private static boolean invoke(Method method, int x, int y) throws Exception {

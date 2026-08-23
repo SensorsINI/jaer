@@ -1541,6 +1541,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         log.info(logPrefix + hw);
+        // Biasgen binding can issue immediate hardware reads that require the
+        // monitor's reverse chip association. Install it before
+        // Chip.setHardwareInterface delegates to Biasgen; the Chip setter sets
+        // it again after binding as its normal final invariant.
+        if (hw instanceof AEMonitorInterface) {
+            ((AEMonitorInterface) hw).setChip(chip);
+        }
         chip.setHardwareInterface(hw);
     }
 
