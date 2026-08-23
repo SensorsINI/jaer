@@ -97,17 +97,20 @@ packet are unchanged).</li>
 grow too large. Hemisphere view raises this to at least 110&deg; and restores
 the previous value when disabled.</li>
 <li><code>hemisphereViewEnabled</code> &mdash; open a world-fixed
-<code>ImageDisplay</code> painted from DVS events. Horizontal span is 180&deg;;
-vertical span follows the chip aspect ratio. <code>useHighpassedTransform</code> (default on) uses the high-passed
+<code>ImageDisplay</code> painted from DVS events. <code>hemisphereHorizontalFovDeg</code>
+(default 120&deg;) is the map width, from the camera HFOV (pinhole:
+focal length, pixel pitch, array width) up to 360&deg;. Vertical span
+follows the chip aspect ratio. <code>useHighpassedTransform</code> (default on) uses the high-passed
 vestibular pose as the stabilizer; off uses DC integrated gyros so looking
 around paints new pixels.
-Map width is <code>&pi; / atan(pitch/f)</code> (lensFOV), height is width&times;sizeY/sizeX, capped at 2048.
+Map width is <code>HFOV / atan(pitch/f)</code> pixels, height is width&times;sizeY/sizeX, capped at 2048.
 <code>hemisphereFadeTauMs</code> fades unused pixels toward the mode background.
 <code>hemisphereColorMode</code> <b>Gray</b> accumulates signed ON/OFF like the chip
 renderer; <b>RedGreen</b> accumulates ON green / OFF red.
 <code>colorScale</code> is events to full scale.
-<code>dontRenderMainDisplay</code> skips AEViewer event rendering while the
-hemisphere is updated (overlay: rendering paused).</li>
+<code>dontRenderMainDisplay</code> skips all AEViewer chip rendering (APS, DVS,
+IMU, markers) while the hemisphere is updated; the main canvas is a blank
+frame with an overlay naming this filter.</li>
 </ul>
 <p>This is not visual odometry: it only derotates IMU-measured rotation/translation of the
 camera, not scene motion.</p>
@@ -167,7 +170,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private int lastFrameNumber = 0;
     protected float imuLagMs = getFloat("imuLagMs", 0);
     @Preferred
-    private boolean hemisphereViewEnabled = getBoolean("hemisphereViewEnabled", true);
+    private boolean hemisphereViewEnabled = getBoolean("hemisphereViewEnabled", false);
+    @Preferred
+    private float hemisphereHorizontalFovDeg = getFloat("hemisphereHorizontalFovDeg", 120);
     @Preferred
     private float hemisphereFadeTauMs = getFloat("hemisphereFadeTauMs", 2000);
     public enum HemisphereColorMode {
@@ -176,11 +181,14 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     @Preferred
     private HemisphereColorMode hemisphereColorMode = HemisphereColorMode.valueOf(getString("hemisphereColorMode", HemisphereColorMode.Gray.name()));
     @Preferred
-    private int colorScale = getInt("colorScale", 2);
+    private int colorScale = getInt("colorScale", 16);
     @Preferred
     private boolean useHighpassedTransform = getBoolean("useHighpassedTransform", true);
     @Preferred
     private boolean dontRenderMainDisplay = getBoolean("dontRenderMainDisplay", true);
+    /** Overlay text while {@link #dontRenderMainDisplay} skips AEViewer chip rendering. */
+    private static final String SKIP_MAIN_DISPLAY_OVERLAY
+            = "Rendering paused by Steadicam\ndontRenderMainDisplay (hemisphere view)";
     /** Built in {@link #initFilter()} if hemisphere is on, else on first enable. */
     private SteadicamHemisphereView hemisphereView;
 
@@ -211,13 +219,14 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(transform, "selectCenterOfRotation", "click on the image to set center of rotation");
         setPropertyTooltip(transform, "eraseCenterOfRotationSelection", "reset center of rotation to image center");
         setPropertyTooltip(imu, "imuLagMs", "IMU lag (ms); >0 uses event FIFO on legacy mixed packets only");
-        setPropertyTooltip(inpaint, "hemisphereViewEnabled", "show world-fixed hemisphere ImageDisplay (180° azimuth, chip aspect ratio vertically) painted from DVS + IMU pose");
+        setPropertyTooltip(inpaint, "hemisphereViewEnabled", "show world-fixed hemisphere ImageDisplay (horizontal FOV × chip aspect) painted from DVS + IMU pose");
+        setPropertyTooltip(inpaint, "hemisphereHorizontalFovDeg", "inpaint map horizontal FOV (deg); min is this camera's pinhole HFOV, max 360");
         setPropertyTooltip(inpaint, "useHighpassedTransform", "if selected, inpaint with high-passed pan/tilt/roll (same as stabilizer); if not, use DC integrated gyros");
         setPropertyTooltip(inpaint, "hemisphereFadeTauMs", "hemisphere pixel fade time constant (ms) toward background");
         setPropertyTooltip(inpaint, "hemisphereColorMode", "Gray: signed ON/OFF accumulation around mid-gray; RedGreen: accumulate ON green / OFF red from black");
         setPropertyTooltip(inpaint, "colorScale", "events to go full scale (Gray ±0.5 or RedGreen 0→1), as in ChipRenderer");
         setPropertyTooltip(inpaint, "clearHemisphere", "clear the hemisphere inpaint map to the background");
-        setPropertyTooltip(inpaint, "dontRenderMainDisplay", "skip AEViewer event render/repaint while the hemisphere is painted (faster); overlay shows rendering is paused");
+        setPropertyTooltip(inpaint, "dontRenderMainDisplay", "skip all AEViewer chip rendering (APS/DVS/IMU/markers) while the hemisphere is painted; blank canvas overlay names this filter");
 
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -277,7 +286,8 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     private void maybeApplyImageTransform() {
-        if (!transformImageEnabled || lastTransform == null || !(chip instanceof DavisChip)
+        if (shouldSkipMainDisplayRender() || !transformImageEnabled || lastTransform == null
+                || !(chip instanceof DavisChip)
                 || chip.getAeViewer() == null || chip.getCanvas() == null
                 || !(chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA)) {
             return;
@@ -604,7 +614,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         return rollRate - rollOffset;
     }
 
-    /** True when AEViewer should skip chip pixmap render (hemisphere is the live view). */
+    /** True when AEViewer should skip all chip rendering (hemisphere is the live view). */
     public boolean shouldSkipMainDisplayRender() {
         return isFilterEnabled() && hemisphereViewEnabled && dontRenderMainDisplay;
     }
@@ -614,10 +624,10 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             return;
         }
         if (shouldSkipMainDisplayRender()) {
-            chip.getAeViewer().setSkipChipRenderingOverlay("Main display paused (Steadicam hemisphere)");
+            chip.getAeViewer().setSkipChipRenderingOverlay(SKIP_MAIN_DISPLAY_OVERLAY);
         } else {
             String cur = chip.getAeViewer().getSkipChipRenderingOverlay();
-            if (cur != null && cur.contains("Steadicam hemisphere")) {
+            if (cur != null && cur.contains("Steadicam")) {
                 chip.getAeViewer().setSkipChipRenderingOverlay(null);
             }
         }
@@ -728,13 +738,14 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         eventQueue.clear();
         rewindFlg = true;
         if (hemisphereView != null) {
-            hemisphereView.resizeFromOptics(lensFocalLengthMm);
+            hemisphereView.resizeFromOptics(lensFocalLengthMm, hemisphereHorizontalFovDeg);
             hemisphereView.reset();
         }
     }
 
     @Override
     public void initFilter() {
+        hemisphereHorizontalFovDeg = clampHemisphereHorizontalFovDeg(hemisphereHorizontalFovDeg);
         resetFilter();
         if (hemisphereViewEnabled) {
             ensureHemisphereView();
@@ -742,6 +753,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         if (chip.getAeViewer() != null) {
             chip.getAeViewer().getSupport().addPropertyChangeListener(this);
         }
+        updateSkipMainDisplay();
     }
 
     /** Construct the hemisphere display from the current {@link AEChip} once. */
@@ -752,7 +764,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         hemisphereView = new SteadicamHemisphereView(this, getChip());
         hemisphereView.setColorMode(hemisphereColorMode);
         hemisphereView.setColorScale(colorScale);
-        hemisphereView.resizeFromOptics(lensFocalLengthMm);
+        hemisphereView.resizeFromOptics(lensFocalLengthMm, hemisphereHorizontalFovDeg);
     }
 
     public boolean isFlipContrast() {
@@ -818,9 +830,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         this.lensFocalLengthMm = lensFocalLengthMm;
         putFloat("lensFocalLengthMm", lensFocalLengthMm);
         radPerPixel = (float) Math.atan((getChip().getPixelWidthUm() * 1e-3f) / lensFocalLengthMm);
-        if (hemisphereView != null) {
-            hemisphereView.resizeFromOptics(lensFocalLengthMm);
-        }
+        setHemisphereHorizontalFovDeg(hemisphereHorizontalFovDeg);
     }
 
     @Override
@@ -973,6 +983,59 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             applyHemisphereTransformLimit();
             getSupport().firePropertyChange("hemisphereViewEnabled", old, this.hemisphereViewEnabled);
         }
+    }
+
+    public float getHemisphereHorizontalFovDeg() {
+        return hemisphereHorizontalFovDeg;
+    }
+
+    public void setHemisphereHorizontalFovDeg(float hemisphereHorizontalFovDeg) {
+        float clamped = clampHemisphereHorizontalFovDeg(hemisphereHorizontalFovDeg);
+        float old = this.hemisphereHorizontalFovDeg;
+        this.hemisphereHorizontalFovDeg = clamped;
+        putFloat("hemisphereHorizontalFovDeg", clamped);
+        if (hemisphereView != null) {
+            hemisphereView.resizeFromOptics(lensFocalLengthMm, clamped);
+        }
+        if (old != clamped) {
+            getSupport().firePropertyChange("hemisphereHorizontalFovDeg", old, clamped);
+        }
+    }
+
+    public float getMinHemisphereHorizontalFovDeg() {
+        return cameraHorizontalFovDeg();
+    }
+
+    public float getMaxHemisphereHorizontalFovDeg() {
+        return 360f;
+    }
+
+    /** Pinhole full HFOV from array width, pixel pitch, and lens focal length. */
+    public float cameraHorizontalFovDeg() {
+        AEChip c = getChip();
+        if (c == null || lensFocalLengthMm <= 0) {
+            return 1f;
+        }
+        int sx = c.getSizeX();
+        float pitchMm = c.getPixelWidthUm() * 1e-3f;
+        if (sx < 1 || pitchMm <= 0) {
+            return 1f;
+        }
+        return (float) (2 * Math.toDegrees(Math.atan((sx * 0.5f) * pitchMm / lensFocalLengthMm)));
+    }
+
+    private float clampHemisphereHorizontalFovDeg(float deg) {
+        float min = cameraHorizontalFovDeg();
+        if (Float.isNaN(deg) || Float.isInfinite(deg)) {
+            deg = 120f;
+        }
+        if (deg < min) {
+            deg = min;
+        }
+        if (deg > 360f) {
+            deg = 360f;
+        }
+        return deg;
     }
 
     /**

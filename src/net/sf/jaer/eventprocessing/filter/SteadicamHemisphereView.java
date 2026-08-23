@@ -19,9 +19,10 @@ import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * World-fixed equirectangular map painted from DVS events using IMU pose.
- * Horizontal span is 180°; vertical span follows the chip aspect ratio
- * ({@code 180° * sizeY / sizeX}) so the pixmap matches the sensor.
- * Width is {@code π / atan(pitch_x / f)}, capped at {@link #MAX_SIZE}.
+ * Horizontal span is {@code hemisphereHorizontalFovDeg} (camera HFOV…360°);
+ * vertical span follows the chip aspect ratio
+ * ({@code HFOV * sizeY / sizeX}) so the pixmap matches the sensor.
+ * Width is {@code HFOV / atan(pitch_x / f)}, capped at {@link #MAX_SIZE}.
  */
 class SteadicamHemisphereView {
 
@@ -34,8 +35,8 @@ class SteadicamHemisphereView {
     private JFrame frame;
     private int hemiW = 256;
     private int hemiH = 256;
-    /** Azimuth coverage (always π). */
-    private float azSpanRad = (float) Math.PI;
+    /** Azimuth coverage from the Horizontal FOV property. */
+    private float azSpanRad = (float) Math.toRadians(120);
     /** Elevation coverage ({@code azSpan * hemiH / hemiW}). */
     private float elSpanRad = (float) Math.PI;
     private float lensFocalLengthMm = 8.5f;
@@ -56,11 +57,10 @@ class SteadicamHemisphereView {
     }
 
     /**
-     * Recompute pixmap from the chip size/pitch and lens FOV. Horizontal map
-     * is 180°; height follows {@code sizeY/sizeX}. Called from
-     * {@link Steadicam#initFilter()}.
+     * Recompute pixmap from the chip size/pitch, lens, and horizontal FOV.
+     * Height follows {@code sizeY/sizeX}.
      */
-    synchronized void resizeFromOptics(float lensFocalLengthMm) {
+    synchronized void resizeFromOptics(float lensFocalLengthMm, float horizontalFovDeg) {
         this.lensFocalLengthMm = lensFocalLengthMm;
         if (chip != null) {
             pixelWidthUm = chip.getPixelWidthUm();
@@ -74,11 +74,18 @@ class SteadicamHemisphereView {
         if (sy < 1) {
             sy = 256;
         }
+        if (horizontalFovDeg < 1f || Float.isNaN(horizontalFovDeg) || Float.isInfinite(horizontalFovDeg)) {
+            horizontalFovDeg = 120f;
+        }
+        if (horizontalFovDeg > 360f) {
+            horizontalFovDeg = 360f;
+        }
+        azSpanRad = (float) Math.toRadians(horizontalFovDeg);
         int w = 256;
         if (lensFocalLengthMm > 0 && pixelWidthUm > 0) {
             float radPerPixel = (float) Math.atan((pixelWidthUm * 1e-3f) / lensFocalLengthMm);
             if (radPerPixel > 1e-6f && !Float.isNaN(radPerPixel) && !Float.isInfinite(radPerPixel)) {
-                w = Math.round((float) Math.PI / radPerPixel);
+                w = Math.round(azSpanRad / radPerPixel);
             }
         }
         int h = Math.round(w * (float) sy / (float) sx);
@@ -97,7 +104,6 @@ class SteadicamHemisphereView {
         }
         hemiW = w;
         hemiH = h;
-        azSpanRad = (float) Math.PI;
         elSpanRad = azSpanRad * hemiH / (float) hemiW;
         ensureDisplay();
         display.setImageSize(hemiW, hemiH);
