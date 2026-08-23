@@ -139,7 +139,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setEnclosedFilterChain(enclosedFilterChain);
 
         setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
-        setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics");
+        setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics (default scales with chip width)");
         setPropertyTooltipBold(TT_FILT_CONTROL, "threshold", "Threshold for classifying event as signal event");
         setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
         String sigmaDistPixelsTooltip = "Neighborhood radisu in pixels to consider for event support";
@@ -224,6 +224,24 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     @Override
     public void resetFilter() {
         getNoiseFilterControl().resetFilter();
+    }
+
+    /**
+     * Default statistics overlay is about 81 characters. Linearly interpolate
+     * font size from DVS128 ({@code sizeX=128} → 3) to Prophesee
+     * ({@code sizeX=1280} → 23).
+     */
+    protected int defaultShowFilteringStatisticsFontSize() {
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0) {
+            return 9;
+        }
+        return Math.max(1, Math.round(3f + (sizeX - 128f) * (23f - 3f) / (1280f - 128f)));
+    }
+
+    @Override
+    public void initFilter() {
+        showFilteringStatisticsFontSize = getInt("showFilteringStatisticsFontSize", defaultShowFilteringStatisticsFontSize());
     }
 
     @Override
