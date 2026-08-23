@@ -1,6 +1,6 @@
 # jAER
 
-**Welcome to the jAER Project for event sensors**
+**Welcome to the jAER Desktop Application for Event Sensors**
 
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
