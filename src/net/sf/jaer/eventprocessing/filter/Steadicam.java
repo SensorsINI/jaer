@@ -20,6 +20,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
+import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.Description;
@@ -776,9 +777,31 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         putBoolean("flipContrast", flipContrast);
     }
 
+    /**
+     * DAVIS and DVXplorer (and subclasses) expose IMU rate gyros. Other chips
+     * such as DVS128 have no IMU stream.
+     */
+    private boolean chipHasImu() {
+        return chip instanceof DavisChip || chip instanceof DVXplorer;
+    }
+
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
+        boolean rejectedNoImu = false;
+        if (yes && !chipHasImu()) {
+            String name = chip != null ? chip.getClass().getSimpleName() : "This camera";
+            showWarningDialogInSwingThread(
+                    String.format("%s has no IMU output.\nSteadicam needs a camera with IMU (for example DAVIS or DVXplorer).\nSteadicam has been disabled.", name),
+                    "No IMU");
+            log.warning("Steadicam disabled: " + name + " has no IMU");
+            yes = false;
+            rejectedNoImu = true;
+        }
         super.setFilterEnabled(yes);
+        if (rejectedNoImu) {
+            // FilterPanel already checked Enabled; fire so the checkbox unchecks (old==new would not notify).
+            getSupport().firePropertyChange("filterEnabled", true, false);
+        }
         if (!yes) {
             if (chip.getAeViewer() != null && chip.getCanvas() != null
                     && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
