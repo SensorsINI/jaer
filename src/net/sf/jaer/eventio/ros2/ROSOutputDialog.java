@@ -9,6 +9,7 @@
 package net.sf.jaer.eventio.ros2;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -37,6 +38,7 @@ import javax.swing.JToggleButton;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
+import javax.swing.plaf.basic.BasicToggleButtonUI;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
@@ -58,21 +60,21 @@ public class ROSOutputDialog extends JDialog {
         this.filter = filter;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
 
-        enableButton = new JToggleButton("Enable ROS2 / Foxglove output");
+        enableButton = new JToggleButton();
         enableButton.setFont(enableButton.getFont().deriveFont(Font.BOLD));
         enableButton.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         enableButton.setMnemonic(KeyEvent.VK_E);
         enableButton.setToolTipText(
                 "Start or stop publishing. Enabled status is shown as an overlay on the chip view.");
-        enableButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, enableButton.getPreferredSize().height + 8));
-        enableButton.setSelected(filter.isFilterEnabled());
-        enableButton.addActionListener(e -> filter.setFilterEnabled(enableButton.isSelected()));
-        enabledSync = evt -> SwingUtilities.invokeLater(() -> {
-            boolean on = filter.isFilterEnabled();
-            if (enableButton.isSelected() != on) {
-                enableButton.setSelected(on);
-            }
+        enableButton.setUI(new BasicToggleButtonUI());
+        enableButton.setOpaque(true);
+        enableButton.setContentAreaFilled(true);
+        enableButton.addActionListener(e -> {
+            filter.setFilterEnabled(enableButton.isSelected());
+            syncEnableButton();
         });
+        enabledSync = evt -> SwingUtilities.invokeLater(this::syncEnableButton);
+        syncEnableButton();
         filter.getSupport().addPropertyChangeListener("filterEnabled", enabledSync);
 
         JTextField urlField = new JTextField(filter.getFoxgloveClientUrl(), 22);
@@ -124,7 +126,7 @@ public class ROSOutputDialog extends JDialog {
                 + "<li><b>Layouts</b> → <b>Create new layout</b> → choose the <b>Image</b> template.</li>"
                 + "<li>Pick topic <code>/jaer/event_count</code> (or time-surface / voxel).</li>"
                 + "</ol>"
-                + "<p style=\"margin:6px 0 0 0;\">Use <b>Enable ROS2 / Foxglove output</b> above to start or stop. "
+                + "<p style=\"margin:6px 0 0 0;\">Use the Start/Stop button above to start or stop. "
                 + "Closing this window does not stop publishing.</p>");
 
         JPanel north = new JPanel();
@@ -168,5 +170,21 @@ public class ROSOutputDialog extends JDialog {
 
     public ROSOutput getFilter() {
         return filter;
+    }
+
+    private void syncEnableButton() {
+        boolean on = filter.isFilterEnabled();
+        if (enableButton.isSelected() != on) {
+            enableButton.setSelected(on);
+        }
+        if (on) {
+            enableButton.setText("Streaming ROS2 / Foxglove output. Click to stop");
+            enableButton.setBackground(Color.GREEN);
+        } else {
+            enableButton.setText("Stopped. Click to start ROS2 / Foxglove output");
+            enableButton.setBackground(Color.RED);
+        }
+        enableButton.setForeground(Color.BLACK);
+        enableButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, enableButton.getPreferredSize().height + 8));
     }
 }

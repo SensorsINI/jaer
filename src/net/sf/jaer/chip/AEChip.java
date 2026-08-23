@@ -51,6 +51,7 @@ import net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 import net.sf.jaer.eventio.ros2.ROSOutput;
+import net.sf.jaer.eventio.opencv.OpenCVOutput;
 import org.apache.commons.io.FilenameUtils;
 
 /**
@@ -196,6 +197,7 @@ public class AEChip extends Chip2D {
         addDefaultEventFilter(JaerAviWriter.class);
         addDefaultEventFilter(DNNOutputViaSharedMemory.class);
         addDefaultEventFilter(ROSOutput.class);
+        addDefaultEventFilter(OpenCVOutput.class);
 
         filterChain = new FilterChain(this);
         filterChain.contructPreferredFilters();
@@ -208,6 +210,11 @@ public class AEChip extends Chip2D {
         DNNOutputViaSharedMemory dnn = DNNOutputViaSharedMemory.find(this);
         if (dnn != null) {
             dnn.setPreferredEnabledState();
+        }
+        OpenCVOutput.ensurePresent(this);
+        OpenCVOutput opencv = OpenCVOutput.find(this);
+        if (opencv != null) {
+            opencv.setPreferredEnabledState();
         }
     }
 

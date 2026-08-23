@@ -153,6 +153,8 @@ import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventio.ros2.ROSOutput;
 import net.sf.jaer.eventio.ros2.ROSOutputDialog;
+import net.sf.jaer.eventio.opencv.OpenCVOutput;
+import net.sf.jaer.eventio.opencv.OpenCVOutputDialog;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemoryDialog;
 import prophesee.eventio.MetavisionRawFileInputStream;
@@ -288,8 +290,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
     /**
-     * Non-null overlay text: skip chip pixmap {@code render()} and still
-     * {@code paintFrame()} so this message is drawn on the canvas.
+     * Non-null overlay text: skip chip pixmap {@code render()} and
+     * {@code paintFrame()} a blank canvas with this message (no APS, DVS, IMU,
+     * or filter annotations).
      */
     private volatile String skipChipRenderingOverlay = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
@@ -404,10 +407,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
     private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
+    private boolean showOpenCvOutputOverlay = prefs.getBoolean("AEViewer.showOpenCvOutputOverlay", true);
     private javax.swing.JMenuItem rosOutputMenuItem;
     private ROSOutputDialog rosOutputDialog;
+    private PropertyChangeListener rosOutputEnabledSync;
+    private ROSOutput rosOutputMenuBoundFilter;
     private javax.swing.JMenuItem dnnSharedMemoryMenuItem;
     private DNNOutputViaSharedMemoryDialog dnnSharedMemoryDialog;
+    private PropertyChangeListener dnnSharedMemoryEnabledSync;
+    private DNNOutputViaSharedMemory dnnSharedMemoryMenuBoundFilter;
+    private javax.swing.JMenuItem openCvOutputMenuItem;
+    private OpenCVOutputDialog openCvOutputDialog;
+    private PropertyChangeListener openCvOutputEnabledSync;
+    private OpenCVOutput openCvOutputMenuBoundFilter;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
     private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
@@ -591,6 +603,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         initComponents();
         initRosOutputRemoteMenu();
         initDnnSharedMemoryRemoteMenu();
+        initOpenCvOutputRemoteMenu();
+        remoteMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                bindRemoteOutputMenuItems();
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
         applyNetworkMenuDescriptionTooltips();
         // Esc cancels queued jog even when focus is on the heavyweight GL canvas
         // (menu accelerators alone are not always delivered in that case).
@@ -1244,6 +1271,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (dnnSharedMemoryMenuItem != null) {
             dnnSharedMemoryMenuItem.setToolTipText(descriptionTooltip(DNNOutputViaSharedMemory.class, null));
         }
+        if (openCvOutputMenuItem != null) {
+            openCvOutputMenuItem.setToolTipText(descriptionTooltip(OpenCVOutput.class, null));
+        }
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
                 unicastOutputEnabledCheckBoxMenuItem,
@@ -1251,7 +1281,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 openBlockingQueueInputMenuItem,
                 blockingQueueOutputEnabledCheckBoxMenuItem,
                 rosOutputMenuItem,
-                dnnSharedMemoryMenuItem);
+                dnnSharedMemoryMenuItem,
+                openCvOutputMenuItem);
     }
 
     /**
@@ -1935,6 +1966,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             filterFrameBuilt = false;
             disposeRosOutputDialog();
             disposeDnnSharedMemoryDialog();
+            disposeOpenCvOutputDialog();
             filtersToggleButton.setVisible(false);
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
@@ -2620,9 +2652,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Skip AEViewer chip pixmap rendering and show {@code overlay} on the
-     * canvas (filters still run). Pass {@code null} or empty to resume normal
-     * rendering.
+     * Skip all AEViewer chip rendering (pixmap {@code render()}, APS/DVS
+     * textures, IMU overlay, frame markers, filter annotations) and paint a
+     * blank frame with {@code overlay} naming what is blocking the update.
+     * Filters still run. Pass {@code null} or empty to resume normal rendering.
      *
      * @param overlay message to draw, or null/empty to stop skipping
      */
@@ -3397,10 +3430,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
                         boolean skipRequested = isSkipChipRenderingRequested() && !isJaerAviRecordingActive();
-                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering() || skipRequested;
+                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering()
+                                || isOpenCvOutputSkipChipRendering() || skipRequested;
                         if (!skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
-                        } else if (isShowRosOutputOverlay() || skipRequested) {
+                        } else if (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested) {
+                            // Skip pixmap render(); paint a blank canvas + overlay (no APS/IMU/markers).
                             chipCanvas.paintFrame();
                         }
                     } catch (RuntimeException e) {
@@ -6107,6 +6142,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     disposeRosOutputDialog();
                     disposeDnnSharedMemoryDialog();
+                    disposeOpenCvOutputDialog();
 
                     // TODO should close biasgen window also
                     stopMe();
@@ -8963,11 +8999,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         prefs.putBoolean("AEViewer.showDnnSharedMemoryOverlay", showDnnSharedMemoryOverlay);
     }
 
+    public boolean isShowOpenCvOutputOverlay() {
+        return showOpenCvOutputOverlay;
+    }
+
+    public void setShowOpenCvOutputOverlay(boolean showOpenCvOutputOverlay) {
+        this.showOpenCvOutputOverlay = showOpenCvOutputOverlay;
+        prefs.putBoolean("AEViewer.showOpenCvOutputOverlay", showOpenCvOutputOverlay);
+    }
+
     private void initRosOutputRemoteMenu() {
-        rosOutputMenuItem = new JMenuItem("ROS2 / Foxglove frame output...");
+        rosOutputMenuItem = new JMenuItem();
         rosOutputMenuItem.setMnemonic('r');
         rosOutputMenuItem.addActionListener(e -> rosOutputMenuItemActionPerformed());
         remoteMenu.add(rosOutputMenuItem);
+        updateRosOutputMenuItem();
+    }
+
+    private void updateRosOutputMenuItem() {
+        if (rosOutputMenuItem == null) {
+            return;
+        }
+        ROSOutput r = findRosOutput();
+        boolean streaming = r != null && r.isFilterEnabled();
+        rosOutputMenuItem.setText(streaming
+                ? "ROS2 / Foxglove frame output (streaming)..."
+                : "ROS2 / Foxglove frame output (stopped)...");
     }
 
     private ROSOutput findRosOutput() {
@@ -9003,6 +9060,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         ROSOutput.ensurePresent(c);
+        bindRemoteOutputMenuItems();
         ROSOutput r = ROSOutput.find(c);
         if (r == null) {
             JOptionPane.showMessageDialog(this, "Could not create ROSOutput filter", "ROS2 / Foxglove",
@@ -9013,10 +9071,69 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void initDnnSharedMemoryRemoteMenu() {
-        dnnSharedMemoryMenuItem = new JMenuItem("DNN shared memory output...");
+        dnnSharedMemoryMenuItem = new JMenuItem();
         dnnSharedMemoryMenuItem.setMnemonic('d');
         dnnSharedMemoryMenuItem.addActionListener(e -> dnnSharedMemoryMenuItemActionPerformed());
         remoteMenu.add(dnnSharedMemoryMenuItem);
+        updateDnnSharedMemoryMenuItem();
+    }
+
+    private void updateDnnSharedMemoryMenuItem() {
+        if (dnnSharedMemoryMenuItem == null) {
+            return;
+        }
+        DNNOutputViaSharedMemory f = DNNOutputViaSharedMemory.find(getChip());
+        boolean streaming = f != null && f.isFilterEnabled();
+        dnnSharedMemoryMenuItem.setText(streaming
+                ? "DNN shared memory output (streaming)..."
+                : "DNN shared memory output (stopped)...");
+    }
+
+    private void bindRemoteOutputMenuItems() {
+        ROSOutput ros = findRosOutput();
+        if (rosOutputMenuBoundFilter != ros) {
+            if (rosOutputMenuBoundFilter != null && rosOutputEnabledSync != null) {
+                rosOutputMenuBoundFilter.getSupport().removePropertyChangeListener("filterEnabled", rosOutputEnabledSync);
+            }
+            rosOutputMenuBoundFilter = ros;
+            if (ros != null) {
+                if (rosOutputEnabledSync == null) {
+                    rosOutputEnabledSync = evt -> SwingUtilities.invokeLater(this::updateRosOutputMenuItem);
+                }
+                ros.getSupport().addPropertyChangeListener("filterEnabled", rosOutputEnabledSync);
+            }
+        }
+        updateRosOutputMenuItem();
+
+        DNNOutputViaSharedMemory dnn = DNNOutputViaSharedMemory.find(getChip());
+        if (dnnSharedMemoryMenuBoundFilter != dnn) {
+            if (dnnSharedMemoryMenuBoundFilter != null && dnnSharedMemoryEnabledSync != null) {
+                dnnSharedMemoryMenuBoundFilter.getSupport().removePropertyChangeListener("filterEnabled", dnnSharedMemoryEnabledSync);
+            }
+            dnnSharedMemoryMenuBoundFilter = dnn;
+            if (dnn != null) {
+                if (dnnSharedMemoryEnabledSync == null) {
+                    dnnSharedMemoryEnabledSync = evt -> SwingUtilities.invokeLater(this::updateDnnSharedMemoryMenuItem);
+                }
+                dnn.getSupport().addPropertyChangeListener("filterEnabled", dnnSharedMemoryEnabledSync);
+            }
+        }
+        updateDnnSharedMemoryMenuItem();
+
+        OpenCVOutput opencv = findOpenCvOutput();
+        if (openCvOutputMenuBoundFilter != opencv) {
+            if (openCvOutputMenuBoundFilter != null && openCvOutputEnabledSync != null) {
+                openCvOutputMenuBoundFilter.getSupport().removePropertyChangeListener("filterEnabled", openCvOutputEnabledSync);
+            }
+            openCvOutputMenuBoundFilter = opencv;
+            if (opencv != null) {
+                if (openCvOutputEnabledSync == null) {
+                    openCvOutputEnabledSync = evt -> SwingUtilities.invokeLater(this::updateOpenCvOutputMenuItem);
+                }
+                opencv.getSupport().addPropertyChangeListener("filterEnabled", openCvOutputEnabledSync);
+            }
+        }
+        updateOpenCvOutputMenuItem();
     }
 
     private void disposeDnnSharedMemoryDialog() {
@@ -9043,6 +9160,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         DNNOutputViaSharedMemory.ensurePresent(c);
+        bindRemoteOutputMenuItems();
         DNNOutputViaSharedMemory f = DNNOutputViaSharedMemory.find(c);
         if (f == null) {
             JOptionPane.showMessageDialog(this, "Could not create DNNOutputViaSharedMemory filter",
@@ -9050,6 +9168,68 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         showDnnSharedMemoryDialog(f);
+    }
+
+    private void initOpenCvOutputRemoteMenu() {
+        openCvOutputMenuItem = new JMenuItem();
+        openCvOutputMenuItem.setMnemonic('c');
+        openCvOutputMenuItem.addActionListener(e -> openCvOutputMenuItemActionPerformed());
+        remoteMenu.add(openCvOutputMenuItem);
+        updateOpenCvOutputMenuItem();
+    }
+
+    private void updateOpenCvOutputMenuItem() {
+        if (openCvOutputMenuItem == null) {
+            return;
+        }
+        OpenCVOutput o = findOpenCvOutput();
+        boolean streaming = o != null && o.isFilterEnabled();
+        openCvOutputMenuItem.setText(streaming
+                ? "OpenCV camera output (streaming)..."
+                : "OpenCV camera output (stopped)...");
+    }
+
+    private OpenCVOutput findOpenCvOutput() {
+        return OpenCVOutput.find(getChip());
+    }
+
+    private boolean isOpenCvOutputSkipChipRendering() {
+        OpenCVOutput o = findOpenCvOutput();
+        return o != null && o.isFilterEnabled() && o.isSkipChipRendering();
+    }
+
+    private void disposeOpenCvOutputDialog() {
+        if (openCvOutputDialog != null) {
+            openCvOutputDialog.dispose();
+            openCvOutputDialog = null;
+        }
+    }
+
+    private void showOpenCvOutputDialog(OpenCVOutput f) {
+        if (openCvOutputDialog != null && openCvOutputDialog.getFilter() != f) {
+            disposeOpenCvOutputDialog();
+        }
+        if (openCvOutputDialog == null) {
+            openCvOutputDialog = new OpenCVOutputDialog(this, f);
+        }
+        openCvOutputDialog.setVisible(true);
+        openCvOutputDialog.toFront();
+    }
+
+    private void openCvOutputMenuItemActionPerformed() {
+        AEChip c = getChip();
+        if (c == null) {
+            return;
+        }
+        OpenCVOutput.ensurePresent(c);
+        bindRemoteOutputMenuItems();
+        OpenCVOutput f = OpenCVOutput.find(c);
+        if (f == null) {
+            JOptionPane.showMessageDialog(this, "Could not create OpenCVOutput filter",
+                    "OpenCV camera output", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        showOpenCvOutputDialog(f);
     }
 
     /**
@@ -9107,6 +9287,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chip.getFilterChain().initFilters(); // at this point AEChip is fully initialized, so asking all filters to initialize themselves makes sense
             }
         }
+        bindRemoteOutputMenuItems();
     }
 
     public boolean isRenderBlankFramesEnabled() {

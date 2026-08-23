@@ -537,38 +537,43 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         getZoom().applyProjection(gl);
         checkGLError(gl, glu, "after setting projection, before displayMethod");
-        final DisplayMethod m = getDisplayMethod();
-        if (m == null) {
-            log.warning("null display method for chip " + getChip());
-        } else {
+        if (shouldSkipChipDisplay()) {
+            // Blank canvas only: do not run DisplayMethod (APS pixmap, DVS texture,
+            // IMU overlay, frame markers) or filter annotations. Overlay names the
+            // filter that requested the skip.
+            gl.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
-            gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            m.display(drawable);
-//                glCanvas.swapBuffers();
-//                glCanvas.swapBuffers();
-        }
-        // checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
-        checkGLError(gl, glu, "after DisplayMethod.display()");
-        showSpike(gl);
-        try {
-            annotate(drawable);
-        } catch (OutOfMemoryError e) {
-            net.sf.jaer.util.MemoryDiagnostics.logOomContext(log, "OutOfMemoryError during FrameAnnotator annotations:", e);
-            throw e;
-        }
-        checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
-        if ((getChip() instanceof AEChip) && (((AEChip) chip).getFilterChain() != null)
-                && (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
-            if (renderer == null) {
-                renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-                renderer.setUseVertexArrays(false);
+        } else {
+            final DisplayMethod m = getDisplayMethod();
+            if (m == null) {
+                log.warning("null display method for chip " + getChip());
+            } else {
+                gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+                gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                m.display(drawable);
             }
-            renderer.begin3DRendering();
-            renderer.setColor(0, 0, 1, 0.8f);
-            final String s = "Real-time mode - raw data shown here";
-            final Rectangle2D r = renderer.getBounds(s);
-            renderer.draw3D(s, 1f, 1f, 0f, (float) (chip.getSizeX() / 2 / r.getWidth()));
-            renderer.end3DRendering();
+            checkGLError(gl, glu, "after DisplayMethod.display()");
+            showSpike(gl);
+            try {
+                annotate(drawable);
+            } catch (OutOfMemoryError e) {
+                net.sf.jaer.util.MemoryDiagnostics.logOomContext(log, "OutOfMemoryError during FrameAnnotator annotations:", e);
+                throw e;
+            }
+            checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
+            if ((getChip() instanceof AEChip) && (((AEChip) chip).getFilterChain() != null)
+                    && (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
+                if (renderer == null) {
+                    renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+                    renderer.setUseVertexArrays(false);
+                }
+                renderer.begin3DRendering();
+                renderer.setColor(0, 0, 1, 0.8f);
+                final String s = "Real-time mode - raw data shown here";
+                final Rectangle2D r = renderer.getBounds(s);
+                renderer.draw3D(s, 1f, 1f, 0f, (float) (chip.getSizeX() / 2 / r.getWidth()));
+                renderer.end3DRendering();
+            }
         }
         drawRecordingOverlayIfNeeded(drawable);
         drawRemoteOutputOverlaysIfNeeded(drawable);
@@ -644,19 +649,33 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     private static final Color SKIP_RENDER_OVERLAY_COLOR = new Color(1f, 0.85f, 0.2f, 0.85f);
 
+    private AEViewer resolveAeViewer() {
+        if (chip instanceof AEChip) {
+            AEViewer v = ((AEChip) chip).getAeViewer();
+            if (v != null) {
+                return v;
+            }
+        }
+        return aeViewer;
+    }
+
+    /**
+     * True when a filter requested skip of chip pixmap rendering. DisplayMethod
+     * (APS, DVS, IMU, frame markers) and annotations are omitted; a blank frame
+     * plus {@link AEViewer#getSkipChipRenderingOverlay()} is drawn instead.
+     */
+    private boolean shouldSkipChipDisplay() {
+        AEViewer v = resolveAeViewer();
+        return v != null && v.isSkipChipRenderingRequested() && !v.isJaerAviRecordingActive();
+    }
+
     /**
      * Overlay when a filter called
-     * {@link AEViewer#setSkipChipRenderingOverlay(String)}.
+     * {@link AEViewer#setSkipChipRenderingOverlay(String)}. Centered on the
+     * blank canvas so it names what is blocking the rendering update.
      */
     private void drawSkipChipRenderingOverlayIfNeeded(final GLAutoDrawable drawable) {
-        if (!(chip instanceof AEChip)) {
-            return;
-        }
-        AEChip aeChip = (AEChip) chip;
-        AEViewer viewer = aeChip.getAeViewer();
-        if (viewer == null) {
-            viewer = aeViewer;
-        }
+        AEViewer viewer = resolveAeViewer();
         if (viewer == null || viewer.isJaerAviRecordingActive()) {
             return;
         }
@@ -672,8 +691,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
             renderer.begin3DRendering();
             renderer.setColor(SKIP_RENDER_OVERLAY_COLOR);
-            float maxW = chip.getSizeX() * 0.9f;
-            float maxH = Math.max(8f, chip.getSizeY() * 0.07f);
+            float maxW = chip.getSizeX() * 0.92f;
+            float maxH = Math.max(8f, chip.getSizeY() * 0.10f);
             float scale = Float.MAX_VALUE;
             Rectangle2D[] bounds = new Rectangle2D[lines.length];
             for (int i = 0; i < lines.length; i++) {
@@ -690,12 +709,14 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
             float lineSpace = 0;
             if (lines.length > 0 && bounds[0].getHeight() > 0) {
-                lineSpace = (float) bounds[0].getHeight() * scale * 1.25f;
+                lineSpace = (float) bounds[0].getHeight() * scale * 1.35f;
             }
-            float y = chip.getSizeY() * 0.08f;
+            float blockH = lines.length == 0 ? 0
+                    : ((lines.length - 1) * lineSpace) + (float) bounds[0].getHeight() * scale;
+            float y = (chip.getSizeY() - blockH) / 2f;
             for (int i = 0; i < lines.length; i++) {
                 float x = (chip.getSizeX() / 2f) - (float) (bounds[i].getWidth() * scale / 2f);
-                renderer.draw3D(lines[i], x, y + i * lineSpace, 0, scale);
+                renderer.draw3D(lines[i], x, y + (lines.length - 1 - i) * lineSpace, 0, scale);
             }
             renderer.end3DRendering();
         } catch (GLException e) {
@@ -703,14 +724,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
     }
 
-    private static final Color ROS_OUTPUT_OVERLAY_COLOR = new Color(0.15f, 0.85f, 0.55f, 0.7f);
-    private static final Color DNN_OUTPUT_OVERLAY_COLOR = new Color(1f, 0.65f, 0.2f, 0.75f);
-
     /**
-     * Overlay while File → Remote sinks are publishing (ROS2 / Foxglove and DNN mmap).
+     * Overlay while File → Remote sinks are publishing (ROS2 / Foxglove, DNN mmap, OpenCV MJPEG).
      * Stacked from the bottom of the chip view. Gated by
-     * {@link AEViewer#isShowRosOutputOverlay()} and
-     * {@link AEViewer#isShowDnnSharedMemoryOverlay()}.
+     * {@link AEViewer#isShowRosOutputOverlay()},
+     * {@link AEViewer#isShowDnnSharedMemoryOverlay()}, and
+     * {@link AEViewer#isShowOpenCvOutputOverlay()}.
      */
     private void drawRemoteOutputOverlaysIfNeeded(final GLAutoDrawable drawable) {
         if (!(chip instanceof AEChip)) {
@@ -728,45 +747,47 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (viewer.isShowRosOutputOverlay()) {
             net.sf.jaer.eventio.ros2.ROSOutput ros = net.sf.jaer.eventio.ros2.ROSOutput.find(aeChip);
             if (ros != null && ros.isFilterEnabled()) {
-                y = drawCenteredStatusOverlay(drawable, y, ROS_OUTPUT_OVERLAY_COLOR, ros.getOverlayText());
+                y = drawCenteredStatusOverlay(drawable, y, ros.getOverlayText());
             }
         }
         if (viewer.isShowDnnSharedMemoryOverlay()) {
             net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory dnn
                     = net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory.find(aeChip);
             if (dnn != null && dnn.isFilterEnabled()) {
-                y = drawCenteredStatusOverlay(drawable, y, DNN_OUTPUT_OVERLAY_COLOR, dnn.getOverlayText());
+                y = drawCenteredStatusOverlay(drawable, y, dnn.getOverlayText());
+            }
+        }
+        if (viewer.isShowOpenCvOutputOverlay()) {
+            net.sf.jaer.eventio.opencv.OpenCVOutput opencv
+                    = net.sf.jaer.eventio.opencv.OpenCVOutput.find(aeChip);
+            if (opencv != null && opencv.isFilterEnabled()) {
+                y = drawCenteredStatusOverlay(drawable, y, opencv.getOverlayText());
             }
         }
     }
 
     /**
-     * Centered multi-line status text. Returns the chip-Y just above the last line
-     * so another overlay can stack on top.
+     * Centered multi-line status text, white with drop shadow, font shrunk so
+     * the longest line fits the chip width. First line is {@code Streaming Active:}.
+     * Returns the chip-Y just above the block so another overlay can stack on top.
      */
-    private float drawCenteredStatusOverlay(final GLAutoDrawable drawable, float yChip, Color color, String text) {
+    private float drawCenteredStatusOverlay(final GLAutoDrawable drawable, float yChip, String text) {
         if (text == null || text.isEmpty()) {
             return yChip;
         }
-        String[] lines = text.split("\n", -1);
+        String[] lines = ("Streaming Active:\n" + text).split("\n", -1);
         try {
-            GL2 gl = drawable.getGL().getGL2();
-            int fontsize = Math.max(8, Math.round(12 * (chip.getSizeX() / 346f)));
-            float scale = 1f;
-            if (fontsize < 10) {
-                fontsize *= 2;
-                scale = .5f;
-            }
-            gl.glPushMatrix();
-            gl.glScalef(scale, scale, scale);
-            float lineSpace = fontsize * 1.35f;
-            float xpos = (chip.getSizeX() / 2f) / scale;
-            float y = yChip / scale;
+            drawable.getGL().getGL2();
+            float chipW = Math.max(1, chip.getSizeX());
+            int fontsize = Math.max(6, Math.round(12 * (chipW / 346f)));
+            fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
+            float lineSpace = fontsize * 2.2f;
+            float xpos = chipW / 2f;
             for (int i = 0; i < lines.length; i++) {
-                DrawGL.drawString(fontsize, xpos, y + i * lineSpace, .5f, color, lines[i]);
+                float y = yChip + (lines.length - 1 - i) * lineSpace;
+                DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, lines[i]);
             }
-            gl.glPopMatrix();
-            return yChip + lines.length * lineSpace * scale + chip.getSizeY() * 0.02f;
+            return yChip + lines.length * lineSpace + chip.getSizeY() * 0.02f;
         } catch (GLException e) {
             log.log(Level.FINE, "status overlay: {0}", e.toString());
             return yChip;
@@ -2250,14 +2271,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (!annotationEnabled) {
             return;
         }
-        if (chip instanceof AEChip) {
-            AEViewer v = ((AEChip) chip).getAeViewer();
-            if (v == null) {
-                v = aeViewer;
-            }
-            if (v != null && v.isSkipChipRenderingRequested() && !v.isJaerAviRecordingActive()) {
-                return;
-            }
+        if (shouldSkipChipDisplay()) {
+            return;
         }
         if (getDisplayMethod() == null) {
             return;
