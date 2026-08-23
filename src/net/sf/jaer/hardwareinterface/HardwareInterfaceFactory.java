@@ -147,6 +147,17 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	}
 
 	/**
+	 * Number of interfaces from the last {@link #buildInterfaceList()}. Does not
+	 * scan the USB bus; use from the Interface menu when a device is already open.
+	 *
+	 * @return cached device count
+	 * @see #getNumInterfacesAvailable()
+	 */
+	synchronized public int getCachedNumInterfacesAvailable() {
+		return interfaceList.size();
+	}
+
+	/**
 	 * Number of hardware interfaces currently known. With libusb hotplug this is
 	 * cheap until a plug event (or {@link #markUsbEnumerationDirty()}) forces a rescan.
 	 * Without hotplug this enumerates all factories every call.

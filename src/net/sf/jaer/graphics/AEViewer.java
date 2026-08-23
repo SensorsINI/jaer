@@ -2305,7 +2305,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      */
     synchronized private void buildInterfaceMenu() {
-        buildInterfaceMenu(interfaceMenu);
+        buildInterfaceMenu(interfaceMenu, false);
+    }
+
+    /**
+     * Rebuilds the Interface menu, optionally forcing a USB bus scan.
+     *
+     * @param forceUsbRescan if true, re-enumerate even when a device is already
+     * open so newly attached cameras appear (Interface → Refresh)
+     */
+    synchronized private void buildInterfaceMenu(boolean forceUsbRescan) {
+        buildInterfaceMenu(interfaceMenu, forceUsbRescan);
     }
 
     /**
@@ -2316,6 +2326,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * code below.
      */
     public void buildInterfaceMenu(JMenu interfaceMenu) {
+        buildInterfaceMenu(interfaceMenu, false);
+    }
+
+    /**
+     * Builds list of attached hardware interfaces by asking the hardware
+     * interface factories for the interfaces. Populates the Interface menu with
+     * these items, and with a "None" item to close and set the chip's
+     * HardwareInterface to null. Various specialized interfaces customize the
+     * code below.
+     *
+     * @param forceUsbRescan if true, run {@link HardwareInterfaceFactory}
+     * enumeration even when a device is already open
+     */
+    public void buildInterfaceMenu(JMenu interfaceMenu, boolean forceUsbRescan) {
         interfaceMenu.removeAll();
         boolean interfaceAlreadyOpen = false;
         // make an item for the currently opened hardware interface, if there is one for this chip, and select it.
@@ -2337,18 +2361,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         ButtonGroup bg = new ButtonGroup();
 
         //create a list of available hardware interfaces from enumerated devices.
-        // Skip USB re-enumeration when a device is already open: getNumInterfacesAvailable()
-        // blocks on the EDT and can hang the UI during/after open or preference download.
+        // Skip USB re-enumeration when a device is already open unless Refresh:
+        // getNumInterfacesAvailable() blocks on the EDT and can hang the UI
+        // during/after open or preference download. Use Interface → Refresh
+        // to find cameras plugged in after the current one opened.
         boolean choseOneButton = false;
         JRadioButtonMenuItem interfaceButton = null;
         final int n;
-        if (interfaceAlreadyOpen) {
-            log.info("Interface menu: device already open, skipping USB re-enumeration");
-            n = 0;
+        if (interfaceAlreadyOpen && !forceUsbRescan) {
+            n = HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable();
+            log.info(String.format(
+                    "Interface menu: device already open, listing %d cached interface(s) (Refresh to rescan USB)",
+                    n));
         } else {
-            log.info("finding number of available interfaces");
+            log.info(forceUsbRescan
+                    ? "Refresh: enumerating hardware interfaces"
+                    : "finding number of available interfaces");
             HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
-            n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
+            n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // rebuilds the factory list
         }
         //        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
 //                log.info("found "+n+" interfaces");
@@ -2358,6 +2388,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (hw == null) {
                 continue;
             } // in case it disappeared
+            // Factory list should omit the already-open device; skip if it still appears.
+            if (interfaceAlreadyOpen && hw.toString().equals(chip.getHardwareInterface().toString())) {
+                continue;
+            }
 
             // if found interface is NOT some network interface, then make a chooser button for it.
             if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
@@ -2521,6 +2555,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (choseOneButton == false) {
 
         }
+
+        // Refresh is its own section so a user-initiated scan is not on every menu open.
+        interfaceMenu.add(new JSeparator());
+        refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface");
+        interfaceMenu.add(refreshInterfaceMenuItem);
 
         // make a 'reset device' item 
         interfaceMenu.add(new JSeparator());
@@ -5514,7 +5553,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
+        refreshInterfaceMenuItem.setMnemonic('R');
         refreshInterfaceMenuItem.setText("Refresh");
+        refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface");
         refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentShown(java.awt.event.ComponentEvent evt) {
                 refreshInterfaceMenuItemComponentShown(evt);
@@ -6157,7 +6198,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_formWindowClosing
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
-            // TODO appendOfEventReferences your handling code here:
+            try {
+                setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                buildInterfaceMenu(true);
+                final int n = HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable();
+                showActionText(String.format("Found %d hardware interface(s)", n));
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
+            }
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
@@ -8530,8 +8578,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_newViewerMenuItemActionPerformed
 
 	private void interfaceMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_interfaceMenuMenuSelected
-            // Build off the critical path when possible: if a device is already open we skip USB
-            // scan (see buildInterfaceMenu). Otherwise keep WAIT cursor but never hold ViewLoop.
+            // Rebuild from cache if a device is already open (no USB scan). Use
+            // Interface → Refresh to enumerate. Otherwise WAIT cursor, never hold ViewLoop.
             try {
                 setCursor(new Cursor(Cursor.WAIT_CURSOR));
                 buildInterfaceMenu();
