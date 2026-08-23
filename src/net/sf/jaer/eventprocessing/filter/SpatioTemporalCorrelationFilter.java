@@ -224,6 +224,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public void initFilter() {
+        super.initFilter();
         sxm1 = chip.getSizeX() - 1;
         sym1 = chip.getSizeY() - 1;
         ssx = sxm1 >> subsampleBy;

@@ -111,6 +111,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
 
     @Override
     public void initFilter() {
+        super.initFilter();
         sx = chip.getSizeX();
         sy = chip.getSizeY();
         lastRowTs = new int[sy];

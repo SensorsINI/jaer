@@ -372,6 +372,7 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
 
     @Override
     public void initFilter() {
+        super.initFilter();
         hotPixelSet.loadPrefs(this);
         if (use2DBooleanArray) {
             fillHotPixelArrayFromHotPixelSet();

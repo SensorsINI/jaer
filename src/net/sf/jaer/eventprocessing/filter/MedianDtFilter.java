@@ -143,6 +143,7 @@ public class MedianDtFilter extends AbstractNoiseFilter {
 
     @Override
     public final void initFilter() {
+        super.initFilter();
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
         ssx = sx >> subsampleBy;

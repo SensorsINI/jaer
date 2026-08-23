@@ -190,6 +190,7 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
 
     @Override
     public void initFilter() {
+        super.initFilter();
         maybeSubscribeToPlaybackStream();
         resetFilter();
     }
