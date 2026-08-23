@@ -824,14 +824,14 @@ public class ChipCanvas implements GLEventListener, Observer {
         String[] lines = {
             "Welcome to jAER-" + welcomeReleaseVersion,
             "Plug in a device or use File/Open recorded data file..",
-            "Choose device from AEChip menu",
+            "Choose active camera from Interface menu (if you have multiple cameras)",
             "Get sample data via Help / Sample data",
             "See Help menu for more information"
         };
         try {
             GL2 gl = drawable.getGL().getGL2();
             // ~1.5× smaller than initial welcome overlay sizing
-            int fontsize = Math.max(6, Math.round(10 * (chip.getSizeX() / 346f) / 1.5f));
+            int fontsize = Math.max(4, Math.round(10 * (chip.getSizeX() / 346f) / 1.5f));
             float scale = 1f;
             if (fontsize < 10) {
                 fontsize *= 2;
