@@ -259,6 +259,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 
     @Override
     public final void initFilter() {
+        super.initFilter();
         allocateMaps();
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;

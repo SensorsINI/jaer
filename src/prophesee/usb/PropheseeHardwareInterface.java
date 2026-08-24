@@ -44,6 +44,7 @@ import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -145,7 +146,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     public PropheseeHardwareInterface(Device device) {
         this.device = device;
-        log.info("Prophesee USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+        log.fine("Prophesee USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
     }
 
     boolean isUsbTypedDemuxActive() {
@@ -380,6 +381,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         isOpened = true;
         log.info("Prophesee EVK4 opened serial=" + serial + " VID:PID="
                 + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
+        LibUsbLinkInfo.logOnOpen(log, "Prophesee EVK4", device, deviceDescriptor);
     }
 
     /**

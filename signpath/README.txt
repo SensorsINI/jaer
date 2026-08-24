@@ -25,8 +25,14 @@ Fill in these files (one value per file; see stubs created beside this README):
       Default: jaer
 
   signpath-signing-policy-slug.txt
-      Current CI policy: test-signing2 (workflow hardcodes this).
-      Use release-signing later when that policy is VALID.
+      Tag-push default via GitHub variable SIGNPATH_SIGNING_POLICY_SLUG.
+      Keep test-signing2 until release-signing is ACTIVE and the certificate
+      is VALID (not CSR PENDING). Then set this file to release-signing and
+      re-run the sync script.
+
+  release_certificate_2026.csr
+      Public CSR only (gitignored). Foundation issues the cert; do not treat
+      this file as the finished certificate.
 
 Sync to GitHub Actions (secrets are set via gh CLI; nothing is committed):
 

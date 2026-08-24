@@ -800,7 +800,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         final int wi = getWidth(), hi = getHeight();
         // running on HighDPI display screen gives more surface pixels that canvas pixels.
         // use this trick to scale the drawPixels correctly.
-        float highDPIScale = swi / wi;
+        float highDPIScale = wi > 0 ? (float) swi / (float) wi : 1f;
 
         float scale = glScale;
         glScale=scale*highDPIScale;

@@ -3,349 +3,193 @@ package nrv.chip;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Insets;
-import java.awt.Rectangle;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSlider;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.Scrollable;
-import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 
 import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.biasgen.PotTweaker;
+import net.sf.jaer.chip.AEChip;
 import nrv.usb.NRVRegisterSetting;
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
 
 /**
- * Simplified NRV controls: DVS-style event thresholds first, then scan-rate
- * and USB sub-timestamp timing at the bottom.
+ * Simplified NRV controls: shared DVS tweaks plus scan-rate / USB timing.
  *
  * @see https://nrv.kr/
  */
-public class NRVUserControlPanel extends JPanel implements PropertyChangeListener {
+public class NRVUserControlPanel extends DVSUserControlPanel {
 
     private static final String BIAS_SECTION_TOOLTIP = "<html>Sliders tweak loaded settings around file values.<br>"
-            + "<b>Undo/Redo</b> in the Biases toolbar; <b>File→Revert</b> restores the .txt.<br>"
-            + "Event threshold: right → lower 0x0167 / higher 0x0168, raise both |Θ|.<br>"
-            + "ON/OFF balance: right → more ON events (independent of threshold).";
-
+            + "<b>Undo/Redo</b> in the Biases toolbar; <b>File→Revert</b> restores the .txt.";
     private static final String TIMING_SECTION_TOOLTIP = "<html>Scan rate morphs DTAG registers (0x321D:321E and block).<br>"
             + "Sub-timestamp (0x32B2) is USB packet cadence within each ms.";
-
-    private static final String GLOBAL_SETTING_TOOLTIP = "<html>Global settings for the NRV sensor(0x320C register).";
-
+    private static final String GLOBAL_SETTING_TOOLTIP = "<html>Global settings for the NRV sensor (0x320C register).";
     private static final int SUB_UNIT_MIN = 1;
     private static final int SUB_UNIT_MAX = 0x7F;
 
     private final NRVConfig config;
-    private final PotTweaker thresholdTweaker = new PotTweaker();
-    private final PotTweaker onOffBalanceTweaker = new PotTweaker();
     private final JSlider scanRateSlider = new JSlider(NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300);
     private final JSlider timestampSubSlider = new JSlider(SUB_UNIT_MIN, SUB_UNIT_MAX, 0x21);
     private final JCheckBox globalResetCheckBox = new JCheckBox("Enable global reset mode (0x320C[1])");
     private final JCheckBox globalHoldCheckBox = new JCheckBox("Enable global hold mode (0x320C[0])");
     private final JLabel thresholdValueLabel = new JLabel();
     private final JLabel onOffValueLabel = new JLabel();
-    private final JLabel thresholdReadoutLabel = new JLabel();
+    private final JLabel kRatioLabel = new JLabel();
     private final JLabel scanRateValueLabel = new JLabel();
     private final JLabel scanRateDetailLabel = new JLabel();
     private final JLabel timestampSubValueLabel = new JLabel();
     private final JLabel subTimestampTimingLabel = new JLabel();
-    private final JScrollPane scrollPane;
-    private final ScrollablePanel contentPanel;
-    private boolean updatingFromConfig;
 
     public NRVUserControlPanel(NRVConfig config) {
-        super(new BorderLayout());
+        super(config.getChip() instanceof AEChip ae ? ae : null, config, false);
         this.config = config;
-
-        thresholdTweaker.setTweakDescription("");
-        thresholdTweaker.setLessDescription("Lower");
-        thresholdTweaker.setMoreDescription("Higher");
-        thresholdTweaker.setToolTipText("<html>Right: lower 0x0167 / higher 0x0168 → raise both |Θ| (like DVS diffOn/diffOff).<br>"
-                + "Does not change 0x0166 (K_REF). Changes are live; .txt file unchanged.");
-        configurePotTweaker(thresholdTweaker);
-
-        onOffBalanceTweaker.setTweakDescription("");
-        onOffBalanceTweaker.setLessDescription("More OFF");
-        onOffBalanceTweaker.setMoreDescription("More ON");
-        onOffBalanceTweaker.setToolTipText("<html>Right: raise both ON/OFF LSBs → lower Θ_ON, higher |Θ_OFF|.<br>"
-                + "Independent of event threshold. K_REF (0x0166) unchanged.");
-        configurePotTweaker(onOffBalanceTweaker);
-
-        scanRateSlider.setMajorTickSpacing(500);
-        scanRateSlider.setMinorTickSpacing(100);
-        scanRateSlider.setPaintTicks(true);
-        scanRateSlider.setPaintLabels(false);
-        scanRateSlider.setToolTipText("<html>Nominal sensor scan / frame-end rate (100–2000 Hz).<br>"
-                + "Interpolates Scan Rate Setting block between factory 100 / 1000 / 2000 anchors.<br>"
-                + "Also sets TSTAMP_SUB. Verify from USB frame-end (0x0C) packets.");
-
-        timestampSubSlider.setMajorTickSpacing(0x20);
-        timestampSubSlider.setPaintTicks(true);
-        timestampSubSlider.setToolTipText("<html>Register 0x32B2 — sub-timestamp USB packet rate within each ref ms.<br>"
-                + "Auto-updated with scan rate; fine-tune here. Factory: 100→0x0B … 1000→0x7D.");
-
-        globalResetCheckBox.setToolTipText("Enables global reset mode via register 0x320C bit 1.");
-        globalHoldCheckBox.setToolTipText("Enables global hold mode via register 0x320C bit 0.");
-
-        scanRateSlider.addChangeListener(new ChangeListener() {
-            @Override
-            public void stateChanged(ChangeEvent e) {
-                onScanRateChanged();
-            }
-        });
-        timestampSubSlider.addChangeListener(new ChangeListener() {
-            @Override
-            public void stateChanged(ChangeEvent e) {
-                onTimestampSubChanged();
-            }
-        });
-        globalResetCheckBox.addActionListener(e -> onGlobalResetChanged());
-        globalHoldCheckBox.addActionListener(e -> onGlobalHoldChanged());
-        thresholdTweaker.addChangeListener(e -> onThresholdChanged());
-        onOffBalanceTweaker.addChangeListener(e -> onOnOffBalanceChanged());
-
-        config.getSupport().addPropertyChangeListener(this);
-        config.getSupport().addPropertyChangeListener(thresholdTweaker);
-        config.getSupport().addPropertyChangeListener(onOffBalanceTweaker);
-
-        contentPanel = new ScrollablePanel();
-        contentPanel.setBorder(new EmptyBorder(4, 8, 2, 8));
-        contentPanel.add(buildBiasSection());
-        contentPanel.add(Box.createVerticalStrut(8));
-        contentPanel.add(buildTimingSection());
-        contentPanel.add(Box.createVerticalStrut(8));
-        contentPanel.add(buildGlobalSettingSection());
-
-        scrollPane = new JScrollPane(new TopAlignedScrollView(contentPanel));
-        scrollPane.setBorder(null);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        add(scrollPane, BorderLayout.CENTER);
-
-        addAncestorListener(new javax.swing.event.AncestorListener() {
-            @Override
-            public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
-                SwingUtilities.invokeLater(() -> relayoutContent());
-            }
-
-            @Override
-            public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
-            }
-
-            @Override
-            public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
-            }
-        });
-
+        finishInit();
         syncFromConfig();
-        relayoutContent();
     }
 
-    /** Recompute sizes after labels are populated; safe to call on show/resize. */
-    private void relayoutContent() {
-        stretchChildren(contentPanel);
-        stretchTree(contentPanel);
-        contentPanel.revalidate();
-        contentPanel.repaint();
-        scrollPane.getViewport().getView().revalidate();
-        scrollPane.revalidate();
+    @Override
+    protected void configureTweakers() {
+        configurePotTweaker(thresholdTweaker, "Event threshold", "Lower", "Higher",
+                "Right: lower 0x0167 / higher 0x0168 → raise both |Θ|.");
+        configurePotTweaker(onOffBalanceTweaker, "ON / OFF balance", "More OFF", "More ON",
+                "Right: more ON events (independent of threshold).");
+        thresholdTweaker.getSlider().setPaintLabels(false);
+        onOffBalanceTweaker.getSlider().setPaintLabels(false);
+        thresholdTweaker.setPreferredSize(new Dimension(200, 48));
+        onOffBalanceTweaker.setPreferredSize(new Dimension(200, 48));
     }
 
-    private static void configurePotTweaker(PotTweaker tweaker) {
-        tweaker.setBorder(null);
-        tweaker.getSlider().setPaintLabels(false);
-        tweaker.setPreferredSize(new Dimension(200, 40));
-        tweaker.setMinimumSize(new Dimension(0, 40));
-    }
+    @Override
+    protected void addExtraControls(JPanel extra) {
+        extra.add(thresholdValueLabel);
+        extra.add(onOffValueLabel);
+        extra.add(kRatioLabel);
+        extra.add(Box.createVerticalStrut(8));
+        extra.add(buildTimingSection());
+        extra.add(Box.createVerticalStrut(8));
+        extra.add(buildGlobalSettingSection());
 
-    private JPanel buildBiasSection() {
-        final JPanel section = new JPanel();
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-        section.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Event thresholds (EVTH)"),
-                new EmptyBorder(4, 4, 4, 4)));
-        section.setToolTipText(BIAS_SECTION_TOOLTIP);
-
-        section.add(wrapPotTweaker("Event threshold", thresholdTweaker, thresholdValueLabel));
-        section.add(Box.createVerticalStrut(6));
-        section.add(wrapPotTweaker("ON / OFF balance", onOffBalanceTweaker, onOffValueLabel));
-        section.add(Box.createVerticalStrut(8));
-        section.add(buildThresholdReadoutPanel());
-        stretchChildren(section);
-        return section;
+        scanRateSlider.addChangeListener(e -> {
+            if (!updatingFromConfig) {
+                config.setScanRateHz(scanRateSlider.getValue());
+                updateChipSpecificLabels();
+            }
+        });
+        timestampSubSlider.addChangeListener(e -> {
+            if (!updatingFromConfig) {
+                config.setTimestampSubUnit(timestampSubSlider.getValue());
+                updateChipSpecificLabels();
+            }
+        });
+        globalResetCheckBox.addActionListener(e -> {
+            if (!updatingFromConfig) {
+                config.setGlobalResetModeEnabled(globalResetCheckBox.isSelected());
+            }
+        });
+        globalHoldCheckBox.addActionListener(e -> {
+            if (!updatingFromConfig) {
+                config.setGlobalHoldModeEnabled(globalHoldCheckBox.isSelected());
+            }
+        });
     }
 
     private JPanel buildTimingSection() {
-        final JPanel section = new JPanel();
+        JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBorder(BorderFactory.createTitledBorder("Timing / readout"));
         section.setToolTipText(TIMING_SECTION_TOOLTIP);
-
-        section.add(wrapRegisterSlider("Scan rate (100–2000 Hz)", scanRateSlider, scanRateValueLabel));
-        section.add(Box.createVerticalStrut(2));
-        section.add(wrapDetailLabel(scanRateDetailLabel));
-        section.add(Box.createVerticalStrut(8));
-        section.add(wrapRegisterSlider("Sub-timestamp (0x32B2)", timestampSubSlider, timestampSubValueLabel));
-        section.add(Box.createVerticalStrut(2));
-        section.add(wrapDetailLabel(subTimestampTimingLabel));
-        stretchChildren(section);
+        section.add(wrapSlider("Scan rate (100–2000 Hz)", scanRateSlider, scanRateValueLabel));
+        section.add(scanRateDetailLabel);
+        section.add(Box.createVerticalStrut(6));
+        section.add(wrapSlider("Sub-timestamp (0x32B2)", timestampSubSlider, timestampSubValueLabel));
+        section.add(subTimestampTimingLabel);
+        stretchHorizontal(section);
         return section;
     }
 
     private JPanel buildGlobalSettingSection() {
-        final JPanel section = new JPanel();
+        JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBorder(BorderFactory.createTitledBorder("Global setting"));
         section.setToolTipText(GLOBAL_SETTING_TOOLTIP);
-
         section.add(globalResetCheckBox);
         section.add(globalHoldCheckBox);
-        stretchChildren(section);
+        stretchHorizontal(section);
         return section;
     }
 
-    private JPanel buildThresholdReadoutPanel() {
-        thresholdReadoutLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN,
-                thresholdReadoutLabel.getFont().getSize()));
-        thresholdReadoutLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        final JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder("Estimated thresholds"));
-        panel.add(thresholdReadoutLabel);
-        stretchHorizontal(thresholdReadoutLabel);
-        return panel;
-    }
-
-    private static JPanel wrapPotTweaker(String title, PotTweaker tweaker, JLabel valueLabel) {
-        final JPanel row = new JPanel(new BorderLayout(4, 2));
-        final JLabel name = new JLabel(title);
-        name.setToolTipText(tweaker.getToolTipText());
-        row.add(name, BorderLayout.NORTH);
-        row.add(tweaker, BorderLayout.CENTER);
-        row.add(valueLabel, BorderLayout.SOUTH);
-        return row;
-    }
-
-    private static JPanel wrapDetailLabel(JLabel label) {
-        final JPanel row = new JPanel(new BorderLayout());
-        row.add(label, BorderLayout.CENTER);
-        return row;
-    }
-
-    private static JPanel wrapRegisterSlider(String title, JSlider slider, JLabel valueLabel) {
-        final JPanel row = new JPanel(new BorderLayout(4, 2));
-        final JLabel name = new JLabel(title);
-        name.setToolTipText(slider.getToolTipText());
-        row.add(name, BorderLayout.NORTH);
+    private static JPanel wrapSlider(String title, JSlider slider, JLabel valueLabel) {
+        JPanel row = new JPanel(new BorderLayout(4, 2));
+        row.add(new JLabel(title), BorderLayout.NORTH);
         row.add(slider, BorderLayout.CENTER);
         row.add(valueLabel, BorderLayout.SOUTH);
+        stretchHorizontal(row);
         return row;
-    }
-
-    /** BoxLayout children expand to viewport width; height must stay unconstrained. */
-    private static void stretchChildren(JPanel panel) {
-        for (Component child : panel.getComponents()) {
-            if (child instanceof javax.swing.JComponent) {
-                stretchHorizontal((javax.swing.JComponent) child);
-            }
-        }
-    }
-
-    private static void stretchHorizontal(javax.swing.JComponent c) {
-        c.setAlignmentX(Component.LEFT_ALIGNMENT);
-        c.setMaximumSize(new Dimension(Integer.MAX_VALUE, Short.MAX_VALUE));
-    }
-
-    private static void stretchTree(JPanel panel) {
-        for (Component child : panel.getComponents()) {
-            if (child instanceof JPanel) {
-                stretchChildren((JPanel) child);
-                stretchTree((JPanel) child);
-            }
-        }
-    }
-
-    private void onThresholdChanged() {
-        if (updatingFromConfig) {
-            return;
-        }
-        config.setThresholdTweak(thresholdTweaker.getValue());
-        updateValueLabels();
-    }
-
-    private void onOnOffBalanceChanged() {
-        if (updatingFromConfig) {
-            return;
-        }
-        config.setOnOffBalanceTweak(onOffBalanceTweaker.getValue());
-        updateValueLabels();
-    }
-
-    private void onScanRateChanged() {
-        if (updatingFromConfig) {
-            return;
-        }
-        config.setScanRateHz(scanRateSlider.getValue());
-        updateValueLabels();
-    }
-
-    private void onTimestampSubChanged() {
-        if (updatingFromConfig) {
-            return;
-        }
-        config.setTimestampSubUnit(timestampSubSlider.getValue());
-        updateValueLabels();
-    }
-
-    private void onGlobalResetChanged() {
-        if (!updatingFromConfig) {
-            config.setGlobalResetModeEnabled(globalResetCheckBox.isSelected());
-        }
-    }
-
-    private void onGlobalHoldChanged() {
-        if (!updatingFromConfig) {
-            config.setGlobalHoldModeEnabled(globalHoldCheckBox.isSelected());
-        }
     }
 
     void syncFromConfig() {
+        syncFromTweaks();
         updatingFromConfig = true;
-        thresholdTweaker.setValue(config.getThresholdTweak());
-        onOffBalanceTweaker.setValue(config.getOnOffBalanceTweak());
-        syncTimingSliders();
-        syncGlobalModeCheckBoxes();
-        updatingFromConfig = false;
-        updateValueLabels();
+        try {
+            scanRateSlider.setValue(clamp(config.getScanRateHz(),
+                    NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300));
+            timestampSubSlider.setValue(clamp(config.getTimestampSubUnit(), SUB_UNIT_MIN, SUB_UNIT_MAX,
+                    config.getBaselineTimestampSub()));
+            globalResetCheckBox.setSelected(config.isGlobalResetModeEnabled());
+            globalHoldCheckBox.setSelected(config.isGlobalHoldModeEnabled());
+        } finally {
+            updatingFromConfig = false;
+        }
+        updateChipSpecificLabels();
     }
 
-    private void syncTimingSliders() {
-        scanRateSlider.setValue(clamp(config.getScanRateHz(),
-                NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300));
-        final int sub = clamp(config.getTimestampSubUnit(), SUB_UNIT_MIN, SUB_UNIT_MAX, config.getBaselineTimestampSub());
-        timestampSubSlider.setValue(sub);
+    void updateValueLabels() {
+        updateChipSpecificLabels();
     }
 
-    private void syncGlobalModeCheckBoxes() {
-        globalResetCheckBox.setSelected(config.isGlobalResetModeEnabled());
-        globalHoldCheckBox.setSelected(config.isGlobalHoldModeEnabled());
+    @Override
+    protected void updateChipSpecificLabels() {
+        if (config == null) {
+            return;
+        }
+        thresholdValueLabel.setText(String.format("0x0167=0x%02X, 0x0168=0x%02X (file: 0x%02X, 0x%02X)",
+                config.getRegisterValue(NRVConfig.REG_ON_UNIT),
+                config.getRegisterValue(NRVConfig.REG_OFF_UNIT),
+                config.getBaselineOnUnit(),
+                config.getBaselineOffUnit()));
+        onOffValueLabel.setText(String.format("balance → 0x0167=0x%02X, 0x0168=0x%02X",
+                config.getRegisterValue(NRVConfig.REG_ON_UNIT),
+                config.getRegisterValue(NRVConfig.REG_OFF_UNIT)));
+        float kOnRatio = (float) (config.getKOn() / config.getKRef());
+        float kOffRatio = (float) (config.getKOff() / config.getKRef());
+        kRatioLabel.setText(String.format("K_ON/K_REF = %.4g    K_OFF/K_REF = %.4g", kOnRatio, kOffRatio));
+
+        scanRateValueLabel.setText(config.getScanRateHz() + " Hz");
+        int margin = config.getFrameMarginCombined();
+        float padUs = config.getFrmMarginPaddingUsForMargin(margin);
+        String pad = Float.isNaN(padUs) ? "—" : String.format("%.2f ms", padUs / 1000f);
+        scanRateDetailLabel.setText(String.format("FRM_MARGIN 0x%04X (pad %s)  SELX 0x%02X SENSE 0x%02X COL 0x%02X",
+                margin, pad,
+                config.getRegisterValue(NRVConfig.REG_DTAG_SELX),
+                config.getRegisterValue(NRVConfig.REG_DTAG_SENSE),
+                config.getRegisterValue(NRVConfig.REG_DTAG_COL_MARGIN)));
+        timestampSubValueLabel.setText(String.format("0x32B1:32B2 = 0x%04X (LSB file: 0x%02X)",
+                config.getTimestampSubUnitCombined(),
+                config.getBaselineTimestampSub()));
+        float subUs = config.getSubTimestampIntervalUsForSubUnit(config.getTimestampSubUnit());
+        if (Float.isNaN(subUs)) {
+            subTimestampTimingLabel.setText("Sub-timestamp interval: —");
+        } else {
+            subTimestampTimingLabel.setText(String.format("Sub-timestamp interval: %.2f µs", subUs));
+        }
     }
 
     private static int clamp(int value, int min, int max, int fallback) {
@@ -355,190 +199,41 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         return value;
     }
 
-    void updateValueLabels() {
-        thresholdValueLabel.setText(String.format(
-                "<html>0x0167=0x%02X, 0x0168=0x%02X<br>(file: 0x%02X, 0x%02X)",
-                config.getRegisterValue(NRVConfig.REG_ON_UNIT),
-                config.getRegisterValue(NRVConfig.REG_OFF_UNIT),
-                config.getBaselineOnUnit(),
-                config.getBaselineOffUnit()));
-        onOffValueLabel.setText(String.format("<html><center>balance → 0x0167=0x%02X, 0x0168=0x%02X</center>",
-                config.getRegisterValue(NRVConfig.REG_ON_UNIT),
-                config.getRegisterValue(NRVConfig.REG_OFF_UNIT)));
-        updateThresholdReadoutLabels();
-
-        scanRateValueLabel.setText(config.getScanRateHz() + " Hz");
-        updateScanRateDetailLabel();
-
-        timestampSubValueLabel.setText(String.format("<html>0x32B1:32B2 = 0x%04X<br>(LSB file: 0x%02X)",
-                config.getTimestampSubUnitCombined(),
-                config.getBaselineTimestampSub()));
-        updateSubTimestampTimingLabel(config.getTimestampSubUnit());
-    }
-
-    private void updateScanRateDetailLabel() {
-        final int margin = config.getFrameMarginCombined();
-        final float padUs = config.getFrmMarginPaddingUsForMargin(margin);
-        final String pad = Float.isNaN(padUs) ? "—" : String.format("%.2f ms", padUs / 1000f);
-        scanRateDetailLabel.setText(String.format(
-                "<html>FRM_MARGIN 0x%04X (pad %s)<br>SELX 0x%02X, SENSE 0x%02X, COL 0x%02X",
-                margin, pad,
-                config.getRegisterValue(NRVConfig.REG_DTAG_SELX),
-                config.getRegisterValue(NRVConfig.REG_DTAG_SENSE),
-                config.getRegisterValue(NRVConfig.REG_DTAG_COL_MARGIN)));
-    }
-
-    private void updateThresholdReadoutLabels() {
-        final float onLogE = config.getOnThresholdLogE();
-        final float offLogE = config.getOffThresholdLogE();
-        if (Float.isNaN(onLogE) || Float.isNaN(offLogE)) {
-            thresholdReadoutLabel.setText("ON:  —\nOFF: —");
-            return;
-        }
-        final float onPct = NRVConfig.logThresholdToPercentChange(onLogE);
-        final float offPct = NRVConfig.logThresholdToPercentChange(offLogE);
-        final float kOnRatio = (float) (config.getKOn() / config.getKRef());
-        final float kOffRatio = (float) (config.getKOff() / config.getKRef());
-        thresholdReadoutLabel.setText(String.format(
-                "ON:  %6.2f e-folds (%7.2f%%)   K_ON/K_REF = %8.4g%n"
-                + "OFF: %6.2f e-folds (%7.2f%%)   K_OFF/K_REF = %8.4g",
-                onLogE, onPct, kOnRatio,
-                offLogE, offPct, kOffRatio));
-    }
-
-    private void updateSubTimestampTimingLabel(int subUnit) {
-        final float subUs = config.getSubTimestampIntervalUsForSubUnit(subUnit);
-        if (Float.isNaN(subUs)) {
-            subTimestampTimingLabel.setText("Sub-timestamp interval: —");
-        } else {
-            subTimestampTimingLabel.setText(String.format(
-                    "<html>Sub-timestamp interval: %.2f µs<br>(REF 0x%04X / SUB 0x%02X)",
-                    subUs, config.getTstampRefUnitVal(), subUnit));
-        }
-    }
-
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        final String name = evt.getPropertyName();
+        super.propertyChange(evt);
+        String name = evt.getPropertyName();
         if (Biasgen.PROPERTY_CHANGE_PREFERENCES_LOADED.equals(name)) {
             syncFromConfig();
             return;
         }
-        if (NRVConfig.PROPERTY_THRESHOLD.equals(name)) {
+        if (NRVConfig.PROPERTY_SCAN_RATE_HZ.equals(name) && evt.getNewValue() instanceof Integer v) {
             updatingFromConfig = true;
-            thresholdTweaker.setValue((Float) evt.getNewValue());
+            scanRateSlider.setValue(v);
             updatingFromConfig = false;
-            updateValueLabels();
-        } else if (NRVConfig.PROPERTY_ON_OFF_BALANCE.equals(name)) {
+            updateChipSpecificLabels();
+        } else if (NRVConfig.PROPERTY_TIMESTAMP_SUB.equals(name) && evt.getNewValue() instanceof Integer v) {
             updatingFromConfig = true;
-            onOffBalanceTweaker.setValue((Float) evt.getNewValue());
+            timestampSubSlider.setValue(v);
             updatingFromConfig = false;
-            updateValueLabels();
-        } else if (NRVConfig.PROPERTY_SCAN_RATE_HZ.equals(name)) {
-            updatingFromConfig = true;
-            scanRateSlider.setValue((Integer) evt.getNewValue());
-            updatingFromConfig = false;
-            updateValueLabels();
-        } else if (NRVConfig.PROPERTY_TIMESTAMP_SUB.equals(name)) {
-            updatingFromConfig = true;
-            timestampSubSlider.setValue((Integer) evt.getNewValue());
-            updatingFromConfig = false;
-            updateValueLabels();
-        } else if (NRVConfig.PROPERTY_FRAME_MARGIN.equals(name)) {
-            updateValueLabels();
-        } else if (NRVConfig.PROPERTY_REGISTER_UPDATED.equals(name)) {
-            final Object src = evt.getNewValue();
-            if (src instanceof NRVRegisterSetting) {
-                final int addr = ((NRVRegisterSetting) src).getRegAddr();
-                if (addr == NRVConfig.REG_TSTAMP_SUB_UNIT_LSB || addr == NRVConfig.REG_TSTAMP_SUB_UNIT_MSB
-                        || addr == NRVConfig.REG_DTAG_FRM_MARGIN_LSB || addr == NRVConfig.REG_DTAG_FRM_MARGIN_MSB
-                        || addr == NRVConfig.REG_DTAG_SELX || addr == NRVConfig.REG_DTAG_SENSE
-                        || addr == NRVConfig.REG_DTAG_MODE) {
-                    updatingFromConfig = true;
-                    syncTimingSliders();
-                    syncGlobalModeCheckBoxes();
-                    updatingFromConfig = false;
-                }
+            updateChipSpecificLabels();
+        } else if (NRVConfig.PROPERTY_FRAME_MARGIN.equals(name)
+                || NRVConfig.PROPERTY_THRESHOLD.equals(name)
+                || NRVConfig.PROPERTY_ON_OFF_BALANCE.equals(name)
+                || DVSTweaks.THRESHOLD.equals(name)
+                || DVSTweaks.ON_OFF_BALANCE.equals(name)) {
+            updateChipSpecificLabels();
+        } else if (NRVConfig.PROPERTY_REGISTER_UPDATED.equals(name)
+                && evt.getNewValue() instanceof NRVRegisterSetting src) {
+            int addr = src.getRegAddr();
+            if (addr == NRVConfig.REG_TSTAMP_SUB_UNIT_LSB || addr == NRVConfig.REG_TSTAMP_SUB_UNIT_MSB
+                    || addr == NRVConfig.REG_DTAG_FRM_MARGIN_LSB || addr == NRVConfig.REG_DTAG_FRM_MARGIN_MSB
+                    || addr == NRVConfig.REG_DTAG_SELX || addr == NRVConfig.REG_DTAG_SENSE
+                    || addr == NRVConfig.REG_DTAG_MODE) {
+                syncFromConfig();
+            } else {
+                updateChipSpecificLabels();
             }
-            updateValueLabels();
-        }
-    }
-
-    /** Content height is natural; pins to top so empty viewport area stays minimal. */
-    private static final class TopAlignedScrollView extends JPanel implements Scrollable {
-
-        private final JComponent content;
-
-        TopAlignedScrollView(JComponent content) {
-            super(new BorderLayout());
-            this.content = content;
-            add(content, BorderLayout.NORTH);
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            final Insets ins = getInsets();
-            final Dimension cd = content.getPreferredSize();
-            return new Dimension(cd.width + ins.left + ins.right, cd.height + ins.top + ins.bottom);
-        }
-
-        @Override
-        public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 16;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return Math.max(visibleRect.height - 16, 16);
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
-        }
-    }
-
-    /** Vertical scroll when short; width tracks the viewport (no horizontal scroll). */
-    private static final class ScrollablePanel extends JPanel implements Scrollable {
-
-        ScrollablePanel() {
-            super();
-            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        }
-
-        @Override
-        public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 16;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return Math.max(visibleRect.height - 16, 16);
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
         }
     }
 }

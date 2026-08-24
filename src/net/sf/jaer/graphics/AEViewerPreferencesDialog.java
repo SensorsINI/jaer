@@ -6,6 +6,7 @@
 package net.sf.jaer.graphics;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -14,7 +15,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
+import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -22,7 +28,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -37,6 +43,8 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
@@ -44,14 +52,16 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.JaerPreferencesStore;
+import net.sf.jaer.util.RecentFiles;
 
 /**
- * Nonmodal preferences dialog for AEViewer. First tab groups preference-backed
+ * Nonmodal preferences window for AEViewer. First tab groups preference-backed
  * AEViewer menu settings by menu section. Filters tab covers global FilterFrame /
  * FilterChain preferences (individual AEFilter property sheets come later).
  * Export/Reset tab exports, imports, or deletes the {@code /jaer} Preferences tree.
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  */
-public class AEViewerPreferencesDialog extends JDialog {
+public class AEViewerPreferencesDialog extends JFrame {
 
     /**
      * Map the recording-format combo index to the data-file version sentinel:
@@ -98,6 +108,7 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JCheckBox showRecordingOverlayCB;
     private JCheckBox showRosOutputOverlayCB;
     private JCheckBox showDnnSharedMemoryOverlayCB;
+    private JCheckBox showOpenCvOutputOverlayCB;
     private JCheckBox checkNonMonotonicCB;
     private JCheckBox syncEnabledCB;
     private JTextField timestampResetBitmaskTF;
@@ -124,11 +135,19 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JRadioButton acquisitionModeRB;
     private JSpinner updateIntervalSpinner;
     private JLabel filtersNoteLabel;
+    private JSpinner maxRecentFilesSpinner;
+    private JSpinner maxRecentFoldersSpinner;
+    private JTabbedPane tabs;
+    private JTextField searchField;
+    private JLabel searchMatchLabel;
 
     public AEViewerPreferencesDialog(AEViewer viewer) {
-        super(viewer, "Preferences", false);
+        super("Preferences");
         this.viewer = viewer;
         setDefaultCloseOperation(HIDE_ON_CLOSE);
+        if (viewer != null) {
+            setIconImage(viewer.getIconImage());
+        }
         buildUi();
         pack();
         setLocationRelativeTo(viewer);
@@ -136,6 +155,7 @@ public class AEViewerPreferencesDialog extends JDialog {
             @Override
             public void windowOpened(WindowEvent e) {
                 refreshFromViewer();
+                applyPreferenceSearch();
             }
         });
     }
@@ -144,12 +164,13 @@ public class AEViewerPreferencesDialog extends JDialog {
     public void setVisible(boolean visible) {
         if (visible) {
             refreshFromViewer();
+            applyPreferenceSearch();
         }
         super.setVisible(visible);
     }
 
     private void buildUi() {
-        JTabbedPane tabs = new JTabbedPane();
+        tabs = new JTabbedPane();
         tabs.addTab("AEViewer", buildAeViewerTab());
         tabs.addTab("Filters", buildFiltersTab());
         tabs.addTab("Export/Reset", buildStoreTab());
@@ -165,9 +186,54 @@ public class AEViewerPreferencesDialog extends JDialog {
         buttons.add(closeButton);
 
         getContentPane().setLayout(new BorderLayout(8, 8));
+        getContentPane().add(buildSearchBar(), BorderLayout.NORTH);
         getContentPane().add(tabs, BorderLayout.CENTER);
         getContentPane().add(buttons, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(closeButton);
+    }
+
+    private JPanel buildSearchBar() {
+        JPanel bar = new JPanel();
+        bar.setLayout(new BoxLayout(bar, BoxLayout.LINE_AXIS));
+        bar.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
+
+        JButton clearButton = new JButton("x");
+        clearButton.setToolTipText("Clear the search");
+        clearButton.setMargin(new Insets(1, 4, 1, 4));
+        clearButton.addActionListener(e -> {
+            searchField.setText("");
+            searchField.requestFocusInWindow();
+        });
+
+        searchField = new JTextField();
+        searchField.setToolTipText("Show preference items whose labels contain this text");
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                applyPreferenceSearch();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                applyPreferenceSearch();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                applyPreferenceSearch();
+            }
+        });
+
+        searchMatchLabel = new JLabel(" ");
+        searchMatchLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+
+        bar.add(clearButton);
+        bar.add(Box.createHorizontalStrut(4));
+        bar.add(new JLabel("Filter"));
+        bar.add(Box.createHorizontalStrut(4));
+        bar.add(searchField);
+        bar.add(searchMatchLabel);
+        return bar;
     }
 
     private JPanel buildAeViewerTab() {
@@ -613,6 +679,19 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         p.add(showDnnSharedMemoryOverlayCB, gbc(y++));
 
+        showOpenCvOutputOverlayCB = new JCheckBox("Show OpenCV MJPEG overlay");
+        showOpenCvOutputOverlayCB.setToolTipText("Show publishing status on the chip view while OpenCVOutput is enabled");
+        showOpenCvOutputOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowOpenCvOutputOverlay(showOpenCvOutputOverlayCB.isSelected());
+            }
+        });
+        p.add(showOpenCvOutputOverlayCB, gbc(y++));
+
         checkNonMonotonicCB = new JCheckBox("Check for non-monotonic time in input streams");
         checkNonMonotonicCB.setToolTipText("If enabled, nonmonotonic timestamps are checked for in input streams from file or network");
         checkNonMonotonicCB.addActionListener(new ActionListener() {
@@ -659,6 +738,42 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         p.add(timestampResetBitmaskTF, gbcField(y++));
 
+        p.add(new JLabel("Max recent files:"), gbcLabel(y));
+        maxRecentFilesSpinner = new JSpinner(new SpinnerNumberModel(
+                RecentFiles.DEFAULT_MAX_FILES, RecentFiles.MIN_LIMIT, RecentFiles.MAX_LIMIT, 1));
+        maxRecentFilesSpinner.setToolTipText("How many recent files to keep in the File menu");
+        maxRecentFilesSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                RecentFiles recent = viewer.getRecentFiles();
+                if (recent != null) {
+                    recent.setMaxFiles(((Number) maxRecentFilesSpinner.getValue()).intValue());
+                }
+            }
+        });
+        p.add(maxRecentFilesSpinner, gbcField(y++));
+
+        p.add(new JLabel("Max recent folders:"), gbcLabel(y));
+        maxRecentFoldersSpinner = new JSpinner(new SpinnerNumberModel(
+                RecentFiles.DEFAULT_MAX_FOLDERS, RecentFiles.MIN_LIMIT, RecentFiles.MAX_LIMIT, 1));
+        maxRecentFoldersSpinner.setToolTipText("How many recent folders to keep in the File menu");
+        maxRecentFoldersSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                RecentFiles recent = viewer.getRecentFiles();
+                if (recent != null) {
+                    recent.setMaxFolders(((Number) maxRecentFoldersSpinner.getValue()).intValue());
+                }
+            }
+        });
+        p.add(maxRecentFoldersSpinner, gbcField(y++));
+
         return p;
     }
 
@@ -691,7 +806,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         int y = 0;
 
         activeRenderingCB = new JCheckBox("Active rendering enabled");
-        activeRenderingCB.setToolTipText("Enables active display of each rendered frame");
+        activeRenderingCB.setToolTipText("<html>On: ViewLoop waits for each OpenGL present (display()). Off: async repaint(); the loop continues without waiting.<br>Recommend <b>on</b> for daily use. Use <b>off</b> with a high target FPS for latency-sensitive applications, e.g. robots.");
         activeRenderingCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -874,6 +989,7 @@ public class AEViewerPreferencesDialog extends JDialog {
             showRecordingOverlayCB.setSelected(viewer.isShowRecordingOverlay());
             showRosOutputOverlayCB.setSelected(viewer.isShowRosOutputOverlay());
             showDnnSharedMemoryOverlayCB.setSelected(viewer.isShowDnnSharedMemoryOverlay());
+            showOpenCvOutputOverlayCB.setSelected(viewer.isShowOpenCvOutputOverlay());
             checkNonMonotonicCB.setSelected(viewer.isCheckNonMonotonicTimeExceptionsEnabled());
             JAERViewer jaerViewer = viewer.getJaerViewer();
             syncEnabledCB.setSelected(jaerViewer != null && jaerViewer.isSyncEnabled());
@@ -917,6 +1033,17 @@ public class AEViewerPreferencesDialog extends JDialog {
             }
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
+
+            RecentFiles recent = viewer.getRecentFiles();
+            if (recent != null) {
+                maxRecentFilesSpinner.setValue(recent.getMaxFiles());
+                maxRecentFoldersSpinner.setValue(recent.getMaxFolders());
+                maxRecentFilesSpinner.setEnabled(true);
+                maxRecentFoldersSpinner.setEnabled(true);
+            } else {
+                maxRecentFilesSpinner.setEnabled(false);
+                maxRecentFoldersSpinner.setEnabled(false);
+            }
 
             refreshFiltersFromViewer();
         } finally {
@@ -963,5 +1090,151 @@ public class AEViewerPreferencesDialog extends JDialog {
         renderingModeRB.setEnabled(hasChain);
         acquisitionModeRB.setEnabled(hasChain);
         updateIntervalSpinner.setEnabled(hasChain || frame != null);
+    }
+
+    private void applyPreferenceSearch() {
+        String q = searchField == null ? "" : searchField.getText();
+        if (q == null) {
+            q = "";
+        }
+        q = q.trim().toLowerCase();
+        boolean showAll = q.isEmpty();
+        int matches = 0;
+        int firstMatchTab = -1;
+        int selectedTabMatches = 0;
+        if (tabs != null) {
+            int selected = tabs.getSelectedIndex();
+            for (int i = 0; i < tabs.getTabCount(); i++) {
+                int tabMatches = applySearchToComponent(tabs.getComponentAt(i), q, showAll);
+                matches += tabMatches;
+                if (tabMatches > 0 && firstMatchTab < 0) {
+                    firstMatchTab = i;
+                }
+                if (i == selected) {
+                    selectedTabMatches = tabMatches;
+                }
+            }
+            if (!showAll && selectedTabMatches == 0 && firstMatchTab >= 0) {
+                tabs.setSelectedIndex(firstMatchTab);
+            }
+        }
+        if (searchMatchLabel != null) {
+            searchMatchLabel.setText(showAll ? " " : (matches + (matches == 1 ? " match" : " matches")));
+        }
+        if (tabs != null) {
+            tabs.revalidate();
+            tabs.repaint();
+        }
+    }
+
+    /**
+     * @return number of matching preference rows (or leaf items)
+     */
+    private int applySearchToComponent(Component c, String q, boolean showAll) {
+        if (c == null) {
+            return 0;
+        }
+        if (c instanceof JScrollPane) {
+            return applySearchToComponent(((JScrollPane) c).getViewport().getView(), q, showAll);
+        }
+        if (c instanceof Box.Filler) {
+            c.setVisible(showAll);
+            return 0;
+        }
+        if (c instanceof JPanel) {
+            JPanel p = (JPanel) c;
+            if (p.getLayout() instanceof GridBagLayout && p.getBorder() instanceof TitledBorder) {
+                return applySearchToSection(p, q, showAll);
+            }
+            int matches = 0;
+            for (Component child : p.getComponents()) {
+                matches += applySearchToComponent(child, q, showAll);
+            }
+            return matches;
+        }
+        if (c instanceof JLabel || c instanceof AbstractButton) {
+            boolean match = showAll || searchable(componentSearchText(c)).contains(q);
+            c.setVisible(showAll || match);
+            return match && !showAll ? 1 : 0;
+        }
+        return 0;
+    }
+
+    private int applySearchToSection(JPanel p, String q, boolean showAll) {
+        String title = "";
+        if (p.getBorder() instanceof TitledBorder) {
+            String t = ((TitledBorder) p.getBorder()).getTitle();
+            if (t != null) {
+                title = t;
+            }
+        }
+        boolean titleMatch = showAll || searchable(title).contains(q);
+        GridBagLayout layout = (GridBagLayout) p.getLayout();
+        Map<Integer, List<Component>> rows = new TreeMap<>();
+        for (Component child : p.getComponents()) {
+            GridBagConstraints gbc = layout.getConstraints(child);
+            rows.computeIfAbsent(gbc.gridy, k -> new ArrayList<>()).add(child);
+        }
+        int matches = 0;
+        boolean anyRow = titleMatch;
+        for (List<Component> row : rows.values()) {
+            boolean match = titleMatch;
+            if (!match) {
+                StringBuilder sb = new StringBuilder();
+                for (Component child : row) {
+                    sb.append(componentSearchText(child)).append(' ');
+                }
+                match = searchable(sb.toString()).contains(q);
+            }
+            for (Component child : row) {
+                child.setVisible(match);
+            }
+            if (match) {
+                anyRow = true;
+                if (!showAll) {
+                    matches++;
+                }
+            }
+        }
+        p.setVisible(showAll || anyRow);
+        return matches;
+    }
+
+    private static String componentSearchText(Component c) {
+        if (c instanceof AbstractButton) {
+            return nvl(((AbstractButton) c).getText()) + " " + nvl(((AbstractButton) c).getToolTipText());
+        }
+        if (c instanceof JLabel) {
+            return nvl(((JLabel) c).getText()) + " " + nvl(((JLabel) c).getToolTipText());
+        }
+        if (c instanceof JComboBox) {
+            JComboBox<?> cb = (JComboBox<?>) c;
+            StringBuilder sb = new StringBuilder(nvl(cb.getToolTipText()));
+            for (int i = 0; i < cb.getItemCount(); i++) {
+                Object item = cb.getItemAt(i);
+                if (item != null) {
+                    sb.append(' ').append(item);
+                }
+            }
+            return sb.toString();
+        }
+        if (c instanceof JSpinner) {
+            return nvl(((JSpinner) c).getToolTipText());
+        }
+        if (c instanceof JTextField) {
+            return nvl(((JTextField) c).getToolTipText()) + " " + nvl(((JTextField) c).getText());
+        }
+        return nvl(c instanceof javax.swing.JComponent ? ((javax.swing.JComponent) c).getToolTipText() : null);
+    }
+
+    private static String nvl(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static String searchable(String s) {
+        if (s == null || s.isEmpty()) {
+            return "";
+        }
+        return s.replaceAll("<[^>]+>", " ").replace("&nbsp;", " ").toLowerCase();
     }
 }

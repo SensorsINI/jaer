@@ -1,16 +1,26 @@
-# Build Windows install4j media on GitHub-hosted runners and SignPath test-sign it.
+# Build Windows install4j media on GitHub-hosted runners and SignPath-sign it.
 # Prerequisites (repo Settings → Secrets and variables → Actions):
 #   Secrets: INSTALL4J_LICENSE, SIGNPATH_API_TOKEN
 #   Variables: SIGNPATH_ORGANIZATION_ID
+#   Optional variable: SIGNPATH_SIGNING_POLICY_SLUG (tag-push default if set)
 # SignPath UI: GitHub App on SensorsINI/jaer, artifact config slug windows-installer-2,
-# CI user "CI builds" as Submitter on policy test-signing2; your login as Approver.
+# CI user "CI builds" as Submitter; your login as Approver.
 # SIGNPATH_API_TOKEN must be the CI builds token (Actions has no submitter field).
-# See README-releasing-tagging.md.
+# Use release-signing only after that policy is ACTIVE and the certificate is VALID
+# (not CSR PENDING). See README-releasing-tagging.md.
 
-name: Sign Windows (SignPath test-signing)
+name: Sign Windows (SignPath)
 
 on:
   workflow_dispatch:
+    inputs:
+      signing_policy:
+        description: SignPath signing policy slug
+        type: choice
+        options:
+          - test-signing2
+          - release-signing
+        default: test-signing2
   push:
     tags:
       - '3.*'
@@ -76,6 +86,16 @@ jobs:
           "installer_name=$($exe.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Unsigned installer: $($exe.FullName) ($([math]::Round($exe.Length/1MB,1)) MB)"
 
+      - name: Resolve SignPath policy
+        id: policy
+        shell: pwsh
+        run: |
+          $fromInput = '${{ github.event.inputs.signing_policy }}'
+          $fromVar = '${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}'
+          $policy = if ($fromInput) { $fromInput } elseif ($fromVar) { $fromVar } else { 'test-signing2' }
+          "slug=$policy" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "SignPath signing-policy-slug: $policy"
+
       - name: Upload unsigned installer for SignPath
         id: upload-unsigned
         uses: actions/upload-artifact@v7
@@ -85,14 +105,14 @@ jobs:
           # Raw PE (not ZIP) so SignPath root element can be pe-file. name is ignored when archive is false.
           archive: false
 
-      - name: Submit SignPath test-signing request
+      - name: Submit SignPath signing request
         id: signpath
         uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: jaer
-          signing-policy-slug: test-signing2
+          signing-policy-slug: ${{ steps.policy.outputs.slug }}
           artifact-configuration-slug: windows-installer-2
           github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
           wait-for-completion: true
@@ -124,8 +144,9 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ## SignPath Windows test-signing
+          ## SignPath Windows signing
           - Version: `${{ steps.version.outputs.version }}`
+          - Policy: `${{ steps.policy.outputs.slug }}`
           - Unsigned: `${{ steps.locate.outputs.installer_name }}`
           - Signing request: ${{ steps.signpath.outputs.signing-request-web-url }}
           - Signed download: ${{ steps.signpath.outputs.signed-artifact-download-url }}

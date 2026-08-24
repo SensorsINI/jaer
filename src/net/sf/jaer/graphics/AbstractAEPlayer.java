@@ -78,6 +78,12 @@ public abstract class AbstractAEPlayer {
     public final ExportMarksAction exportMarksAction = new ExportMarksAction();
     public final ImportMarksAction importMarksAction = new ImportMarksAction();
     /**
+     * After j/k marker jumps during playback, ignore the L recording shortcut
+     * until this file is closed. Users often hit L instead of K.
+     */
+    private volatile boolean ignoreRecordingToggleKey = false;
+
+    /**
      * Flog for all pause/resume state.
      */
     volatile protected boolean paused = false; // multiple threads will access
@@ -442,6 +448,28 @@ public abstract class AbstractAEPlayer {
     abstract public void stopPlayback();
 
     /**
+     * After a j/k marker jump, ignore the L recording shortcut until
+     * {@link #clearIgnoreRecordingToggleKey()} (file close).
+     */
+    public void armIgnoreRecordingToggleKey() {
+        ignoreRecordingToggleKey = true;
+    }
+
+    /**
+     * Clears the L-key guard. Call when the playback file is closed.
+     */
+    public void clearIgnoreRecordingToggleKey() {
+        ignoreRecordingToggleKey = false;
+    }
+
+    /**
+     * True when L should not start recording (j/k used on this playback file).
+     */
+    public boolean isIgnoreRecordingToggleKey() {
+        return ignoreRecordingToggleKey;
+    }
+
+    /**
      * Toggles the direction of playback
      */
     public void toggleDirection() {
@@ -691,6 +719,10 @@ public abstract class AbstractAEPlayer {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            if (aeInputStream == null) {
+                return;
+            }
+            armIgnoreRecordingToggleKey();
             boolean succeeded = jumpToPreviousMarker();
             putValue(Action.SELECTED_KEY, true);
             putValue(Action.SHORT_DESCRIPTION, succeeded ? "Jumped to previous marker" : "No previous marker");
@@ -712,6 +744,10 @@ public abstract class AbstractAEPlayer {
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            if (aeInputStream == null) {
+                return;
+            }
+            armIgnoreRecordingToggleKey();
             boolean succeeded = jumpToNextMarker();
             putValue(Action.SELECTED_KEY, true);
             putValue(Action.SHORT_DESCRIPTION, succeeded ? "Jumped to next marker" : "No next marker");

@@ -107,10 +107,26 @@ public class LoggingWindow extends JFrame {
                     }
                 });
 
+                JButton reportBut = new JButton("Report issue");
+                reportBut.setToolTipText("Opens GitHub Issues with system info and this exception; copies a report to the clipboard");
+                reportBut.addActionListener(new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            JaerIssueReporter.report(LoggingWindow.this, "Uncaught exception",
+                                    textArea.getText(), JaerIssueReporter.collectOpenConsoleText());
+                        } catch (Exception ex) {
+                            System.err.println("couldn't report issue: " + ex.toString());
+                        }
+                    }
+                });
+
                 JPanel butPan = new JPanel();
                 butPan.setLayout(new BoxLayout(butPan, BoxLayout.X_AXIS));
                 butPan.add(new Box(BoxLayout.X_AXIS));
                 butPan.add(copyBut);
+                butPan.add(reportBut);
 //                butPan.add(mailBut); // TODO tobi: doesn't work anymore, just opens web browser
                 butPan.add(helpForumButton);
                 butPan.add(jaerprojecthome);
@@ -137,6 +153,9 @@ public class LoggingWindow extends JFrame {
 
             public void run() {
                 textArea.append(data);
+                setVisible(true);
+                setState(JFrame.NORMAL);
+                toFront();
             }
         });
     }

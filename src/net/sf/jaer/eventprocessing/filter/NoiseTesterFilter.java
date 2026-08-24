@@ -1322,6 +1322,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initFilter() {
+        super.initFilter();
 
         if (chain == null) {
             chain = new FilterChain(chip);

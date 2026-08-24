@@ -9,7 +9,7 @@ $stubs = @{
     'signpath-api-token.txt'           = ""
     'install4j-license.txt'            = ""
     'signpath-project-slug.txt'        = "jaer`n"
-    'signpath-signing-policy-slug.txt' = "test-signing`n"
+    'signpath-signing-policy-slug.txt' = "test-signing2`n"
 }
 
 foreach ($name in $stubs.Keys) {

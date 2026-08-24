@@ -11,12 +11,16 @@ package net.sf.jaer;
 import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.Graphics2D;
 import java.awt.SplashScreen;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.net.URI;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -54,6 +58,7 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.SplashStartupAbort;
@@ -132,6 +137,11 @@ public class JAERViewer {
      * the working directory). Also used by {@link JAERTrayLauncher}.
      */
     public static final String RUNNING_SEMAPHORE_FILENAME = "JAERViewerRunning.txt";
+    /**
+     * Preference key for the last jAER release version that was started on this
+     * machine. Used to detect the first run of a new release.
+     */
+    public static final String LAST_RELEASE_RUN_KEY = "JAERViewer.lastReleaseRun";
 
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
@@ -190,6 +200,15 @@ public class JAERViewer {
                 }
                 if (!ordinaryShutdownCompleted) {
                     performShutdownHookFallback();
+                }
+                System.out.println("JAERViewer shutdown hook - deleting running semaphore");
+                try {
+                    File sem = getRunningSemaphoreFile();
+                    if (sem.isFile() && !sem.delete()) {
+                        System.err.println("could not delete running semaphore " + sem.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    System.err.println("could not delete running semaphore: " + e);
                 }
                 System.out.println("JAERViewer shutdown hook - end of shutdown");
                 System.out.flush();
@@ -714,8 +733,9 @@ public class JAERViewer {
     }
 
     /**
-     * If a semaphore file already exists, warn that another jAER may be running
-     * (or a previous instance crashed) and offer to start anyway.
+     * If a semaphore file already exists, distinguish a live instance from an
+     * unclean previous exit. A live PID offers start/cancel; a dead or missing
+     * PID offers to report the problem (dumps + session log) on GitHub.
      *
      * @return false if the user cancelled startup
      */
@@ -725,22 +745,115 @@ public class JAERViewer {
             return true;
         }
         String detail = readSemaphoreDetail(semaphore);
-        String msg = "<html>jAER may already be running, or a previous instance did not exit cleanly.<br><br>"
-                + "Semaphore file:<br><code>" + escapeHtml(semaphore.getAbsolutePath()) + "</code>"
-                + (detail.isEmpty() ? "" : "<br><br>" + escapeHtml(detail))
-                + "<br><br>Starting another instance can conflict over cameras and preferences.<br>"
-                + "Start jAER anyway?</html>";
-        Object[] options = {"Start anyhow", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(null, msg, "jAER may already be running",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
-        boolean start = choice == 0;
+        Long pid = JaerIssueReporter.parseSemaphorePid(detail);
+        boolean alive = pid != null && JaerIssueReporter.isPidAlive(pid);
         Logger logger = log != null ? log : Logger.getLogger("net.sf.jaer");
-        if (start) {
-            logger.warning("Starting despite existing semaphore " + semaphore.getAbsolutePath());
-        } else {
-            logger.info("Startup cancelled; existing semaphore " + semaphore.getAbsolutePath());
+        if (alive) {
+            String msg = "<html>jAER may already be running (PID " + pid + ").<br><br>"
+                    + "Semaphore file:<br><code>" + escapeHtml(semaphore.getAbsolutePath()) + "</code>"
+                    + (detail.isEmpty() ? "" : "<br><br>" + escapeHtml(detail).replace("\n", "<br>"))
+                    + "<br><br>Starting another instance can conflict over cameras and preferences.<br>"
+                    + "Start jAER anyway?</html>";
+            Object[] options = {"Start anyhow", "Cancel"};
+            int choice = JOptionPane.showOptionDialog(null, msg, "jAER may already be running",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
+            boolean start = choice == 0;
+            if (start) {
+                logger.warning("Starting despite live semaphore PID " + pid + " " + semaphore.getAbsolutePath());
+            } else {
+                logger.info("Startup cancelled; live semaphore " + semaphore.getAbsolutePath());
+            }
+            return start;
         }
-        return start;
+        List<File> dumps = JaerIssueReporter.findCrashDumps(pid, semaphore.lastModified());
+        StringBuilder dumpHtml = new StringBuilder();
+        if (!dumps.isEmpty()) {
+            dumpHtml.append("<br><br>Crash dumps found:<br>");
+            for (File f : dumps) {
+                dumpHtml.append("<code>").append(escapeHtml(f.getAbsolutePath())).append("</code><br>");
+            }
+        }
+        File sessionLog = JaerIssueReporter.sessionLogFile();
+        if (sessionLog != null) {
+            dumpHtml.append("<br>Session log:<br><code>")
+                    .append(escapeHtml(sessionLog.getAbsolutePath())).append("</code>");
+        }
+        String pidNote = pid != null ? " (PID " + pid + " is not running)" : "";
+        String msg = "<html>The previous jAER session did not exit cleanly" + pidNote + ".<br><br>"
+                + "Semaphore file:<br><code>" + escapeHtml(semaphore.getAbsolutePath()) + "</code>"
+                + (detail.isEmpty() ? "" : "<br><br>" + escapeHtml(detail).replace("\n", "<br>"))
+                + dumpHtml
+                + "<br><br>Report this problem on GitHub, or start jAER anyway?</html>";
+        Object[] options = {"Report issue", "Start anyhow", "Cancel"};
+        while (true) {
+            int choice = JOptionPane.showOptionDialog(null, msg, "Previous jAER session did not exit cleanly",
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
+            if (choice == 0) {
+                logger.info("Reporting unclean previous session from " + semaphore.getAbsolutePath());
+                JaerIssueReporter.report(null, "Previous session did not exit cleanly",
+                        null, null, detail, dumps);
+                continue;
+            }
+            boolean start = choice == 1;
+            if (start) {
+                logger.warning("Starting after unclean exit; semaphore " + semaphore.getAbsolutePath());
+            } else {
+                logger.info("Startup cancelled after unclean-exit warning " + semaphore.getAbsolutePath());
+            }
+            return start;
+        }
+    }
+
+    /**
+     * On the first run of a new release, inform the user and offer to open
+     * {@link JaerConstants#JAER_RELEASES}. Stores
+     * {@link #LAST_RELEASE_RUN_KEY} after the dialog so the offer appears once
+     * per version.
+     *
+     * @param parent dialog parent, typically the first {@link AEViewer}
+     */
+    public static void maybeOfferNewReleaseNotes(Component parent) {
+        String current = JaerConstants.getReleaseVersion();
+        if (current == null || current.isEmpty()) {
+            return;
+        }
+        String last = prefs.get(LAST_RELEASE_RUN_KEY, "");
+        if (current.equals(last)) {
+            return;
+        }
+        Logger logger = log != null ? log : Logger.getLogger("net.sf.jaer");
+        String previousNote = last.isEmpty() ? ""
+                : "<br>Previously you ran <b>" + escapeHtml(last) + "</b>.";
+        String msg = "<html>You are running a new jAER release <b>" + escapeHtml(current) + "</b>."
+                + previousNote
+                + "<br><br>Open the release notes on GitHub?</html>";
+        Object[] options = {"Open release notes", "Not now"};
+        int choice = JOptionPane.showOptionDialog(parent, msg, "New jAER release " + current,
+                JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (choice == 0) {
+            logger.info("Opening release notes for new release " + current);
+            openUrlInBrowser(JaerConstants.JAER_RELEASES, parent);
+        } else {
+            logger.info("New release " + current + " noted; release notes not opened");
+        }
+        prefs.put(LAST_RELEASE_RUN_KEY, current);
+        try {
+            prefs.flush();
+        } catch (BackingStoreException e) {
+            logger.warning("Could not store last release run " + current + ": " + e);
+        }
+    }
+
+    private static void openUrlInBrowser(String url, Component parent) {
+        if (!Desktop.isDesktopSupported()) {
+            JOptionPane.showMessageDialog(parent, "No Desktop support, can't open " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parent, "Couldn't open " + url + "; caught " + ex);
+        }
     }
 
     private static String readSemaphoreDetail(File semaphore) {
@@ -777,7 +890,7 @@ public class JAERViewer {
         File temp = getRunningSemaphoreFile();
         temp.deleteOnExit();
         try (BufferedWriter out = new BufferedWriter(new FileWriter(temp, StandardCharsets.UTF_8))) {
-            out.write("JAERViewer started " + new Date());
+            out.write(JaerIssueReporter.semaphoreMetadata());
             log.info("Wrote running semaphore " + temp.getAbsolutePath());
         } catch (IOException e) {
             log.warning("Could not write running semaphore " + temp + ": " + e.getMessage());
@@ -802,12 +915,14 @@ public class JAERViewer {
                 log.info("couldn't load previous viewer AEChip classes, starting with last class");
             }
 
+            AEViewer firstViewer = null;
             try {
                 if (classNames == null) {
                     AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
                     v.setVisible(true);
+                    firstViewer = v;
                     //                splashThread.interrupt();
                 } else {
                     for (String s : classNames) {
@@ -815,6 +930,9 @@ public class JAERViewer {
                         AEViewer v;
                         v = new AEViewer(JAERViewer.this, s);
                         v.setVisible(true);
+                        if (firstViewer == null) {
+                            firstViewer = v;
+                        }
                     }
                 }
             } catch (java.lang.UnsatisfiedLinkError err) {
@@ -824,6 +942,10 @@ public class JAERViewer {
                 err.printStackTrace();
             } finally {
                 SplashStartupAbort.disarm();
+            }
+            if (firstViewer != null) {
+                final AEViewer parent = firstViewer;
+                SwingUtilities.invokeLater(() -> maybeOfferNewReleaseNotes(parent));
             }
 
         }
@@ -1159,7 +1281,13 @@ public class JAERViewer {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-//            log.info("JAERViewer.ToggleRecordingAction.actionPerformed");
+            if (shouldIgnoreAccidentalRecordingToggleKey()) {
+                log.info("Ignoring L key after marker jump (j/k); use the recording button to start recording");
+                if (viewer != null) {
+                    viewer.showActionText("L ignored after j/k (use recording button)");
+                }
+                return;
+            }
             if (isSyncEnabled()) {
                 toggleSynchronizedRecording();
                 if (recordingEnabled) {
@@ -1173,6 +1301,35 @@ public class JAERViewer {
             } else {
                 viewer.toggleRecording();
             }
+        }
+
+        /**
+         * True when L was pressed during playback after a j/k marker jump.
+         * Mouse clicks on the recording button or menu still start recording.
+         */
+        private boolean shouldIgnoreAccidentalRecordingToggleKey() {
+            if (viewer == null || viewer.isRecordingEnabled()) {
+                return false;
+            }
+            if (viewer.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+                return false;
+            }
+            // j/k menu accelerators are bound to the viewer's local AEPlayer, not SyncPlayer.
+            AbstractAEPlayer player = viewer.aePlayer;
+            if (player == null || !player.isIgnoreRecordingToggleKey()) {
+                return false;
+            }
+            AWTEvent ev = EventQueue.getCurrentEvent();
+            if (!(ev instanceof KeyEvent)) {
+                return false;
+            }
+            KeyEvent ke = (KeyEvent) ev;
+            if (ke.getModifiersEx() != 0) {
+                return false;
+            }
+            return ke.getKeyCode() == KeyEvent.VK_L
+                    || ke.getKeyChar() == 'l'
+                    || ke.getKeyChar() == 'L';
         }
     }
 
@@ -1281,6 +1438,22 @@ public class JAERViewer {
 
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
+        try {
+            Toolkit.getDefaultToolkit().getSystemEventQueue().push(new EventQueue() {
+                @Override
+                protected void dispatchEvent(AWTEvent event) {
+                    try {
+                        super.dispatchEvent(event);
+                    } catch (Throwable t) {
+                        // Defer so LoggingWindow is shown after this failed event, not inside dispatchEvent.
+                        final Thread thread = Thread.currentThread();
+                        EventQueue.invokeLater(() -> handler.uncaughtException(thread, t));
+                    }
+                }
+            });
+        } catch (Exception e) {
+            System.err.println("Could not install EDT exception handler: " + e);
+        }
 
         //init static fields
         log = Logger.getLogger("net.sf.jaer");

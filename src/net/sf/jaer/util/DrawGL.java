@@ -293,6 +293,41 @@ public final class DrawGL {
     }
 
     /**
+     * Chip-pixel width of {@code s} at {@code fontSize}, using the same
+     * fontSize&lt;10 scale as {@link #drawString}.
+     */
+    public static float measureStringWidth(int fontSize, String s) {
+        if (s == null || s.isEmpty()) {
+            return 0;
+        }
+        float scale = 1;
+        if (fontSize < 10) {
+            fontSize *= 4;
+            scale = .25f;
+        }
+        Rectangle2D r = textRendererFor(fontSize).getBounds(s);
+        return (float) (r.getWidth() * scale);
+    }
+
+    /**
+     * Shrinks {@code startFontSize} so every line fits in {@code maxChipWidth}.
+     */
+    public static int fontSizeToFitWidth(int startFontSize, String[] lines, float maxChipWidth) {
+        int fs = Math.max(6, startFontSize);
+        if (lines == null || lines.length == 0 || maxChipWidth <= 0) {
+            return fs;
+        }
+        float longest = 0;
+        for (String line : lines) {
+            longest = Math.max(longest, measureStringWidth(fs, line));
+        }
+        if (longest <= maxChipWidth || longest <= 0) {
+            return fs;
+        }
+        return Math.max(6, (int) Math.floor(fs * maxChipWidth / longest));
+    }
+
+    /**
      * Draws a string using TextRenderer.draw somewhere on the entire drawing
      * surface
      *

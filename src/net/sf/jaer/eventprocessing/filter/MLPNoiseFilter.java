@@ -599,6 +599,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 
     @Override
     public void initFilter() {
+        super.initFilter();
         // Platform TF natives are not shipped in installers; fetch on first use if needed.
         // Avoid recursive ensure when natives missing: super.setFilterEnabled(false) only.
         if (!ensureTensorFlowNatives()) {

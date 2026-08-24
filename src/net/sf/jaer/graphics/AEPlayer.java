@@ -389,6 +389,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
         }
         log.info("starting playback with file=" + file);
+        clearIgnoreRecordingToggleKey();
         inputFile = file;
         if ((file == null) || !file.isFile()) {
             endPlaybackOpenIfOwned(generation);
@@ -837,6 +838,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         } catch (IOException ignore) {
             ignore.printStackTrace();
         }
+        clearIgnoreRecordingToggleKey();
         viewer.setTitleAccordingToState();
     }
 

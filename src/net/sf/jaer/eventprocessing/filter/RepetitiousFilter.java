@@ -140,6 +140,7 @@ public class RepetitiousFilter extends AbstractNoiseFilter {
     }
 
     public void initFilter (){
+        super.initFilter();
         if ( !isFilterEnabled() ){
             return;
         }

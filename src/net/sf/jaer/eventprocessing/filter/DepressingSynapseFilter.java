@@ -124,6 +124,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
 
     @Override
     public void initFilter() {
+        super.initFilter();
         checkNeuronAllocation();
         removeNoiseFilterControl();
     }

@@ -20,6 +20,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.VendorPrefsMigration;
 import prophesee.usb.PropheseeBiases;
 import prophesee.usb.PropheseeHardwareInterface;
+import ch.unizh.ini.jaer.chip.retina.DVSAutoControllerPanel;
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 
 /**
@@ -31,7 +34,7 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
  * @see https://www.prophesee.ai/
  * @see <a href="https://docs.prophesee.ai/stable/hw/manuals/biases.html">Metavision bias manual</a>
  */
-public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface {
+public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface, DVSTweaks {
 
     private static final Logger log = Logger.getLogger(PropheseeConfig.class.getName());
 
@@ -43,10 +46,11 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     public static final String PROPERTY_REFR = "propheseeRefr";
     public static final String PROPERTY_HPF = "propheseeHpf";
 
-    /** Fired with new tweak value in −1…1. Same names as DVSTweaks, but this class does not implement that interface. */
-    public static final String PROPERTY_THRESHOLD_TWEAK = "threshold";
-    public static final String PROPERTY_ON_OFF_BALANCE_TWEAK = "onOffBalance";
-    public static final String PROPERTY_BANDWIDTH_TWEAK = "bandwidth";
+    /** Fired with new tweak value in −1…1. Names match {@link DVSTweaks}. */
+    public static final String PROPERTY_THRESHOLD_TWEAK = DVSTweaks.THRESHOLD;
+    public static final String PROPERTY_ON_OFF_BALANCE_TWEAK = DVSTweaks.ON_OFF_BALANCE;
+    public static final String PROPERTY_BANDWIDTH_TWEAK = DVSTweaks.BANDWIDTH;
+    public static final String PROPERTY_MAX_FIRING_RATE_TWEAK = DVSTweaks.MAX_FIRING_RATE;
     public static final String PROPERTY_HIGHPASS_TWEAK = "highpass";
 
     /**
@@ -61,6 +65,8 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     public static final int FO_NEG = 35;
     public static final int HPF_POS = 120;
     public static final int HPF_NEG = 0;
+    public static final int REFR_POS = 80;
+    public static final int REFR_NEG = 20;
 
     private static final String PREFS_BIAS = "PropheseeConfig.bias.";
 
@@ -75,6 +81,7 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     private float thresholdTweak;
     private float onOffBalanceTweak;
     private float bandwidthTweak;
+    private float maxFiringRateTweak;
     private float highpassTweak;
 
     private boolean displayEvents = true;
@@ -115,8 +122,32 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         return bandwidthTweak;
     }
 
+    public float getMaxFiringRateTweak() {
+        return maxFiringRateTweak;
+    }
+
     public float getHighpassTweak() {
         return highpassTweak;
+    }
+
+    @Override
+    public float getPhotoreceptorSourceFollowerBandwidthHz() {
+        return Float.NaN;
+    }
+
+    @Override
+    public float getOnThresholdLogE() {
+        return Float.NaN;
+    }
+
+    @Override
+    public float getOffThresholdLogE() {
+        return Float.NaN;
+    }
+
+    @Override
+    public float getRefractoryPeriodS() {
+        return Float.NaN;
     }
 
     /**
@@ -178,6 +209,26 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     }
 
     /**
+     * Tweaks refractory ({@code bias_refr}). Larger is higher max firing rate (shorter refractory).
+     *
+     * @param val −1…1, 0 = last saved/loaded values
+     */
+    @Override
+    public void setMaxFiringRateTweak(float val) {
+        val = clampTweak(val);
+        if (maxFiringRateTweak == val) {
+            return;
+        }
+        final float old = maxFiringRateTweak;
+        maxFiringRateTweak = val;
+        if (!applyRefrFromTweak()) {
+            maxFiringRateTweak = old;
+            return;
+        }
+        support.firePropertyChange(PROPERTY_MAX_FIRING_RATE_TWEAK, old, val);
+    }
+
+    /**
      * Tweaks pixel high-pass ({@code bias_hpf}). Larger rejects more slow/DC change.
      * At factory {@code hpf=0} the negative side is a no-op (Metavision range is 0…+120).
      *
@@ -235,6 +286,7 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         thresholdTweak = 0f;
         onOffBalanceTweak = 0f;
         bandwidthTweak = 0f;
+        maxFiringRateTweak = 0f;
         highpassTweak = 0f;
     }
 
@@ -317,6 +369,28 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
             return true;
         } catch (HardwareInterfaceException e) {
             biases.fo = old;
+            log.warning(e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean applyRefrFromTweak() {
+        final PropheseeBiases base = tweakBaseline();
+        final int newRefr = clampToFactoryRange(
+                base.refr + tweakOffset(maxFiringRateTweak, REFR_POS, REFR_NEG),
+                chipBiases.refr, REFR_POS, REFR_NEG, base.refr);
+        if (biases.refr == newRefr) {
+            return true;
+        }
+        final int old = biases.refr;
+        biases.refr = newRefr;
+        try {
+            applyToHardware();
+            markFileModified();
+            support.firePropertyChange(PROPERTY_REFR, old, newRefr);
+            return true;
+        } catch (HardwareInterfaceException e) {
+            biases.refr = old;
             log.warning(e.getMessage());
             return false;
         }
@@ -648,7 +722,9 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
             final JTabbedPane tabs = new JTabbedPane();
             tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
             tabs.addTab("<html><strong><font color=\"red\">User-Friendly Controls", userControlPanel);
+            DVSAutoControllerPanel.addTab(tabs, getChip() instanceof AEChip ae ? ae : null);
             tabs.addTab("Raw biases", rawControlPanel);
+            DVSUserControlPanel.capTabbedPanePreferredWidth(tabs);
             controlPanel = new JPanel(new BorderLayout());
             controlPanel.add(tabs, BorderLayout.CENTER);
         }

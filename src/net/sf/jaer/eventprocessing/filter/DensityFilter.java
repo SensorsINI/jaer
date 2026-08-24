@@ -211,6 +211,7 @@ public class DensityFilter extends AbstractNoiseFilter {
 
     @Override
     public final void initFilter() {
+        super.initFilter();
         allocateMaps(chip);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;

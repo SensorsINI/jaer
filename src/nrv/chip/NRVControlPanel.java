@@ -20,6 +20,9 @@ import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoableEditSupport;
 
+import ch.unizh.ini.jaer.chip.retina.DVSAutoControllerPanel;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import nrv.usb.NRVRegisterSetting;
 
@@ -118,9 +121,13 @@ public class NRVControlPanel extends JPanel {
 
         final JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("User-Friendly Controls", userPanel);
+        if (config.getChip() instanceof AEChip ae) {
+            DVSAutoControllerPanel.addTab(tabs, ae);
+        }
         tabs.addTab("External Trigger", externalTriggerPanel);
         tabs.addTab("Pixel Biases", pixelBiasPanel);
         tabs.addTab("Register Table", registerPanel);
+        DVSUserControlPanel.capTabbedPanePreferredWidth(tabs);
         add(tabs, BorderLayout.CENTER);
 
         addAncestorListener(new javax.swing.event.AncestorListener() {

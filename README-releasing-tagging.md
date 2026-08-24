@@ -125,14 +125,24 @@ Keep binaries for the latest 2--3 releases. Notes and tags stay.
 
 Dropbox is an optional historical archive, not the auto-update URL.
 
-## SignPath Windows CI (test-signing)
+## SignPath Windows CI
 
 SignPath Foundation signs only artifacts built on GitHub-hosted runners. Local
 `ant release` Windows media cannot be signed as-is. Use GitHub Actions to rebuild
-Windows media and submit SignPath **test-signing** (switch to release-signing later).
+Windows media and submit SignPath (**test-signing2** now; **release-signing** after
+that policy is ACTIVE and its certificate is VALID).
 
 Signed Windows comes from Actions; local `ant release` is still fine for unsigned
 Mac/Unix media and for local Windows smoke tests.
+
+Remote trigger (does not run signing on your PC; starts the GitHub workflow):
+
+    ant signpath-ci
+    ant signpath-ci -Dsignpath.policy=release-signing
+    gh workflow run sign-windows-test.yml -f signing_policy=test-signing2
+
+Or GitHub → Actions → **Sign Windows (SignPath)** → Run workflow. Push the workflow
+file first. Watch with `gh run watch`. Approve the SignPath request as yourself.
 
 ### Local credentials (signpath/ — not in git)
 
@@ -144,7 +154,7 @@ Do not commit tokens or license keys.
   install4j/license.txt               — install4j license key (preferred; gitignored)
   signpath/install4j-license.txt      — same key (fallback for Ant / this sync script)
   signpath/signpath-project-slug.txt      — default jaer
-  signpath/signpath-signing-policy-slug.txt — test-signing2 (workflow hardcodes this; use release-signing later when VALID)
+  signpath/signpath-signing-policy-slug.txt — test-signing2 until release-signing is ACTIVE and VALID
 
 Recreate stubs if needed:
 
@@ -192,7 +202,8 @@ Create or reuse the CI user (https://app.signpath.io):
   3. Generate token (shown once). Put it in `signpath/signpath-api-token.txt`
      and re-run `scripts/sync-signpath-secrets-to-github.ps1`
 
-Then edit project **jaer** → signing policy **test-signing2**:
+Then edit project **jaer** → signing policy **test-signing2** (same roles on
+**release-signing** when that policy is ready):
 
   1. Install SignPath GitHub App on SensorsINI/jaer; link Trusted Build System GitHub.com
   2. **Submitters:** **CI builds** only (remove your personal user)
@@ -200,31 +211,51 @@ Then edit project **jaer** → signing policy **test-signing2**:
   4. Certificate: test-signing cert (e.g. Test certificate 2026)
   5. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
      .signpath/artifact-configurations/windows-installer-2.xml)
-  6. Leave **release-signing** until its INVALID status is fixed. Switch the
-     workflow `signing-policy-slug` to `release-signing` only after that policy
-     is VALID; keep **CI builds** as submitter and yourself as approver.
+
+### release-signing certificate (CSR → ACTIVE → CI)
+
+Do **not** Activate **release-signing** and do **not** submit that policy while
+the certificate shows **CSR PENDING**. SignPath has the private key on its HSM;
+the CSR in `signpath/release_certificate_2026.csr` (gitignored) is only the
+public request. SignPath Foundation issues the production cert and it must be
+imported so the certificate becomes **VALID**. Then click **Activate** on the
+policy (submitter **CI builds**, approver you).
+
+  1. Wait until SignPath shows the release certificate as **VALID** (not CSR PENDING)
+  2. Activate policy **release-signing**
+  3. Set `signpath/signpath-signing-policy-slug.txt` to `release-signing`
+  4. Re-run `scripts/sync-signpath-secrets-to-github.ps1` (updates the GitHub
+     variable used on tag pushes). Do not paste the API token into chat.
+  5. Push the workflow if needed, then trigger **release-signing**:
+
+         ant signpath-ci -Dsignpath.policy=release-signing
+
+If CSR stays PENDING, ask SignPath Foundation to issue/import the production
+certificate. Do not buy a commercial CA cert unless they tell you to.
 
 ### Workflow
 
   File: .github/workflows/sign-windows-test.yml
-  Triggers: workflow_dispatch, or push of tags matching 3.*
-  Policy slug is hardcoded: `test-signing2` (GitHub variable
-  SIGNPATH_SIGNING_POLICY_SLUG is unused).
+  Name: Sign Windows (SignPath)
+  Triggers: workflow_dispatch (policy choice), or push of tags matching 3.*
+  Policy: dispatch input `signing_policy`, else GitHub variable
+  SIGNPATH_SIGNING_POLICY_SLUG, else `test-signing2`.
   Steps: JDK 25 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
-  PE → SignPath test-signing2 → job waits up to 1 hour for your SignPath approval
+  PE → SignPath → job waits up to 1 hour for your SignPath approval
   → upload signed artifact; on tag, attach to GitHub Release
 
 ### First dry run (recommended before tagging)
 
   1. Confirm SignPath submitter/approver and GitHub `SIGNPATH_API_TOKEN` as above
-  2. Actions → "Sign Windows (SignPath test-signing)" → Run workflow
-     (the Actions page does not set the submitter)
+  2. Actions → **Sign Windows (SignPath)** → Run workflow → policy **test-signing2**
+     (or `ant signpath-ci`). The Actions page does not set the submitter.
   3. When the job waits on SignPath, open the signing-request URL from the job
      summary / SignPath email and **Approve** (as yourself, not as CI builds)
   4. Download the jaer-windows-signed artifact; check Properties → Digital Signatures
      (test-signing publisher is the test certificate, not yet SignPath Foundation)
   5. For a tagged release, push tag matching VERSION.txt; workflow attaches the signed
-     Windows exe to the GitHub Release
+     Windows exe to the GitHub Release. Use **release-signing** on that tag only
+     after the policy is ACTIVE and VALID (set SIGNPATH_SIGNING_POLICY_SLUG first).
 
 Non-interactive Windows-only local/CI Ant target (no confirm prompt):
 
@@ -250,4 +281,5 @@ Unsigned DMGs and user-folder installs remain the supported Mac path. Developer 
 
 Compile / jar / full multi-platform packaging is local Ant (`ant compile`, `ant jar`,
 `ant release`), then install4j for installers. Windows SignPath signing uses
-`.github/workflows/sign-windows-test.yml` and `ant release-windows-ci`.
+`.github/workflows/sign-windows-test.yml`, `ant release-windows-ci`, and
+`ant signpath-ci`.

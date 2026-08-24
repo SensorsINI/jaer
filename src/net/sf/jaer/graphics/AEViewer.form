@@ -106,6 +106,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="recordingSetTimelimitMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableFiltersOnStartupCheckBoxMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Enable filters on startup"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables creation of event processing filters on startup"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="enableFiltersOnStartupCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="recordFilteredEventsCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Enable filtering of recorded or network output events"/>
@@ -418,7 +427,7 @@
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewActiveRenderingEnabledMenuItem">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="Active rendering enabled"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables active display of each rendered frame if enabled.&#xa;If disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint."/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;On: ViewLoop waits for each OpenGL present (display()). Off: async repaint(); the loop continues without waiting.&lt;br&gt;Recommend &lt;b&gt;on&lt;/b&gt; for daily use. Use &lt;b&gt;off&lt;/b&gt; with a high target FPS for latency-sensitive applications, e.g. robots."/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewActiveRenderingEnabledMenuItemActionPerformed"/>
@@ -464,17 +473,6 @@
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setBorderSpaceMenuItemActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator27">
-                </MenuItem>
-                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableFiltersOnStartupCheckBoxMenuItem">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Enable filters on startup"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables creation of event processing filters on startup"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="enableFiltersOnStartupCheckBoxMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
               </SubComponents>
@@ -764,7 +762,9 @@
           <SubComponents>
             <MenuItem class="javax.swing.JMenuItem" name="refreshInterfaceMenuItem">
               <Properties>
+                <Property name="mnemonic" type="int" value="82"/>
                 <Property name="text" type="java.lang.String" value="Refresh"/>
+                <Property name="toolTipText" type="java.lang.String" value="Rescan USB for newly attached cameras without closing the current interface"/>
               </Properties>
               <Events>
                 <EventHandler event="componentShown" listener="java.awt.event.ComponentListener" parameters="java.awt.event.ComponentEvent" handler="refreshInterfaceMenuItemComponentShown"/>

@@ -498,7 +498,9 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
             final JTabbedPane pane = new JTabbedPane();
 
             pane.addTab("Basic controls", basicTab = new DVSFunctionalControlPanel(DVS128andCochleaAMS1b.this));
+            DVSAutoControllerPanel.addTab(pane, DVS128andCochleaAMS1b.this);
             pane.addTab("Expert controls", expertTab = super.buildControlPanel());
+            DVSUserControlPanel.capTabbedPanePreferredWidth(pane);
             panel.add(pane, BorderLayout.CENTER);
             pane.setSelectedIndex(getPrefs().getInt("DVS128.selectedBiasgenControlTab", 0));
             pane.addMouseListener(new java.awt.event.MouseAdapter() {

@@ -709,7 +709,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             final JTabbedPane pane = new JTabbedPane();
 
             pane.addTab("Basic controls", basicTab = new DVSFunctionalControlPanel(DVS128.this));
+            DVSAutoControllerPanel.addTab(pane, DVS128.this);
             pane.addTab("Expert controls", expertTab = super.buildControlPanel());
+            DVSUserControlPanel.capTabbedPanePreferredWidth(pane);
             panel.add(pane, BorderLayout.CENTER);
             pane.setSelectedIndex(getPrefs().getInt("DVS128.selectedBiasgenControlTab", 0));
             pane.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -722,7 +724,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             panel.revalidate();
             return panel;
         }
-        private float bandwidth = 1, maxFiringRate = 1, threshold = 1, onOffBalance = 1;
+        private float bandwidth = 0, maxFiringRate = 0, threshold = 0, onOffBalance = 0;
 
         /**
          * Tweaks bandwidth around nominal value.

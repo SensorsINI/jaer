@@ -40,7 +40,7 @@ try {
     $token | gh secret set SIGNPATH_API_TOKEN
     $license | gh secret set INSTALL4J_LICENSE
     gh variable set SIGNPATH_ORGANIZATION_ID --body $orgId
-    # Workflow hardcodes project/policy; variables kept for documentation / future use.
+    # Tag-push workflow uses SIGNPATH_SIGNING_POLICY_SLUG when no dispatch input.
     gh variable set SIGNPATH_PROJECT_SLUG --body $project
     gh variable set SIGNPATH_SIGNING_POLICY_SLUG --body $policy
     Write-Host "Done."

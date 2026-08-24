@@ -82,6 +82,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -159,6 +160,8 @@ import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventio.ros2.ROSOutput;
 import net.sf.jaer.eventio.ros2.ROSOutputDialog;
+import net.sf.jaer.eventio.opencv.OpenCVOutput;
+import net.sf.jaer.eventio.opencv.OpenCVOutputDialog;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemoryDialog;
 import prophesee.eventio.MetavisionRawFileInputStream;
@@ -175,6 +178,7 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
 import net.sf.jaer.hardwareinterface.usb.LiveDeviceChipDetector;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
@@ -191,6 +195,7 @@ import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
@@ -295,8 +300,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
     /**
-     * Non-null overlay text: skip chip pixmap {@code render()} and still
-     * {@code paintFrame()} so this message is drawn on the canvas.
+     * Non-null overlay text: skip chip pixmap {@code render()} and
+     * {@code paintFrame()} a blank canvas with this message (no APS, DVS, IMU,
+     * or filter annotations).
      */
     private volatile String skipChipRenderingOverlay = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
@@ -420,10 +426,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
     private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
+    private boolean showOpenCvOutputOverlay = prefs.getBoolean("AEViewer.showOpenCvOutputOverlay", true);
     private javax.swing.JMenuItem rosOutputMenuItem;
     private ROSOutputDialog rosOutputDialog;
+    private PropertyChangeListener rosOutputEnabledSync;
+    private ROSOutput rosOutputMenuBoundFilter;
     private javax.swing.JMenuItem dnnSharedMemoryMenuItem;
     private DNNOutputViaSharedMemoryDialog dnnSharedMemoryDialog;
+    private PropertyChangeListener dnnSharedMemoryEnabledSync;
+    private DNNOutputViaSharedMemory dnnSharedMemoryMenuBoundFilter;
+    private javax.swing.JMenuItem openCvOutputMenuItem;
+    private OpenCVOutputDialog openCvOutputDialog;
+    private PropertyChangeListener openCvOutputEnabledSync;
+    private OpenCVOutput openCvOutputMenuBoundFilter;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
     private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
@@ -455,8 +470,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private JaerUpdaterFrame jaerUpdaterFrame = null;
-    /** Nonmodal File/Show file info dialog; reused while this viewer is open. */
-    private JDialog fileInfoDialog;
+    /** Nonmodal File/Show file info window; reused while this viewer is open. */
+    private JFrame fileInfoDialog;
     private JTextArea fileInfoTextArea;
     /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
     private AEViewerPreferencesDialog preferencesDialog;
@@ -607,6 +622,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         initComponents();
         initRosOutputRemoteMenu();
         initDnnSharedMemoryRemoteMenu();
+        initOpenCvOutputRemoteMenu();
+        remoteMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                bindRemoteOutputMenuItems();
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
         applyNetworkMenuDescriptionTooltips();
         // Esc cancels queued jog even when focus is on the heavyweight GL canvas
         // (menu accelerators alone are not always delivered in that case).
@@ -624,6 +654,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return false;
                 }
                 getAePlayer().cancelJog();
+                e.consume();
+                return true;
+            }
+        });
+        // Temporary: Ctrl+Shift+F12 tests uncaught-exception / native-crash issue reporting.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_F12
+                        || !e.isControlDown() || !e.isShiftDown()) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                JaerIssueReporter.offerCrashTest(AEViewer.this);
                 e.consume();
                 return true;
             }
@@ -753,6 +800,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             addHelpURLItem(JaerConstants.HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
             addHelpURLItem(JaerConstants.HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
+            addHelpURLItem(JaerConstants.JAER_ISSUES, "Give feedback/File issue...",
+                    "Opens the jAER GitHub Issues page to give feedback or file a bug");
             addHelpURLItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home", "jAER project home on Github");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
@@ -1276,6 +1325,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (dnnSharedMemoryMenuItem != null) {
             dnnSharedMemoryMenuItem.setToolTipText(descriptionTooltip(DNNOutputViaSharedMemory.class, null));
         }
+        if (openCvOutputMenuItem != null) {
+            openCvOutputMenuItem.setToolTipText(descriptionTooltip(OpenCVOutput.class, null));
+        }
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
                 unicastOutputEnabledCheckBoxMenuItem,
@@ -1283,7 +1335,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 openBlockingQueueInputMenuItem,
                 blockingQueueOutputEnabledCheckBoxMenuItem,
                 rosOutputMenuItem,
-                dnnSharedMemoryMenuItem);
+                dnnSharedMemoryMenuItem,
+                openCvOutputMenuItem);
     }
 
     /**
@@ -2007,6 +2060,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             filterFrameBuilt = false;
             disposeRosOutputDialog();
             disposeDnnSharedMemoryDialog();
+            disposeOpenCvOutputDialog();
             filtersToggleButton.setVisible(false);
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
@@ -2339,13 +2393,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return currentFile;
     }
 
-    /**
-     * Builds the interface menu. Synchronized to avoid clashing with
-     * ViewLoop.run() method that is also trying to open devices.
-     *
-     */
+    /** Builds the interface menu on the Swing event-dispatch thread. */
     private void buildInterfaceMenu() {
-        buildInterfaceMenu(interfaceMenu);
+        buildInterfaceMenu(interfaceMenu, false);
+    }
+
+    /**
+     * Rebuilds the Interface menu, optionally forcing a USB bus scan.
+     *
+     * @param forceUsbRescan if true, re-enumerate even when a device is already
+     * open so newly attached cameras appear (Interface → Refresh)
+     */
+    private void buildInterfaceMenu(boolean forceUsbRescan) {
+        buildInterfaceMenu(interfaceMenu, forceUsbRescan);
     }
 
     /**
@@ -2356,8 +2416,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * code below.
      */
     public void buildInterfaceMenu(JMenu interfaceMenu) {
+        buildInterfaceMenu(interfaceMenu, false);
+    }
+
+    /**
+     * Builds list of attached hardware interfaces by asking the hardware
+     * interface factories for the interfaces. Populates the Interface menu with
+     * these items, and with a "None" item to close and set the chip's
+     * HardwareInterface to null. Various specialized interfaces customize the
+     * code below.
+     *
+     * @param forceUsbRescan if true, run {@link HardwareInterfaceFactory}
+     * enumeration even when a device is already open
+     */
+    public void buildInterfaceMenu(JMenu interfaceMenu, boolean forceUsbRescan) {
         if (!SwingUtilities.isEventDispatchThread()) {
-            runOnEdtAndWait(() -> buildInterfaceMenu(interfaceMenu), "build hardware interface menu");
+            runOnEdtAndWait(() -> buildInterfaceMenu(interfaceMenu, forceUsbRescan),
+                    "build hardware interface menu");
             return;
         }
         interfaceMenu.getPopupMenu().setLightWeightPopupEnabled(false);
@@ -2370,7 +2445,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setFont(item.getFont().deriveFont(Font.ITALIC));
 //            interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i)); // has no number, already opened
             item.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, chip.getHardwareInterface());
-            item.setToolTipText("Currently selected hardware interface");
+            LibUsbLinkInfo.Snapshot usbLink = LibUsbLinkInfo.lastOpen();
+            item.setToolTipText(usbLink != null ? usbLink.tooltipHtml()
+                    : "Currently selected hardware interface");
             interfaceMenu.add(item);
 
             item.setSelected(true);
@@ -2382,18 +2459,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         ButtonGroup bg = new ButtonGroup();
 
         //create a list of available hardware interfaces from enumerated devices.
-        // Skip USB re-enumeration when a device is already open: getNumInterfacesAvailable()
-        // blocks on the EDT and can hang the UI during/after open or preference download.
+        // Skip USB re-enumeration when a device is already open unless Refresh:
+        // getNumInterfacesAvailable() blocks on the EDT and can hang the UI
+        // during/after open or preference download. Use Interface → Refresh
+        // to find cameras plugged in after the current one opened.
         boolean choseOneButton = false;
         JRadioButtonMenuItem interfaceButton = null;
         final int n;
-        if (interfaceAlreadyOpen) {
-            log.info("Interface menu: device already open, skipping USB re-enumeration");
-            n = 0;
+        if (interfaceAlreadyOpen && !forceUsbRescan) {
+            n = HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable();
+            log.info(String.format(
+                    "Interface menu: device already open, listing %d cached interface(s) (Refresh to rescan USB)",
+                    n));
         } else {
-            log.info("finding number of available interfaces");
+            log.info(forceUsbRescan
+                    ? "Refresh: enumerating hardware interfaces"
+                    : "finding number of available interfaces");
             HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
-            n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
+            n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // rebuilds the factory list
         }
         //        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
 //                log.info("found "+n+" interfaces");
@@ -2403,6 +2486,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (hw == null) {
                 continue;
             } // in case it disappeared
+            // Factory list should omit the already-open device; skip if it still appears.
+            if (interfaceAlreadyOpen && hw.toString().equals(chip.getHardwareInterface().toString())) {
+                continue;
+            }
 
             // if found interface is NOT some network interface, then make a chooser button for it.
             if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
@@ -2567,6 +2654,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         }
 
+        // Refresh is its own section so a user-initiated scan is not on every menu open.
+        // The generated menu item is absent in lightweight/test menu projections.
+        if (refreshInterfaceMenuItem != null) {
+            interfaceMenu.add(new JSeparator());
+            refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface");
+            interfaceMenu.add(refreshInterfaceMenuItem);
+        }
+
         // make a 'reset device' item 
         interfaceMenu.add(new JSeparator());
         JMenuItem resetDeviceB = new JMenuItem(new ResetHardwareIntefaceAction());
@@ -2716,9 +2811,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Skip AEViewer chip pixmap rendering and show {@code overlay} on the
-     * canvas (filters still run). Pass {@code null} or empty to resume normal
-     * rendering.
+     * Skip all AEViewer chip rendering (pixmap {@code render()}, APS/DVS
+     * textures, IMU overlay, frame markers, filter annotations) and paint a
+     * blank frame with {@code overlay} naming what is blocking the update.
+     * Filters still run. Pass {@code null} or empty to resume normal rendering.
      *
      * @param overlay message to draw, or null/empty to stop skipping
      */
@@ -2888,6 +2984,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (aemon instanceof HasUsbStatistics) {
                         printUSBStatisticsCBMI.setSelected(((HasUsbStatistics) aemon).isPrintUsbStatistics());
                     }
+                    showUsbLinkOverlayAfterOpen();
                 } else if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof AESequencerInterface)) {
                     // the 'chip's' hardware interface is a pure sequencer
                     enableMonSeqMenu(true);
@@ -2940,6 +3037,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.LIVE);
             runPendingFirstHardwareUseAfterLive();
         }
+    }
+
+    /**
+     * After AEChip matching and a successful USB open, show speed/topology on
+     * the chip view for 10 s. Snapshot comes from {@link LibUsbLinkInfo#logOnOpen}.
+     */
+    private void showUsbLinkOverlayAfterOpen() {
+        LibUsbLinkInfo.Snapshot snap = LibUsbLinkInfo.lastOpen();
+        if (snap == null || chip == null) {
+            return;
+        }
+        ChipCanvas canvas = chip.getCanvas();
+        if (canvas == null) {
+            return;
+        }
+        canvas.showUsbLinkOverlay(snap.overlayText());
     }
 
     /**
@@ -3493,10 +3606,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
                         boolean skipRequested = isSkipChipRenderingRequested() && !isJaerAviRecordingActive();
-                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering() || skipRequested;
+                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering()
+                                || isOpenCvOutputSkipChipRendering() || skipRequested;
                         if (!skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
-                        } else if (isShowRosOutputOverlay() || skipRequested) {
+                        } else if (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested) {
+                            // Skip pixmap render(); paint a blank canvas + overlay (no APS/IMU/markers).
                             chipCanvas.paintFrame();
                         }
                     } catch (RuntimeException e) {
@@ -4770,7 +4885,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setFrameRateMenuItem = new javax.swing.JMenuItem();
         skipPacketsRenderingCheckBoxMenuItem = new ScrollWheelTunableCheckBoxMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
-        jSeparator27 = new javax.swing.JPopupMenu.Separator();
         enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         playbackMenu = new javax.swing.JMenu();
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -5076,6 +5190,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(recordingSetTimelimitMenuItem);
 
+        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
+
         recordFilteredEventsCheckBoxMenuItem.setText("Enable filtering of recorded or network output events");
         recordFilteredEventsCheckBoxMenuItem.setToolTipText("Recording or network writes apply active filters first (reduces file size or network traffic)");
         recordFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -5323,7 +5446,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.setText("View options");
 
         viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
-        viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
+        viewActiveRenderingEnabledMenuItem.setToolTipText("<html>On: ViewLoop waits for each OpenGL present (display()). Off: async repaint(); the loop continues without waiting.<br>Recommend <b>on</b> for daily use. Use <b>off</b> with a high target FPS for latency-sensitive applications, e.g. robots.");
         viewActiveRenderingEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewActiveRenderingEnabledMenuItemActionPerformed(evt);
@@ -5373,16 +5496,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         graphicsSubMenu.add(setBorderSpaceMenuItem);
-        graphicsSubMenu.add(jSeparator27);
-
-        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
 
         viewMenu.add(graphicsSubMenu);
 
@@ -5593,7 +5706,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
+        refreshInterfaceMenuItem.setMnemonic('R');
         refreshInterfaceMenuItem.setText("Refresh");
+        refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface");
         refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentShown(java.awt.event.ComponentEvent evt) {
                 refreshInterfaceMenuItemComponentShown(evt);
@@ -6323,6 +6438,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         runFinalDisposalUiAction("dispose ROS output dialog", this::disposeRosOutputDialog);
         runFinalDisposalUiAction("dispose shared-memory output dialog", this::disposeDnnSharedMemoryDialog);
+        runFinalDisposalUiAction("dispose OpenCV output dialog", this::disposeOpenCvOutputDialog);
+        runFinalDisposalUiAction("dispose file-menu dialogs", this::disposeFileMenuFrames);
 
         finalDisposalUiPhase = true;
         try {
@@ -6529,6 +6646,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             startHookCleanupAttempt(attempts, "ros-dialog", this::disposeRosOutputDialog);
             startHookCleanupAttempt(attempts, "shared-memory-dialog",
                     this::disposeDnnSharedMemoryDialog);
+            startHookCleanupAttempt(attempts, "opencv-output-dialog",
+                    this::disposeOpenCvOutputDialog);
+            startHookCleanupAttempt(attempts, "file-menu-dialogs",
+                    this::disposeFileMenuFrames);
             startHookCleanupAttempt(attempts, "viewer-stop", () -> {
                 finalDisposalUiPhase = true;
                 try {
@@ -6655,7 +6776,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_formWindowClosing
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
-            // TODO appendOfEventReferences your handling code here:
+            try {
+                setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                buildInterfaceMenu(true);
+                final int n = HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable();
+                showActionText(String.format("Found %d hardware interface(s)", n));
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
+            }
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
@@ -9248,14 +9376,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fileInfoTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
                 JScrollPane scroll = new JScrollPane(fileInfoTextArea);
                 JButton close = new JButton("Close");
-                fileInfoDialog = new JDialog(this, "Recording file info", false);
+                fileInfoDialog = new JFrame("Recording file info");
+                fileInfoDialog.setIconImage(getIconImage());
                 fileInfoDialog.getContentPane().add(scroll, BorderLayout.CENTER);
                 JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
                 buttons.add(close);
                 fileInfoDialog.getContentPane().add(buttons, BorderLayout.SOUTH);
                 close.addActionListener(e -> fileInfoDialog.setVisible(false));
                 fileInfoDialog.getRootPane().setDefaultButton(close);
-                fileInfoDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+                fileInfoDialog.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             }
             fileInfoDialog.setTitle(f != null ? "File info — " + f.getName() : "Recording file info");
             fileInfoTextArea.setText(info);
@@ -9312,8 +9441,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_newViewerMenuItemActionPerformed
 
 	private void interfaceMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_interfaceMenuMenuSelected
-            // Build off the critical path when possible: if a device is already open we skip USB
-            // scan (see buildInterfaceMenu). Otherwise keep WAIT cursor but never hold ViewLoop.
+            // Rebuild from cache if a device is already open (no USB scan). Use
+            // Interface → Refresh to enumerate. Otherwise WAIT cursor, never hold ViewLoop.
             try {
                 setCursor(new Cursor(Cursor.WAIT_CURSOR));
                 buildInterfaceMenu();
@@ -9781,11 +9910,34 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         prefs.putBoolean("AEViewer.showDnnSharedMemoryOverlay", showDnnSharedMemoryOverlay);
     }
 
+    public boolean isShowOpenCvOutputOverlay() {
+        return showOpenCvOutputOverlay;
+    }
+
+    public void setShowOpenCvOutputOverlay(boolean showOpenCvOutputOverlay) {
+        this.showOpenCvOutputOverlay = showOpenCvOutputOverlay;
+        prefs.putBoolean("AEViewer.showOpenCvOutputOverlay", showOpenCvOutputOverlay);
+    }
+
     private void initRosOutputRemoteMenu() {
-        rosOutputMenuItem = new JMenuItem("ROS2 / Foxglove frame output...");
+        rosOutputMenuItem = new JMenuItem();
         rosOutputMenuItem.setMnemonic('r');
         rosOutputMenuItem.addActionListener(e -> rosOutputMenuItemActionPerformed());
         remoteMenu.add(rosOutputMenuItem);
+        updateRosOutputMenuItem();
+    }
+
+    private void updateRosOutputMenuItem() {
+        if (rosOutputMenuItem == null) {
+            return;
+        }
+        ROSOutput r = findRosOutput();
+        boolean streaming = r != null && r.isFilterEnabled();
+        rosOutputMenuItem.setText(streaming
+                ? "ROS2 / Foxglove frame output (streaming)..."
+                : "ROS2 / Foxglove frame output (stopped)...");
+        applyRemoteMenuStreamingStyle(rosOutputMenuItem, streaming);
+        updateRemoteMenuStreamingStyle();
     }
 
     private ROSOutput findRosOutput() {
@@ -9795,6 +9947,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean isRosOutputSkipChipRendering() {
         ROSOutput r = findRosOutput();
         return r != null && r.isFilterEnabled() && r.isSkipChipRendering();
+    }
+
+    private void disposeFileMenuFrames() {
+        if (fileInfoDialog != null) {
+            fileInfoDialog.dispose();
+            fileInfoDialog = null;
+        }
+        if (preferencesDialog != null) {
+            preferencesDialog.dispose();
+            preferencesDialog = null;
+        }
+        ExportVideoDialog.disposeForViewer(this);
+        SaveAsExportDialog.disposeForViewer(this);
     }
 
     private void disposeRosOutputDialog() {
@@ -9821,6 +9986,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         ROSOutput.ensurePresent(c);
+        bindRemoteOutputMenuItems();
         ROSOutput r = ROSOutput.find(c);
         if (r == null) {
             JOptionPane.showMessageDialog(this, "Could not create ROSOutput filter", "ROS2 / Foxglove",
@@ -9831,10 +9997,71 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void initDnnSharedMemoryRemoteMenu() {
-        dnnSharedMemoryMenuItem = new JMenuItem("DNN shared memory output...");
+        dnnSharedMemoryMenuItem = new JMenuItem();
         dnnSharedMemoryMenuItem.setMnemonic('d');
         dnnSharedMemoryMenuItem.addActionListener(e -> dnnSharedMemoryMenuItemActionPerformed());
         remoteMenu.add(dnnSharedMemoryMenuItem);
+        updateDnnSharedMemoryMenuItem();
+    }
+
+    private void updateDnnSharedMemoryMenuItem() {
+        if (dnnSharedMemoryMenuItem == null) {
+            return;
+        }
+        DNNOutputViaSharedMemory f = DNNOutputViaSharedMemory.find(getChip());
+        boolean streaming = f != null && f.isFilterEnabled();
+        dnnSharedMemoryMenuItem.setText(streaming
+                ? "DNN shared memory output (streaming)..."
+                : "DNN shared memory output (stopped)...");
+        applyRemoteMenuStreamingStyle(dnnSharedMemoryMenuItem, streaming);
+        updateRemoteMenuStreamingStyle();
+    }
+
+    private void bindRemoteOutputMenuItems() {
+        ROSOutput ros = findRosOutput();
+        if (rosOutputMenuBoundFilter != ros) {
+            if (rosOutputMenuBoundFilter != null && rosOutputEnabledSync != null) {
+                rosOutputMenuBoundFilter.getSupport().removePropertyChangeListener("filterEnabled", rosOutputEnabledSync);
+            }
+            rosOutputMenuBoundFilter = ros;
+            if (ros != null) {
+                if (rosOutputEnabledSync == null) {
+                    rosOutputEnabledSync = evt -> SwingUtilities.invokeLater(this::updateRosOutputMenuItem);
+                }
+                ros.getSupport().addPropertyChangeListener("filterEnabled", rosOutputEnabledSync);
+            }
+        }
+        updateRosOutputMenuItem();
+
+        DNNOutputViaSharedMemory dnn = DNNOutputViaSharedMemory.find(getChip());
+        if (dnnSharedMemoryMenuBoundFilter != dnn) {
+            if (dnnSharedMemoryMenuBoundFilter != null && dnnSharedMemoryEnabledSync != null) {
+                dnnSharedMemoryMenuBoundFilter.getSupport().removePropertyChangeListener("filterEnabled", dnnSharedMemoryEnabledSync);
+            }
+            dnnSharedMemoryMenuBoundFilter = dnn;
+            if (dnn != null) {
+                if (dnnSharedMemoryEnabledSync == null) {
+                    dnnSharedMemoryEnabledSync = evt -> SwingUtilities.invokeLater(this::updateDnnSharedMemoryMenuItem);
+                }
+                dnn.getSupport().addPropertyChangeListener("filterEnabled", dnnSharedMemoryEnabledSync);
+            }
+        }
+        updateDnnSharedMemoryMenuItem();
+
+        OpenCVOutput opencv = findOpenCvOutput();
+        if (openCvOutputMenuBoundFilter != opencv) {
+            if (openCvOutputMenuBoundFilter != null && openCvOutputEnabledSync != null) {
+                openCvOutputMenuBoundFilter.getSupport().removePropertyChangeListener("filterEnabled", openCvOutputEnabledSync);
+            }
+            openCvOutputMenuBoundFilter = opencv;
+            if (opencv != null) {
+                if (openCvOutputEnabledSync == null) {
+                    openCvOutputEnabledSync = evt -> SwingUtilities.invokeLater(this::updateOpenCvOutputMenuItem);
+                }
+                opencv.getSupport().addPropertyChangeListener("filterEnabled", openCvOutputEnabledSync);
+            }
+        }
+        updateOpenCvOutputMenuItem();
     }
 
     private void disposeDnnSharedMemoryDialog() {
@@ -9861,6 +10088,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         DNNOutputViaSharedMemory.ensurePresent(c);
+        bindRemoteOutputMenuItems();
         DNNOutputViaSharedMemory f = DNNOutputViaSharedMemory.find(c);
         if (f == null) {
             JOptionPane.showMessageDialog(this, "Could not create DNNOutputViaSharedMemory filter",
@@ -9868,6 +10096,90 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         showDnnSharedMemoryDialog(f);
+    }
+
+    private void initOpenCvOutputRemoteMenu() {
+        openCvOutputMenuItem = new JMenuItem();
+        openCvOutputMenuItem.setMnemonic('c');
+        openCvOutputMenuItem.addActionListener(e -> openCvOutputMenuItemActionPerformed());
+        remoteMenu.add(openCvOutputMenuItem);
+        updateOpenCvOutputMenuItem();
+    }
+
+    private void updateOpenCvOutputMenuItem() {
+        if (openCvOutputMenuItem == null) {
+            return;
+        }
+        OpenCVOutput o = findOpenCvOutput();
+        boolean streaming = o != null && o.isFilterEnabled();
+        openCvOutputMenuItem.setText(streaming
+                ? "OpenCV camera output (streaming)..."
+                : "OpenCV camera output (stopped)...");
+        applyRemoteMenuStreamingStyle(openCvOutputMenuItem, streaming);
+        updateRemoteMenuStreamingStyle();
+    }
+
+    /** Dark green for File → Remote items that are currently publishing. */
+    private static final Color REMOTE_STREAMING_MENU_FOREGROUND = new Color(0, 100, 0);
+
+    private static void applyRemoteMenuStreamingStyle(JMenuItem item, boolean streaming) {
+        if (item == null) {
+            return;
+        }
+        item.setForeground(streaming ? REMOTE_STREAMING_MENU_FOREGROUND : null);
+    }
+
+    private void updateRemoteMenuStreamingStyle() {
+        ROSOutput ros = findRosOutput();
+        DNNOutputViaSharedMemory dnn = DNNOutputViaSharedMemory.find(getChip());
+        OpenCVOutput opencv = findOpenCvOutput();
+        boolean anyStreaming = (ros != null && ros.isFilterEnabled())
+                || (dnn != null && dnn.isFilterEnabled())
+                || (opencv != null && opencv.isFilterEnabled());
+        applyRemoteMenuStreamingStyle(remoteMenu, anyStreaming);
+    }
+
+    private OpenCVOutput findOpenCvOutput() {
+        return OpenCVOutput.find(getChip());
+    }
+
+    private boolean isOpenCvOutputSkipChipRendering() {
+        OpenCVOutput o = findOpenCvOutput();
+        return o != null && o.isFilterEnabled() && o.isSkipChipRendering();
+    }
+
+    private void disposeOpenCvOutputDialog() {
+        if (openCvOutputDialog != null) {
+            openCvOutputDialog.dispose();
+            openCvOutputDialog = null;
+        }
+    }
+
+    private void showOpenCvOutputDialog(OpenCVOutput f) {
+        if (openCvOutputDialog != null && openCvOutputDialog.getFilter() != f) {
+            disposeOpenCvOutputDialog();
+        }
+        if (openCvOutputDialog == null) {
+            openCvOutputDialog = new OpenCVOutputDialog(this, f);
+        }
+        openCvOutputDialog.setVisible(true);
+        openCvOutputDialog.toFront();
+    }
+
+    private void openCvOutputMenuItemActionPerformed() {
+        AEChip c = getChip();
+        if (c == null) {
+            return;
+        }
+        OpenCVOutput.ensurePresent(c);
+        bindRemoteOutputMenuItems();
+        OpenCVOutput f = OpenCVOutput.find(c);
+        if (f == null) {
+            JOptionPane.showMessageDialog(this, "Could not create OpenCVOutput filter",
+                    "OpenCV camera output", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        showOpenCvOutputDialog(f);
     }
 
     /**
@@ -9939,6 +10251,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chip.getFilterChain().initFilters(); // at this point AEChip is fully initialized, so asking all filters to initialize themselves makes sense
             }
         }
+        bindRemoteOutputMenuItems();
     }
 
     public boolean isRenderBlankFramesEnabled() {
@@ -10101,6 +10414,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public JAERViewer getJaerViewer() {
         return jaerViewer;
+    }
+
+    /** In-app console text for issue reports; empty if the console is unavailable. */
+    public String getConsoleText() {
+        if (loggingHandler == null || loggingHandler.getConsoleWindow() == null) {
+            return "";
+        }
+        return loggingHandler.getConsoleWindow().getText();
     }
 
     public void setJaerViewer(JAERViewer jaerViewer) {
@@ -10338,7 +10659,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JPopupMenu.Separator jSeparator26;
-    private javax.swing.JPopupMenu.Separator jSeparator27;
     private javax.swing.JPopupMenu.Separator jSeparator28;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JSeparator jSeparator4;

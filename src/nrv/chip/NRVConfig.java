@@ -23,6 +23,7 @@ import nrv.usb.NRVRegisterSetting;
 import nrv.usb.NRVSettingsParser;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.biasgen.PotTweakerUtilities;
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 
 /**
@@ -30,7 +31,7 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
  *
  * @see https://nrv.kr/
  */
-public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface {
+public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface, DVSTweaks {
 
     private static final Logger log = Logger.getLogger(NRVConfig.class.getName());
     public static final String PREFS_LAST_SETTINGS_FILE = "NRVConfig.lastSettingsFile";
@@ -229,7 +230,9 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         applyLoadedSettingsToHardware();
         support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, file);
         support.firePropertyChange(PROPERTY_THRESHOLD, null, thresholdTweak);
+        support.firePropertyChange(DVSTweaks.THRESHOLD, null, thresholdTweak);
         support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, null, onOffBalanceTweak);
+        support.firePropertyChange(DVSTweaks.ON_OFF_BALANCE, null, onOffBalanceTweak);
         support.firePropertyChange(PROPERTY_SCAN_RATE_HZ, null, scanRateHz);
     }
 
@@ -1075,6 +1078,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             return;
         }
         support.firePropertyChange(PROPERTY_THRESHOLD, old, val);
+        support.firePropertyChange(DVSTweaks.THRESHOLD, old, val);
     }
 
     /**
@@ -1098,6 +1102,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             return;
         }
         support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, old, val);
+        support.firePropertyChange(DVSTweaks.ON_OFF_BALANCE, old, val);
     }
 
     /**
@@ -1332,12 +1337,14 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         onOffBalanceTweak = tweakFromRatio(balRatio);
         if (oldBalance != onOffBalanceTweak) {
             support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, oldBalance, onOffBalanceTweak);
+            support.firePropertyChange(DVSTweaks.ON_OFF_BALANCE, oldBalance, onOffBalanceTweak);
         }
 
         final float oldThreshold = thresholdTweak;
         thresholdTweak = tweakFromRatio(thrRatio);
         if (oldThreshold != thresholdTweak) {
             support.firePropertyChange(PROPERTY_THRESHOLD, oldThreshold, thresholdTweak);
+            support.firePropertyChange(DVSTweaks.THRESHOLD, oldThreshold, thresholdTweak);
         }
     }
 
@@ -1421,5 +1428,43 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public void importPreferences(InputStream is) throws IOException, InvalidPreferencesFormatException,
             HardwareInterfaceException {
         super.importPreferences(VendorPrefsMigration.rewriteLegacyPreferencesXml(is));
+    }
+
+    @Override
+    public boolean supportsBandwidthTweak() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsMaxFiringRateTweak() {
+        return false;
+    }
+
+    @Override
+    public void setBandwidthTweak(float val) {
+    }
+
+    @Override
+    public float getBandwidthTweak() {
+        return 0f;
+    }
+
+    @Override
+    public void setMaxFiringRateTweak(float val) {
+    }
+
+    @Override
+    public float getMaxFiringRateTweak() {
+        return 0f;
+    }
+
+    @Override
+    public float getPhotoreceptorSourceFollowerBandwidthHz() {
+        return Float.NaN;
+    }
+
+    @Override
+    public float getRefractoryPeriodS() {
+        return Float.NaN;
     }
 }

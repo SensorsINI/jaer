@@ -155,6 +155,7 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
     }
 
     public void initFilter() {
+        super.initFilter();
         allocateMaps(chip);
     }
 
