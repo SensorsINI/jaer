@@ -61,16 +61,29 @@ public interface AEDataFile {
     public static final String DATA_FILE_VERSION_NUMBER_AEDAT2 = "2.0";
     /** AEDAT-4 file version number string */
     public static final String DATA_FILE_VERSION_NUMBER_AEDAT4 = "4.0";
+    /** AEDZ file extension including '.': ".aedz" */
+    public static final String DATA_FILE_EXTENSION_AEDZ = ".aedz";
+    /**
+     * Format-selector sentinel for the AEDZ compressed recording format. Not an
+     * AEDAT version number: it is only used to route
+     * {@link AEViewer#startRecording(String,String)} and the preferences combo to
+     * an {@code AEDZOutputStream}. Never parsed numerically.
+     */
+    public static final String DATA_FILE_VERSION_NUMBER_AEDZ = "aedz";
     /** The default format version number string */
     public static final String DATA_FILE_VERSION_NUMBER = DATA_FILE_VERSION_NUMBER_AEDAT4;
 
     /**
      * Preferred filename extension for a new recording of the given AEDAT version
-     * string (e.g. {@code "2.0"} → {@code .aedat2}, {@code "4.0"} → {@code .aedat4}).
+     * string (e.g. {@code "2.0"} → {@code .aedat2}, {@code "4.0"} → {@code .aedat4},
+     * {@code "aedz"} → {@code .aedz}).
      */
     public static String extensionForVersion(String dataFileVersionNum) {
         if (DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)) {
             return DATA_FILE_EXTENSION_AEDAT4;
+        }
+        if (DATA_FILE_VERSION_NUMBER_AEDZ.equals(dataFileVersionNum)) {
+            return DATA_FILE_EXTENSION_AEDZ;
         }
         return DATA_FILE_EXTENSION_AEDAT2;
     }
@@ -83,6 +96,7 @@ public interface AEDataFile {
         String lower = name.toLowerCase();
         return lower.endsWith(DATA_FILE_EXTENSION_AEDAT4)
                 || lower.endsWith(DATA_FILE_EXTENSION_AEDAT2)
+                || lower.endsWith(DATA_FILE_EXTENSION_AEDZ)
                 || lower.endsWith(DATA_FILE_EXTENSION)
                 || lower.endsWith(OLD_DATA_FILE_EXTENSION);
     }

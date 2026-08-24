@@ -34,7 +34,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(EXTENSION4) || extension.equals(OLDEXTENSION) 
+            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(EXTENSION4) || extension.equals(EXTENSIONZ) || extension.equals(OLDEXTENSION)
                     || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
                     || extension.equals(TextFileInputStream.FILE_EXTENSION_CSV) || extension.equals(TextFileInputStream.FILE_EXTENSION_TXT)
                     || extension.equals(MetavisionRawFileInputStream.DATA_FILE_EXTENSION)
@@ -60,7 +60,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "AEDAT (.aedat4, .aedat2, .aedat), .dat (legacy jAER or Metavision DAT), Metavision RAW (.raw), DSEC HDF5 (.h5), ROS bag (.bag), or text (.csv / .txt)";
+        return "AEDAT (.aedat4, .aedat2, .aedat), AEDZ (.aedz), .dat (legacy jAER or Metavision DAT), Metavision RAW (.raw), DSEC HDF5 (.h5), ROS bag (.bag), or text (.csv / .txt)";
     }
     
     /** Legacy extension without dot: "aedat" */
@@ -77,6 +77,11 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     public static final String EXTENSION4;
     static{
         EXTENSION4=AEDataFile.DATA_FILE_EXTENSION_AEDAT4.substring(AEDataFile.DATA_FILE_EXTENSION_AEDAT4.lastIndexOf(".")+1);
+    }
+    /** AEDZ extension without dot: "aedz" */
+    public static final String EXTENSIONZ;
+    static{
+        EXTENSIONZ=AEDataFile.DATA_FILE_EXTENSION_AEDZ.substring(AEDataFile.DATA_FILE_EXTENSION_AEDZ.lastIndexOf(".")+1);
     }
 
     /** The original extension for AE data files */

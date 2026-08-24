@@ -41,8 +41,8 @@ import net.sf.jaer.util.TobiLogger;
 <html>
 <body>
 <h2>PencilBalancer</h2>
-<p>Closed-loop <b>pencil / pole balancer</b> that demonstrates low-latency single-line 
-tracking using event-driven update of continous (not binned)Hough space line model. 
+<p>Closed-loop <b>pencil / pole balancer</b> that demonstrates low-latency single-line
+tracking using event-driven update of continous (not binned)Hough space line model.
 
 A pair of DVS128 cameras tracks the
 stick as a line in each view. A PD-style controller commands a USB servo XY table to

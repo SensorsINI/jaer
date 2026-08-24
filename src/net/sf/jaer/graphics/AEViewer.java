@@ -42,6 +42,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -136,6 +137,7 @@ import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
@@ -146,6 +148,7 @@ import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.RecordingChipDetector;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
@@ -179,6 +182,7 @@ import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
@@ -400,6 +404,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private File recordingFile = null;
     AEFileOutputStream recordingOutputStream;
     Aedat4FileOutputStream aedat4RecordingOutputStream;
+    AEDZOutputStream aedzRecordingOutputStream;
+    private RecordingConfigurationSnapshot activeRecordingSnapshot;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
 
@@ -1386,6 +1392,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * <li>Search the AEChip menu, then {@link #DEFAULT_CHIP_CLASS_NAMES} if the
      * leftover Customize list has no VID/PID match (upgrade without clearing
      * Preferences).</li>
+     * <li>When a DAVIS/SciDVS VID/PID match is ambiguous, select SciDVS if the
+     * FPGA reports its exact validated raw DVS geometry.</li>
      * <li>If a remembered AEChip exists for this device key and is still a
      * match, apply it silently.</li>
      * <li>If exactly one AEChip matches and it is already selected,
@@ -1408,7 +1416,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (!ids.isKnown()) {
             return;
         }
-        String deviceKey = liveDevicePromptKey(hw, ids);
         java.util.List<Class<? extends AEChip>> found
                 = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
         if (found.isEmpty()) {
@@ -1424,6 +1431,38 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     + ". Use AEChip/Customize to add the device class.");
             return;
         }
+
+        // DAVIS and SciDVS share their USB VID/PID. Only when that ambiguity
+        // would otherwise require a chooser, read the FPGA's two DVS geometry
+        // registers. The validated SciDVS bitstream uniquely reports raw
+        // stream geometry 126x112; unknown geometry or a read failure retains
+        // the existing remembered-choice/chooser behavior.
+        if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface) {
+            try {
+                if (((DAViSFX3HardwareInterface) hw).probeSciDVSByFpgaGeometry()) {
+                    // The probe opens the interface, making its USB serial descriptor
+                    // available so shared-VID/PID cameras do not share one preference.
+                    String deviceKey = liveDevicePromptKey(hw, ids);
+                    liveChipOfferPromptedKeys.add(deviceKey);
+                    addChipClassesToMenu(java.util.Collections.singletonList(SciDVS.class));
+                    if (!SciDVS.class.equals(getAeChipClass())) {
+                        log.info("FPGA DVS geometry identifies SciDVS for USB device " + deviceKey);
+                        setAeChipClass(SciDVS.class);
+                    }
+                    return;
+                }
+                // A successful non-SciDVS fingerprint rules out only SciDVS. Keep
+                // the remaining DAVIS candidates for remembered choice or chooser.
+                found = new java.util.ArrayList<>(found);
+                found.remove(SciDVS.class);
+            } catch (HardwareInterfaceException | RuntimeException e) {
+                log.info("Could not read FPGA DVS geometry for USB device " + ids.key()
+                        + "; retaining normal AEChip selection: " + e.getMessage());
+            }
+        }
+        // Resolve the key after the geometry probe's normal open lifecycle. Before
+        // open, getStringDescriptors() cannot distinguish cameras sharing VID/PID.
+        String deviceKey = liveDevicePromptKey(hw, ids);
         final java.util.List<Class<? extends AEChip>> matches = found;
 
         // Per-device remembered choice (survives restart / re-plug).
@@ -1646,6 +1685,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         log.info(logPrefix + hw);
+        // Biasgen binding can issue immediate hardware reads that require the
+        // monitor's reverse chip association. Install it before
+        // Chip.setHardwareInterface delegates to Biasgen; the Chip setter sets
+        // it again after binding as its normal final invariant.
+        if (hw instanceof AEMonitorInterface) {
+            ((AEMonitorInterface) hw).setChip(chip);
+        }
         chip.setHardwareInterface(hw);
     }
 
@@ -3907,7 +3953,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
-            Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream : recordingOutputStream;
+            Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
+                    : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
             synchronized (streamLock) {
                 try {
                     if (aedat4RecordingOutputStream != null) {
@@ -3918,6 +3965,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         boolean skipFilteredOut = isRecordFilteredEventsEnabled()
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
                         aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut);
+                    } else if (aedzRecordingOutputStream != null) {
+                        aedzRecordingOutputStream.writePacket(isRecordFilteredEventsEnabled()
+                                ? extractor.reconstructRawPacket(cookedPacket)
+                                : rawPacket);
                     } else if (!isRecordFilteredEventsEnabled()) {
                         recordingOutputStream.writePacket(rawPacket); // record all events
                     } else {
@@ -3932,6 +3983,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try {
                         if (aedat4RecordingOutputStream != null) {
                             aedat4RecordingOutputStream.close();
+                        } else if (aedzRecordingOutputStream != null) {
+                            aedzRecordingOutputStream.close();
                         } else {
                             recordingOutputStream.close();
                         }
@@ -6706,6 +6759,55 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Decide the recording-stream format for a requested data-file version and
+     * filename, and the effective filename to hand to the writer (appending the
+     * format's extension when the filename has none). Package-private static so
+     * the headless probe can verify the version/extension/writer selection
+     * without constructing a full {@link AEViewer} (a JFrame, which needs a
+     * display).
+     *
+     * @param filename the requested recording filename
+     * @param dataFileVersionNum the requested data-file version ("2.0", "4.0" or the "aedz" sentinel)
+     * @return the resolved format version and effective filename
+     */
+    static RecordingFormatChoice resolveRecordingFormat(String filename, String dataFileVersionNum) {
+        boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(dataFileVersionNum)
+                || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ);
+        boolean aedat4 = !aedz && (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)
+                || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4));
+        String version;
+        if (aedz) {
+            version = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ;
+        } else if (aedat4) {
+            version = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+        } else {
+            version = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2;
+        }
+        String effective = filename;
+        if (!AEDataFile.hasDataFileExtension(filename)) {
+            String extension = AEDataFile.extensionForVersion(version);
+            effective = filename + extension;
+        }
+        return new RecordingFormatChoice(version, effective);
+    }
+
+    /**
+     * Immutable resolution result from {@link #resolveRecordingFormat(String, String)}:
+     * the format version to write and the effective filename (with any appended
+     * extension).
+     */
+    static final class RecordingFormatChoice {
+
+        final String version;
+        final String filename;
+
+        RecordingFormatChoice(String version, String filename) {
+            this.version = version;
+            this.filename = filename;
+        }
+    }
+
+    /**
      * Starts recording AE data to a file.
      *
      * @param filename the filename to record to, including all path information.
@@ -6729,28 +6831,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning(String.format("Already recording to file %s", recordingFile.getAbsolutePath()));
             return recordingFile;
         }
-        boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)
-                || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
-        if (!AEDataFile.hasDataFileExtension(filename)) {
-            String extension = AEDataFile.extensionForVersion(aedat4
-                    ? AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4
-                    : AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
-            filename = filename + extension;
-            log.info("Appended extension " + extension + " to make filename=" + filename);
+        RecordingFormatChoice choice = resolveRecordingFormat(filename, dataFileVersionNum);
+        boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(choice.version);
+        boolean aedat4 = !aedz && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(choice.version);
+        if (!choice.filename.equals(filename)) {
+            log.info("Appended extension " + AEDataFile.extensionForVersion(choice.version)
+                    + " to make filename=" + choice.filename);
         }
+        filename = choice.filename;
+        OpenedRecordingStream opened = null;
+        Closeable writer = null;
         try {
             recordingFile = new File(filename);
+            // Freeze the configuration once at recording start; the same immutable
+            // snapshot is handed to the AEDAT-4 writer and placed on the chip so the
+            // legacy writer and readers use the identical recording-start values.
+            // The snapshot is captured and the file opened atomically by the helper,
+            // which clears the chip snapshot if the open fails so a later recording
+            // can never reuse stale metadata.
             if (aedat4) {
                 recordingOutputStream = null;
-                aedat4RecordingOutputStream = new Aedat4FileOutputStream(new FileOutputStream(recordingFile), chip, getAedat4Compression());
+                aedzRecordingOutputStream = null;
+                opened = openWithFrozenSnapshot(chip, recordingFile);
+                constructRecordingWriter(chip, opened, (stream, snapshot) -> {
+                    aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+                });
+                writer = aedat4RecordingOutputStream;
                 log.info(String.format("AEDAT-4 recording compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of recorded events)",
                         net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
                         isRecordFilteredEventsEnabled()
                         || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled())));
+            } else if (aedz) {
+                aedat4RecordingOutputStream = null;
+                recordingOutputStream = null;
+                opened = openWithFrozenSnapshot(chip, recordingFile);
+                // Hand the owner-captured object explicitly to AEDZ; the writer must not
+                // rediscover it through mutable chip state or recapture live preferences.
+                constructRecordingWriter(chip, opened, (stream, snapshot) -> {
+                    aedzRecordingOutputStream = new AEDZOutputStream(stream, chip, snapshot);
+                });
+                writer = aedzRecordingOutputStream;
             } else {
                 aedat4RecordingOutputStream = null;
-                recordingOutputStream = new AEFileOutputStream(new FileOutputStream(recordingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+                aedzRecordingOutputStream = null;
+                opened = openWithFrozenSnapshot(chip, recordingFile);
+                constructRecordingWriter(chip, opened, (stream, snapshot) -> {
+                    recordingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+                });
+                writer = recordingOutputStream;
             }
+            activeRecordingSnapshot = opened.snapshot;
 
             if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop recording
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, new PropertyChangeListener() {
@@ -6782,15 +6912,204 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             //            aemon.resetTimestamps();
         } catch (FileNotFoundException e) {
-            recordingFile = null;
+            cleanupFailedRecordingStart(opened, writer, e);
             log.log(Level.WARNING, "In trying to open a recording output file, caught: " + e.toString(), e);
 
         } catch (IOException ioe) {
-            recordingFile = null;
+            cleanupFailedRecordingStart(opened, writer, ioe);
             log.log(Level.WARNING, "In trying to open a recording output file, caught: " + ioe.toString(), ioe);
+        } catch (RuntimeException runtime) {
+            // Runtime failures can occur after a writer has taken ownership (for
+            // example playback listener setup or EVENT_RECORDING_STARTED listeners).
+            // Preserve that failure while deterministically releasing this start.
+            cleanupFailedRecordingStart(opened, writer, runtime);
+            throw runtime;
         }
 
         return recordingFile;
+    }
+
+    /**
+     * The opened raw recording stream together with the immutable recording-start
+     * snapshot that was frozen (and placed on the chip) just before the file was
+     * opened.
+     */
+    static final class OpenedRecordingStream {
+
+        final FileOutputStream stream;
+        final RecordingConfigurationSnapshot snapshot;
+        private boolean ownershipTransferred;
+        private boolean rawStreamClosed;
+
+        OpenedRecordingStream(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) {
+            this.stream = stream;
+            this.snapshot = snapshot;
+        }
+
+        synchronized void transferOwnership() {
+            ownershipTransferred = true;
+        }
+
+        synchronized void closeRawStreamOnFailure(Throwable primary) {
+            if (ownershipTransferred || rawStreamClosed) {
+                return;
+            }
+            rawStreamClosed = true;
+            try {
+                stream.close();
+            } catch (IOException | RuntimeException cleanupFailure) {
+                addCleanupFailure(primary, cleanupFailure,
+                        "closing raw recording stream after failed writer construction");
+            }
+        }
+    }
+
+    /**
+     * Release a failed recording start without firing secondary property events.
+     * The selected writer owns the file only after construction returns; before
+     * then {@link OpenedRecordingStream} still owns the raw stream. All fields are
+     * cleared in {@code finally}, even if writer close itself fails.
+     */
+    private void cleanupFailedRecordingStart(OpenedRecordingStream opened, Closeable writer, Throwable primary) {
+        try {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException | RuntimeException cleanupFailure) {
+                    addCleanupFailure(primary, cleanupFailure,
+                            "closing recording writer after failed recording start");
+                }
+            } else if (opened != null) {
+                opened.closeRawStreamOnFailure(primary);
+            }
+        } finally {
+            recordingOutputStream = null;
+            aedat4RecordingOutputStream = null;
+            aedzRecordingOutputStream = null;
+            recordingEnabled = false;
+            recordingPaused = false;
+            recordingFile = null;
+            if (opened != null) {
+                clearCapturedSnapshotByIdentity(chip, opened.snapshot);
+                if (activeRecordingSnapshot == opened.snapshot) {
+                    activeRecordingSnapshot = null;
+                }
+            }
+        }
+    }
+
+    private static void addCleanupFailure(Throwable primary, Throwable cleanupFailure, String message) {
+        if (primary != null && cleanupFailure != primary) {
+            primary.addSuppressed(cleanupFailure);
+        }
+        log.log(Level.FINE, message, cleanupFailure);
+    }
+
+    private static void clearCapturedSnapshotByIdentity(AEChip chip,
+            RecordingConfigurationSnapshot capturedSnapshot) {
+        if (chip != null && chip.getRecordingConfigurationSnapshot() == capturedSnapshot) {
+            chip.setRecordingConfigurationSnapshot(null);
+        }
+    }
+
+    /** Release only the snapshot owned by the recording being stopped. */
+    void releaseActiveRecordingSnapshot(RecordingConfigurationSnapshot snapshot) {
+        if (activeRecordingSnapshot == snapshot) {
+            activeRecordingSnapshot = null;
+        }
+        clearCapturedSnapshotByIdentity(chip, snapshot);
+    }
+
+    /**
+     * Freeze the recording-start configuration snapshot, place it on the chip,
+     * and open the raw recording file. The snapshot is captured BEFORE the file open
+     * so the recorded header reflects recording-start values; if the open fails,
+     * the chip's cached snapshot is cleared so a later recording can never reuse
+     * stale metadata (regression: a failed start used to leave the stale
+     * snapshot set, which the next start could then hand to a writer).
+     *
+     * @param chip the chip whose live configuration is frozen
+     * @param file the file to open for recording
+     * @return the opened stream together with its frozen snapshot
+     * @throws FileNotFoundException if the file cannot be opened
+     */
+    static OpenedRecordingStream openWithFrozenSnapshot(AEChip chip, File file) throws FileNotFoundException {
+        RecordingConfigurationSnapshot snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
+        chip.setRecordingConfigurationSnapshot(snapshot);
+        FileOutputStream stream;
+        try {
+            stream = new FileOutputStream(file);
+        } catch (FileNotFoundException | RuntimeException e) {
+            clearCapturedSnapshotByIdentity(chip, snapshot);
+            throw e;
+        }
+        return new OpenedRecordingStream(stream, snapshot);
+    }
+
+    /**
+     * The step that takes ownership of an already-opened raw log stream and
+     * snapshot to build the recording writer around them. Thrown exceptions
+     * propagate as {@link IOException} (or {@link RuntimeException}); the caller
+     * owns closing the stream exactly once on the failure path.
+     */
+    @FunctionalInterface
+    public interface RecordingWriterFactory {
+
+        /**
+         * Construct the writer around the given opened stream and recording-start
+         * snapshot.
+         *
+         * @param stream the already-opened raw log stream (stream ownership passes
+         *               to the writer only if this returns normally)
+         * @param snapshot the frozen recording-start snapshot
+         * @throws IOException if the writer cannot be constructed
+         */
+        void construct(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) throws IOException;
+    }
+
+    /**
+     * Open the raw log stream (freezing the recording-start snapshot onto the
+     * chip), then hand it to the given writer factory. If the writer constructor
+     * throws after the stream was successfully opened, the stream is closed
+     * exactly once and the chip snapshot released so neither the leaked file
+     * handle nor stale recording metadata survives a failed start. On a normal
+     * return the writer has taken ownership of the stream and it is never closed
+     * here.
+     *
+     * @param chip the chip whose live configuration is frozen
+     * @param opened the opened stream together with its frozen snapshot
+     * @param factory the writer-construction step that takes over the stream
+     * @throws IOException if opening or writer construction fails
+     */
+    static void constructRecordingWriter(AEChip chip, OpenedRecordingStream opened, RecordingWriterFactory factory) throws IOException {
+        try {
+            factory.construct(opened.stream, opened.snapshot);
+        } catch (IOException | RuntimeException e) {
+            // The writer constructor failed before taking ownership: close the raw
+            // stream exactly once and clear the frozen chip snapshot so a later
+            // recording can never reuse a leaked file handle or stale metadata.
+            opened.closeRawStreamOnFailure(e);
+            clearCapturedSnapshotByIdentity(chip, opened.snapshot);
+            throw e;
+        }
+        opened.transferOwnership();
+        // Normal return: ownership transferred to the writer; never close here.
+    }
+
+    /**
+     * Close a raw log stream, suppressing any {@link IOException} from close.
+     *
+     * @param stream the stream to close
+     */
+    static void closeQuietly(FileOutputStream stream) {
+        if (stream == null) {
+            return;
+        }
+        try {
+            stream.close();
+        } catch (IOException e) {
+            log.log(Level.FINE, "closing raw recording stream after failed writer construction", e);
+        }
     }
 
     /**
@@ -6846,8 +7165,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String filename;
 
         do {
-            // record files to tmp folder initially, later user will move or delete file on end of recording
-            filename = lastRecordingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.DATA_FILE_EXTENSION_AEDAT4;
+            // Record files to the temporary folder initially; the user may move or delete the file when recording ends.
+            // Use the extension for the preferred data-file version so the selected format (e.g. AEDAT-2
+            // or AEDZ) is actually honored; previously this was hardcoded to .aedat4, which made startRecording
+            // route to AEDAT-4 regardless of the preference.
+            filename = lastRecordingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.extensionForVersion(dataFileVersionNum);
             File lf = new File(filename);
             if (!lf.isFile()) {
                 succeeded = true;
@@ -7054,20 +7376,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + recordingFile);
                 final boolean wasAedat4 = aedat4RecordingOutputStream != null;
+                final boolean wasAedz = aedzRecordingOutputStream != null;
                 final String preferredSaveExt = wasAedat4
                         ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4
-                        : AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
-                Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream : recordingOutputStream;
-                synchronized (streamLock) {
-                    setRecordingEnabled(false);
-                    if (aedat4RecordingOutputStream != null) {
-                        aedat4RecordingOutputStream.close();
-                        fileInfo = aedat4RecordingOutputStream.toString();
-                        aedat4RecordingOutputStream = null;
-                    } else {
-                        recordingOutputStream.close();
-                        fileInfo = recordingOutputStream.toString();
+                        : (wasAedz
+                        ? AEDataFile.DATA_FILE_EXTENSION_AEDZ
+                        : AEDataFile.DATA_FILE_EXTENSION_AEDAT2);
+                Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
+                        : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
+                final RecordingConfigurationSnapshot stoppingSnapshot = activeRecordingSnapshot;
+                try {
+                    synchronized (streamLock) {
+                        setRecordingEnabled(false);
+                        if (aedat4RecordingOutputStream != null) {
+                            aedat4RecordingOutputStream.close();
+                            fileInfo = aedat4RecordingOutputStream.toString();
+                            aedat4RecordingOutputStream = null;
+                        } else if (aedzRecordingOutputStream != null) {
+                            aedzRecordingOutputStream.close();
+                            fileInfo = aedzRecordingOutputStream.toString();
+                            aedzRecordingOutputStream = null;
+                        } else {
+                            recordingOutputStream.close();
+                            fileInfo = recordingOutputStream.toString();
+                        }
                     }
+                } finally {
+                    // Close failures must not retain stale recording metadata, and a
+                    // newer owner-installed snapshot must survive this stop.
+                    releaseActiveRecordingSnapshot(stoppingSnapshot);
                 }
                 // if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
 
@@ -7092,6 +7429,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     for (String ext : new String[]{
                         AEDataFile.DATA_FILE_EXTENSION_AEDAT4,
                         AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
+                        AEDataFile.DATA_FILE_EXTENSION_AEDZ,
                         AEDataFile.DATA_FILE_EXTENSION,
                         AEDataFile.OLD_DATA_FILE_EXTENSION}) {
                         if (fnLower.endsWith(ext)) {
@@ -9351,13 +9689,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return recordingDataFileVersion;
     }
 
-    public void setRecordingDataFileVersion(String recordingDataFileVersion) {
-        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2.equals(recordingDataFileVersion)
-                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(recordingDataFileVersion)) {
-            this.recordingDataFileVersion = recordingDataFileVersion;
-        } else {
-            this.recordingDataFileVersion = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+    /**
+     * Validate a requested recording data-file version and return the value to
+     * use, defaulting any unrecognised (or null/empty) input to AEDAT-4. This is
+     * the exact decision {@link #setRecordingDataFileVersion(String)} applies;
+     * extracted as a package-private static so the headless probe can verify the
+     * selection/default without constructing an {@link AEViewer} (a JFrame).
+     *
+     * @param version the requested data-file version string
+     * @return the accepted version, or {@link AEDataFile#DATA_FILE_VERSION_NUMBER_AEDAT4}
+     */
+    static String normalizeRecordingDataFileVersion(String version) {
+        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2.equals(version)
+                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version)
+                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(version)) {
+            return version;
         }
+        return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+    }
+
+    public void setRecordingDataFileVersion(String recordingDataFileVersion) {
+        this.recordingDataFileVersion = normalizeRecordingDataFileVersion(recordingDataFileVersion);
         prefs.put("AEViewer.loggingDataFileVersion", this.recordingDataFileVersion);
     }
 

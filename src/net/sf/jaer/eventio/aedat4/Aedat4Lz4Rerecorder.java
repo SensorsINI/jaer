@@ -211,7 +211,7 @@ public final class Aedat4Lz4Rerecorder {
                     tEnd = meta[2];
                 }
 
-                long outPacketOffset = out.position();
+                long outPacketOffset = out.position() + 8L;
                 ByteBuffer outHdr = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
                 outHdr.putInt(streamId);
                 outHdr.putInt(recompressed.length);
@@ -235,7 +235,7 @@ public final class Aedat4Lz4Rerecorder {
             }
 
             long tablePosition = out.position();
-            byte[] ftab = buildFileDataTable(defs);
+            byte[] ftab = Aedat4Compression.compress(buildFileDataTable(defs), compression);
             out.write(ByteBuffer.wrap(ftab));
             byte[] patched = buildIOHeader(compression, tablePosition, infoNode);
             if (patched.length != outHeader.length) {

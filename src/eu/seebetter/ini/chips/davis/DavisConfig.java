@@ -231,17 +231,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                 if (isBatchEditOccurring()) {
                     return;
                 }
-                if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
-                    final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
-
-                    try {
-                        final SPIConfigBit gsBit = (SPIConfigBit) gsObs;
-
-                        fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 142, (gsBit.isSet()) ? (1) : (0));
-                    } catch (final HardwareInterfaceException e) {
-                        net.sf.jaer.biasgen.Biasgen.log.warning("On GS update() caught " + e.toString());
-                    }
-                }
+                updateGlobalShutterChipBias((SPIConfigBit) gsObs);
             }
         });
 
@@ -1364,6 +1354,35 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
     public void setGlobalShutter(final boolean val) {
         globalShutter.set(val);
+    }
+
+    /**
+     * Keeps the chip-chain global-shutter bit in sync with APS.GlobalShutter on
+     * the real hardware, outside batch edit. Called by the APS.GlobalShutter
+     * observer.
+     *
+     * Default (ordinary DAVIS) behaviour writes the legacy chip-chain address
+     * 142, to which the physical DAVIS global-shutter control is wired.
+     * Subclasses that repurpose address 142 (e.g. SciDVS uses it for
+     * Chip.ResetShorted) override this to synchronize a real chip bit instead,
+     * so the parent's write can never corrupt a repurposed address such as
+     * ResetShorted — regardless of java.util.Observable's reverse notification
+     * order.
+     *
+     * Null hardware is tolerated and results in a no-op.
+     *
+     * @param gsBit the APS.GlobalShutter bit that changed.
+     */
+    protected void updateGlobalShutterChipBias(final SPIConfigBit gsBit) {
+        if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+            final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+
+            try {
+                fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 142, (gsBit.isSet()) ? (1) : (0));
+            } catch (final HardwareInterfaceException e) {
+                net.sf.jaer.biasgen.Biasgen.log.warning("On GS update() caught " + e.toString());
+            }
+        }
     }
 
     @Override

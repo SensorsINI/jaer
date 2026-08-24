@@ -1461,6 +1461,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         synchronized (aePacketRawPool) {
             aePacketRawPool.allocateMemory();
             packetBundlePool.reset();
+            eventCounter = 0;
+            realTimeEventCounterStart = 0;
         }
     }
 

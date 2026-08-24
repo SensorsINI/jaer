@@ -420,7 +420,7 @@ public class DVXplorer extends AETemporalConstastRetina {
             spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2);
         }
             
-        if (!isMipiCX3Device()) {               
+        if (!isMipiCX3Device()) {
             // If not MipiCX3 device, set DVX_EXTINPUT
             spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_RISING_EDGES, 0);
             spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_FALLING_EDGES, 0);
