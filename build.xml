@@ -52,10 +52,14 @@ macOS
   install-macos-libusb    Homebrew libusb on Apple Silicon (also runs from ant run).
                           Skip: -Dskip.macos.libusb=true
 
-Release / installers    (see README-releasing-tagging.md)
-  install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
+Releases
+  See README-releasing-tagging.md. Local ant release is unsigned.
+  Windows Authenticode is GitHub Actions + SignPath (not a local Ant sign).
   release                 confirm VERSION.txt, splash, clean/jar, then install4jc
-  release-windows-ci      Windows-only media, no confirm (SignPath CI)
+  release-windows-ci      Windows-only media, no confirm (used by GitHub Actions)
+  signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
+                          Policy: -Dsignpath.policy=test-signing2|release-signing
+  install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
   generate-splash         VERSION.txt overlay on splash PNGs
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
   upload-release-notes    GitHub Release body from release-notes/ (needs gh)
@@ -875,6 +879,26 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <echo message="${line.separator}Windows install4j media build finished for ${jaer.version}."/>
         <echo message="Output: currentInstallers/${jaer.version}/jAER_windows-x64_*.exe"/>
         <echo message="See README-releasing-tagging.md (SignPath Windows CI)."/>
+    </target>
+
+    <!-- Remote GitHub Actions: SignPath signs only runner-built Windows media. Default policy
+         is test-signing2. Use release-signing only after that policy is ACTIVE and VALID. -->
+    <property name="signpath.policy" value="test-signing2"/>
+
+    <target name="signpath-ci"
+            description="Trigger GitHub Actions SignPath Windows signing (gh workflow run).">
+        <exec executable="gh" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="workflow"/>
+            <arg value="run"/>
+            <arg value="sign-windows-test.yml"/>
+            <arg value="-f"/>
+            <arg value="signing_policy=${signpath.policy}"/>
+        </exec>
+        <echo message="Triggered Sign Windows (SignPath) with signing_policy=${signpath.policy}."/>
+        <echo message="Watch:  gh run watch"/>
+        <echo message="Approve the SignPath request as yourself (not CI builds)."/>
+        <echo message="Do not use release-signing until that policy is ACTIVE and the certificate is VALID."/>
+        <echo message="See README-releasing-tagging.md"/>
     </target>
 
     <target name="jaer-sign-jar" depends="jar">
