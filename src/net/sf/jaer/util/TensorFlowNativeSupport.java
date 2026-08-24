@@ -7,15 +7,17 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLClassLoader;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,8 +32,8 @@ import javax.swing.SwingUtilities;
  * <p>
  * Large {@code tensorflow-core-native-*-&lt;os&gt;.jar} files are omitted from installers
  * to shrink media size. On first use this helper downloads the current-OS jar from Maven
- * Central into {@code lib/} (if writable) or {@code ~/.jaer/lib/}, adds it to the
- * application classpath when possible, and otherwise asks the user to restart jAER.
+ * Central into {@code lib/} (if writable) or {@code ~/.jaer/lib/}, verifies its pinned
+ * SHA-256 digest, and asks the user to restart jAER.
  */
 public final class TensorFlowNativeSupport {
 
@@ -41,9 +43,16 @@ public final class TensorFlowNativeSupport {
     public static final String TF_VERSION = "1.0.0-rc.2";
 
     private static final String MAVEN_DIR
-            = "https://repo1.maven.org/maven2/org/tensorflow/tensorflow-core-native/" + TF_VERSION + "/";
+            = "https://repo.maven.apache.org/maven2/org/tensorflow/tensorflow-core-native/"
+                    + TF_VERSION + "/";
 
-    private static final AtomicBoolean classpathAugmented = new AtomicBoolean(false);
+    /** SHA-256 of the exact TensorFlow Java native artifacts published by Maven Central. */
+    private static final Map<String, String> PINNED_SHA256_BY_CLASSIFIER = Map.of(
+            "windows-x86_64", "8367da64f3f29c107d6001eafbbdc499927c94c7e4f459685c84f2906e197438",
+            "macosx-arm64", "629bafa67bc30ca47681d69c85f84e7b617210b49cf65b1bc10634d573d75cd0",
+            "macosx-x86_64", "cd269c61e0cabc80cbc36c0f0c75091118b5495e55ef03c42461ad617f8ec207",
+            "linux-arm64", "200e3224de93ada2734c772cb5a7d6b7a215b6e81b6784793a1de15e1950c466",
+            "linux-x86_64", "33a2f923c6f1c342758e713b9badf889d6bd0be26df4799719e6b748ff524b16");
 
     private TensorFlowNativeSupport() {
     }
@@ -129,14 +138,11 @@ public final class TensorFlowNativeSupport {
     }
 
     /**
-     * Adds previously downloaded TensorFlow native jars under {@code ~/.jaer/lib}.
-     * Only expected {@code tensorflow-core-native-&lt;version&gt;-&lt;os&gt;.jar}
-     * names are added. Call early from {@code JAERViewer.main}.
+     * Verifies previously downloaded TensorFlow native jars under {@code ~/.jaer/lib}.
+     * The historical method name is retained as public API, but startup never mutates a
+     * live class loader. Invalid artifacts are deleted and valid artifacts require restart.
      */
     public static void installDownloadedJarsOnClasspath() {
-        if (!classpathAugmented.compareAndSet(false, true)) {
-            return;
-        }
         File userLib = userLibDir();
         if (!userLib.isDirectory()) {
             return;
@@ -146,32 +152,22 @@ public final class TensorFlowNativeSupport {
             return;
         }
         for (File jar : jars) {
-            if (!isAllowedNativeJarName(jar.getName())) {
+            String expectedSha256 = expectedSha256ForFileName(jar.getName());
+            if (expectedSha256 == null) {
                 log.warning("Skipping unexpected jar (not a known TensorFlow native artifact): "
                         + jar.getAbsolutePath());
                 continue;
             }
-            try {
-                addJarToClasspath(jar);
-                log.info("Added optional jar to classpath: " + jar.getAbsolutePath());
-            } catch (Exception ex) {
-                log.log(Level.WARNING, "Could not add optional jar " + jar + ": " + ex, ex);
+            if (verifyInstalledJar(jar, expectedSha256, "startup scan")) {
+                log.info("Verified optional TensorFlow native jar for restart: "
+                        + jar.getAbsolutePath());
             }
         }
     }
 
     /** Only TensorFlow platform native jars downloaded by this helper. */
     static boolean isAllowedNativeJarName(String fileName) {
-        if (fileName == null) {
-            return false;
-        }
-        String n = fileName.toLowerCase(Locale.ROOT);
-        String expected = nativeJarFileName().toLowerCase(Locale.ROOT);
-        if (n.equals(expected)) {
-            return true;
-        }
-        String prefix = ("tensorflow-core-native-" + TF_VERSION + "-").toLowerCase(Locale.ROOT);
-        return n.startsWith(prefix) && n.endsWith(".jar") && !n.contains("..");
+        return expectedSha256ForFileName(fileName) != null;
     }
 
     /**
@@ -204,15 +200,6 @@ public final class TensorFlowNativeSupport {
         // Jar may already sit in lib/ but not yet on this JVM's classpath (e.g. just downloaded).
         File existing = findLocalNativeJar();
         if (existing != null && existing.isFile()) {
-            try {
-                addJarToClasspath(existing);
-                if (isNativePresent()) {
-                    log.info("Loaded TensorFlow natives from " + existing.getAbsolutePath());
-                    return true;
-                }
-            } catch (Exception ex) {
-                log.log(Level.WARNING, "Found " + existing + " but could not load it: " + ex, ex);
-            }
             promptRestart(parent, existing);
             return false;
         }
@@ -249,18 +236,6 @@ public final class TensorFlowNativeSupport {
             return false;
         }
 
-        try {
-            addJarToClasspath(dest);
-            if (isNativePresent()) {
-                JOptionPane.showMessageDialog(parent,
-                        "<html>Downloaded and loaded:<br><code>" + dest.getAbsolutePath() + "</code>",
-                        "TensorFlow natives ready",
-                        JOptionPane.INFORMATION_MESSAGE);
-                return true;
-            }
-        } catch (Exception ex) {
-            log.log(Level.WARNING, "Download OK but classpath add failed: " + ex, ex);
-        }
         promptRestart(parent, dest);
         return false;
     }
@@ -293,9 +268,10 @@ public final class TensorFlowNativeSupport {
 
     private static File findLocalNativeJar() {
         String name = nativeJarFileName();
+        String expectedSha256 = expectedSha256ForClassifier(platformClassifier());
         for (File dir : candidateLibDirs()) {
             File f = new File(dir, name);
-            if (f.isFile()) {
+            if (f.isFile() && verifyInstalledJar(f, expectedSha256, "local discovery")) {
                 return f;
             }
         }
@@ -335,6 +311,7 @@ public final class TensorFlowNativeSupport {
         File dir = chooseWritableLibDir();
         File dest = new File(dir, jarName);
         File partial = new File(dir, jarName + ".partial");
+        String expectedSha256 = expectedSha256ForClassifier(platformClassifier());
 
         JProgressBar bar = new JProgressBar(0, 100);
         bar.setStringPainted(true);
@@ -354,6 +331,7 @@ public final class TensorFlowNativeSupport {
         Thread worker = new Thread(() -> {
             HttpURLConnection conn = null;
             try {
+                Files.deleteIfExists(partial.toPath());
                 URL url = new URL(urlString);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(30000);
@@ -383,13 +361,9 @@ public final class TensorFlowNativeSupport {
                         });
                     }
                 }
-                if (dest.exists() && !dest.delete()) {
-                    throw new Exception("Could not replace existing " + dest);
-                }
-                if (!partial.renameTo(dest)) {
-                    Files.move(partial.toPath(), dest.toPath());
-                }
-                log.info("Downloaded TensorFlow natives to " + dest.getAbsolutePath());
+                verifyAndPromote(partial, dest, expectedSha256);
+                log.info("Downloaded and SHA-256 verified TensorFlow natives at "
+                        + dest.getAbsolutePath());
             } catch (Exception ex) {
                 error[0] = ex;
                 try {
@@ -422,95 +396,108 @@ public final class TensorFlowNativeSupport {
     }
 
     /**
-     * Best-effort add of a jar to application classloaders (install4j custom loader,
-     * context loader, and system loader). Java 8 URLClassLoader or Java 9+ UCP / instrumentation.
+     * Retained public API for callers compiled against older jAER releases. Runtime
+     * class-loader mutation is intentionally disabled; verified installs are restart-only.
      */
     public static void addJarToClasspath(File jar) throws Exception {
-        URL url = jar.toURI().toURL();
-        Exception last = null;
-        boolean any = false;
-        for (ClassLoader cl : candidateClassLoaders()) {
-            if (cl == null) {
-                continue;
-            }
-            try {
-                if (addUrlToLoader(cl, url)) {
-                    any = true;
-                }
-            } catch (Exception ex) {
-                last = ex;
-            }
-        }
-        if (any) {
-            return;
-        }
-        if (last != null) {
-            throw new Exception(
-                    "Cannot add jar to classpath on this JVM without restart. Saved at " + jar.getAbsolutePath(),
-                    last);
-        }
         throw new Exception(
-                "Cannot add jar to classpath on this JVM without restart. Saved at " + jar.getAbsolutePath());
+                "Runtime class-loader mutation is disabled. Restart jAER to use "
+                        + jar.getAbsolutePath());
     }
 
-    private static boolean addUrlToLoader(ClassLoader cl, URL url) throws Exception {
-        if (cl instanceof URLClassLoader) {
-            Method addURL = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
-            addURL.setAccessible(true);
-            addURL.invoke(cl, url);
-            return true;
+    private static String expectedSha256ForClassifier(String classifier) {
+        String digest = PINNED_SHA256_BY_CLASSIFIER.get(classifier);
+        if (digest == null) {
+            throw new IllegalStateException("No SHA-256 pin for TensorFlow classifier " + classifier);
         }
-        try {
-            Method append = cl.getClass().getDeclaredMethod("appendToClassPathForInstrumentation", String.class);
-            append.setAccessible(true);
-            append.invoke(cl, new File(url.toURI()).getAbsolutePath());
-            return true;
-        } catch (NoSuchMethodException ignore) {
-            // fall through
+        return digest;
+    }
+
+    private static String expectedSha256ForFileName(String fileName) {
+        if (fileName == null) {
+            return null;
         }
-        // AppClassLoader / install4j: URLClassPath via getURLClassPath or ucp field
-        ReflectiveOperationException last = null;
-        for (String methodName : new String[]{"getURLClassPath", "getUcp"}) {
-            try {
-                Method getUcp = cl.getClass().getDeclaredMethod(methodName);
-                getUcp.setAccessible(true);
-                Object ucp = getUcp.invoke(cl);
-                Method addURL = ucp.getClass().getDeclaredMethod("addURL", URL.class);
-                addURL.setAccessible(true);
-                addURL.invoke(ucp, url);
-                return true;
-            } catch (ReflectiveOperationException ex) {
-                last = ex;
+        for (Map.Entry<String, String> pin : PINNED_SHA256_BY_CLASSIFIER.entrySet()) {
+            String expectedName = "tensorflow-core-native-" + TF_VERSION + "-"
+                    + pin.getKey() + ".jar";
+            if (expectedName.equalsIgnoreCase(fileName)) {
+                return pin.getValue();
             }
         }
+        return null;
+    }
+
+    private static boolean verifyInstalledJar(File jar, String expectedSha256, String context) {
         try {
-            java.lang.reflect.Field ucpField = findField(cl.getClass(), "ucp");
-            if (ucpField != null) {
-                ucpField.setAccessible(true);
-                Object ucp = ucpField.get(cl);
-                Method addURL = ucp.getClass().getDeclaredMethod("addURL", URL.class);
-                addURL.setAccessible(true);
-                addURL.invoke(ucp, url);
+            String actualSha256 = sha256(jar);
+            if (expectedSha256.equals(actualSha256)) {
                 return true;
             }
-        } catch (ReflectiveOperationException ex) {
-            last = ex;
-        }
-        if (last != null) {
-            throw last;
+            IOException mismatch = new IOException("SHA-256 integrity check failed during "
+                    + context + " for " + jar + ": expected " + expectedSha256
+                    + " but found " + actualSha256);
+            deleteRejectedArtifacts(jar);
+            log.log(Level.WARNING, mismatch.getMessage(), mismatch);
+        } catch (Exception ex) {
+            deleteRejectedArtifacts(jar);
+            log.log(Level.WARNING, "Could not verify TensorFlow native jar during "
+                    + context + ": " + jar, ex);
         }
         return false;
     }
 
-    private static java.lang.reflect.Field findField(Class<?> type, String name) {
-        Class<?> c = type;
-        while (c != null) {
-            try {
-                return c.getDeclaredField(name);
-            } catch (NoSuchFieldException e) {
-                c = c.getSuperclass();
+    private static void verifyAndPromote(File partial, File destination, String expectedSha256)
+            throws Exception {
+        String actualSha256 = sha256(partial);
+        if (!expectedSha256.equals(actualSha256)) {
+            deleteRejectedArtifacts(partial, destination);
+            throw new IOException("SHA-256 integrity check failed for " + partial
+                    + ": expected " + expectedSha256 + " but found " + actualSha256);
+        }
+
+        try {
+            Files.move(partial.toPath(), destination.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException ex) {
+            // Same-directory move: no byte copy, and REPLACE_EXISTING avoids partial output.
+            Files.move(partial.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        String promotedSha256 = sha256(destination);
+        if (!expectedSha256.equals(promotedSha256)) {
+            deleteRejectedArtifacts(partial, destination);
+            throw new IOException("SHA-256 integrity check failed after promotion for "
+                    + destination + ": expected " + expectedSha256 + " but found "
+                    + promotedSha256);
+        }
+    }
+
+    private static String sha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream in = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
+            byte[] buffer = new byte[64 * 1024];
+            int count;
+            while ((count = in.read(buffer)) >= 0) {
+                digest.update(buffer, 0, count);
             }
         }
-        return null;
+        StringBuilder hexadecimal = new StringBuilder(64);
+        for (byte value : digest.digest()) {
+            hexadecimal.append(String.format("%02x", value & 0xff));
+        }
+        return hexadecimal.toString();
+    }
+
+    private static void deleteRejectedArtifacts(File... files) {
+        for (File file : files) {
+            if (file == null) {
+                continue;
+            }
+            try {
+                Files.deleteIfExists(file.toPath());
+            } catch (IOException ex) {
+                log.log(Level.WARNING, "Could not delete rejected TensorFlow artifact " + file, ex);
+            }
+        }
     }
 }
