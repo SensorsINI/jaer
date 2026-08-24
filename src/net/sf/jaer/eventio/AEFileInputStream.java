@@ -153,7 +153,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * Serializable IN/OUT/other marks cached in preferences by absolute path.
      * Shared with {@link net.sf.jaer.eventio.aedat4.Aedat4FileInputStream}.
-     * Positions are stream-specific (AEDAT-2: byte offsets; AEDAT-4: event indices).
+     * Positions are event indices for both AEDAT-2 and AEDAT-4 streams.
      */
     public static class Marks implements Serializable {
 
@@ -335,37 +335,44 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // if(!openok){
         // throw new RuntimeException("cannot open preview, not enough memory");
         // }
-        try {
-            EventRaw ev = readEventForwards(); // init timestamp
-            firstTimestamp = ev.timestamp;
-            if (true == jaer3EnableFlg) {
-                if (fileSize <= chunkSizeBytes) {
-                    lastTimestamp = jaer3BufferParser.getLastTimeStamp();
-                } else { //TODO, add the code to find the last time stamp of the big files
+        if (size() == 0) {
+            firstTimestamp = 0;
+            lastTimestamp = 0;
+            mostRecentTimestamp = 0;
+            currentStartTimestamp = 0;
+        } else {
+            try {
+                EventRaw ev = readEventForwards(); // init timestamp
+                firstTimestamp = ev.timestamp;
+                if (true == jaer3EnableFlg) {
+                    if (fileSize <= chunkSizeBytes) {
+                        lastTimestamp = jaer3BufferParser.getLastTimeStamp();
+                    } else { //TODO, add the code to find the last time stamp of the big files
 //                    this.mapChunk((int)fileSize/chunkSizeBytes);
 //                    lastTimestamp = jaer3BufferParser.getLastTimeStamp();
 //                    mapChunk(0);
-                    position(size() - 2);
+                        position(size() - 2);
+                        ev = readEventForwards();
+                        lastTimestamp = ev.timestamp;
+                    }
+                } else {
+                    position(size() - 1);
                     ev = readEventForwards();
                     lastTimestamp = ev.timestamp;
                 }
-            } else {
-                position(size() - 2);
-                ev = readEventForwards();
-                lastTimestamp = ev.timestamp;
-            }
-            if (true == jaer3EnableFlg) {
-                jaer3BufferParser.setInFrameEvent(false);
-            }
-            currentStartTimestamp = firstTimestamp;
-            mostRecentTimestamp = firstTimestamp;
+                if (true == jaer3EnableFlg) {
+                    jaer3BufferParser.setInFrameEvent(false);
+                }
+                currentStartTimestamp = firstTimestamp;
+                mostRecentTimestamp = firstTimestamp;
 
-        } catch (IOException e) {
-            log.warning("couldn't read first event to set starting timestamp - maybe the file is empty?");
-        } catch (NonMonotonicTimeException e2) {
-            log.warning("On AEInputStream.init() caught " + e2.toString());
-        } finally {
-            position(0);
+            } catch (IOException e) {
+                log.warning("couldn't read first event to set starting timestamp - maybe the file is empty?");
+            } catch (NonMonotonicTimeException e2) {
+                log.warning("On AEInputStream.init() caught " + e2.toString());
+            } finally {
+                position(0);
+            }
         }
     }
 
@@ -403,11 +410,15 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             return;
         }
 //        long oldIn = savedMarks.markIn;
-        marks.markIn = savedMarks.markIn;
+        long streamSize = size();
+        marks.markIn = clamp(savedMarks.markIn, 0, streamSize);
 //        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, oldIn, marks.markIn);
 //        long oldOut = savedMarks.markOut;
-        marks.markOut = savedMarks.markOut;
-        marks.otherMarks.addAll(savedMarks.otherMarks);
+        long savedMarkOut = savedMarks.markOut == Long.MAX_VALUE ? streamSize : savedMarks.markOut;
+        marks.markOut = clamp(savedMarkOut, marks.markIn, streamSize);
+        if (savedMarks.otherMarks != null) {
+            marks.otherMarks.addAll(savedMarks.otherMarks);
+        }
         getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks); // so that AEPlayerAdvanceControlPanel computes the slider markers
         // Do not call setMarks here: AEPlayer may not have assigned aeInputStream yet.
         // AEPlayer.done() applies marks on the EDT after the stream is live.
@@ -416,6 +427,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** Current IN/OUT/other marks (for player UI after open). */
     public Marks getMarks() {
         return marks;
+    }
+
+    private static long clamp(long value, long min, long max) {
+        return Math.max(min, Math.min(value, max));
     }
 
     /**
@@ -459,7 +474,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // return jaer3fileinputstream.readEventForwards();
         // }
         try {
-            if (position == marks.markOut) { // TODO check exceptions here for marks.markOut set before marks.markIn
+            if (position >= marks.markOut) {
                 getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 if (repeat) {
                     log.fine("calling rewind at OUT marker (or end of file) in AEFileInputStream");
@@ -988,9 +1003,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @Override
     public final long size() {
         if (jaer3EnableFlg) {
-            return jaer3BufferParser.size();
+            return jaer3BufferParser == null ? 0 : jaer3BufferParser.size();
         } else {
-            return (fileSize - headerOffset) / eventSizeBytes;
+            return Math.max(0, (fileSize - headerOffset) / eventSizeBytes);
         }
     }
 
@@ -1001,14 +1016,21 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     @Override
     public final synchronized void position(long event) {
-        // if(event==size()) event=event-1;
+        long streamSize = size();
+        event = clamp(event, 0, streamSize);
+        if (streamSize == 0) {
+            position = 0;
+            return;
+        }
         int newChunkNumber;
         try {
-            if ((newChunkNumber = getChunkNumber(event)) != chunkNumber) {
+            long chunkLookupPosition = event == streamSize ? event - 1 : event;
+            if ((newChunkNumber = getChunkNumber(chunkLookupPosition)) != chunkNumber) {
                 mapChunk(newChunkNumber);
 
             }
-            byteBuffer.position((int) ((event * eventSizeBytes) % chunkSizeBytes));
+            long bufferPosition = (event - positionFromChunk(newChunkNumber)) * eventSizeBytes;
+            byteBuffer.position((int) bufferPosition);
 
             position = event;
         } catch (ClosedByInterruptException e3) {
@@ -1043,7 +1065,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     @Override
     synchronized public float getFractionalPosition() {
-        return (float) position() / size();
+        long streamSize = size();
+        return streamSize == 0 ? 0 : (float) position() / streamSize;
     }
 
     /**
@@ -1119,22 +1142,21 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Sets or clears the marked OUT position. Does nothing if trying to set
-     * marks.markOut <= marks.markIn.
+     * Sets the exclusive marked OUT position. Does nothing if trying to set
+     * marks.markOut < marks.markIn.
      *
-     * @return the marks.markIn position.
+     * @return the marks.markOut position.
      */
     @Override
     public long setMarkOut() {
-        long here = position();
-        if (here <= marks.markIn) {
+        long here = clamp(position(), 0, size());
+        if (here < marks.markIn) {
             return marks.markOut;
         }
         long old = marks.markOut;
-        marks.markOut = position();
-        marks.markOut = (marks.markOut / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
+        marks.markOut = here;
         getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, marks.markOut);
-        return marks.markIn;
+        return marks.markOut;
     }
 
     /**
@@ -1176,7 +1198,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         long oldOut = marks.markOut;
         long[] oldMarks = {oldIn, oldOut};
 
-        marks.markOut = size() - 1;
+        marks.markOut = size();
         marks.markIn = 0;
         marks.otherMarks.clear();
         long[] newMarks = {marks.markIn, marks.markOut};
@@ -1201,7 +1223,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     @Override
     public boolean isMarkOutSet() {
-        return marks.markOut != size() - 1;
+        return marks.markOut != size();
     }
 
     // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
@@ -1698,7 +1720,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         numChunks = (int) ((fileSize / chunkSizeBytes) + 1); // used to limit chunkNumber to prevent overflow of
         // position and for EOF
         log.info("fileSize=" + fileSize + " chunkSizeBytes=" + chunkSizeBytes + " numChunks=" + numChunks);
-        mapChunk(0);
+        if (fileSize > headerOffset) {
+            mapChunk(0);
+        } else {
+            byteBuffer = null;
+            position = 0;
+        }
     }
 
     /**
