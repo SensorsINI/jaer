@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
@@ -28,8 +29,9 @@ import net.sf.jaer.util.DATFileFilter;
  * without running its JOGL-bound constructor (its constructor builds a
  * {@code ChipCanvas} that requires OpenGL). The routing method only touches the
  * chip's (absent) {@code aeViewer}, so the allocated instance is sufficient to
- * exercise the production dispatch. {@code sun.misc.Unsafe.allocateInstance} is
- * a standard headless-test technique and needs no JVM flags.
+ * exercise the production dispatch. The instance is allocated via reflection
+ * (no constructor, no OpenGL) so javac never compiles against internal
+ * {@code sun.misc.Unsafe} types.
  *
  * <p>Run headlessly after {@code ant clean compile}:
  * {@code java -cp build/classes:lib/*:jars/* net.sf.jaer.eventio.AEDZRoutingDemo}
@@ -169,10 +171,14 @@ public class AEDZRoutingDemo {
     /** Allocate an {@link AEChip} without running its OpenGL-bound constructor (test-only). */
     private static AEChip allocateChip() {
         try {
-            Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            // Class.forName so javac does not compile against sun.misc.Unsafe
+            // (internal API warning). Same pattern as AEFileInputStream.closeDirectBuffer.
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            Field f = unsafeClass.getDeclaredField("theUnsafe");
             f.setAccessible(true);
-            sun.misc.Unsafe unsafe = (sun.misc.Unsafe) f.get(null);
-            return (AEChip) unsafe.allocateInstance(AEChip.class);
+            Object unsafe = f.get(null);
+            Method allocate = unsafeClass.getMethod("allocateInstance", Class.class);
+            return (AEChip) allocate.invoke(unsafe, AEChip.class);
         } catch (Exception e) {
             throw new AssertionError("could not allocate headless AEChip for routing test", e);
         }
