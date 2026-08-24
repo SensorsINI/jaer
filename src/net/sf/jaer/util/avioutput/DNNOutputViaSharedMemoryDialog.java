@@ -25,7 +25,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
@@ -41,18 +41,22 @@ import net.sf.jaer.util.MessageWithLink;
  * Modeless control window wrapping a {@link FilterPanel} for
  * {@link DNNOutputViaSharedMemory}. Parameter changes apply immediately;
  * closing hides the window and leaves publishing running.
- * Enable/disable is the bold toggle at the top; File → Remote only opens this dialog.
+ * Enable/disable is the bold toggle at the top; File → Remote only opens this window.
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  */
-public class DNNOutputViaSharedMemoryDialog extends JDialog {
+public class DNNOutputViaSharedMemoryDialog extends JFrame {
 
     private final DNNOutputViaSharedMemory filter;
     private final JToggleButton enableButton;
     private final PropertyChangeListener enabledSync;
 
     public DNNOutputViaSharedMemoryDialog(Frame parent, DNNOutputViaSharedMemory filter) {
-        super(parent, "DNN shared memory output", false);
+        super("DNN shared memory output");
         this.filter = filter;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+        if (parent != null) {
+            setIconImage(parent.getIconImage());
+        }
 
         enableButton = new JToggleButton();
         enableButton.setFont(enableButton.getFont().deriveFont(Font.BOLD));

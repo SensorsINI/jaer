@@ -24,8 +24,8 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -45,10 +45,11 @@ import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.textio.DavisTextEventFormatter;
 
 /**
- * File → Save As dialog: AEDAT-4, CSV/text, or DSEC HDF5 offline export of the
+ * File → Save As window: AEDAT-4, CSV/text, or DSEC HDF5 offline export of the
  * open recording (IN/OUT clip; preferred alternative to re-recording).
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  */
-public final class SaveAsExportDialog extends JDialog implements PropertyChangeListener {
+public final class SaveAsExportDialog extends JFrame implements PropertyChangeListener {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(SaveAsExportDialog.class);
 
@@ -92,9 +93,12 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private final List<EventFilter2D> filterEnabledListenTargets = new ArrayList<>();
 
     public SaveAsExportDialog(AEViewer viewer) {
-        super(viewer, "Save As", false);
+        super("Save As");
         this.viewer = viewer;
-        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        if (viewer != null) {
+            setIconImage(viewer.getIconImage());
+        }
         buildUi();
         loadPrefs();
         updateFormatUi();
@@ -115,17 +119,15 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
                     "Save As", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        for (Window w : viewer.getOwnedWindows()) {
-            if (w instanceof SaveAsExportDialog) {
-                SaveAsExportDialog d = (SaveAsExportDialog) w;
-                if (d.exporter == null || d.exporter.isDone()) {
-                    d.syncToOpenRecording();
-                }
-                d.updateFilterSummary();
-                d.toFront();
-                d.setVisible(true);
-                return;
+        SaveAsExportDialog existing = findForViewer(viewer);
+        if (existing != null) {
+            if (existing.exporter == null || existing.exporter.isDone()) {
+                existing.syncToOpenRecording();
             }
+            existing.updateFilterSummary();
+            existing.toFront();
+            existing.setVisible(true);
+            return;
         }
         SaveAsExportDialog d = new SaveAsExportDialog(viewer);
         d.setVisible(true);
@@ -135,13 +137,31 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         if (viewer == null) {
             return false;
         }
-        for (Window w : viewer.getOwnedWindows()) {
-            if (w instanceof SaveAsExportDialog) {
+        SaveAsExportDialog d = findForViewer(viewer);
+        return d != null && d.exporter != null && !d.exporter.isDone();
+    }
+
+    /** Disposes the Save As window for this viewer, if any. */
+    public static void disposeForViewer(AEViewer viewer) {
+        SaveAsExportDialog d = findForViewer(viewer);
+        if (d != null) {
+            d.dispose();
+        }
+    }
+
+    private static SaveAsExportDialog findForViewer(AEViewer viewer) {
+        if (viewer == null) {
+            return null;
+        }
+        for (Window w : Window.getWindows()) {
+            if (w instanceof SaveAsExportDialog && w.isDisplayable()) {
                 SaveAsExportDialog d = (SaveAsExportDialog) w;
-                return d.exporter != null && !d.exporter.isDone();
+                if (d.viewer == viewer) {
+                    return d;
+                }
             }
         }
-        return false;
+        return null;
     }
 
     private void buildUi() {

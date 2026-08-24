@@ -29,7 +29,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -46,9 +46,10 @@ import net.sf.jaer.util.MessageWithLink;
 /**
  * Modeless control window wrapping a {@link FilterPanel} for {@link ROSOutput}.
  * Parameter changes apply immediately; closing hides the window and leaves publishing running.
- * Enable/disable is the bold toggle at the top; File → Remote only opens this dialog.
+ * Enable/disable is the bold toggle at the top; File → Remote only opens this window.
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  */
-public class ROSOutputDialog extends JDialog {
+public class ROSOutputDialog extends JFrame {
 
     private final ROSOutput filter;
     private final JToggleButton enableButton;
@@ -56,9 +57,12 @@ public class ROSOutputDialog extends JDialog {
     private final PropertyChangeListener urlSync;
 
     public ROSOutputDialog(Frame parent, ROSOutput filter) {
-        super(parent, "ROS2 / Foxglove frame output", false);
+        super("ROS2 / Foxglove frame output");
         this.filter = filter;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+        if (parent != null) {
+            setIconImage(parent.getIconImage());
+        }
 
         enableButton = new JToggleButton();
         enableButton.setFont(enableButton.getFont().deriveFont(Font.BOLD));

@@ -78,6 +78,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -452,8 +453,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private JaerUpdaterFrame jaerUpdaterFrame = null;
-    /** Nonmodal File/Show file info dialog; reused while this viewer is open. */
-    private JDialog fileInfoDialog;
+    /** Nonmodal File/Show file info window; reused while this viewer is open. */
+    private JFrame fileInfoDialog;
     private JTextArea fileInfoTextArea;
     /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
     private AEViewerPreferencesDialog preferencesDialog;
@@ -6202,6 +6203,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     disposeRosOutputDialog();
                     disposeDnnSharedMemoryDialog();
                     disposeOpenCvOutputDialog();
+                    disposeFileMenuFrames();
 
                     // TODO should close biasgen window also
                     stopMe();
@@ -8532,14 +8534,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fileInfoTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
                 JScrollPane scroll = new JScrollPane(fileInfoTextArea);
                 JButton close = new JButton("Close");
-                fileInfoDialog = new JDialog(this, "Recording file info", false);
+                fileInfoDialog = new JFrame("Recording file info");
+                fileInfoDialog.setIconImage(getIconImage());
                 fileInfoDialog.getContentPane().add(scroll, BorderLayout.CENTER);
                 JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
                 buttons.add(close);
                 fileInfoDialog.getContentPane().add(buttons, BorderLayout.SOUTH);
                 close.addActionListener(e -> fileInfoDialog.setVisible(false));
                 fileInfoDialog.getRootPane().setDefaultButton(close);
-                fileInfoDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+                fileInfoDialog.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             }
             fileInfoDialog.setTitle(f != null ? "File info — " + f.getName() : "Recording file info");
             fileInfoTextArea.setText(info);
@@ -9102,6 +9105,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean isRosOutputSkipChipRendering() {
         ROSOutput r = findRosOutput();
         return r != null && r.isFilterEnabled() && r.isSkipChipRendering();
+    }
+
+    private void disposeFileMenuFrames() {
+        if (fileInfoDialog != null) {
+            fileInfoDialog.dispose();
+            fileInfoDialog = null;
+        }
+        if (preferencesDialog != null) {
+            preferencesDialog.dispose();
+            preferencesDialog = null;
+        }
+        ExportVideoDialog.disposeForViewer(this);
+        SaveAsExportDialog.disposeForViewer(this);
     }
 
     private void disposeRosOutputDialog() {

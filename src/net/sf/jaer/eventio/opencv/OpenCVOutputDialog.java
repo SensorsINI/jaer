@@ -31,7 +31,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -49,8 +49,9 @@ import net.sf.jaer.util.MessageWithLink;
 /**
  * Modeless control window wrapping a {@link FilterPanel} for {@link OpenCVOutput}.
  * Closing hides the window and leaves publishing running.
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  */
-public class OpenCVOutputDialog extends JDialog {
+public class OpenCVOutputDialog extends JFrame {
 
     private final OpenCVOutput filter;
     private final JToggleButton enableButton;
@@ -58,9 +59,12 @@ public class OpenCVOutputDialog extends JDialog {
     private final PropertyChangeListener urlSync;
 
     public OpenCVOutputDialog(Frame parent, OpenCVOutput filter) {
-        super(parent, "OpenCV camera output", false);
+        super("OpenCV camera output");
         this.filter = filter;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+        if (parent != null) {
+            setIconImage(parent.getIconImage());
+        }
 
         enableButton = new JToggleButton();
         enableButton.setFont(enableButton.getFont().deriveFont(Font.BOLD));

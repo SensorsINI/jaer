@@ -28,7 +28,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -55,12 +55,13 @@ import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
 
 /**
- * Nonmodal preferences dialog for AEViewer. First tab groups preference-backed
+ * Nonmodal preferences window for AEViewer. First tab groups preference-backed
  * AEViewer menu settings by menu section. Filters tab covers global FilterFrame /
  * FilterChain preferences (individual AEFilter property sheets come later).
  * Export/Reset tab exports, imports, or deletes the {@code /jaer} Preferences tree.
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  */
-public class AEViewerPreferencesDialog extends JDialog {
+public class AEViewerPreferencesDialog extends JFrame {
 
     private final AEViewer viewer;
     private boolean updatingUi;
@@ -104,9 +105,12 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JLabel searchMatchLabel;
 
     public AEViewerPreferencesDialog(AEViewer viewer) {
-        super(viewer, "Preferences", false);
+        super("Preferences");
         this.viewer = viewer;
         setDefaultCloseOperation(HIDE_ON_CLOSE);
+        if (viewer != null) {
+            setIconImage(viewer.getIconImage());
+        }
         buildUi();
         pack();
         setLocationRelativeTo(viewer);

@@ -17,8 +17,8 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -32,12 +32,13 @@ import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 
 /**
- * File/Export video dialog: drives {@link JaerAviWriter} to capture the rendered
+ * File/Export video window: drives {@link JaerAviWriter} to capture the rendered
  * AEViewer OpenGL view to AVI, optionally converting to MP4 with ffmpeg afterward.
+ * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
  *
  * @author tobi
  */
-public class ExportVideoDialog extends JDialog implements PropertyChangeListener {
+public class ExportVideoDialog extends JFrame implements PropertyChangeListener {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(ExportVideoDialog.class);
 
@@ -81,9 +82,12 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
     private boolean writerWasAnnotationEnabled;
 
     public ExportVideoDialog(AEViewer viewer) {
-        super(viewer, "Export video", false);
+        super("Export video");
         this.viewer = viewer;
-        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        if (viewer != null) {
+            setIconImage(viewer.getIconImage());
+        }
         buildUi();
         loadPrefs();
         applyAedatDefaults();
@@ -641,29 +645,23 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         if (viewer == null) {
             return;
         }
-        Window[] windows = viewer.getOwnedWindows();
-        for (Window w : windows) {
-            if (w instanceof ExportVideoDialog && w.isDisplayable()) {
-                w.toFront();
-                return;
-            }
+        ExportVideoDialog existing = findForViewer(viewer);
+        if (existing != null) {
+            existing.toFront();
+            return;
         }
         ExportVideoDialog d = new ExportVideoDialog(viewer);
         d.setVisible(true);
     }
 
-    /** Stops an active export recording if any owned dialog is recording. */
+    /** Stops an active export recording if any export window for this viewer is recording. */
     public static void stopActiveExport(AEViewer viewer) {
         if (viewer == null) {
             return;
         }
-        for (Window w : viewer.getOwnedWindows()) {
-            if (w instanceof ExportVideoDialog) {
-                ExportVideoDialog d = (ExportVideoDialog) w;
-                if (d.writer != null && d.writer.isRecordingActive()) {
-                    d.stopRecording(null);
-                }
-            }
+        ExportVideoDialog d = findForViewer(viewer);
+        if (d != null && d.writer != null && d.writer.isRecordingActive()) {
+            d.stopRecording(null);
         }
         // also stop writer directly if dialog closed but filter still recording from export
         JaerAviWriter w = findJaerAviWriter(viewer);
@@ -679,5 +677,29 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         }
         JaerAviWriter w = findJaerAviWriter(viewer);
         return w != null && w.isRecordingActive();
+    }
+
+    /** Stops recording if needed and disposes the export window for this viewer. */
+    public static void disposeForViewer(AEViewer viewer) {
+        stopActiveExport(viewer);
+        ExportVideoDialog d = findForViewer(viewer);
+        if (d != null) {
+            d.dispose();
+        }
+    }
+
+    private static ExportVideoDialog findForViewer(AEViewer viewer) {
+        if (viewer == null) {
+            return null;
+        }
+        for (Window w : Window.getWindows()) {
+            if (w instanceof ExportVideoDialog && w.isDisplayable()) {
+                ExportVideoDialog d = (ExportVideoDialog) w;
+                if (d.viewer == viewer) {
+                    return d;
+                }
+            }
+        }
+        return null;
     }
 }
