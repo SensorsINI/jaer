@@ -26,6 +26,8 @@ public final class SciDVSDeviceAutoDetectionDemo {
         testProbeReadsOnlyDvsGeometry();
         testProbeUsesOneNormalOpenLifecycle();
         testViewerUsesProbeBeforeRememberedChoice();
+        testSharedPidKeyUsesSerialAfterProbeOpen();
+        testNonSciDvsFingerprintExcludesSciDvsCandidate();
         testBindingInstallsReverseAssociationFirst();
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION ASSERTIONS=" + assertions);
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION PASS");
@@ -101,6 +103,29 @@ public final class SciDVSDeviceAutoDetectionDemo {
                 "positive fingerprint selects SciDVS directly");
         require(method.contains("catch (HardwareInterfaceException"),
                 "probe failure falls back to existing chooser path");
+    }
+
+    private static void testSharedPidKeyUsesSerialAfterProbeOpen() throws Exception {
+        String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
+        String method = between(source,
+                "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
+                "private Class<? extends AEChip> loadRememberedLiveChip");
+        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
+        int deviceKey = method.indexOf("liveDevicePromptKey(hw, ids)");
+        require(probe >= 0 && deviceKey > probe,
+                "shared-PID device key is resolved after the geometry probe opens the interface");
+    }
+
+    private static void testNonSciDvsFingerprintExcludesSciDvsCandidate() throws Exception {
+        String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
+        String method = between(source,
+                "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
+                "private Class<? extends AEChip> loadRememberedLiveChip");
+        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
+        int excludeSciDvs = method.indexOf("found.remove(SciDVS.class)");
+        int currentMatch = method.indexOf("boolean currentIsMatch");
+        require(probe >= 0 && excludeSciDvs > probe && excludeSciDvs < currentMatch,
+                "a successful non-SciDVS fingerprint excludes SciDVS before prompt suppression");
     }
 
     private static void testBindingInstallsReverseAssociationFirst() throws Exception {

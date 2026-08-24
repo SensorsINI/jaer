@@ -1364,7 +1364,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (!ids.isKnown()) {
             return;
         }
-        String deviceKey = liveDevicePromptKey(hw, ids);
         java.util.List<Class<? extends AEChip>> found
                 = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
         if (found.isEmpty()) {
@@ -1389,6 +1388,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface) {
             try {
                 if (((DAViSFX3HardwareInterface) hw).probeSciDVSByFpgaGeometry()) {
+                    // The probe opens the interface, making its USB serial descriptor
+                    // available so shared-VID/PID cameras do not share one preference.
+                    String deviceKey = liveDevicePromptKey(hw, ids);
                     liveChipOfferPromptedKeys.add(deviceKey);
                     addChipClassesToMenu(java.util.Collections.singletonList(SciDVS.class));
                     if (!SciDVS.class.equals(getAeChipClass())) {
@@ -1397,11 +1399,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     return;
                 }
+                // A successful non-SciDVS fingerprint rules out only SciDVS. Keep
+                // the remaining DAVIS candidates for remembered choice or chooser.
+                found = new java.util.ArrayList<>(found);
+                found.remove(SciDVS.class);
             } catch (HardwareInterfaceException | RuntimeException e) {
-                log.info("Could not read FPGA DVS geometry for USB device " + deviceKey
+                log.info("Could not read FPGA DVS geometry for USB device " + ids.key()
                         + "; retaining normal AEChip selection: " + e.getMessage());
             }
         }
+        // Resolve the key after the geometry probe's normal open lifecycle. Before
+        // open, getStringDescriptors() cannot distinguish cameras sharing VID/PID.
+        String deviceKey = liveDevicePromptKey(hw, ids);
         final java.util.List<Class<? extends AEChip>> matches = found;
 
         // Per-device remembered choice (survives restart / re-plug).
