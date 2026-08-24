@@ -251,6 +251,19 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
         updateEstimates();
     }
 
+    private static float tweakOrZero(FloatSupplier getter) {
+        try {
+            return getter.getAsFloat();
+        } catch (UnsupportedOperationException e) {
+            return 0f;
+        }
+    }
+
+    @FunctionalInterface
+    private interface FloatSupplier {
+        float getAsFloat();
+    }
+
     protected void setFileModified() {
         if (chip != null && chip.getAeViewer() != null && chip.getAeViewer().getBiasgenFrame() != null) {
             chip.getAeViewer().getBiasgenFrame().setFileModified(true);
@@ -263,10 +276,10 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
         }
         updatingFromConfig = true;
         try {
-            thresholdTweaker.setValue(tweaks.getThresholdTweak());
-            onOffBalanceTweaker.setValue(tweaks.getOnOffBalanceTweak());
-            bandwidthTweaker.setValue(tweaks.getBandwidthTweak());
-            maxFiringRateTweaker.setValue(tweaks.getMaxFiringRateTweak());
+            thresholdTweaker.setValue(tweakOrZero(() -> tweaks.getThresholdTweak()));
+            onOffBalanceTweaker.setValue(tweakOrZero(() -> tweaks.getOnOffBalanceTweak()));
+            bandwidthTweaker.setValue(tweakOrZero(() -> tweaks.getBandwidthTweak()));
+            maxFiringRateTweaker.setValue(tweakOrZero(() -> tweaks.getMaxFiringRateTweak()));
         } finally {
             updatingFromConfig = false;
         }
@@ -348,7 +361,19 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
     }
 
     static JScrollPane widthTrackingScrollPane(JComponent content) {
-        JScrollPane scroll = new JScrollPane(new WidthTrackingTopView(content));
+        return scrollPane(content, true);
+    }
+
+    /**
+     * Vertical scroll that shrinks with a narrow viewport but does not stretch
+     * form controls across a wide Biasgen frame.
+     */
+    static JScrollPane compactScrollPane(JComponent content) {
+        return scrollPane(content, false);
+    }
+
+    private static JScrollPane scrollPane(JComponent content, boolean expandToViewport) {
+        JScrollPane scroll = new JScrollPane(new WidthTrackingTopView(content, expandToViewport));
         scroll.setBorder(null);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -360,10 +385,12 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
     static final class WidthTrackingTopView extends JPanel implements Scrollable {
 
         private final JComponent content;
+        private final boolean expandToViewport;
 
-        WidthTrackingTopView(JComponent content) {
+        WidthTrackingTopView(JComponent content, boolean expandToViewport) {
             super(new BorderLayout());
             this.content = content;
+            this.expandToViewport = expandToViewport;
             add(content, BorderLayout.NORTH);
         }
 
@@ -392,7 +419,13 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
 
         @Override
         public boolean getScrollableTracksViewportWidth() {
-            return true;
+            if (expandToViewport) {
+                return true;
+            }
+            if (getParent() instanceof javax.swing.JViewport vp) {
+                return vp.getWidth() < getPreferredSize().width;
+            }
+            return false;
         }
 
         @Override

@@ -724,7 +724,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             panel.revalidate();
             return panel;
         }
-        private float bandwidth = 1, maxFiringRate = 1, threshold = 1, onOffBalance = 1;
+        private float bandwidth = 0, maxFiringRate = 0, threshold = 0, onOffBalance = 0;
 
         /**
          * Tweaks bandwidth around nominal value.

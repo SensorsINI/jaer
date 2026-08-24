@@ -71,11 +71,15 @@ and <code>eventRateBoundsHysteresisFactor</code>.</li>
 <code>ignoreEventsAfterBiasChangeMs</code> limit how fast biases move (bias changes cause noise).</li>
 <li><code>revertAllTweaks</code> returns threshold/bandwidth/refractory tweaks to 0.</li>
 </ol>
-<p>Enclosed <code>SpatioTemporalCorrelationFilter</code> estimates noise for SNR goals
-(<code>correlationTimeS</code>). With <code>outputRawInput</code> (default), the live
-packet is passed through and <code>filteredOut</code> flags are cleared after the
-noise estimate. <code>showAnnotation</code> overlays state. Optional CSV logging
-from FilterFrame Options.</p>
+<p>Enclosed <code>SpatioTemporalCorrelationFilter</code> runs only for
+<code>TargetSNR</code> / <code>LimitNoise</code> (or when
+<code>outputRawInput</code> is unselected). <code>correlationTimeS</code> sets
+its window. With <code>outputRawInput</code> (default), the live packet is
+passed through. <code>showAnnotation</code> overlays a short active label;
+<code>showDetailedInformation</code> adds rates, SNR, and tweak bars. Optional
+CSV logging from FilterFrame Options.</p>
+<h3>Reference</h3>
+<p>T. Delbruck, R. Graca, and M. Paluch, “<a href="https://doi.org/10.1109/CVPRW53098.2021.00146">Feedback control of event cameras</a>,” IEEE, Jun. 2021. doi: 10.1109/cvprw53098.2021.00146</p>
 </body>
 </html>
 """)
@@ -110,6 +114,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     private long lastBiasChangeTimeMs = 0;
     private float tweakStepAmount = getFloat("tweakStepAmount", .01f);
     private boolean showAnnotation = getBoolean("showAnnotation", true);
+    private boolean showDetailedInformation = getBoolean("showDetailedInformation", false);
     protected boolean outputRawInput = getBoolean("outputRawInput", true);
     private EventRateEstimator denoisedRateEstimator, inputRateEstimator;
     private SpatioTemporalCorrelationFilter noiseFilter;
@@ -222,6 +227,8 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(policy, "tweakStepAmount", "fraction by which to tweak bias by each step, e.g. 0.1 means tweak bias current by 10% for each step");
         setPropertyTooltip(policy, "minCommandIntervalMs", "minimum time in ms between changing biases; avoids noise from changing biases too frequently");
         setPropertyTooltip(policy, "ignoreEventsAfterBiasChangeMs", "time interval in ms to ignore events after bias change (which causes noise events)");
+        setPropertyTooltip(type, "filterEnabled",
+                "Enable closed-loop DVS bias control (same instance as Filter → DVSBiasController)");
         setPropertyTooltip(type, "goal", "<html>Overall goal of bias control"
                 + "<ul> "
                 + "<li> <b>BoundEventRate</b>: bound event rate between two limits (threshold)</li>"
@@ -229,9 +236,11 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                 + "<li> <b>TargetSNR</b>: control bandwidth to target a specific SNR</li>"
                 + "<li> <b>LimitNoise</b>: control bandwidth to a per-pixel noise limit</li>"
                 + "</ul>");
-        setPropertyTooltip(display, "showAnnotation", "enables showing controller state and actions on viewer");
+        setPropertyTooltip(display, "showAnnotation", "overlay a short 'DVSBiasController active' label (or full state if showDetailedInformation is selected)");
+        setPropertyTooltip(display, "showDetailedInformation", "overlay goal, rates, SNR, and tweak bars; if unselected, only 'DVSBiasController active' is shown");
         setPropertyTooltip(options, "writeLogEnabled", "writes a log file called DVSBiasController-xxx.txt to the startup folder (root of jaer) to allow analyzing controller dynamics");
         setPropertyTooltip(options, "correlationTimeS", "sets correlation time for noise filter");
+        applyNoiseFilterEnablement();
     }
 
     public static DVSBiasController find(AEChip chip) {
@@ -332,13 +341,18 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         long dtMs = System.currentTimeMillis() - lastBiasChangeTimeMs;
         if (dtMs < ignoreEventsAfterBiasChangeMs) {
             inputRateEstimator.resetFilter();
-            denoisedRateEstimator.resetFilter();
-            noiseFilter.resetFilter();
+            if (needsNoiseEstimate()) {
+                denoisedRateEstimator.resetFilter();
+                noiseFilter.resetFilter();
+            }
             return in;
         }
+        applyNoiseFilterEnablement();
         EventPacket<? extends BasicEvent> out = getEnclosedFilterChain().filterPacket(in);
         setEventRateStates();
-        setSNRState();
+        if (needsNoiseEstimate()) {
+            setSNRState();
+        }
         if (dtMs >= minCommandIntervalMs) {
             setBiases();
         }
@@ -376,12 +390,53 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         return out;
     }
 
+    /**
+     * Denoising is only needed to estimate SNR / per-pixel noise, or when the
+     * live output is the denoised packet.
+     */
+    private boolean needsNoiseEstimate() {
+        return !outputRawInput || goal == Goal.TargetSNR || goal == Goal.LimitNoise;
+    }
+
+    private void applyNoiseFilterEnablement() {
+        boolean denoise = isFilterEnabled() && needsNoiseEstimate();
+        if (noiseFilter != null && noiseFilter.isFilterEnabled() != denoise) {
+            noiseFilter.setFilterEnabled(denoise);
+            if (!denoise) {
+                noiseFilter.resetFilter();
+            }
+        }
+        if (denoisedRateEstimator != null && denoisedRateEstimator.isFilterEnabled() != denoise) {
+            denoisedRateEstimator.setFilterEnabled(denoise);
+            if (!denoise) {
+                denoisedRateEstimator.resetFilter();
+            }
+        }
+        if (!denoise) {
+            signalEventRate = Float.NaN;
+            noiseEventRate = Float.NaN;
+            snr = Float.NaN;
+        }
+    }
+
+    @Override
+    synchronized public void setFilterEnabled(boolean enabled) {
+        super.setFilterEnabled(enabled);
+        applyNoiseFilterEnablement();
+    }
+
     private void setEventRateStates() {
         inputEventRate = inputRateEstimator.getFilteredEventRate();
-        signalEventRate = denoisedRateEstimator.getFilteredEventRate();
-        float newNoiseRate = inputEventRate - signalEventRate;
-        if (newNoiseRate >= 0) {
-            noiseEventRate = newNoiseRate;
+        if (needsNoiseEstimate()) {
+            signalEventRate = denoisedRateEstimator.getFilteredEventRate();
+            float newNoiseRate = inputEventRate - signalEventRate;
+            if (newNoiseRate >= 0) {
+                noiseEventRate = newNoiseRate;
+            }
+        } else {
+            signalEventRate = Float.NaN;
+            noiseEventRate = Float.NaN;
+            snr = Float.NaN;
         }
         lastEventRateState = eventRateState;
         float r = inputEventRate;
@@ -405,6 +460,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                 break;
             default:
                 eventRateState = EventRateState.MEDIUM_RATE;
+        }
+        if (!needsNoiseEstimate()) {
+            return;
         }
         float nr = noiseEventRate / Math.max(1, chip.getNumPixels());
         switch (noiseEventRateState) {
@@ -539,6 +597,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             return;
         }
         dvsTweaks.setThresholdTweak(0);
+        dvsTweaks.setOnOffBalanceTweak(0);
         dvsTweaks.setBandwidthTweak(0);
         dvsTweaks.setMaxFiringRateTweak(0);
         lastBiasChangeTimeMs = System.currentTimeMillis();
@@ -602,10 +661,18 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         if (!showAnnotation) {
             return;
         }
+        GL2 gl = drawable.getGL().getGL2();
+        if (!showDetailedInformation) {
+            gl.glPushMatrix();
+            gl.glColor3f(1, 1, 1);
+            gl.glRasterPos3f(1, 1, 0);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, "DVSBiasController active");
+            gl.glPopMatrix();
+            return;
+        }
         if (dvsTweaks == null) {
             return;
         }
-        GL2 gl = drawable.getGL().getGL2();
 
         gl.glPushMatrix();
         int ypos = (int) (chip.getSizeY() * .2);
@@ -805,6 +872,15 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         putBoolean("showAnnotation", showAnnotation);
     }
 
+    public boolean isShowDetailedInformation() {
+        return showDetailedInformation;
+    }
+
+    public void setShowDetailedInformation(boolean showDetailedInformation) {
+        this.showDetailedInformation = showDetailedInformation;
+        putBoolean("showDetailedInformation", showDetailedInformation);
+    }
+
     public Goal getGoal() {
         return goal;
     }
@@ -813,6 +889,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         Goal old = this.goal;
         this.goal = goal;
         putString("goal", goal.toString());
+        applyNoiseFilterEnablement();
         getSupport().firePropertyChange(EVENT_GOAL, old, goal);
     }
 
@@ -851,6 +928,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         boolean old = this.outputRawInput;
         this.outputRawInput = outputRawInput;
         putBoolean("outputRawInput", outputRawInput);
+        applyNoiseFilterEnablement();
         getSupport().firePropertyChange("outputRawInput", old, outputRawInput);
     }
 
@@ -981,7 +1059,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     private void fireControlState() {
         long now = System.currentTimeMillis();
-        if (now - lastUiFireMs < 100) {
+        if (now - lastUiFireMs < 333) { // ~3 Hz for Biasgen live panel / other UI
             return;
         }
         lastUiFireMs = now;
