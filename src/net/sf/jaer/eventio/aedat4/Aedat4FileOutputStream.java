@@ -21,6 +21,7 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.FileDataDefinition;
 import net.sf.jaer.eventio.aedat4.dv.FileDataTable;
@@ -46,6 +47,7 @@ public class Aedat4FileOutputStream implements Closeable {
     private final FileChannel channel;
     private final AEChip chip;
     private final int compression;
+    private final RecordingConfigurationSnapshot snapshot;
     private final long baseUs;
     private final List<DataDefinition> dataDefinitions = new ArrayList<>();
     private final long headerPosition;
@@ -65,14 +67,16 @@ public class Aedat4FileOutputStream implements Closeable {
     private short[] evYs;
     private boolean[] evPolarities;
     private FlatBufferBuilder eventBuilder;
-    private final ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+    private final ByteBuffer packetHeader;
 
     public Aedat4FileOutputStream(File file, AEChip chip) throws IOException {
-        this(new FileOutputStream(file), chip, CompressionType.LZ4);
+        this(new FileOutputStream(file), chip, CompressionType.LZ4,
+                System.currentTimeMillis() * 1000L, null, true);
     }
 
     public Aedat4FileOutputStream(File file, AEChip chip, int compression) throws IOException {
-        this(new FileOutputStream(file), chip, compression);
+        this(new FileOutputStream(file), chip, compression,
+                System.currentTimeMillis() * 1000L, null, true);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip) throws IOException {
@@ -80,7 +84,7 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression) throws IOException {
-        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L);
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, null, false);
     }
 
     /**
@@ -90,23 +94,66 @@ public class Aedat4FileOutputStream implements Closeable {
      *                   original timeline, or {@code <= 0} for wall-clock now.
      */
     public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs) throws IOException {
-        this(new FileOutputStream(file), chip, compression, baseUnixUs);
+        this(new FileOutputStream(file), chip, compression, baseUnixUs, null, true);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression, long baseUnixUs)
+            throws IOException {
+        this(outputStream, chip, compression, baseUnixUs, null, false);
+    }
+
+    /**
+     * Explicit-snapshot constructor. The snapshot is reused verbatim for the open
+     * and close IOHeader rebuild so the serialized header size stays stable even
+     * if live preferences change after recording begins, and so the recorded
+     * configuration reflects the immutable recording-start values.
+     *
+     * @param outputStream the file to write to
+     * @param chip the chip (geometry/source metadata)
+     * @param compression desired compatibility compression
+     * @param snapshot the frozen recording-start configuration; if {@code null}
+     *                 it is captured once here from the chip, never reread later
+     * @throws IOException if the file cannot be written
+     */
+    public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            RecordingConfigurationSnapshot snapshot) throws IOException {
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot, false);
+    }
+
+    private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure)
             throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
         this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
-        channel.write(ByteBuffer.wrap(VERSION_LINE));
-        headerPosition = channel.position();
-        // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
-        // non-default sentinel so the field is always present and close() can patch
-        // the same-sized IOHeader with the real FileDataTable offset.
-        headerBytes = buildIOHeader(DATA_TABLE_POSITION_PENDING);
-        channel.write(ByteBuffer.wrap(headerBytes));
+        RecordingConfigurationSnapshot initializedSnapshot;
+        ByteBuffer initializedPacketHeader;
+        long initializedHeaderPosition;
+        try {
+            initializedSnapshot = snapshot != null ? snapshot : RecordingConfigurationSnapshot.captureFromChip(chip);
+            initializedPacketHeader = ByteBuffer.allocateDirect(8).order(ByteOrder.LITTLE_ENDIAN);
+            channel.write(ByteBuffer.wrap(VERSION_LINE));
+            initializedHeaderPosition = channel.position();
+            // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
+            // non-default sentinel so the field is always present and close() can patch
+            // the same-sized IOHeader with the real FileDataTable offset.
+            headerBytes = buildIOHeader(DATA_TABLE_POSITION_PENDING, initializedSnapshot);
+            channel.write(ByteBuffer.wrap(headerBytes));
+        } catch (IOException | RuntimeException failure) {
+            if (closeOnInitializationFailure) {
+                try {
+                    outputStream.close();
+                } catch (IOException | RuntimeException closeFailure) {
+                    failure.addSuppressed(closeFailure);
+                }
+            }
+            throw failure;
+        }
+        this.snapshot = initializedSnapshot;
+        this.packetHeader = initializedPacketHeader;
+        this.headerPosition = initializedHeaderPosition;
     }
 
     /** Sentinel written at open; replaced on {@link #close()} with the real table offset. */
@@ -276,7 +323,8 @@ public class Aedat4FileOutputStream implements Closeable {
         uncompressedPayloadBytes += payload.length;
         int compressedLen = toWrite.remaining();
         compressedPayloadBytes += compressedLen;
-        long byteOffset = channel.position();
+        // DV FileDataTable offsets address the encoded payload, not its PacketHeader.
+        long byteOffset = channel.position() + 8L;
         packetHeader.clear();
         packetHeader.putInt(streamId);
         packetHeader.putInt(compressedLen);
@@ -303,8 +351,12 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     private byte[] buildIOHeader(long dataTablePosition) {
+        return buildIOHeader(dataTablePosition, snapshot);
+    }
+
+    private byte[] buildIOHeader(long dataTablePosition, RecordingConfigurationSnapshot headerSnapshot) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        int info = builder.createString(Aedat4InfoNode.build(chip, compression));
+        int info = builder.createString(Aedat4InfoNode.build(chip, compression, headerSnapshot));
         int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
@@ -329,22 +381,68 @@ public class Aedat4FileOutputStream implements Closeable {
         if (closed) {
             return;
         }
-        long tablePosition = channel.position();
-        channel.write(ByteBuffer.wrap(buildFileDataTable()));
-        byte[] patchedHeader = buildIOHeader(tablePosition);
-        if (patchedHeader.length != headerBytes.length) {
-            throw new IOException(String.format(
-                    "AEDAT-4 IOHeader size changed on close (%d -> %d); cannot patch dataTablePosition=%d",
-                    headerBytes.length, patchedHeader.length, tablePosition));
-        }
-        long end = channel.position();
-        channel.position(headerPosition);
-        channel.write(ByteBuffer.wrap(patchedHeader));
-        channel.position(end);
-        headerBytes = patchedHeader;
         closed = true;
-        outputStream.close();
+        Throwable failure = null;
+        try {
+            long tablePosition = channel.position();
+            byte[] table = Aedat4Compression.compress(buildFileDataTable(), compression);
+            channel.write(ByteBuffer.wrap(table));
+            byte[] patchedHeader = buildIOHeader(tablePosition);
+            if (patchedHeader.length != headerBytes.length) {
+                throw new IOException(String.format(
+                        "AEDAT-4 IOHeader size changed on close (%d -> %d); cannot patch dataTablePosition=%d",
+                        headerBytes.length, patchedHeader.length, tablePosition));
+            }
+            long end = channel.position();
+            channel.position(headerPosition);
+            channel.write(ByteBuffer.wrap(patchedHeader));
+            channel.position(end);
+            headerBytes = patchedHeader;
+        } catch (IOException | RuntimeException e) {
+            failure = e;
+        } finally {
+            // Finalization failures (including a mutable-chip IOHeader size change)
+            // must never retain the caller-supplied file handle. Close the owning
+            // stream exactly once; if a custom stream throws before closing its
+            // channel, the still-open channel is the fallback cleanup layer.
+            try {
+                outputStream.close();
+            } catch (IOException | RuntimeException closeFailure) {
+                failure = appendFailure(failure, closeFailure);
+            }
+            if (channel.isOpen()) {
+                try {
+                    channel.close();
+                } catch (IOException | RuntimeException closeFailure) {
+                    failure = appendFailure(failure, closeFailure);
+                }
+            }
+        }
+        rethrowCloseFailure(failure);
         log.info(formatCompressionSummary());
+    }
+
+    private static Throwable appendFailure(Throwable primary, Throwable next) {
+        if (primary == null) {
+            return next;
+        }
+        if (next != primary) {
+            primary.addSuppressed(next);
+        }
+        return primary;
+    }
+
+    private static void rethrowCloseFailure(Throwable failure) throws IOException {
+        if (failure == null) {
+            return;
+        }
+        if (failure instanceof IOException) {
+            throw (IOException) failure;
+        }
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        throw new IOException("Unexpected AEDAT-4 close failure", failure);
     }
 
     /**

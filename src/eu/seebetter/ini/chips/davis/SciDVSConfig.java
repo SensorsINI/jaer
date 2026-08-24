@@ -58,8 +58,13 @@ import net.sf.jaer.util.RemoteControlled;
  * @author rpgraca
  */
 public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInterface, DavisTweaks, ChipControlPanel, RemoteControlled {
+
+    private static final String LEGACY_PREFERENCE_PREFIX = "SciDVS.";
     // these pots for DVSTweaks
     protected AddressedIPotCF refrChAmp, lpBuf;
+
+    /** On-chip chip-control bit mirroring APS.GlobalShutter on the SciDVS package (FPGA_CHIPBIAS/147). */
+    protected SPIConfigBit chipGlobalShutter;
 
     public SciDVSConfig(final Chip chip) {
         super(chip);
@@ -121,6 +126,10 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         ssBiases[0] = ssp;
         ssBiases[1] = ssn;
 
+        // Replace, rather than retain, the DAVIS chip-chain controls registered by the
+        // superclass. Keeping them in allPreferencesList would load, store, and send both
+        // the obsolete DAVIS controls and the SciDVS replacements.
+        allPreferencesList.removeAll(chipControl);
         chipControl.clear();
         // Chip diagnostic chain
         chipControl.add(new SPIConfigInt("Chip.DigitalMux0", "Digital multiplexer 0 (debug).", CypressFX3.FPGA_CHIPBIAS, (short) 128, 4, 0, this));
@@ -143,11 +152,66 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         chipControl.add(new SPIConfigBit("Chip.nDisableMirr", "Activate pre-amplifier.", CypressFX3.FPGA_CHIPBIAS, (short) 143, false, this));
         chipControl.add(new SPIConfigBit("Chip.ShortGroup", "Short-circuit pxels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
 		chipControl.add(new SPIConfigBit("Chip.SelectGrayCounter", "Select internal gray counter, if disabled, external gray code is used.", CypressFX3.FPGA_CHIPBIAS, (short) 145, true, this));
-		chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
+        chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
+        chipGlobalShutter = new SPIConfigBit("Chip.GlobalShutter", "Global shutter vs rolling shutter (mirrors APS.GlobalShutter on-chip).", CypressFX3.FPGA_CHIPBIAS, (short) 147, true, this);
+        chipControl.add(chipGlobalShutter);
 
         for (final SPIConfigValue cfgVal : chipControl) {
             cfgVal.addObserver(this);
             allPreferencesList.add(cfgVal);
+        }
+
+        // Constructor must align the on-chip bit with APS.GlobalShutter, the source of
+        // truth, overriding any stale Chip.GlobalShutter value persisted in prefs.
+        // No hardware write results: at construction the hardware interface is not yet
+        // attached and update() takes the null-hardware / batch guards.
+        chipGlobalShutter.set(globalShutter.isSet());
+
+        // Keep Chip.GlobalShutter synchronized with APS.GlobalShutter even during batch
+        // edit, so the value never drifts from APS. Hardware writes stay suppressed
+        // because update()/updateHW() all early-return on isBatchEditOccurring().
+        globalShutter.addObserver(new Observer() {
+            @Override
+            public void update(final Observable o, final Object arg) {
+                chipGlobalShutter.set(((SPIConfigBit) o).isSet());
+            }
+        });
+    }
+
+    @Override
+    public void loadPreferences() {
+        migrateLegacyPreferenceKeys();
+        super.loadPreferences();
+        // DavisConfig invokes this override from its constructor before the SciDVS fields
+        // are initialized. Once they exist, APS.GlobalShutter is the source of truth for
+        // the corresponding on-chip bit, including after imported preferences are loaded.
+        if ((chipGlobalShutter != null) && (globalShutter != null)) {
+            chipGlobalShutter.set(globalShutter.isSet());
+        }
+    }
+
+    /**
+     * The SciDVS profile was historically exported from a shared package node,
+     * where keys were namespaced with {@code SciDVS.}. The current chip-specific
+     * node already provides that namespace, while the live configuration objects
+     * read keys such as {@code DVS.Run} and {@code APS.Exposure}. Normalize an
+     * imported or migrated profile before any configuration object reads it.
+     * Existing canonical values win over legacy aliases.
+     */
+    private void migrateLegacyPreferenceKeys() {
+        try {
+            for (final String key : getChip().getPrefs().keys()) {
+                if (!key.startsWith(LEGACY_PREFERENCE_PREFIX)) {
+                    continue;
+                }
+                final String canonicalKey = key.substring(LEGACY_PREFERENCE_PREFIX.length());
+                if (getChip().getPrefs().get(canonicalKey, null) == null) {
+                    getChip().getPrefs().put(canonicalKey, getChip().getPrefs().get(key, ""));
+                }
+                getChip().getPrefs().remove(key);
+            }
+        } catch (final Exception e) {
+            Biasgen.log.warning("Could not normalize legacy SciDVS preferences: " + e);
         }
     }
 
@@ -172,5 +236,17 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 				Biasgen.log.warning("On update() caught " + e.toString());
 			}
 		}
+	}
+
+	/**
+	 * The parent (ordinary DAVIS) would keep the legacy chip-chain address 142 in
+	 * sync with APS.GlobalShutter. On SciDVS that address is Chip.ResetShorted, so
+	 * the legacy write would corrupt it. Instead synchronize the real on-chip
+	 * Chip.GlobalShutter bit (FPGA_CHIPBIAS/147), leaving ResetShorted untouched.
+	 * The SPIConfigBit.set only notifies on change, so no redundant hardware write.
+	 */
+	@Override
+	protected void updateGlobalShutterChipBias(final SPIConfigBit gsBit) {
+		chipGlobalShutter.set(gsBit.isSet());
 	}
 }

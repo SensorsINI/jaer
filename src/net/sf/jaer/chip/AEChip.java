@@ -22,9 +22,11 @@ import javax.swing.ProgressMonitor;
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
@@ -520,6 +522,9 @@ public class AEChip extends Chip2D {
                 eventStreamId = aeViewer.consumePendingAedat4EventStreamId();
             }
             aeInputStream = new Aedat4FileInputStream(file, this, progressMonitor, eventStreamId);
+        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDZ.substring(1))) {
+            log.info(String.format("Opening file %s as AEDZ compressed AEDAT-2", file));
+            aeInputStream = new AEDZInputStream(file);
         } else if (FilenameUtils.isExtension(file.getName(), MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
             log.info(String.format("Opening file %s as Metavision RAW EVT3", file));
             aeInputStream = new MetavisionRawFileInputStream(file, this, progressMonitor);
@@ -536,7 +541,7 @@ public class AEChip extends Chip2D {
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);
         } else {
-            throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .raw, .h5 (DSEC), or .bag files are currently supported");
+            throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5 (DSEC), or .bag files are currently supported");
         }
         return aeInputStream;
     }
@@ -546,6 +551,13 @@ public class AEChip extends Chip2D {
      * AEFileOutputStream that logs data from this AEChip. The default
      * implementation writes the AEChip class name and the particular AEChip
      * hardware settings.
+     * <p>
+     * The hardware preferences are written from an immutable
+     * {@link RecordingConfigurationSnapshot} captured once at the start of the
+     * header write (see {@link #getOrCaptureRecordingSnapshot()}). Values are
+     * escaped so a preference value can never inject a fake header line or a
+     * second element, and later mutation of the live preferences is not
+     * reflected in the recorded header.
      *
      * @param os the AEFileOutputStream that is being written to
      * @see AEFileOutputStream#writeHeaderLine(java.lang.String)
@@ -557,12 +569,9 @@ public class AEChip extends Chip2D {
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
         os.writeHeaderLine("Start of Preferences for this AEChip (search for \"End of Preferences\" to find end of this block)"); // write header to AE data file for prefs
         // write only the hardware preferences for this particular device, which is mixed with all other devices in same package in Java Preferences.
-        /// therefore just filter and save the keya
-        final String[] keys = getPrefs().keys();
-        final Preferences p = getPrefs();
-        for (String k : keys) {
-            os.writeHeaderLine(String.format("<entry key=\"%s\" value=\"%s\"/>", k, p.get(k, null)));
-        }
+        // The snapshot freezes, sorts and escapes the captured values once; the
+        // live mutable preference node is never reread here.
+        getOrCaptureRecordingSnapshot().writeLegacyEntries(os);
         // code below was extremely slow, e.g. 2.5 seconds to write the header
 //        ByteArrayOutputStream bos = new ByteArrayOutputStream(500000);  // bos to hold preferences XML as byte array, tobi sized prefs as 186kB of text and about 2200 lines for set of preferences at INI
 //        getPrefs().exportNode(bos);
@@ -586,6 +595,57 @@ public class AEChip extends Chip2D {
 //        os.flush();  // shouldn't need to flush here
         log.fine("done writing preferences after " + (System.currentTimeMillis() - start) + " ms");
 
+    }
+
+    /**
+     * Optional pre-captured configuration snapshot owned by the recording owner
+     * (e.g. AEViewer) and set here per recording start. The default legacy path
+     * never sets this, so it always captures fresh; owners set/clear it
+     * explicitly to control snapshot lifetime and reuse across several output
+     * formats. Stored as volatile for visibility between the owner thread that
+     * captures at recording start and the thread that writes the header.
+     */
+    private volatile RecordingConfigurationSnapshot recordingConfigurationSnapshot;
+
+    /**
+     * Provide a pre-captured configuration snapshot so this chip embeds the same
+     * frozen object in upcoming recording output without recapturing or rereading
+     * mutable preferences. Pass {@code null} to clear. The snapshot stays set
+     * (until cleared) so a recording owner can reuse one capture across several
+     * output formats; the recording owner is responsible for clearing it after a
+     * recording session so a later session does not silently reuse a stale
+     * snapshot.
+     *
+     * @param snapshot the snapshot to use for the next header, or {@code null} to
+     * clear and fall back to on-demand capture
+     */
+    public void setRecordingConfigurationSnapshot(RecordingConfigurationSnapshot snapshot) {
+        this.recordingConfigurationSnapshot = snapshot;
+    }
+
+    /**
+     * @return the snapshot currently set for the next header, or {@code null} if
+     * none was provided (default path captures on demand)
+     */
+    public RecordingConfigurationSnapshot getRecordingConfigurationSnapshot() {
+        return recordingConfigurationSnapshot;
+    }
+
+    /**
+     * The snapshot this chip embeds in the next recording header: the one set by
+     * the recording owner if any, otherwise a fresh capture. A fresh capture
+     * flushes live bias once (via {@link #getBiasgen()}) before copying the
+     * sorted, escaped entries and is returned without being stored, so the default
+     * path never caches and each recording reflects the state at its start.
+     *
+     * @return the snapshot to write, never {@code null}
+     */
+    public RecordingConfigurationSnapshot getOrCaptureRecordingSnapshot() {
+        RecordingConfigurationSnapshot s = recordingConfigurationSnapshot;
+        if (s == null) {
+            s = RecordingConfigurationSnapshot.captureFromChip(this);
+        }
+        return s;
     }
 
     /**

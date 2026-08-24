@@ -29,7 +29,7 @@ Official format specs (where available) are linked from the **Format** column an
 ³ Recording no longer uses bare `.dat` as the preferred extension.  
 ⁴ Live EVK4 capture is recorded as AEDAT-4/2 in jAER; Metavision Studio writes `.raw` (and can export DAT).  
 ⁵ Still common for public datasets; not a jAER-native recording path.  
-⁶ Created when using synchronized multi-viewer recording (an `.aeidx` listing the sibling data files).  
+⁶ Created when using synchronized multi-viewer recording (an `.aeidx` listing the sibling data files).
 ⁷ **File → Save As…** (`Ctrl+Shift+S`) while playing a recording (not live recording). Formats: native **AEDAT-4** (default; preferred over re-recording to clip IN/OUT or apply EventFilters), CSV/text, DSEC HDF5. Optional IN/OUT markers and EventFilters. CSV/HDF5 can add HVS sidecars (`XXX-frames/` PNGs, `XXX-imu.csv`); AEDAT-4 keeps frames/IMU in the file.
 
 ---

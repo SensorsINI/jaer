@@ -53,6 +53,43 @@ import net.sf.jaer.util.JaerPreferencesStore;
  */
 public class AEViewerPreferencesDialog extends JDialog {
 
+    /**
+     * Map the recording-format combo index to the data-file version sentinel:
+     * index 0 = AEDAT-4, index 2 = AEDZ, anything else = AEDAT-2. Package-private
+     * static so the headless probe can verify the preference round-trip without
+     * constructing a JDialog on a machine with no display.
+     *
+     * @param index the combo index
+     * @return the {@link AEDataFile} data-file version
+     */
+    static String recordingFormatVersionForIndex(int index) {
+        if (index == 0) {
+            return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+        }
+        if (index == 2) {
+            return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ;
+        }
+        return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2;
+    }
+
+    /**
+     * Map a data-file version sentinel back to the recording-format combo index:
+     * AEDAT-4 = 0, AEDZ = 2, anything else = 1 (AEDAT-2). Inverse of
+     * {@link #recordingFormatVersionForIndex(int)}.
+     *
+     * @param version the {@link AEDataFile} data-file version
+     * @return the combo index
+     */
+    static int recordingFormatIndexForVersion(String version) {
+        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version)) {
+            return 0;
+        }
+        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(version)) {
+            return 2;
+        }
+        return 1;
+    }
+
     private final AEViewer viewer;
     private boolean updatingUi;
 
@@ -472,7 +509,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         int y = 0;
 
         p.add(new JLabel("Recording format:"), gbcLabel(y));
-        recordingFormatCB = new JComboBox<>(new String[]{"AEDAT-4 (.aedat4)", "AEDAT-2 (.aedat2)"});
+        recordingFormatCB = new JComboBox<>(new String[]{"AEDAT-4 (.aedat4)", "AEDAT-2 (.aedat2)", "AEDZ compressed AEDAT-2 (.aedz)"});
         recordingFormatCB.setToolTipText("File format used when starting recording with the button or 'l' key");
         recordingFormatCB.addActionListener(new ActionListener() {
             @Override
@@ -480,10 +517,10 @@ public class AEViewerPreferencesDialog extends JDialog {
                 if (updatingUi) {
                     return;
                 }
-                boolean aedat4 = recordingFormatCB.getSelectedIndex() == 0;
-                viewer.setRecordingDataFileVersion(aedat4
-                        ? AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4
-                        : AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
+                int index = recordingFormatCB.getSelectedIndex();
+                String version = recordingFormatVersionForIndex(index);
+                boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version);
+                viewer.setRecordingDataFileVersion(version);
                 aedat4CompressionCB.setEnabled(aedat4);
             }
         });
@@ -841,8 +878,10 @@ public class AEViewerPreferencesDialog extends JDialog {
             JAERViewer jaerViewer = viewer.getJaerViewer();
             syncEnabledCB.setSelected(jaerViewer != null && jaerViewer.isSyncEnabled());
             timestampResetBitmaskTF.setText(Integer.toHexString(viewer.getAeFileInputStreamTimestampResetBitmask()));
-            boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(viewer.getRecordingDataFileVersion());
-            recordingFormatCB.setSelectedIndex(aedat4 ? 0 : 1);
+            String version = viewer.getRecordingDataFileVersion();
+            int versionIndex = recordingFormatIndexForVersion(version);
+            boolean aedat4 = versionIndex == 0;
+            recordingFormatCB.setSelectedIndex(versionIndex);
             aedat4CompressionCB.setSelectedIndex(viewer.getAedat4Compression());
             aedat4CompressionCB.setEnabled(aedat4);
 

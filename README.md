@@ -6,20 +6,20 @@
 
 ![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
-**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
+**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)).
 
-(You get plug-and-play, "it just works" for all the cameras above.) 
+(You get plug-and-play, "it just works" for all the cameras above.)
 
-jAER efficiently 
- * captures USB event camera output from [most devices](#device-hardware-support), 
+jAER efficiently
+ * captures USB event camera output from [most devices](#device-hardware-support),
  * denoises -- with fast, accurate event filtering algorithms
  * displays -- with a variety of color and 2d/3d options
  * records -- in a high-speed compressed format (AEDAT-4)
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
  * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)).
 
-It can record your datasets and serve recorded or live event sensor output to 
- * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
+It can record your datasets and serve recorded or live event sensor output to
+ * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java))
  * or robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → ROS2 / Foxglove frame output…; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
 
 
@@ -39,10 +39,10 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
  * **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
 
-Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…. 
+Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates….
 
 * install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium. `ant run` from a git clone needs [JDK 25+](https://adoptium.net/). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
-* you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
+* you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY).
 
 
 ## Quick start sample data

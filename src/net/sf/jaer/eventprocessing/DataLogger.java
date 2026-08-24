@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.eventprocessing;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,6 +18,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.graphics.RecordingSaveDialogGuard;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.FileAccessTimeout;
@@ -43,6 +43,9 @@ public class DataLogger extends EventFilter2D {
     private String logFileBaseName = prefs().get("DataLogger.logFileBaseName", "");
     private int rotationNumber = 0;
     private boolean filenameTimestampEnabled = prefs().getBoolean("DataLogger.filenameTimestampEnabled", true);
+    /** Snapshot used by the active recording, and whether this logger created it. */
+    private RecordingConfigurationSnapshot activeRecordingSnapshot;
+    private boolean recordingSnapshotCapturedHere;
 
     public DataLogger(AEChip chip) {
         super(chip);
@@ -87,13 +90,16 @@ public class DataLogger extends EventFilter2D {
             } catch (IOException e) {
                 log.warning("while recording data to " + recordingFile + " caught " + e + ", will try to close file");
                 recordingEnabled = false;
-                getSupport().firePropertyChange("recordingEnabled", null, false);
                 try {
                     recordingOutputStream.close();
                     log.info("closed recording file " + recordingFile);
                 } catch (IOException e2) {
                     log.warning("while closing recording file " + recordingFile + " caught " + e2);
+                } finally {
+                    recordingOutputStream = null;
+                    releaseActiveRecordingSnapshot();
                 }
+                getSupport().firePropertyChange("recordingEnabled", null, false);
             }
         }
     }
@@ -139,21 +145,63 @@ public class DataLogger extends EventFilter2D {
             log.warning("tried to log to null filename, aborting");
             return null;
         }
+        if (recordingEnabled) {
+            log.warning("already recording to " + recordingFile);
+            return recordingFile;
+        }
         if (!AEDataFile.hasDataFileExtension(filename)) {
             filename = filename + AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
             log.info("Appended extension to make filename=" + filename);
         }
+        RecordingConfigurationSnapshot snapshot = null;
+        boolean capturedHere = false;
+        FileOutputStream fileOutputStream = null;
+        AEFileOutputStream newRecordingOutputStream = null;
         try {
             recordingFile = new File(filename);
 
-            recordingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(recordingFile), 100000));
+            // Reuse an owner-supplied snapshot by identity. Only a direct call with
+            // no owner captures and temporarily installs its own snapshot.
+            snapshot = chip.getRecordingConfigurationSnapshot();
+            capturedHere = snapshot == null;
+            if (capturedHere) {
+                snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
+                chip.setRecordingConfigurationSnapshot(snapshot);
+            }
+            // The one-arg AEFileOutputStream used to be constructed with a null chip and
+            // null version, which NPE'd on chip.getHardwareInterface(); and a
+            // BufferedOutputStream wrapper has no FileChannel of its own, so the 2.0
+            // writer (which uses its own ByteBuffer/channel) cannot buffer through it.
+            // Use the active chip and AEDAT-2 version with a FileOutputStream, the same
+            // pattern as the AEViewer legacy path.
+            fileOutputStream = new FileOutputStream(recordingFile);
+            newRecordingOutputStream = new AEFileOutputStream(fileOutputStream, chip, AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
+            fileOutputStream = null; // ownership transferred to the AEFileOutputStream
+            recordingOutputStream = newRecordingOutputStream;
+            activeRecordingSnapshot = snapshot;
+            recordingSnapshotCapturedHere = capturedHere;
             recordingEnabled = true;
             getSupport().firePropertyChange("recordingEnabled", null, true);
             log.info("starting recording to " + recordingFile);
 
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
+            // A constructor or listener can fail after the raw stream is open. Close
+            // whichever layer owns it, then release only a snapshot captured here.
+            try {
+                if (newRecordingOutputStream != null) {
+                    newRecordingOutputStream.close();
+                } else if (fileOutputStream != null) {
+                    fileOutputStream.close();
+                }
+            } catch (IOException | RuntimeException closeException) {
+                log.warning("while closing failed recording start for " + filename + " caught " + closeException);
+            }
+            recordingOutputStream = null;
+            activeRecordingSnapshot = null;
+            recordingSnapshotCapturedHere = false;
+            releaseSnapshotIfCapturedHere(snapshot, capturedHere);
             recordingFile = null;
-            log.warning("exception on starting to log data to file "+filename+": "+e);
+            log.warning("exception on starting to record data to file "+filename+": "+e);
             recordingEnabled=false;
             getSupport().firePropertyChange("recordingEnabled", null, false);
         }
@@ -228,6 +276,9 @@ public class DataLogger extends EventFilter2D {
             log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()));
             recordingEnabled = false;
             recordingOutputStream.close();
+            recordingOutputStream = null;
+            // Release logger-owned state before save/rename UI or a rotation starts.
+            releaseActiveRecordingSnapshot();
 // if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
 
             if (confirmFilename) {
@@ -312,11 +363,30 @@ public class DataLogger extends EventFilter2D {
 
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            recordingOutputStream = null;
+            releaseActiveRecordingSnapshot();
         }
 
         recordingEnabled = false;
         getSupport().firePropertyChange("recordingEnabled", null, false);
         return recordingFile;
+    }
+
+    /** Release the active snapshot only when this DataLogger captured and installed it. */
+    private void releaseActiveRecordingSnapshot() {
+        RecordingConfigurationSnapshot snapshot = activeRecordingSnapshot;
+        boolean capturedHere = recordingSnapshotCapturedHere;
+        activeRecordingSnapshot = null;
+        recordingSnapshotCapturedHere = false;
+        releaseSnapshotIfCapturedHere(snapshot, capturedHere);
+    }
+
+    /** Never stomp an owner-supplied or subsequently replaced snapshot. */
+    private void releaseSnapshotIfCapturedHere(RecordingConfigurationSnapshot snapshot, boolean capturedHere) {
+        if (capturedHere && snapshot != null && chip.getRecordingConfigurationSnapshot() == snapshot) {
+            chip.setRecordingConfigurationSnapshot(null);
+        }
     }
 
     /**

@@ -458,7 +458,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
-     * Build the sparse packet index. Prefers the trailing FileDataTable (no LZ4);
+     * Build the sparse packet index. Prefers the trailing FileDataTable and
      * falls back to a full packet scan when the table is missing or invalid.
      */
     private void indexFile(ProgressMonitor progressMonitor) throws IOException {
@@ -491,8 +491,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             log.warning("AEDAT-4 FileDataTable remaining bytes implausible (" + remaining + "); scanning packets");
             return false;
         }
-        // DV compresses the FileDataTable with the same codec as packets; jAER
-        // writes it uncompressed. Region is [dataTablePosition, EOF).
+        // The FileDataTable uses the IOHeader codec. Legacy jAER files wrote it
+        // uncompressed, so retain raw-FTAB detection. Region is [dataTablePosition, EOF).
         channel.position(dataTablePosition);
         ByteBuffer rawTable = ByteBuffer.allocate((int) remaining).order(ByteOrder.LITTLE_ENDIAN);
         try {
@@ -551,7 +551,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         int skipped = 0;
         FileDataDefinition def = new FileDataDefinition();
         final long dataEnd = dataTablePosition; // packets must lie before the table
-        // DV stores byteOffset at the compressed payload; jAER stores the PacketHeader.
+        // DV and current jAER store byteOffset at the compressed payload; legacy
+        // jAER stores the PacketHeader.
         Boolean offsetIsPayload = null;
         for (int i = 0; i < n; i++) {
             throwIfCanceled(progressMonitor, "AEDAT-4 FileDataTable index");
@@ -625,8 +626,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
-     * DV FileDataTable {@code byteOffset} points at the compressed payload; jAER
-     * records the 8-byte PacketHeader. Peek the first entry to tell them apart.
+     * FileDataTable {@code byteOffset} normally points at the compressed payload;
+     * legacy jAER records the 8-byte PacketHeader. Peek the first entry to tell
+     * them apart.
      */
     private boolean detectFtabOffsetIsPayload(long byteOffset, int streamId, int payloadSize, long dataEnd)
             throws IOException {

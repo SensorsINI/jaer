@@ -18,6 +18,7 @@ import org.usb4java.Device;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisUsbPacketBundleBuilder;
+import eu.seebetter.ini.chips.davis.SciDVS;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -80,6 +81,41 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
     static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
     static public final int REQUIRED_LOGIC_REVISION_FX2 = 18;
+
+    /** Cached exact FPGA-geometry fingerprint for the shared DAVIS/SciDVS PID. */
+    private Boolean sciDVSFpgaGeometryMatch;
+
+    /**
+     * Probes the two read-only FPGA DVS geometry registers and caches whether
+     * they match the validated SciDVS bitstream. The register axes are the raw
+     * stream axes, hence {@code 126x112} for the logical {@code 112x126} chip.
+     *
+     * <p>The first read uses the normal Cypress open path when necessary,
+     * including its one USB reset and interface claim. The same interface is
+     * left open, so later chip binding does not perform a second reset. This
+     * method does not start acquisition, write an FPGA register, or close the
+     * device.
+     *
+     * @return true only for the exact validated SciDVS FPGA geometry
+     * @throws HardwareInterfaceException if the FPGA geometry cannot be read
+     */
+    public synchronized boolean probeSciDVSByFpgaGeometry() throws HardwareInterfaceException {
+        if (sciDVSFpgaGeometryMatch != null) {
+            return sciDVSFpgaGeometryMatch;
+        }
+        final int dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+        final int dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+        sciDVSFpgaGeometryMatch = matchesSciDVSFpgaGeometry(dvsSizeX, dvsSizeY);
+        CypressFX3.log.info(String.format(
+                "DAViSFX3 FPGA DVS geometry fingerprint=%dx%d SciDVS=%s",
+                dvsSizeX, dvsSizeY, sciDVSFpgaGeometryMatch));
+        return sciDVSFpgaGeometryMatch;
+    }
+
+    /** Hardware-free exact classifier used by the probe and regression test. */
+    public static boolean matchesSciDVSFpgaGeometry(final int dvsSizeX, final int dvsSizeY) {
+        return dvsSizeX == 126 && dvsSizeY == 112;
+    }
 
     private boolean updatedRealClockValues = false;
     public float logicClockFreq = 90.0f;
@@ -204,6 +240,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         private final DavisUsbPacketBundleBuilder typedBuilder = new DavisUsbPacketBundleBuilder();
         private boolean rollingShutterFrame;
 
+        /** SciDVS GAER decode path: eager decoder and sinks, lazy resolved mode flag. */
+        private final SciDVSGaerDecoder gaerDecoder;
+        private final SciDVSGaerRawSink gaerRawSink;
+        private final SciDVSGaerTypedSink gaerTypedSink;
+        private Boolean gaerResolved;
+
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
 
@@ -249,6 +291,29 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             imuFlipZ = (imuOrientation & 0x01) != 0;
 
             updateTimestampMasterStatus();
+
+            gaerDecoder = new SciDVSGaerDecoder(new SciDVSGaerDecoder.Config(
+                    chipID, dvsSizeX, dvsSizeY, dvsInvertXY,
+                    apsSizeX, apsSizeY, apsInvertXY, apsFlipX, apsFlipY,
+                    imuFlipX, imuFlipY, imuFlipZ), super.toString(), this::shouldLogGaerWarning);
+            gaerRawSink = new SciDVSGaerRawSink(
+                    DAViSFX3HardwareInterface.this::getAEBufferSize,
+                    this::handleGaerTimestampReset,
+                    () -> !usbTypedDemuxActive || dualWriteApsImuAe);
+            gaerTypedSink = new SciDVSGaerTypedSink(
+                    typedBuilder, gaerRawSink,
+                    () -> getChip() != null ? getChip().getSizeX() : dvsSizeX,
+                    this::handleGaerTimestampReset);
+        }
+
+        private boolean shouldLogGaerWarning() {
+            return (warningCount++ % WARNING_INTERVAL) == 0;
+        }
+
+        private void handleGaerTimestampReset() {
+            updateTimestampMasterStatus();
+            CypressFX3.log.info("Timestamp reset event received on " + super.toString()
+                    + " at System.currentTimeMillis()=" + System.currentTimeMillis());
         }
 
         private void checkMonotonicTimestamp() {
@@ -286,6 +351,31 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
                 if (typedOut != null) {
                     typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY);
+                }
+
+                final boolean gaerModeUnresolved = gaerResolved == null;
+                if (gaerModeUnresolved && getChip() != null) {
+                    gaerResolved = SciDVSGaerMode.resolveFromSystemProperty(
+                            getChip() instanceof SciDVS, CypressFX3.log);
+                    CypressFX3.log.info("DAViSFX3 SciDVS GAER selected=" + gaerResolved
+                            + " rawProperty=" + System.getProperty(SciDVSGaerMode.PROPERTY)
+                            + " chipClass=" + (getChip() == null ? "null" : getChip().getClass().getName()));
+                    if (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY) {
+                        CypressFX3.log.warning("DAViSFX3 chip geometry " + getChip().getSizeX() + "x"
+                                + getChip().getSizeY() + " differs from FPGA DVS geometry "
+                                + dvsSizeX + "x" + dvsSizeY);
+                    }
+                }
+
+                if (gaerResolved != null && gaerResolved) {
+                    gaerRawSink.begin(buffer, eventCounter);
+                    gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink);
+                    eventCounter = gaerRawSink.end();
+                    if (typedOut != null) {
+                        typedBuilder.flushAll();
+                        typedOut.setRawPacket(buffer);
+                    }
+                    return;
                 }
 
                 // Truncate off any extra partial event.

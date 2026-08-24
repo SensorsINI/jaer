@@ -225,11 +225,17 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
     @Override
     public void close() throws IOException {
         // Flush last buffer to file, to avoid loosing small amounts of data.
-        byteBuf.flip();
-        channel.write(byteBuf);
-        byteBuf.clear();
-
-        channel.close();
+        // The buffered channel (and its byteBuf) only exists when the underlying
+        // stream is a FileOutputStream; a plain BufferedOutputStream wrapper (e.g.
+        // DataLogger) has no FileChannel of its own, so guard both.
+        if (channel != null && byteBuf != null) {
+            byteBuf.flip();
+            channel.write(byteBuf);
+            byteBuf.clear();
+        }
+        if (channel != null) {
+            channel.close();
+        }
         byteBuf = null;
 
         super.close();
