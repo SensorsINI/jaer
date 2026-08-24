@@ -19,7 +19,9 @@ import java.lang.annotation.Target;
  * again from the FilterPanel {@code ?} button.
  * <p>
  * Use it like {@link Description}, but with HTML for a user guide rather than a
- * one-line tooltip. Links are clickable in the dialog.
+ * one-line tooltip. Links are clickable in the dialog. Relative
+ * {@code <img src="file.png">} paths resolve against the filter class package
+ * (put the PNG next to the {@code .java} file; Ant copies it onto the classpath).
  * <pre>
  * {@code
  * @Description("Short tooltip")
@@ -28,6 +30,7 @@ import java.lang.annotation.Target;
  * <h2>MyFilter</h2>
  * <p>How to use this filter. See
  * <a href="https://github.com/SensorsINI/jaer">jAER</a>.</p>
+ * <p><img src="diagram.png" alt="diagram" width="480"></p>
  * </html>
  * """)
  * public class MyFilter extends EventFilter2D { }

@@ -12,6 +12,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Static utility methods for drawing stuff. Surround these calls with
@@ -237,12 +239,26 @@ public final class DrawGL {
         gl.glEnd();
     }
 
+    /** GL-thread TextRenderer cache; a new renderer every string leaked JOGL textures (recording overlay). */
+    private static final Map<Integer, TextRenderer> textRenderers = new HashMap<>();
+    private static final Rectangle2D UNMEASURED_BOUNDS = new Rectangle2D.Float();
+
+    private static TextRenderer textRendererFor(int fontSize) {
+        TextRenderer r = textRenderers.get(fontSize);
+        if (r == null) {
+            r = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+            // Intel Arc (igxelpgicd64.dll) can ACCESS_VIOLATION in glDrawArrays from
+            // TextRenderer's Pipelined_QuadRenderer; ChipCanvas already disables this.
+            r.setUseVertexArrays(false);
+            textRenderers.put(fontSize, r);
+        }
+        return r;
+    }
+
     /**
      * Draws a string using TextRenderer.draw using native GL coordinates,
      * usually setup to represent pixels on AEChip. Embedded newlines are not
      * rendered as additional lines.
-     * <p>
-     * The TextRenderer is created for each string drawn. If the user wants to supply an existing TextRenderer, use the other drawString method
      *
      * @param fontSize typically 5 to 18, font is Font("SansSerif", Font.PLAIN, fontSize)
      * @param x x position (0 at left)
@@ -258,12 +274,20 @@ public final class DrawGL {
             fontSize *= 4;
             scale = .25f;
         }
-        TextRenderer textRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+        TextRenderer textRenderer = textRendererFor(fontSize);
         textRenderer.begin3DRendering();
         textRenderer.setColor(color);
-        Rectangle2D r = textRenderer.getBounds(s);
-        r.setRect(r.getX(), r.getY(), r.getWidth() * scale, r.getHeight() * scale); // adjust bounds for actual drawing scale of text
-        textRenderer.draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
+        Rectangle2D r;
+        if (alignmentX == 0) {
+            // getBounds() builds a GlyphVector for the whole string; noise-filter overlays
+            // change every frame and are left-aligned, so skip the measure.
+            r = UNMEASURED_BOUNDS;
+            textRenderer.draw3D(s, x, y, 0, scale);
+        } else {
+            r = textRenderer.getBounds(s);
+            r.setRect(r.getX(), r.getY(), r.getWidth() * scale, r.getHeight() * scale); // adjust bounds for actual drawing scale of text
+            textRenderer.draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
+        }
         textRenderer.end3DRendering();
         return r;
     }

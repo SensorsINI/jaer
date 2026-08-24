@@ -9,6 +9,7 @@ import net.sf.jaer.graphics.Chip2DRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 
 /**
  * A Chip with a 2D (or 1D) array of pixels.
@@ -264,7 +265,7 @@ public class Chip2D extends Chip {
             return new ChipRendererDisplayMethod(getCanvas());
         }
         try {
-            Class clazz = Class.forName(className);
+            Class clazz = JaerAllowedSubclasses.load(className, DisplayMethod.class);
             Constructor constructor = clazz.getConstructor(ChipCanvas.class);
             Object[] args = {getCanvas()};
             DisplayMethod method = (DisplayMethod) constructor.newInstance(args);

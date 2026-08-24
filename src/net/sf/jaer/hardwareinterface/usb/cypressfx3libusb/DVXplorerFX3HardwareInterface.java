@@ -22,40 +22,369 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JOptionPane;
+import org.usb4java.BufferUtils;
+import org.usb4java.ConfigDescriptor;
 import org.usb4java.Device;
+import org.usb4java.DeviceDescriptor;
+import org.usb4java.EndpointDescriptor;
+import org.usb4java.Interface;
+import org.usb4java.InterfaceDescriptor;
 import org.usb4java.LibUsb;
+import org.usb4java.Transfer;
+import org.usb4java.TransferCallback;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * Adds functionality of DVXplorer sensors to based CypressFX3 class. 
- * The key method is translateEvents that parses
- * the data from the sensor to construct jAER raw events.
- * 
+ * Adds functionality of DVXplorer / DVXplorer Mini/Micro sensors to CypressFX3.
+ * Mini/Micro share VID/PID {@code 152a:8419} with DVXplorer; they are CX3 MIPI
+ * ({@code bcdDevice} high byte {@link #DEVICE_TYPE_CX3_MIPI}). Firmware 10+ uses
+ * 8-byte SPI like dv-processing {@code DVXplorerM}; USB events are 32-bit MIPI words.
+ *
  * @author Pei Haoxiang
+ * @see <a href="https://gitlab.com/inivation/dv/dv-processing/-/blob/master/include/dv-processing/io/camera/dvxplorer_m.hpp">dvxplorer_m.hpp</a>
  */
 public class DVXplorerFX3HardwareInterface extends CypressFX3 implements BiasgenHardwareInterface {
     
-    /** The USB product ID of this device */
+    /** The USB product ID of this device (DVXplorer and DVXplorer Mini/Micro). */
     static public final short PID_FX3 = (short) 0x8419;
     static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 8;
     static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
+    /** USB {@code bcdDevice} high byte for Cypress CX3 MIPI (Mini/Micro). */
+    static public final int DEVICE_TYPE_CX3_MIPI = 4;
+    /** dv-processing 2.0 {@code DVXplorerM} required firmware. */
+    static public final int REQUIRED_FIRMWARE_VERSION_CX3 = 10;
+    /** dv-processing USBDeviceNextGen defaults (not the DAVIS 128 KiB CypressFX3 prefs). */
+    static public final int CX3_USB_FIFO_SIZE = 8192;
+    /** dv-processing {@code mDataTransfersNumberNLCK} default. */
+    static public final int CX3_USB_NUM_BUFFERS = 32;
+    static public final byte CX3_DEBUG_ENDPOINT = (byte) 0x81;
+    /** One URB; firmware returns the latest BMI160 sample whenever the host asks. */
+    static public final int CX3_IMU_TRANSFER_COUNT = 1;
+    static public final int CX3_IMU_TRANSFER_SIZE = 64;
+    /** BMI160 gyro/accel ODR 800 Hz; resubmit EP 0x81 at this period. */
+    static public final long CX3_IMU_PERIOD_NS = 1_250_000L;
+    static public final byte VR_DATA_CLEANUP = (byte) 0xC6;
+    /** Extra Mini/Micro USB/MIPI/IMU logs: {@code -Djaer.dvx.debug=true}. */
+    public static final boolean debug = Boolean.getBoolean("jaer.dvx.debug");
 
     protected DVXplorerFX3HardwareInterface(final Device device) {
         super(device);
     }
     
+    /** USB device type from {@code bcdDevice} high byte (FX3=1–3, CX3 MIPI=4). */
+    public int getUsbDeviceType() {
+        return (getDID() >> 8) & 0xFF;
+    }
+
+    /** Firmware version from {@code bcdDevice} low byte. */
+    public int getFirmwareVersion() {
+        return getDID() & 0xFF;
+    }
+
+    /** True for DVXplorer Mini/Micro (CX3 MIPI), same VID/PID as FX3 DVXplorer. */
+    public boolean isMipiCX3Device() {
+        return getUsbDeviceType() == DEVICE_TYPE_CX3_MIPI;
+    }
+
+    /** Firmware 10+ Mini/Micro: 8-byte SPI and high-level {@code MODULE_DVS} params. */
+    public boolean isNextGenFirmware() {
+        return isMipiCX3Device() && getFirmwareVersion() >= REQUIRED_FIRMWARE_VERSION_CX3;
+    }
+
+    @Override
+    protected boolean shouldResetUsbDevice() {
+        if (deviceDescriptor == null && device != null) {
+            deviceDescriptor = new DeviceDescriptor();
+            LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+        }
+        return !isMipiCX3Device();
+    }
+
+    private int usbNoteCount;
+    private int usbCompleteCount;
+    private int usbErrorCount;
+    private long usbBytes;
+    private long lastUsbNoteMs;
+
+    void noteUsbTransfer(final int status, final int actualLength) {
+        usbNoteCount++;
+        if (status == LibUsb.TRANSFER_COMPLETED) {
+            usbCompleteCount++;
+            usbBytes += actualLength;
+        } else {
+            usbErrorCount++;
+        }
+        if (status != LibUsb.TRANSFER_COMPLETED) {
+            CypressFX3.log.warning(String.format(
+                    "Mini/Micro USB: n=%d complete=%d err=%d lastStatus=%s lastBytes=%d",
+                    usbNoteCount, usbCompleteCount, usbErrorCount, LibUsb.errorName(status), actualLength));
+            return;
+        }
+        if (debug) {
+            final long now = System.currentTimeMillis();
+            if (usbNoteCount <= 8 || (now - lastUsbNoteMs) >= 2000) {
+                lastUsbNoteMs = now;
+                CypressFX3.log.info(String.format(
+                        "Mini/Micro USB: n=%d complete=%d err=%d lastBytes=%d totalBytes=%d fifo=%d x %d",
+                        usbNoteCount, usbCompleteCount, usbErrorCount, actualLength, usbBytes,
+                        getFifoSize(), getNumBuffers()));
+            }
+        }
+    }
+
+    private void logUsbLayout() {
+        if (!debug) {
+            return;
+        }
+        try {
+            final int speed = LibUsb.getDeviceSpeed(device);
+            CypressFX3.log.info("Mini/Micro USB speed=" + speedName(speed));
+        } catch (IllegalStateException e) {
+            CypressFX3.log.info("USB speed unavailable: " + e.getMessage());
+        }
+        final ConfigDescriptor config = new ConfigDescriptor();
+        final int status = LibUsb.getActiveConfigDescriptor(device, config);
+        if (status != LibUsb.SUCCESS) {
+            CypressFX3.log.warning("Could not read USB config descriptor: " + LibUsb.errorName(status));
+            return;
+        }
+        try {
+            final StringBuilder sb = new StringBuilder("Mini/Micro USB config:");
+            for (final Interface iface : config.iface()) {
+                for (final InterfaceDescriptor alt : iface.altsetting()) {
+                    sb.append(String.format(" iface=%d alt=%d eps=%d",
+                            alt.bInterfaceNumber() & 0xFF, alt.bAlternateSetting() & 0xFF, alt.bNumEndpoints() & 0xFF));
+                    for (final EndpointDescriptor ep : alt.endpoint()) {
+                        sb.append(String.format(" [ep=0x%02x attr=0x%02x max=%d]",
+                                ep.bEndpointAddress() & 0xFF, ep.bmAttributes() & 0xFF, ep.wMaxPacketSize() & 0xFFFF));
+                    }
+                }
+            }
+            CypressFX3.log.info(sb.toString());
+        } finally {
+            LibUsb.freeConfigDescriptor(config);
+        }
+    }
+
+    private static String speedName(final int speed) {
+        if (speed == LibUsb.SPEED_LOW) {
+            return "LOW";
+        }
+        if (speed == LibUsb.SPEED_FULL) {
+            return "FULL";
+        }
+        if (speed == LibUsb.SPEED_HIGH) {
+            return "HIGH";
+        }
+        if (speed == LibUsb.SPEED_SUPER) {
+            return "SUPER";
+        }
+        return String.valueOf(speed);
+    }
+
+    private void cleanupCx3DataBuffers() {
+        try {
+            sendVendorRequest(VR_DATA_CLEANUP);
+            if (debug) {
+                CypressFX3.log.info("Sent VR_DATA_CLEANUP 0xC6");
+            }
+        } catch (HardwareInterfaceException e) {
+            if (debug) {
+                CypressFX3.log.info("VR_DATA_CLEANUP 0xC6 not accepted, using clearHalt: " + e.getMessage());
+            }
+            usbControlResetDataEndpoint();
+        }
+    }
+
+    private final List<Transfer> cx3ImuTransfers = new ArrayList<>();
+    private volatile boolean cx3ImuRunning;
+    private int cx3ImuPackets;
+    private int cx3ImuWritten;
+    private long cx3ImuLastSubmitNs;
+    private ScheduledExecutorService cx3ImuScheduler;
+    private ScheduledFuture<?> cx3ImuResubmitTask;
+    private final ConcurrentLinkedQueue<IMUSample> cx3ImuQueue = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger cx3ImuQueued = new AtomicInteger();
+    private static final int CX3_IMU_QUEUE_MAX = 2000;
+
+    /**
+     * Mini/Micro IMU is on interrupt EP {@code 0x81} (dv-processing debug
+     * endpoint). Transfers are completed by the bulk AEReader event loop.
+     */
+    private void startCx3ImuTransfers() {
+        if (!isNextGenFirmware() || cx3ImuRunning) {
+            return;
+        }
+        stopCx3ImuTransfers();
+        cx3ImuRunning = true;
+        cx3ImuPackets = 0;
+        cx3ImuWritten = 0;
+        cx3ImuLastSubmitNs = 0;
+        final TransferCallback callback = this::onCx3ImuTransfer;
+        for (int i = 0; i < CX3_IMU_TRANSFER_COUNT; i++) {
+            final Transfer transfer = LibUsb.allocTransfer();
+            if (transfer == null) {
+                CypressFX3.log.warning("Mini/Micro IMU: allocTransfer failed");
+                break;
+            }
+            final ByteBuffer buffer = BufferUtils.allocateByteBuffer(CX3_IMU_TRANSFER_SIZE);
+            LibUsb.fillInterruptTransfer(transfer, deviceHandle, CX3_DEBUG_ENDPOINT, buffer, callback, null, 0);
+            final int status = LibUsb.submitTransfer(transfer);
+            if (status != LibUsb.SUCCESS) {
+                CypressFX3.log.warning("Mini/Micro IMU submit EP 0x81: " + LibUsb.errorName(status));
+                LibUsb.freeTransfer(transfer);
+                continue;
+            }
+            cx3ImuLastSubmitNs = System.nanoTime();
+            cx3ImuTransfers.add(transfer);
+        }
+        if (debug) {
+            CypressFX3.log.info(String.format(
+                    "Mini/Micro IMU: interrupt EP 0x81 %d x %d bytes",
+                    cx3ImuTransfers.size(), CX3_IMU_TRANSFER_SIZE));
+        }
+        if (getChip() instanceof DVXplorer chip) {
+            chip.setImuOverlayEnabled(true);
+        }
+    }
+
+    private void onCx3ImuTransfer(final Transfer transfer) {
+        if (transfer.status() == LibUsb.TRANSFER_COMPLETED && transfer.actualLength() > 0
+                && getAeReader() instanceof RetinaAEReader reader) {
+            reader.writeCx3ImuSample(transfer.buffer(), transfer.actualLength());
+        } else if (transfer.status() != LibUsb.TRANSFER_COMPLETED && transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+            CypressFX3.log.warning("Mini/Micro IMU EP 0x81: " + LibUsb.errorName(transfer.status()));
+        }
+        if (cx3ImuRunning && transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+            scheduleCx3ImuResubmit(transfer);
+        }
+    }
+
+    /**
+     * Do not resubmit on the USB event thread immediately: the CX3 debug EP
+     * completes as fast as the host asks. Wait ~800 Hz so DVS bulk is not starved.
+     */
+    private void scheduleCx3ImuResubmit(final Transfer transfer) {
+        final long now = System.nanoTime();
+        final long waitNs = CX3_IMU_PERIOD_NS - (now - cx3ImuLastSubmitNs);
+        if (waitNs <= 0) {
+            submitCx3ImuNow(transfer);
+            return;
+        }
+        if (cx3ImuScheduler == null || cx3ImuScheduler.isShutdown()) {
+            cx3ImuScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                final Thread t = new Thread(r, "DVXplorer-CX3-IMU");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        // Windows timers are ms-resolution; NANOSECONDS can round to a 0 delay.
+        final long waitMs = Math.max(1L, waitNs / 1_000_000L);
+        cx3ImuResubmitTask = cx3ImuScheduler.schedule(() -> submitCx3ImuNow(transfer), waitMs, TimeUnit.MILLISECONDS);
+    }
+
+    private void submitCx3ImuNow(final Transfer transfer) {
+        if (!cx3ImuRunning) {
+            return;
+        }
+        cx3ImuLastSubmitNs = System.nanoTime();
+        final int status = LibUsb.submitTransfer(transfer);
+        if (status != LibUsb.SUCCESS) {
+            CypressFX3.log.warning("Mini/Micro IMU resubmit: " + LibUsb.errorName(status));
+        }
+    }
+
+    /**
+     * Live Mini/Micro IMU for {@code extractBundle}. Not mixed into the DVS
+     * {@link AEPacketRaw} (that made extractPacket treat thousands of events as IMU).
+     */
+    public int drainCx3Imu(final ImuPacket dest) {
+        if (dest == null) {
+            return 0;
+        }
+        int n = 0;
+        IMUSample s;
+        while ((s = cx3ImuQueue.poll()) != null) {
+            cx3ImuQueued.decrementAndGet();
+            dest.appendCopy(s);
+            if (++n >= CX3_IMU_QUEUE_MAX) {
+                break;
+            }
+        }
+        return n;
+    }
+
+    private void offerCx3Imu(final IMUSample sample) {
+        while (cx3ImuQueued.get() >= CX3_IMU_QUEUE_MAX) {
+            if (cx3ImuQueue.poll() == null) {
+                break;
+            }
+            cx3ImuQueued.decrementAndGet();
+        }
+        cx3ImuQueue.offer(sample);
+        cx3ImuQueued.incrementAndGet();
+    }
+
+    private void stopCx3ImuTransfers() {
+        cx3ImuRunning = false;
+        final ScheduledFuture<?> pending = cx3ImuResubmitTask;
+        cx3ImuResubmitTask = null;
+        if (pending != null) {
+            pending.cancel(false);
+        }
+        cx3ImuQueue.clear();
+        cx3ImuQueued.set(0);
+        for (final Transfer transfer : cx3ImuTransfers) {
+            final int status = LibUsb.cancelTransfer(transfer);
+            if (debug && status != LibUsb.SUCCESS && status != LibUsb.ERROR_NOT_FOUND) {
+                CypressFX3.log.info("Mini/Micro IMU cancel: " + LibUsb.errorName(status));
+            }
+        }
+        if (!cx3ImuTransfers.isEmpty()) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            for (final Transfer transfer : cx3ImuTransfers) {
+                LibUsb.freeTransfer(transfer);
+            }
+            cx3ImuTransfers.clear();
+        }
+    }
+
     @Override
 	synchronized public void open() throws HardwareInterfaceException {
 		super.open();
-        
+        if (isMipiCX3Device()) {
+            if (debug) {
+                CypressFX3.log.info(String.format(
+                        "DVXplorer Mini/Micro CX3 MIPI (bcdDevice=0x%04x, firmware=%d%s)",
+                        getDID() & 0xFFFF, getFirmwareVersion(),
+                        isNextGenFirmware() ? ", 8-byte SPI / DVXplorerM protocol" : ", pre-v10 4-byte SPI"));
+                logUsbLayout();
+            }
+            cleanupCx3DataBuffers();
+        }
         if (getChip() instanceof DVXplorer chip) {
 			chip.dvxConfig();
             if (chip.getBiasgen() instanceof DVXplorerConfig cfg) {
@@ -63,6 +392,47 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             }
 		}
 	}
+
+    @Override
+    public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, int param)
+            throws HardwareInterfaceException {
+        if (!isNextGenFirmware()) {
+            super.spiConfigSend(moduleAddr, paramAddr, param);
+            return;
+        }
+        param = adjustHWParam(moduleAddr, paramAddr, param);
+        final byte[] configBytes = new byte[8];
+        final long p = param & 0xFFFFFFFFL;
+        configBytes[0] = (byte) ((p >>> 56) & 0xFF);
+        configBytes[1] = (byte) ((p >>> 48) & 0xFF);
+        configBytes[2] = (byte) ((p >>> 40) & 0xFF);
+        configBytes[3] = (byte) ((p >>> 32) & 0xFF);
+        configBytes[4] = (byte) ((p >>> 24) & 0xFF);
+        configBytes[5] = (byte) ((p >>> 16) & 0xFF);
+        configBytes[6] = (byte) ((p >>> 8) & 0xFF);
+        configBytes[7] = (byte) (p & 0xFF);
+        final ByteBuffer dataBuffer = org.usb4java.BufferUtils.allocateByteBuffer(8);
+        dataBuffer.put(configBytes);
+        dataBuffer.rewind();
+        sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, dataBuffer);
+        if (getChip() != null) {
+            getChip().getSupport().firePropertyChange(Chip.EVENT_HARDWARE_CHANGE, false, true);
+        }
+    }
+
+    @Override
+    public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr)
+            throws HardwareInterfaceException {
+        if (!isNextGenFirmware()) {
+            return super.spiConfigReceive(moduleAddr, paramAddr);
+        }
+        final ByteBuffer configBytes = sendVendorRequestIN(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, 8);
+        long returnedParam = 0;
+        for (int i = 0; i < 8; i++) {
+            returnedParam = (returnedParam << 8) | (configBytes.get(i) & 0xFF);
+        }
+        return (int) returnedParam;
+    }
 
     @Override
     synchronized public void setPowerDown(final boolean powerDown) throws HardwareInterfaceException {
@@ -77,7 +447,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
     @Override
     synchronized public void flashConfiguration(final Biasgen biasgen) throws HardwareInterfaceException {
-        JOptionPane.showMessageDialog(null, "Flashing biases is not supported on DVXplorer");
+        JOptionPane.showMessageDialog(null,
+                isMipiCX3Device()
+                        ? "Flashing biases is not supported on DVXplorer Mini/Micro"
+                        : "Flashing biases is not supported on DVXplorer");
     }
 
     @Override
@@ -91,12 +464,11 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 			CypressFX3.log.warning("CypressFX3.enableINEndpoint(): null USBIO device");
 			return;
 		}
-        
-        if (getChip() != null) {
-            DVXplorer chip = (DVXplorer) getChip();
-			chip.dvxDataStart();
-		}
-        
+
+        if (getChip() instanceof DVXplorer chip && !chip.isNextGenFirmware()) {
+            chip.dvxDataStart();
+        }
+
         inEndpointEnabled = true;
     }
     
@@ -105,6 +477,13 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         if (getChip() != null) {
             DVXplorer chip = (DVXplorer) getChip();
             chip.dvxDataStop();
+            if (chip.isNextGenFirmware()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
 
 		inEndpointEnabled = false;
@@ -124,15 +503,36 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
      */
     @Override
     public void startAEReader() throws HardwareInterfaceException {
+        if (isMipiCX3Device()) {
+            setSessionUsbBuffers(CX3_USB_FIFO_SIZE, CX3_USB_NUM_BUFFERS);
+            if (debug) {
+                CypressFX3.log.info(String.format(
+                        "Mini/Micro USB buffers %d x %d bytes",
+                        CX3_USB_NUM_BUFFERS, CX3_USB_FIFO_SIZE));
+            }
+        }
         setAeReader(new RetinaAEReader(this));
         allocateAEBuffers();
 
-        
-        // Clear halt endpoint's data to gurantee clean transfer
-        usbControlResetDataEndpoint();
-        
-        getAeReader().startThread(); // arg is number of errors before giving up
+        if (!isNextGenFirmware()) {
+            usbControlResetDataEndpoint();
+        }
+
+        getAeReader().startThread();
+        if (isNextGenFirmware() && getChip() instanceof DVXplorer chip) {
+            startCx3ImuTransfers();
+            if (debug) {
+                CypressFX3.log.info("Mini/Micro: USB IN queued, sending DVS_RUN");
+            }
+            chip.dvxDataStart();
+        }
         HardwareInterfaceException.clearException();
+    }
+
+    @Override
+    public void stopAEReader() {
+        stopCx3ImuTransfers();
+        super.stopAEReader();
     }
 
     /**
@@ -144,8 +544,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
         // aedat2 format
         public static final int AEDAT2_Y_ADDR_MASK = 0x000001FF;
-        public static final int AEDAT2_Y_ADDR_SHIFT = 22;
         public static final int AEDAT2_X_ADDR_MASK = 0x000003FF;
+        public static final int AEDAT2_Y_ADDR_SHIFT = 22;
         public static final int AEDAT2_X_ADDR_SHIFT = 12;
         public static final int AEDAT2_POLARITY_MASK = 0x00000001;
         public static final int AEDAT2_POLARITY_SHIFT = 11;
@@ -162,6 +562,20 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private final boolean dvsInvertXY;
         private final int dvsSizeX;
         private final int dvsSizeY;
+        private final boolean mipiCx3;
+
+        // MIPI CX3 parser (libcaer mipiCx3EventTranslator / S5K231Y)
+        private int mipiLastColumn = -1;
+        private long mipiReferenceUs = -1;
+        private int mipiLastReference = -1;
+        private int mipiLastUsedSub = -1;
+        private long mipiLastUsedReference = -1;
+        private long mipiCurrTimestamp;
+        private long mipiLastTimestamp;
+        private int mipiReferenceOverflow;
+        private long cx3ImuLastTimestamp;
+        private long cx3ImuLastHostNs;
+        private int cx3ImuDropped;
 
         // DVXplorer specific
         private final boolean dvsDualBinning = false;
@@ -191,21 +605,66 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
 
-            checkFirmwareLogic(REQUIRED_FIRMWARE_VERSION_FX3, REQUIRED_LOGIC_REVISION_FX3);
-
             imuEvents = new short[RetinaAEReader.IMU_DATA_LENGTH];
 
-            chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
-            
-            dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
-            dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
-            
-            dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
+            int resolvedChipID = 0;
+            int resolvedSizeX = 640;
+            int resolvedSizeY = 480;
+            boolean resolvedInvertXY = false;
+            boolean resolvedMipi = false;
+            boolean resolvedImuFlipX = false;
+            boolean resolvedImuFlipY = false;
+            boolean resolvedImuFlipZ = false;
 
-            final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 1);
-            imuFlipX = (imuOrientation & 0x04) != 0;
-            imuFlipY = (imuOrientation & 0x02) != 0;
-            imuFlipZ = (imuOrientation & 0x01) != 0;
+            if (cypress instanceof DVXplorerFX3HardwareInterface dvx && dvx.isMipiCX3Device()) {
+                resolvedMipi = true;
+                if (debug) {
+                    CypressFX3.log.info(String.format(
+                            "DVXplorer Mini/Micro USB decoder: CX3 MIPI firmware %d (%s)",
+                            dvx.getFirmwareVersion(),
+                            dvx.isNextGenFirmware() ? "DVXplorerM 8-byte SPI" : "libcaer 4-byte SPI"));
+                }
+                try {
+                    final int rx = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+                    final int ry = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+                    if (rx > 0 && ry > 0) {
+                        resolvedSizeX = rx;
+                        resolvedSizeY = ry;
+                    }
+                } catch (HardwareInterfaceException e) {
+                    CypressFX3.log.warning("CX3 DVS resolution SPI failed, using 640x480: " + e.getMessage());
+                }
+                if (!dvx.isNextGenFirmware()) {
+                    try {
+                        resolvedInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
+                        final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 1);
+                        resolvedImuFlipX = (imuOrientation & 0x04) != 0;
+                        resolvedImuFlipY = (imuOrientation & 0x02) != 0;
+                        resolvedImuFlipZ = (imuOrientation & 0x01) != 0;
+                    } catch (HardwareInterfaceException e) {
+                        CypressFX3.log.warning("CX3 orientation SPI failed: " + e.getMessage());
+                    }
+                }
+            } else {
+                checkFirmwareLogic(REQUIRED_FIRMWARE_VERSION_FX3, REQUIRED_LOGIC_REVISION_FX3);
+                resolvedChipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
+                resolvedSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+                resolvedSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+                resolvedInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
+                final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 1);
+                resolvedImuFlipX = (imuOrientation & 0x04) != 0;
+                resolvedImuFlipY = (imuOrientation & 0x02) != 0;
+                resolvedImuFlipZ = (imuOrientation & 0x01) != 0;
+            }
+
+            chipID = resolvedChipID;
+            dvsSizeX = resolvedSizeX;
+            dvsSizeY = resolvedSizeY;
+            dvsInvertXY = resolvedInvertXY;
+            mipiCx3 = resolvedMipi;
+            imuFlipX = resolvedImuFlipX;
+            imuFlipY = resolvedImuFlipY;
+            imuFlipZ = resolvedImuFlipZ;
 
             updateTimestampMasterStatus();
         }
@@ -232,6 +691,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
         @Override
         protected void translateEvents(final ByteBuffer b) {
+            if (mipiCx3) {
+                translateMipiCx3Events(b);
+                return;
+            }
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
 
@@ -605,9 +1068,279 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             } // sync on aePacketRawPool
         }
 
+        private int mipiWords;
+        private int mipiZeros;
+        private int mipiGroups;
+        private int mipiColumns;
+        private int mipiTimestampRefs;
+        private int mipiUnknown;
+        private int mipiEmitted;
+        private long mipiLastLogMs;
+
+        /**
+         * S5K231Y / CX3 MIPI 32-bit words (libcaer {@code mipiCx3EventTranslator}).
+         */
+        private void translateMipiCx3Events(final ByteBuffer b) {
+            synchronized (aePacketRawPool) {
+                final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                final int byteLen = b.remaining() > 0 ? b.remaining() : b.limit();
+                if ((byteLen & 0x03) != 0) {
+                    CypressFX3.log.warning(String.format(
+                            "%d bytes received via USB, which is not a multiple of four.", byteLen));
+                    b.limit(b.position() + (byteLen & ~0x03));
+                }
+                buffer.lastCaptureIndex = eventCounter;
+                final int eventsBefore = eventCounter;
+                final ByteBuffer view = b.duplicate();
+                view.order(ByteOrder.LITTLE_ENDIAN);
+                final IntBuffer iBuf = view.asIntBuffer();
+                if (debug && mipiWords == 0 && iBuf.remaining() > 0) {
+                    final int n = Math.min(8, iBuf.remaining());
+                    final StringBuilder hex = new StringBuilder("Mini/Micro first USB words:");
+                    for (int i = 0; i < n; i++) {
+                        hex.append(String.format(" %08x", iBuf.get(i)));
+                    }
+                    iBuf.rewind();
+                    CypressFX3.log.info(hex.toString());
+                }
+                for (int bufPos = 0; bufPos < iBuf.limit(); bufPos++) {
+                    final int event = iBuf.get(bufPos);
+                    mipiWords++;
+                    if (event == 0) {
+                        mipiZeros++;
+                        continue;
+                    }
+                    if ((event & 0x80000000) != 0) {
+                        mipiGroups++;
+                        parseMipiGroup(buffer, event);
+                    } else if ((event & 0x04000000) != 0) {
+                        mipiColumns++;
+                        parseMipiColumn(event);
+                    } else if ((event & 0x08000000) != 0) {
+                        mipiTimestampRefs++;
+                        parseMipiTimestampRef(event);
+                    } else {
+                        mipiUnknown++;
+                        if (debug && mipiUnknown <= 8) {
+                            CypressFX3.log.info(String.format("Mini/Micro unknown MIPI word 0x%08x", event));
+                        }
+                    }
+                }
+                mipiEmitted += eventCounter - eventsBefore;
+                buffer.setNumEvents(eventCounter);
+                buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                if (debug) {
+                    final long now = System.currentTimeMillis();
+                    if ((now - mipiLastLogMs) >= 2000) {
+                        mipiLastLogMs = now;
+                        CypressFX3.log.info(String.format(
+                                "Mini/Micro MIPI: words=%d zero=%d group=%d col=%d tsref=%d unk=%d emitted=%d lastCol=%d tref=%d",
+                                mipiWords, mipiZeros, mipiGroups, mipiColumns, mipiTimestampRefs, mipiUnknown, mipiEmitted,
+                                mipiLastColumn, mipiReferenceUs));
+                    }
+                }
+            }
+        }
+
+        private void parseMipiGroup(final AEPacketRaw buffer, final int event) {
+            if (mipiLastColumn < 0) {
+                return;
+            }
+            int group1Address = (event >>> 18) & 0x003F;
+            int group2Address = group1Address + ((event >>> 26) & 0x001F);
+            group1Address *= 8;
+            group2Address *= 8;
+            if (group1Address >= dvsSizeY || group2Address >= dvsSizeY) {
+                return;
+            }
+            if (!ensureCapacity(buffer, eventCounter + 16)) {
+                return;
+            }
+            final int group1Events = event & 0x00FF;
+            final int group1Polarity = ((event >>> 16) & 0x01) == 0 ? 1 : 0;
+            emitMipiGroupPixels(buffer, group1Events, group1Polarity, group1Address);
+            final int group2Events = (event >>> 8) & 0x00FF;
+            final int group2Polarity = ((event >>> 17) & 0x01) == 0 ? 1 : 0;
+            emitMipiGroupPixels(buffer, group2Events, group2Polarity, group2Address);
+        }
+
+        private void emitMipiGroupPixels(final AEPacketRaw buffer, final int bits, final int polarity, final int yBase) {
+            for (int i = 0, mask = 0x01; i < 8; i++, mask <<= 1) {
+                if ((bits & mask) == 0) {
+                    continue;
+                }
+                int xAddr = mipiLastColumn;
+                int yAddr = yBase + i;
+                if (dvsInvertXY) {
+                    final int temp = xAddr;
+                    xAddr = yAddr;
+                    yAddr = temp;
+                }
+                buffer.getTimestamps()[eventCounter] = currentTimestamp;
+                buffer.getAddresses()[eventCounter] = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT)
+                        | ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT)
+                        | ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
+                eventCounter++;
+            }
+        }
+
+        private void parseMipiColumn(final int event) {
+            if (mipiReferenceUs < 0) {
+                return;
+            }
+            final boolean startOfFrame = ((event >>> 21) & 0x01) != 0;
+            final int columnAddr = event & 0x03FF;
+            if (columnAddr >= dvsSizeX) {
+                return;
+            }
+            if (startOfFrame) {
+                final int timestampSub = (event >>> 11) & 0x03FF;
+                if (mipiReferenceUs == mipiLastUsedReference && timestampSub <= mipiLastUsedSub) {
+                    resetMipiParser("timestamp reference lost");
+                    return;
+                }
+                mipiLastTimestamp = mipiCurrTimestamp;
+                mipiCurrTimestamp = mipiReferenceUs + timestampSub;
+                mipiLastUsedReference = mipiReferenceUs;
+                mipiLastUsedSub = timestampSub;
+                lastTimestamp = currentTimestamp;
+                currentTimestamp = (int) (mipiCurrTimestamp & 0x7FFFFFFFL);
+            } else if (mipiLastColumn < 0) {
+                return;
+            } else if (columnAddr <= mipiLastColumn) {
+                resetMipiParser("column address illegal jump");
+                return;
+            }
+            mipiLastColumn = columnAddr;
+        }
+
+        private void parseMipiTimestampRef(final int event) {
+            final int timestampRef = event & 0x003FFFFF;
+            if (mipiLastReference >= 0 && timestampRef <= mipiLastReference) {
+                mipiReferenceOverflow++;
+            }
+            mipiLastReference = timestampRef;
+            mipiReferenceUs = ((long) mipiReferenceOverflow << 22) + timestampRef;
+            mipiReferenceUs *= 1000L;
+        }
+
+        private void resetMipiParser(final String reason) {
+            mipiLastColumn = -1;
+            mipiReferenceUs = -1;
+            mipiLastUsedSub = -1;
+            mipiLastUsedReference = -1;
+            if (debug) {
+                CypressFX3.log.info("DVXplorer Micro MIPI parser reset: " + reason);
+            }
+        }
+
+        /**
+         * DVXplorerM debug EP IMU packet (code 0x01), same layout as
+         * {@code usbDebugCallback} in dv-processing.
+         */
+        void writeCx3ImuSample(final ByteBuffer raw, final int length) {
+            if (length < 1) {
+                return;
+            }
+            final int code = raw.get(0) & 0xFF;
+            if (code != 0x01) {
+                if (debug && code == 0 && length > 6) {
+                    CypressFX3.log.info("Mini/Micro device log on EP 0x81, " + length + " bytes");
+                }
+                return;
+            }
+            if (length < 16) {
+                return;
+            }
+            // Safety net if a URB still completes early.
+            final long nowNs = System.nanoTime();
+            if (cx3ImuLastHostNs != 0 && (nowNs - cx3ImuLastHostNs) < CX3_IMU_PERIOD_NS) {
+                cx3ImuDropped++;
+                return;
+            }
+            cx3ImuPackets++;
+            final int flags = raw.get(1) & 0xFF;
+            final int accelSel = (flags >>> 3) & 0x03;
+            final int gyroSel = flags & 0x07;
+            final float accelScale = 65536.0f / (4 * (1 << accelSel));
+            final int gyroScaleAsc = Math.max(0, 4 - gyroSel);
+            final float gyroScale = 65536.0f / (250 * (1 << gyroScaleAsc));
+            final short rawGx = le16(raw, 2);
+            final short rawGy = le16(raw, 4);
+            final short rawGz = le16(raw, 6);
+            final short rawAx = le16(raw, 8);
+            final short rawAy = le16(raw, 10);
+            final short rawAz = le16(raw, 12);
+            final short rawTemp = le16(raw, 14);
+            if ((flags & 0x80) != 0) {
+                imuEvents[0] = toImuAccelLsb(rawAx / accelScale, imuFlipX);
+                imuEvents[1] = toImuAccelLsb(rawAy / accelScale, imuFlipY);
+                imuEvents[2] = toImuAccelLsb(rawAz / accelScale, imuFlipZ);
+            }
+            if ((flags & 0x40) != 0) {
+                imuEvents[4] = toImuGyroLsb(rawGx / gyroScale, imuFlipX);
+                imuEvents[5] = toImuGyroLsb(rawGy / gyroScale, imuFlipY);
+                imuEvents[6] = toImuGyroLsb(rawGz / gyroScale, imuFlipZ);
+            }
+            if ((flags & 0x20) != 0) {
+                final float tempC = (rawTemp / 512.0f) + 23.0f;
+                imuEvents[3] = clampShort((tempC - 35.0f) / TEMP_DEGC_PER_LSB);
+            }
+            int dtUs = cx3ImuLastHostNs == 0 ? 1250
+                    : (int) ((nowNs - cx3ImuLastHostNs) / 1000L);
+            if (dtUs < 1) {
+                dtUs = 1;
+            } else if (dtUs > 20_000) {
+                dtUs = 1250;
+            }
+            cx3ImuLastHostNs = nowNs;
+            int ts = cx3ImuLastTimestamp == 0
+                    ? (currentTimestamp > 0 ? currentTimestamp : dtUs)
+                    : (int) (cx3ImuLastTimestamp + dtUs);
+            cx3ImuLastTimestamp = ts;
+            DVXplorerFX3HardwareInterface.this.offerCx3Imu(IMUSample.fromRawUntracked(ts, imuEvents));
+            cx3ImuWritten++;
+            if (debug && (cx3ImuPackets <= 4 || (cx3ImuPackets % 400) == 0)) {
+                CypressFX3.log.info(String.format(
+                        "Mini/Micro IMU: packets=%d dropped=%d flags=0x%02x gyroScale=%.1f rawG=%d,%d,%d dps=%.1f,%.1f,%.1f",
+                        cx3ImuPackets, cx3ImuDropped, flags, gyroScale, rawGx, rawGy, rawGz,
+                        rawGx / gyroScale, rawGy / gyroScale, rawGz / gyroScale));
+            }
+        }
+
+        private static short le16(final ByteBuffer b, final int offset) {
+            return (short) ((b.get(offset) & 0xFF) | (b.get(offset + 1) << 8));
+        }
+
+        private short toImuAccelLsb(final float g, final boolean flip) {
+            float v = g / ACCEL_G_PER_LSB;
+            if (flip) {
+                v = -v;
+            }
+            return clampShort(Math.round(v));
+        }
+
+        private short toImuGyroLsb(final float dps, final boolean flip) {
+            float v = dps / GYRO_DPS_PER_LSB;
+            if (flip) {
+                v = -v;
+            }
+            return clampShort(Math.round(v));
+        }
+
+        private static short clampShort(final float v) {
+            if (v > Short.MAX_VALUE) {
+                return Short.MAX_VALUE;
+            }
+            if (v < Short.MIN_VALUE) {
+                return Short.MIN_VALUE;
+            }
+            return (short) v;
+        }
+
         @Override
         public void propertyChange(final PropertyChangeEvent arg0) {
-            // Do nothing here, IMU comes directly via event-stream.
+            // FX3 IMU is in the bulk event stream; Mini/Micro IMU is EP 0x81.
         }
     }
 }

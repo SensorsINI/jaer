@@ -69,8 +69,13 @@ public final class EventPacket extends Table {
     }
 
     public static int createElementsVector(FlatBufferBuilder builder, long[] timestamps, short[] xs, short[] ys, boolean[] polarities) {
-        builder.startVector(16, timestamps.length, 8);
-        for (int i = timestamps.length - 1; i >= 0; i--) {
+        return createElementsVector(builder, timestamps, xs, ys, polarities, timestamps.length);
+    }
+
+    public static int createElementsVector(FlatBufferBuilder builder, long[] timestamps, short[] xs, short[] ys,
+            boolean[] polarities, int n) {
+        builder.startVector(16, n, 8);
+        for (int i = n - 1; i >= 0; i--) {
             Event.createEvent(builder, timestamps[i], xs[i], ys[i], polarities[i]);
         }
         return builder.endVector();

@@ -8,7 +8,68 @@
     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-    
+
+    <!-- Ant DefaultLogger prefixes every line of a multiline <echo> with [echo].
+         Write the block to a temp file and print via PrintFileToStdout (raw fd 1). -->
+    <target name="help" description="List main Ant tasks (curated; ant -p dumps every described target).">
+        <mkdir dir="${java.io.tmpdir}/jaer-ant-help-tool"/>
+        <javac srcdir="${basedir}/scripts"
+               includes="PrintFileToStdout.java"
+               destdir="${java.io.tmpdir}/jaer-ant-help-tool"
+               includeantruntime="false"
+               release="11">
+            <classpath>
+                <pathelement path="${ant.core.lib}"/>
+            </classpath>
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+        <tempfile property="jaer.help.tmp" destDir="${java.io.tmpdir}" prefix="jaer-ant-help-" suffix=".txt" deleteonexit="true"/>
+        <echo file="${jaer.help.tmp}" encoding="UTF-8"><![CDATA[
+Main jAER Ant tasks    ant help     (this list)
+                       ant -p      every target that has a description
+Default with no args:  ant         same as ant jar
+
+Everyday (git checkout)
+  compile                 Ivy retrieve + javac. First-time / after ivy.xml changes.
+  run                     compile, then launch JAERViewer. Needs JDK 25+.
+  compile-fast            javac only (lib/ already filled by compile or download-deps).
+  jar                     compile + dist/jAER.jar
+  jar-fast                compile-fast + store-only dist/jAER.jar (optional 7z sidecar)
+  replace-installed-jar   copy dist/jAER.jar onto the install4j install (Windows UAC).
+                          Example:  ant jar-fast replace-installed-jar
+                          Override: -Djaer.install.dir=C:\Program Files\jAER
+  clean                   delete build/ products (not lib/)
+  javadoc                 build Javadoc
+  test                    unit tests
+
+Dependencies (Ivy)
+  download-deps           resolve/retrieve jars into lib/
+  clean-deps              delete lib/
+  clean-ivy               clean-deps
+  clean-ivy-cache         delete ivy/ cache (next compile re-downloads)
+
+macOS
+  install-macos-libusb    Homebrew libusb on Apple Silicon (also runs from ant run).
+                          Skip: -Dskip.macos.libusb=true
+
+Release / installers    (see README-releasing-tagging.md)
+  install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
+  release                 confirm VERSION.txt, splash, clean/jar, then install4jc
+  release-windows-ci      Windows-only media, no confirm (SignPath CI)
+  generate-splash         VERSION.txt overlay on splash PNGs
+  copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
+  upload-release-notes    GitHub Release body from release-notes/ (needs gh)
+  split-opencv-natives    per-OS slim OpenCV jars for install4j
+  jaer-runtime-archive    zip a runtime tree (legacy; prefer install4j)
+
+Scripts (not Ant)
+  scripts/run-jaer-fast.bat|.sh    launch from build/classes without ant
+]]></echo>
+        <taskdef name="printfilestostdout" classname="PrintFileToStdout"
+                 classpath="${java.io.tmpdir}/jaer-ant-help-tool"/>
+        <printfilestostdout file="${jaer.help.tmp}"/>
+    </target>
+
     <!--Override default to replace target with release -->
 <!--    <target depends="init,deps-jar,-pre-pre-compile" name="-do-compile-single">
         <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
@@ -134,12 +195,26 @@ and put it on PATH (or set JAVA_HOME).</fail>
         </j2seproject1:java>
     </target>
 
-    <target name="-post-compile">
+    <target name="-post-compile" depends="-generate-allowed-subclasses">
         <antcall target="-revert-project-properties-if-only-datestamp"/>
     </target>
 
-    <target name="-post-compile-single">
+    <target name="-post-compile-single" depends="-generate-allowed-subclasses">
         <antcall target="-revert-project-properties-if-only-datestamp"/>
+    </target>
+
+    <!-- Concrete AEChip/EventFilter/DisplayMethod FQCNs packed into jAER.jar. -->
+    <target name="-generate-allowed-subclasses" depends="init">
+        <echo message="Generating allowed-subclasses resources under ${build.classes.dir}"/>
+        <java classname="net.sf.jaer.util.GenerateAllowedSubclasses" fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath>
+                <pathelement location="${build.classes.dir}"/>
+                <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
+                <fileset dir="jars" includes="*.jar"/>
+            </classpath>
+            <arg value="${build.classes.dir}"/>
+        </java>
     </target>
     <!-- Build jaer module -->
 
@@ -151,13 +226,21 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <ivy:resolve file="ivy.xml"/>
 
         <!--note following pattern that must be used instead of ${ivy.lib} which does not work for unknown reason-->
-        <ivy:retrieve pattern="lib/[artifact]-[revision](-[classifier]).[ext]" sync="true"/>
-        <!--<echo message="Retrieve pattern=${ivy.retrieve.pattern}"/>-->
-        <!--<ivy:retrieve/>-->
+        <!-- type jar,bundle: Maven javadoc/source stay out; openpnp opencv is packaging
+             'bundle' (OSGi, ext jar) so type=jar alone never copies lib/opencv-*.jar
+             (org.opencv.core.Mat missing at compile). Classifier glob can still pull
+             *-javadoc.jar / *-sources.jar when POMs declare them as type=jar; delete those. -->
+        <ivy:retrieve pattern="lib/[artifact]-[revision](-[classifier]).[ext]" sync="true" type="jar,bundle"/>
+        <delete>
+            <fileset dir="${ivy.lib}" includes="*-javadoc.jar,*-sources.jar"/>
+        </delete>
+        <available file="${opencv.fat.jar}" property="opencv.fat.jar.present"/>
+        <fail unless="opencv.fat.jar.present"
+              message="Ivy did not retrieve ${opencv.fat.jar} (org.openpnp:opencv, Maven packaging bundle). Check ivy.xml artifact type=bundle ext=jar and retrieve type=jar,bundle."/>
          
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
             <path>
-                <fileset dir="${ivy.lib}" includes="*.jar"/>
+                <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
             </path>
             <map from="${basedir}/" to=""/>
             <map from="${basedir}\" to=""/>
@@ -215,7 +298,30 @@ and put it on PATH (or set JAVA_HOME).</fail>
 
     <!-- Same javac/copy as -do-compile but without -pre-compile (no Ivy). lib/ must exist; run download-deps after ivy.xml changes. -->
     <target depends="init,deps-jar,-pre-pre-compile,-copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile-without-ivy">
-        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}"/>
+        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}">
+            <customize>
+                <!-- lib/*.jar after Ivy retrieve (openpnp opencv is type=bundle; ivy.classpath
+                     from init may be stale until the next Ant JVM). -->
+                <classpath>
+                    <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
+                </classpath>
+            </customize>
+        </j2seproject3:javac>
+        <copy todir="${build.classes.dir}">
+            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
+        </copy>
+    </target>
+
+    <!-- Override NetBeans -do-compile so lib/*.jar (including opencv bundle) is on javac
+         even when ivy.classpath was loaded at init before retrieve updated it. -->
+    <target depends="init,deps-jar,-pre-pre-compile,-pre-compile,-copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile">
+        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}">
+            <customize>
+                <classpath>
+                    <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
+                </classpath>
+            </customize>
+        </j2seproject3:javac>
         <copy todir="${build.classes.dir}">
             <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
         </copy>
@@ -408,7 +514,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <copy file="images/1024w/SplashScreen.png" todir="build/classes"/>
     </target>
 
-    <!-- Windows/macOS/Linux launchers come from install4j (ant release / jaer.install4j).
+    <!-- Windows/macOS/Linux launchers come from install4j (ant release / install4j/jaer.install4j).
          The old exe4j jAERViewer_win64.exe path was removed. -->
 
     <target name="-post-jar" depends="-revert-project-properties-if-only-datestamp">
@@ -512,40 +618,70 @@ and put it on PATH (or set JAVA_HOME).</fail>
         </java>
     </target>
 
+    <!-- install4j project lives in install4j/; media still goes to currentInstallers/. -->
+    <property name="jaer.install4j.dir" value="${basedir}/install4j"/>
+    <property name="jaer.install4j.project" value="${jaer.install4j.dir}/jaer.install4j"/>
+    <property name="jaer.install4j.license.primary" value="${jaer.install4j.dir}/license.txt"/>
+    <property name="jaer.install4j.license.signpath" value="${basedir}/signpath/install4j-license.txt"/>
+
     <target name="-sync-install4j-version" depends="-load-version">
-        <replaceregexp file="${basedir}/jaer.install4j"
+        <replaceregexp file="${jaer.install4j.project}"
                        match='(&lt;application\b[^&gt;]*\bversion=")[^"]*(")'
                        replace="\1${jaer.version}\2"
                        byline="true"/>
-        <echo message="Synced jaer.install4j application version to ${jaer.version}"/>
+        <echo message="Synced install4j/jaer.install4j application version to ${jaer.version}"/>
     </target>
 
     <target name="-confirm-release" depends="-load-version">
-        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, and install4jc? [y/N]"
+        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, and install4jc? [Y/n]"
                addproperty="jaer.release.confirm"
-               defaultvalue="n"/>
+               defaultvalue="y"/>
         <condition property="jaer.release.confirmed">
             <matches string="${jaer.release.confirm}" pattern="(?i)\s*y(es)?\s*"/>
         </condition>
         <fail unless="jaer.release.confirmed" message="Release cancelled (reply y or yes to proceed)."/>
     </target>
 
-    <!-- Optional local license from signpath/install4j-license.txt (gitignored; GH Actions uses secret). -->
+    <!-- Optional local license: install4j/license.txt, else signpath/install4j-license.txt (both gitignored). -->
     <target name="-probe-install4j-license-local">
-        <available file="${basedir}/signpath/install4j-license.txt"
-                   property="jaer.install4j.license.file.exists"/>
-        <condition property="jaer.install4j.license.file.usable">
+        <available file="${jaer.install4j.license.primary}"
+                   property="jaer.install4j.license.primary.exists"/>
+        <available file="${jaer.install4j.license.signpath}"
+                   property="jaer.install4j.license.signpath.exists"/>
+        <condition property="jaer.install4j.license.primary.usable">
             <and>
-                <isset property="jaer.install4j.license.file.exists"/>
-                <length file="${basedir}/signpath/install4j-license.txt" when="greater" length="0"/>
+                <isset property="jaer.install4j.license.primary.exists"/>
+                <length file="${jaer.install4j.license.primary}" when="greater" length="0"/>
+            </and>
+        </condition>
+        <condition property="jaer.install4j.license.signpath.usable">
+            <and>
+                <isset property="jaer.install4j.license.signpath.exists"/>
+                <length file="${jaer.install4j.license.signpath}" when="greater" length="0"/>
             </and>
         </condition>
     </target>
 
-    <target name="-load-install4j-license-local" depends="-probe-install4j-license-local"
-            if="jaer.install4j.license.file.usable">
+    <target name="-load-install4j-license-primary" depends="-probe-install4j-license-local"
+            if="jaer.install4j.license.primary.usable">
         <loadfile property="jaer.install4j.license"
-                  srcFile="${basedir}/signpath/install4j-license.txt">
+                  srcFile="${jaer.install4j.license.primary}">
+            <filterchain>
+                <striplinebreaks/>
+                <tokenfilter>
+                    <trim/>
+                </tokenfilter>
+            </filterchain>
+        </loadfile>
+        <echo message="Using install4j license from install4j/license.txt"/>
+    </target>
+
+    <target name="-load-install4j-license-signpath"
+            depends="-probe-install4j-license-local,-load-install4j-license-primary"
+            if="jaer.install4j.license.signpath.usable"
+            unless="jaer.install4j.license">
+        <loadfile property="jaer.install4j.license"
+                  srcFile="${jaer.install4j.license.signpath}">
             <filterchain>
                 <striplinebreaks/>
                 <tokenfilter>
@@ -556,9 +692,12 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <echo message="Using install4j license from signpath/install4j-license.txt"/>
     </target>
 
+    <target name="-load-install4j-license-local"
+            depends="-load-install4j-license-primary,-load-install4j-license-signpath"/>
+
     <target name="-require-install4j-project">
-        <available file="${basedir}/jaer.install4j" property="jaer.install4j.exists"/>
-        <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
+        <available file="${jaer.install4j.project}" property="jaer.install4j.exists"/>
+        <fail unless="jaer.install4j.exists" message="install4j/jaer.install4j not found"/>
     </target>
 
     <!-- Keep in sync with ivy.xml org.openpnp:opencv rev. Fat jar stays in lib/ for
@@ -619,7 +758,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -628,12 +767,28 @@ and put it on PATH (or set JAVA_HOME).</fail>
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
     <target name="-run-install4jc"
             depends="split-opencv-natives,-run-install4jc-with-license,-run-install4jc-without-license"/>
+
+    <target name="-require-opencv-slim">
+        <available type="dir" file="${opencv.slim.dir}" property="opencv.slim.dir.exists"/>
+        <fail unless="opencv.slim.dir.exists"
+              message="Missing ${opencv.slim.dir}. Run ant split-opencv-natives first (or ant release)."/>
+    </target>
+
+    <!-- Public name: Ant treats CLI args starting with "-" as options, so
+         ant -run-install4jc-with-license does not work. -->
+    <target name="install4j"
+            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="Run install4jc only (existing dist/jAER.jar; no splash/clean/jar).">
+        <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
+        <echo message="Output: currentInstallers/${jaer.version}/"/>
+        <echo message="Did not regenerate splash, clean, or jar. Full pipeline: ant release"/>
+    </target>
 
     <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
     <target name="-run-install4jc-windows-with-license"
@@ -643,7 +798,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -653,7 +808,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
-            <arg value="${basedir}/jaer.install4j"/>
+            <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
@@ -677,33 +832,13 @@ and put it on PATH (or set JAVA_HOME).</fail>
                            byline="true"/>
             <echo message="Copied ${jaer.updates.xml.source} -&gt; ${basedir}/updates.xml"/>
             <echo message="Set updates.xml baseUrl to GitHub Releases latest/download/."/>
-            <echo message="Commit and push updates.xml so install4j auto-update can see ${jaer.version}."/>
+            <echo message="When the GitHub Release is ready, commit and push updates.xml so auto-update can see ${jaer.version}."/>
             <echo message="Upload currentInstallers/${jaer.version}/jAER_* to the GitHub Release (see scripts/upload-github-release-installers.ps1)."/>
         </sequential>
     </macrodef>
 
     <target name="copy-updates-xml" depends="-load-version"
-            description="Copy currentInstallers/VERSION/updates.xml to repo root (non-interactive).">
-        <jaer-copy-updates-xml/>
-    </target>
-
-    <target name="offer-copy-updates-xml" depends="-load-version"
-            description="Ask whether to copy currentInstallers/VERSION/updates.xml to repo root.">
-        <property name="jaer.updates.xml.source"
-                  value="${basedir}/currentInstallers/${jaer.version}/updates.xml"/>
-        <available file="${jaer.updates.xml.source}" property="jaer.updates.xml.source.exists"/>
-        <fail unless="jaer.updates.xml.source.exists"
-              message="Missing ${jaer.updates.xml.source} — run ant release (or install4jc) first."/>
-        <input message="Copy currentInstallers/${jaer.version}/updates.xml to repo root for auto-update? [y/N]"
-               addproperty="jaer.copy.updates.confirm"
-               defaultvalue="n"/>
-        <condition property="jaer.copy.updates.confirmed">
-            <matches string="${jaer.copy.updates.confirm}" pattern="(?i)\s*y(es)?\s*"/>
-        </condition>
-        <antcall target="-do-copy-updates-xml-if-confirmed"/>
-    </target>
-
-    <target name="-do-copy-updates-xml-if-confirmed" if="jaer.copy.updates.confirmed">
+            description="Copy currentInstallers/VERSION/updates.xml to repo root (run when the release is ready to publish).">
         <jaer-copy-updates-xml/>
     </target>
 
@@ -725,10 +860,11 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="release"
-            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc,offer-copy-updates-xml"
-            description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc, offer updates.xml copy.">
+            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
+            description="Confirm VERSION.txt (default y), generate splash PNGs, sync install4j, clean/jar, run install4jc.">
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
-        <echo message="Next: git tag ${jaer.version}, push updates.xml if copied, create the GitHub release,"/>
+        <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
+        <echo message="When ready: ant copy-updates-xml, git tag ${jaer.version}, create the GitHub release,"/>
         <echo message="and upload installers (scripts/upload-github-release-installers.ps1)."/>
         <echo message="See README-releasing-tagging.md"/>
     </target>
@@ -744,5 +880,42 @@ and put it on PATH (or set JAVA_HOME).</fail>
     <target name="jaer-sign-jar" depends="jar">
         <echo message="Self-signing jar"/>
         <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
+    </target>
+
+    <!-- Empty default; command-line -Djaer.install.dir=... overrides. Windows Program Files
+         copy is elevated via scripts/replace-installed-jaer-jar.ps1 (UAC / -Verb RunAs). -->
+    <property name="jaer.install.dir" value=""/>
+
+    <target name="-require-dist-jar" depends="init">
+        <available file="${dist.jar}" property="dist.jar.exists"/>
+        <fail unless="dist.jar.exists"
+              message="Missing ${dist.jar}. Build it first: ant jar   or   ant jar-fast"/>
+        <available file="${jaer.install4j.project}" property="jaer.install4j.exists"/>
+        <fail unless="jaer.install4j.exists" message="install4j/jaer.install4j not found"/>
+    </target>
+
+    <target name="replace-installed-jar" depends="-require-dist-jar,checkos"
+            description="Copy dist/jAER.jar over the install4j install (Windows UAC). Example: ant jar-fast replace-installed-jar">
+        <echo message="Replacing install4j jAER.jar with ${dist.jar}"/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <env key="JAER_INSTALL_DIR" value="${jaer.install.dir}"/>
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/replace-installed-jaer-jar.ps1"/>
+            <arg value="-SourceJar"/>
+            <arg file="${dist.jar}"/>
+            <arg value="-Install4jProject"/>
+            <arg file="${jaer.install4j.project}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <env key="JAER_INSTALL_DIR" value="${jaer.install.dir}"/>
+            <arg file="${basedir}/scripts/replace-installed-jaer-jar.sh"/>
+            <arg file="${dist.jar}"/>
+            <arg file="${jaer.install4j.project}"/>
+        </exec>
     </target>
 </project>

@@ -11,6 +11,7 @@ import java.util.TimerTask;
 import java.util.Timer;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -24,6 +25,25 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobid
  */
 @Description("Exposes DAVIS frames at desired (and low) frame rate for a time lapse movie mode")
+@Help("""
+<html>
+<body>
+<h2>TimeLapse</h2>
+<p>On a <b>DAVIS</b> chip, triggers APS exposures on a timer so you can record a
+<b>time-lapse</b> at a low frame rate (live camera). Event packets pass through unchanged.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Select a DAVIS AEChip and open the live camera.</li>
+<li>Check <b>Enabled</b>.</li>
+<li>Set <code>frameRateHz</code> (default 1&nbsp;Hz). The filter calls
+<code>takeSnapshot()</code> on that period.</li>
+</ol>
+<p>Pair with <code>DavisFrameAviWriter</code> or <code>JaerAviWriter</code> to save the movie.
+Disabling cancels the timer.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class TimeLapse extends EventFilter2D implements FrameAnnotater {
 

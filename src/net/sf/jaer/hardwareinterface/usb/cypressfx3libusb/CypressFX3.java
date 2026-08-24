@@ -686,13 +686,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         if (deviceHandle != null) {
             try {
-                log.info("Doing USB reset on device before releasing it");
-                int status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
-                if (status != LibUsb.SUCCESS) {
-                    throw new HardwareInterfaceException("failed to reset device: " + LibUsb.errorName(status));
+                if (shouldResetUsbDevice()) {
+                    log.info("Doing USB reset on device before releasing it");
+                    int status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+                    if (status != LibUsb.SUCCESS) {
+                        throw new HardwareInterfaceException("failed to reset device: " + LibUsb.errorName(status));
+                    }
                 }
                 log.info("Releasing device handle");
-                status = LibUsb.releaseInterface(deviceHandle, 0);
+                int status = LibUsb.releaseInterface(deviceHandle, 0);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open(): failed to releaseInterface: " + LibUsb.errorName(status));
                 }
@@ -993,6 +995,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", DEFAULT_AE_READER_FIFO_SIZE);
 
     /**
+     * Session USB bulk buffer sizes (not written to Preferences). Used by CX3
+     * Mini/Micro so DAVIS 128 KiB prefs are not applied to that camera.
+     */
+    protected void setSessionUsbBuffers(final int fifoSize, final int numBuffers) {
+        aeReaderFifoSize = fifoSize;
+        aeReaderNumBuffers = numBuffers;
+    }
+
+    /**
      * sets the buffer size for the aereader thread. optimal size depends on
      * event rate, for high event rates, at least 8k or 16k bytes should be
      * chosen, and low event rates need smaller buffer size to produce suitable
@@ -1174,6 +1185,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         return;
                     }
                     if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                        if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
+                            dvx.noteUsbTransfer(LibUsb.TRANSFER_COMPLETED, transfer.actualLength());
+                        }
                         usbPacketStatistics.addSample(transfer);
                         translateEvents(transfer.buffer());
 
@@ -1197,6 +1211,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
                         CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
                                 + LibUsb.errorName(transfer.status()));
+                        if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
+                            dvx.noteUsbTransfer(transfer.status(), transfer.actualLength());
+                        }
                     }
                 }
             }
@@ -1554,10 +1571,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     private boolean hasStringIdentifier() throws IllegalStateException {
 
-        log.fine(String.format("Getting string identifier for deviceHandle %s", deviceHandle.toString()));
         if (deviceHandle == null) {
             throw new IllegalStateException("null deviceHandle");
         }
+        log.fine(String.format("Getting string identifier for deviceHandle %s", deviceHandle.toString()));
         final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
 
         if (stringDescriptor1 == null) {
@@ -1567,6 +1584,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         return false;
+    }
+
+    /**
+     * FX3 DAVIS needs a USB reset after open (string-descriptor timeout workaround).
+     * CX3 Mini/Micro SuperSpeed bulk IN often dies after {@code LibUsb.resetDevice}.
+     */
+    protected boolean shouldResetUsbDevice() {
+        return true;
     }
 
     /**
@@ -1597,17 +1622,21 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // Open device.
         if (deviceHandle == null) {
-            deviceHandle = new DeviceHandle();
+            final DeviceHandle handle = new DeviceHandle();
             try {
-                status = LibUsb.open(device, deviceHandle);
+                status = LibUsb.open(device, handle);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
                 }
-                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
-                if (status != LibUsb.SUCCESS) {
-                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
+                deviceHandle = handle;
+                if (shouldResetUsbDevice()) {
+                    status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+                    if (status != LibUsb.SUCCESS) {
+                        throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
+                    }
                 }
             } catch (IllegalStateException e) {
+                deviceHandle = null;
                 throw new HardwareInterfaceException(String.format("Got %s", e.toString()));
             }
         }
@@ -1737,18 +1766,20 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // Open device.
         if (deviceHandle == null) {
-            deviceHandle = new DeviceHandle();
+            final DeviceHandle handle = new DeviceHandle();
             try {
-                status = LibUsb.open(device, deviceHandle);
+                status = LibUsb.open(device, handle);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
                 }
+                deviceHandle = handle;
                 // do not reset device because this method is called when menu is built, even while device is open and giving data
 //                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
 //                if (status != LibUsb.SUCCESS) {
 //                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
 //                }
             } catch (IllegalStateException e) {
+                deviceHandle = null;
                 throw new HardwareInterfaceException(e.toString());
             }
         }

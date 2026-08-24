@@ -18,7 +18,7 @@ Thesycon USBIO was the original Windows USB stack for early jAER boards. Virtual
 |--------|--------|
 | Delete natives | `jars/win32` / `jars/win64` (usbiojava.dll); `native/` (was JavaCAN `libjavacan-core.so`) |
 | Unregister factories | Removed `SiLabs_USBIO_C8051F3xxFactory` and `USBIOHardwareInterfaceFactory` from `HardwareInterfaceFactory.factories` |
-| Installer upgrade cleanup | `jaer.install4j` removes leftover `usbiojava.dll` and empty `jars/win32` / `jars/win64` |
+| Installer upgrade cleanup | `install4j/jaer.install4j` removes leftover `usbiojava.dll` and empty `jars/win32` / `jars/win64` |
 | Keep compile jar | `jars/UsbIoJava.jar` remains on the classpath so USBIO sources still compile |
 | Keep sources | All `cypressfx2/` USBIO, SiLabs USBIO, cochlea USBIO, servo, Toradex, etc. |
 
@@ -96,6 +96,6 @@ Parallel libusb packages to prefer / extend when porting:
 
 ## Related packaging
 
-- Classpath: `nbproject/project.properties` / Eclipse `.classpath` still reference `UsbIoJava.jar`
+- Classpath: `nbproject/project.properties` still references `UsbIoJava.jar`
 - Eclipse launch configs now use `java.library.path=jars` (no `win32`/`win64` subdirs)
 - Runtime already logs a soft warning from `UsbIoUtilities` when the native lib is absent

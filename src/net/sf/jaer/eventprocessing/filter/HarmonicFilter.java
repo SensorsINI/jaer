@@ -6,21 +6,26 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.util.Observable;
+import java.beans.PropertyChangeEvent;
+import java.util.Arrays;
 
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
-
-import com.jogamp.opengl.util.awt.TextRenderer;
 
 /**
  * An AE filter that filters out boring events caused by global flickering
@@ -44,26 +49,110 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  * to reject events. The histogram is forgotten slowly by periodically decaying
  * all values. This method is not as physical and introduces a kind of 'frame'
  * for forgetting, but it is slightly cheaper to compute.
+ * <p>
+ * jAER 3.0 typed path: {@link #processPolarity} only (DVS polarity events).
  *
  * @author tobi
  */
-@Description("<html>A denoiser that filters out boring events caused by global flickering illumination. <p>It measures the global event activity to obtain the phase and amplitude of flicker. <p>If the amplitude exceeds a threashold, then events around the peak activity are filtered away.")
+@Description("Filters out global flicker (line-powered lighting) using a driven harmonic oscillator; events near the oscillator zero-crossing are blocked.")
+@Help("""
+<html>
+<body>
+<h2>HarmonicFilter</h2>
+<p>Removes <b>global flicker</b> from line-powered lighting (or similar whole-array
+modulation). A single harmonic oscillator is driven by ON events one way and OFF
+events the other. Tune <code>freq</code> to the flicker fundamental &mdash; typically
+<b>twice line frequency</b> (100&nbsp;Hz for 50&nbsp;Hz mains, 120&nbsp;Hz for 60&nbsp;Hz)
+because lamps often flash once per half-cycle. When the oscillator is near a
+zero-crossing of its position, those events are treated as the boring peak of
+the flicker and are filtered out.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b> and <code>showResonatorState</code> so you can see the orbit.</li>
+<li>Set <code>freq</code> to the flicker fundamental (100/120&nbsp;Hz for mains, or
+e.g. 1&nbsp;kHz for a fast source). Sweep until the orbit is <b>largest and
+roundest</b>.</li>
+<li>Raise <code>quality</code> (Q) to sharpen the resonance once freq is close;
+lower Q if the orbit will not lock or rings after rate changes.</li>
+<li>Raise <code>threshold</code> (0&ndash;1) to widen the blocking window as a
+fraction of oscillator peak amplitude. At 1, every event is inside the window
+and all are blocked (once the resonator has locked).</li>
+</ol>
+<p><code>useLocalPhases</code> blocks events that fire near <i>that pixel's</i>
+usual oscillator phase (flicker-locked cells) instead of using the global
+<code>x&approx;0</code> test. <code>threshold</code> is then a fraction of a
+half-cycle (1 = block all). The first event from each pixel is kept to seed
+the local phase.</p>
+<hr>
+<h3>The colored square (phase portrait) &mdash; what to aim for</h3>
+<p>The overlay is the resonator in <b>phase space</b>, not a tracked object.
+Horizontal = displacement <code>x</code>, vertical = velocity <code>y</code>,
+centered on the chip and auto-scaled. The faint trail is the recent orbit.
+The <b>vertical axis</b> is <code>x = 0</code> (zero-crossing): events are blocked
+when the marker is near that line.</p>
+<p><b>You are tuning for a stable ellipse or circle.</b> That means the oscillator
+is locked to a periodic flicker at <code>freq</code> (ON and OFF kicks arrive in
+antiphase, like a harmonic drive). Then:</p>
+<ul>
+<li><b>Freq too far from the flicker</b> &mdash; small scribble or blob near the
+center (not resonating). Try 100 vs 120, then fine-tune for the <i>largest
+roundest</i> orbit (peak resonance).</li>
+<li><b>Q too low</b> &mdash; even at the right freq the orbit stays small and
+mushy (over-damped). Raise <code>quality</code>.</li>
+<li><b>Q too high</b> &mdash; orbit is slow to appear, wobbles, or rings after
+the scene changes; very sensitive to a freq error. Lower <code>quality</code>.</li>
+<li><b>Always green, 0% filtered</b> &mdash; not locked (wrong freq/Q) or
+amplitude has not built; the filter only blocks near a zero-crossing once the
+oscillator has power.</li>
+<li><b>Red flashes as the marker crosses the vertical axis</b> &mdash; locked.
+Raise <code>threshold</code> to block a wider phase window (more flicker
+removed, more risk of eating real edges that happen to coincide).</li>
+</ul>
+<p><b>Green</b> = events pass; <b>red</b> = near zero-crossing, events blocked.
+The square and its trail are drawn in
+<b>slow motion</b> at <code>orbitDisplayHz</code> (default 3&nbsp;Hz) using data time
+so a 1&nbsp;kHz resonator is still visible at a 30&nbsp;Hz render rate: one displayed
+revolution is one real cycle, stretched. Set <code>orbitDisplayHz</code> to 0 to
+show the live (too-fast) state. Pause or slow playback and the square
+slows with the data. Disable the overlay with <code>showResonatorState</code>.
+Shared noise-filter display: <code>showFilteringStatistics</code>.</p>
+</body>
+</html>
+""")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
-    private boolean printStats = prefs().getBoolean("HarmonicFilter.printStats", true);
-    private float threshold = getPrefs().getFloat("HarmonicFilter.threshold", 0.1f); // when value is less than this value, then we are crossing zero and don't pass events
-    private float[][][] localPhases; // measures phase of pixel relative to oscillator
+    @Preferred
+    private boolean showResonatorState = getBoolean("showResonatorState", prefs().getBoolean("HarmonicFilter.printStats", true));
+    @Preferred
+    private float orbitDisplayHz = getFloat("orbitDisplayHz", 3f);
+    @Preferred
+    private float threshold = clamp01(getPrefs().getFloat("HarmonicFilter.threshold", 0.1f)); // fraction of peak amplitude; 1 = block all
+    /** Flattened [x][y][type] map; null when {@link #useLocalPhases} is off. */
+    private float[] localPhases;
+    private int localPhaseSy, localPhaseNt;
     private boolean useLocalPhases = prefs().getBoolean("HarmonicFilter.useLocalPhases", false);
     HarmonicOscillator oscillator = new HarmonicOscillator();
-    TextRenderer renderer;
+    /** Last event timestamp processed; used to detect file rewind/loop. */
+    private int lastProcessedTimestamp = Integer.MIN_VALUE;
+    private AEFileInputStreamInterface subscribedStream;
 
     public HarmonicFilter(AEChip chip) {
         super(chip);
         resetFilter();
-        setPropertyTooltip("threshold", "increase to reduce # of events; when oscillator instantaneous value is within this value as fraction of amplitude, then events are blocked ");
-        setPropertyTooltip("quality", "quality factor of osciallator, increase to sharpen around best freq");
-        setPropertyTooltip("freq", "resonant frequency of oscillator in Hz; choose at observed fundamental");
-        setPropertyTooltip("useLocalPhases", "uses the local phase (pixel-wise phase) to filter events out");
+        setPropertyTooltipBold(TT_FILT_CONTROL, "threshold", "Fraction of oscillator peak amplitude (0-1). 0=pass all, 1=block all once locked. Events with |x| <= threshold * peak are blocked.");
+        setPropertyTooltipBold(TT_FILT_CONTROL, "quality", "quality factor Q of the oscillator; raise to sharpen lock once freq is close, lower if it will not lock or rings");
+        setPropertyTooltipBold(TT_FILT_CONTROL, "freq", "resonant frequency in Hz; sweep for the largest roundest orbit (often 100 or 120 = 2x line frequency)");
+        setPropertyTooltip(TT_FILT_CONTROL, "useLocalPhases", "Block events near this pixel's usual oscillator phase (flicker-locked cells). Threshold is a fraction of a half-cycle (1=block all).");
+        setPropertyTooltip(TT_DISP, "showResonatorState", "Draw the oscillator phase-space orbit (green=pass, red=blocking near x=0); aim for a stable ellipse");
+        setPropertyTooltip(TT_DISP, "orbitDisplayHz", "Slow-motion rate of the square (Hz of data time). 3 makes a 1kHz orbit visible at 30Hz render; 0=live (too fast)");
+        hideProperty("correlationTimeS");
+        hideProperty("sigmaDistPixels");
+        hideProperty("subsampleBy");
+        hideProperty("letFirstEventThrough");
+        hideProperty("antiCasualEnabled");
+        hideProperty("filterHotPixels");
     }
 
     @Override
@@ -74,42 +163,155 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
 
     @Override
     synchronized public void resetFilter() {
+        super.resetFilter();
         oscillator.reset();
-        localPhases = new float[chip.getSizeX()][chip.getSizeY()][chip.getNumCellTypes()];
+        lastProcessedTimestamp = Integer.MIN_VALUE;
+        if (useLocalPhases) {
+            allocLocalPhases();
+        } else {
+            localPhases = null;
+        }
+    }
+
+    /** One array instead of sizeX×sizeY objects; filled with NaN (unseeded). */
+    private void allocLocalPhases() {
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        final int nt = 2; // PolarityEvent type is 0=Off, 1=On
+        final int n = sx * sy * nt;
+        if (localPhases == null || localPhases.length != n || localPhaseSy != sy || localPhaseNt != nt) {
+            localPhases = new float[n];
+            localPhaseSy = sy;
+            localPhaseNt = nt;
+        }
+        Arrays.fill(localPhases, Float.NaN);
     }
 
 
     @Override
     public void initFilter() {
+        maybeSubscribeToPlaybackStream();
         resetFilter();
     }
 
-    @Override
-    synchronized public void annotate(GLAutoDrawable drawable) {
-        if (!printStats) {
+    /**
+     * Listen for {@link AEInputStream#EVENT_REWOUND} on the viewer and on the
+     * currently open file stream (FILEOPEN may already have passed).
+     */
+    private void maybeSubscribeToPlaybackStream() {
+        maybeAddListeners(chip);
+        if (chip.getAeViewer() == null || chip.getAeViewer().getAePlayer() == null) {
             return;
         }
-        //        if(oscillator==null) return;
-        //        if ( renderer == null ){
-        //            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,16),true,true);
-        //        }
-        //        renderer.beginRendering(drawable.getWidth(),drawable.getHeight());
-        //        renderer.draw(oscillator.toString(),10,10);
-        //        renderer.endRendering();
-        oscillator.draw(drawable.getGL().getGL2());
+        AEFileInputStreamInterface in = chip.getAeViewer().getAePlayer().getAEInputStream();
+        if (in == null || in == subscribedStream) {
+            return;
+        }
+        if (subscribedStream != null) {
+            subscribedStream.getSupport().removePropertyChangeListener(this);
+        }
+        in.getSupport().addPropertyChangeListener(this);
+        subscribedStream = in;
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
+        if (evt == null || evt.getPropertyName() == null) {
+            return;
+        }
+        switch (evt.getPropertyName()) {
+            case AEInputStream.EVENT_REWOUND:
+            case AEViewer.EVENT_TIMESTAMPS_RESET:
+                resetFilter();
+                break;
+            case AEViewer.EVENT_FILEOPEN:
+                // super already registered us on the new stream; just remember it
+                if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+                    subscribedStream = chip.getAeViewer().getAePlayer().getAEInputStream();
+                } else {
+                    subscribedStream = null;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
+        if (!showResonatorState) {
+            return;
+        }
+        synchronized (this) {
+            oscillator.draw(drawable.getGL().getGL2());
+        }
+    }
+
+    private static float clamp01(float v) {
+        if (v < 0) {
+            return 0;
+        }
+        if (v > 1) {
+            return 1;
+        }
+        return v;
+    }
+
+    private static final float PI_F = (float) Math.PI;
+    private static final float TWO_PI_F = 2f * PI_F;
+    private static final float LOCAL_PHASE_EMA = 0.05f; // 1 - 0.95 mix into running mean
+
+    /** Wrap radians to (−π, π]. Fast path when already in range or one wrap away. */
+    private static float wrapPi(float ph) {
+        if (ph > PI_F) {
+            if (ph <= PI_F + TWO_PI_F) {
+                return ph - TWO_PI_F;
+            }
+        } else if (ph <= -PI_F) {
+            if (ph > -PI_F - TWO_PI_F) {
+                return ph + TWO_PI_F;
+            }
+        } else {
+            return ph;
+        }
+        ph = ph % TWO_PI_F;
+        if (ph > PI_F) {
+            ph -= TWO_PI_F;
+        } else if (ph <= -PI_F) {
+            ph += TWO_PI_F;
+        }
+        return ph;
     }
 
     /**
-     * Updates average phase of this cell
-     *
-     * @param e the event for which to update average phase
+     * Circular difference of this event's oscillator phase from the pixel's
+     * running mean phase, then mix the event into that mean. Returns NaN on the
+     * first event from a pixel (mean not yet seeded).
      */
-    private void updateLocalPhase(PolarityEvent e) {
-        float f = localPhases[e.x][e.y][e.type];
-        float f1 = oscillator.getPhase(e.timestamp);
-        final float m = .95f;
-        float f2 = (m * f) + ((1 - m) * f1);
-        localPhases[e.x][e.y][e.type] = f2;
+    private float phaseErrorThenUpdate(int x, int y, int typeIdx) {
+        final int idx = ((x * localPhaseSy) + y) * localPhaseNt + typeIdx;
+        float loc = localPhases[idx];
+        final float g = oscillator.phase;
+        if (loc != loc) { // NaN: unseeded
+            localPhases[idx] = g;
+            return Float.NaN;
+        }
+        float d = g - loc;
+        if (d > PI_F) {
+            d -= TWO_PI_F;
+        } else if (d <= -PI_F) {
+            d += TWO_PI_F;
+        }
+        float nloc = loc + (LOCAL_PHASE_EMA * d);
+        if (nloc > PI_F) {
+            nloc -= TWO_PI_F;
+        } else if (nloc <= -PI_F) {
+            nloc += TWO_PI_F;
+        }
+        localPhases[idx] = nloc;
+        return d;
     }
 
     /**
@@ -122,9 +324,16 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
     /**
      * @param useLocalPhases the useLocalPhases to set
      */
-    public void setUseLocalPhases(boolean useLocalPhases) {
+    synchronized public void setUseLocalPhases(boolean useLocalPhases) {
+        boolean old = this.useLocalPhases;
         this.useLocalPhases = useLocalPhases;
         prefs().putBoolean("HarmonicFilter.useLocalPhases", useLocalPhases);
+        if (useLocalPhases) {
+            allocLocalPhases();
+        } else {
+            localPhases = null;
+        }
+        getSupport().firePropertyChange("useLocalPhases", old, this.useLocalPhases);
     }
 
     public class HarmonicOscillator {
@@ -138,15 +347,22 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         private float quality = prefs().getFloat("HarmonicFilter.quality", 3); // quality factor
         private float amplitude;
         float y = 0, x = 0;  // x =position, y=velocity
+        /** Phase (rad) relative to last positive x zero-crossing, wrapped to (−π, π]. */
+        float phase = 0;
         private int t = 0;  // present time in timestamp ticks, used for dt in update, then stores this last timestamp
-        float lastx, lasty;
+        float lastx;
         float meansq;
         float power = 0;
         float maxx, minx, maxy, miny;
         private float maxPower = 0;
-        private int lastPositiveZeroCrossingTime;
-        final float PI = (float) Math.PI;
         final float TICK = 1e-6f;
+        private static final int MAX_NSTEPS = 2000;
+        private static final int TRAIL_LEN = 256;
+        private final float[] trailX = new float[TRAIL_LEN];
+        private final float[] trailY = new float[TRAIL_LEN];
+        private int trailHead = 0, trailCount = 0;
+        private int tDisplayOrigin = 0;
+        private int lastTrailSampleT = Integer.MIN_VALUE;
         //        private float measuredFreq=0;
 
         public HarmonicOscillator() {
@@ -156,94 +372,191 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         synchronized public void reset() {
             y = 0;
             x = 0;
+            phase = 0;
             power = 0;
             maxx = 0;
             minx = 0;
             maxy = 0;
             miny = 0;
+            trailHead = 0;
+            trailCount = 0;
+            lastTrailSampleT = Integer.MIN_VALUE;
+            tDisplayOrigin = t;
             wasReset = true;
-
         }
 
-        synchronized public void update(int ts, byte type) {
+        /**
+         * Drive the oscillator with one event. {@code kick} should be +1 (ON)
+         * or −1 (OFF) so flicker at 2× line frequency locks in antiphase.
+         *
+         * @param needPhase increment wrapping phase (local-phase mode)
+         * @param needPower EMA of x² (global |x| gate, or overlay color)
+         * @param trackOrbit extrema for the phase-portrait overlay
+         */
+        void update(int ts, int kick, boolean needPhase, boolean needPower, boolean trackOrbit) {
             if (wasReset) {
                 t = ts;
+                tDisplayOrigin = ts;
+                phase = 0;
+                wasReset = false;
+                return;
+            }
+            long dtsTicks = (long) ts - (long) t;
+            if (dtsTicks < 0) {
+                reset();
+                t = ts;
+                tDisplayOrigin = ts;
                 wasReset = false;
                 return;
             }
             lastx = x;
-            lasty = y;
+            y = y + kick;
 
-            // apply the momentum imparted by the event. this directly affects velocity (y)
-            // each event kicks velocity by 1 either pos or neg
-            y = (y + type + type) - 1;
+            float dt = TICK * dtsTicks;
+            if (dt <= dtlim) {
+                y = y - (dt * reciptausq * ((tauoverq * y) + x));
+                x = x + (dt * y);
+            } else {
+                int nsteps = (int) Math.ceil(dt / dtlim);
+                if (nsteps > MAX_NSTEPS) {
+                    nsteps = MAX_NSTEPS;
+                }
+                float ddt = (dt / nsteps) * reciptausq;
+                float ddt2 = dt / nsteps;
+                for (int i = 0; i < nsteps; i++) {
+                    y = y - (ddt * ((tauoverq * y) + x));
+                    x = x + (ddt2 * y);
+                }
+            }
 
-            // compute the delta time since last event.
-            // check if it is too long for numerical stability, if so, integrate multiple steps
-            float dt = TICK * (ts - t); // dt is in seconds now... if TICK is correct
-            if (dt < 0) {
-                log.warning("negative delta time (" + dt + "), not processing this update");
-                wasReset = true;
+            if (x != x) { // NaN
+                log.warning("oscillator state is NaN, resetting");
+                reset();
+                t = ts;
+                tDisplayOrigin = ts;
+                wasReset = false;
                 return;
             }
-            int nsteps = (int) Math.ceil(dt / dtlim); // dtlim comes from natural freq; if dt is too large, then nsteps>1
-            float ddt = (dt / nsteps) * reciptausq;  // dimensionless timestep
-            float ddt2 = dt / nsteps;  // real timestep
-            for (int i = 0; i < nsteps; i++) {
-                y = y - (ddt * ((tauoverq * y) + x));
-                x = x + (ddt2 * y);
-                //            System.out.println(ddt2+","+x+","+y);
-            }
-            //            System.out.println(dt+","+x+","+y);
 
-            float sq = x * x; // instantaneous power
-            // compute avg power by lowpassing instantaneous power over POWER_AVERAGING_CYCLES time
-            // TODO is this a valid measure of instantaneous power?  shouldn't we be using amplitude and current position to filter events?
-            float alpha = (dt * f0) / POWER_AVERAGING_CYCLES; // mixing factor, take this much of new, 1-alpha of old
-            power = (power * (1 - alpha)) + (sq * alpha);
-            if (Float.isNaN(power)) {
-                log.warning("power is NaN, resetting oscillator");
-                reset();
-            }
-            if (power > maxPower) {
-                maxPower = power;
-            }
-
-            if (x > maxx) {
-                maxx = x;
-            } else if (x < minx) {
-                minx = x;
-            }
-            if (y > maxy) {
-                maxy = y;
-            } else if (y < miny) {
-                miny = y;
-            }
-
-            // update timestamp
             t = ts;
 
-            if ((x > 0) && (lastx <= 0)) {
-                lastPositiveZeroCrossingTime = ts;
+            if (needPower) {
+                float sq = x * x;
+                float alpha = (dt * f0) / POWER_AVERAGING_CYCLES;
+                if (alpha > 1) {
+                    alpha = 1;
+                }
+                power = (power * (1 - alpha)) + (sq * alpha);
+                if (trackOrbit && power > maxPower) {
+                    maxPower = power;
+                }
             }
 
+            if (trackOrbit) {
+                if (x > maxx) {
+                    maxx = x;
+                } else if (x < minx) {
+                    minx = x;
+                }
+                if (y > maxy) {
+                    maxy = y;
+                } else if (y < miny) {
+                    miny = y;
+                }
+            }
+
+            if (needPhase) {
+                phase = wrapPi(phase + (omega * dt));
+                if ((x > 0) && (lastx <= 0)) {
+                    phase = 0;
+                }
+            }
+        }
+
+        private void appendTrail(float px, float py) {
+            if (trailCount > 0 && t == lastTrailSampleT) {
+                int last = (trailHead + TRAIL_LEN - 1) % TRAIL_LEN;
+                trailX[last] = px;
+                trailY[last] = py;
+                return;
+            }
+            trailX[trailHead] = px;
+            trailY[trailHead] = py;
+            trailHead = (trailHead + 1) % TRAIL_LEN;
+            if (trailCount < TRAIL_LEN) {
+                trailCount++;
+            }
+            lastTrailSampleT = t;
+        }
+
+        private void clearTrail() {
+            trailHead = 0;
+            trailCount = 0;
+            lastTrailSampleT = Integer.MIN_VALUE;
         }
 
         public void draw(GL2 gl) {
+            float w = maxx - minx;
+            float h = maxy - miny;
+            if (!(w > 0) || !(h > 0) || Float.isNaN(w) || Float.isNaN(h)) {
+                return;
+            }
             gl.glPushMatrix();
-            gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-            float w = oscillator.maxx - oscillator.minx;
-            float h = oscillator.maxy - oscillator.miny;
-            gl.glScalef(chip.getSizeX() / w, chip.getSizeY() / h, 1);
-            if (isNearZeroCrossing()) {
+            // Chip frame is [0, sizeX] x [0, sizeY] (see ChipRendererDisplayMethodRGBA).
+            // x (position) and y (velocity) have different units: scale each axis to the
+            // chip independently so a lock looks round. Uniform scale collapses x to a line.
+            // Center the bounding box; do not pin oscillator (0,0) or a DC offset slides the ellipse.
+            final float sx = chip.getSizeX();
+            final float sy = chip.getSizeY();
+            final float cx = 0.5f * (maxx + minx);
+            final float cy = 0.5f * (maxy + miny);
+            gl.glTranslatef(sx * 0.5f, sy * 0.5f, 0);
+            gl.glScalef(sx / w, sy / h, 1);
+            gl.glTranslatef(-cx, -cy, 0);
+
+            // axes: vertical is x=0 (zero-crossing / blocking), horizontal is y=0
+            gl.glColor4f(1, 1, 1, 0.35f);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, miny);
+            gl.glVertex2f(0, maxy);
+            gl.glVertex2f(minx, 0);
+            gl.glVertex2f(maxx, 0);
+            gl.glEnd();
+
+            float px = x;
+            float py = y;
+            boolean nearZero = isNearZeroCrossing();
+            if (orbitDisplayHz > 0 && f0 > 0) {
+                float phi = TWO_PI_F * orbitDisplayHz * (t - tDisplayOrigin) * TICK;
+                float rx = 0.5f * w;
+                float ry = 0.5f * h;
+                float c = (float) Math.cos(phi);
+                float s = (float) Math.sin(phi);
+                px = cx + rx * c;
+                py = cy - ry * s;
+                nearZero = Math.abs(c) <= threshold;
+            }
+            appendTrail(px, py);
+
+            if (trailCount > 1) {
+                gl.glColor4f(0.6f, 0.8f, 1f, 0.5f);
+                gl.glBegin(GL.GL_LINE_STRIP);
+                int start = trailCount < TRAIL_LEN ? 0 : trailHead;
+                for (int i = 0; i < trailCount; i++) {
+                    int idx = (start + i) % TRAIL_LEN;
+                    gl.glVertex2f(trailX[idx], trailY[idx]);
+                }
+                gl.glEnd();
+            }
+
+            if (nearZero) {
                 gl.glColor3f(1, 0, 0);
             } else {
                 gl.glColor3f(0, 1, 0);
             }
-            final float r = .01f;
-            gl.glRectf(oscillator.x - (r * w), oscillator.y - (r * h), oscillator.x + (r * w), oscillator.y + (r * h));
+            final float r = .02f;
+            gl.glRectf(px - (r * w), py - (r * h), px + (r * w), py + (r * h));
             gl.glPopMatrix();
-
         }
 
         /**
@@ -251,12 +564,11 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
          * zero crossing time and time t, using the natural frequency f0.
          *
          * @param t the time to measure
-         * @return the phase relative to the last positive zero crossing, in
-         * range 0-2*Pi, in radians.
+         * @return the phase relative to the last positive zero crossing, wrapped
+         * to (-π, π].
          */
         public float getPhase(int t) {
-            float ph = PI * 2 * (t - lastPositiveZeroCrossingTime) * f0 * 1e-6f; // TODO needs TICK
-            return ph;
+            return phase;
         }
 
         /**
@@ -274,6 +586,9 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         }
 
         synchronized void setNaturalFrequency(float f) {
+            if (f < 1) {
+                f = 1;
+            }
             f0 = f; // hz
             omega = (float) (2 * Math.PI * f0);  // radians/sec
             tau = 1f / omega; // seconds
@@ -288,6 +603,9 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         }
 
         synchronized void setQuality(float q) {
+            if (q < 0.1f) {
+                q = 0.1f;
+            }
             quality = q;
             tauoverq = tau / quality;
             prefs().putFloat("HarmonicFilter.quality", quality);
@@ -305,24 +623,25 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
             return amplitude;
         }
 
-        private boolean isNearZeroCrossing(TypedEvent e) {
-            if (!useLocalPhases) {
-                return isNearZeroCrossing();
-            } else {
-                float f = getLocalPhase(e);
-                if (f < 0) {
-                    f = -f;
-                }
-                return (f < threshold);
-            }
+        /**
+         * True when |x| is within {@code threshold} of peak amplitude.
+         * Peak is max(|x|, sqrt(2·power)) so a sinusoid maps [0,1] onto
+         * [nothing, everything]. Uses x² vs threshold² to avoid sqrt.
+         */
+        private boolean isNearZeroCrossing() {
+            return isNearZeroCrossingSq(threshold * threshold);
         }
 
-        // if zero crossing we don't pass event
-        private boolean isNearZeroCrossing() {
-            if (((x * x) / power) < threshold) {
-                return true;
+        private boolean isNearZeroCrossingSq(float thresholdSq) {
+            if (!(power > 0)) {
+                return false;
             }
-            return false;
+            final float x2 = x * x;
+            final float twoP = 2f * power;
+            if (x2 >= twoP) {
+                return thresholdSq >= 1f;
+            }
+            return x2 <= (thresholdSq * twoP);
         }
 
         float getMeanPower() {
@@ -359,27 +678,12 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         return threshold;
     }
 
-    /**
-     * returns the phase of the event e relative to the meausred local phase
-     * input to the harmonic oscillator.
-     *
-     * @param e an event
-     * @return the relative phase of the event. If the event leads the local
-     * phase, the number is positive, if it lags it is negative.
-     */
-    private float getLocalPhase(TypedEvent e) {
-        float f = oscillator.getPhase(e.timestamp); // where the oscillator is now, 0 means just did positive zero crossing
-        float lf = localPhases[e.x][e.y][e.type];
-        float diff = f - lf;
-        return diff;
-    }
-
     public void setThreshold(float threshold) {
         float old = this.threshold;
-        //        if(threshold>1) threshold=1; else if(threshold<0) threshold=0;
+        threshold = clamp01(threshold);
         this.threshold = threshold;
         getPrefs().putFloat("HarmonicFilter.threshold", threshold);
-        getSupport().firePropertyChange("threshold", old, threshold);
+        getSupport().firePropertyChange("threshold", old, this.threshold);
     }
 
     public float getQuality() {
@@ -398,47 +702,133 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         oscillator.setNaturalFrequency(f);
     }
 
-    public boolean isPrintStats() {
-        return printStats;
+    public boolean isShowResonatorState() {
+        return showResonatorState;
     }
 
-    public void setPrintStats(boolean printStats) {
-        this.printStats = printStats;
-        prefs().putBoolean("HarmonicFilter.printStats", printStats);
+    public synchronized void setShowResonatorState(boolean showResonatorState) {
+        boolean old = this.showResonatorState;
+        this.showResonatorState = showResonatorState;
+        putBoolean("showResonatorState", showResonatorState);
+        if (!showResonatorState) {
+            oscillator.clearTrail();
+        }
+        getSupport().firePropertyChange("showResonatorState", old, this.showResonatorState);
+    }
+
+    public float getOrbitDisplayHz() {
+        return orbitDisplayHz;
+    }
+
+    public void setOrbitDisplayHz(float orbitDisplayHz) {
+        float old = this.orbitDisplayHz;
+        if (orbitDisplayHz < 0) {
+            orbitDisplayHz = 0;
+        }
+        this.orbitDisplayHz = orbitDisplayHz;
+        putFloat("orbitDisplayHz", orbitDisplayHz);
+        oscillator.clearTrail();
+        getSupport().firePropertyChange("orbitDisplayHz", old, this.orbitDisplayHz);
     }
 
     @Override
-    public EventPacket filterPacket(EventPacket in) {
-        int n = in.getSize();
-        if (n == 0) {
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY;
+    }
+
+    /**
+     * Legacy / mixed-packet path; delegates to {@link #processPolarity}.
+     */
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        return processPolarity(in);
+    }
+
+    /**
+     * jAER 3.0 typed polarity path: drive the oscillator from DVS events and
+     * block those near a zero-crossing.
+     */
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
+        super.filterPacket(in);
+        if (subscribedStream == null) {
+            maybeSubscribeToPlaybackStream();
+        }
+        if (in == null || in.isEmpty()) {
             return in;
         }
-        checkOutputPacketEventType(in.getEventClass());
+        if (lastProcessedTimestamp != Integer.MIN_VALUE
+                && in.getFirstTimestamp() < lastProcessedTimestamp) {
+            oscillator.reset();
+        }
 
-        // for each event only write it to the tmp buffers if it isn't boring
-        // this means only write if the dt is sufficiently different than the previous dt
-        OutputEventIterator outItr = out.outputIterator();
-        for (Object ein : in) {
-            PolarityEvent e = (PolarityEvent) ein;
-            oscillator.update(e.timestamp, e.type);
-            updateLocalPhase(e);
-            if (Float.isNaN(oscillator.getVelocity())) {
-                setFilterEnabled(false);
-                log.warning("oscillator overflowed, disabling filter");
-                resetFilter();
+        final boolean local = useLocalPhases;
+        if (local) {
+            final int sx = chip.getSizeX();
+            final int sy = chip.getSizeY();
+            if (localPhases == null || localPhaseSy != sy
+                    || localPhases.length != sx * sy * localPhaseNt) {
+                allocLocalPhases();
+            }
+            if (localPhases == null) {
+                lastProcessedTimestamp = in.getLastTimestamp();
                 return in;
             }
-            if (oscillator.isNearZeroCrossing(e)) {
+        }
+
+        final BasicEvent[] evs = (BasicEvent[]) in.getElementData();
+        final int n = in.getSize();
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        final boolean classify = signalNoiseClassificationEnabled;
+        final boolean trackOrbit = showResonatorState;
+        final boolean needPower = !local || trackOrbit;
+        final float thrPi = threshold * PI_F;
+        final float thrSq = threshold * threshold;
+        final int nt = localPhaseNt;
+
+        for (int i = 0; i < n; i++) {
+            BasicEvent be = evs[i];
+            if (be == null || be.isFilteredOut()) {
+                continue;
+            }
+            if (be.isSpecial() && !classify) {
+                continue;
+            }
+            PolarityEvent e = (PolarityEvent) be;
+            totalEventCount++;
+            oscillator.update(e.timestamp, e.polarity == PolarityEvent.Polarity.Off ? -1 : 1, local, needPower, trackOrbit);
+            final int ex = e.x;
+            final int ey = e.y;
+            if ((ex < 0) || (ex >= sx) || (ey < 0) || (ey >= sy)) {
                 filterOut(e);
-            }else{
+                continue;
+            }
+            boolean block;
+            if (local) {
+                final int typeIdx = e.getType();
+                if ((typeIdx < 0) || (typeIdx >= nt)) {
+                    continue;
+                }
+                final float d = phaseErrorThenUpdate(ex, ey, typeIdx);
+                block = (d == d) && (d <= thrPi) && (d >= -thrPi);
+            } else {
+                block = oscillator.isNearZeroCrossingSq(thrSq);
+            }
+            if (block) {
+                filterOut(e);
+            } else if (classify) {
                 filterIn(e);
             }
         }
-        //        if ( printStats ){
-        //            float t = 1e-6f * in.getLastTimestamp();
-        //            log.info("cycle=" + ( cycle++ ) + oscillator);
-        //        }
+        lastProcessedTimestamp = in.getLastTimestamp();
         return in;
+    }
+
+    @Override
+    public String infoString() {
+        return String.format("%s: f0=%.1fHz Q=%.2g thr=%.2g localPh=%s",
+                camelCaseClassname(), getFreq(), getQuality(), getThreshold(), isUseLocalPhases());
     }
 }
 //    /**

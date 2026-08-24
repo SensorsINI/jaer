@@ -118,6 +118,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     static final private Logger log = Logger.getLogger("net.sf.jaer");
     private static HashMap<String, Marks> marksFilesMap = null; // stores previous marks on files
+    /** True after {@link #marksInitialize()}; preview-only streams never set this, so close() must not persist marks. */
+    private boolean marksInitialized = false;
     private static final Preferences prefs = JaerConstants.PREFS_ROOT.node("AEFileInputStream");
 
     // AEInputStream
@@ -393,8 +395,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @Override
     public void marksInitialize() {
         marksLoadMapFromPreferences();
+        marksInitialized = true;
         Marks savedMarks = marksFilesMap.get(getFile().getAbsolutePath());
         if (savedMarks == null) {
+            log.info("no marks for this file");
             clearMarks();
             return;
         }
@@ -579,7 +583,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 log.info(String.format("Closing file; FileChannel was closed by interrupt from another thread (probably GUI Swing thread): %s", cbi.toString()));
                 close();
                 return null;
-            } catch (IOException eof) {
+            } catch (EOFException eof) {
 //                byteBuffer = null;
                 System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them
                 // since we're at end of file anyhow
@@ -1242,27 +1246,47 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     @Override
-    public void close() throws IOException {
-        super.close();
-        if (fileChannel != null) {
-            // tobi commented out since it causes a crash in JDK21
+    public synchronized void close() throws IOException {
+        try {
+            super.close();
+            if (fileChannel != null) {
+                // tobi commented out since it causes a crash in JDK21
 //            if (getByteBuffer() != null && getByteBuffer().isDirect()) {
 //                closeDirectBuffer(getByteBuffer());
 //            }
-            fileChannel.close();
-            fileChannel = null;
-        }
-        if (fileInputStream != null) {
-            fileInputStream.close(); // should have been done by super(), but file seems to be kept open
-        }
-        if ((isMarkInSet() || isMarkOutSet() || !marks.otherMarks.isEmpty())) {
-            marksFilesMap.put(file.getAbsolutePath(), marks);
-        } else {
-            marksFilesMap.put(file.getAbsolutePath(), null);
-        }
-        marksSaveToPreferences();
-        System.gc();
+                fileChannel.close();
+                fileChannel = null;
+            }
+            if (fileInputStream != null) {
+                fileInputStream.close(); // should have been done by super(), but file seems to be kept open
+                fileInputStream = null;
+            }
+        } finally {
+            persistMarksOnClose();
+            System.gc();
 //        System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
+        }
+    }
+
+    /**
+     * Writes IN/OUT/other marks to preferences only if they were loaded for
+     * playback. File-dialog preview never calls {@link #marksInitialize()}, so
+     * it must not NPE or overwrite saved marks with empty defaults.
+     */
+    private void persistMarksOnClose() {
+        if (file == null) {
+            return;
+        }
+        if (!marksInitialized) {
+            log.info("no marks for this file");
+            return;
+        }
+        Marks toStore = (isMarkInSet() || isMarkOutSet() || !marks.otherMarks.isEmpty()) ? marks : null;
+        try {
+            marksPutForFile(file, toStore);
+        } catch (Exception e) {
+            log.warning(String.format("Could not store marks; got %s", e));
+        }
     }
 
     /**
@@ -1490,12 +1514,20 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if ((start + numBytesToMap) >= fileSize) {
             numBytesToMap = fileSize - start;
         }
-        if (!fileChannel.isOpen()) {
-            fileChannel = fileInputStream.getChannel();
-            if (!fileChannel.isOpen()) {
+        if (fileChannel == null || !fileChannel.isOpen()) {
+            FileChannel ch = null;
+            if (fileInputStream != null) {
+                try {
+                    ch = fileInputStream.getChannel();
+                } catch (Exception e) {
+                    throw new IOException("fileChannel is closed", e);
+                }
+            }
+            if (ch == null || !ch.isOpen()) {
                 log.warning("fileChannel unexpectedly was closed");
                 throw new IOException("fileChannel unexpectedly was closed");
             }
+            fileChannel = ch;
             log.info("had to reopen fileChannel from fileInputStream");
         }
         byteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, start, numBytesToMap);
@@ -1896,14 +1928,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             Object o = PrefObj.getObject(prefs, "marks");
             if (o == null) {
-                log.fine("no saved marks for this file");
+                log.fine("no saved marks map in preferences");
                 marksFilesMap = new HashMap<>();
                 return;
             }
             marksFilesMap = (HashMap<String, Marks>) o;
             log.fine(String.format("Loaded marksMap %s from %s", marksFilesMap, prefs.absolutePath()));
         } catch (IOException | BackingStoreException | ClassNotFoundException ex) {
-            log.warning(String.format("could not load existing marks: %s", ex.toString()));
+            log.info(String.format("no marks for this file (%s)", ex.toString()));
             marksFilesMap = new HashMap<>();
         }
     }

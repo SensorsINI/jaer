@@ -14,6 +14,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -29,6 +30,26 @@ import net.sf.jaer.util.avioutput.AbstractAviWriter;
  * @author Tobi
  */
 @Description("Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. This AVI has spatial resolution the same as the AEChip (not the display resolution)")
+@Help("""
+<html>
+<body>
+<h2>DavisFrameAviWriter</h2>
+<p>Writes an AVI of <b>DAVIS APS frames</b> at chip resolution (not the OpenGL window size).
+Pixel values 0&ndash;255 come from the displayed APS image (offset/gain of the DAVIS renderer /
+<code>ApsFrameExtractor</code> path).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Select a DAVIS chip. Enable this filter.</li>
+<li><code>startRecordingAndSaveAs</code> (inherited). Play live or a file that contains APS frames.</li>
+<li><code>writeTimecodeFile</code> writes a sidecar mapping AVI frame to APS frame-end timestamp.</li>
+<li><code>closeOnRewind</code> finishes the file when the recording rewinds.</li>
+</ol>
+<p>To capture the annotated OpenGL view instead, use <code>JaerAviWriter</code>.
+For DVS-only slices, <code>DvsSliceAviWriter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisFrameAviWriter extends AbstractAviWriter {
 

@@ -5,7 +5,7 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 | What | Where | Who writes it |
 |------|--------|----------------|
 | Update descriptor | `https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml` | git: commit and push repo-root `updates.xml` |
-| Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `scripts/upload-github-release-installers.ps1` |
+| Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `scripts/upload-github-release-installers.ps1` / `.sh` |
 
 `updates.xml` `baseUrl` must be `https://github.com/SensorsINI/jaer/releases/latest/download/`. `ant copy-updates-xml` sets that; do not edit it by hand. The in-app checker reads the raw GitHub file, then downloads `baseUrl` + `fileName` (for example `jAER_windows-x64_3_2_0.exe`).
 
@@ -14,15 +14,15 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 ## Checklist (do in this order)
 
 1. Set `VERSION.txt` (e.g. `3.2.0`).
-2. `ant release` -- confirm `y`. When asked to copy `updates.xml`, answer `y`.
+2. `ant release` -- Enter accepts the default `y` (type `n` to cancel). Does **not** copy repo-root `updates.xml`.
    - Media lands in `currentInstallers/<VERSION.txt>/`. Historical Dropbox copies stay in `jaer-older-installers/` (same share URL as the old `installers/` folder).
-   - Repo-root `updates.xml` is overwritten and `baseUrl` is set to GitHub `/latest/download/`.
-   - If you already built media: `ant copy-updates-xml` (no rebuild).
 3. Upload binaries (creates the GitHub Release for that tag if it is missing):
 
        powershell -File scripts/upload-github-release-installers.ps1
+       bash scripts/upload-github-release-installers.sh
 
-   Dry run: add `-WhatIf`. Re-upload after a rebuild: same command (`--clobber`).
+   Dry run: `-WhatIf` (PowerShell and bash) or `--what-if` (bash).
+   Re-upload after a rebuild: same command (`--clobber`).
    Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`).
    Put the download table and concise OS notes at the **top** (see 3.2.0 notes). GitHub
    always appends **Assets** at the bottom of the Release page — do not duplicate a long
@@ -31,17 +31,17 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
        ant upload-release-notes
        gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
-4. Commit and push repo-root `updates.xml` if `git status` still shows it dirty. Installed copies only see `master`.
+4. When the release is ready to publish: `ant copy-updates-xml` (overwrites repo-root `updates.xml` and sets `baseUrl` to GitHub `/latest/download/`). Commit and push `updates.xml`. Installed copies only see `master`.
 5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
-6. Optional later: **3.2.1** SignPath-signed Windows exe, bump install4j `jreBundles` from Temurin 21 to Adoptium JDK 25, winget/Homebrew, prune old assets.
+6. Optional later: SignPath-signed Windows exe, winget/Homebrew, prune old assets.
 
-After a rebuild, hashes in `updates.xml` change. Repeat steps 2--4 (copy, upload, push `updates.xml`) or the updater will checksum-fail.
+After a rebuild, hashes in `updates.xml` change. Repeat `ant copy-updates-xml`, upload, and push `updates.xml` or the updater will checksum-fail.
 
 ## Version (VERSION.txt)
 
 `VERSION.txt` at the repo root is the single source of truth. It drives:
 
-- install4j application version (synced into `jaer.install4j`; also `install4jc --release=...`)
+- install4j application version (synced into `install4j/jaer.install4j`; also `install4jc --release=...`)
 - splash overlay text (full `VERSION.txt`, e.g. 3.2.0)
 - About / `BUILDVERSION.txt` first line on jar build
 
@@ -52,13 +52,13 @@ See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsIN
 Prerequisites:
 
 1. install4j on PATH (`install4jc`) -- https://www.ej-technologies.com/resources/install4j/v/13.0/help/doc/cli/compiler.html
-2. License (local: `signpath/install4j-license.txt`, gitignored)
+2. License (local: `install4j/license.txt`, gitignored; fallback `signpath/install4j-license.txt`)
 3. `VERSION.txt` set
 4. `images/SplashScreen.png` is the text-free 1024x1024 base art (`images/SplashScreen.pdf` when the art changes)
 
     ant release
 
-On `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> jaer.install4j`.
+On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
 
 Splash only: `ant generate-splash`. install4j launcher splash uses the 1024w PNG; keep 256h for Windows shell / wizard icons.
 
@@ -89,14 +89,14 @@ Splash only (no installer build): ant generate-splash
 Use the install4j IDE when you change installer options other than version
 (screens, file sets, JRE bundles, code signing, media types, etc.):
 
-1. Open jaer.install4j in the install4j GUI
+1. Open install4j/jaer.install4j in the install4j GUI
 2. Confirm General Settings -> Application Info version matches VERSION.txt
    (ant release keeps this in sync; after manual GUI edits, re-check VERSION.txt)
 3. Dry-run / test build from the GUI Build step (or CLI test mode) before a full media build:
-       install4jc --test jaer.install4j
+       install4jc --test install4j/jaer.install4j
    --test does not write media files; use it to validate project config.
    For a faster platform-only smoke test you can also use the IDE "Build" selection
-   or: install4jc --build-selected jaer.install4j
+   or: install4jc --build-selected install4j/jaer.install4j
 4. When config looks good, prefer ant release again so VERSION.txt, splash, clean jar,
    and install4jc --release stay consistent
 
@@ -140,16 +140,17 @@ Keep secrets in Dropbox under signpath/ (gitignored except signpath/README.txt).
 Do not commit tokens or license keys.
 
   signpath/signpath-organization-id.txt   — org UUID (yours may already be filled)
-  signpath/signpath-api-token.txt         — CI builds API token (stub; fill in)
-  signpath/install4j-license.txt          — install4j license key (stub; fill in)
+  signpath/signpath-api-token.txt         — API token of SignPath CI user "CI builds" (not your personal token)
+  install4j/license.txt               — install4j license key (preferred; gitignored)
+  signpath/install4j-license.txt      — same key (fallback for Ant / this sync script)
   signpath/signpath-project-slug.txt      — default jaer
-  signpath/signpath-signing-policy-slug.txt — default test-signing
+  signpath/signpath-signing-policy-slug.txt — test-signing2 (workflow hardcodes this; use release-signing later when VALID)
 
 Recreate stubs if needed:
 
     powershell -File scripts/init-signpath-local.ps1
 
-Local Ant reads install4j-license.txt when non-empty (`ant release` /
+Local Ant reads `install4j/license.txt` when non-empty, else `signpath/install4j-license.txt` (`ant release` /
 `ant release-windows-ci`) so you need not set session env vars.
 
 ### Push credentials to GitHub Actions (not to git)
@@ -162,29 +163,66 @@ That sets secrets INSTALL4J_LICENSE + SIGNPATH_API_TOKEN and variables
 SIGNPATH_ORGANIZATION_ID (+ project/policy). Values never enter the repo.
 
 Or paste the same values manually in GitHub → Settings → Secrets and variables → Actions.
+GitHub Actions has **no submitter field**. SignPath treats whoever owns
+`SIGNPATH_API_TOKEN` as the submitter.
 
-SignPath UI (project "jaer" / "jaer [OSS]"):
+### SignPath UI: CI user submits, you approve
+
+GitHub itself is not a SignPath user. The GitHub App is **trusted build system /
+origin verification**. The submitter is the SignPath **CI user** whose API token
+is in `SIGNPATH_API_TOKEN`.
+
+| Place | Role |
+|--------|------|
+| SignPath policy **Submitters** | CI user **CI builds** (not your personal account) |
+| GitHub secret `SIGNPATH_API_TOKEN` | API token of **CI builds** |
+| SignPath policy **Approvers** | you (interactive login, e.g. Tobi Delbruck) |
+
+Open-source SignPath requires trusted build system verification. With that on,
+interactive users cannot submit even if listed under Submitters. Putting yourself
+in Submitters and using your personal token produces:
+
+  The user does not have sufficient privileges to submit the signing request
+  ... signing policy "test-signing2"
+
+Create or reuse the CI user (https://app.signpath.io):
+
+  1. Users and Groups → CI users (not Invite user)
+  2. Open **CI builds**, or Create CI user with that name
+  3. Generate token (shown once). Put it in `signpath/signpath-api-token.txt`
+     and re-run `scripts/sync-signpath-secrets-to-github.ps1`
+
+Then edit project **jaer** → signing policy **test-signing2**:
 
   1. Install SignPath GitHub App on SensorsINI/jaer; link Trusted Build System GitHub.com
-  2. Ensure "CI builds" has submitter role on policy test-signing
-  3. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
+  2. **Submitters:** **CI builds** only (remove your personal user)
+  3. **Approvers:** your interactive user; **Use approval process**, required approvals 1
+  4. Certificate: test-signing cert (e.g. Test certificate 2026)
+  5. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
      .signpath/artifact-configurations/windows-installer-2.xml)
-  4. Leave release-signing until its INVALID status is fixed
+  6. Leave **release-signing** until its INVALID status is fixed. Switch the
+     workflow `signing-policy-slug` to `release-signing` only after that policy
+     is VALID; keep **CI builds** as submitter and yourself as approver.
 
 ### Workflow
 
   File: .github/workflows/sign-windows-test.yml
   Triggers: workflow_dispatch, or push of tags matching 3.*
-  Steps: JDK 21 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
-  PE → SignPath test-signing → upload signed artifact; on tag, attach to GitHub Release
+  Policy slug is hardcoded: `test-signing2` (GitHub variable
+  SIGNPATH_SIGNING_POLICY_SLUG is unused).
+  Steps: JDK 25 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
+  PE → SignPath test-signing2 → job waits up to 1 hour for your SignPath approval
+  → upload signed artifact; on tag, attach to GitHub Release
 
 ### First dry run (recommended before tagging)
 
-  1. Push the workflow + Ant target to master (or your working branch)
+  1. Confirm SignPath submitter/approver and GitHub `SIGNPATH_API_TOKEN` as above
   2. Actions → "Sign Windows (SignPath test-signing)" → Run workflow
-  3. If SignPath waits on approval, approve in the SignPath UI
+     (the Actions page does not set the submitter)
+  3. When the job waits on SignPath, open the signing-request URL from the job
+     summary / SignPath email and **Approve** (as yourself, not as CI builds)
   4. Download the jaer-windows-signed artifact; check Properties → Digital Signatures
-     (publisher SignPath Foundation)
+     (test-signing publisher is the test certificate, not yet SignPath Foundation)
   5. For a tagged release, push tag matching VERSION.txt; workflow attaches the signed
      Windows exe to the GitHub Release
 

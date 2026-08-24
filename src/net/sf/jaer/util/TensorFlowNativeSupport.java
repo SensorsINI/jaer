@@ -129,9 +129,9 @@ public final class TensorFlowNativeSupport {
     }
 
     /**
-     * Adds any previously downloaded optional jars under {@code ~/.jaer/lib} (and
-     * {@code user.dir/lib} is already on the install4j classpath). Call early from
-     * {@code JAERViewer.main}.
+     * Adds previously downloaded TensorFlow native jars under {@code ~/.jaer/lib}.
+     * Only expected {@code tensorflow-core-native-&lt;version&gt;-&lt;os&gt;.jar}
+     * names are added. Call early from {@code JAERViewer.main}.
      */
     public static void installDownloadedJarsOnClasspath() {
         if (!classpathAugmented.compareAndSet(false, true)) {
@@ -146,6 +146,11 @@ public final class TensorFlowNativeSupport {
             return;
         }
         for (File jar : jars) {
+            if (!isAllowedNativeJarName(jar.getName())) {
+                log.warning("Skipping unexpected jar (not a known TensorFlow native artifact): "
+                        + jar.getAbsolutePath());
+                continue;
+            }
             try {
                 addJarToClasspath(jar);
                 log.info("Added optional jar to classpath: " + jar.getAbsolutePath());
@@ -153,6 +158,20 @@ public final class TensorFlowNativeSupport {
                 log.log(Level.WARNING, "Could not add optional jar " + jar + ": " + ex, ex);
             }
         }
+    }
+
+    /** Only TensorFlow platform native jars downloaded by this helper. */
+    static boolean isAllowedNativeJarName(String fileName) {
+        if (fileName == null) {
+            return false;
+        }
+        String n = fileName.toLowerCase(Locale.ROOT);
+        String expected = nativeJarFileName().toLowerCase(Locale.ROOT);
+        if (n.equals(expected)) {
+            return true;
+        }
+        String prefix = ("tensorflow-core-native-" + TF_VERSION + "-").toLowerCase(Locale.ROOT);
+        return n.startsWith(prefix) && n.endsWith(".jar") && !n.contains("..");
     }
 
     /**

@@ -33,10 +33,12 @@ import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEOutputStream;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
- * Offline File → Save As scan: pause playback, iterate the input stream, write
- * AEDAT-4, CSV, or DSEC HDF5 (plus optional HVS sidecars), restore position.
+ * Offline File → Save As scan: park ViewLoop (no grab/paint), iterate the input
+ * stream, write AEDAT-4, CSV, or DSEC HDF5 (plus optional HVS sidecars), restore
+ * position.
  */
 public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, String> {
 
@@ -77,6 +79,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         boolean restoreAedat2Marks = false;
         boolean restoreAedat4Marks = false;
         boolean subSaved = chip.getEventExtractor() != null && chip.getEventExtractor().isSubsamplingEnabled();
+        final String sourceFileInfo = snapshotSourceFileInfo(stream);
         CsvEventSink csv = null;
         DsecHdf5AEOutputStream h5 = null;
         Aedat4FileOutputStream aedat4 = null;
@@ -84,12 +87,12 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         FramePngSink frames = null;
         DavisFrameAssembler assembler = null;
         try {
-            viewer.setPaused(true);
-            // Let ViewLoop finish the current grabInput before we seek the stream.
-            try {
-                Thread.sleep(150);
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
+            viewer.suspendViewLoopForOfflineExport();
+            // Wait until ViewLoop has left grabInput. A short sleep is not enough
+            // for a large AEDAT-4 timeslice (decode can take seconds) and the loop
+            // still paints every 1 s while merely paused.
+            if (!viewer.waitUntilViewLoopParkedForOfflineExport(60_000)) {
+                log.warning("Save As proceeding without a parked ViewLoop; playback may still share the stream");
             }
             stream.setRepeat(false);
             // Seeking backward from playback would otherwise throw NonMonotonicTimeException
@@ -266,6 +269,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     : (frames != null ? frames.getFramesWritten() : 0);
             result.badEvents = badEvents;
             result.cancelled = false;
+            result.sourceFileInfo = sourceFileInfo;
+            result.outputFileInfo = snapshotOutputFileInfo(aedat4, csv, h5,
+                    result.events, result.frames, result.imuSamples);
             if (badEvents > 0) {
                 log.warning(String.format("Save As skipped %,d bad events while writing %s",
                         badEvents, options.outputFile.getName()));
@@ -281,6 +287,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             imu = null;
             closeSink(frames);
             frames = null;
+            result.outputFileInfo = appendFileSize(result.outputFileInfo, options.outputFile);
             return result;
         } catch (CancellationException cancel) {
             if (h5 != null) {
@@ -313,8 +320,66 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             if (chip.getEventExtractor() != null) {
                 chip.getEventExtractor().setSubsamplingEnabled(subSaved);
             }
-            viewer.setPaused(wasPaused);
+            viewer.resumeViewLoopAfterOfflineExport(wasPaused);
         }
+    }
+
+    /**
+     * Original recording summary captured before the export scan. AEDAT-4 uses
+     * {@link Aedat4FileInputStream#getFileInfo()}; other formats get path +
+     * {@link Object#toString()}.
+     */
+    private static String snapshotSourceFileInfo(AEFileInputStreamInterface stream) {
+        if (stream == null) {
+            return "";
+        }
+        if (stream instanceof Aedat4FileInputStream) {
+            String info = stream.getFileInfo();
+            return info != null ? info : "";
+        }
+        StringBuilder sb = new StringBuilder();
+        File f = stream.getFile();
+        if (f != null) {
+            sb.append(f.getAbsolutePath()).append('\n');
+        }
+        sb.append(stream);
+        return sb.toString();
+    }
+
+    /** Saved-file summary, matching the recording-finished confirmation when AEDAT-4. */
+    private static String snapshotOutputFileInfo(Aedat4FileOutputStream aedat4,
+            CsvEventSink csv, DsecHdf5AEOutputStream h5, long events, long frames, long imuSamples) {
+        if (aedat4 != null) {
+            return aedat4.toString();
+        }
+        StringBuilder sb = new StringBuilder();
+        if (csv != null) {
+            sb.append(String.format("CSV/text: %,d events", events));
+        } else if (h5 != null) {
+            sb.append(String.format("DSEC HDF5: %,d events", events));
+        } else {
+            sb.append(String.format("%,d events", events));
+        }
+        if (frames > 0) {
+            sb.append(String.format(", %,d frames", frames));
+        }
+        if (imuSamples > 0) {
+            sb.append(String.format(", %,d IMU samples", imuSamples));
+        }
+        return sb.toString();
+    }
+
+    private static String appendFileSize(String info, File out) {
+        if (out == null || !out.isFile()) {
+            return info;
+        }
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(3);
+        String size = String.format("Size: %sB", eng.format((double) out.length()).trim());
+        if (info == null || info.isEmpty()) {
+            return size;
+        }
+        return info + "\n" + size;
     }
 
     /**
@@ -607,5 +672,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         public long frames;
         public long badEvents;
         public boolean cancelled;
+        /** Original open recording summary (AEDAT-4 {@code getFileInfo()} when applicable). */
+        public String sourceFileInfo;
+        /** Written file summary ({@link Aedat4FileOutputStream#toString()} when AEDAT-4). */
+        public String outputFileInfo;
     }
 }

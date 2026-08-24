@@ -11,6 +11,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -46,6 +47,32 @@ import net.sf.jaer.util.TobiLogger;
  * @author tobi
  */
 @Description("Adaptively controls biases on DVS sensors (that implement DVSTweaks on their bias generator) to control event rate")
+@Help("""
+<html>
+<body>
+<h2>DVSBiasController</h2>
+<p>Closed-loop <b>DVSTweaks</b> on chips that support them: raises threshold / refractory
+when the rate is too high, lowers them when too low, or targets SNR / noise limits.
+A low-pass rate estimate and hysteresis avoid chatter. Needs a live camera with a
+tweakable bias generator (not a playback-only file unless you still have hardware).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Open the live DVS/DAVIS. Enable this filter.</li>
+<li>Set <code>goal</code>: BoundEventRate, TargetSNR, LimitNoise, LimitEventRate, or None.</li>
+<li>For rate bounds: <code>eventRateLowHz</code> / <code>eventRateHighHz</code>
+(keps in the tooltip naming) and <code>eventRateBoundsHysteresisFactor</code>.</li>
+<li><code>tweakStepAmount</code> / <code>minCommandIntervalMs</code> /
+<code>ignoreEventsAfterBiasChangeMs</code> limit how fast biases move (bias changes cause noise).</li>
+<li><code>revertAllTweaks</code> returns threshold/bandwidth/refractory tweaks to 0.</li>
+</ol>
+<p>Enclosed <code>SpatioTemporalCorrelationFilter</code> estimates noise for SNR goals
+(<code>correlationTimeS</code>, <code>outputRawInput</code>).
+<code>showAnnotation</code> overlays state. Optional Arduino logging
+(<code>serialPortName</code>, <code>motorSpeed</code>) for stimulus experiments.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 

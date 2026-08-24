@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
@@ -691,7 +692,7 @@ public final class RecordingChipDetector {
         List<Class<? extends AEChip>> out = new ArrayList<>();
         for (String name : fqcn) {
             try {
-                Class<?> c = Class.forName(name);
+                Class<?> c = JaerAllowedSubclasses.load(name, AEChip.class);
                 if (AEChip.class.isAssignableFrom(c)) {
                     out.add((Class<? extends AEChip>) c);
                 }

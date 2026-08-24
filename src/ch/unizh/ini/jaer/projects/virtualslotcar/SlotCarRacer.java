@@ -11,6 +11,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -35,6 +36,30 @@ import net.sf.jaer.util.TobiLogger;
  * (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Slot car racer project, Telluride 2010")
+@Help("""
+<html>
+<body>
+<h2>SlotCarRacer</h2>
+<p>Telluride 2010 slot-car project: tracks the car from an overhead DVS and drives
+throttle on a physical or virtual track. Encloses the tracker, speed controller, and
+slot-car hardware / virtual car.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Point the camera at the track (eye-of-god). Enable this filter (enclosed chain runs).</li>
+<li>Define the track with the enclosed track filter if you use the virtual car.</li>
+<li><code>controllerToUse</code> selects the throttle controller.
+<code>desiredSpeed</code> / <code>maxThrottle</code> are safety limits.</li>
+<li>Check <code>overrideThrottle</code> and set <code>overriddenThrottleSetting</code>
+for manual throttle; uncheck to let the controller drive.</li>
+<li><code>logRacerDataEnabled</code> writes a log. Optional spike sounds on throttle/brake
+(<code>playThrottleSound</code> / <code>playBrakeSound</code>).</li>
+</ol>
+<p>This is a complete demo, not a general-purpose filter. Expand enclosed filters for
+tracker and hardware details.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 

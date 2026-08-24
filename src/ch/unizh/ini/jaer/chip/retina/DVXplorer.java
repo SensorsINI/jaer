@@ -24,6 +24,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -43,24 +44,26 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
-import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Describe DVXplorer and its event extractor and configuration.
  * 
- * @author Pei Haoxiang
+ * @author Pei Haoxiang, Tobi Delbruck
  */
-@Description("DVXplorer, 640x480, 9um pitch, Samsung DVS built into USB camera by inivation")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@Description("DVXplorer / DVXplorer Mini/Micro, 640x480, 9um pitch, Samsung DVS (iniVation)")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = CypressFX3.VID, pid = DVXplorerFX3HardwareInterface.PID_FX3)
 })
@@ -73,10 +76,10 @@ public class DVXplorer extends AETemporalConstastRetina {
     private DVXplorerFX3HardwareInterface fx3;
     private JMenu dvxMenu = null;
     private ToggleIMU toggleIMU;
+    private static final boolean debug = DVXplorerFX3HardwareInterface.debug;
     
-    // DVXplorer settings
-    public final boolean isMipiCX3Device = false;
-    public final boolean extInputHasGenerator = true;
+    // DVXplorer Mini/Micro (CX3 MIPI) — detected from USB bcdDevice, not a compile-time constant.
+    public boolean extInputHasGenerator = true;
     
     // DVXplorer params (should be right)
     public double logicClockActual = 104.0;
@@ -124,6 +127,26 @@ public class DVXplorer extends AETemporalConstastRetina {
     public final static short DVX_SYSINFO = 6;
     public final static short DVX_USB = 9;
     public final static short DVX_DVS_CHIP = 20;
+
+    /** Next-gen Mini/Micro (firmware ≥10) DVS module params — same module as {@link #DVX_DVS}. */
+    public final static short DVS_FLATTEN = 4;
+    public final static short DVS_SUBSAMPLE_HORIZONTAL = 5;
+    public final static short DVS_SUBSAMPLE_VERTICAL = 6;
+    public final static short DVS_GLOBAL_HOLD = 8;
+    public final static short DVS_GLOBAL_RESET = 9;
+    public final static short DVS_GLOBAL_RESET_SKIP = 10;
+    public final static short DVS_MIPI_TIMEOUT_ENABLE = 11;
+    public final static short DVS_MIPI_TIMEOUT_VALUE = 12;
+    public final static short DVS_EFPS_S5K231Y = 13;
+    public final static short DVS_CONTRAST_THRESHOLD_ON = 14;
+    public final static short DVS_CONTRAST_THRESHOLD_OFF = 15;
+    public final static short DVS_CROP_X = 19;
+    public final static short DVS_CROP_Y = 20;
+    public final static short DVS_CROP_WIDTH = 21;
+    public final static short DVS_CROP_HEIGHT = 22;
+    public final static short DVS_CROP_APPLY = 23;
+    public final static short DVS_FLIP_HORIZONTAL = 24;
+    public final static short DVS_FLIP_VERTICAL = 25;
     
     // Param address
     public final static short REGISTER_CONTROL_CLOCK_DIVIDER_SYS = 0x3011;
@@ -241,6 +264,20 @@ public class DVXplorer extends AETemporalConstastRetina {
     public final static short DVX_DVS_ORIENTATION_INFO = 2;
     public final static short DVX_DVS_RUN = 3;
     
+    public boolean isMipiCX3Device() {
+        if (getHardwareInterface() instanceof DVXplorerFX3HardwareInterface d) {
+            return d.isMipiCX3Device();
+        }
+        return false;
+    }
+
+    public boolean isNextGenFirmware() {
+        if (getHardwareInterface() instanceof DVXplorerFX3HardwareInterface d) {
+            return d.isNextGenFirmware();
+        }
+        return false;
+    }
+
     /**
      * Configurate DVXplorer.
      */
@@ -259,27 +296,44 @@ public class DVXplorer extends AETemporalConstastRetina {
      * @param fx3 CypressFX3 interface
      */
     public void dvxReceiveInitParams(DVXplorerFX3HardwareInterface fx3) {
-        final int logicClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
-        final int usbClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
-        final int clockDeviationFactor = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
-        logicClockActual = (double)logicClock * (double)clockDeviationFactor / 1000.0;
-        usbClockActual = (double)usbClock * (double)clockDeviationFactor / 1000.0;
-        DVXplorer.log.info(String.format("Device clock frequencies - Logic: %f, USB: %f.", logicClockActual, usbClockActual));
+        if (!isMipiCX3Device()) {
+            final int logicClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
+            final int usbClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
+            final int clockDeviationFactor = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
+            logicClockActual = (double)logicClock * (double)clockDeviationFactor / 1000.0;
+            usbClockActual = (double)usbClock * (double)clockDeviationFactor / 1000.0;
+            DVXplorer.log.info(String.format("Device clock frequencies - Logic: %f, USB: %f.", logicClockActual, usbClockActual));
+        } else {
+            setName("DVXplorerMicro");
+            if (debug) {
+                DVXplorer.log.info(String.format(
+                        "DVXplorer Mini/Micro CX3 MIPI firmware %d (%s)",
+                        fx3.getFirmwareVersion(),
+                        isNextGenFirmware() ? "dv-processing DVXplorerM protocol" : "libcaer pre-v10 protocol"));
+            }
+        }
 
         sizeX = (short)spiConfigReceive(fx3, DVX_DVS, DVX_DVS_SIZE_COLUMNS);
         sizeY = (short)spiConfigReceive(fx3, DVX_DVS, DVX_DVS_SIZE_ROWS);
+        if (sizeX <= 0 || sizeY <= 0) {
+            sizeX = 640;
+            sizeY = 480;
+            DVXplorer.log.warning("DVS resolution SPI failed, using 640x480");
+        }
         setSizeX(sizeX);
         setSizeY(sizeY);
         
         final int dvsOrientation = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
-        dvsInvertXY = (short)(dvsOrientation & 0x04);
-        dvsFlipX = (short)(dvsOrientation & 0x02);
-        dvsFlipY = (short)(dvsOrientation & 0x01);
+        if (!isNextGenFirmware()) {
+            dvsInvertXY = (short)(dvsOrientation & 0x04);
+            dvsFlipX = (short)(dvsOrientation & 0x02);
+            dvsFlipY = (short)(dvsOrientation & 0x01);
 
-        final int imuOrientation = spiConfigReceive(fx3, DVX_IMU, DVX_IMU_ORIENTATION_INFO);
-        imuFlipX = (short)(imuOrientation & 0x04);
-        imuFlipY = (short)(imuOrientation & 0x02);
-        imuFlipZ = (short)(imuOrientation & 0x01);
+            final int imuOrientation = spiConfigReceive(fx3, DVX_IMU, DVX_IMU_ORIENTATION_INFO);
+            imuFlipX = (short)(imuOrientation & 0x04);
+            imuFlipY = (short)(imuOrientation & 0x02);
+            imuFlipZ = (short)(imuOrientation & 0x01);
+        }
     }
     
     /**
@@ -288,7 +342,7 @@ public class DVXplorer extends AETemporalConstastRetina {
      * @param fx3 CypressFX3 interface
      */
     public void dvxSendOpeningConfig(DVXplorerFX3HardwareInterface fx3) {
-        if (!isMipiCX3Device) {
+        if (!isMipiCX3Device()) {
             // Initialize Samsung DVS chip.
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN_CHIP, 1);
 
@@ -350,21 +404,23 @@ public class DVXplorer extends AETemporalConstastRetina {
      * @param fx3 CypressFX3 interface
      */
     public void dvxSendDefaultConfig(DVXplorerFX3HardwareInterface fx3) {
-        if (!isMipiCX3Device) {
+        if (!isMipiCX3Device()) {
             // If not MipiCX3 device, set DVX_MUX
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_DROP_EXTINPUT_ON_TRANSFER_STALL, 1);
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_DROP_DVS_ON_TRANSFER_STALL, 0);
         }
 
-        // DVX_IMU
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 6);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 5);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2);
+        // DVX_IMU (FX3 and pre-v10 CX3; Mini/Micro firmware 10+ keeps device defaults)
+        if (!isNextGenFirmware()) {
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 6);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 5);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2);
+        }
             
-        if (!isMipiCX3Device) {               
+        if (!isMipiCX3Device()) {
             // If not MipiCX3 device, set DVX_EXTINPUT
             spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_RISING_EDGES, 0);
             spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_FALLING_EDGES, 0);
@@ -380,6 +436,11 @@ public class DVXplorer extends AETemporalConstastRetina {
 
             double delayCC = 8 * 125.0F * usbClockActual;
             spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_EARLY_PACKET_DELAY, (int)delayCC);
+        }
+
+        if (isNextGenFirmware()) {
+            sendNextGenDefaultConfig(fx3);
+            return;
         }
             
         // DVX_DVS_CHIP_BIAS_SIMPLE_DEFAULT
@@ -520,6 +581,44 @@ public class DVXplorer extends AETemporalConstastRetina {
         // DTAG restart after config.
         spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_RESTART, 2);
     }
+
+    /** dv-processing {@code DVXplorerM} constructor defaults (firmware ≥10). */
+    private void sendNextGenDefaultConfig(DVXplorerFX3HardwareInterface fx3) {
+        spiConfigSend(fx3, DVX_DVS, DVS_FLATTEN, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_SUBSAMPLE_HORIZONTAL, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_SUBSAMPLE_VERTICAL, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_GLOBAL_HOLD, 1);
+        spiConfigSend(fx3, DVX_DVS, DVS_GLOBAL_RESET, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_GLOBAL_RESET_SKIP, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_MIPI_TIMEOUT_ENABLE, 1);
+        spiConfigSend(fx3, DVX_DVS, DVS_MIPI_TIMEOUT_VALUE, 2000);
+        spiConfigSend(fx3, DVX_DVS, DVS_EFPS_S5K231Y, 8); // VARIABLE_5000
+        spiConfigSend(fx3, DVX_DVS, DVS_CONTRAST_THRESHOLD_ON, 9);
+        spiConfigSend(fx3, DVX_DVS, DVS_CONTRAST_THRESHOLD_OFF, 9);
+        spiConfigSend(fx3, DVX_DVS, DVS_CROP_X, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_CROP_Y, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_CROP_WIDTH, sizeX);
+        spiConfigSend(fx3, DVX_DVS, DVS_CROP_HEIGHT, sizeY);
+        spiConfigSend(fx3, DVX_DVS, DVS_CROP_APPLY, 0);
+        final int ori = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
+        final char ox = (char) ((ori >>> 8) & 0xFF);
+        final char oy = (char) (ori & 0xFF);
+        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_HORIZONTAL, (ox == 'X' || ox == 'x') ? 1 : 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_VERTICAL, (oy == 'Y' || oy == 'y') ? 1 : 0);
+        // Firmware ≥10 SPI uses BMI160 ODR register values (dv-processing
+        // BoschBMI160* enums). Gyro ODR 5 is reserved and yields frozen ~0 dps.
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 11); // 800 Hz
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2); // NORMAL
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1); // 4 g
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 11); // 800 Hz
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2); // NORMAL
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2); // 500 dps
+        if (debug) {
+            DVXplorer.log.info(String.format(
+                    "Mini/Micro next-gen defaults: %dx%d orientation X='%c' Y='%c' MIPI timeout 2000 us",
+                    sizeX, sizeY, ox, oy));
+        }
+    }
     
     /**
      * Refer to libcaer dvxplorer.c dvXplorerDataStart() for details.
@@ -528,6 +627,18 @@ public class DVXplorer extends AETemporalConstastRetina {
      */
     public void dvxDataStart() {
         fx3 = (DVXplorerFX3HardwareInterface) this.getHardwareInterface();
+
+        if (isNextGenFirmware()) {
+            spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 1);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 1);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 1);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 1);
+            if (debug) {
+                final int run = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_RUN);
+                DVXplorer.log.info("Mini/Micro DVS_RUN readback=" + run);
+            }
+            return;
+        }
         
         // Ensure no data is left over from previous runs, if the camera
         // wasn't shut-down properly. First ensure it is shut down completely.
@@ -537,7 +648,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
         spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
 
-        if (!isMipiCX3Device) {
+        if (!isMipiCX3Device()) {
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN, 0);
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
             spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_RUN, 0);
@@ -552,7 +663,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         
         
-        if (!isMipiCX3Device) {
+        if (!isMipiCX3Device()) {
             // Enable data transfer on USB end-point 2.
             spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_RUN, 1);
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 1);
@@ -585,6 +696,14 @@ public class DVXplorer extends AETemporalConstastRetina {
      */
     public void dvxDataStop() {
         fx3 = (DVXplorerFX3HardwareInterface) this.getHardwareInterface();
+
+        if (isNextGenFirmware()) {
+            spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 0);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 0);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
+            return;
+        }
         
         // Disable streaming from DVS chip.
 		spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(0));
@@ -596,13 +715,13 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
         spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
         
-        if (!isMipiCX3Device) {
+        if (!isMipiCX3Device()) {
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN, 0);
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
             spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_RUN, 0);
         }
         
-        if (!isMipiCX3Device) {
+        if (!isMipiCX3Device()) {
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN_CHIP, 0); // Put DVS in reset.
         }
     }
@@ -761,6 +880,20 @@ public class DVXplorer extends AETemporalConstastRetina {
         getAeViewer().addMenu(dvxMenu);
     }
 
+    /** Overlay / AEDAT-4 playback: last IMU sample (Mini/Micro and FX3). */
+    public void setLatestImuSample(IMUSample sample) {
+        if (dvxExtractor != null) {
+            dvxExtractor.imuSample = sample;
+        }
+    }
+
+    /** Show IMU overlay (Shift-I). Used when Mini/Micro EP 0x81 IMU is running. */
+    public void setImuOverlayEnabled(boolean yes) {
+        if (toggleIMU != null) {
+            toggleIMU.isImuEnabled = yes;
+        }
+    }
+
     @Override
     public void onDeregistration() {
         if (getAeViewer() == null) {
@@ -805,12 +938,27 @@ public class DVXplorer extends AETemporalConstastRetina {
             // packing made every event look like Off.
             setTypemask(POLARITY_MASK);
             setTypeshift((byte) POLARITY_SHIFT);
-            
-            boolean isFlipX = (boolean)(dvsFlipX > 0);
-            boolean isFlipY = (boolean)(dvsFlipY > 0);
-            setFlipx(isFlipX);
-            setFlipy(isFlipY);
+
+            // extractPacket always maps raw Y (sensor / top origin) to jAER bottom-origin
+            // and never flips X. getAddressFromCell must be that inverse so AEDAT-4
+            // packAddress → extractPacket matches live view. FPGA dvsFlipX/Y bits are
+            // not applied in extractPacket (only dual-binning in the USB decoder).
+            setFlipx(false);
+            setFlipy(true);
             setFliptype(false);
+        }
+
+        /**
+         * Inverse of {@link #extractPacket}: display (x, y, On=1) → USB / AEDAT-2 raw.
+         * Live extraction sets {@code e.y = (sizeY-1) - rawY}; packing must undo that
+         * or jAER-written AEDAT-4 plays back upside down.
+         */
+        @Override
+        public int getAddressFromCell(int x, int y, int type) {
+            final int rawY = (sizeY - 1) - y;
+            return ((x << XSHIFT) & XMASK)
+                    | ((rawY << YSHIFT) & YMASK)
+                    | ((type << POLARITY_SHIFT) & POLARITY_MASK);
         }
 
         /**
@@ -832,6 +980,72 @@ public class DVXplorer extends AETemporalConstastRetina {
             }
             extractPacket(in, out);
             return out;
+        }
+
+        private PacketBundle reusedBundle;
+        private ImuPacket bundleImu;
+
+        /**
+         * Demux IMU into {@link ImuPacket} so AEDAT-4 recording and typed
+         * filters ({@code processImu}, e.g. Steadicam) see gyro samples.
+         * A mixed polarity EventPacket skips IMU on the AEDAT-4 writer.
+         */
+        @Override
+        synchronized public PacketBundle extractBundle(AEPacketRaw in) {
+            if (reusedBundle == null) {
+                reusedBundle = new PacketBundle();
+            } else {
+                reusedBundle.clear();
+            }
+            final boolean sub = isSubsamplingEnabled();
+            setSubsamplingEnabled(false);
+            EventPacket cooked;
+            try {
+                cooked = extractPacket(in);
+            } finally {
+                setSubsamplingEnabled(sub);
+            }
+            if (cooked == null) {
+                reusedBundle.setRawPacket(in);
+                return reusedBundle;
+            }
+            cooked.setRawPacket(in);
+            final EventPacket polarity = new EventPacket<>(PolarityEvent.class);
+            if (bundleImu == null) {
+                bundleImu = new ImuPacket();
+            } else {
+                bundleImu.clear();
+            }
+            boolean hwImu = false;
+            if (getChip().getHardwareInterface() instanceof DVXplorerFX3HardwareInterface dvx
+                    && dvx.isNextGenFirmware()) {
+                hwImu = dvx.drainCx3Imu(bundleImu) > 0;
+                if (hwImu && !bundleImu.isEmpty()) {
+                    imuSample = bundleImu.get(bundleImu.getSize() - 1);
+                }
+            }
+            final OutputEventIterator polItr = polarity.outputIterator();
+            for (Object o : cooked) {
+                if (o instanceof ApsDvsEvent aps && aps.isImuSample() && aps.getImuSample() != null) {
+                    if (!hwImu) {
+                        bundleImu.appendCopy(aps.getImuSample());
+                    }
+                } else if (o instanceof PolarityEvent pe) {
+                    final PolarityEvent e = (PolarityEvent) polItr.nextOutput();
+                    e.copyFrom(pe);
+                }
+            }
+            if (!bundleImu.isEmpty()) {
+                reusedBundle.add(bundleImu);
+                bundleImu = new ImuPacket();
+            }
+            if (!polarity.isEmpty()) {
+                reusedBundle.add(polarity);
+            } else if (reusedBundle.isEmpty()) {
+                reusedBundle.addAllowEmpty(cooked);
+            }
+            reusedBundle.setRawPacket(in);
+            return reusedBundle;
         }
         
         /**
@@ -879,7 +1093,8 @@ public class DVXplorer extends AETemporalConstastRetina {
                 int addr = a[i];
                 
                 // aedat2 format specific
-                if ((incompleteIMUSampleException != null) || ((addr & DVS_IMU_MASK) != 0)) {
+                if ((incompleteIMUSampleException != null)
+                        || ((addr & DavisChip.ADDRESS_TYPE_IMU) == DavisChip.ADDRESS_TYPE_IMU)) {
                     if (IMUSample.extractSampleTypeCode(addr) == 0) { // / only start getting an IMUSample at code 0,
                         // the first sample type
                         try {
@@ -1018,8 +1233,17 @@ public class DVXplorer extends AETemporalConstastRetina {
 
             // Draw last IMU output
             if (toggleIMU.isImuEnabled) {
-                if (dvxExtractor.imuSample != null) {
-                    imuRender(drawable, dvxExtractor.imuSample);
+                IMUSample overlay = dvxExtractor.imuSample;
+                final PacketBundle last = chip.getLastBundle();
+                if (last != null) {
+                    final ImuPacket imuPkt = last.getFirstImuPacket();
+                    if (imuPkt != null && imuPkt.getSize() > 0) {
+                        overlay = imuPkt.get(imuPkt.getSize() - 1);
+                        dvxExtractor.imuSample = overlay;
+                    }
+                }
+                if (overlay != null) {
+                    imuRender(drawable, overlay);
                 }
             }
         }

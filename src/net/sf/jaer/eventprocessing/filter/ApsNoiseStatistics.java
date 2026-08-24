@@ -18,6 +18,7 @@ import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -47,6 +48,30 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobi
  */
 @Description("Collects and displays APS noise statistics for a selected range of pixels, including PTC (photon transfer characteristics) and temporal noise caused by kTC, 1/f or other noise. ")
+@Help("""
+<html>
+<body>
+<h2>ApsNoiseStatistics</h2>
+<p>APS characterization on DAVIS: <b>photon transfer curve (PTC)</b>, spatial FPN histogram,
+and per-pixel temporal (AC RMS) noise in a mouse-selected region. Encloses
+<code>ApsFrameExtractor</code>. Does not filter DVS events.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Use a DAVIS chip with APS frames. Enable this filter and expand it.</li>
+<li>Left-drag on the display to select pixels.</li>
+<li><code>spatialHistogramEnabled</code> &mdash; FPN histogram (<code>histNumBins</code>).</li>
+<li><code>temporalNoiseEnabled</code> &mdash; AC RMS vs signal. Right-drag a line on that
+plot to estimate conversion gain. Set <code>adcVref</code> and
+<code>adcResolutionCounts</code> to match the chip ADC.</li>
+<li><code>discardPixelsWithVarianceLargerThan</code> drops outliers so the PTC is usable.
+<code>resetOnBiasChange</code> clears stats when biases change.</li>
+</ol>
+<p>Cover the lens or use a uniform field. <code>useZeroOriginForTemporalNoise</code> can
+make structure easier to see.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 

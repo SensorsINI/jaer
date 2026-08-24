@@ -75,9 +75,11 @@ import java.util.prefs.Preferences;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -87,6 +89,7 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
@@ -151,6 +154,10 @@ import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import net.sf.jaer.eventio.ros2.ROSOutput;
+import net.sf.jaer.eventio.ros2.ROSOutputDialog;
+import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
+import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemoryDialog;
 import prophesee.eventio.MetavisionRawFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -180,7 +187,9 @@ import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ExceptionListener;
+import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
@@ -196,6 +205,7 @@ import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.eventio.export.SaveAsExportDialog;
 import net.sf.jaer.util.filter.LowpassFilter;
 import org.joda.time.Period;
+import org.joda.time.PeriodType;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
 import org.opencv.core.Core;
@@ -262,8 +272,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_TIMESTAMPS_RESET = "timestampsReset",
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled",
-            EVENT_LOGGING_STARTED = "loggingStarted",
-            EVENT_LOGGING_STOPPED = "loggingStopped";
+            EVENT_RECORDING_STARTED = "recordingStarted",
+            EVENT_RECORDING_STOPPED = "recordingStopped";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
@@ -281,13 +291,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private AEPacketRaw rawPacket; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
+    /**
+     * Non-null overlay text: skip chip pixmap {@code render()} and still
+     * {@code paintFrame()} so this message is drawn on the canvas.
+     */
+    private volatile String skipChipRenderingOverlay = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
     int tickUs = 1;
     public AEPlayer aePlayer;
     int noEventCounter = 0;
 
+    public final String REMOTE_START_RECORDING = "startrecording";
+    public final String REMOTE_STOP_RECORDING = "stoprecording";
+    public final String REMOTE_TOGGLE_SYNCHRONIZED_RECORDING = "togglesyncrecording";
+    /** Alias of {@link #REMOTE_START_RECORDING} for existing remote scripts. */
     public final String REMOTE_START_LOGGING = "startlogging";
+    /** Alias of {@link #REMOTE_STOP_RECORDING} for existing remote scripts. */
     public final String REMOTE_STOP_LOGGING = "stoplogging";
+    /** Alias of {@link #REMOTE_TOGGLE_SYNCHRONIZED_RECORDING} for existing remote scripts. */
     public final String REMOTE_TOGGLE_SYNCHRONIZED_LOGGING = "togglesynclogging";
     public final String REMOTE_ZERO_TIMESTAMPS = "zerotimestamps";
     public final String REMOTE_OPEN_FILE = "openfile";
@@ -339,6 +360,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * {@link #openAEMonitor()} during USB open, which deadlocks EDT file open.
      */
     private final Object viewLoopPauseLock = new Object();
+    /**
+     * File → Save As owns the playback stream. ViewLoop must not grabInput,
+     * extract, filter, or paint until this is cleared — {@link #setPaused}
+     * alone is not enough ({@code wait(1000)} still re-renders, and a 150 ms
+     * sleep can overlap an in-flight AEDAT-4 {@code grabInput}).
+     */
+    private volatile boolean viewLoopSuspendedForOfflineExport = false;
+    /** ViewLoop has left grabInput and is waiting on {@link #viewLoopPauseLock}. */
+    private volatile boolean viewLoopParkedForOfflineExport = false;
     /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
     private static final long VIEWLOOP_EXIT_JOIN_TIMEOUT_MS = 3000;
     /**
@@ -354,33 +384,60 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
     File lastFile = null;
-    public File lastLoggingFolder = null;//changed pol
+    public File lastRecordingFolder = null;//changed pol
     File lastImageFile = null;
     File currentFile = null;
     private FrameRater frameRater = null; // constructed in constructor since it needs prefs
     ChipCanvas chipCanvas;
-    private volatile boolean loggingEnabled = false, loggingPaused = false;
+    private volatile boolean recordingEnabled = false, recordingPaused = false;
     /**
-     * The file that AE data is currently being logged to. Note it can change
+     * The file that AE data is currently being recorded to. Note it can change
      * when the user finally selects the file to save the data to.
      *
-     * @see #startLogging(String,String)
+     * @see #startRecording(String,String)
      */
-    private File loggingFile = null;
-    AEFileOutputStream loggingOutputStream;
-    Aedat4FileOutputStream aedat4LoggingOutputStream;
-    AEDZOutputStream aedzLoggingOutputStream;
+    private File recordingFile = null;
+    AEFileOutputStream recordingOutputStream;
+    Aedat4FileOutputStream aedat4RecordingOutputStream;
+    AEDZOutputStream aedzRecordingOutputStream;
+    private RecordingConfigurationSnapshot activeRecordingSnapshot;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
 
     private DropTarget myDraggedFileDropTarget = null; // added back after losing somehow
     private File draggedFile;
-    private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
+    private boolean recordingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
+    private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
+    private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
+    private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
+    private javax.swing.JMenuItem rosOutputMenuItem;
+    private ROSOutputDialog rosOutputDialog;
+    private javax.swing.JMenuItem dnnSharedMemoryMenuItem;
+    private DNNOutputViaSharedMemoryDialog dnnSharedMemoryDialog;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
-    private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
-    private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
-    /** Logging format version string, e.g. {@code "4.0"} or {@code "2.0"}. */
-    private String loggingDataFileVersion = prefs.get("AEViewer.loggingDataFileVersion",
+    private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
+    private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
+    private static final String[] RECORDING_TIME_LIMIT_PRESETS = {
+        RECORDING_TIME_LIMIT_NO_LIMIT,
+        "1m", "10m", "30m", "1h", "3h", "12h", "24h", "1d", "7d", "14d", "30d"
+    };
+    private static final PeriodFormatter RECORDING_TIME_LIMIT_FORMATTER = new PeriodFormatterBuilder()
+            .appendDays().appendSuffix("d")
+            .appendSeparator(" ")
+            .appendHours().appendSuffix("h")
+            .appendSeparator(" ")
+            .appendMinutes().appendSuffix("m")
+            .appendSeparator(" ")
+            .appendSeconds().appendSuffix("s")
+            .appendSeparator(" ")
+            .appendMillis()
+            .toFormatter();
+    /** Cached overlay for recording time limit; refreshed at most once per second. */
+    private volatile String recordingTimeLimitOverlayText = null;
+    private volatile long recordingTimeLimitOverlayLastMs = 0;
+    private boolean recordFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
+    /** Recording format version string, e.g. {@code "4.0"} or {@code "2.0"}. */
+    private String recordingDataFileVersion = prefs.get("AEViewer.loggingDataFileVersion",
             AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
     /** AEDAT-4 {@link net.sf.jaer.eventio.aedat4.dv.CompressionType} (default LZ4). */
     private int aedat4Compression = prefs.getInt("AEViewer.aedat4Compression",
@@ -391,6 +448,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Nonmodal File/Show file info dialog; reused while this viewer is open. */
     private JDialog fileInfoDialog;
     private JTextArea fileInfoTextArea;
+    /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
+    private AEViewerPreferencesDialog preferencesDialog;
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
     private String rememberLastInterfaceDeviceID = null;
@@ -536,6 +595,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        initRosOutputRemoteMenu();
+        initDnnSharedMemoryRemoteMenu();
         applyNetworkMenuDescriptionTooltips();
         // Esc cancels queued jog even when focus is on the heavyweight GL canvas
         // (menu accelerators alone are not always delivered in that case).
@@ -624,16 +685,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         lastFile = new File(lastFilePath);
 
         // tobi changed to avoid writing always to startup folder, which causes a major problem if this folder is not writeable, e.g. under NFS shared folder
-        String defaultLoggingFolderName = System.getProperty("java.io.tmpdir"); //System.getProperty("user.dir");
-        log.info("using " + defaultLoggingFolderName + " as the defaultLoggingFolderName");
-        // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
-        lastLoggingFolder = new File(prefs.get("AEViewer.lastLoggingFolder", defaultLoggingFolderName));
-        log.info("AEViewer.lastLoggingFolder=" + lastLoggingFolder);
+        String defaultRecordingFolderName = System.getProperty("java.io.tmpdir"); //System.getProperty("user.dir");
+        log.info("using " + defaultRecordingFolderName + " as the defaultRecordingFolderName");
+        // lastRecordingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
+        lastRecordingFolder = new File(prefs.get("AEViewer.lastLoggingFolder", defaultRecordingFolderName));
+        log.info("AEViewer.lastRecordingFolder=" + lastRecordingFolder);
 
-        // check lastLoggingFolder to see if it really exists, if not, default to user.dir
-        if (!lastLoggingFolder.exists() || !lastLoggingFolder.isDirectory()) {
-            log.warning("lastLoggingFolder " + lastLoggingFolder + " no good, defaulting to " + defaultLoggingFolderName);
-            lastLoggingFolder = new File(defaultLoggingFolderName);
+        // exists()/isDirectory() can stall for minutes on a wedged Dropbox/NFS path.
+        FileAccessTimeout.Kind recordingKind = FileAccessTimeout.kind(lastRecordingFolder);
+        if (recordingKind != FileAccessTimeout.Kind.DIRECTORY) {
+            log.warning("lastRecordingFolder " + lastRecordingFolder + " no good (" + recordingKind
+                    + " within " + FileAccessTimeout.timeoutMs() + " ms), defaulting to " + defaultRecordingFolderName);
+            lastRecordingFolder = new File(defaultRecordingFolderName);
+            if (recordingKind == FileAccessTimeout.Kind.TIMEOUT) {
+                try {
+                    prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getCanonicalPath());
+                } catch (IOException e) {
+                    prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getAbsolutePath());
+                }
+            }
         }
 
         // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
@@ -648,7 +718,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.info("opening folder for " + evt.getActionCommand());
                         try {
                             File f = new File(evt.getActionCommand());
-                            if (f.isFile()) {
+                            if (FileAccessTimeout.isFile(f)) {
                                 f = f.getParentFile();
                             }
                             Desktop.getDesktop().open(f);
@@ -726,13 +796,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setFocusable(true);
         requestFocus();
 
-        fixLoggingControls();
+        fixRecordingControls();
 
         myDraggedFileDropTarget = new DropTarget(getImagePanel(), this); // add support for dragged file onto display, lost somehow. AEViewer is the listener via drag events
 
         // init menu items that are checkboxes to correct initial state
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
-        loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
+        recordingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isRecordingPlaybackImmediatelyEnabled());
         if (getRenderer() == null) {
             throw new NullPointerException("getRenderer() returns null for this AEChip " + chip);
         }
@@ -740,7 +810,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
         pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
-        logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
+        recordFilteredEventsCheckBoxMenuItem.setSelected(recordFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
         setJogNCount.setText("Set forward/reverse jog packet count N... (currently " + getAePlayer().getJogPacketCount() + ")");
 
@@ -767,9 +837,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 break;
             }
 
-            remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "starts logging ae data to a file");
-            remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
-            remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
+            remoteControl.addCommandListener(this, REMOTE_START_RECORDING + " <filename>", "starts recording ae data to a file");
+            remoteControl.addCommandListener(this, REMOTE_STOP_RECORDING, "stops recording ae data to a file");
+            remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_RECORDING, "starts synchronized recording ae data to a set of files with aeidx filename automatically timestamped");
+            remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "alias of startrecording");
+            remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "alias of stoprecording");
+            remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "alias of togglesyncrecording");
             remoteControl.addCommandListener(this, REMOTE_ZERO_TIMESTAMPS, "zeros timestamps on all AEViewers");
             remoteControl.addCommandListener(this, REMOTE_OPEN_FILE + " <filename>", "<filename> open file for playback");
             remoteControl.addCommandListener(this, REMOTE_PAUSE, "pause player");
@@ -808,7 +881,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void cleanup() {
         log.fine("cleanup()");
         LibUsbHotplug.removeListener(usbHotplugListener);
-        stopLogging(true); // in case logging, make sure we give chance to save file
+        stopRecording(true); // in case recording, make sure we give chance to save file
         // Close the playback file without starting USB; aemon.close() follows.
         if (aePlayer != null && !suppressHardwareOpen) {
             aePlayer.stopPlayback(false);
@@ -1058,7 +1131,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private static Class forName(String name) throws ClassNotFoundException {
             Class c = null;
             if ((c = map.get(name)) == null) {
-                c = Class.forName(name);
+                c = JaerAllowedSubclasses.load(name, AEChip.class);
                 map.put(name, c);
                 return c;
             } else {
@@ -1171,12 +1244,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openUnicastInputMenuItem.setToolTipText(descriptionTooltip(AEUnicastInput.class, null));
         openBlockingQueueInputMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "openBlockingQueueInputMenuItemActionPerformed", ActionEvent.class));
         blockingQueueOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed", ActionEvent.class));
+        if (rosOutputMenuItem != null) {
+            rosOutputMenuItem.setToolTipText(descriptionTooltip(ROSOutput.class, null));
+        }
+        if (dnnSharedMemoryMenuItem != null) {
+            dnnSharedMemoryMenuItem.setToolTipText(descriptionTooltip(DNNOutputViaSharedMemory.class, null));
+        }
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
                 unicastOutputEnabledCheckBoxMenuItem,
                 openUnicastInputMenuItem,
                 openBlockingQueueInputMenuItem,
-                blockingQueueOutputEnabledCheckBoxMenuItem);
+                blockingQueueOutputEnabledCheckBoxMenuItem,
+                rosOutputMenuItem,
+                dnnSharedMemoryMenuItem);
     }
 
     /**
@@ -1197,7 +1278,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         };
         for (JComponent c : items) {
-            c.addMouseListener(linger);
+            if (c != null) {
+                c.addMouseListener(linger);
+            }
         }
         remoteMenu.addMenuListener(new MenuListener() {
             @Override
@@ -1772,7 +1855,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         for (String name : fqcn) {
             try {
-                Class<?> c = Class.forName(name);
+                Class<?> c = JaerAllowedSubclasses.load(name, AEChip.class);
                 if (AEChip.class.isAssignableFrom(c)) {
                     out.add((Class<? extends AEChip>) c);
                 }
@@ -1887,6 +1970,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 filterFrame = null;
             }
             filterFrameBuilt = false;
+            disposeRosOutputDialog();
+            disposeDnnSharedMemoryDialog();
             filtersToggleButton.setVisible(false);
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
@@ -1982,7 +2067,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 }
             }
-            fixLoggingControls();
+            fixRecordingControls();
             filterChain = chip.getFilterChain();
             if (filterChain == null) {
                 filtersToggleButton.setVisible(false);
@@ -2572,6 +2657,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Skip AEViewer chip pixmap rendering and show {@code overlay} on the
+     * canvas (filters still run). Pass {@code null} or empty to resume normal
+     * rendering.
+     *
+     * @param overlay message to draw, or null/empty to stop skipping
+     */
+    public void setSkipChipRenderingOverlay(String overlay) {
+        if (overlay == null || overlay.isEmpty()) {
+            skipChipRenderingOverlay = null;
+        } else {
+            skipChipRenderingOverlay = overlay;
+        }
+    }
+
+    /**
+     * @return overlay set by {@link #setSkipChipRenderingOverlay(String)}, or null
+     */
+    public String getSkipChipRenderingOverlay() {
+        return skipChipRenderingOverlay;
+    }
+
+    /**
+     * @return true when a filter requested skip of chip pixmap rendering
+     */
+    public boolean isSkipChipRenderingRequested() {
+        return skipChipRenderingOverlay != null;
+    }
+
+    /**
      * Sets a flag that rendering this current packet is skipped. Can be used by
      * event filters to skip rendering if results are boring.
      */
@@ -2647,7 +2761,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     aemon = (AEMonitorInterface) chip.getHardwareInterface();
                     if ((aemon == null) || !(aemon instanceof AEMonitorInterface)) {
                         fixDeviceControlMenuItems();
-                        fixLoggingControls();
+                        fixRecordingControls();
                         fixBiasgenControls();
                         return;
                     }
@@ -2665,7 +2779,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             rememberLastInterfaceDeviceID = usb.getStringDescriptors()[2];
                         }
                     }
-                    fixLoggingControls();
+                    fixRecordingControls();
                     fixBiasgenControls();
                     fixDeviceControlMenuItems();
                     tickUs = aemon.getTimestampTickUs();
@@ -2746,18 +2860,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 WinUsbDriverHelp.maybeShowDialog(this, aemon, e);
                 MacosLibusbHelp.maybeShowDialog(this, e);
                 if (aemon != null) {
-                    log.info("closing Monitor" + aemon);
+                    log.info("closing Monitor " + aemon.getClass().getSimpleName());
                     aemon.close();
                 }
                 nullifyHardware();
                 setPlaybackControlsEnabledState(false);
                 fixDeviceControlMenuItems();
-                fixLoggingControls();
+                fixRecordingControls();
                 fixBiasgenControls();
                 wantWaiting = true;
             }
         }
-        fixDeviceControlMenuItems();
         if (wantWaiting) {
             pendingFirstHardwareUseUi = null;
             pendingFirstHardwareUseImport = false;
@@ -3008,9 +3121,66 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /**
+     * Pause playback and keep ViewLoop out of grabInput/paint for File → Save As.
+     * Does not {@link #interruptViewloop()}: interrupt closes the playback
+     * {@code FileChannel}.
+     */
+    public void suspendViewLoopForOfflineExport() {
+        viewLoopSuspendedForOfflineExport = true;
+        setPaused(true);
+    }
+
+    /**
+     * Block until ViewLoop has finished any in-flight grabInput and is parked,
+     * or until {@code timeoutMs}. Call from the Save As worker, not the ViewLoop
+     * thread.
+     *
+     * @return true if ViewLoop is parked and will not touch the stream
+     */
+    public boolean waitUntilViewLoopParkedForOfflineExport(long timeoutMs) {
+        if (Thread.currentThread() == viewLoop) {
+            throw new IllegalStateException("cannot wait for ViewLoop park from ViewLoop");
+        }
+        long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMs);
+        synchronized (viewLoopPauseLock) {
+            while (!viewLoopParkedForOfflineExport && viewLoopSuspendedForOfflineExport) {
+                long left = deadline - System.currentTimeMillis();
+                if (left <= 0) {
+                    log.warning("ViewLoop did not park for Save As within " + timeoutMs
+                            + " ms; export may still contend with grabInput");
+                    return false;
+                }
+                try {
+                    viewLoopPauseLock.wait(Math.min(left, 200L));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return viewLoopParkedForOfflineExport;
+                }
+            }
+        }
+        return viewLoopParkedForOfflineExport;
+    }
+
+    /**
+     * End Save As exclusive use of the stream and restore the previous pause
+     * state. Wakes ViewLoop with notify, not interrupt.
+     */
+    public void resumeViewLoopAfterOfflineExport(boolean restorePaused) {
+        setPaused(restorePaused); // still suspended so setPaused will not interrupt FileChannel
+        viewLoopSuspendedForOfflineExport = false;
+        synchronized (viewLoopPauseLock) {
+            viewLoopPauseLock.notifyAll();
+        }
+    }
+
+    public boolean isViewLoopSuspendedForOfflineExport() {
+        return viewLoopSuspendedForOfflineExport;
+    }
+
     void setPlaybackControlsEnabledState(boolean yes) {
         //        log.info("*****************************************************       setting playback controls enabled = "+yes);
-        loggingButton.setEnabled(!yes);
+        recordingButton.setEnabled(!yes);
 
         if (DVS128.class.isInstance(chip)) {
             // We don't want the HW configuration button to be visible on DVS128 (ticket #13),
@@ -3088,6 +3258,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     log.info("breaking out of view loop after pauseIdleWaitIfNeeded() because stop=true");
                     break;
                 }
+                if (viewLoopSuspendedForOfflineExport) {
+                    // Still owned by Save As (spurious wakeup). Do not grabInput/render.
+                    continue;
+                }
+                stopRecordingIfTimeLimitReached();
                 // Heartbeat when FINE: proves ViewLoop is alive vs stuck in USB/JOGL.
                 if (log.isLoggable(Level.FINE)) {
                     long now = System.currentTimeMillis();
@@ -3167,7 +3342,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                         numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
-                        final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isLogFilteredEventsEnabled();
+                        final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isRecordFilteredEventsEnabled();
                         // Never skip rendering while writing synchronized AVI frames — every packet must paint.
                         if (!isPaused() && !isJaerAviRecordingActive() && getRenderer().isPacketLevelRenderSkipping()) {
                             skipRendering = getRenderer().advanceSkipRenderSlot();
@@ -3184,8 +3359,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             } else {
                                 chip.setLastData(cookedPacket);
                             }
-                            if (isLoggingEnabled() & !isLoggingPaused()) {
-                                logPacket(rawPacket, null, cookedBundle);
+                            if (isRecordingEnabled() & !isRecordingPaused()) {
+                                recordPacket(rawPacket, null, cookedBundle);
                             }
                             boolean breakout = writeOutputStreams(rawPacket, null);
                             if (breakout) {
@@ -3232,13 +3407,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
                     chip.setLastBundle(cookedBundle);
 
-                    // if we are logging data to disk do it here
-                    if (isLoggingEnabled() & !isLoggingPaused()) {
+                    // if we are recording data to disk do it here
+                    if (isRecordingEnabled() & !isRecordingPaused()) {
                         // AEDAT-2 needs raw AE; when USB demux drops APS dual-write, reconstruct polarity
-                        if (rawPacket == null && cookedPacket != null && aedat4LoggingOutputStream == null) {
+                        if (rawPacket == null && cookedPacket != null && aedat4RecordingOutputStream == null) {
                             rawPacket = extractor.reconstructRawPacket(cookedPacket);
                         }
-                        logPacket(rawPacket, cookedPacket, cookedBundle);
+                        recordPacket(rawPacket, cookedPacket, cookedBundle);
                     }
 
                     // Write the ouput to whatever streams need it
@@ -3258,8 +3433,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if ((cookedBundle != null && !cookedBundle.isEmpty()) || (cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
-                        if (!skipRendering) {
+                        boolean skipRequested = isSkipChipRenderingRequested() && !isJaerAviRecordingActive();
+                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering() || skipRequested;
+                        if (!skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
+                        } else if (isShowRosOutputOverlay() || skipRequested) {
+                            chipCanvas.paintFrame();
                         }
                     } catch (RuntimeException e) {
                         String cause = " unknown cause";
@@ -3665,45 +3844,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return inputPacket; // if we don't filter, just return the input packet to render the raw data
         }
 
-        void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
-            logPacket(rawPacket, cookedPacket, chip.getLastBundle());
+        void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
+            recordPacket(rawPacket, cookedPacket, chip.getLastBundle());
         }
 
-        void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
-            Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream
-                    : (aedzLoggingOutputStream != null ? aedzLoggingOutputStream : loggingOutputStream);
+        void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
+            Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
+                    : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
             synchronized (streamLock) {
                 try {
-                    if (aedat4LoggingOutputStream != null) {
+                    if (aedat4RecordingOutputStream != null) {
                         PacketBundle bundle = cookedBundle != null ? cookedBundle : chip.getLastBundle();
                         // AEDAT-4 logs the cooked PacketBundle. Omit events STCF etc. marked
                         // filteredOut so the file matches the display (iterator semantics).
-                        // File → "Enable filtering of logged events" still applies to AEDAT-2.
-                        boolean skipFilteredOut = isLogFilteredEventsEnabled()
+                        // File → "Enable filtering of recorded events" still applies to AEDAT-2.
+                        boolean skipFilteredOut = isRecordFilteredEventsEnabled()
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
-                        aedat4LoggingOutputStream.writeBundle(bundle, skipFilteredOut);
-                    } else if (aedzLoggingOutputStream != null) {
-                        aedzLoggingOutputStream.writePacket(isLogFilteredEventsEnabled()
+                        aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut);
+                    } else if (aedzRecordingOutputStream != null) {
+                        aedzRecordingOutputStream.writePacket(isRecordFilteredEventsEnabled()
                                 ? extractor.reconstructRawPacket(cookedPacket)
                                 : rawPacket);
-                    } else if (!isLogFilteredEventsEnabled()) {
-                        loggingOutputStream.writePacket(rawPacket); // log all events
+                    } else if (!isRecordFilteredEventsEnabled()) {
+                        recordingOutputStream.writePacket(rawPacket); // record all events
                     } else {
                         // log the reconstructed packet after filtering
                         AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
-                        loggingOutputStream.writePacket(aeRawRecon);
+                        recordingOutputStream.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
                     log.log(Level.SEVERE, e.toString(), e);
 
-                    setLoggingEnabled(false);
+                    setRecordingEnabled(false);
                     try {
-                        if (aedat4LoggingOutputStream != null) {
-                            aedat4LoggingOutputStream.close();
-                        } else if (aedzLoggingOutputStream != null) {
-                            aedzLoggingOutputStream.close();
+                        if (aedat4RecordingOutputStream != null) {
+                            aedat4RecordingOutputStream.close();
+                        } else if (aedzRecordingOutputStream != null) {
+                            aedzRecordingOutputStream.close();
                         } else {
-                            loggingOutputStream.close();
+                            recordingOutputStream.close();
                         }
                     } catch (IOException e2) {
                         log.log(Level.SEVERE, "Exception closing file: " + e2.toString(), e2);
@@ -3711,22 +3890,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 }
             }
-            if (loggingTimeLimit > 0) { // we may have a defined time for logging, if so, check here and abort logging
-                if ((System.currentTimeMillis() - loggingStartTime) > loggingTimeLimit) {
-                    log.info("logging time limit reached, stopping logging");
-                    try {
-                        SwingUtilities.invokeAndWait(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                stopLogging(true); // must run this in AWT thread because it messes with file menu
-                            }
-                        });
-                    } catch (Exception e) {
-                        log.log(Level.SEVERE, "Exception stopping logging: " + e.toString(), e);
-
-                    }
-                }
+            if (recordingTimeLimit > 0) { // we may have a defined time for recording, if so, check here and abort recording
+                stopRecordingIfTimeLimitReached();
             }
         }
 
@@ -3739,7 +3904,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private boolean writeOutputStreams(AEPacketRaw rawPacket, EventPacket cookedPacket) {
             if (blockingQueueOutputEnabled && (blockingQueueOutput != null) && (rawPacket != null)) {
                 AEPacketRaw toSend = rawPacket;
-                if (isLogFilteredEventsEnabled()) {
+                if (isRecordFilteredEventsEnabled()) {
                     toSend = extractor.reconstructRawPacket(cookedPacket);
                 }
                 offerBlockingQueuePacket(toSend);
@@ -3747,7 +3912,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             if (unicastOutputEnabled && (unicastOutput != null)) {
                 try {
-                    if (!isLogFilteredEventsEnabled()) {
+                    if (!isRecordFilteredEventsEnabled()) {
                         unicastOutput.writePacket(rawPacket);
                     } else {
                         // log the reconstructed packet after filtering.
@@ -3768,6 +3933,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         /** Idle wait while paused (no acquisition). */
         void pauseIdleWaitIfNeeded() {
+            if (viewLoopSuspendedForOfflineExport) {
+                // Park until Save As finishes. Do not use interruptViewloop(): it
+                // closes FileChannel. Do not honor interrupted() by skipping the
+                // wait — that busy-spins paintFrame() and keeps sharing the stream.
+                interrupted(); // clear stale interrupt from contrast/zoom/etc.
+                synchronized (viewLoopPauseLock) {
+                    if (!viewLoopParkedForOfflineExport) {
+                        log.info("ViewLoop parked for File → Save As (no grabInput/paint until export finishes)");
+                    }
+                    viewLoopParkedForOfflineExport = true;
+                    viewLoopPauseLock.notifyAll();
+                    try {
+                        while (viewLoopSuspendedForOfflineExport && !stop) {
+                            try {
+                                viewLoopPauseLock.wait();
+                            } catch (java.lang.InterruptedException e) {
+                                interrupted();
+                            }
+                        }
+                    } finally {
+                        viewLoopParkedForOfflineExport = false;
+                    }
+                }
+                return;
+            }
             if (isPaused() && !interrupted()) {
                 synchronized (viewLoopPauseLock) {
                     try {
@@ -3827,8 +4017,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return lastTimeExpansionFactor;
         }
         //        private String statLabel = null;
-        private StringBuilder sb = new StringBuilder(100);
+        private StringBuilder sb = new StringBuilder(160);
         private float thisTime = Float.NaN;
+        /** Do not rebuild the status line faster than this; String.format + setText every packet was the JFR allocation hotspot. */
+        private static final long STATISTICS_LABEL_MIN_INTERVAL_MS = 200;
+        private long lastStatisticsLabelMs = 0;
         /** Empty live polls before status shows "waiting for events" (not one empty swap). */
         private static final int LIVE_WAITING_LABEL_EMPTY_PACKET_THRESHOLD = 50;
         private int consecutiveEmptyLivePackets = 0;
@@ -3854,9 +4047,70 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             appendStatisticsLabelForPacket(packet);
         }
 
+        private static final char[] STATS_PAD = "                    ".toCharArray();
+
+        private static void padLeft(StringBuilder buf, int fieldStart, int width) {
+            int need = width - (buf.length() - fieldStart);
+            if (need > 0) {
+                buf.insert(fieldStart, STATS_PAD, 0, Math.min(need, STATS_PAD.length));
+            }
+        }
+
+        private static void padRight(StringBuilder buf, int fieldStart, int width) {
+            int need = width - (buf.length() - fieldStart);
+            while (need-- > 0) {
+                buf.append(' ');
+            }
+        }
+
+        /** {@code %.3f} without {@link String#format}. */
+        private static void appendFixed3(StringBuilder buf, float v) {
+            if (Float.isNaN(v)) {
+                buf.append("NaN");
+                return;
+            }
+            if (v < 0) {
+                buf.append('-');
+                v = -v;
+            }
+            int ip = (int) v;
+            int frac = Math.round((v - ip) * 1000f);
+            if (frac >= 1000) {
+                ip++;
+                frac = 0;
+            }
+            buf.append(ip).append('.');
+            if (frac < 100) {
+                buf.append('0');
+            }
+            if (frac < 10) {
+                buf.append('0');
+            }
+            buf.append(frac);
+        }
+
+        /** {@code %.1f} without {@link String#format}. */
+        private static void appendFixed1(StringBuilder buf, float v) {
+            if (v < 0) {
+                buf.append('-');
+                v = -v;
+            }
+            int ip = (int) v;
+            int frac = Math.round((v - ip) * 10f);
+            if (frac >= 10) {
+                ip++;
+                frac = 0;
+            }
+            buf.append(ip).append('.').append(frac);
+        }
+
         private void appendStatisticsLabelForPacket(EventPacket packet) {
+                long nowMs = System.currentTimeMillis();
+                if (nowMs - lastStatisticsLabelMs < STATISTICS_LABEL_MIN_INTERVAL_MS) {
+                    return;
+                }
+                lastStatisticsLabelMs = nowMs;
                 float dtMs = getDtMs(packet);
-                String timeSliceString = String.format("%10ss", engFmt.format(dtMs / 1000));
 
                 switch (getPlayMode()) {
                     case SEQUENCING:
@@ -3874,77 +4128,85 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         thisTime = packet.getLastTimestamp() * 1e-6f; // just use the raw timestamp from the data file, but this will not account for wrapping.
                         break;
                 }
-                String thisTimeString = String.format("%5.3fs ", thisTime);
 
-                String rateString = String.format("%9seps ", engFmt.format(packet.getEventRateHz()));
+                sb.setLength(0);
 
-                int cs = getRenderer().getColorScale();
+                int field = sb.length();
+                engFmt.append(sb, dtMs / 1000.0);
+                padLeft(sb, field, 10);
+                sb.append('s').append('@');
 
-                String ovstring = droppedDataInfo.getStatsLineToken();
+                field = sb.length();
+                appendFixed3(sb, thisTime);
+                padLeft(sb, field, 5);
+                sb.append("s ");
 
-                //                if(numEvents==0) s=thisTimeString+ "s: No events";
-                //                else {
-                String timeExpansionString;
+                if (chip.getFilterChain().isAnyFilterEnabled()) {
+                    field = sb.length();
+                    sb.append(numEvents);
+                    padLeft(sb, field, 5);
+                    sb.append('/');
+                    field = sb.length();
+                    sb.append(numFilteredEvents);
+                    padRight(sb, field, 5);
+                    if (filterChain.isTimedOut()) {
+                        sb.append(" TO  ");
+                    } else {
+                        sb.append("evts");
+                    }
+                } else {
+                    field = sb.length();
+                    sb.append(numEvents);
+                    padLeft(sb, field, 5);
+                    sb.append("evts ");
+                }
+
+                sb.append(droppedDataInfo.getStatsLineToken());
+
+                field = sb.length();
+                engFmt.append(sb, packet.getEventRateHz());
+                padLeft(sb, field, 9);
+                sb.append("eps ");
+
                 if (isPaused()) {
-                    timeExpansionString = "Paused ";
+                    sb.append("Paused ");
                 } else if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
-                    timeExpansionString = "Live/Seq ";
+                    sb.append("Live/Seq ");
                 } else {
                     float expansion = getTimeExpansion(dtMs);
                     if (expansion == 0) {
-                        timeExpansionString = "??? ";
+                        sb.append("??? ");
                     } else {
-                        timeExpansionString = String.format("%7sX", engFmt.format(expansion));
+                        field = sb.length();
+                        engFmt.append(sb, expansion);
+                        padLeft(sb, field, 7);
+                        sb.append('X');
                     }
-                }
-
-                String numEventsString;
-                if (chip.getFilterChain().isAnyFilterEnabled()) {
-                    if (filterChain.isTimedOut()) {
-                        numEventsString = String.format("%5d/%-5d TO  ", numEvents, numFilteredEvents);
-                    } else {
-                        numEventsString = String.format("%5d/%-5devts", numEvents, numFilteredEvents);
-                    }
-                } else {
-                    numEventsString = String.format("%5devts ", numEvents);
                 }
 
                 FrameRater fr = getFrameRater();
+                field = sb.length();
+                sb.append(Math.round(fr.getAverageFPS()));
+                padLeft(sb, field, 3);
+                sb.append('/').append(fr.getDesiredFPS()).append("fps,");
+                field = sb.length();
+                sb.append(fr.getLastDelayMs());
+                padLeft(sb, field, 2);
+                sb.append("ms");
+
                 AEChipRenderer renderer = getRenderer();
-                String arsString;
                 if (renderer.isAdaptiveRenderSkippingEnabled()) {
-                    arsString = String.format(" ARS lvl=%d/%d sk=%d ld=%.1f",
-                            renderer.getSkipFrameRenderingNumberCurrent(),
-                            renderer.getSkipFrameRenderingNumberMax(),
-                            renderer.getSkipPacketsRenderingCount(),
-                            fr.getLastLoopLoad());
+                    sb.append(" ARS lvl=").append(renderer.getSkipFrameRenderingNumberCurrent())
+                            .append('/').append(renderer.getSkipFrameRenderingNumberMax())
+                            .append(" sk=").append(renderer.getSkipPacketsRenderingCount())
+                            .append(" ld=");
+                    appendFixed1(sb, fr.getLastLoopLoad());
                 } else {
-                    arsString = " ARS off";
+                    sb.append(" ARS off");
                 }
 
-                String frameRateString = String.format("%3.0f/%dfps,%2dms",
-                        fr.getAverageFPS(),
-                        fr.getDesiredFPS(),
-                        fr.getLastDelayMs());
+                sb.append(renderer.isAutoscaleEnabled() ? " AS=" : " FS=").append(renderer.getColorScale());
 
-                String colorScaleString = (getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=") + Integer.toString(cs);
-
-                sb.delete(0, sb.length());
-                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString).append(timeExpansionString).append(frameRateString).append(arsString).append(' ').append(colorScaleString);
-
-                //               statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
-                //                        timeSliceString,
-                //                        thisTimeString,
-                //                        numEventsString,
-                //                        ovstring,
-                //                        rateString,
-                //                        frameRateString,
-                //                        timeExpansionString,
-                //                        frameRateString,
-                //                        colorScaleString // auto or fullscale rendering color
-                //                        );
-                //                }
-                //                System.out.println(statLabel.length());
                 setStatisticsLabel(sb.toString());
                 if (droppedDataInfo.any()) {
                     statisticsLabel.setForeground(Color.RED);
@@ -4095,13 +4357,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    void setStatisticsLabel(final String s) {
-        //        statisticsLabel.setText(s); // can cause flashing if label changes size
-        SwingUtilities.invokeLater(new Runnable() {
+    /** Latest status-line text from ViewLoop; EDT reads this in a coalesced invokeLater. */
+    private volatile String pendingStatisticsLabelText;
+    private final AtomicBoolean statisticsLabelUpdateScheduled = new AtomicBoolean(false);
 
+    void setStatisticsLabel(final String s) {
+        pendingStatisticsLabelText = s;
+        if (!statisticsLabelUpdateScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                statisticsLabel.setText(s);
+                statisticsLabelUpdateScheduled.set(false);
+                String text = pendingStatisticsLabelText;
+                if (text != null && !text.equals(statisticsLabel.getText())) {
+                    statisticsLabel.setText(text);
+                }
             }
         });
         // for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
@@ -4315,7 +4587,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * closes device
      */
     public void stopMe() {
-        stopLogging(true); // in case logging, make sure we give chance to save file
+        stopRecording(true); // in case recording, make sure we give chance to save file
         getSupport().firePropertyChange(EVENT_STOPME, null, null);
         //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch (getPlayMode()) {
@@ -4364,7 +4636,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buttonsPanel = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
-        loggingButton = new javax.swing.JToggleButton();
+        recordingButton = new javax.swing.JToggleButton();
         playerControlPanel = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
         statusTextField = new javax.swing.JTextField();
@@ -4381,10 +4653,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         exportVideoMenuItem = new javax.swing.JMenuItem();
         stopVideoExportMenuItem = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JSeparator();
-        loggingMenuItem = new javax.swing.JMenuItem();
-        loggingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        loggingSetTimelimitMenuItem = new javax.swing.JMenuItem();
-        logFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        recordingMenuItem = new javax.swing.JMenuItem();
+        recordingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        recordingSetTimelimitMenuItem = new javax.swing.JMenuItem();
+        recordFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         networkSeparator = new javax.swing.JSeparator();
         remoteMenu = new javax.swing.JMenu();
@@ -4549,13 +4821,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(filtersToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
-        loggingButton.setMnemonic('l');
-        loggingButton.setText("Start logging");
-        loggingButton.setToolTipText("Starts or stops logging or relogging");
-        loggingButton.setAlignmentY(0.0F);
-        loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
-        buttonsPanel.add(loggingButton);
+        recordingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        recordingButton.setMnemonic('l');
+        recordingButton.setText("Start recording");
+        recordingButton.setToolTipText("Starts or stops recording or re-recording");
+        recordingButton.setAlignmentY(0.0F);
+        recordingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
+        buttonsPanel.add(recordingButton);
 
         playerControlPanel.setToolTipText("");
         playerControlPanel.setAlignmentY(0.0F);
@@ -4635,8 +4907,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         openMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         openMenuItem.setMnemonic('o');
-        openMenuItem.setText("Open logged data file...");
-        openMenuItem.setToolTipText("Opens a logged data file for playback");
+        openMenuItem.setText("Open recorded data file...");
+        openMenuItem.setToolTipText("Opens a recorded data file for playback");
         openMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openMenuItemActionPerformed(evt);
@@ -4711,37 +4983,37 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         fileMenu.add(jSeparator8);
 
-        loggingMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
-        loggingMenuItem.setText("Start logging data");
-        loggingMenuItem.setToolTipText("Starts or stops logging to disk");
-        fileMenu.add(loggingMenuItem);
+        recordingMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
+        recordingMenuItem.setText("Start recording data");
+        recordingMenuItem.setToolTipText("Starts or stops recording to disk");
+        fileMenu.add(recordingMenuItem);
 
-        loggingPlaybackImmediatelyCheckBoxMenuItem.setText("Playback logged data immediately after logging enabled");
-        loggingPlaybackImmediatelyCheckBoxMenuItem.setToolTipText("If enabled, logged data plays back immediately");
-        loggingPlaybackImmediatelyCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        recordingPlaybackImmediatelyCheckBoxMenuItem.setText("Playback recorded data immediately after recording");
+        recordingPlaybackImmediatelyCheckBoxMenuItem.setToolTipText("If enabled, recorded data plays back immediately");
+        recordingPlaybackImmediatelyCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(evt);
+                recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(evt);
             }
         });
-        fileMenu.add(loggingPlaybackImmediatelyCheckBoxMenuItem);
+        fileMenu.add(recordingPlaybackImmediatelyCheckBoxMenuItem);
 
-        loggingSetTimelimitMenuItem.setText("Set logging time limit...");
-        loggingSetTimelimitMenuItem.setToolTipText("Sets a time limit for logging");
-        loggingSetTimelimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        recordingSetTimelimitMenuItem.setText("Set recording time limit...");
+        recordingSetTimelimitMenuItem.setToolTipText("Sets a time limit for recording from presets or a free-form duration (0 for no limit). Applies immediately to an in-progress recording.");
+        recordingSetTimelimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                loggingSetTimelimitMenuItemActionPerformed(evt);
+                recordingSetTimelimitMenuItemActionPerformed(evt);
             }
         });
-        fileMenu.add(loggingSetTimelimitMenuItem);
+        fileMenu.add(recordingSetTimelimitMenuItem);
 
-        logFilteredEventsCheckBoxMenuItem.setText("Enable filtering of logged or network output events");
-        logFilteredEventsCheckBoxMenuItem.setToolTipText("Logging or network writes apply active filters first (reduces file size or network traffi)");
-        logFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        recordFilteredEventsCheckBoxMenuItem.setText("Enable filtering of recorded or network output events");
+        recordFilteredEventsCheckBoxMenuItem.setToolTipText("Recording or network writes apply active filters first (reduces file size or network traffic)");
+        recordFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                logFilteredEventsCheckBoxMenuItemActionPerformed(evt);
+                recordFilteredEventsCheckBoxMenuItemActionPerformed(evt);
             }
         });
-        fileMenu.add(logFilteredEventsCheckBoxMenuItem);
+        fileMenu.add(recordFilteredEventsCheckBoxMenuItem);
 
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(true);
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
@@ -4778,6 +5050,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(openUnicastInputMenuItem);
         remoteMenu.add(jSeparator17);
 
+        openBlockingQueueInputMenuItem.setMnemonic('b');
         openBlockingQueueInputMenuItem.setText("Enable BlockingQueue input from another viewer");
         openBlockingQueueInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -4786,6 +5059,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         remoteMenu.add(openBlockingQueueInputMenuItem);
 
+        blockingQueueOutputEnabledCheckBoxMenuItem.setMnemonic('q');
         blockingQueueOutputEnabledCheckBoxMenuItem.setText("Enable BlockingQueue output to another viewer");
         blockingQueueOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -4798,8 +5072,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.add(syncSeperator);
 
         syncEnabledCheckBoxMenuItem.setSelected(false);
-        syncEnabledCheckBoxMenuItem.setText("Synchronized logging/playback enabled");
-        syncEnabledCheckBoxMenuItem.setToolTipText("All viwers start/stop logging in synchrony and playback times are synchronized");
+        syncEnabledCheckBoxMenuItem.setText("Synchronized recording/playback enabled");
+        syncEnabledCheckBoxMenuItem.setToolTipText("All viewers start/stop recording in synchrony and playback times are synchronized");
         syncEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 syncEnabledCheckBoxMenuItemActionPerformed(evt);
@@ -5008,7 +5282,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.add(setFrameRateMenuItem);
 
         skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat logging is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat recording is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -5875,6 +6149,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if ((filterFrame != null) && filterFrame.isVisible()) {
                         filterFrame.dispose();  // close this frame if the window is closed
                     }
+                    disposeRosOutputDialog();
+                    disposeDnnSharedMemoryDialog();
 
                     // TODO should close biasgen window also
                     stopMe();
@@ -6021,12 +6297,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Fills in the device control menu (the USB menu) so that menu items are
      * populated with correct values of USB buffer size and number of buffers,
-     * etc. Runs in the Swing worker thread.
+     * etc. Runs in the Swing worker thread. Coalesced: ViewLoop used to call
+     * this every packet via {@link #openAEMonitor()}, flooding the EDT.
      */
+    private final AtomicBoolean deviceControlMenuFixScheduled = new AtomicBoolean(false);
+
     public void fixDeviceControlMenuItems() {
+        if (!deviceControlMenuFixScheduled.compareAndSet(false, true)) {
+            return;
+        }
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                deviceControlMenuFixScheduled.set(false);
                 final boolean deviceOpen = aemon != null && aemon.isOpen();
                 if (!deviceOpen) {
                     for (int i = 0; i < controlMenu.getMenuComponentCount(); i++) {
@@ -6291,55 +6574,55 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    synchronized public void toggleLogging() {
+    synchronized public void toggleRecording() {
         if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
-            jaerViewer.toggleSynchronizedLogging();
-        } else if (isLoggingEnabled()) {
-            stopLogging(true); // confirms filename dialog when flag true
+            jaerViewer.toggleSynchronizedRecording();
+        } else if (isRecordingEnabled()) {
+            stopRecording(true); // confirms filename dialog when flag true
         } else {
-            startLogging();
+            startRecording();
         }
-        //        if(loggingButton.isSelected()){
-        //            if(caviarViewer!=null && caviarViewer.isSyncEnabled() ) caviarViewer.startSynchronizedLogging(); else startLogging();
+        //        if(recordingButton.isSelected()){
+        //            if(caviarViewer!=null && caviarViewer.isSyncEnabled() ) caviarViewer.startSynchronizedRecording(); else startRecording();
         //        }else{
-        //            if(caviarViewer!=null && caviarViewer.isSyncEnabled()) caviarViewer.stopSynchronizedLogging(); else stopLogging();
+        //            if(caviarViewer!=null && caviarViewer.isSyncEnabled()) caviarViewer.stopSynchronizedRecording(); else stopRecording();
         //        }
     }
 
-    void fixLoggingControls() {
+    void fixRecordingControls() {
         SwingUtilities.invokeLater(new Runnable() { // made this a runnable to run later to fix possible race problems - tobi
             @Override
-            public void run() {//        System.out.println("fixing logging controls, loggingEnabled="+loggingEnabled);
+            public void run() {//        System.out.println("fixing recording controls, recordingEnabled="+recordingEnabled);
                 if ((getPlayMode() != PlayMode.REMOTE) && ((aemon == null) || ((aemon != null) && !aemon.isOpen())) && (getPlayMode() != PlayMode.PLAYBACK)) {
-                    // we can log from live input or from playing file (e.g. after refiltering it) or we can log network data
+                    // we can record from live input or from playing file (e.g. after refiltering it) or we can record network data
                     // TODO: not ideal logic here, too confusing
-                    loggingButton.setEnabled(false);
-                    loggingMenuItem.setEnabled(false);
+                    recordingButton.setEnabled(false);
+                    recordingMenuItem.setEnabled(false);
                     return;
 
                 } else {
-                    loggingButton.setEnabled(true);
-                    loggingMenuItem.setEnabled(true);
+                    recordingButton.setEnabled(true);
+                    recordingMenuItem.setEnabled(true);
                 }
 
-                if (!isLoggingEnabled() && (getPlayMode() == PlayMode.PLAYBACK)) {
-                    loggingButton.setText("Start Re-logging");
-                    loggingMenuItem.setText("Start re-logging data");
-                } else if (isLoggingEnabled()) {
-                    loggingButton.setText("Stop logging");
-                    loggingButton.setSelected(true);
-                    loggingMenuItem.setText("Stop logging data");
+                if (!isRecordingEnabled() && (getPlayMode() == PlayMode.PLAYBACK)) {
+                    recordingButton.setText("Start re-recording");
+                    recordingMenuItem.setText("Start re-recording data");
+                } else if (isRecordingEnabled()) {
+                    recordingButton.setText("Stop recording");
+                    recordingButton.setSelected(true);
+                    recordingMenuItem.setText("Stop recording data");
                 } else {
-                    loggingButton.setText("Start logging");
-                    loggingButton.setSelected(false);
-                    loggingMenuItem.setText("Start logging data");
+                    recordingButton.setText("Start recording");
+                    recordingButton.setSelected(false);
+                    recordingMenuItem.setText("Start recording data");
                 }
             }
         });
 
     }
 
-    public void openLoggingFolderWindow() {
+    public void openRecordingFolderWindow() {
         String osName = System.getProperty("os.name");
         if (osName == null) {
             log.warning("no OS name property, cannot open browser");
@@ -6366,15 +6649,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Decide the recording-stream format for a requested data-file version and
      * filename, and the effective filename to hand to the writer (appending the
      * format's extension when the filename has none). Package-private static so
-     * the headless probe can verify the version/extension/log-writer selection
+     * the headless probe can verify the version/extension/writer selection
      * without constructing a full {@link AEViewer} (a JFrame, which needs a
      * display).
      *
-     * @param filename the requested log filename
+     * @param filename the requested recording filename
      * @param dataFileVersionNum the requested data-file version ("2.0", "4.0" or the "aedz" sentinel)
      * @return the resolved format version and effective filename
      */
-    static LogFormatChoice resolveLogFormat(String filename, String dataFileVersionNum) {
+    static RecordingFormatChoice resolveRecordingFormat(String filename, String dataFileVersionNum) {
         boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(dataFileVersionNum)
                 || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ);
         boolean aedat4 = !aedz && (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)
@@ -6392,30 +6675,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             String extension = AEDataFile.extensionForVersion(version);
             effective = filename + extension;
         }
-        return new LogFormatChoice(version, effective);
+        return new RecordingFormatChoice(version, effective);
     }
 
     /**
-     * Immutable resolution result from {@link #resolveLogFormat(String, String)}:
+     * Immutable resolution result from {@link #resolveRecordingFormat(String, String)}:
      * the format version to write and the effective filename (with any appended
      * extension).
      */
-    static final class LogFormatChoice {
+    static final class RecordingFormatChoice {
 
         final String version;
         final String filename;
 
-        LogFormatChoice(String version, String filename) {
+        RecordingFormatChoice(String version, String filename) {
             this.version = version;
             this.filename = filename;
         }
     }
 
     /**
-     * Starts logging AE data to a file.
+     * Starts recording AE data to a file.
      *
-     * @param filename the filename to log to, including all path information.
-     * Filenames without path are logged to the startup folder. If there is no
+     * @param filename the filename to record to, including all path information.
+     * Filenames without path are recorded to the startup folder. If there is no
      * extension, appends {@code .aedat4} for AEDAT-4 or {@code .aedat2} for
      * AEDAT-2 (legacy {@code .aedat}/{@code .dat} still accepted if supplied).
      *
@@ -6423,19 +6706,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and
      * is most stable))
      *
-     * @return the file that is logged to.
+     * @return the file that is recorded to.
      */
-    synchronized public File startLogging(String filename, String dataFileVersionNum) {
+    synchronized public File startRecording(String filename, String dataFileVersionNum) {
         if (filename == null) {
-            log.warning("tried to log to null filename, aborting");
+            log.warning("tried to record to null filename, aborting");
             return null;
         }
 
-        if (loggingEnabled && loggingFile != null) {
-            log.warning(String.format("Already logging to file %s", loggingFile.getAbsolutePath()));
-            return loggingFile;
+        if (recordingEnabled && recordingFile != null) {
+            log.warning(String.format("Already recording to file %s", recordingFile.getAbsolutePath()));
+            return recordingFile;
         }
-        LogFormatChoice choice = resolveLogFormat(filename, dataFileVersionNum);
+        RecordingFormatChoice choice = resolveRecordingFormat(filename, dataFileVersionNum);
         boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(choice.version);
         boolean aedat4 = !aedz && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(choice.version);
         if (!choice.filename.equals(filename)) {
@@ -6443,10 +6726,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     + " to make filename=" + choice.filename);
         }
         filename = choice.filename;
-        OpenedLogStream opened = null;
+        OpenedRecordingStream opened = null;
         Closeable writer = null;
         try {
-            loggingFile = new File(filename);
+            recordingFile = new File(filename);
             // Freeze the configuration once at recording start; the same immutable
             // snapshot is handed to the AEDAT-4 writer and placed on the chip so the
             // legacy writer and readers use the identical recording-start values.
@@ -6454,97 +6737,98 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // which clears the chip snapshot if the open fails so a later recording
             // can never reuse stale metadata.
             if (aedat4) {
-                loggingOutputStream = null;
-                aedzLoggingOutputStream = null;
-                opened = openWithFrozenSnapshot(chip, loggingFile);
-                constructLoggingWriter(chip, opened, (stream, snapshot) -> {
-                    aedat4LoggingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+                recordingOutputStream = null;
+                aedzRecordingOutputStream = null;
+                opened = openWithFrozenSnapshot(chip, recordingFile);
+                constructRecordingWriter(chip, opened, (stream, snapshot) -> {
+                    aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
                 });
-                writer = aedat4LoggingOutputStream;
-                log.info(String.format("AEDAT-4 logging compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of logged events)",
+                writer = aedat4RecordingOutputStream;
+                log.info(String.format("AEDAT-4 recording compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of recorded events)",
                         net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
-                        isLogFilteredEventsEnabled()
+                        isRecordFilteredEventsEnabled()
                         || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled())));
             } else if (aedz) {
-                aedat4LoggingOutputStream = null;
-                loggingOutputStream = null;
-                opened = openWithFrozenSnapshot(chip, loggingFile);
+                aedat4RecordingOutputStream = null;
+                recordingOutputStream = null;
+                opened = openWithFrozenSnapshot(chip, recordingFile);
                 // Hand the owner-captured object explicitly to AEDZ; the writer must not
                 // rediscover it through mutable chip state or recapture live preferences.
-                constructLoggingWriter(chip, opened, (stream, snapshot) -> {
-                    aedzLoggingOutputStream = new AEDZOutputStream(stream, chip, snapshot);
+                constructRecordingWriter(chip, opened, (stream, snapshot) -> {
+                    aedzRecordingOutputStream = new AEDZOutputStream(stream, chip, snapshot);
                 });
-                writer = aedzLoggingOutputStream;
+                writer = aedzRecordingOutputStream;
             } else {
-                aedat4LoggingOutputStream = null;
-                aedzLoggingOutputStream = null;
-                opened = openWithFrozenSnapshot(chip, loggingFile);
-                constructLoggingWriter(chip, opened, (stream, snapshot) -> {
-                    loggingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+                aedat4RecordingOutputStream = null;
+                aedzRecordingOutputStream = null;
+                opened = openWithFrozenSnapshot(chip, recordingFile);
+                constructRecordingWriter(chip, opened, (stream, snapshot) -> {
+                    recordingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
                 });
-                writer = loggingOutputStream;
+                writer = recordingOutputStream;
             }
+            activeRecordingSnapshot = opened.snapshot;
 
-            if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop logging
+            if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop recording
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, new PropertyChangeListener() {
 
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
                         if ((evt.getSource() == getAePlayer().getAEInputStream()) && evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
-                            log.info("recording reached end, stopping re-logging");
+                            log.info("recording reached end, stopping re-recording");
                             SwingUtilities.invokeLater(new Runnable() {
 
                                 @Override
                                 public void run() {
-                                    stopLogging(true);
+                                    stopRecording(true);
                                 }
                             });
                         }
                     }
                 });
             }
-            setLoggingEnabled(true);
+            setRecordingEnabled(true);
 
-            fixLoggingControls();
+            fixRecordingControls();
 
-            if (loggingTimeLimit > 0) {
-                loggingStartTime = System.currentTimeMillis();
-            }
-            log.info("starting logging to " + loggingFile.getAbsolutePath());
-            getSupport().firePropertyChange(EVENT_LOGGING_STARTED, null, loggingFile);
+            recordingStartTime = System.currentTimeMillis();
+            recordingTimeLimitOverlayText = null;
+            recordingTimeLimitOverlayLastMs = 0;
+            log.info("starting recording to " + recordingFile.getAbsolutePath());
+            getSupport().firePropertyChange(EVENT_RECORDING_STARTED, null, recordingFile);
 
             //            aemon.resetTimestamps();
         } catch (FileNotFoundException e) {
-            cleanupFailedLoggingStart(opened, writer, e);
-            log.log(Level.WARNING, "In trying open a logging output file, caught: " + e.toString(), e);
+            cleanupFailedRecordingStart(opened, writer, e);
+            log.log(Level.WARNING, "In trying to open a recording output file, caught: " + e.toString(), e);
 
         } catch (IOException ioe) {
-            cleanupFailedLoggingStart(opened, writer, ioe);
-            log.log(Level.WARNING, "In trying open a logging output file, caught: " + ioe.toString(), ioe);
+            cleanupFailedRecordingStart(opened, writer, ioe);
+            log.log(Level.WARNING, "In trying to open a recording output file, caught: " + ioe.toString(), ioe);
         } catch (RuntimeException runtime) {
             // Runtime failures can occur after a writer has taken ownership (for
-            // example playback listener setup or EVENT_LOGGING_STARTED listeners).
+            // example playback listener setup or EVENT_RECORDING_STARTED listeners).
             // Preserve that failure while deterministically releasing this start.
-            cleanupFailedLoggingStart(opened, writer, runtime);
+            cleanupFailedRecordingStart(opened, writer, runtime);
             throw runtime;
         }
 
-        return loggingFile;
+        return recordingFile;
     }
 
     /**
-     * The opened raw log stream together with the immutable recording-start
+     * The opened raw recording stream together with the immutable recording-start
      * snapshot that was frozen (and placed on the chip) just before the file was
      * opened.
      */
-    static final class OpenedLogStream {
+    static final class OpenedRecordingStream {
 
         final FileOutputStream stream;
         final RecordingConfigurationSnapshot snapshot;
         private boolean ownershipTransferred;
         private boolean rawStreamClosed;
 
-        OpenedLogStream(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) {
+        OpenedRecordingStream(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) {
             this.stream = stream;
             this.snapshot = snapshot;
         }
@@ -6562,38 +6846,41 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 stream.close();
             } catch (IOException | RuntimeException cleanupFailure) {
                 addCleanupFailure(primary, cleanupFailure,
-                        "closing raw log stream after failed writer construction");
+                        "closing raw recording stream after failed writer construction");
             }
         }
     }
 
     /**
-     * Release a failed logging start without firing secondary property events.
+     * Release a failed recording start without firing secondary property events.
      * The selected writer owns the file only after construction returns; before
-     * then {@link OpenedLogStream} still owns the raw stream. All fields are
+     * then {@link OpenedRecordingStream} still owns the raw stream. All fields are
      * cleared in {@code finally}, even if writer close itself fails.
      */
-    private void cleanupFailedLoggingStart(OpenedLogStream opened, Closeable writer, Throwable primary) {
+    private void cleanupFailedRecordingStart(OpenedRecordingStream opened, Closeable writer, Throwable primary) {
         try {
             if (writer != null) {
                 try {
                     writer.close();
                 } catch (IOException | RuntimeException cleanupFailure) {
                     addCleanupFailure(primary, cleanupFailure,
-                            "closing logging writer after failed logging start");
+                            "closing recording writer after failed recording start");
                 }
             } else if (opened != null) {
                 opened.closeRawStreamOnFailure(primary);
             }
         } finally {
-            loggingOutputStream = null;
-            aedat4LoggingOutputStream = null;
-            aedzLoggingOutputStream = null;
-            loggingEnabled = false;
-            loggingPaused = false;
-            loggingFile = null;
+            recordingOutputStream = null;
+            aedat4RecordingOutputStream = null;
+            aedzRecordingOutputStream = null;
+            recordingEnabled = false;
+            recordingPaused = false;
+            recordingFile = null;
             if (opened != null) {
                 clearCapturedSnapshotByIdentity(chip, opened.snapshot);
+                if (activeRecordingSnapshot == opened.snapshot) {
+                    activeRecordingSnapshot = null;
+                }
             }
         }
     }
@@ -6612,20 +6899,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /** Release only the snapshot owned by the recording being stopped. */
+    void releaseActiveRecordingSnapshot(RecordingConfigurationSnapshot snapshot) {
+        if (activeRecordingSnapshot == snapshot) {
+            activeRecordingSnapshot = null;
+        }
+        clearCapturedSnapshotByIdentity(chip, snapshot);
+    }
+
     /**
      * Freeze the recording-start configuration snapshot, place it on the chip,
-     * and open the raw log file. The snapshot is captured BEFORE the file open
+     * and open the raw recording file. The snapshot is captured BEFORE the file open
      * so the recorded header reflects recording-start values; if the open fails,
      * the chip's cached snapshot is cleared so a later recording can never reuse
      * stale metadata (regression: a failed start used to leave the stale
      * snapshot set, which the next start could then hand to a writer).
      *
      * @param chip the chip whose live configuration is frozen
-     * @param file the file to open for logging
+     * @param file the file to open for recording
      * @return the opened stream together with its frozen snapshot
      * @throws FileNotFoundException if the file cannot be opened
      */
-    static OpenedLogStream openWithFrozenSnapshot(AEChip chip, File file) throws FileNotFoundException {
+    static OpenedRecordingStream openWithFrozenSnapshot(AEChip chip, File file) throws FileNotFoundException {
         RecordingConfigurationSnapshot snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
         chip.setRecordingConfigurationSnapshot(snapshot);
         FileOutputStream stream;
@@ -6635,7 +6930,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             clearCapturedSnapshotByIdentity(chip, snapshot);
             throw e;
         }
-        return new OpenedLogStream(stream, snapshot);
+        return new OpenedRecordingStream(stream, snapshot);
     }
 
     /**
@@ -6645,7 +6940,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * owns closing the stream exactly once on the failure path.
      */
     @FunctionalInterface
-    public interface LoggingWriterFactory {
+    public interface RecordingWriterFactory {
 
         /**
          * Construct the writer around the given opened stream and recording-start
@@ -6673,7 +6968,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param factory the writer-construction step that takes over the stream
      * @throws IOException if opening or writer construction fails
      */
-    static void constructLoggingWriter(AEChip chip, OpenedLogStream opened, LoggingWriterFactory factory) throws IOException {
+    static void constructRecordingWriter(AEChip chip, OpenedRecordingStream opened, RecordingWriterFactory factory) throws IOException {
         try {
             factory.construct(opened.stream, opened.snapshot);
         } catch (IOException | RuntimeException e) {
@@ -6700,17 +6995,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             stream.close();
         } catch (IOException e) {
-            log.log(Level.FINE, "closing raw log stream after failed writer construction", e);
+            log.log(Level.FINE, "closing raw recording stream after failed writer construction", e);
         }
     }
 
     /**
-     * Starts logging data to a default data logging file.
+     * Starts recording data to a default data recording file.
      *
-     * @return the file that is logged to.
-     * @see #getLoggingFile()
+     * @return the file that is recorded to.
+     * @see #getRecordingFile()
      */
-    synchronized public File startLogging() {
+    synchronized public File startRecording() {
         //        if(playMode!=PlayMode.LIVE) return null;
         // first reset timestamps to zero time, and for stereo interfaces, to sychronize them
         /* TODO : fix so that timestamps are zeroed before recording really starts */
@@ -6726,7 +7021,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        if(dataFileVersionNum == null) {
 //            return null;
 //        }
-        dataFileVersionNum = getLoggingDataFileVersion();
+        dataFileVersionNum = getRecordingDataFileVersion();
 
         String dateString
                 = AEDataFile.DATE_FORMAT.format(new Date()); // uses local time zone on this computer (must be set correctly to be able to find true local time of recording later)
@@ -6757,11 +7052,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String filename;
 
         do {
-            // log files to tmp folder initially, later user will move or delete file on end of logging.
+            // Record files to the temporary folder initially; the user may move or delete the file when recording ends.
             // Use the extension for the preferred data-file version so the selected format (e.g. AEDAT-2
-            // or AEDZ) is actually honored; previously this was hardcoded to .aedat4, which made startLogging
+            // or AEDZ) is actually honored; previously this was hardcoded to .aedat4, which made startRecording
             // route to AEDAT-4 regardless of the preference.
-            filename = lastLoggingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.extensionForVersion(dataFileVersionNum);
+            filename = lastRecordingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.extensionForVersion(dataFileVersionNum);
             File lf = new File(filename);
             if (!lf.isFile()) {
                 succeeded = true;
@@ -6769,11 +7064,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         } while ((succeeded == false) && (suffixNumber++ <= 5));
         if (succeeded == false) {
-            log.warning("AEViewer.startLogging(): could not open a unigue new file for logging after trying up to " + filename);
+            log.warning("AEViewer.startRecording(): could not open a unique new file for recording after trying up to " + filename);
             return null;
         }
 
-        File lf = startLogging(filename, dataFileVersionNum);
+        File lf = startRecording(filename, dataFileVersionNum);
         return lf;
 
     }
@@ -6792,12 +7087,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        protected Boolean doInBackground() throws Exception {
 //            comp.setCursor(preResizeCursor);
 //            JFileChooser chooser = new JFileChooser();
-//            chooser.setCurrentDirectory(lastLoggingFolder);
+//            chooser.setCurrentDirectory(lastRecordingFolder);
 //            chooser.setFileFilter(new DATFileFilter());
-//            chooser.setDialogTitle("Save logged data");
+//            chooser.setDialogTitle("Save recorded data");
 //
 //            String fn
-//                    = loggingFile.getName();
+//                    = recordingFile.getName();
 //            //                System.out.println("fn="+fn);
 //            // strip off .aedat to make it easier to appendOfEventReferences comment to filename
 //            int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
@@ -6819,17 +7114,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
 //                        newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
 //                    }
-//                    // we'll rename the logged data file to the selection
-//                    lastLoggingFolder = chooser.getCurrentDirectory();
-//                    prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
+//                    // we'll rename the recorded data file to the selection
+//                    lastRecordingFolder = chooser.getCurrentDirectory();
+//                    prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getCanonicalPath());
 //
-//                    boolean renamed = loggingFile.renameTo(newFile);
+//                    boolean renamed = recordingFile.renameTo(newFile);
 //                    if (renamed) {
 //                        // if successful, cool, save persistence
 //                        savedIt = true;
 //                        recentFiles.addFile(newFile);
-//                        loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
-//                        log.info("renamed logging file to " + newFile.getAbsolutePath());
+//                        recordingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
+//                        log.info("renamed recording file to " + newFile.getAbsolutePath());
 //                    } else {
 //                        // if this fails, it does not only mean that a file already exists,
 //                        // the failure reasons are platform dependent, for example on Linux
@@ -6843,21 +7138,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                // we need to delete the file
 //                                boolean deletedOld = newFile.delete();
 //                                if (deletedOld) {
-//                                    loggingFile.renameTo(newFile);
+//                                    recordingFile.renameTo(newFile);
 //                                    savedIt = true;
-//                                    log.info("renamed logging file to " + newFile); // TODO something messed up
+//                                    log.info("renamed recording file to " + newFile); // TODO something messed up
 //                                    // here with confirmed
-//                                    // overwrite of logging file
-//                                    loggingFile = newFile;
+//                                    // overwrite of recording file
+//                                    recordingFile = newFile;
 //                                } else {
-//                                    log.warning("couldn't delete logging file " + newFile);
+//                                    log.warning("couldn't delete recording file " + newFile);
 //                                }
 //
 //                            } else {
 //                                chooser.setDialogTitle("Couldn't save file there, try again");
 //                            }
 //                        } else {
-//                            log.info(String.format("(Please wait) moving temporary file %s to final location %s", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
+//                            log.info(String.format("(Please wait) moving temporary file %s to final location %s", recordingFile.getAbsolutePath(), newFile.getAbsolutePath()));
 //                            class Result {
 //
 //                                Exception exception = null;
@@ -6868,9 +7163,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                            Thread t = new Thread() {
 //                                public void run() {
 //                                    try {
-//                                        FileUtils.moveFile(loggingFile, newFinalFile);
+//                                        FileUtils.moveFile(recordingFile, newFinalFile);
 //                                    } catch (IOException e) {
-//                                        log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFinalFile, e.toString()));
+//                                        log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", recordingFile, newFinalFile, e.toString()));
 //                                        result.exception = e;
 //                                    } finally {
 //                                    }
@@ -6892,7 +7187,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                            if (result.exception == null) {
 //                                log.info("done saving " + newFinalFile.getAbsolutePath());
 //                                savedIt = true;
-//                                loggingFile = newFile;
+//                                recordingFile = newFile;
 //                            } else {
 //                                log.severe(String.format("Could not save %s: %s", newFinalFile, result.exception));
 //                            }
@@ -6900,12 +7195,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                        }
 //                    }
 //                } else {
-//                    // user hit cancel, delete logged data
-//                    boolean deleted = loggingFile.delete();
+//                    // user hit cancel, delete recorded data
+//                    boolean deleted = recordingFile.delete();
 //                    if (deleted) {
-//                        log.info("Deleted temporary logging file " + loggingFile);
+//                        log.info("Deleted temporary recording file " + recordingFile);
 //                    } else {
-//                        log.warning("Couldn't delete temporary logging file " + loggingFile);
+//                        log.warning("Couldn't delete temporary recording file " + recordingFile);
 //                    }
 //
 //                    savedIt = true;
@@ -6944,67 +7239,77 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Stops logging and optionally opens file dialog for where to save file. If
+     * Stops recording and optionally opens file dialog for where to save file. If
      * number of AEViewers is more than one, dialog is also skipped since we may
-     * be logging from multiple viewers.
+     * be recording from multiple viewers.
      *
      * @param confirmFilename true to show file dialog to confirm filename,
      * false to skip dialog.
      * @return chosen File
      */
-    synchronized public File stopLogging(boolean confirmFilename) {
-        // the file has already been logged somewhere with a timestamped name, what this method does is
-        // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
+    synchronized public File stopRecording(boolean confirmFilename) {
+        // the file has already been recorded somewhere with a timestamped name, what this method does is
+        // to move the already recorded file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
         int retValue = JFileChooser.CANCEL_OPTION;
         String fileInfo = "";
-        if (isLoggingEnabled()) {
-            if (loggingButton.isSelected()) {
-                loggingButton.setSelected(false);
+        if (isRecordingEnabled()) {
+            if (recordingButton.isSelected()) {
+                recordingButton.setSelected(false);
             }
 
-            loggingButton.setText("Start logging");
-            loggingMenuItem.setText("Start logging data");
+            recordingButton.setText("Start recording");
+            recordingMenuItem.setText("Start recording data");
             try {
-                log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + loggingFile);
-                final boolean wasAedat4 = aedat4LoggingOutputStream != null;
-                final boolean wasAedz = aedzLoggingOutputStream != null;
+                log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + recordingFile);
+                final boolean wasAedat4 = aedat4RecordingOutputStream != null;
+                final boolean wasAedz = aedzRecordingOutputStream != null;
                 final String preferredSaveExt = wasAedat4
                         ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4
                         : (wasAedz
                         ? AEDataFile.DATA_FILE_EXTENSION_AEDZ
                         : AEDataFile.DATA_FILE_EXTENSION_AEDAT2);
-                Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream
-                        : (aedzLoggingOutputStream != null ? aedzLoggingOutputStream : loggingOutputStream);
-                synchronized (streamLock) {
-                    setLoggingEnabled(false);
-                    if (aedat4LoggingOutputStream != null) {
-                        aedat4LoggingOutputStream.close();
-                        fileInfo = aedat4LoggingOutputStream.toString();
-                        aedat4LoggingOutputStream = null;
-                    } else if (aedzLoggingOutputStream != null) {
-                        aedzLoggingOutputStream.close();
-                        fileInfo = aedzLoggingOutputStream.toString();
-                        aedzLoggingOutputStream = null;
-                    } else {
-                        loggingOutputStream.close();
-                        fileInfo = loggingOutputStream.toString();
+                Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
+                        : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
+                final RecordingConfigurationSnapshot stoppingSnapshot = activeRecordingSnapshot;
+                try {
+                    synchronized (streamLock) {
+                        setRecordingEnabled(false);
+                        if (aedat4RecordingOutputStream != null) {
+                            aedat4RecordingOutputStream.close();
+                            fileInfo = aedat4RecordingOutputStream.toString();
+                            aedat4RecordingOutputStream = null;
+                        } else if (aedzRecordingOutputStream != null) {
+                            aedzRecordingOutputStream.close();
+                            fileInfo = aedzRecordingOutputStream.toString();
+                            aedzRecordingOutputStream = null;
+                        } else {
+                            recordingOutputStream.close();
+                            fileInfo = recordingOutputStream.toString();
+                        }
                     }
-                    // Release the frozen recording-start snapshot so a later recording
-                    // captures fresh values again.
-                    chip.setRecordingConfigurationSnapshot(null);
+                } finally {
+                    // Close failures must not retain stale recording metadata, and a
+                    // newer owner-installed snapshot must survive this stop.
+                    releaseActiveRecordingSnapshot(stoppingSnapshot);
                 }
-                // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
+                // if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
 
                 if (confirmFilename && !jaerViewer.isSyncEnabled()) {
-//                    new RecordingSaverWorker(this, loggingFile).execute();
+                    // Pause live acquisition/rendering while the modal save UI is up so
+                    // USB packets are not cooked/rendered into unbounded memory.
+                    final boolean wasPausedForSaveDialog = isPaused();
+                    if (!wasPausedForSaveDialog) {
+                        setPaused(true);
+                    }
+                    try {
                     JFileChooser chooser = new JFileChooser();
-                    chooser.setCurrentDirectory(lastLoggingFolder);
+                    chooser.setCurrentDirectory(lastRecordingFolder);
                     chooser.setFileFilter(new DATFileFilter());
-                    chooser.setDialogTitle("Save logged data");
+                    chooser.setDialogTitle("Save recorded data");
 
                     String fn
-                            = loggingFile.getName();
+                            = recordingFile.getName();
                     // strip known data extension so user can append a comment in the basename
                     String base = fn;
                     String fnLower = fn.toLowerCase();
@@ -7026,7 +7331,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                     chooser.setMultiSelectionEnabled(false);
                     chooser.setAccessory(new RecentFoldersComboAccessory(recentFiles, chooser,
-                            () -> LoggingSaveDialogGuard.restoreSelectedFilename(chooser, filenameBase)));
+                            () -> RecordingSaveDialogGuard.restoreSelectedFilename(chooser, filenameBase)));
                     //                Component[] comps=chooser.getComponents();
                     //                for(Component c:comps){
                     //                    if(c.getName().equals("buttonPanel")){
@@ -7043,12 +7348,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     boolean doneSavingOrCancelling = false;
                     do {
-                        retValue = LoggingSaveDialogGuard.showSaveDialog(chooser, AEViewer.this, base);
+                        retValue = RecordingSaveDialogGuard.showSaveDialog(chooser, AEViewer.this, base);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File selected = chooser.getSelectedFile();
-                            if (selected == null || LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(selected.getName())) {
-                                LoggingSaveDialogGuard.restoreSelectedFilename(chooser, base);
-                                chooser.setDialogTitle("Save logged data (restored default filename)");
+                            if (selected == null || RecordingSaveDialogGuard.isStrayRecordingShortcutFilename(selected.getName())) {
+                                RecordingSaveDialogGuard.restoreSelectedFilename(chooser, base);
+                                chooser.setDialogTitle("Save recorded data (restored default filename)");
                                 continue;
                             }
                             File newFile = resolveLoggingSaveDestination(chooser, preferredSaveExt);
@@ -7057,43 +7362,51 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 continue;
                             }
                             // persist the folder the user actually saved into
-                            lastLoggingFolder = newFile.getParentFile() != null
+                            lastRecordingFolder = newFile.getParentFile() != null
                                     ? newFile.getParentFile() : chooser.getCurrentDirectory();
-                            prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
+                            prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getCanonicalPath());
 
-                            File saved = relocateLoggingFile(newFile);
+                            File saved = relocateRecordingFile(newFile);
                             if (saved != null) {
                                 doneSavingOrCancelling = true;
                                 recentFiles.addFile(saved);
-                                loggingFile = saved;
+                                recordingFile = saved;
                                 showLoggingSaveConfirmation(saved, fileInfo);
                             } else {
                                 chooser.setDialogTitle("Couldn't save file there, try again");
                             }
                         } else {
-                            // user hit cancel, delete logged data
-                            boolean deleted = loggingFile.delete();
+                            // user hit cancel, delete recorded data
+                            boolean deleted = recordingFile.delete();
                             if (deleted) {
-                                log.info("Deleted temporary logging file " + loggingFile);
+                                log.info("Deleted temporary recording file " + recordingFile);
                             } else {
-                                log.warning("Couldn't delete temporary logging file " + loggingFile);
+                                log.warning("Couldn't delete temporary recording file " + recordingFile);
                             }
 
                             doneSavingOrCancelling = true;
                         }
 
                     } while (doneSavingOrCancelling == false); // keep trying until user is happy (unless they deleted some crucial data!)
+                    } finally {
+                        if (!wasPausedForSaveDialog) {
+                            setPaused(false);
+                            synchronized (viewLoopPauseLock) {
+                                viewLoopPauseLock.notifyAll();
+                            }
+                        }
+                    }
                 }
 
             } catch (IOException e) {
-                String msg = "In trying save a logging output file, got exception: " + e.toString();
+                String msg = "In trying to save a recording output file, got exception: " + e.toString();
                 JOptionPane.showMessageDialog(this, msg, "Error saving file", JOptionPane.ERROR_MESSAGE);
                 log.log(Level.WARNING, msg, e);
             }
 
-            if ((retValue == JFileChooser.APPROVE_OPTION) && isLoggingPlaybackImmediatelyEnabled()) {
+            if ((retValue == JFileChooser.APPROVE_OPTION) && isRecordingPlaybackImmediatelyEnabled()) {
                 try {
-                    getAePlayer().startPlayback(loggingFile); // TODO fix it with progress monitor later
+                    getAePlayer().startPlayback(recordingFile); // TODO fix it with progress monitor later
                 } catch (IOException e) {
                     log.log(Level.WARNING, "In trying play a file, caught: " + e.toString(), e);
                 } catch (InterruptedException ex) {
@@ -7101,12 +7414,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
             }
-            setLoggingEnabled(false);
-            getSupport().firePropertyChange(EVENT_LOGGING_STOPPED, null, loggingFile);
+            setRecordingEnabled(false);
+            getSupport().firePropertyChange(EVENT_RECORDING_STOPPED, null, recordingFile);
         }
 
-        fixLoggingControls();
-        return loggingFile;
+        fixRecordingControls();
+        return recordingFile;
     }    // doesn't actually reset the test in the dialog'
 
     /**
@@ -7134,22 +7447,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Moves {@link #loggingFile} to {@code dest}. Uses rename when possible;
+     * Moves {@link #recordingFile} to {@code dest}. Uses rename when possible;
      * copies across filesystems with a short "Moving recording" dialog that is
      * disposed when the copy finishes.
      *
      * @return dest if successful, null if the user cancelled overwrite or the
      *         move failed
      */
-    private File relocateLoggingFile(File dest) {
-        if (dest == null || loggingFile == null) {
+    private File relocateRecordingFile(File dest) {
+        if (dest == null || recordingFile == null) {
             return null;
         }
         dest = dest.getAbsoluteFile();
-        File src = loggingFile.getAbsoluteFile();
+        File src = recordingFile.getAbsoluteFile();
         try {
             if (src.getCanonicalFile().equals(dest.getCanonicalFile())) {
-                log.info("logging file already at " + dest.getAbsolutePath());
+                log.info("recording file already at " + dest.getAbsolutePath());
                 return dest;
             }
         } catch (IOException e) {
@@ -7170,18 +7483,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         if (src.renameTo(dest)) {
-            log.info("renamed logging file to " + dest.getAbsolutePath());
+            log.info("renamed recording file to " + dest.getAbsolutePath());
             return dest;
         }
         // renameTo fails across filesystems (e.g. /tmp to /home)
-        return moveLoggingFileWithProgress(src, dest);
+        return moveRecordingFileWithProgress(src, dest);
     }
 
     /**
      * Copies {@code src} to {@code dest} on a worker thread. The "Moving
      * recording" dialog is shown only while that copy runs.
      */
-    private File moveLoggingFileWithProgress(File src, File dest) {
+    private File moveRecordingFileWithProgress(File src, File dest) {
         log.info(String.format(
                 "Rename failed, trying FileUtils.moveFile. Please wait, moving temporary file %s to final location %s...",
                 src.getAbsolutePath(), dest.getAbsolutePath()));
@@ -7197,7 +7510,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", src, dest, e));
                 result.exception = e;
             }
-        }, "move-logging-file");
+        }, "move-recording-file");
         final StringBuilder sb = new StringBuilder("Moving recording..");
         final JOptionPane pane = new JOptionPane(sb.toString(), JOptionPane.INFORMATION_MESSAGE,
                 JOptionPane.DEFAULT_OPTION, null, new Object[]{}, null);
@@ -7237,16 +7550,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Shows the post-save confirmation dialog with Show folder / Playback / OK.
+     * Shared confirmation after recording or File → Save As: add to Recent
+     * Files, then Show folder / Playback / OK. {@code htmlMessage} should be
+     * produced by {@link ShowFolderSaveConfirmation#htmlRecordingSavedMessage}
+     * or {@link ShowFolderSaveConfirmation#htmlSaveAsMessage}.
      */
-    private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
+    public void showSavedFileConfirmation(File savedFile, String htmlMessage) {
+        if (savedFile != null && recentFiles != null) {
+            recentFiles.addFile(savedFile);
+        }
         final File toPlay = savedFile;
-        String msg = "<html>Done saving recording as<br> " + savedFile.getAbsolutePath() + "<br>" + fileInfo;
+        String msg = htmlMessage != null ? htmlMessage
+                : ShowFolderSaveConfirmation.htmlRecordingSavedMessage(savedFile, null);
         ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(this, savedFile, msg, () -> {
             try {
-                getAePlayer().startPlayback(toPlay);
+                if (toPlay != null) {
+                    getAePlayer().startPlayback(toPlay);
+                }
             } catch (IOException e) {
-                log.log(Level.WARNING, "In trying play a file, caught: " + e.toString(), e);
+                log.log(Level.WARNING, "Could not play saved file: " + e.toString(), e);
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage() != null ? e.getMessage() : e.toString(),
+                        "Could not play file", JOptionPane.ERROR_MESSAGE);
             } catch (InterruptedException ex) {
                 log.info("playback interrupted");
             }
@@ -7255,42 +7580,95 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Returns true if currently logging (recording data to file)
-     *
-     * @return the loggingEnabled
+     * Shows the post-save confirmation dialog with Show folder / Playback / OK.
      */
-    public boolean isLoggingEnabled() {
-        return loggingEnabled;
+    private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
+        showSavedFileConfirmation(savedFile, ShowFolderSaveConfirmation.htmlRecordingSavedMessage(savedFile, fileInfo));
     }
 
     /**
-     * Disables logging if it is enabled. Set true when logging is started.
-     * Users can disable during logging. Has no effect if logging is not
+     * Overlay detail while recording: elapsed {@code Recorded XXhYYmZZs}, plus
+     * total and remaining when a time limit is set. Refreshed at most once per
+     * second.
+     *
+     * @return overlay lines, or {@code null} when not recording or overlay is off
+     */
+    public String getRecordingTimeLimitOverlayText() {
+        if (!isShowRecordingOverlay() || !isRecordingEnabled()) {
+            recordingTimeLimitOverlayText = null;
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        if (recordingTimeLimitOverlayText != null && (now - recordingTimeLimitOverlayLastMs) < 1000) {
+            return recordingTimeLimitOverlayText;
+        }
+        recordingTimeLimitOverlayLastMs = now;
+        long elapsedMs = Math.max(0L, now - recordingStartTime);
+        StringBuilder sb = new StringBuilder("Recorded ");
+        sb.append(formatRecordingDurationHms(elapsedMs));
+        if (recordingTimeLimit > 0) {
+            long remainingMs = Math.max(0L, recordingTimeLimit - elapsedMs);
+            sb.append('\n').append(formatRecordingDurationHms(recordingTimeLimit)).append(" total");
+            sb.append('\n').append(formatRecordingDurationHms(remainingMs)).append(" left to record");
+        }
+        recordingTimeLimitOverlayText = sb.toString();
+        return recordingTimeLimitOverlayText;
+    }
+
+    /**
+     * Formats a duration as {@code XXhYYmZZs} (hours, minutes, seconds).
+     *
+     * @param durationMs duration in milliseconds
+     * @return padded hours, minutes, and seconds
+     */
+    private static String formatRecordingDurationHms(long durationMs) {
+        long totalSec = Math.max(0L, durationMs) / 1000L;
+        long h = totalSec / 3600L;
+        long m = (totalSec % 3600L) / 60L;
+        long s = totalSec % 60L;
+        return String.format("%02dh%02dm%02ds", h, m, s);
+    }
+
+    /**
+     * Returns true if currently recording data to file
+     *
+     * @return the recordingEnabled
+     */
+    public boolean isRecordingEnabled() {
+        return recordingEnabled;
+    }
+
+    /**
+     * Disables recording if it is enabled. Set true when recording is started.
+     * Users can disable during recording. Has no effect if recording is not
      * started.
      *
-     * @param loggingEnabled the loggingEnabled to set
+     * @param recordingEnabled the recordingEnabled to set
      */
-    private void setLoggingEnabled(boolean loggingEnabled) {
-        this.loggingEnabled = loggingEnabled;
+    private void setRecordingEnabled(boolean recordingEnabled) {
+        this.recordingEnabled = recordingEnabled;
+        if (!recordingEnabled) {
+            recordingTimeLimitOverlayText = null;
+        }
     }
 
     /**
-     * Returns true if logging is paused.
+     * Returns true if recording is paused.
      *
-     * @return the loggingPaused
+     * @return the recordingPaused
      */
-    public boolean isLoggingPaused() {
-        return loggingPaused;
+    public boolean isRecordingPaused() {
+        return recordingPaused;
     }
 
     /**
-     * Pauses logging data if it is enabled. Users can disable before starting
-     * or during logging. Has no effect if logging is not started.
+     * Pauses recording data if it is enabled. Users can disable before starting
+     * or during recording. Has no effect if recording is not started.
      *
-     * @param loggingPaused the loggingEnabled to set
+     * @param recordingPaused the recordingEnabled to set
      */
-    private void setLoggingPaused(boolean loggingPaused) {
-        this.loggingPaused = loggingPaused;
+    private void setRecordingPaused(boolean recordingPaused) {
+        this.recordingPaused = recordingPaused;
     }
 
     class ResetFileButton extends JButton {
@@ -7582,27 +7960,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String[] tokens = line.split("\\s");
         log.finer("got command " + command + " with line=\"" + line + "\"");
         try {
-            if (command.getCmdName().equals(REMOTE_START_LOGGING)) {
+            if (command.getCmdName().equals(REMOTE_START_RECORDING)
+                    || command.getCmdName().equals(REMOTE_START_LOGGING)) {
                 if (tokens.length < 2) {
                     return "not enough arguments\n";
                 }
-                String filename = line.substring(REMOTE_START_LOGGING.length() + 1);
+                String filename = line.substring(command.getCmdName().length() + 1);
                 // TODO: ask user to choose the data format they want to use.
-                File f = startLogging(filename, getLoggingDataFileVersion());
+                File f = startRecording(filename, getRecordingDataFileVersion());
                 if (f == null) {
-                    return "Couldn't start logging to filename=" + filename + ", startlogging returned " + f + "\n";
+                    return "Couldn't start recording to filename=" + filename + ", startrecording returned " + f + "\n";
                 } else {
-                    return "starting logging to " + f.getAbsoluteFile() + "\n";
+                    return "starting recording to " + f.getAbsoluteFile() + "\n";
                 }
-            } else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
-                File f = stopLogging(false); // don't confirm filename
-                return "stopped logging to file " + f.getAbsolutePath() + "\n";
-            } else if (command.getCmdName().equals(REMOTE_TOGGLE_SYNCHRONIZED_LOGGING)) {
+            } else if (command.getCmdName().equals(REMOTE_STOP_RECORDING)
+                    || command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
+                File f = stopRecording(false); // don't confirm filename
+                return "stopped recording to file " + f.getAbsolutePath() + "\n";
+            } else if (command.getCmdName().equals(REMOTE_TOGGLE_SYNCHRONIZED_RECORDING)
+                    || command.getCmdName().equals(REMOTE_TOGGLE_SYNCHRONIZED_LOGGING)) {
                 if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
-                    jaerViewer.toggleSynchronizedLogging();
-                    return "toggled synchronized logging\n";
+                    jaerViewer.toggleSynchronizedRecording();
+                    return "toggled synchronized recording\n";
                 } else {
-                    return "couldn't toggle synchronized logging because there is only 1 viewer or sync is disbled";
+                    return "couldn't toggle synchronized recording because there is only 1 viewer or sync is disbled";
                 }
             } else if (command.getCmdName().equals(REMOTE_ZERO_TIMESTAMPS)) {
                 jaerViewer.zeroTimestamps();
@@ -7909,7 +8290,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
 	private void preferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferencesMenuItemActionPerformed
-            new AEViewerPreferencesDialog(this).setVisible(true);
+            if (preferencesDialog == null || !preferencesDialog.isDisplayable()) {
+                preferencesDialog = new AEViewerPreferencesDialog(this);
+            }
+            if (!preferencesDialog.isVisible()) {
+                preferencesDialog.setVisible(true);
+            } else {
+                preferencesDialog.toFront();
+            }
 	}//GEN-LAST:event_preferencesMenuItemActionPerformed
 
 	private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
@@ -8085,34 +8473,190 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 	}//GEN-LAST:event_unicastOutputEnabledCheckBoxMenuItemActionPerformed
 
-	private void logFilteredEventsCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logFilteredEventsCheckBoxMenuItemActionPerformed
-            setLogFilteredEventsEnabled(logFilteredEventsCheckBoxMenuItem.isSelected());
-	}//GEN-LAST:event_logFilteredEventsCheckBoxMenuItemActionPerformed
+	private void recordFilteredEventsCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordFilteredEventsCheckBoxMenuItemActionPerformed
+            setRecordFilteredEventsEnabled(recordFilteredEventsCheckBoxMenuItem.isSelected());
+	}//GEN-LAST:event_recordFilteredEventsCheckBoxMenuItemActionPerformed
 
-	private void loggingSetTimelimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loggingSetTimelimitMenuItemActionPerformed
-            String ans = JOptionPane.showInputDialog(this, "Enter logging time limit, e.g. 1000 (ms implied) 2m 30s, 1h 15m, 35m (0 for no limit)", loggingTimeLimit);
+	private void recordingSetTimelimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordingSetTimelimitMenuItemActionPerformed
+            JPanel panel = new JPanel(new BorderLayout(0, 8));
+            panel.add(new JLabel("<html>Choose a preset or type a duration (0 or No limit for none).<br>"
+                    + "Examples: 1000 (ms implied), 2m 30s, 1h 15m<br>"
+                    + (isRecordingEnabled()
+                    ? "Applies immediately to the <b>current recording</b> (total time from when it started; now "
+                    + formatRecordingDurationHms(recordingElapsedMs()) + " recorded)."
+                    : "Applies to the next recording.")
+                    + "</html>"), BorderLayout.NORTH);
+
+            JComboBox<String> chooser = new JComboBox<>(RECORDING_TIME_LIMIT_PRESETS);
+            chooser.setMaximumRowCount(RECORDING_TIME_LIMIT_PRESETS.length);
+            JTextField freeForm = new JTextField(16);
+            String initial = recordingTimeLimitDialogInitialValue();
+            freeForm.setText(RECORDING_TIME_LIMIT_NO_LIMIT.equals(initial) ? "0" : initial);
+            int presetIndex = -1;
+            for (int i = 0; i < RECORDING_TIME_LIMIT_PRESETS.length; i++) {
+                if (RECORDING_TIME_LIMIT_PRESETS[i].equals(initial)) {
+                    presetIndex = i;
+                    break;
+                }
+            }
+            chooser.setSelectedIndex(presetIndex);
+            chooser.addActionListener(e -> {
+                Object sel = chooser.getSelectedItem();
+                if (sel == null) {
+                    return;
+                }
+                String preset = sel.toString();
+                freeForm.setText(RECORDING_TIME_LIMIT_NO_LIMIT.equals(preset) ? "0" : preset);
+                freeForm.requestFocusInWindow();
+                freeForm.selectAll();
+            });
+
+            JPanel chooserRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+            chooserRow.add(new JLabel("Preset:"));
+            chooserRow.add(chooser);
+            chooserRow.add(new JLabel("or type:"));
+            chooserRow.add(freeForm);
+            panel.add(chooserRow, BorderLayout.CENTER);
+
+            int result = JOptionPane.showConfirmDialog(this, panel, "Recording time limit",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (result != JOptionPane.OK_OPTION) {
+                return;
+            }
+            String ans = freeForm.getText();
+            if (ans == null) {
+                return;
+            }
+            ans = ans.trim();
+            if (ans.isEmpty()) {
+                return;
+            }
 
             try {
-                PeriodFormatter formatter = new PeriodFormatterBuilder()
-                        .appendDays().appendSuffix("d")
-                        .appendHours().appendSuffix("h")
-                        .appendMinutes().appendSuffix("m")
-                        .appendSeconds().appendSuffix("s")
-                        .appendMillis()
-                        .toFormatter();
-                Period p = formatter.parsePeriod(ans);
-
-                loggingTimeLimit = p.toStandardDuration().getMillis();
-                String s = formatter.print(p);
-                JOptionPane.showMessageDialog(this, String.format("Time limit set to %s (%d ms)", s, loggingTimeLimit));
+                boolean wasRecording = isRecordingEnabled();
+                long elapsedMs = wasRecording ? recordingElapsedMs() : 0L;
+                applyRecordingTimeLimit(parseRecordingTimeLimitMs(ans));
+                String s = recordingTimeLimit <= 0 ? RECORDING_TIME_LIMIT_NO_LIMIT
+                        : formatRecordingTimeLimitForDialog(recordingTimeLimit);
+                log.info(String.format("recording time limit set to %s (%d ms)", s, recordingTimeLimit));
+                if (wasRecording && recordingTimeLimit > 0 && elapsedMs > recordingTimeLimit) {
+                    return; // already past the new limit; stopRecording shows the save dialog
+                }
+                String msg;
+                if (wasRecording && isRecordingEnabled() && recordingTimeLimit > 0) {
+                    long remainingMs = Math.max(0L, recordingTimeLimit - elapsedMs);
+                    msg = String.format("Time limit set to %s (%d ms). Current recording has %s remaining.",
+                            s, recordingTimeLimit, formatRecordingDurationHms(remainingMs));
+                } else if (wasRecording && recordingTimeLimit <= 0) {
+                    msg = "Recording time limit cleared; current recording continues with no limit.";
+                } else {
+                    msg = String.format("Time limit set to %s (%d ms)", s, recordingTimeLimit);
+                }
+                JOptionPane.showMessageDialog(this, msg);
             } catch (IllegalArgumentException e) {
                 JOptionPane.showMessageDialog(this, String.format("Bad format? Caught %s", e.toString()), "Error with duration", JOptionPane.ERROR_MESSAGE);
             }
-	}//GEN-LAST:event_loggingSetTimelimitMenuItemActionPerformed
+	}//GEN-LAST:event_recordingSetTimelimitMenuItemActionPerformed
 
-	private void loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
-            setLoggingPlaybackImmediatelyEnabled(!isLoggingPlaybackImmediatelyEnabled());
-	}//GEN-LAST:event_loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
+    private String recordingTimeLimitDialogInitialValue() {
+        if (recordingTimeLimit <= 0) {
+            return RECORDING_TIME_LIMIT_NO_LIMIT;
+        }
+        for (String preset : RECORDING_TIME_LIMIT_PRESETS) {
+            if (RECORDING_TIME_LIMIT_NO_LIMIT.equals(preset)) {
+                continue;
+            }
+            try {
+                if (parseRecordingTimeLimitMs(preset) == recordingTimeLimit) {
+                    return preset;
+                }
+            } catch (IllegalArgumentException e) {
+                // skip unmatched preset
+            }
+        }
+        return formatRecordingTimeLimitForDialog(recordingTimeLimit);
+    }
+
+    private static String formatRecordingTimeLimitForDialog(long ms) {
+        if (ms <= 0) {
+            return RECORDING_TIME_LIMIT_NO_LIMIT;
+        }
+        Period p = new Period(ms).normalizedStandard(PeriodType.dayTime());
+        String printed = RECORDING_TIME_LIMIT_FORMATTER.print(p);
+        return printed.isEmpty() ? Long.toString(ms) : printed;
+    }
+
+    private static long parseRecordingTimeLimitMs(String ans) {
+        if (ans == null) {
+            throw new IllegalArgumentException("null duration");
+        }
+        ans = ans.trim();
+        if (ans.isEmpty()) {
+            throw new IllegalArgumentException("empty duration");
+        }
+        if (ans.equalsIgnoreCase(RECORDING_TIME_LIMIT_NO_LIMIT)) {
+            return 0L;
+        }
+        if (ans.matches("\\d+")) {
+            return Long.parseLong(ans);
+        }
+        Period p = RECORDING_TIME_LIMIT_FORMATTER.parsePeriod(ans);
+        return p.toStandardDuration().getMillis();
+    }
+
+    private long recordingElapsedMs() {
+        return Math.max(0L, System.currentTimeMillis() - recordingStartTime);
+    }
+
+    private void invalidateRecordingTimeLimitOverlay() {
+        recordingTimeLimitOverlayText = null;
+        recordingTimeLimitOverlayLastMs = 0;
+    }
+
+    /**
+     * Sets the recording time limit and applies it to an in-progress recording:
+     * overlay updates immediately, and recording stops if elapsed time already
+     * exceeds the new limit. {@code 0} means no limit.
+     */
+    private void applyRecordingTimeLimit(long limitMs) {
+        recordingTimeLimit = Math.max(0L, limitMs);
+        invalidateRecordingTimeLimitOverlay();
+        if (isRecordingEnabled() && recordingTimeLimit > 0) {
+            stopRecordingIfTimeLimitReached();
+        }
+    }
+
+    /**
+     * Stops recording when a time limit is set and wall time since
+     * {@link #recordingStartTime} exceeds it. Safe from the view loop or the EDT.
+     */
+    private void stopRecordingIfTimeLimitReached() {
+        if (!isRecordingEnabled() || recordingTimeLimit <= 0) {
+            return;
+        }
+        if (recordingElapsedMs() <= recordingTimeLimit) {
+            return;
+        }
+        log.info("recording time limit reached, stopping recording");
+        Runnable stop = () -> {
+            if (isRecordingEnabled()) {
+                stopRecording(true); // AWT thread: file menu and save dialog
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            stop.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(stop);
+            } catch (Exception e) {
+                log.log(Level.SEVERE, "Exception stopping recording: " + e.toString(), e);
+            }
+        }
+    }
+
+	private void recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
+            setRecordingPlaybackImmediatelyEnabled(!isRecordingPlaybackImmediatelyEnabled());
+	}//GEN-LAST:event_recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
 
 	private void timestampResetBitmaskMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampResetBitmaskMenuItemActionPerformed
             String ret = (String) JOptionPane.showInputDialog(this, "<html>Enter hex value bitmask for zeroing timestamps, e.g. 8000<br>Whenever any of these bits are set, the time will be zeroed at this point,<br> and subsequent timestamps will have this one subtracted from it.<br>The file must be opened after the mask is set.", "Timestamp reset bitmask value", JOptionPane.QUESTION_MESSAGE, null, null, Integer.toHexString(aeFileInputStreamTimestampResetBitmask));
@@ -8507,6 +9051,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (consoleHandler != null) {
                         consoleHandler.setLevel(level);
                     }
+                    if (loggingHandler != null) {
+                        loggingHandler.setLevel(level);
+                    }
                 }
             });
         }
@@ -8553,7 +9100,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean old = isPaused();
         getAePlayer().setPaused(paused);
         pauseRenderingCheckBoxMenuItem.setSelected(paused);
-        if (!isSingleStep() && (getJaerViewer().getNumViewers() > 1)) {
+        // Do not interrupt during Save As: Thread.interrupt closes FileChannel and
+        // also makes pauseIdleWaitIfNeeded() skip its wait (interrupted()==true).
+        if (!viewLoopSuspendedForOfflineExport && !isSingleStep()
+                && (getJaerViewer().getNumViewers() > 1)) {
             interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         }
         getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());
@@ -8686,40 +9236,173 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void dropActionChanged(DropTargetDragEvent dtde) {
     }
 
-    public boolean isLoggingPlaybackImmediatelyEnabled() {
-        return loggingPlaybackImmediatelyEnabled;
+    public boolean isRecordingPlaybackImmediatelyEnabled() {
+        return recordingPlaybackImmediatelyEnabled;
     }
 
-    public void setLoggingPlaybackImmediatelyEnabled(boolean loggingPlaybackImmediatelyEnabled) {
-        this.loggingPlaybackImmediatelyEnabled = loggingPlaybackImmediatelyEnabled;
-        prefs.putBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", loggingPlaybackImmediatelyEnabled);
-        if (loggingPlaybackImmediatelyCheckBoxMenuItem != null) {
-            loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(loggingPlaybackImmediatelyEnabled);
+    public void setRecordingPlaybackImmediatelyEnabled(boolean recordingPlaybackImmediatelyEnabled) {
+        this.recordingPlaybackImmediatelyEnabled = recordingPlaybackImmediatelyEnabled;
+        prefs.putBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", recordingPlaybackImmediatelyEnabled);
+        if (recordingPlaybackImmediatelyCheckBoxMenuItem != null) {
+            recordingPlaybackImmediatelyCheckBoxMenuItem.setSelected(recordingPlaybackImmediatelyEnabled);
         }
     }
 
     /**
-     * Preferred logging file format version ({@code "4.0"} or {@code "2.0"}).
-     * Used by Start logging / {@code l} key; change via File/Preferences.
+     * Whether to draw the on-canvas Recording overlay while recording.
+     *
+     * @return true if the overlay should be shown (default)
      */
-    public String getLoggingDataFileVersion() {
-        if (loggingDataFileVersion == null || loggingDataFileVersion.isEmpty()) {
+    public boolean isShowRecordingOverlay() {
+        return showRecordingOverlay;
+    }
+
+    /**
+     * Enables or disables the on-canvas Recording overlay while recording.
+     *
+     * @param showRecordingOverlay true to show the overlay
+     */
+    public void setShowRecordingOverlay(boolean showRecordingOverlay) {
+        this.showRecordingOverlay = showRecordingOverlay;
+        prefs.putBoolean("AEViewer.showRecordingOverlay", showRecordingOverlay);
+    }
+
+    public boolean isShowRosOutputOverlay() {
+        return showRosOutputOverlay;
+    }
+
+    public void setShowRosOutputOverlay(boolean showRosOutputOverlay) {
+        this.showRosOutputOverlay = showRosOutputOverlay;
+        prefs.putBoolean("AEViewer.showRosOutputOverlay", showRosOutputOverlay);
+    }
+
+    /**
+     * Whether to draw the on-canvas DNN mmap overlay while
+     * {@link DNNOutputViaSharedMemory} is enabled.
+     */
+    public boolean isShowDnnSharedMemoryOverlay() {
+        return showDnnSharedMemoryOverlay;
+    }
+
+    /**
+     * Enables or disables the on-canvas DNN mmap overlay.
+     */
+    public void setShowDnnSharedMemoryOverlay(boolean showDnnSharedMemoryOverlay) {
+        this.showDnnSharedMemoryOverlay = showDnnSharedMemoryOverlay;
+        prefs.putBoolean("AEViewer.showDnnSharedMemoryOverlay", showDnnSharedMemoryOverlay);
+    }
+
+    private void initRosOutputRemoteMenu() {
+        rosOutputMenuItem = new JMenuItem("ROS2 / Foxglove frame output...");
+        rosOutputMenuItem.setMnemonic('r');
+        rosOutputMenuItem.addActionListener(e -> rosOutputMenuItemActionPerformed());
+        remoteMenu.add(rosOutputMenuItem);
+    }
+
+    private ROSOutput findRosOutput() {
+        return ROSOutput.find(getChip());
+    }
+
+    private boolean isRosOutputSkipChipRendering() {
+        ROSOutput r = findRosOutput();
+        return r != null && r.isFilterEnabled() && r.isSkipChipRendering();
+    }
+
+    private void disposeRosOutputDialog() {
+        if (rosOutputDialog != null) {
+            rosOutputDialog.dispose();
+            rosOutputDialog = null;
+        }
+    }
+
+    private void showRosOutputDialog(ROSOutput r) {
+        if (rosOutputDialog != null && rosOutputDialog.getFilter() != r) {
+            disposeRosOutputDialog();
+        }
+        if (rosOutputDialog == null) {
+            rosOutputDialog = new ROSOutputDialog(this, r);
+        }
+        rosOutputDialog.setVisible(true);
+        rosOutputDialog.toFront();
+    }
+
+    private void rosOutputMenuItemActionPerformed() {
+        AEChip c = getChip();
+        if (c == null) {
+            return;
+        }
+        ROSOutput.ensurePresent(c);
+        ROSOutput r = ROSOutput.find(c);
+        if (r == null) {
+            JOptionPane.showMessageDialog(this, "Could not create ROSOutput filter", "ROS2 / Foxglove",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        showRosOutputDialog(r);
+    }
+
+    private void initDnnSharedMemoryRemoteMenu() {
+        dnnSharedMemoryMenuItem = new JMenuItem("DNN shared memory output...");
+        dnnSharedMemoryMenuItem.setMnemonic('d');
+        dnnSharedMemoryMenuItem.addActionListener(e -> dnnSharedMemoryMenuItemActionPerformed());
+        remoteMenu.add(dnnSharedMemoryMenuItem);
+    }
+
+    private void disposeDnnSharedMemoryDialog() {
+        if (dnnSharedMemoryDialog != null) {
+            dnnSharedMemoryDialog.dispose();
+            dnnSharedMemoryDialog = null;
+        }
+    }
+
+    private void showDnnSharedMemoryDialog(DNNOutputViaSharedMemory f) {
+        if (dnnSharedMemoryDialog != null && dnnSharedMemoryDialog.getFilter() != f) {
+            disposeDnnSharedMemoryDialog();
+        }
+        if (dnnSharedMemoryDialog == null) {
+            dnnSharedMemoryDialog = new DNNOutputViaSharedMemoryDialog(this, f);
+        }
+        dnnSharedMemoryDialog.setVisible(true);
+        dnnSharedMemoryDialog.toFront();
+    }
+
+    private void dnnSharedMemoryMenuItemActionPerformed() {
+        AEChip c = getChip();
+        if (c == null) {
+            return;
+        }
+        DNNOutputViaSharedMemory.ensurePresent(c);
+        DNNOutputViaSharedMemory f = DNNOutputViaSharedMemory.find(c);
+        if (f == null) {
+            JOptionPane.showMessageDialog(this, "Could not create DNNOutputViaSharedMemory filter",
+                    "DNN shared memory output", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        showDnnSharedMemoryDialog(f);
+    }
+
+    /**
+     * Preferred recording file format version ({@code "4.0"} or {@code "2.0"}).
+     * Used by Start recording / {@code l} key; change via File/Preferences.
+     */
+    public String getRecordingDataFileVersion() {
+        if (recordingDataFileVersion == null || recordingDataFileVersion.isEmpty()) {
             return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
         }
-        return loggingDataFileVersion;
+        return recordingDataFileVersion;
     }
 
     /**
-     * Validate a requested logging data-file version and return the value to
+     * Validate a requested recording data-file version and return the value to
      * use, defaulting any unrecognised (or null/empty) input to AEDAT-4. This is
-     * the exact decision {@link #setLoggingDataFileVersion(String)} applies;
+     * the exact decision {@link #setRecordingDataFileVersion(String)} applies;
      * extracted as a package-private static so the headless probe can verify the
      * selection/default without constructing an {@link AEViewer} (a JFrame).
      *
      * @param version the requested data-file version string
      * @return the accepted version, or {@link AEDataFile#DATA_FILE_VERSION_NUMBER_AEDAT4}
      */
-    static String normalizeLoggingDataFileVersion(String version) {
+    static String normalizeRecordingDataFileVersion(String version) {
         if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2.equals(version)
                 || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version)
                 || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(version)) {
@@ -8728,14 +9411,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
     }
 
-    public void setLoggingDataFileVersion(String loggingDataFileVersion) {
-        this.loggingDataFileVersion = normalizeLoggingDataFileVersion(loggingDataFileVersion);
-        prefs.put("AEViewer.loggingDataFileVersion", this.loggingDataFileVersion);
+    public void setRecordingDataFileVersion(String recordingDataFileVersion) {
+        this.recordingDataFileVersion = normalizeRecordingDataFileVersion(recordingDataFileVersion);
+        prefs.put("AEViewer.loggingDataFileVersion", this.recordingDataFileVersion);
     }
 
     /**
      * AEDAT-4 packet compression ({@link net.sf.jaer.eventio.aedat4.dv.CompressionType}).
-     * Takes effect on the next Start logging.
+     * Takes effect on the next Start recording.
      */
     public int getAedat4Compression() {
         return net.sf.jaer.eventio.aedat4.Aedat4Compression.clamp(aedat4Compression);
@@ -8786,37 +9469,37 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * used in CaviarViewer to control sync'ed logging
+     * used in CaviarViewer to control sync'ed recording
      */
-    public javax.swing.JMenuItem getLoggingMenuItem() {
-        return loggingMenuItem;
+    public javax.swing.JMenuItem getRecordingMenuItem() {
+        return recordingMenuItem;
     }
 
-    public void setLoggingMenuItem(javax.swing.JMenuItem loggingMenuItem) {
-        this.loggingMenuItem = loggingMenuItem;
+    public void setRecordingMenuItem(javax.swing.JMenuItem recordingMenuItem) {
+        this.recordingMenuItem = recordingMenuItem;
     }
 
     /**
      * this toggle button is used in CaviarViewer to assign an action to start
-     * and stop logging for (possibly) all viewers
+     * and stop recording for (possibly) all viewers
      */
-    public javax.swing.JToggleButton getLoggingButton() {
-        return loggingButton;
+    public javax.swing.JToggleButton getRecordingButton() {
+        return recordingButton;
     }
 
-    public void setLoggingButton(javax.swing.JToggleButton b) {
-        loggingButton = b;
+    public void setRecordingButton(javax.swing.JToggleButton b) {
+        recordingButton = b;
     }
 
     /**
-     * Returns the current AE data logging file. Note that this file can change
+     * Returns the current AE data recording file. Note that this file can change
      * if the user selects a different final file destination or name than the
      * original default one.
      *
-     * @return the loggingFile
+     * @return the recordingFile
      */
-    public File getLoggingFile() {
-        return loggingFile;
+    public File getRecordingFile() {
+        return recordingFile;
     }
 
     public JCheckBoxMenuItem getSyncEnabledCheckBoxMenuItem() {
@@ -8904,22 +9587,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         updateLiveAcquisitionForPlayMode(oldMode, playMode);
         log.fine("setPlayMode: setTitleAccordingToState");
         setTitleAccordingToState();
-        log.fine("setPlayMode: fixLoggingControls");
-        fixLoggingControls();
+        log.fine("setPlayMode: fixRecordingControls");
+        fixRecordingControls();
         log.fine("setPlayMode: fire EVENT_PLAYMODE");
         getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
         log.fine("setPlayMode complete");
     }
 
-    public boolean isLogFilteredEventsEnabled() {
-        return logFilteredEventsEnabled;
+    public boolean isRecordFilteredEventsEnabled() {
+        return recordFilteredEventsEnabled;
     }
 
-    public void setLogFilteredEventsEnabled(boolean logFilteredEventsEnabled) {
-        //        log.info("logFilteredEventsEnabled="+logFilteredEventsEnabled);
-        this.logFilteredEventsEnabled = logFilteredEventsEnabled;
-        prefs.putBoolean("AEViewer.logFilteredEventsEnabled", logFilteredEventsEnabled);
-        logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
+    public void setRecordFilteredEventsEnabled(boolean recordFilteredEventsEnabled) {
+        //        log.info("recordFilteredEventsEnabled="+recordFilteredEventsEnabled);
+        this.recordFilteredEventsEnabled = recordFilteredEventsEnabled;
+        prefs.putBoolean("AEViewer.logFilteredEventsEnabled", recordFilteredEventsEnabled);
+        recordFilteredEventsCheckBoxMenuItem.setSelected(recordFilteredEventsEnabled);
     }
 
     /**
@@ -9010,7 +9693,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * gets the RecentFiles handler for use, e.g. in storing sychronized logging
+     * gets the RecentFiles handler for use, e.g. in storing synchronized recording
      * index files
      *
      * @return refernce to RecentFiles object
@@ -9179,12 +9862,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem jogForwardMI;
     private javax.swing.JMenuItem jumpNextMarkerMI;
     private javax.swing.JMenuItem jumpPrevMarkerMI;
-    private javax.swing.JCheckBoxMenuItem logFilteredEventsCheckBoxMenuItem;
-    private javax.swing.JToggleButton loggingButton;
+    private javax.swing.JCheckBoxMenuItem recordFilteredEventsCheckBoxMenuItem;
+    private javax.swing.JToggleButton recordingButton;
     private javax.swing.JMenu loggingLevelMenu;
-    private javax.swing.JMenuItem loggingMenuItem;
-    private javax.swing.JCheckBoxMenuItem loggingPlaybackImmediatelyCheckBoxMenuItem;
-    private javax.swing.JMenuItem loggingSetTimelimitMenuItem;
+    private javax.swing.JMenuItem recordingMenuItem;
+    private javax.swing.JCheckBoxMenuItem recordingPlaybackImmediatelyCheckBoxMenuItem;
+    private javax.swing.JMenuItem recordingSetTimelimitMenuItem;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenu monSeqMenu;
     private javax.swing.JMenuItem monSeqMissedEventsMenuItem;

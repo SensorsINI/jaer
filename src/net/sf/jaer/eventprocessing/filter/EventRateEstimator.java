@@ -8,6 +8,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
@@ -26,6 +27,28 @@ import net.sf.jaer.graphics.AEViewer;
  * href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Estimates event rate from the input event packets")
+@Help("""
+<html>
+<body>
+<h2>EventRateEstimator</h2>
+<p>Low-pass filters the incoming event rate (events per second). It does not drop events;
+downstream filters and the <code>Info</code> overlay can read the estimate. Fires a property-change
+when the rate is updated.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable this filter (or use it enclosed, e.g. inside <code>Info</code> or
+<code>DVSBiasController</code>).</li>
+<li><code>eventRateTauMs</code> &mdash; smoother (larger) vs faster response (smaller).</li>
+<li><code>maxRate</code> &mdash; cap used when inter-packet ISI is zero (burst).</li>
+<li><code>biasChangePauseS</code> &mdash; freeze the estimate after a bias change
+(0 disables). Avoids counting bias-switch noise as rate.</li>
+</ol>
+<p>For separate ON/OFF rates see subclass <code>TypedEventRateEstimator</code>
+(<code>measureIndividualTypesEnabled</code>).</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class EventRateEstimator extends EventFilter2D {
 

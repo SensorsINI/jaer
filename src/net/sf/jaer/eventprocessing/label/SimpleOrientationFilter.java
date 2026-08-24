@@ -14,6 +14,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.event.orientation.DvsOrientationEvent;
 
 /** Computes simple-type orientation-tuned cells.                           <br>
@@ -34,6 +35,31 @@ import net.sf.jaer.event.orientation.DvsOrientationEvent;
  * DvsOrientationEvent or BinocularEvents.
  * @author tobi/phess */
 @Description("Detects local orientation by spatio-temporal correlation for DVS sensors")
+@Help("""
+<html>
+<body>
+<h2>SimpleOrientationFilter</h2>
+<p>Labels each event with a local <b>orientation</b> (simple-cell style) from coincidence
+along four axes. Output type is 0=horizontal, 1=45&deg; CCW, 2=vertical, 3=135&deg;.
+Polarity or binocular packets become <code>DvsOrientationEvent</code> /
+<code>BinocularOrientationEvent</code> (APS samples pass through on DAVIS).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>. Prefer a denoiser upstream.</li>
+<li><code>length</code> / <code>width</code> &mdash; RF half-length and width
+(total length 2&times;length+1).</li>
+<li><code>minDtThresholdUs</code> &mdash; coincidence window along the orientation.
+<code>dtRejectMultiplier</code> / <code>dtRejectThreshold</code> drop very old supporting events.</li>
+<li><code>multiOriOutputEnabled</code> off = WTA (one ori per event); on = any ori that passes.</li>
+<li><code>oriHistoryEnabled</code> biases toward recently seen orientations (contour enhancement).</li>
+</ol>
+<p>Display: <code>showVectorsEnabled</code>, <code>showLegendEnabled</code>,
+<code>showGlobalEnabled</code>, <code>showRawInputEnabled</code>, <code>passAllEvents</code>
+(also pass unlabeled events).</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SimpleOrientationFilter extends AbstractOrientationFilter{
     //TODO: The oriHistoryMap is still not completely bias-free.

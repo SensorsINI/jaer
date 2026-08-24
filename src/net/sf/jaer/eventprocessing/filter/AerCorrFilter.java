@@ -8,11 +8,33 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import java.util.Observable;
 import java.util.Arrays;
 import java.util.Random;
 
 @Description("Models the AerCorr chip which detects and can be used to filter out uncorrelated activity")
+@Help("""
+<html>
+<body>
+<h2>AerCorrFilter</h2>
+<p>Software model of the <b>AER-CORR</b> analog correlator: each pixel has a leaky capacitor
+that is reset by an event. A later event is passed only if the voltage is still above
+threshold (i.e. another spike arrived before the leak discharged). Uncorrelated sparse
+noise tends to be rejected.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li><code>iLeakPicoAmps</code> &mdash; leak current (higher leak &rarr; shorter memory,
+more rejection of slow rates).</li>
+<li><code>subsampleBy</code> &mdash; share one correlator among neighboring pixels.</li>
+</ol>
+<p>Mismatch: <code>iLeakCOV</code>, <code>capCOV</code>, <code>vRsCOV</code>,
+<code>vThCOV</code> set 1&sigma; coefficient of variation across the array (default 0.04).</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AerCorrFilter extends EventFilter2D {
 

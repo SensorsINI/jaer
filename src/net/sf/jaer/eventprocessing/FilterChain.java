@@ -27,6 +27,8 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.util.ClassChooserDialog;
+import net.sf.jaer.util.JaerAllowedSubclasses;
+import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 
 /**
  * A chain of EventFilter that serially filters or processes packets of
@@ -476,11 +478,23 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             } else {
                 classNames = chip.getDefaultEventFilterClassNames();
             }
+            ArrayList<String> remapped = new ArrayList<String>();
+            for (String s : classNames) {
+                String r = DNNOutputViaSharedMemory.remapLegacyClassName(s);
+                if (!remapped.contains(r)) {
+                    remapped.add(r);
+                }
+            }
+            boolean namesRemapped = !remapped.equals(classNames);
+            classNames = remapped;
             Class[] par = {chip.getClass()}; // argument to filter constructor
             ArrayList<String> toRemove = new ArrayList<String>();
             for (String s : classNames) {
                 try {
-                    Class cl = Class.forName(s);
+                    Class cl = JaerAllowedSubclasses.load(s, EventFilter2D.class);
+                    if (findFilter(cl) != null) {
+                        continue;
+                    }
                     Constructor co = cl.getConstructor(filterConstructorParams);
                     EventFilter2D fi = (EventFilter2D) co.newInstance(chip);
                     add(fi);
@@ -503,7 +517,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 
                 }
             }
-            if (toRemove.size() > 0) {
+            if (toRemove.size() > 0 || namesRemapped) {
                 classNames.removeAll(toRemove);
                 try {
                     storePreferredFilterPreferences(classNames);
@@ -564,6 +578,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 e.printStackTrace();
             }
         }
+    }
+
+    /**
+     * Persist the preferred filter class list for this chip (used to append
+     * default filters such as ROSOutput when missing from saved prefs).
+     */
+    public void storePreferredFiltersForChip(ArrayList<String> names) throws IOException, BackingStoreException {
+        storePreferredFilterPreferences(names);
     }
 
     private void storePreferredFilterPreferences(ArrayList<String> newClassNames) throws IOException, BackingStoreException {

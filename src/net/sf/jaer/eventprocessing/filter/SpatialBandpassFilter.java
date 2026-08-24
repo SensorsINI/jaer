@@ -16,6 +16,7 @@ import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -32,6 +33,25 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
         + "if ((e.timestamp - surroundTimestamps[e.x][e.y]) > dtSurround) {\n" +
 "                o.nextOutput().copyFrom(e);\n" +
 "            }")
+@Help("""
+<html>
+<body>
+<h2>SpatialBandpassFilter</h2>
+<p>Event-based <b>spatial high-pass</b>: an event is passed only if the surround has
+<i>not</i> spiked recently. Large, filled objects inhibit their interior; small objects
+and edges tend to pass. Not a BA denoiser (use <code>SpatioTemporalCorrelationFilter</code> for that).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li><code>centerRadius</code> / <code>surroundRadius</code> &mdash; center vs surround
+annulus in pixels (surround must be larger than center).</li>
+<li><code>dtSurround</code> &mdash; inhibition time in timestamp ticks (default 8000&nbsp;&micro;s).
+A recent surround event within this window blocks the center event.</li>
+</ol>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatialBandpassFilter extends EventFilter2D {
 

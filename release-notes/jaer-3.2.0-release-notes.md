@@ -19,11 +19,11 @@
 | macOS | Intel | [jAER_macos_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_3_2_0.dmg) |
 | Linux | x64 | [jAER_unix_3_2_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_unix_3_2_0.sh) |
 
-Each installer is ~300 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (this 3.2.0 media is **21.0.12**) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page. To clone and `ant run`, install [Adoptium JDK 25+](https://adoptium.net/) (`javac` still targets 21).
+Each installer is ~300 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (this 3.2.0 media is **21.0.12**) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page. To clone this 3.2.0 tag and `ant run`, install [Adoptium JDK 21+](https://adoptium.net/). Current master / **3.3.0** needs [JDK 25+](https://adoptium.net/) (`javac` still targets 21).
 
 Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY) (also covers *git clone* and rebuild from master).
 
-Starting with 3.2.0, installers are GitHub Release assets and jAER can self-update (Help → Check for release updates… → **Download and install**). Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0).
+Starting with 3.2.0, installers are GitHub Release assets and jAER can self-update (Help → Check for release updates… → **Download and install**). Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0). The next release is **[3.3.0](https://github.com/SensorsINI/jaer/blob/master/release-notes/jaer-3.3.0-release-notes.md)** (Temurin 25, AEDAT-4 export, Davis AEC, OpenCV calibration, smaller per-OS OpenCV media).
 
 ### Windows
 

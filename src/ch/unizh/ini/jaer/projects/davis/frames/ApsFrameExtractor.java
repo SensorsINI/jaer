@@ -32,6 +32,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -67,6 +68,31 @@ import org.apache.commons.io.FilenameUtils;
  * subclassing)
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
+@Help("""
+<html>
+<body>
+<h2>ApsFrameExtractor</h2>
+<p>Reconstructs DAVIS <b>CIS APS frames</b> from the APS sample event stream (or typed
+<code>FramePacket</code>). Other filters and writers use
+<code>hasNewFrameAvailable()</code>, <code>getDisplayBuffer()</code>, and
+<code>getNewFrame()</code>. Subclasses can process a frame at the moment it completes,
+using exposure start/end times to fuse with DVS.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable on a DAVIS chip. <code>showAPSFrameDisplay</code> opens a grayscale window.</li>
+<li><code>preBufferFrame</code> waits for a complete frame before display (recommended).</li>
+<li><code>displayContrast</code> / <code>displayBrightness</code> scale the shown values
+(same idea as renderer gain/offset). <code>invertIntensity</code> for raw reset levels.</li>
+<li><code>logCompress</code> / <code>logDecompress</code> for log display.</li>
+<li><code>saveAsPNG</code> writes the current frame. Drag an ROI on the window if the
+extractor supports mouse ROI (inherited).</li>
+</ol>
+<p><code>extractionMethod</code> selects how samples are assembled. Downstream:
+<code>DavisFrameAviWriter</code>, <code>ApsNoiseStatistics</code>, calibration.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class ApsFrameExtractor extends EventFilter2DMouseROI {
 

@@ -97,7 +97,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 return;
             }
             try {
-                Class c = Class.forName(name);
+                Class c = JaerAllowedSubclasses.load(name, superClass);
                 if (c == null) {
                     log.warning("tried to put class " + name + " but there is no such class");
                     return;
@@ -115,7 +115,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
                 ClassDescription des = new ClassDescription(descriptionString, devStatus);
                 put(name, des);
-            } catch (Exception e) {
+            } catch (Exception | LinkageError e) {
                 log.warning("trying to put class named " + name + " caught " + e.toString());
             }
 
@@ -556,12 +556,12 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         setPreferredSize(new java.awt.Dimension(580, 686));
 
         availClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
-        availClassPanel.setToolTipText("<html>If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath). <p> Yyour class must be concrete (not abstract). <p> Finally, if your class lives in a separate JAR archive, make sure your archive classpath is not on the excluded list in the class ListClasses.");
+        availClassPanel.setToolTipText("<html>If your class doesn't show up here, run <code>ant compile</code> so it is added to the allowlist in jAER.jar. <p>The class must be concrete (not abstract). Packaged installs only list types from that release.");
         availClassPanel.setPreferredSize(new java.awt.Dimension(400, 300));
 
         availClassDesciptionPanel.setBorder(null);
 
-        availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath) and hit the Refresh button to rescan classpath.");
+        availClassJList.setToolTipText("If your class doesn't show up here, run ant compile (not compile-on-save alone) and Refresh. Packaged installs only list types from that release.");
         availClassDesciptionPanel.setViewportView(availClassJList);
         availClassJList.getAccessibleContext().setAccessibleDescription("");
 

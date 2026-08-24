@@ -273,6 +273,10 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         if (fx3 == null || !fx3.isOpen()) {
             return;
         }
+        if (fx3.isNextGenFirmware()) {
+            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_CONTRAST_THRESHOLD_ON, contrastThresholdOn);
+            return;
+        }
         final short dvs = DVXplorer.DEVICE_DVS;
         if (contrastThresholdOn < 9) {
             fx3.spiConfigSend(dvs, DVXplorer.REGISTER_BIAS_CURRENT_ON, contrastThresholdOn);
@@ -288,6 +292,10 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         if (fx3 == null || !fx3.isOpen()) {
             return;
         }
+        if (fx3.isNextGenFirmware()) {
+            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_CONTRAST_THRESHOLD_OFF, contrastThresholdOff);
+            return;
+        }
         final short dvs = DVXplorer.DEVICE_DVS;
         if (contrastThresholdOff < 9) {
             fx3.spiConfigSend(dvs, DVXplorer.REGISTER_BIAS_CURRENT_OFF, 8 - contrastThresholdOff);
@@ -301,6 +309,11 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
     private void applyGlobalHoldReset() throws HardwareInterfaceException {
         final DVXplorerFX3HardwareInterface fx3 = fx3();
         if (fx3 == null || !fx3.isOpen()) {
+            return;
+        }
+        if (fx3.isNextGenFirmware()) {
+            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_GLOBAL_HOLD, globalHold ? 1 : 0);
+            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_GLOBAL_RESET, globalReset ? 1 : 0);
             return;
         }
         int reg = fx3.spiConfigReceive(DVXplorer.DEVICE_DVS, DVXplorer.REGISTER_DIGITAL_MODE_CONTROL);
@@ -320,6 +333,10 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
     private void applyReadoutFps() throws HardwareInterfaceException {
         final DVXplorerFX3HardwareInterface fx3 = fx3();
         if (fx3 == null || !fx3.isOpen()) {
+            return;
+        }
+        if (fx3.isNextGenFirmware()) {
+            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_EFPS_S5K231Y, readoutFps.ordinal());
             return;
         }
         final int clk = SYSTEM_CLOCK_FREQUENCY;

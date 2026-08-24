@@ -12,6 +12,7 @@ import java.beans.PropertyChangeSupport;
 import java.util.logging.ErrorManager;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 
 /**
@@ -29,11 +30,26 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
 
     public AEViewerLoggingHandler(final AEViewer v) {
         viewer = v;
-//        statusFormatter = new AEViewerStatusFormatter();
         consoleFormatter = new AEConsoleFormatter();
         setFormatter(new AEViewerStatusFormatter());
         consoleWindow = new AEViewerConsoleOutputFrame();
         consoleWindow.getSupport().addPropertyChangeListener(this);
+        // Handler default is ALL. Read conf/Logging.properties; fall back to INFO.
+        // LogManager.getLevelProperty is package-private; use the public getProperty API.
+        setLevel(readConfiguredLevel(getClass().getName() + ".level", Level.INFO));
+    }
+
+    /** Reads a JUL level from LogManager properties ({@code getLevelProperty} is package-private). */
+    private static Level readConfiguredLevel(String propertyName, Level fallback) {
+        String value = LogManager.getLogManager().getProperty(propertyName);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Level.parse(value.trim());
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
     }
 
     public AEViewerConsoleOutputFrame getConsoleWindow() {

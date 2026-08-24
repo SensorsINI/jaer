@@ -13,9 +13,17 @@ import net.sf.jaer.util.filter.LowpassFilter;
 import eu.seebetter.ini.chips.DavisChip;
 
 /**
- * Encapsulates data sent from device Invensense Inertial Measurement Unit (IMU)
- * MPU-6150. (acceleration x/y/z, temperature, gyro x/y/z => 7 x 2 bytes = 14
- * bytes) plus the sample timestamp.
+ * Encapsulates one IMU sample (the IMU event): accel x/y/z, temperature, gyro
+ * x/y/z, plus timestamp. Used on DAVIS (MPU-6150) and DVXplorer (BMI160) after
+ * axis remapping into this camera frame.
+ * <p>
+ * Gyro signs are <em>camera</em> motion from the camera viewpoint (looking
+ * through the lens / at the display). Image motion is the opposite:
+ * <ul>
+ * <li>{@link #getGyroYawY() pan}: positive = camera pans right, image shifts left</li>
+ * <li>{@link #getGyroTiltX() tilt}: positive = camera tilts up, image shifts down</li>
+ * <li>{@link #getGyroRollZ() roll}: positive = camera rolls clockwise, image rolls CCW</li>
+ * </ul>
  *
  */
 public class IMUSample {
@@ -300,6 +308,17 @@ public class IMUSample {
         updateStatistics(ts);
     }
 
+    /**
+     * Like {@link #IMUSample(int, short[])} but does not update the static
+     * sample-interval stats. Use when encoding into {@link AEPacketRaw} so
+     * {@link #constructFromAEPacketRaw} is the sole stats update.
+     */
+    public static IMUSample fromRawUntracked(final int ts, final short[] buf) {
+        final IMUSample sample = new IMUSample();
+        sample.setFromShortArrayBuf(ts, buf);
+        return sample;
+    }
+
     private void setFromShortArrayBuf(final int ts, final short[] buf) {
         timestampUs = ts;
         System.arraycopy(buf, 0, data, 0, 7);
@@ -363,7 +382,8 @@ public class IMUSample {
     }
 
     /**
-     * Returns rotation in deg/sec. Positive is rotating clockwise.
+     * Roll rate in deg/s. Positive: camera rolls clockwise from the camera
+     * viewpoint; the image therefore rolls counterclockwise.
      *
      * @return the rotational velocity in deg/s
      */
@@ -372,7 +392,8 @@ public class IMUSample {
     }
 
     /**
-     * Returns rotation in deg/sec. Positive is tilt up.
+     * Tilt rate in deg/s. Positive: camera tilts up from the camera viewpoint;
+     * the image therefore shifts down.
      *
      * @return the rotational velocity in deg/s
      */
@@ -381,7 +402,8 @@ public class IMUSample {
     }
 
     /**
-     * Returns rotation in deg/sec. Positive is yaw right.
+     * Pan (yaw) rate in deg/s. Positive: camera pans right from the camera
+     * viewpoint; the image therefore shifts left.
      *
      * @return the rotational velocity in deg/s
      */
@@ -418,7 +440,8 @@ public class IMUSample {
 
     /**
      * Fills this sample from physical units as written to AEDAT-4 / DV IMU
-     * packets (same units as {@link #getAccelX()}, {@link #getGyroTiltX()},
+     * packets (same units and camera-viewpoint signs as {@link #getAccelX()},
+     * {@link #getGyroTiltX()}, {@link #getGyroYawY()}, {@link #getGyroRollZ()},
      * {@link #getTemperature()}, etc.).
      */
     public void setFromPhysicalUnits(final int timestampUs,

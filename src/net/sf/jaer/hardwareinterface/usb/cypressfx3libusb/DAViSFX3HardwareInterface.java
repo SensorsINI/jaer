@@ -599,7 +599,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                         final int sx1 = (getChip() != null ? getChip().getSizeX() : dvsSizeX) - 1;
                                         final int addrX = sx1 - ((packedAddr & DavisChip.XMASK) >>> DavisChip.XSHIFT);
                                         final int addrY = (packedAddr & DavisChip.YMASK) >>> DavisChip.YSHIFT;
-                                        typedBuilder.addPolarity(addrX, addrY, on, currentTimestamp);
+                                        typedBuilder.addPolarity(addrX, addrY, on, currentTimestamp, packedAddr);
                                     }
 
                                     if (ensureCapacity(buffer, eventCounter + 1)) {

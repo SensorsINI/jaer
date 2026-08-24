@@ -46,8 +46,10 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
+import net.sf.jaer.util.SplashStartupAbort;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
@@ -91,11 +93,11 @@ public class JAERViewer {
         return toggleSyncEnabledAction;
     }
     /**
-     * This public flag marks that data logging (recording) is enabled. It is
-     * normally set by startLogging/stopLogging, but special applications can
+     * This public flag marks that data recording is enabled. It is
+     * normally set by startRecording/stopRecording, but special applications can
      * set it
      */
-    public volatile boolean loggingEnabled = false;
+    public volatile boolean recordingEnabled = false;
     //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
 //    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     private WindowSaver windowSaver; // TODO: encapsulate
@@ -184,15 +186,15 @@ public class JAERViewer {
                     } else {
                         System.out.println("JAERViewer shutdown hook - skipping last-chip Preferences write (reverted)");
                     }
-                    System.out.println("JAERViewer shutdown hook - saving possible open data logging");
+                    System.out.println("JAERViewer shutdown hook - saving possible open data recording");
                     try {
                         for (AEViewer v : viewers) {
-                            if (v.getLoggingFile() != null) {
-                                v.stopLogging(true);
+                            if (v.getRecordingFile() != null) {
+                                v.stopRecording(true);
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println(String.format("stopping logging, caught Exception %s", e.toString()));
+                        System.err.println(String.format("stopping recording, caught Exception %s", e.toString()));
                     }
                 }
 
@@ -334,12 +336,15 @@ public class JAERViewer {
                 log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,win64,linux32,linux64,etc...). The jAER project must be set to use a JVM that matches the project runtime configuration, e.g., if you are using a 32 bit JVM to run jAER (as selected in the project properties/Libraries/Java Platform), then you must choose the \"win\" configuration so that java.libray.path is set so that your DLLs come from host/java/jars/win32.");
 
                 err.printStackTrace();
+            } finally {
+                SplashStartupAbort.disarm();
             }
 
         }
 
     }
 
+    /** Optional scrolling log overlay on {@link java.awt.SplashScreen}. Off unless {@code -Djaer.splashLogOverlay=true}. */
     private static class SplashHandler extends java.util.logging.Handler {
 
         SplashScreen splashScreen;
@@ -356,6 +361,7 @@ public class JAERViewer {
             this.g = splashScreen.createGraphics();
             logger = Logger.getLogger("net.sf.jaer");
             logger.addHandler(this);
+            drawEscHint();
         }
 
         @Override
@@ -379,7 +385,7 @@ public class JAERViewer {
             g.setColor(Color.blue);
             g.drawString(s, x, starty + cursor);
             cursor += ystep;
-            if ((starty + cursor) > (d.height - textheight)) {
+            if ((starty + cursor) > (d.height - textheight - 22)) {
                 cursor = 0;
             }
             try {
@@ -387,7 +393,23 @@ public class JAERViewer {
             } catch (IllegalStateException e) {
                 System.err.println(e.toString());
             }
+            drawEscHint();
+        }
 
+        private void drawEscHint() {
+            if ((splashScreen == null) || !splashScreen.isVisible() || g == null) {
+                return;
+            }
+            try {
+                Dimension d = splashScreen.getSize();
+                int y = Math.max(20, d.height - 18);
+                g.setComposite(AlphaComposite.SrcOver);
+                g.setColor(Color.blue);
+                g.drawString(SplashStartupAbort.HINT, 45, y);
+                splashScreen.update();
+            } catch (IllegalStateException e) {
+                // splash already closed
+            }
         }
 
         @Override
@@ -458,9 +480,9 @@ public class JAERViewer {
     void buildMenus(AEViewer v) {
         JMenu m = v.getFileMenu();
 
-        ToggleLoggingAction action = new ToggleLoggingAction(v);
-        v.getLoggingButton().setAction(action);
-        v.getLoggingMenuItem().setAction(action);
+        ToggleRecordingAction action = new ToggleRecordingAction(v);
+        v.getRecordingButton().setAction(action);
+        v.getRecordingMenuItem().setAction(action);
 
         // adds to each AEViewers syncenabled check box menu item the toggleSyncEnabledAction
         AbstractButton b = v.getSyncEnabledCheckBoxMenuItem();
@@ -509,10 +531,10 @@ public class JAERViewer {
     File indexFile = null;
     final String indexFileNameHeader = "JAERViewer-";
     final String indexFileSuffix = AEDataFile.INDEX_FILE_EXTENSION;
-    DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
+    DateFormat recordingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
 
     private String getDateString() {
-        String dateString = loggingFilenameDateFormat.format(new Date());
+        String dateString = recordingFilenameDateFormat.format(new Date());
         return dateString;
     }
 
@@ -529,8 +551,8 @@ public class JAERViewer {
         return indexFile;
     }
 
-    public void startSynchronizedLogging() {
-        log.info("starting synchronized logging");
+    public void startSynchronizedRecording() {
+        log.info("starting synchronized recording");
 
         if (viewers.size() > 1) {// && !isElectricalSyncEnabled()){
 //            zeroTimestamps();  // TODO this is commented out because there is still a bug of getting old timestamps at start of recording, causing problems when synchronized playback is enabled.
@@ -543,7 +565,7 @@ public class JAERViewer {
         }
 
         for (AEViewer v : viewers) {
-            File f = v.startLogging();
+            File f = v.startRecording();
 
         }
         for (AEViewer v : viewers) {
@@ -551,11 +573,11 @@ public class JAERViewer {
 
         }
 
-        loggingEnabled = true;
+        recordingEnabled = true;
     }
 
-    public void stopSynchronizedLogging() {
-        log.info("stopping synchronized logging");
+    public void stopSynchronizedRecording() {
+        log.info("stopping synchronized recording");
         FileWriter writer = null;
         boolean writingIndex = false;
         // pause all viewers
@@ -563,12 +585,12 @@ public class JAERViewer {
 
         try {
             for (AEViewer v : viewers) {
-                File f = v.stopLogging(getNumViewers() == 1); // only confirm filename if there is only a single viewer
+                File f = v.stopRecording(getNumViewers() == 1); // only confirm filename if there is only a single viewer
                 if (f == null) {
-                    log.warning("something is wrong; the logging file is null when you tried to stop logging data. Ignoring this AEViewer instance. \nYou may be trying to do synchronized logging when using only a single AEViewer. \n Disable this functionality from the menu File/Synchronize AEViewer logging/playback");
+                    log.warning("something is wrong; the recording file is null when you tried to stop recording data. Ignoring this AEViewer instance. \nYou may be trying to do synchronized recording when using only a single AEViewer. \n Disable this functionality from the menu File/Synchronize AEViewer recording/playback");
                     continue;
                 }
-                log.info("Stopped logging to file " + f);
+                log.info("Stopped recording to file " + f);
                 if (f.exists()) { // if not cancelled
                     if (getNumViewers() > 1) {
 
@@ -598,16 +620,16 @@ public class JAERViewer {
         // resume all viewers
         viewers.get(0).aePlayer.resume();
 
-        loggingEnabled = false;
+        recordingEnabled = false;
     }
 
-    public void toggleSynchronizedLogging() {
-        //TODO - unchecking synchronized logging in AEViewer still comes here and logs sychrnoized
-        loggingEnabled = !loggingEnabled;
-        if (loggingEnabled) {
-            startSynchronizedLogging();
+    public void toggleSynchronizedRecording() {
+        //TODO - unchecking synchronized recording in AEViewer still comes here and records synchronized
+        recordingEnabled = !recordingEnabled;
+        if (recordingEnabled) {
+            startSynchronizedRecording();
         } else {
-            stopSynchronizedLogging();
+            stopSynchronizedRecording();
         }
     }
 
@@ -634,36 +656,36 @@ public class JAERViewer {
     File logIndexFile;
 
     /**
-     * this action toggles logging, possibily for all viewers depending on
+     * this action toggles recording, possibly for all viewers depending on
      * switch
      */
-    public class ToggleLoggingAction extends AbstractAction {
+    public class ToggleRecordingAction extends AbstractAction {
 
-        AEViewer viewer; // to find source of logging action
+        AEViewer viewer; // to find source of recording action
 
-        public ToggleLoggingAction(AEViewer viewer) {
+        public ToggleRecordingAction(AEViewer viewer) {
             this.viewer = viewer;
-            putValue(NAME, "Start logging");
-            putValue(SHORT_DESCRIPTION, "Controls synchronized logging on all viewers");
+            putValue(NAME, "Start recording");
+            putValue(SHORT_DESCRIPTION, "Controls synchronized recording on all viewers");
             putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_L, 0));
             putValue(MNEMONIC_KEY, KeyEvent.VK_L);
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-//            log.info("JAERViewer.ToggleLoggingAction.actionPerformed");
+//            log.info("JAERViewer.ToggleRecordingAction.actionPerformed");
             if (isSyncEnabled()) {
-                toggleSynchronizedLogging();
-                if (loggingEnabled) {
-                    putValue(NAME, "Stop logging");
+                toggleSynchronizedRecording();
+                if (recordingEnabled) {
+                    putValue(NAME, "Stop recording");
                 } else if (viewers.get(0).getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                    putValue(NAME, "Start Re-logging");
+                    putValue(NAME, "Start re-recording");
                 } else {
-                    putValue(NAME, "Start logging");
+                    putValue(NAME, "Start recording");
                 }
-                log.info("loggingEnabled=" + loggingEnabled);
+                log.info("recordingEnabled=" + recordingEnabled);
             } else {
-                viewer.toggleLogging();
+                viewer.toggleRecording();
             }
         }
     }
@@ -675,9 +697,9 @@ public class JAERViewer {
     public class ToggleSyncEnabledAction extends AbstractAction {
 
         public ToggleSyncEnabledAction() {
-            String name = "Synchronize AEViewer logging/playback";
+            String name = "Synchronize AEViewer recording/playback";
             putValue(NAME, name);
-            putValue(SHORT_DESCRIPTION, "<html>When enabled, multiple viewer logging and playback are synchronized. <br>Does not affect timestamp synchronization except to send timestamp reset to all viewers."
+            putValue(SHORT_DESCRIPTION, "<html>When enabled, multiple viewer recording and playback are synchronized. <br>Does not affect timestamp synchronization except to send timestamp reset to all viewers."
                     + "<br>Device electrical synchronization is independent of this setting.");
         }
 
@@ -702,7 +724,7 @@ public class JAERViewer {
     }
 
     /**
-     * Controls whether multiple viewers are synchronized for logging and
+     * Controls whether multiple viewers are synchronized for recording and
      * playback.
      *
      * @return true if sychronized.
@@ -712,7 +734,7 @@ public class JAERViewer {
     }
 
     /**
-     * Controls whether multiple viewers are synchronized for logging and
+     * Controls whether multiple viewers are synchronized for recording and
      * playback.
      *
      * @param syncEnabled true to be synchronized.
@@ -778,16 +800,16 @@ public class JAERViewer {
         log = Logger.getLogger("net.sf.jaer");
 
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
-        if (splash != null) {
+        if (splash != null && SplashStartupAbort.isLogOverlayEnabled()) {
             new SplashHandler(splash);
-        } else {
-            log.warning("no Java 6 splash screen to animate (don't worry; this happens if you run from development environment)");
+        } else if (splash != null) {
+            log.info("Java splash present; log overlay off (-Djaer.splashLogOverlay=true to enable)");
         }
-
         log.info("jAERViewer starting up");
         if (!confirmStartIfPossiblyAlreadyRunning()) {
             System.exit(0);
         }
+        SplashStartupAbort.install();
         net.sf.jaer.util.TensorFlowNativeSupport.installDownloadedJarsOnClasspath();
         log.info("java.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
         net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);
@@ -813,7 +835,7 @@ public class JAERViewer {
 
         if (fileArgs.length > 0) {
             final File f = new File(fileArgs[0]);
-            if (!f.isFile()) {
+            if (FileAccessTimeout.kind(f) != FileAccessTimeout.Kind.FILE) {
                 log.warning("Ignoring non-file launch argument \"" + fileArgs[0]
                         + "\" (from PowerShell quote -D flags, use --%, or set JAER_JVM_ARGS)");
                 SwingUtilities.invokeLater(() -> new JAERViewer());

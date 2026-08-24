@@ -44,6 +44,7 @@ public class DataLoggerMetadataDemo {
         testFailedInternalStartRetriesFresh();
         testExternalSnapshotReuseAndOwnership();
         testDirectFreshCaptureAndStopClear();
+        testRepeatedStartKeepsActiveRecording();
         testWriteErrorClearsInternalSnapshot();
         testDataLoggerEmptyAndNoSidecar();
         System.out.println("ALL PASS");
@@ -90,7 +91,7 @@ public class DataLoggerMetadataDemo {
         FlushFixture fixture = new FlushFixture("37");
         DataLogger dl = new DataLogger(fixture.chip);
         File badParent = File.createTempFile("jaer-datalogger-bad-parent", ".tmp");
-        File failed = dl.startLogging(new File(badParent, "failed.aedat").getAbsolutePath());
+        File failed = dl.startRecording(new File(badParent, "failed.aedat").getAbsolutePath());
         assertTrue(failed == null, "failed start returns null");
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == null,
                 "failed internally captured 37 is cleared");
@@ -98,14 +99,14 @@ public class DataLoggerMetadataDemo {
 
         fixture.live = "41";
         File file = File.createTempFile("jaer-datalogger-retry", ".aedat");
-        File logged = dl.startLogging(file.getAbsolutePath());
+        File logged = dl.startRecording(file.getAbsolutePath());
         assertTrue(logged != null, "retry succeeds");
         RecordingConfigurationSnapshot retry = fixture.chip.getRecordingConfigurationSnapshot();
         assertTrue(retry != null && "41".equals(retry.get("AEChip.level")),
                 "retry captured fresh 41, not failed-attempt 37");
         assertTrue(fixture.flushCount == 2, "each direct attempt flushes once, got " + fixture.flushCount);
         dl.filterPacket(buildEventPacket(1));
-        dl.stopLogging(false);
+        dl.stopRecording(false);
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == null,
                 "stop releases internally captured retry snapshot");
         assertRecordedLevel(logged, "41", "failed-start retry");
@@ -124,20 +125,20 @@ public class DataLoggerMetadataDemo {
 
         DataLogger dl = new DataLogger(fixture.chip);
         File badParent = File.createTempFile("jaer-datalogger-owner-bad", ".tmp");
-        assertTrue(dl.startLogging(new File(badParent, "failed.aedat").getAbsolutePath()) == null,
+        assertTrue(dl.startRecording(new File(badParent, "failed.aedat").getAbsolutePath()) == null,
                 "owner-snapshot failed start returns null");
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == ownerSnapshot,
                 "failed start preserves exact external object");
         assertTrue(fixture.flushCount == 1, "failed external start does not recapture");
 
         File file = File.createTempFile("jaer-datalogger-owner", ".aedat");
-        File logged = dl.startLogging(file.getAbsolutePath());
+        File logged = dl.startRecording(file.getAbsolutePath());
         assertTrue(logged != null, "external-snapshot start succeeds");
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == ownerSnapshot,
                 "active DataLogger keeps exact external object");
         assertTrue(fixture.flushCount == 1, "writer performs no second bias flush");
         dl.filterPacket(buildEventPacket(2));
-        dl.stopLogging(false);
+        dl.stopRecording(false);
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == ownerSnapshot,
                 "normal stop does not stomp external ownership");
         assertRecordedLevel(logged, "37", "external frozen snapshot");
@@ -152,12 +153,12 @@ public class DataLoggerMetadataDemo {
         FlushFixture fixture = new FlushFixture("41");
         DataLogger dl = new DataLogger(fixture.chip);
         File file = File.createTempFile("jaer-datalogger-direct", ".aedat");
-        File logged = dl.startLogging(file.getAbsolutePath());
+        File logged = dl.startRecording(file.getAbsolutePath());
         assertTrue(logged != null, "direct no-owner start succeeds");
         assertTrue(fixture.flushCount == 1, "direct call captures exactly once");
         assertTrue("41".equals(fixture.chip.getRecordingConfigurationSnapshot().get("AEChip.level")),
                 "direct call captures live 41");
-        dl.stopLogging(false);
+        dl.stopRecording(false);
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == null,
                 "direct stop clears internally captured snapshot");
         assertRecordedLevel(logged, "41", "direct fresh capture");
@@ -165,15 +166,47 @@ public class DataLoggerMetadataDemo {
         System.out.println("PASS testDirectFreshCaptureAndStopClear live=41 flushes=1");
     }
 
+    /** A repeated public start must not replace or leak the active writer/snapshot. */
+    private static void testRepeatedStartKeepsActiveRecording() throws Exception {
+        FlushFixture fixture = new FlushFixture("37");
+        DataLogger dl = new DataLogger(fixture.chip);
+        File dir = Files.createTempDirectory("jaer-datalogger-repeat-start-").toFile();
+        File first = new File(dir, "first.aedat");
+        File second = new File(dir, "second.aedat");
+        assertTrue(first.equals(dl.startRecording(first.getAbsolutePath())), "first start succeeds");
+        RecordingConfigurationSnapshot snapshot = fixture.chip.getRecordingConfigurationSnapshot();
+        java.lang.reflect.Field streamField = DataLogger.class.getDeclaredField("recordingOutputStream");
+        streamField.setAccessible(true);
+        AEFileOutputStream writer = (AEFileOutputStream) streamField.get(dl);
+
+        assertTrue(first.equals(dl.startRecording(second.getAbsolutePath())),
+                "repeated start returns active file");
+        assertTrue(streamField.get(dl) == writer,
+                "repeated start preserves the writer by identity");
+        assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == snapshot,
+                "repeated start preserves the active snapshot by identity");
+        assertTrue(fixture.flushCount == 1, "repeated start performs no second capture");
+        assertTrue(!second.exists(), "repeated start does not create a second file");
+
+        dl.filterPacket(buildEventPacket(1));
+        assertTrue(first.equals(dl.stopRecording(false)), "stop closes and returns the original recording");
+        assertTrue(streamField.get(dl) == null, "stop releases the original writer field");
+        assertTrue(fixture.chip.getRecordingConfigurationSnapshot() == null,
+                "stop releases the original logger-owned snapshot");
+        Files.deleteIfExists(first.toPath());
+        Files.deleteIfExists(dir.toPath());
+        System.out.println("PASS testRepeatedStartKeepsActiveRecording");
+    }
+
     /** A packet-write error clears logger-owned state even when close is reached through the error path. */
     private static void testWriteErrorClearsInternalSnapshot() throws Exception {
         FlushFixture fixture = new FlushFixture("37");
         DataLogger dl = new DataLogger(fixture.chip);
         File file = File.createTempFile("jaer-datalogger-write-error", ".aedat");
-        assertTrue(dl.startLogging(file.getAbsolutePath()) != null, "error-path setup starts");
+        assertTrue(dl.startRecording(file.getAbsolutePath()) != null, "error-path setup starts");
         assertTrue(fixture.chip.getRecordingConfigurationSnapshot() != null,
                 "error-path setup owns a snapshot");
-        java.lang.reflect.Field streamField = DataLogger.class.getDeclaredField("loggingOutputStream");
+        java.lang.reflect.Field streamField = DataLogger.class.getDeclaredField("recordingOutputStream");
         streamField.setAccessible(true);
         ((AEFileOutputStream) streamField.get(dl)).close();
         dl.filterPacket(buildEventPacket(1)); // closed channel -> IOException -> production error cleanup
@@ -199,10 +232,10 @@ public class DataLoggerMetadataDemo {
 
         DataLogger dl = new DataLogger(chip);
         File dlf = new File(dir, "empty-dl.aedat");
-        File dlRet = dl.startLogging(dlf.getAbsolutePath());
+        File dlRet = dl.startRecording(dlf.getAbsolutePath());
         assertTrue(dlRet != null, "DataLogger starts with empty prefs (active chip, no null-chip NPE)");
         dl.filterPacket(buildEventPacket(2));
-        dl.stopLogging(false);
+        dl.stopRecording(false);
 
         for (File sib : dir.listFiles()) {
             if (!sib.getName().equals(fl.getName())

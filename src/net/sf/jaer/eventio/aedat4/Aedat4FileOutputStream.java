@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
@@ -63,13 +62,21 @@ public class Aedat4FileOutputStream implements Closeable {
     private long uncompressedPayloadBytes;
     /** Compressed packet payload bytes written to the file (same as uncompressed if NONE). */
     private long compressedPayloadBytes;
+    private long[] evTimestamps;
+    private short[] evXs;
+    private short[] evYs;
+    private boolean[] evPolarities;
+    private FlatBufferBuilder eventBuilder;
+    private final ByteBuffer packetHeader;
 
     public Aedat4FileOutputStream(File file, AEChip chip) throws IOException {
-        this(new FileOutputStream(file), chip, CompressionType.LZ4);
+        this(new FileOutputStream(file), chip, CompressionType.LZ4,
+                System.currentTimeMillis() * 1000L, null, true);
     }
 
     public Aedat4FileOutputStream(File file, AEChip chip, int compression) throws IOException {
-        this(new FileOutputStream(file), chip, compression, null);
+        this(new FileOutputStream(file), chip, compression,
+                System.currentTimeMillis() * 1000L, null, true);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip) throws IOException {
@@ -77,7 +84,7 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression) throws IOException {
-        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, null);
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, null, false);
     }
 
     /**
@@ -87,12 +94,12 @@ public class Aedat4FileOutputStream implements Closeable {
      *                   original timeline, or {@code <= 0} for wall-clock now.
      */
     public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs) throws IOException {
-        this(new FileOutputStream(file), chip, compression, baseUnixUs, null);
+        this(new FileOutputStream(file), chip, compression, baseUnixUs, null, true);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression, long baseUnixUs)
             throws IOException {
-        this(outputStream, chip, compression, baseUnixUs, null);
+        this(outputStream, chip, compression, baseUnixUs, null, false);
     }
 
     /**
@@ -110,24 +117,43 @@ public class Aedat4FileOutputStream implements Closeable {
      */
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             RecordingConfigurationSnapshot snapshot) throws IOException {
-        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot);
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot, false);
     }
 
     private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
-            long baseUnixUs, RecordingConfigurationSnapshot snapshot) throws IOException {
+            long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure)
+            throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
         this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
-        this.snapshot = snapshot != null ? snapshot : RecordingConfigurationSnapshot.captureFromChip(chip);
-        channel.write(ByteBuffer.wrap(VERSION_LINE));
-        headerPosition = channel.position();
-        // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
-        // non-default sentinel so the field is always present and close() can patch
-        // the same-sized IOHeader with the real FileDataTable offset.
-        headerBytes = buildIOHeader(DATA_TABLE_POSITION_PENDING);
-        channel.write(ByteBuffer.wrap(headerBytes));
+        RecordingConfigurationSnapshot initializedSnapshot;
+        ByteBuffer initializedPacketHeader;
+        long initializedHeaderPosition;
+        try {
+            initializedSnapshot = snapshot != null ? snapshot : RecordingConfigurationSnapshot.captureFromChip(chip);
+            initializedPacketHeader = ByteBuffer.allocateDirect(8).order(ByteOrder.LITTLE_ENDIAN);
+            channel.write(ByteBuffer.wrap(VERSION_LINE));
+            initializedHeaderPosition = channel.position();
+            // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
+            // non-default sentinel so the field is always present and close() can patch
+            // the same-sized IOHeader with the real FileDataTable offset.
+            headerBytes = buildIOHeader(DATA_TABLE_POSITION_PENDING, initializedSnapshot);
+            channel.write(ByteBuffer.wrap(headerBytes));
+        } catch (IOException | RuntimeException failure) {
+            if (closeOnInitializationFailure) {
+                try {
+                    outputStream.close();
+                } catch (IOException | RuntimeException closeFailure) {
+                    failure.addSuppressed(closeFailure);
+                }
+            }
+            throw failure;
+        }
+        this.snapshot = initializedSnapshot;
+        this.packetHeader = initializedPacketHeader;
+        this.headerPosition = initializedHeaderPosition;
     }
 
     /** Sentinel written at open; replaced on {@link #close()} with the real table offset. */
@@ -194,36 +220,36 @@ public class Aedat4FileOutputStream implements Closeable {
         if (size == 0) {
             return;
         }
-        long[] timestamps = new long[size];
-        short[] xs = new short[size];
-        short[] ys = new short[size];
-        boolean[] polarities = new boolean[size];
+        evTimestamps = ensureLongs(evTimestamps, size);
+        evXs = ensureShorts(evXs, size);
+        evYs = ensureShorts(evYs, size);
+        evPolarities = ensureBooleans(evPolarities, size);
         int n = 0;
         if (skipFilteredOut) {
             // Same as display / reconstructRawPacket: iterator skips filteredOut.
             for (BasicEvent event : packet) {
-                n = appendPolarityEvent(event, timestamps, xs, ys, polarities, n);
+                n = appendPolarityEvent(event, evTimestamps, evXs, evYs, evPolarities, n);
             }
         } else {
             for (int k = 0; k < size; k++) {
-                n = appendPolarityEvent(packet.getEvent(k), timestamps, xs, ys, polarities, n);
+                n = appendPolarityEvent(packet.getEvent(k), evTimestamps, evXs, evYs, evPolarities, n);
             }
         }
         if (n == 0) {
             return;
         }
-        if (n < size) {
-            timestamps = Arrays.copyOf(timestamps, n);
-            xs = Arrays.copyOf(xs, n);
-            ys = Arrays.copyOf(ys, n);
-            polarities = Arrays.copyOf(polarities, n);
+        int minCap = Math.max(1024, n * 16 + 64);
+        if (eventBuilder == null) {
+            eventBuilder = new FlatBufferBuilder(minCap);
+        } else {
+            eventBuilder.clear();
         }
-        FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, n * 16 + 64));
-        int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(builder, timestamps, xs, ys, polarities);
-        int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(builder, vector);
-        builder.finishSizePrefixed(root, "EVTS");
-        byte[] payload = builder.sizedByteArray();
-        writePacket(STREAM_EVENTS, payload, n, timestamps[0], timestamps[n - 1]);
+        int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(
+                eventBuilder, evTimestamps, evXs, evYs, evPolarities, n);
+        int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(eventBuilder, vector);
+        eventBuilder.finishSizePrefixed(root, "EVTS");
+        byte[] payload = eventBuilder.sizedByteArray();
+        writePacket(STREAM_EVENTS, payload, n, evTimestamps[0], evTimestamps[n - 1]);
     }
 
     private int appendPolarityEvent(BasicEvent event, long[] timestamps, short[] xs, short[] ys,
@@ -293,18 +319,19 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
-        byte[] toWrite = Aedat4Compression.compress(payload, compression);
+        ByteBuffer toWrite = Aedat4Compression.compressDirect(payload, compression);
         uncompressedPayloadBytes += payload.length;
-        compressedPayloadBytes += toWrite.length;
+        int compressedLen = toWrite.remaining();
+        compressedPayloadBytes += compressedLen;
         // DV FileDataTable offsets address the encoded payload, not its PacketHeader.
         long byteOffset = channel.position() + 8L;
-        ByteBuffer header = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
-        header.putInt(streamId);
-        header.putInt(toWrite.length);
-        header.flip();
-        channel.write(header);
-        channel.write(ByteBuffer.wrap(toWrite));
-        dataDefinitions.add(new DataDefinition(byteOffset, streamId, toWrite.length, numElements, timestampStart, timestampEnd));
+        packetHeader.clear();
+        packetHeader.putInt(streamId);
+        packetHeader.putInt(compressedLen);
+        packetHeader.flip();
+        channel.write(packetHeader);
+        channel.write(toWrite);
+        dataDefinitions.add(new DataDefinition(byteOffset, streamId, compressedLen, numElements, timestampStart, timestampEnd));
     }
 
     /**
@@ -324,8 +351,12 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     private byte[] buildIOHeader(long dataTablePosition) {
+        return buildIOHeader(dataTablePosition, snapshot);
+    }
+
+    private byte[] buildIOHeader(long dataTablePosition, RecordingConfigurationSnapshot headerSnapshot) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        int info = builder.createString(Aedat4InfoNode.build(chip, compression, snapshot));
+        int info = builder.createString(Aedat4InfoNode.build(chip, compression, headerSnapshot));
         int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
@@ -464,6 +495,19 @@ public class Aedat4FileOutputStream implements Closeable {
                 eng.format((double) events).trim(),
                 eng.format((double) frames).trim(),
                 eng.format((double) imuSamples).trim()));
+        long tMin = Long.MAX_VALUE;
+        long tMax = Long.MIN_VALUE;
+        for (DataDefinition d : dataDefinitions) {
+            if (d.timestampStart > 0 && d.timestampStart < tMin) {
+                tMin = d.timestampStart;
+            }
+            if (d.timestampEnd > tMax) {
+                tMax = d.timestampEnd;
+            }
+        }
+        if (tMax > tMin && tMin != Long.MAX_VALUE) {
+            sb.append(", duration=").append(eng.format((tMax - tMin) * 1e-6).trim()).append("s");
+        }
         if (uncompressedPayloadBytes > 0) {
             double pct = 100.0 * compressedPayloadBytes / (double) uncompressedPayloadBytes;
             sb.append(String.format("; compressed to %.0f%% of raw (%sB -> %sB)",
@@ -472,6 +516,18 @@ public class Aedat4FileOutputStream implements Closeable {
                     eng.format((double) compressedPayloadBytes).trim()));
         }
         return sb.toString();
+    }
+
+    private static long[] ensureLongs(long[] a, int n) {
+        return a == null || a.length < n ? new long[n] : a;
+    }
+
+    private static short[] ensureShorts(short[] a, int n) {
+        return a == null || a.length < n ? new short[n] : a;
+    }
+
+    private static boolean[] ensureBooleans(boolean[] a, int n) {
+        return a == null || a.length < n ? new boolean[n] : a;
     }
 
     private static final class DataDefinition {

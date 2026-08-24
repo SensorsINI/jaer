@@ -1,6 +1,6 @@
 # jAER file formats — play and record
 
-Supported event-data file types for **playback** (File → Open / drag-drop) and **recording** (logging from a live device or filtered stream). Detection and open paths live in [`AEChip.constuctFileInputStream`](../src/net/sf/jaer/chip/AEChip.java); the open dialog filter is [`DATFileFilter`](../src/net/sf/jaer/util/DATFileFilter.java).
+Supported event-data file types for **playback** (File → Open / drag-drop) and **recording** (from a live device or filtered stream). Detection and open paths live in [`AEChip.constuctFileInputStream`](../src/net/sf/jaer/chip/AEChip.java); the open dialog filter is [`DATFileFilter`](../src/net/sf/jaer/util/DATFileFilter.java).
 
 Extensions and AEDAT version constants: [`AEDataFile`](../src/net/sf/jaer/eventio/AEDataFile.java).
 
@@ -12,7 +12,7 @@ Official format specs (where available) are linked from the **Format** column an
 
 | Format | Ext. | Generation / magic | Manufacturer / origin | Play | Record | Legacy | Compression | Matching cameras / chips |
 |--------|------|--------------------|------------------------|:----:|:------:|:------:|-------------|---------------------------|
-| **[AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html)** | `.aedat4` | AEDAT **4.0** (`#!AER-DAT4.0`) | [iniVation](https://inivation.com/) DV / jAER 3 | yes | **yes (default)** + Save As⁷ | no | Per-packet: **NONE**, **LZ4** (default), **LZ4_HIGH**, **ZSTD**, **ZSTD_HIGH** | DAVIS346 / DAVIS240 / DVXplorer family; any jAER chip that logs AEDAT-4 (incl. Prophesee EVK4, NRV when recording in jAER) |
+| **[AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html)** | `.aedat4` | AEDAT **4.0** (`#!AER-DAT4.0`) | [iniVation](https://inivation.com/) DV / jAER 3 | yes | **yes (default)** + Save As⁷ | no | Per-packet: **NONE**, **LZ4** (default), **LZ4_HIGH**, **ZSTD**, **ZSTD_HIGH** | DAVIS346 / DAVIS240 / DVXplorer family; any jAER chip that records AEDAT-4 (incl. Prophesee EVK4, NRV when recording in jAER) |
 | **[AEDAT-2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html)** | `.aedat2` (preferred write), also `.aedat` | AEDAT **2.0** (`#!AER-DAT2.0`) | SensorsINI / jAER | yes | yes | partial¹ | None (raw `int32` address + `int32` timestamp) | Classic DVS/DAVIS jAER chips (DVS128, DAVIS240/346, Cochlea, etc.); widely used historical logs |
 | **[AEDAT-1](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-1.0.html)** | `.aedat`, `.dat` | AEDAT **1.0** (`#!AER-DAT1.0`) | SensorsINI / jAER | yes | no | **yes** | None (`int16` address + `int32` timestamp) | Early AER boards / old DVS128-era recordings |
 | **[AEDAT-3](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-3.1.html)** | typically `.aedat` | AEDAT **3.0 / 3.1** (`#!AER-DAT3.x`) | cAER / community | yes² | no | **yes** | None (packed AER-3 address words) | Rare in modern jAER workflows; open if header declares 3.x |
@@ -29,8 +29,8 @@ Official format specs (where available) are linked from the **Format** column an
 ³ Recording no longer uses bare `.dat` as the preferred extension.  
 ⁴ Live EVK4 capture is recorded as AEDAT-4/2 in jAER; Metavision Studio writes `.raw` (and can export DAT).  
 ⁵ Still common for public datasets; not a jAER-native recording path.  
-⁶ Created when using synchronized multi-viewer logging (an `.aeidx` listing the sibling data files).  
-⁷ **File → Save As…** (`Ctrl+Shift+S`) while playing a recording (not live logging). Formats: native **AEDAT-4** (default; preferred over relogging to clip IN/OUT or apply EventFilters), CSV/text, DSEC HDF5. Optional IN/OUT markers and EventFilters. CSV/HDF5 can add HVS sidecars (`XXX-frames/` PNGs, `XXX-imu.csv`); AEDAT-4 keeps frames/IMU in the file.
+⁶ Created when using synchronized multi-viewer recording (an `.aeidx` listing the sibling data files).
+⁷ **File → Save As…** (`Ctrl+Shift+S`) while playing a recording (not live recording). Formats: native **AEDAT-4** (default; preferred over re-recording to clip IN/OUT or apply EventFilters), CSV/text, DSEC HDF5. Optional IN/OUT markers and EventFilters. CSV/HDF5 can add HVS sidecars (`XXX-frames/` PNGs, `XXX-imu.csv`); AEDAT-4 keeps frames/IMU in the file.
 
 ---
 
@@ -57,23 +57,23 @@ Official format specs (where available) are linked from the **Format** column an
 
 ## Recording formats (detail)
 
-Logging format is chosen in AEViewer prefs / Control menu (`loggingDataFileVersion`). Default is **AEDAT-4**.
+Recording format is chosen in AEViewer prefs / Control menu (`recordingDataFileVersion`). Default is **AEDAT-4**.
 
 | Format | Writer | Notes |
 |--------|--------|--------|
-| [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileOutputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileOutputStream.java) | DV-compatible FlatBuffers packets (events, frames, IMU). Live logging compression via `AEViewer.aedat4Compression`. **File → Save As** (playback) writes the same format (IN/OUT clip, optional EventFilters; compression chosen in the dialog). Sparse index cache under `java.io.tmpdir` (`*.aedat4idx`) speeds reopen. |
+| [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileOutputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileOutputStream.java) | DV-compatible FlatBuffers packets (events, frames, IMU). Live recording compression via `AEViewer.aedat4Compression`. **File → Save As** (playback) writes the same format (IN/OUT clip, optional EventFilters; compression chosen in the dialog). Sparse index cache under `java.io.tmpdir` (`*.aedat4idx`) speeds reopen. |
 | [AEDAT-2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html) | [`AEFileOutputStream`](../src/net/sf/jaer/eventio/AEFileOutputStream.java) | Classic `#` ASCII header + binary address/timestamp pairs. Extension `.aedat2`. |
 | [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEOutputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEOutputStream.java) | **File → Save As** (playback). Cooked `/events/{p,t,x,y}` with DSEC/image coords (`y=0` top, `p` 0=off/1=on), `/ms_to_idx`, `/t_offset`; uncompressed (jHDF 0.12). Width/height attributes for reopen. |
 | Text CSV/TXT | [`CsvEventSink`](../src/net/sf/jaer/eventio/export/CsvEventSink.java) | **File → Save As** (playback). Options match [`DavisTextEventFormatter`](../src/net/sf/jaer/util/textio/DavisTextEventFormatter.java) (`t,x,y,p` variants; RPG preset). The EventFilter [`DavisTextOutputWriter`](../src/net/sf/jaer/util/textio/DavisTextOutputWriter.java) still streams text during play. |
 
 ### File → Save As (playback export)
 
-Enabled only while a recording is open (`PlayMode.PLAYBACK`). Unlike relogging (AEDAT at ViewLoop pace), Save As pauses playback and scans the file as fast as possible, then restores position. Relogging remains on the logging button.
+Enabled only while a recording is open (`PlayMode.PLAYBACK`). Unlike re-recording (AEDAT at ViewLoop pace), Save As pauses playback and scans the file as fast as possible, then restores position. Re-recording remains on the recording button.
 
 - **AEDAT-4** (default): native DV-compatible `.aedat4` (events, frames, IMU). Preferred way to clip with IN/OUT or apply EventFilters.
 - **CSV / text** and **DSEC HDF5**: same scan; DAVIS/CDAVIS can add HVS sidecars.
 - **Use IN and OUT markers** (default on): unset ends are file start / EOF.
-- **Apply EventFilters** (default on): same chain as filtered relogging.
+- **Apply EventFilters** (default on): same chain as filtered re-recording.
 - **HVS sidecars** (DAVIS / CDAVIS, CSV/HDF5 only): optional `<basename>-frames/` compressed PNGs + `timestamps.txt`, and `<basename>-imu.csv`.
 
 Dialog: [`SaveAsExportDialog`](../src/net/sf/jaer/eventio/export/SaveAsExportDialog.java).
@@ -101,7 +101,7 @@ Chip auto-detect for recordings: [`RecordingChipDetector`](../src/net/sf/jaer/ev
 
 | Format | Options | Where set |
 |--------|---------|-----------|
-| AEDAT-4 | `NONE` (0), `LZ4` (1, default), `LZ4_HIGH` (2), `ZSTD` (3), `ZSTD_HIGH` (4) | Live logging: AEViewer recording prefs. Save As: File → Save As dialog. See [`CompressionType`](../src/net/sf/jaer/eventio/aedat4/dv/CompressionType.java), [`Aedat4Compression`](../src/net/sf/jaer/eventio/aedat4/Aedat4Compression.java) |
+| AEDAT-4 | `NONE` (0), `LZ4` (1, default), `LZ4_HIGH` (2), `ZSTD` (3), `ZSTD_HIGH` (4) | Live recording: AEViewer recording prefs. Save As: File → Save As dialog. See [`CompressionType`](../src/net/sf/jaer/eventio/aedat4/dv/CompressionType.java), [`Aedat4Compression`](../src/net/sf/jaer/eventio/aedat4/Aedat4Compression.java) |
 | AEDAT-1/2/3, legacy `.dat` | None | — |
 | Metavision `.dat` | None (decoded events; typically larger than RAW) | Exported by Metavision Studio / SDK (`File to DAT`) |
 | Metavision `.raw` | None (sensor EVT3 encoding is the “compression”) | Recorded by Metavision Studio / SDK |
@@ -127,6 +127,6 @@ Constants: [`JaerConstants`](../src/net/sf/jaer/JaerConstants.java).
 
 ## Related docs
 
-- [jAER 3 pipeline](README-jaer3.md) — PacketBundle path and AEDAT-4 logging
+- [jAER 3 pipeline](README-jaer3.md) — PacketBundle path and AEDAT-4 recording
 - [Prophesee driver README](../src/prophesee/README.md) — EVK4 live + RAW EVT3 / DAT playback
 - [USB live acquisition bench](usb-live-acquisition-bench.md)

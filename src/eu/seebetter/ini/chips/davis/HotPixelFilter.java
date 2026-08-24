@@ -61,7 +61,7 @@ while events are playing.</li>
 <code>showHotPixels</code> to mark them on the display.</li>
 </ol>
 <p><code>doClearHotPixels</code> forgets the list. ON and OFF of the same pixel are
-separate addresses, so both can be hot. For a large list, <code>use2DBooleanArray</code>
+tracked separately (event type / polarity), so both can be hot. For a large list, <code>use2DBooleanArray</code>
 is faster than the hash set.</p>
 <p>Learn while the camera is stationary; motion during learning will mark real edges as hot.</p>
 </body>
@@ -88,22 +88,34 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
     boolean[][] hotPixelArray = null;
 
     /**
-     * Stores a single hot pixel, with x,y,address and event count collected
-     * during sampling. The hashcode of the pixel is exactly the event address,
-     * so users may need to ensure that the address is unique for events that
-     * should be different.
+     * Stores a single hot pixel: cooked {@code x,y} plus polarity {@code type}
+     * (0=OFF, 1=ON for DVS). Identity must not use {@link BasicEvent#address}:
+     * jAER 3.0 typed USB packets often leave that field 0, which would make
+     * every event look like the same hot pixel and filter the whole stream.
      */
     private static class HotPixel implements Serializable { // static to avoid having this reference to enclosing class
 
         private static final long serialVersionUID = 3283393964235107656L;
-        int x, y, address;
+        int x, y, address, type;
         volatile int count;
 
-        HotPixel(final BasicEvent e) {
+        HotPixel(final int x, final int y, final int type, final int address) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            this.address = address;
             count = 1;
-            address = e.address;
+        }
+
+        HotPixel(final BasicEvent e) {
+            this(e.x, e.y, e.getType(), e.address);
+        }
+
+        void setFrom(final BasicEvent e) {
             x = e.x;
             y = e.y;
+            type = e.getType();
+            address = e.address;
         }
 
         int incrementCount() {
@@ -112,19 +124,16 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
         }
 
         /**
-         * Determines if this hot pixel equals another HotPixel or an event (by
-         * raw address)
-         *
-         * @param obj BasicEvent or HotPixel
-         * @return true if the address is equal (not the x,y address but the raw
-         * address, which includes cell type)
+         * Equals another HotPixel or event by cooked x, y, and type (polarity).
          */
         @Override
         public boolean equals(final Object obj) {
             if (obj instanceof BasicEvent) {
-                return ((BasicEvent) obj).address == address;
+                final BasicEvent e = (BasicEvent) obj;
+                return e.x == x && e.y == y && e.getType() == type;
             } else if (obj instanceof HotPixel) {
-                return ((HotPixel) obj).address == address;
+                final HotPixel p = (HotPixel) obj;
+                return p.x == x && p.y == y && p.type == type;
             } else {
                 return false;
             }
@@ -132,12 +141,12 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
 
         @Override
         public String toString() {
-            return String.format("(%d,%d), addr=%,d, count=%,d", x, y, address, count);
+            return String.format("(%d,%d), type=%d, addr=%,d, count=%,d", x, y, type, address, count);
         }
 
         @Override
         public int hashCode() {
-            return Integer.valueOf(address).hashCode();
+            return (type << 24) ^ (x << 12) ^ y;
         }
     }
 
@@ -147,9 +156,22 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
          *
          */
         private static final long serialVersionUID = -1623414435560460344L;
+        /** Reused HashSet probe so LIVE lookup does not allocate a HotPixel per event. */
+        private transient HotPixel probe;
+
+        private HotPixel probe() {
+            HotPixel p = probe;
+            if (p == null) {
+                p = new HotPixel(0, 0, 0, 0);
+                probe = p;
+            }
+            return p;
+        }
 
         boolean contains(final BasicEvent e) {
-            return contains(new HotPixel(e));
+            final HotPixel p = probe();
+            p.setFrom(e);
+            return super.contains(p);
         }
 
         boolean contains(final HotPixel e) {
@@ -183,6 +205,10 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
                 } else {
                     clear();
                     for (final HotPixel hotPixel : hotPixelSet) {
+                        // Prefs saved before type was stored default type=0; recover ON/OFF from DAVIS/DVS LSB.
+                        if (hotPixel.address != 0) {
+                            hotPixel.type = hotPixel.address & 1;
+                        }
                         add(hotPixel);
                     }
                 }
@@ -194,8 +220,7 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
     }
 
     /**
-     * Temporary HashMap to store collected events; maps from address to
-     * HotPixel
+     * Temporary HashMap from packed (x,y,type) to HotPixel counts during learning.
      */
     private class CollectedAddresses extends HashMap<Integer, HotPixel> {
 
@@ -266,6 +291,12 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
                     learningStarted = false;
                     learningStartedTimestamp = e.timestamp;
                     collectedAddresses = new CollectedAddresses(chip.getNumCells() / 10);
+                    hotPixelSet.clear();
+                    if (hotPixelArray != null) {
+                        for (final boolean[] ba : hotPixelArray) {
+                            Arrays.fill(ba, false);
+                        }
+                    }
 
                 } else if ((e.timestamp - learningStartedTimestamp) > (learnTimeMs << 10)) { // ms to us is <<10 approx
                     // done collecting hot pixel data, now build lookup table
@@ -295,19 +326,21 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
                             hp.count = 0; // clear it's count so next time we look for max firing pixel, this one is not max anymore
                         }
                     } // look for next not pixel, up to numHotPixelsMax
+                    log.info(String.format("learned %d hot pixels (max %d) from %d distinct (x,y,type) addresses",
+                            hotPixelSet.size(), numHotPixelsMax, collectedAddresses.size()));
                     collectedAddresses = null; // free memory
                     hotPixelSet.storePrefs(this);
                     if (use2DBooleanArray) {
                         fillHotPixelArrayFromHotPixelSet();
                     }
                 } else {
-                    // we're learning now by collecting addresses, store this address
-                    // increment count for this address
-                    final HotPixel thisPixel = new HotPixel(e);
-                    if (collectedAddresses.get(e.address) != null) {
-                        collectedAddresses.get(e.address).incrementCount();
+                    // Collect by cooked x,y,type — not raw address (often 0 on typed USB packets).
+                    final int key = pixelKey(e.x, e.y, e.getType());
+                    final HotPixel existing = collectedAddresses.get(key);
+                    if (existing != null) {
+                        existing.incrementCount();
                     } else {
-                        collectedAddresses.put(e.address, thisPixel);
+                        collectedAddresses.put(key, new HotPixel(e));
                     }
                 }
             }
@@ -456,6 +489,14 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
         if (use2DBooleanArray && hotPixelSet != null) {
             fillHotPixelArrayFromHotPixelSet();
         }
+    }
+
+    /**
+     * Unique map key for a DVS cell (x, y, polarity type). Type is 0 or 1 for
+     * ON/OFF; x and y fit in 12 bits for current chips.
+     */
+    private static int pixelKey(final int x, final int y, final int type) {
+        return (type << 24) | ((x & 0xfff) << 12) | (y & 0xfff);
     }
 
     private void fillHotPixelArrayFromHotPixelSet() {

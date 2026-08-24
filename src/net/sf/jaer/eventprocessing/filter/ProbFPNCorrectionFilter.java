@@ -19,6 +19,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -36,6 +37,29 @@ firing rate the same as the global average.
  * @author tobi
  */
 @Description("Adjusts probability of transmission of event so that average rate of activity is the same for all cells")
+@Help("""
+<html>
+<body>
+<h2>ProbFPNCorrectionFilter</h2>
+<p>Probabilistic <b>fixed-pattern noise</b> equalizer: measures per-pixel ISI, compares it to
+the average ISI of that polarity, and transmits each event with probability
+<code>alpha * isi / avgIsi</code> (clipped). Hot / leaky pixels are thinned so that the
+<i>expected</i> rate matches the array average. Does not remove isolated shot noise.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b> after the stream has been running so avg ISI can learn
+(<code>mixingFactor</code>).</li>
+<li><code>alpha</code> &mdash; scales transmission probability (default 0.9).</li>
+<li><code>mixingFactor</code> &mdash; how fast each event updates that pixel&rsquo;s
+mean ISI.</li>
+<li><code>overlayProbabilty</code> &mdash; draw transmission probability on the display.</li>
+</ol>
+<p>For stuck addresses learned from a covered lens, <code>HotPixelFilter</code> is usually
+simpler. For uncorrelated BA, use <code>SpatioTemporalCorrelationFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnotater{
     float[][][] isi;

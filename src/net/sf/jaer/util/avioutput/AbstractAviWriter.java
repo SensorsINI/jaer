@@ -33,6 +33,7 @@ import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -49,6 +50,38 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author Tobi
  */
 @Description("Base class for EventFilters that write out video (AVI, AnimatedGIF, image sequences) files from jAER")
+@Help("""
+<html>
+<body>
+<h2>AbstractAviWriter</h2>
+<p>Shared recording controls for filters that write <b>AVI</b>, animated GIF, or a folder of
+image frames from jAER. You normally use a subclass:
+<code>JaerAviWriter</code> (AEViewer OpenGL), <code>DvsSliceAviWriter</code> (DVS slices),
+<code>DavisFrameAviWriter</code> (DAVIS APS frames).</p>
+<hr>
+<h3>How to record</h3>
+<ol>
+<li>Add the subclass to the filter chain and enable it.</li>
+<li>Click <code>startRecordingAndSaveAs</code> and choose a file (or folder if
+<code>saveFramesAsIndividualImageFiles</code>).</li>
+<li>Play the stream. Click <code>finishRecording</code> (or let <code>closeOnRewind</code>
+close at file rewind).</li>
+</ol>
+<h3>Shared controls</h3>
+<ul>
+<li><code>format</code> / <code>outputContainer</code> &mdash; RAW/JPG/PNG/GIF, etc.
+Use JPG if Adobe Premiere must read the AVI. RLE is not valid for OpenGL frames.</li>
+<li><code>frameRate</code> &mdash; <i>playback</i> FPS of the file.
+<code>matchViewerFrameRate</code> copies the AEViewer render rate when recording starts.</li>
+<li><code>compressionQuality</code> &mdash; PNG/JPG quality (0&ndash;1, default 0.9).</li>
+<li><code>writeTimecodeFile</code> &mdash; sidecar mapping AVI frame &rarr; AER timestamp.</li>
+<li><code>rewindBeforeRecording</code> / <code>maxFrames</code> (0 = unlimited).</li>
+<li><code>writeOnlyWhenMousePressed</code> / <code>writeEnabled</code> &mdash; gate frames.</li>
+<li><code>showFolderInDesktop</code> opens the last output folder.</li>
+</ul>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 

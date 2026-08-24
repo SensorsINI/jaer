@@ -25,6 +25,7 @@ import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -55,6 +56,34 @@ import net.sf.jaer.util.RemoteControlCommand;
 @Description("DWF/FWF Double Window and Fixed Window Filter that Filters out uncorrelated background activity noise according to "
         + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually a few hundred is enough, and requires negligible memory cost."
         + "<p>Published in Guo & Delbruck, T-PAMI 2022 <a href=\"http://dx.doi.org/10.1109/TPAMI.2022.3152999\">10.1109/TPAMI.2022.3152999</a>")
+@Help("""
+<html>
+<body>
+<h2>DoubleWindowFilter</h2>
+<p>Memory-cheap BA denoiser that stores a FIFO of the last <code>wlen</code> events
+instead of a full timestamp image. An event is kept if enough of those recent events
+are spatial neighbors (<code>disThr</code>, <code>numMustBeCorrelated</code>).
+<b>FWF</b> uses one window; <b>DWF</b> (<code>useDoubleMode</code>) splits signal vs noise windows.</p>
+<p>Source paper:
+<a href="https://doi.org/10.1109/TPAMI.2022.3152999">Low Cost and Latency Event Camera
+Background Activity Denoising</a>
+(Guo &amp; Delbruck, <i>IEEE Trans. Pattern Anal. Mach. Intell.</i>, 2023).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li><code>wlen</code> &mdash; FIFO length (a few hundred is typical). In double mode this
+budget is split between signal and noise windows.</li>
+<li><code>useDoubleMode</code> &mdash; DWF (two windows) vs FWF (single window).</li>
+<li><code>disThr</code> &mdash; neighbor distance; smaller rejects more (noisier scenes),
+larger keeps more events.</li>
+<li><code>numMustBeCorrelated</code> &mdash; how many window events must be neighbors.</li>
+</ol>
+<p>Prefer <code>SpatioTemporalCorrelationFilter</code> as the default denoiser unless you
+need the window-memory variant. Evaluate with <code>NoiseTesterFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DoubleWindowFilter extends AbstractNoiseFilter {
 

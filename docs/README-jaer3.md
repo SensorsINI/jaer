@@ -3,7 +3,7 @@
 This document summarizes how live sensor data and recorded files move through
 **jAER 3** (`jaer3` / `master` after the PacketBundle refactor): from USB
 capture, through typed packets and `EventFilter`s, to OpenGL display and optional
-AEDAT-4 logging.
+AEDAT-4 recording.
 
 The central idea in jAER 3 is that one **timeslice** is a
 [`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java): an ordered list of
@@ -30,14 +30,14 @@ flowchart LR
     ACQ[acquireAvailablePacketBundle]
     EXT[extractBundle legacy fallback]
     FILT[FilterChain.filterBundle]
-    LOG[logPacket to AEDAT-4 / AEDAT-2]
+    REC[recordPacket to AEDAT-4 / AEDAT-2]
     REN[Renderer + ChipCanvas OpenGL]
   end
 
   EP --> XFER --> PARSE --> WBUF
   WBUF -.swap.-> ACQ --> FILT
   ACQ -.-> EXT -.-> FILT
-  FILT --> LOG
+  FILT --> REC
   FILT --> REN
 ```
 
@@ -46,7 +46,7 @@ flowchart LR
 | Thread | Role |
 |--------|------|
 | `USBTransferThread` / `AEReader` | Submits multiple bulk IN transfers; callback parses bytes into the **write** side of a double buffer |
-| `AEViewer.ViewLoop` | Game loop: acquire → extract/filter → log → render → pace FPS |
+| `AEViewer.ViewLoop` | Game loop: acquire → extract/filter → record → render → pace FPS |
 | AWT Event Dispatch (EDT) | UI, menus, bias controls (must not block on USB open/close) |
 | JOGL / display | ChipCanvas paints; often driven by `paintFrame` / `repaint` from ViewLoop |
 
@@ -221,15 +221,15 @@ After filtering:
 3. `ChipCanvas.paintFrame()` or `repaint()` draws via JOGL.
 
 Rendering can be **skipped** adaptively under load (`packetLevelRenderSkipping`)
-when no filters need every packet and AVI sync recording is not active; logging
+when no filters need every packet and AVI sync recording is not active; recording
 of raw data can still occur on the skip path.
 
 ---
 
 ## Saving to AEDAT-4
 
-When logging is enabled in LIVE (or playback with logging), ViewLoop calls
-`logPacket` each slice:
+When recording is enabled in LIVE (or playback with recording), ViewLoop calls
+`recordPacket` each slice:
 
 ```mermaid
 flowchart TD
@@ -244,7 +244,7 @@ flowchart TD
   COMP --> FILE[.aedat4 file + FileDataTable on close]
 ```
 
-- Default logging format can be AEDAT-4; compression is chosen in preferences
+- Default recording format can be AEDAT-4; compression is chosen in preferences
   (`Aedat4Compression`).
 - On close, the writer logs an estimate such as
   `compressed to XX% of raw (payload … → …)` comparing uncompressed FlatBuffer

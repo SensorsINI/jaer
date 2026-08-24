@@ -7,10 +7,14 @@ package net.sf.jaer.graphics;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
@@ -21,25 +25,30 @@ import java.io.IOException;
 import java.util.logging.Logger;
 
 import javax.swing.JFileChooser;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
-import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.TextFileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
+import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import net.sf.jaer.util.EngineeringFormat;
 import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
- * Provides preview of recorded AE data file in file dialogs. It uses the
- * default renderer, extractor and display method for the AEChip to generate a
- * preview and the 2d histograms of event activity over (by default) 40ms time
- * windows.
+ * Provides preview of recorded AE data file in file dialogs. Renders the
+ * chip pixmap with AWT (not a second {@link ChipCanvas}/{@code GLCanvas}):
+ * constructing another JOGL canvas while the viewer is already displaying
+ * crashes some GPU drivers (Intel Arc {@code igxelpgicd64.dll}) during
+ * {@code SetPixelFormat} or {@code TextRenderer} {@code glDrawArrays}.
  *
  * @author tobi
  */
@@ -47,9 +56,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
 
     JFileChooser chooser;
     EventExtractor2D extractor;
-    ChipCanvas canvas;
     AEChipRenderer renderer;
-    JLabel infoLabel;
     AEChip chip;
     volatile boolean indexFileEnabled = false;
     Logger log = Logger.getLogger("net.sf.jaer");
@@ -59,6 +66,9 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     public int packetTimeUs = 40000;
     private File currentFile;
     private boolean newFileSelected = false;
+    /** True when the accessory should play events/frames, not only overlay text. */
+    private volatile boolean videoPreview = false;
+    private BufferedImage previewImage;
 
     /**
      * Creates new form ChipDataFilePreview
@@ -68,21 +78,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         this.chip = chip;
-        canvas = new ChipCanvas(chip);
-        canvas.setAnnotationEnabled(false); // some filters use OpenGL code that crashes the JVM
-//        if(chip.getCanvas().getDisplayMethod()==null){
-//            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
-//        }else{
-        canvas.setDisplayMethod(chip.getPreferredDisplayMethod()); // construct a new private display method to avoid using objects in different OpenGL contexts, e.g. TextRenderer's, which cause Error 1281 GL errors
-//        }
-        setLayout(new BorderLayout());
         this.chooser = jfc;
         extractor = chip.getEventExtractor();
         renderer = chip.getRenderer();
-        canvas.getCanvas().setSize(300, 300);
-        add(canvas.getCanvas(), BorderLayout.CENTER);
-        canvas.getCanvas().addKeyListener(new KeyAdapter() {
+        setLayout(new BorderLayout());
+        setBackground(Color.BLACK);
+        setOpaque(true);
+        setPreferredSize(new Dimension(300, 300));
+        setFocusable(true);
+        addKeyListener(new KeyAdapter() {
 
+            @Override
             public void keyReleased(KeyEvent e) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_S:
@@ -115,7 +121,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             showFile(chooser.getSelectedFile()); // starts showing selectedFile
         }
     }
-    AEFileInputStream ais;
+    AEFileInputStreamInterface ais;
     volatile boolean deleteIt = false;
 
     public void deleteCurrentFile() {
@@ -139,24 +145,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     public void showFile(File file) { //  gets called on property change, possibly with null file
         try {
-//            if(fis!=null){ System.out.println("closing "+fis); fis.close();}
             if (file == null) {
                 stop = true;
                 return;
             }
-//            fis=new FileInputStream(file);
             setCurrentFile(file);
             indexFileEnabled = isIndexFile(file);
+            videoPreview = false;
             if (!indexFileEnabled) {
-                if (ais != null) {
-//                    System.out.println("closing "+ais);
-                    ais.close();
-                    ais = null;
-                    System.gc(); // try to make memory mapped file GC'ed so that user can delete it
-//                    System.runFinalization();
-                    // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
-                    // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
-                }
+                closePreviewStream();
+                clearPreviewImage();
+                System.gc(); // try to make memory mapped file GC'ed so that user can delete it
                 try {
                     String lower = file.getName().toLowerCase();
                     if (lower.endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
@@ -169,7 +168,6 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                         } else {
                             fileSizeString = "Metavision RAW (not EVT3 or unreadable header)";
                         }
-                        ais = null;
                     } else if (lower.endsWith("." + MetavisionDatFileInputStream.DATA_FILE_EXTENSION)
                             && MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
                         MetavisionDatFileInputStream.HeaderInfo hi
@@ -180,28 +178,38 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                         } else {
                             fileSizeString = "Metavision DAT (unreadable header)";
                         }
-                        ais = null;
+                    } else if (lower.endsWith("." + TextFileInputStream.FILE_EXTENSION_CSV)
+                            || lower.endsWith("." + TextFileInputStream.FILE_EXTENSION_TXT)) {
+                        fileSizeString = summaryFromOpen(new TextFileInputStream(file, chip, null));
+                    } else if (lower.endsWith("." + RosbagFileInputStream.DATA_FILE_EXTENSION)) {
+                        fileSizeString = summaryFromOpen(new RosbagFileInputStream(file, chip, null));
                     } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
                             && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
-                        DsecHdf5AEInputStream.SensorSize sz = DsecHdf5AEInputStream.peekSensorSize(file);
-                        int w = sz != null ? sz.width : DsecHdf5AEInputStream.DEFAULT_WIDTH;
-                        int h = sz != null ? sz.height : DsecHdf5AEInputStream.DEFAULT_HEIGHT;
-                        fileSizeString = String.format("DSEC HDF5 %dx%d (open to play)", w, h);
-                        ais = null;
+                        fileSizeString = summaryFromOpen(new DsecHdf5AEInputStream(file, chip, null));
+                    } else if (lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)) {
+                        ais = new Aedat4FileInputStream(file, chip);
+                        ais.rewind();
+                        fileSizeString = overlayText(ais);
+                        videoPreview = true;
                     } else {
                         ais = new AEFileInputStream(file, chip);
                         ais.rewind();
-                        fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
+                        fileSizeString = overlayText(ais);
+                        videoPreview = true;
                     }
-                } catch (IOException e) {
+                } catch (Exception e) {
                     log.warning("Caught " + e.toString() + " trying to open file " + file);
-
+                    fileSizeString = e.getMessage() != null ? e.getMessage() : e.toString();
+                    closePreviewStream();
+                    videoPreview = false;
                 }
             } else {
+                closePreviewStream();
+                clearPreviewImage();
                 indexFileString = getIndexFileCount(file);
             }
-//        infoLabel.setText(fmt.format((int)ais.size()));
             stop = false;
+            requestFocusInWindow();
             repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
         } catch (Exception e) {
             log.warning(e.toString());
@@ -212,19 +220,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     EventPacket ae;
 
     /**
-     * Paints the file preview using {@link ChipCanvas#paintFrame() }.
+     * Paints the file preview from the chip pixmap using AWT, not OpenGL.
      *
      * @param g the graphics context
      */
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         if (stop || deleteIt) {
-//            System.out.println("stop="+stop+" deleteIt="+deleteIt);
             try {
                 if (ais != null) {
-//                    System.out.println("closing "+ais);
-                    ais.close();
-                    ais = null;
+                    closePreviewStream();
                     System.gc();
                     Thread.sleep(200);
                 }
@@ -240,65 +246,62 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                         }
                     }
                 }
-            } catch (IOException e) {
-                log.warning(String.format("Caught %s",e.toString()));
             } catch (InterruptedException ex) {
-                
+
             }
             return;
         }
-        Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
+        Graphics2D g2 = (Graphics2D) g;
         if (newFileSelected) { // erases old text, otherwise draws over it
             newFileSelected = false;
-            g2.clearRect(0, 0, getWidth(), getHeight());
+            clearPreviewImage();
         }
 
-//        g2.setColor(Color.black);
-//        g2.fillRect(0,0,getWidth(),getHeight()); // rendering method already paints frame black, shouldn't do it here or we get flicker from black to image
         if (!indexFileEnabled) {
-            if (ais != null) {
+            if (videoPreview && ais != null) {
                 try {
                     aeRaw = ais.readPacketByTime(packetTimeUs);
+                    extractor = chip.getEventExtractor();
+                    PacketBundle bundle = extractor.extractBundle(aeRaw);
+                    if (ais instanceof Aedat4FileInputStream a4) {
+                        if (bundle == null) {
+                            bundle = new PacketBundle();
+                        }
+                        a4.appendTypedPackets(bundle);
+                    }
+                    if (bundle != null && !bundle.isEmpty()) {
+                        renderer.render(bundle);
+                    } else if (aeRaw != null) {
+                        ae = extractor.extractPacket(aeRaw);
+                        if (ae != null) {
+                            renderer.render(ae);
+                        }
+                    }
+                    blitRendererToPreviewImage();
                 } catch (EOFException e) {
                     try {
-                        ais.rewind();
+                        if (ais != null) {
+                            ais.rewind();
+                        }
                     } catch (IOException ioe) {
                         log.warning("IOException on rewind from EOF: " + ioe.getMessage());
+                        closePreviewStream();
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    try {
-                        ais.close();
-                        if (ais != null) {
-                            try {
-                                ais.close();
-                            } catch (IOException e2) {
-                                e2.printStackTrace();
-                            }
-                        }
-                    } catch (Exception e3) {
-                        e3.printStackTrace();
-                    }
+                } catch (Exception e) {
+                    log.warning("preview read failed: " + e);
+                    closePreviewStream();
+                    videoPreview = false;
                 }
-                if (aeRaw != null) {
-                    extractor = chip.getEventExtractor();  // Desipte extrator is initiliazed at first, if jAER 3.0 file used, then Jaer3BufferParser
-                    // will update the extrator, so we need to update this value here.
-                    ae = extractor.extractPacket(aeRaw);
-                }
-            }
-            if (ae != null) {
-                renderer.render(ae);
-                canvas.paintFrame();
             }
         } else {
             fileSizeString = indexFileString;
-            g2.clearRect(0, 0, getWidth(), getHeight());
+            previewImage = null;
         }
-        g2.setColor(Color.red);
-        g2.setFont(g2.getFont().deriveFont(17f));
-        g2.drawString(fileSizeString, 30f, 30f);
-//        infoLabel.repaint();
-
+        if (previewImage != null) {
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            g2.drawImage(previewImage, 0, 0, getWidth(), getHeight(), this);
+        }
+        drawOverlay(g2);
         try {
             Thread.sleep(15);
         } catch (InterruptedException e) {
@@ -342,6 +345,144 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     File getCurrentFile() {
         return currentFile;
+    }
+
+    /**
+     * Closes the preview input stream if open. Nulls {@link #ais} first so a
+     * concurrent paint cannot keep reading a closed mapped file.
+     */
+    private void closePreviewStream() {
+        AEFileInputStreamInterface toClose = ais;
+        ais = null;
+        videoPreview = false;
+        if (toClose != null) {
+            try {
+                toClose.close();
+            } catch (Exception e) {
+                log.warning(String.format("Caught %s", e.toString()));
+            }
+        }
+    }
+
+    /**
+     * Clears leftover APS / DVS pixmap so the next recording does not show the
+     * previous file's last frame.
+     */
+    private void clearPreviewImage() {
+        ae = null;
+        aeRaw = null;
+        previewImage = null;
+        try {
+            if (renderer != null) {
+                renderer.resetFrame(renderer.getGrayValue());
+            }
+        } catch (Exception e) {
+            log.fine("preview frame reset: " + e);
+        }
+    }
+
+    /**
+     * Copies the chip renderer pixmap into {@link #previewImage} (AWT, y-up
+     * chip coords flipped to image coords).
+     */
+    private void blitRendererToPreviewImage() {
+        if (renderer == null || chip == null) {
+            previewImage = null;
+            return;
+        }
+        renderer.ensurePixmapReadyForDisplay();
+        float[] pix = renderer.getPixmapArray();
+        if (pix == null) {
+            previewImage = null;
+            return;
+        }
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        if (sx <= 0 || sy <= 0) {
+            previewImage = null;
+            return;
+        }
+        final boolean rgba = renderer instanceof DavisRenderer;
+        final int stride = rgba ? 4 : 3;
+        final int rowWidth = Math.max(1, renderer.getWidth());
+        if (previewImage == null || previewImage.getWidth() != sx || previewImage.getHeight() != sy) {
+            previewImage = new BufferedImage(sx, sy, BufferedImage.TYPE_INT_RGB);
+        }
+        int[] out = ((DataBufferInt) previewImage.getRaster().getDataBuffer()).getData();
+        for (int y = 0; y < sy; y++) {
+            int dstRow = (sy - 1 - y) * sx;
+            int srcRow = y * rowWidth;
+            for (int x = 0; x < sx; x++) {
+                int idx = stride * (srcRow + x);
+                if (idx + 2 >= pix.length) {
+                    break;
+                }
+                out[dstRow + x] = packRgb(pix[idx], pix[idx + 1], pix[idx + 2]);
+            }
+        }
+    }
+
+    private static int packRgb(float rf, float gf, float bf) {
+        int r = (int) (rf * 255f);
+        int g = (int) (gf * 255f);
+        int b = (int) (bf * 255f);
+        if (r < 0) {
+            r = 0;
+        } else if (r > 255) {
+            r = 255;
+        }
+        if (g < 0) {
+            g = 0;
+        } else if (g > 255) {
+            g = 255;
+        }
+        if (b < 0) {
+            b = 0;
+        } else if (b > 255) {
+            b = 255;
+        }
+        return (r << 16) | (g << 8) | b;
+    }
+
+    private String overlayText(AEFileInputStreamInterface stream) {
+        String info = stream.getFileInfo();
+        if (info != null && !info.isBlank()) {
+            return info;
+        }
+        return fmt.format(stream.size()) + " events " + fmt.format(stream.getDurationUs() / 1e6f) + " s";
+    }
+
+    private String summaryFromOpen(AEFileInputStreamInterface stream) {
+        try {
+            return overlayText(stream);
+        } finally {
+            try {
+                stream.close();
+            } catch (Exception e) {
+                log.fine("preview summary close: " + e);
+            }
+        }
+    }
+
+    private void drawOverlay(Graphics2D g2) {
+        if (g2 == null || fileSizeString == null || fileSizeString.isEmpty()) {
+            return;
+        }
+        g2.setColor(Color.red);
+        g2.setFont(g2.getFont().deriveFont(14f));
+        int y = 24;
+        int lines = 0;
+        for (String line : fileSizeString.split("\\r?\\n")) {
+            if (line.isEmpty()) {
+                y += 16;
+                continue;
+            }
+            g2.drawString(line, 10f, y);
+            y += 16;
+            if (++lines >= 14) {
+                break;
+            }
+        }
     }
 
     /**

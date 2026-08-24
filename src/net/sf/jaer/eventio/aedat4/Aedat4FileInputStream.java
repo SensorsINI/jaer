@@ -312,8 +312,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         for (ImuPacket imu : pendingImu) {
             bundle.add(imu);
-            if (chip instanceof DavisBaseCamera && imu.getSize() > 0) {
-                ((DavisBaseCamera) chip).setImuSample(imu.get(imu.getSize() - 1));
+            if (imu.getSize() > 0) {
+                final IMUSample last = imu.get(imu.getSize() - 1);
+                if (chip instanceof DavisBaseCamera) {
+                    ((DavisBaseCamera) chip).setImuSample(last);
+                } else if (chip instanceof ch.unizh.ini.jaer.chip.retina.DVXplorer dvx) {
+                    dvx.setLatestImuSample(last);
+                }
             }
         }
         if (nFrames > 0 || log.isLoggable(Level.FINER)) {
@@ -1069,7 +1074,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     | ((type & 1) << DavisChip.POLSHIFT);
         }
         if (extractor != null) {
-            return extractor.getAddressFromCell(x, y, type);
+            // getAddressFromCell expects jAER display Y (bottom origin), the inverse of
+            // extractPacket. DV/OpenCV files store top-left Y — convert first. jAER-written
+            // files already store display Y (same as Davis).
+            int py = y;
+            if (dvOpenCvCoordinates) {
+                final int sy = chip.getSizeY();
+                if (sy > 1) {
+                    py = sy - 1 - y;
+                }
+            }
+            return extractor.getAddressFromCell(x, py, type);
         }
         return (x & 0xffff) | ((y & 0xffff) << 16) | (type << 31);
     }

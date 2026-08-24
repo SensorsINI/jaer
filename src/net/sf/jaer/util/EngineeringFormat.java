@@ -23,6 +23,7 @@ public class EngineeringFormat {
     protected char[] suffixes={'a','f','p','n','u','m',' ','k','M','G','T'};
     int smallestDecade=-18, largestDecade=15;
     String formatterString=null;
+    private final StringBuilder formatBuf = new StringBuilder(16);
     
     /** Creates a new instance of EngineeringFormat */
     public EngineeringFormat() {
@@ -32,15 +33,65 @@ public class EngineeringFormat {
     public boolean fillSignEnabled=false;
     
     final public String format(double x){
-        boolean isNeg=x<0;
-        x=Math.abs(x);
-        double dec=Math.floor(Math.log10(x)); // e.g. 2.3e-7 -> -7
-        if(dec<smallestDecade) return "0";
-        if(dec>largestDecade) return "inf";
-        double k=Math.floor(dec/3);
-        double div=Math.pow(10, k*3);
-        double mant=x/div;
-        return String.format(formatterString,isNeg?'-':'+',mant,suffix((int)k+6));
+        formatBuf.setLength(0);
+        append(formatBuf, x);
+        return formatBuf.toString();
+    }
+
+    /**
+     * Writes engineering format into {@code sb} without {@link String#format}
+     * (no Formatter/FormatSpecifier allocation).
+     */
+    final public void append(StringBuilder sb, double x) {
+        if (x == 0 || Double.isNaN(x)) {
+            sb.append('0');
+            return;
+        }
+        boolean isNeg = x < 0;
+        x = Math.abs(x);
+        if (Double.isInfinite(x) || x > Math.pow(10, largestDecade)) {
+            sb.append("inf");
+            return;
+        }
+        double dec = Math.floor(Math.log10(x));
+        if (dec < smallestDecade) {
+            sb.append('0');
+            return;
+        }
+        double k = Math.floor(dec / 3);
+        double div = Math.pow(10, k * 3);
+        double mant = x / div;
+        sb.append(isNeg ? '-' : '+');
+        appendMantissa(sb, mant, precision);
+        char suf = suffix((int) k + 6);
+        sb.append(suf);
+    }
+
+    private void appendMantissa(StringBuilder sb, double mant, int fracDigits) {
+        if (fracDigits < 0) {
+            fracDigits = 0;
+        }
+        long scale = 1;
+        for (int i = 0; i < fracDigits; i++) {
+            scale *= 10;
+        }
+        long rounded = Math.round(Math.abs(mant) * (double) scale);
+        long ip = rounded / scale;
+        long fp = rounded % scale;
+        sb.append(ip);
+        if (fracDigits == 0) {
+            return;
+        }
+        sb.append('.');
+        long place = 1;
+        for (int i = 1; i < fracDigits; i++) {
+            place *= 10;
+        }
+        for (int i = 0; i < fracDigits; i++) {
+            sb.append((char) ('0' + (fp / place)));
+            fp %= place;
+            place /= 10;
+        }
     }
 
     private char suffix(int k){

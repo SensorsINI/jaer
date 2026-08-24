@@ -66,7 +66,7 @@ public interface AEDataFile {
     /**
      * Format-selector sentinel for the AEDZ compressed recording format. Not an
      * AEDAT version number: it is only used to route
-     * {@link AEViewer#startLogging(String,String)} and the preferences combo to
+     * {@link AEViewer#startRecording(String,String)} and the preferences combo to
      * an {@code AEDZOutputStream}. Never parsed numerically.
      */
     public static final String DATA_FILE_VERSION_NUMBER_AEDZ = "aedz";

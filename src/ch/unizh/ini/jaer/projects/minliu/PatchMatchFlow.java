@@ -50,6 +50,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -77,6 +78,35 @@ import org.apache.commons.lang3.ArrayUtils;
  */
 @Description("<html>EDFLOW: Computes optical flow with vector direction using SFAST keypoint/corner detection and adaptive time slice block matching (ABMOF) as published in<br>"
         + "Liu, M., and Delbruck, T. (2018). <a href=\"http://bmvc2018.org/contents/papers/0280.pdf\">Adaptive Time-Slice Block-Matching Optical Flow Algorithm for Dynamic Vision Sensors</a>.<br> in BMVC 2018 (Nescatle upon Tyne)")
+@Help("""
+<html>
+<body>
+<h2>PatchMatchFlow</h2>
+<p><b>EDFLOW / ABMOF</b>: block-matching optical flow on DVS time slices, optionally only at
+SFAST/EFAST corners. Not gradient OF; it matches local patches backward in time.</p>
+<p>Source paper:
+<a href="http://bmvc2018.org/contents/papers/0280.pdf">Adaptive Time-Slice Block-Matching
+Optical Flow Algorithm for Dynamic Vision Sensors</a>
+(Liu &amp; Delbruck, BMVC 2018).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable the filter. Denoising upstream helps. Use <code>showCorners</code> to see SFAST
+keypoints; raise <code>cornerThr</code> for fewer corners.</li>
+<li><code>calcOFonCornersEnabled</code> computes flow only at corners (faster).
+<code>useEFASTnotSFAST</code> switches detector.</li>
+<li><code>blockDimension</code> / <code>searchDistance</code> / <code>numScales</code>
+set patch size and search. <code>sliceMethod</code> chooses constant event count, duration,
+or area event count; <code>adaptiveSliceDuration</code> feedback-controls that.</li>
+<li><code>skipProcessingEventsCount</code> / <code>adaptiveEventSkipping</code> trade accuracy
+for frame rate. Use a processing time limit if the display stalls.</li>
+</ol>
+<p><code>outlierRejectionEnabled</code> drops vectors far from recent global flow.
+<code>startRecordingForEDFLOW</code> writes events+flow for the hardware EDFLOW pipeline.
+<code>ppsScale</code> scales drawn vectors.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater {
 

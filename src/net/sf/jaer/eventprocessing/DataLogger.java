@@ -19,22 +19,23 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
-import net.sf.jaer.graphics.LoggingSaveDialogGuard;
+import net.sf.jaer.graphics.RecordingSaveDialogGuard;
 import net.sf.jaer.util.DATFileFilter;
+import net.sf.jaer.util.FileAccessTimeout;
 
 /**
- * Logs data to disk according to various criteria.
+ * Records event data to disk according to various criteria.
  * @author tobi
  */
-@Description("Logs data to disk according to various criteria.")
+@Description("Records event data to disk according to various criteria.")
 public class DataLogger extends EventFilter2D {
 
-    private boolean loggingEnabled = false; // controlled by filterEnabled
-    private AEFileOutputStream loggingOutputStream;
-    private String defaultLoggingFolderName = System.getProperty("user.dir");
-    // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
-    private String loggingFolder = getPrefs().get("DataLogger.loggingFolder", defaultLoggingFolderName);
-    private File loggingFile;
+    private boolean recordingEnabled = false; // controlled by filterEnabled
+    private AEFileOutputStream recordingOutputStream;
+    private String defaultRecordingFolderName = System.getProperty("user.dir");
+    // lastRecordingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
+    private String recordingFolder = getPrefs().get("DataLogger.loggingFolder", defaultRecordingFolderName);
+    private File recordingFile;
     private int maxLogFileSizeMB = prefs().getInt("DataLogger.maxLogFileSizeMB", 100);
     private boolean rotateFilesEnabled = prefs().getBoolean("DataLogger.rotateFilesEnabled", false);
     private int rotatePeriod = prefs().getInt("DataLogger.rotatePeriod", 7);
@@ -49,55 +50,56 @@ public class DataLogger extends EventFilter2D {
     public DataLogger(AEChip chip) {
         super(chip);
         final String cont = "Control", params = "Parameters";
-        setPropertyTooltip(cont, "loggingEnabled", "Enable to start logging data");
+        setPropertyTooltip(cont, "recordingEnabled", "Enable to start recording data");
         setPropertyTooltip(params, "filenameTimestampEnabled", "adds a timestamp to the filename, but means rotation will not overwrite old data files and will eventually fill disk");
-        setPropertyTooltip(params, "logFileBaseName", "the base name of the log file - if empty the AEChip class name is used");
-        setPropertyTooltip(params, "rotatePeriod", "log file rotation period");
-        setPropertyTooltip(params, "rotateFilesEnabled", "enabling rotates log files over rotatePeriod");
-        setPropertyTooltip(params, "maxLogFileSizeMB", "logging is stopped when files get larger than this in MB");
-        setPropertyTooltip(params, "loggingFolder", "directory to store logged data files");
-        // check lastLoggingFolder to see if it really exists, if not, default to user.dir
-        File lf = new File(loggingFolder);
-        if (!lf.exists() || !lf.isDirectory()) {
-            log.warning("loggingFolder " + lf + " doesn't exist or isn't a directory, defaulting to " + lf);
-            setLoggingFolder(defaultLoggingFolderName);
+        setPropertyTooltip(params, "logFileBaseName", "the base name of the recording file - if empty the AEChip class name is used");
+        setPropertyTooltip(params, "rotatePeriod", "recording file rotation period");
+        setPropertyTooltip(params, "rotateFilesEnabled", "enabling rotates recording files over rotatePeriod");
+        setPropertyTooltip(params, "maxLogFileSizeMB", "recording is stopped when files get larger than this in MB");
+        setPropertyTooltip(params, "recordingFolder", "directory to store recorded data files");
+        // check lastRecordingFolder to see if it really exists, if not, default to user.dir
+        File lf = new File(recordingFolder);
+        if (FileAccessTimeout.directoryOrNull(lf) == null) {
+            log.warning("recordingFolder " + lf + " doesn't exist, isn't a directory, or was not reachable within "
+                    + FileAccessTimeout.timeoutMs() + " ms, defaulting to " + defaultRecordingFolderName);
+            setRecordingFolder(defaultRecordingFolderName);
         }
     }
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        logData(in);
+        recordData(in);
         return in;
     }
 
-    synchronized private void logData(EventPacket eventPacket) {
+    synchronized private void recordData(EventPacket eventPacket) {
         if (eventPacket == null) {
             return;
         }
-        // if we are logging data to disk do it here
-        if (loggingEnabled) {
+        // if we are recording data to disk do it here
+        if (recordingEnabled) {
             try {
-                loggingOutputStream.writePacket(eventPacket); // log all events
+                recordingOutputStream.writePacket(eventPacket); // record all events
                 bytesWritten += eventPacket.getSize();
                 if (bytesWritten >>> 20 > maxLogFileSizeMB) {
-                    setLoggingEnabled(false);
+                    setRecordingEnabled(false);
                     if (rotateFilesEnabled) {
-                        startLogging();
+                        startRecording();
                     }
                 }
             } catch (IOException e) {
-                log.warning("while logging data to " + loggingFile + " caught " + e + ", will try to close file");
-                loggingEnabled = false;
+                log.warning("while recording data to " + recordingFile + " caught " + e + ", will try to close file");
+                recordingEnabled = false;
                 try {
-                    loggingOutputStream.close();
-                    log.info("closed logging file " + loggingFile);
+                    recordingOutputStream.close();
+                    log.info("closed recording file " + recordingFile);
                 } catch (IOException e2) {
-                    log.warning("while closing logging file " + loggingFile + " caught " + e2);
+                    log.warning("while closing recording file " + recordingFile + " caught " + e2);
                 } finally {
-                    loggingOutputStream = null;
+                    recordingOutputStream = null;
                     releaseActiveRecordingSnapshot();
                 }
-                getSupport().firePropertyChange("loggingEnabled", null, false);
+                getSupport().firePropertyChange("recordingEnabled", null, false);
             }
         }
     }
@@ -110,38 +112,42 @@ public class DataLogger extends EventFilter2D {
     public void initFilter() {
     }
 
-    public void doSelectLoggingFolder() {
-        if (loggingFolder == null || loggingFolder.isEmpty()) {
-            loggingFolder = System.getProperty("user.dir");
+    public void doSelectRecordingFolder() {
+        if (recordingFolder == null || recordingFolder.isEmpty()) {
+            recordingFolder = System.getProperty("user.dir");
         }
-        JFileChooser chooser = new JFileChooser(loggingFolder);
-        chooser.setDialogTitle("Choose data logging folder");
+        JFileChooser chooser = new JFileChooser(recordingFolder);
+        chooser.setDialogTitle("Choose data recording folder");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         chooser.setMultiSelectionEnabled(false);
         int retval = chooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
         if (retval == JFileChooser.APPROVE_OPTION) {
             File f = chooser.getSelectedFile();
             if (f != null && f.isDirectory()) {
-                setLoggingFolder(f.toString());
-                log.info("selected data logging folder " + loggingFolder);
+                setRecordingFolder(f.toString());
+                log.info("selected data recording folder " + recordingFolder);
             } else {
-                log.warning("tried to select invalid logging folder named " + f);
+                log.warning("tried to select invalid recording folder named " + f);
             }
         }
     }
 
-    /** Starts logging AE data to a file.
+    /** Starts recording AE data to a file.
      *
-     * @param filename the filename to log to, including all path information. Filenames without path
-     * are logged to the startup folder. Appends {@link AEDataFile#DATA_FILE_EXTENSION_AEDAT2}
+     * @param filename the filename to record to, including all path information. Filenames without path
+     * are recorded to the startup folder. Appends {@link AEDataFile#DATA_FILE_EXTENSION_AEDAT2}
      * if there is no known data-file extension.
      *
-     * @return the file that is logged to.
+     * @return the file that is recorded to.
      */
-    synchronized public File startLogging(String filename) {
+    synchronized public File startRecording(String filename) {
         if (filename == null) {
             log.warning("tried to log to null filename, aborting");
             return null;
+        }
+        if (recordingEnabled) {
+            log.warning("already recording to " + recordingFile);
+            return recordingFile;
         }
         if (!AEDataFile.hasDataFileExtension(filename)) {
             filename = filename + AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
@@ -150,9 +156,9 @@ public class DataLogger extends EventFilter2D {
         RecordingConfigurationSnapshot snapshot = null;
         boolean capturedHere = false;
         FileOutputStream fileOutputStream = null;
-        AEFileOutputStream newLoggingOutputStream = null;
+        AEFileOutputStream newRecordingOutputStream = null;
         try {
-            loggingFile = new File(filename);
+            recordingFile = new File(filename);
 
             // Reuse an owner-supplied snapshot by identity. Only a direct call with
             // no owner captures and temporarily installs its own snapshot.
@@ -168,48 +174,48 @@ public class DataLogger extends EventFilter2D {
             // writer (which uses its own ByteBuffer/channel) cannot buffer through it.
             // Use the active chip and AEDAT-2 version with a FileOutputStream, the same
             // pattern as the AEViewer legacy path.
-            fileOutputStream = new FileOutputStream(loggingFile);
-            newLoggingOutputStream = new AEFileOutputStream(fileOutputStream, chip, AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
+            fileOutputStream = new FileOutputStream(recordingFile);
+            newRecordingOutputStream = new AEFileOutputStream(fileOutputStream, chip, AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
             fileOutputStream = null; // ownership transferred to the AEFileOutputStream
-            loggingOutputStream = newLoggingOutputStream;
+            recordingOutputStream = newRecordingOutputStream;
             activeRecordingSnapshot = snapshot;
             recordingSnapshotCapturedHere = capturedHere;
-            loggingEnabled = true;
-            getSupport().firePropertyChange("loggingEnabled", null, true);
-            log.info("starting logging to " + loggingFile);
+            recordingEnabled = true;
+            getSupport().firePropertyChange("recordingEnabled", null, true);
+            log.info("starting recording to " + recordingFile);
 
         } catch (IOException | RuntimeException e) {
             // A constructor or listener can fail after the raw stream is open. Close
             // whichever layer owns it, then release only a snapshot captured here.
             try {
-                if (newLoggingOutputStream != null) {
-                    newLoggingOutputStream.close();
+                if (newRecordingOutputStream != null) {
+                    newRecordingOutputStream.close();
                 } else if (fileOutputStream != null) {
                     fileOutputStream.close();
                 }
             } catch (IOException | RuntimeException closeException) {
-                log.warning("while closing failed logging start for " + filename + " caught " + closeException);
+                log.warning("while closing failed recording start for " + filename + " caught " + closeException);
             }
-            loggingOutputStream = null;
+            recordingOutputStream = null;
             activeRecordingSnapshot = null;
             recordingSnapshotCapturedHere = false;
             releaseSnapshotIfCapturedHere(snapshot, capturedHere);
-            loggingFile = null;
-            log.warning("exception on starting to log data to file "+filename+": "+e);
-            loggingEnabled=false;
-            getSupport().firePropertyChange("loggingEnabled", null, false);
+            recordingFile = null;
+            log.warning("exception on starting to record data to file "+filename+": "+e);
+            recordingEnabled=false;
+            getSupport().firePropertyChange("recordingEnabled", null, false);
         }
 
-        return loggingFile;
+        return recordingFile;
     }
 
-    /** Starts logging data to a default data logging file.
-     * @return the file that is logged to.
+    /** Starts recording data to a default data recording file.
+     * @return the file that is recorded to.
      */
-    synchronized public File startLogging() {
+    synchronized public File startRecording() {
 
-        if (loggingEnabled) {
-            return loggingFile;
+        if (recordingEnabled) {
+            return recordingFile;
         }
 
         String dateString = filenameTimestampEnabled ? AEDataFile.DATE_FORMAT.format(new Date()) : "";
@@ -232,7 +238,7 @@ public class DataLogger extends EventFilter2D {
             suffix = "";
         }
         do {
-            filename = loggingFolder + File.separator + base + "-" + dateString + "-" + suffix + AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
+            filename = recordingFolder + File.separator + base + "-" + dateString + "-" + suffix + AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
             File lf = new File(filename);
             if (rotateFilesEnabled) {
                 succeeded = true; // if rotation, always use next file
@@ -242,47 +248,47 @@ public class DataLogger extends EventFilter2D {
 
         } while (succeeded == false && suffixNumber++ <= 99);
         if (succeeded == false) {
-            log.warning("could not open a unigue new file for logging after trying up to " + filename + " aborting startLogging");
+            log.warning("could not open a unique new file for recording after trying up to " + filename + " aborting startRecording");
             return null;
         }
 
-        File lf = startLogging(filename);
+        File lf = startRecording(filename);
         bytesWritten = 0;
         return lf;
 
     }
 
-    /** Stops logging and optionally opens file dialog for where to save file.
-     * If number of AEViewers is more than one, dialog is also skipped since we may be logging from multiple viewers.
+    /** Stops recording and optionally opens file dialog for where to save file.
+     * If number of AEViewers is more than one, dialog is also skipped since we may be recording from multiple viewers.
      * @param confirmFilename true to show file dialog to confirm filename, false to skip dialog.
      * @return chosen File
      */
-    synchronized public File stopLogging(boolean confirmFilename) {
-        if (!loggingEnabled) {
+    synchronized public File stopRecording(boolean confirmFilename) {
+        if (!recordingEnabled) {
             return null;
         }
-        // the file has already been logged somewhere with a timestamped name, what this method does is
-        // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
+        // the file has already been recorded somewhere with a timestamped name, what this method does is
+        // to move the already recorded file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
         int retValue = JFileChooser.CANCEL_OPTION;
 
         try {
-            log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()));
-            loggingEnabled = false;
-            loggingOutputStream.close();
-            loggingOutputStream = null;
+            log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()));
+            recordingEnabled = false;
+            recordingOutputStream.close();
+            recordingOutputStream = null;
             // Release logger-owned state before save/rename UI or a rotation starts.
             releaseActiveRecordingSnapshot();
-// if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
+// if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
 
             if (confirmFilename) {
                 JFileChooser chooser = new JFileChooser();
-                chooser.setCurrentDirectory(new File(loggingFolder));
+                chooser.setCurrentDirectory(new File(recordingFolder));
                 chooser.setFileFilter(new DATFileFilter());
-                chooser.setDialogTitle("Save logged data");
+                chooser.setDialogTitle("Save recorded data");
 
                 String fn =
-                        loggingFile.getName();
+                        recordingFile.getName();
                 String base = fn;
                 String fnLower = fn.toLowerCase();
                 for (String ext : new String[]{
@@ -300,26 +306,26 @@ public class DataLogger extends EventFilter2D {
                 chooser.setMultiSelectionEnabled(false);
                 boolean savedIt = false;
                 do {
-                    retValue = LoggingSaveDialogGuard.showSaveDialog(chooser, chip.getAeViewer(), base);
+                    retValue = RecordingSaveDialogGuard.showSaveDialog(chooser, chip.getAeViewer(), base);
                     if (retValue == JFileChooser.APPROVE_OPTION) {
                         File newFile = chooser.getSelectedFile();
-                        if (LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(newFile.getName())) {
-                            LoggingSaveDialogGuard.restoreSelectedFilename(chooser, base);
-                            chooser.setDialogTitle("Save logged data (restored default filename)");
+                        if (RecordingSaveDialogGuard.isStrayRecordingShortcutFilename(newFile.getName())) {
+                            RecordingSaveDialogGuard.restoreSelectedFilename(chooser, base);
+                            chooser.setDialogTitle("Save recorded data (restored default filename)");
                             continue;
                         }
                         if (!AEDataFile.hasDataFileExtension(newFile.getName())) {
                             newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION_AEDAT2);
                         }
-// we'll rename the logged data file to the selection
+// we'll rename the recorded data file to the selection
 
-                        boolean renamed = loggingFile.renameTo(newFile);
+                        boolean renamed = recordingFile.renameTo(newFile);
                         if (renamed) {
                             // if successful, cool, save persistence
                             savedIt = true;
-                            setLoggingFolder(chooser.getCurrentDirectory().getPath());
-                            loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
-                            log.info("renamed logging file to " + newFile);
+                            setRecordingFolder(chooser.getCurrentDirectory().getPath());
+                            recordingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
+                            log.info("renamed recording file to " + newFile);
                         } else {
                             // confirm overwrite
                             int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
@@ -327,12 +333,12 @@ public class DataLogger extends EventFilter2D {
                                 // we need to delete the file
                                 boolean deletedOld = newFile.delete();
                                 if (deletedOld) {
-                                    savedIt = loggingFile.renameTo(newFile);
+                                    savedIt = recordingFile.renameTo(newFile);
                                     savedIt = true;
-                                    log.info("renamed logging file to " + newFile); // TODO something messed up here with confirmed overwrite of logging file
-                                    loggingFile = newFile;
+                                    log.info("renamed recording file to " + newFile); // TODO something messed up here with confirmed overwrite of recording file
+                                    recordingFile = newFile;
                                 } else {
-                                    log.warning("couldn't delete logging file " + newFile);
+                                    log.warning("couldn't delete recording file " + newFile);
                                 }
 
                             } else {
@@ -341,12 +347,12 @@ public class DataLogger extends EventFilter2D {
 
                         }
                     } else {
-                        // user hit cancel, delete logged data
-                        boolean deleted = loggingFile.delete();
+                        // user hit cancel, delete recorded data
+                        boolean deleted = recordingFile.delete();
                         if (deleted) {
-                            log.info("Deleted temporary logging file " + loggingFile);
+                            log.info("Deleted temporary recording file " + recordingFile);
                         } else {
-                            log.warning("Couldn't delete temporary logging file " + loggingFile);
+                            log.warning("Couldn't delete temporary recording file " + recordingFile);
                         }
 
                         savedIt = true;
@@ -358,13 +364,13 @@ public class DataLogger extends EventFilter2D {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            loggingOutputStream = null;
+            recordingOutputStream = null;
             releaseActiveRecordingSnapshot();
         }
 
-        loggingEnabled = false;
-        getSupport().firePropertyChange("loggingEnabled", null, false);
-        return loggingFile;
+        recordingEnabled = false;
+        getSupport().firePropertyChange("recordingEnabled", null, false);
+        return recordingFile;
     }
 
     /** Release the active snapshot only when this DataLogger captured and installed it. */
@@ -386,51 +392,51 @@ public class DataLogger extends EventFilter2D {
     /**
      * @return the lastFolderName
      */
-    public String getLoggingFolder() {
-        return loggingFolder;
+    public String getRecordingFolder() {
+        return recordingFolder;
     }
 
     /**
-     * @param loggingFolder the lastFolderName to set
+     * @param recordingFolder the lastFolderName to set
      */
-    public void setLoggingFolder(String loggingFolder) {
-        String old = loggingFolder;
-        this.loggingFolder = loggingFolder;
-        getPrefs().put("DataLogger.loggingFolder", loggingFolder);
-        getSupport().firePropertyChange("loggingFolder", old, loggingFolder);
+    public void setRecordingFolder(String recordingFolder) {
+        String old = recordingFolder;
+        this.recordingFolder = recordingFolder;
+        getPrefs().put("DataLogger.loggingFolder", recordingFolder);
+        getSupport().firePropertyChange("recordingFolder", old, recordingFolder);
     }
 
     /**
-     * @return the loggingEnabled
+     * @return the recordingEnabled
      */
-    private boolean isLoggingEnabled() {
-        return loggingEnabled;
+    private boolean isRecordingEnabled() {
+        return recordingEnabled;
     }
 
     /**
-     * @param loggingEnabled the loggingEnabled to set
+     * @param recordingEnabled the recordingEnabled to set
      */
-    synchronized private void setLoggingEnabled(boolean loggingEnabled) {
-        boolean old = this.loggingEnabled;
+    synchronized private void setRecordingEnabled(boolean recordingEnabled) {
+        boolean old = this.recordingEnabled;
         boolean success = false;
-        if (loggingEnabled) {
-            File f = startLogging();
+        if (recordingEnabled) {
+            File f = startRecording();
             if (f == null) {
-                log.warning("startLogging returned null");
-                loggingEnabled=false;
+                log.warning("startRecording returned null");
+                recordingEnabled=false;
             } else {
                 success = true;
             }
         } else {
-            File f = stopLogging(false);
+            File f = stopRecording(false);
             if (f == null) {
-                log.warning("stopLogging returned null");
+                log.warning("stopRecording returned null");
             } else {
                 success = true;
             }
         }
-            this.loggingEnabled = loggingEnabled;
-            getSupport().firePropertyChange("loggingEnabled", old, loggingEnabled);
+            this.recordingEnabled = recordingEnabled;
+            getSupport().firePropertyChange("recordingEnabled", old, recordingEnabled);
     }
 
     /**
@@ -511,7 +517,7 @@ public class DataLogger extends EventFilter2D {
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        setLoggingEnabled(yes);
+        setRecordingEnabled(yes);
     }
 
 

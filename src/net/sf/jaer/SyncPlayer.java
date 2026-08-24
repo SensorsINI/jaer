@@ -30,6 +30,7 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.IndexFileFilter;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.SubclassFinder;
 
 /**
@@ -569,7 +570,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             String s2 = s.substring(ind + 1);
             if (s2.equals(className)) {
                 try {
-                    deviceClass = Class.forName(s);
+                    deviceClass = JaerAllowedSubclasses.load(s, net.sf.jaer.chip.AEChip.class);
                     log.info("found class " + deviceClass + " for className " + className);
                     break;
                 } catch (ClassNotFoundException e) {

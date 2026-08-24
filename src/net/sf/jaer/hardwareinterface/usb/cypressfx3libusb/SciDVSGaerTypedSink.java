@@ -52,7 +52,7 @@ final class SciDVSGaerTypedSink implements SciDVSGaerSink {
         final int typedX = typedUnflipSizeX.getAsInt() - 1
                 - ((packedAddress & DavisChip.XMASK) >>> DavisChip.XSHIFT);
         final int typedY = (packedAddress & DavisChip.YMASK) >>> DavisChip.YSHIFT;
-        builder.addPolarity(typedX, typedY, on, timestamp);
+        builder.addPolarity(typedX, typedY, on, timestamp, packedAddress);
         rawSink.onPolarity(packedAddress, x, y, on, timestamp);
     }
 

@@ -9,6 +9,7 @@ import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -31,6 +32,31 @@ import java.util.*;
  * @author tobi
  */
 @Description("Filters out uncorrelated background activity noise")
+@Help("""
+<html>
+<body>
+<h2>FoosballFilter</h2>
+<p>Specialized for a table-football (foosball) camera view. When a pixel spikes it
+<b>inhibits neighbors</b> for <code>inbtime</code>, which suppresses chatter along the
+player bars. Bar <code>x</code> positions and player gaps are built in
+(attack / mid / defense).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Aim the DVS at the table so the rods are roughly vertical in the image
+(default bar columns are around x=40, 72, 105, 138, 172, 201 on a DVS128-scale scene;
+you may need to use <code>RotateFilter</code> first).</li>
+<li>Check <b>Enabled</b>.</li>
+<li><code>inbtime</code> &mdash; inhibition duration (&micro;s) after each spike.</li>
+<li><code>delta</code> &mdash; half-width of the inhibited neighborhood (pixels).</li>
+<li><code>gapAtt</code> / <code>gapMid</code> / <code>gapDef</code> &mdash; spacing between
+players on attack, midfield, and defense rods.</li>
+</ol>
+<p>Despite the class Description, this is not a general BA denoiser;
+use <code>SpatioTemporalCorrelationFilter</code> for that.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FoosballFilter extends EventFilter2D implements Observer {
 

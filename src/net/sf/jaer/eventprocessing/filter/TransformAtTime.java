@@ -7,38 +7,56 @@ package net.sf.jaer.eventprocessing.filter;
 import java.awt.geom.Point2D;
 
 /**
- * Holds timestamped transform information including translationPixels and rotationRad,
- intended for application to the event stream.
+ * Timestamped image-plane transform applied to events (and optionally APS
+ * rendering) by {@link Steadicam}.
+ * <p>
+ * Signs match the IMU gyros ({@link eu.seebetter.ini.chips.davis.imu.IMUSample}):
+ * they describe <em>camera</em> motion from the camera viewpoint. The warp
+ * uses the same sign so a static scene stays put (camera CW roll makes the
+ * image appear to roll CCW; a CW event warp derotates it). Chip coordinates
+ * are x right, y up.
  *
  * @author tobi
  */
 public class TransformAtTime {
 
-    /** In pixels */
+    /**
+     * Translation in pixels (x right, y up). Positive x is camera pan right
+     * (image shifts left). Positive y is camera tilt up (image shifts down).
+     */
     public Point2D.Float translationPixels;
     int timestamp;
-    /** In radians, CW from right unit vector. */
+    /**
+     * Rotation in radians, clockwise from the camera viewpoint (same sign as
+     * {@link eu.seebetter.ini.chips.davis.imu.IMUSample#getGyroRollZ()}).
+     * Positive camera roll CW makes the image appear to roll CCW; this angle
+     * is the CW warp applied to events.
+     */
     public float rotationRad;
+    /** {@code cos(rotationRad)} for the clockwise event warp. */
     public float cosAngle;
+    /** {@code sin(rotationRad)} for the clockwise event warp. */
     public float sinAngle;
 
-    /** Constructs a new TransformAtTime.
-     * 
+    /**
+     * Constructs a new TransformAtTime.
+     *
      * @param timestamp in us
-     * @param translation in pixels x and y directions, increasing up and to rightwards
-     * @param rotation in radians, clockwise from zero to right
+     * @param translation in pixels; x right / pan-right, y up / tilt-up
+     * @param rotation in radians, clockwise from the camera viewpoint
      */
     public TransformAtTime(int timestamp, Point2D.Float translation, float rotation) {
         this.translationPixels=translation;
         set(timestamp, translation.x, translation.y, rotation);
     }
 
-   /** Sets the transform
-     * 
+   /**
+     * Sets the transform.
+     *
      * @param timestamp in us
-     * @param translationX in pixels x and y directions, increasing up and to rightwards
-     * @param translationY in pixels x and y directions, increasing up and to rightwards
-     * @param rotation in radians, clockwise from zero to right
+     * @param translationX pixels, x right (camera pan right / image left)
+     * @param translationY pixels, y up (camera tilt up / image down)
+     * @param rotation in radians, clockwise from the camera viewpoint
      */
     final public void set(int timestamp, float translationX, float translationY, float rotation) {
         translationPixels.x=translationX;

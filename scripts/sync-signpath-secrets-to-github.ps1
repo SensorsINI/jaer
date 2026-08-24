@@ -21,12 +21,16 @@ function Read-Uuid([string]$path) {
 
 $orgId = Read-Uuid (Join-Path $dir 'signpath-organization-id.txt')
 $token = Read-FirstMeaningfulLine (Join-Path $dir 'signpath-api-token.txt')
-$license = Read-FirstMeaningfulLine (Join-Path $dir 'install4j-license.txt')
+$licenseFile = Join-Path (Join-Path $root 'install4j') 'license.txt'
+if (-not (Test-Path $licenseFile)) {
+    $licenseFile = Join-Path $dir 'install4j-license.txt'
+}
+$license = Read-FirstMeaningfulLine $licenseFile
 $project = Read-FirstMeaningfulLine (Join-Path $dir 'signpath-project-slug.txt')
 $policy = Read-FirstMeaningfulLine (Join-Path $dir 'signpath-signing-policy-slug.txt')
 
 if (-not $token) { throw 'signpath-api-token.txt is empty' }
-if (-not $license) { throw 'install4j-license.txt is empty' }
+if (-not $license) { throw "install4j license empty ($licenseFile; also tried signpath/install4j-license.txt)" }
 if (-not $project) { $project = 'jaer' }
 if (-not $policy) { $policy = 'test-signing' }
 

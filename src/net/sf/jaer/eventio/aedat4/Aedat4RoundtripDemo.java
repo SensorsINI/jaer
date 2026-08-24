@@ -2,6 +2,10 @@ package net.sf.jaer.eventio.aedat4;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -29,8 +33,14 @@ public class Aedat4RoundtripDemo {
         }
         bundle.add(events);
         try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(file, null)) {
+            java.lang.reflect.Field packetHeader = Aedat4FileOutputStream.class.getDeclaredField("packetHeader");
+            packetHeader.setAccessible(true);
+            if (!((ByteBuffer) packetHeader.get(output)).isDirect()) {
+                throw new IllegalStateException("Reusable packet header must be direct");
+            }
             output.writeBundle(bundle);
         }
+        verifyOwnedConstructorClosesOnInitializationFailure();
 
         verifyDvFileDataTable(file);
         int decoded = decodeFirstEventPacketLength(file);
@@ -58,6 +68,69 @@ public class Aedat4RoundtripDemo {
                 + " rerecordedFile=" + rerecorded.getAbsolutePath());
         if (!pass) {
             System.exit(1);
+        }
+    }
+
+    /** A file-owning constructor must close its stream if initialization aborts. */
+    private static void verifyOwnedConstructorClosesOnInitializationFailure() throws Exception {
+        File failed = File.createTempFile("jaer-aedat4-constructor-failure", ".aedat4");
+        CountingFileOutputStream stream = new CountingFileOutputStream(failed);
+        net.sf.jaer.chip.AEChip throwingChip = new org.objenesis.ObjenesisStd()
+                .newInstance(ThrowingSnapshotChip.class);
+        Constructor<Aedat4FileOutputStream> constructor = Aedat4FileOutputStream.class.getDeclaredConstructor(
+                FileOutputStream.class, net.sf.jaer.chip.AEChip.class, int.class, long.class,
+                net.sf.jaer.eventio.RecordingConfigurationSnapshot.class, boolean.class);
+        constructor.setAccessible(true);
+        try {
+            constructor.newInstance(stream, throwingChip,
+                    net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4,
+                    System.currentTimeMillis() * 1000L, null, true);
+            throw new IllegalStateException("Expected constructor initialization failure");
+        } catch (InvocationTargetException expected) {
+            if (!(expected.getCause() instanceof InjectedInitializationFailure)) {
+                throw expected;
+            }
+        }
+        if (stream.closeCalls != 1 || stream.getChannel().isOpen()) {
+            throw new IllegalStateException("Owned failed constructor did not close its stream exactly once");
+        }
+        if (!failed.delete()) {
+            failed.deleteOnExit();
+        }
+        System.out.println("PASS owned constructor failure closes stream");
+    }
+
+    private static final class ThrowingSnapshotChip extends net.sf.jaer.chip.AEChip {
+        @Override
+        public net.sf.jaer.biasgen.Biasgen getBiasgen() {
+            throw new InjectedInitializationFailure();
+        }
+    }
+
+    private static final class InjectedInitializationFailure extends RuntimeException {
+    }
+
+    private static final class CountingFileOutputStream extends FileOutputStream {
+        int closeCalls;
+        private boolean closing;
+
+        CountingFileOutputStream(File file) throws IOException {
+            super(file);
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (closing) {
+                super.close();
+                return;
+            }
+            closeCalls++;
+            closing = true;
+            try {
+                super.close();
+            } finally {
+                closing = false;
+            }
         }
     }
 

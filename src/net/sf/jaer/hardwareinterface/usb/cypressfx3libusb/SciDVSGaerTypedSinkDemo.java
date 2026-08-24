@@ -82,6 +82,8 @@ public final class SciDVSGaerTypedSinkDemo {
             require(event.getY() == expectedY, name + " typed Y matches raw golden " + i);
             require((event.getPolarity() == PolarityEvent.Polarity.On) == expectedOn,
                     name + " typed polarity matches raw golden " + i);
+            require(event.address == packed,
+                    name + " typed packed address matches raw golden " + i);
             require(event.getTimestamp() == raw.getTimestamps()[i],
                     name + " typed timestamp matches raw golden " + i);
         }

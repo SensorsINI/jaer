@@ -19,6 +19,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -85,8 +86,22 @@ public class RecentFiles {
         return -1;
     }
     
+    private boolean buildingMenu;
+
     /** inserts the file items in the File menu */
     void buildMenu(){
+        if (buildingMenu) {
+            return;
+        }
+        buildingMenu = true;
+        try {
+            buildMenuBody();
+        } finally {
+            buildingMenu = false;
+        }
+    }
+
+    private void buildMenuBody(){
         for(JMenuItem i:fileMenuList){
             fileMenu.remove(i);
         }
@@ -99,12 +114,15 @@ public class RecentFiles {
         ArrayList<JMenuItem> folderItems = new ArrayList<>();
         int fileIndex=0;
         int folderIndex=0;
+        Map<File, FileAccessTimeout.Kind> kinds = FileAccessTimeout.classify(fileList);
+        dropUnreachable(kinds);
         for(File f:fileList){
             if(f==null){
                 System.err.println("RecentFiles.buildMenu(): null File in fileList");
                 continue;
             }
-            if(f.isFile()){
+            FileAccessTimeout.Kind k = kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING);
+            if(k == FileAccessTimeout.Kind.FILE){
                 String name=f.getName();
                 if(fileIndex<9){
                     name=Integer.toString(fileIndex+1)+" "+f.getName();
@@ -117,7 +135,7 @@ public class RecentFiles {
                 fileItems.add(item);
                 fileIndex++;
                 if(fileIndex>MAX_FILES) break;
-            }else if(!f.isDirectory()){
+            }else if(k != FileAccessTimeout.Kind.DIRECTORY){
                 log.info(String.format("File %s dis not a file or directory",f.toString()));
             }
         }
@@ -126,7 +144,8 @@ public class RecentFiles {
                 System.err.println("RecentFiles.buildMenu(): null File in fileList");
                 continue;
             }
-            if(f.isDirectory()){
+            FileAccessTimeout.Kind k = kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING);
+            if(k == FileAccessTimeout.Kind.DIRECTORY){
                 String name=f.getName();
                 JMenuItem item=new JMenuItem(name+File.separator);
                 item.setActionCommand(f.getPath());
@@ -209,32 +228,6 @@ public class RecentFiles {
         }
     }
     
-    void removeLastFile(){
-        File last=null;
-        int index=MAX_FILES;
-        for(File f:fileList){
-            if(f.isFile()){
-                if(--index==0) last=f;
-            }
-        }
-        if(last!=null) {
-            fileList.remove(last);
-        }
-    }
-    
-    void removeLastFolder(){
-        File last=null;
-        int index=MAX_FOLDERS;
-        for(File f:fileList){
-            if(f.isDirectory()){
-                if(--index==0) last=f;
-            }
-        }
-        if(last!=null) {
-            fileList.remove(last);
-        }
-    }
-    
     /** adds files and their containing folders to list of recent files. List is pruned if too long.
      @param f a file to add
      */
@@ -248,7 +241,6 @@ public class RecentFiles {
             fileList.add(0,f); // put to head of list
         }else{
             fileList.add(0, f);
-            removeLastFile();
         }
         
         // add folder to list
@@ -261,7 +253,6 @@ public class RecentFiles {
                 fileList.add(0,parentFile); // put to head of list
             }else{
                 fileList.add(0, parentFile);
-                removeLastFolder();
             }
         }
         pruneList();
@@ -270,30 +261,83 @@ public class RecentFiles {
     }
     
     public void removeFile(File f){
-        if(!fileList.contains(f)) return;
-        fileList.remove(f);
+        if (f == null || fileList == null) {
+            return;
+        }
+        boolean removed = fileList.remove(f);
+        if (!removed) {
+            File abs = f.getAbsoluteFile();
+            removed = fileList.removeIf(x -> x != null && samePath(x, abs));
+        }
+        if (!removed) {
+            return;
+        }
         putPrefs();
         buildMenu();
+    }
+
+    private static boolean samePath(File a, File b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a.equals(b)) {
+            return true;
+        }
+        return a.getAbsoluteFile().equals(b.getAbsoluteFile());
+    }
+
+    /**
+     * Forget paths that timed out, are missing, or are neither file nor
+     * directory. One failed probe is enough; otherwise a wedged UNC/Dropbox
+     * folder is re-probed on every save dialog / menu rebuild.
+     *
+     * @return true if anything was removed
+     */
+    private boolean dropUnreachable(Map<File, FileAccessTimeout.Kind> kinds) {
+        if (fileList == null || kinds == null) {
+            return false;
+        }
+        ArrayList<File> removeList = new ArrayList<>();
+        for (File f : fileList) {
+            if (f == null) {
+                removeList.add(f);
+                continue;
+            }
+            FileAccessTimeout.Kind k = kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING);
+            if (k != FileAccessTimeout.Kind.FILE && k != FileAccessTimeout.Kind.DIRECTORY) {
+                removeList.add(f);
+            }
+        }
+        if (removeList.isEmpty()) {
+            return false;
+        }
+        fileList.removeAll(removeList);
+        for (File f : removeList) {
+            log.warning("Removing unreachable recent path " + f
+                    + " (" + kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING) + ")");
+        }
+        putPrefs();
+        return true;
     }
     
     // prunes list to MAX_FILES and MAX_FOLDERS
     private void pruneList(){
+        Map<File, FileAccessTimeout.Kind> kinds = FileAccessTimeout.classify(fileList);
+        dropUnreachable(kinds);
         ArrayList<File> removeList=new ArrayList<File>();
         int nfiles=0, ndirs=0;
         for(File f:fileList){
-            if(f.isFile()){
+            FileAccessTimeout.Kind k = kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING);
+            if(k == FileAccessTimeout.Kind.FILE){
                 nfiles++;
                 if(nfiles>MAX_FILES){
                     removeList.add(f);
                }
-            }else if(f.isDirectory()){
+            }else if(k == FileAccessTimeout.Kind.DIRECTORY){
                 ndirs++;
                 if(ndirs>MAX_FOLDERS){
                     removeList.add(f);
                 }
-            }else{
-                removeList.add(f);
-                log.warning("removing nonexistant file "+f);
             }
         }
         fileList.removeAll(removeList);
@@ -301,15 +345,19 @@ public class RecentFiles {
     
     /**
      * Existing directories from the recent list, most recent first (at most
-     * {@link #MAX_FOLDERS}). Missing paths are omitted.
+     * {@link #MAX_FOLDERS}). Missing or timed-out paths are forgotten.
      */
     public List<File> getRecentFolders() {
         ArrayList<File> folders = new ArrayList<>();
         if (fileList == null) {
             return folders;
         }
+        Map<File, FileAccessTimeout.Kind> kinds = FileAccessTimeout.classify(fileList);
+        if (dropUnreachable(kinds)) {
+            buildMenu();
+        }
         for (File f : fileList) {
-            if (f != null && f.isDirectory()) {
+            if (f != null && kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING) == FileAccessTimeout.Kind.DIRECTORY) {
                 folders.add(f);
                 if (folders.size() >= MAX_FOLDERS) {
                     break;
@@ -324,11 +372,8 @@ public class RecentFiles {
      * @return most recent folder, or null if there is none
      */
     public File getMostRecentFolder(){
-        if(fileList==null || fileList.isEmpty()) return null;
-        for(File f:fileList){
-            if(f.isDirectory()) return f;
-        }
-        return null;
+        List<File> folders = getRecentFolders();
+        return folders.isEmpty() ? null : folders.get(0);
     }
     
     /** Returns most recent file
@@ -337,8 +382,12 @@ public class RecentFiles {
      */
     public File getMostRecentFile(){
         if(fileList==null || fileList.isEmpty()) return null;
+        Map<File, FileAccessTimeout.Kind> kinds = FileAccessTimeout.classify(fileList);
+        if (dropUnreachable(kinds)) {
+            buildMenu();
+        }
         for(File f:fileList){
-            if(f.isFile()) return f;
+            if(kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING) == FileAccessTimeout.Kind.FILE) return f;
         }
         return null;   
     }

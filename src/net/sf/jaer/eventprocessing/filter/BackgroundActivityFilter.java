@@ -9,6 +9,7 @@ import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -25,6 +26,31 @@ import net.sf.jaer.util.RemoteControlCommand;
  * @author tobi
  */
 @Description("<html>Filters out uncorrelated background activity noise according to <br>Delbruck, Tobi. 2008. <br>“Frame-Free Dynamic Digital Vision.” <br>In Proceedings of Intl. Symp. on Secure-Life Electronics, Advanced Electronics for Quality Life and Society, 1:21–26. Tokyo, Japan: Tokyo.<br> https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg.")
+@Help("""
+<html>
+<body>
+<h2>BackgroundActivityFilter</h2>
+<p>Classic DVS <b>background-activity (BA)</b> denoiser: an event is kept only if a neighbor
+(in the subsampled 3&times;3 neighborhood) spiked within <code>correlationTimeS</code>.
+The original 2008 algorithm; prefer <code>SpatioTemporalCorrelationFilter</code> as the
+default (it requires a <i>count</i> of supporting neighbors and adds polarity / hot-pixel options).</p>
+<p>Source paper:
+<a href="https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg">Frame-Free Dynamic Digital Vision</a>
+(Delbruck, 2008).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li>Tune <code>correlationTimeS</code> (shorter &rarr; more noise rejected, more risk of
+eating slow real motion).</li>
+<li><code>subsampleBy</code> coarsens the timestamp map; <code>letFirstEventThrough</code>
+passes the first event from each pixel after reset.</li>
+</ol>
+<p>Shared noise-filter display: <code>showFilteringStatistics</code>. For evaluation see
+<code>NoiseTesterFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends AbstractNoiseFilter {
 

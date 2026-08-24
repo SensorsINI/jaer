@@ -96,6 +96,10 @@ public class UsbPolarityBundleBuilder {
     }
 
     public synchronized void addPolarity(final int x, final int y, final boolean on, final int timestamp) {
+        addPolarity(x, y, on, timestamp, 0);
+    }
+
+    public synchronized void addPolarity(final int x, final int y, final boolean on, final int timestamp, final int address) {
         ensureActive();
         PolarityEvent e = polarityOut.nextOutput();
         e.reset();
@@ -105,6 +109,7 @@ public class UsbPolarityBundleBuilder {
         e.polarity = on ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
         e.type = (byte) (on ? 1 : 0);
         e.setSpecial(false);
+        e.address = address;
     }
 
     /**
@@ -153,7 +158,7 @@ public class UsbPolarityBundleBuilder {
             if (flipType) {
                 type = 1 - type;
             }
-            addPolarity(x, y, type != 0, ts);
+            addPolarity(x, y, type != 0, ts, addr);
         }
     }
 

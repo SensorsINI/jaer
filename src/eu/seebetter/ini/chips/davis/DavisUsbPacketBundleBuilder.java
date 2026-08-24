@@ -154,6 +154,10 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addPolarity(final int x, final int y, final boolean on, final int timestamp) {
+        addPolarity(x, y, on, timestamp, 0);
+    }
+
+    public void addPolarity(final int x, final int y, final boolean on, final int timestamp, final int address) {
         if (polarity == null) {
             polarity = new EventPacket<>(PolarityEvent.class);
             polarityOut = polarity.outputIterator();
@@ -170,6 +174,7 @@ public class DavisUsbPacketBundleBuilder {
         e.polarity = on ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
         e.type = (byte) (on ? 1 : 0);
         e.setSpecial(false);
+        e.address = address;
     }
 
     public void addExternal(final int code, final int timestamp) {

@@ -99,12 +99,12 @@ public class CrossFormatMetadataDemo {
             }
 
             DataLogger dataLogger = new DataLogger(chip);
-            File logged = dataLogger.startLogging(dataLoggerFile.getAbsolutePath());
+            File logged = dataLogger.startRecording(dataLoggerFile.getAbsolutePath());
             assertTrue(logged != null, "DataLogger started with external owner snapshot");
             assertTrue(chip.getRecordingConfigurationSnapshot() == ownerSnapshot,
                     "DataLogger reused the exact owner object");
             dataLogger.filterPacket(buildEventPacket(EVENT_COUNT));
-            dataLogger.stopLogging(false);
+            dataLogger.stopRecording(false);
             assertTrue(chip.getRecordingConfigurationSnapshot() == ownerSnapshot,
                     "DataLogger stop did not stomp external ownership");
             assertTrue(flushCount[0] == 1,

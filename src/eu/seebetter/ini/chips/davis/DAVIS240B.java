@@ -16,8 +16,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  *
  * @author Tobi
  */
-@Description("The DAVIS240B camera")
-@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@Description("The DAVIS240B camera, 240x180, experimental, not produced")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DAVIS240B extends DAVIS240BaseCamera {
 
 	public DAVIS240B() {

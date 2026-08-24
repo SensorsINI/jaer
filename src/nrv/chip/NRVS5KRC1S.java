@@ -22,12 +22,12 @@ import ch.unizh.ini.jaer.chip.EventOnlyChipDisplay;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
- * NRV S5KRC1S DVS sensor (960x720) over Cypress USB3.
+ * NRV (NeuroReality Vision) DELTA01 S5KRC1S DVS sensor (960x720) over Cypress USB3.
  *
  * @see https://nrv.kr/
  */
-@Description("NRV (NeuroReality Vision) S5KRC1S 960x720 DVS camera, 9um pitch, final Samsung DVS chip for first round of event camera development")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("NRV (NeuroReality Vision) DELTA01 S5KRC1S 960x720 DVS camera, 9um pitch, final Samsung DVS chip for first round of event camera development")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = NRVHardwareInterface.VID, pid = NRVHardwareInterface.PID_FX20),
     @UsbDevice(vid = NRVHardwareInterface.VID, pid = NRVHardwareInterface.PID_CX3)

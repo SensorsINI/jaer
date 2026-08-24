@@ -46,8 +46,8 @@ import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.JaerPreferencesStore;
 
 /**
- * Preferences dialog for AEViewer. First tab groups preference-backed AEViewer
- * menu settings by menu section. Filters tab covers global FilterFrame /
+ * Nonmodal preferences dialog for AEViewer. First tab groups preference-backed
+ * AEViewer menu settings by menu section. Filters tab covers global FilterFrame /
  * FilterChain preferences (individual AEFilter property sheets come later).
  * Export/Reset tab exports, imports, or deletes the {@code /jaer} Preferences tree.
  */
@@ -62,7 +62,7 @@ public class AEViewerPreferencesDialog extends JDialog {
      * @param index the combo index
      * @return the {@link AEDataFile} data-file version
      */
-    static String loggingFormatVersionForIndex(int index) {
+    static String recordingFormatVersionForIndex(int index) {
         if (index == 0) {
             return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
         }
@@ -75,12 +75,12 @@ public class AEViewerPreferencesDialog extends JDialog {
     /**
      * Map a data-file version sentinel back to the recording-format combo index:
      * AEDAT-4 = 0, AEDZ = 2, anything else = 1 (AEDAT-2). Inverse of
-     * {@link #loggingFormatVersionForIndex(int)}.
+     * {@link #recordingFormatVersionForIndex(int)}.
      *
      * @param version the {@link AEDataFile} data-file version
      * @return the combo index
      */
-    static int loggingFormatIndexForVersion(String version) {
+    static int recordingFormatIndexForVersion(String version) {
         if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version)) {
             return 0;
         }
@@ -93,12 +93,15 @@ public class AEViewerPreferencesDialog extends JDialog {
     private final AEViewer viewer;
     private boolean updatingUi;
 
-    private JCheckBox loggingPlaybackImmediatelyCB;
-    private JCheckBox logFilteredEventsCB;
+    private JCheckBox recordingPlaybackImmediatelyCB;
+    private JCheckBox recordFilteredEventsCB;
+    private JCheckBox showRecordingOverlayCB;
+    private JCheckBox showRosOutputOverlayCB;
+    private JCheckBox showDnnSharedMemoryOverlayCB;
     private JCheckBox checkNonMonotonicCB;
     private JCheckBox syncEnabledCB;
     private JTextField timestampResetBitmaskTF;
-    private JComboBox<String> loggingFormatCB;
+    private JComboBox<String> recordingFormatCB;
     private JComboBox<String> aedat4CompressionCB;
 
     private JCheckBox activeRenderingCB;
@@ -123,9 +126,9 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JLabel filtersNoteLabel;
 
     public AEViewerPreferencesDialog(AEViewer viewer) {
-        super(viewer, "Preferences", true);
+        super(viewer, "Preferences", false);
         this.viewer = viewer;
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(HIDE_ON_CLOSE);
         buildUi();
         pack();
         setLocationRelativeTo(viewer);
@@ -155,7 +158,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         closeButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                dispose();
+                setVisible(false);
             }
         });
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -506,22 +509,22 @@ public class AEViewerPreferencesDialog extends JDialog {
         int y = 0;
 
         p.add(new JLabel("Recording format:"), gbcLabel(y));
-        loggingFormatCB = new JComboBox<>(new String[]{"AEDAT-4 (.aedat4)", "AEDAT-2 (.aedat2)", "AEDZ compressed AEDAT-2 (.aedz)"});
-        loggingFormatCB.setToolTipText("File format used when starting logging with the button or 'l' key");
-        loggingFormatCB.addActionListener(new ActionListener() {
+        recordingFormatCB = new JComboBox<>(new String[]{"AEDAT-4 (.aedat4)", "AEDAT-2 (.aedat2)", "AEDZ compressed AEDAT-2 (.aedz)"});
+        recordingFormatCB.setToolTipText("File format used when starting recording with the button or 'l' key");
+        recordingFormatCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (updatingUi) {
                     return;
                 }
-                int index = loggingFormatCB.getSelectedIndex();
-                String version = loggingFormatVersionForIndex(index);
+                int index = recordingFormatCB.getSelectedIndex();
+                String version = recordingFormatVersionForIndex(index);
                 boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version);
-                viewer.setLoggingDataFileVersion(version);
+                viewer.setRecordingDataFileVersion(version);
                 aedat4CompressionCB.setEnabled(aedat4);
             }
         });
-        p.add(loggingFormatCB, gbcField(y++));
+        p.add(recordingFormatCB, gbcField(y++));
 
         p.add(new JLabel("AEDAT-4 compression:"), gbcLabel(y));
         aedat4CompressionCB = new JComboBox<>(new String[]{
@@ -533,7 +536,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         aedat4CompressionCB.setToolTipText("<html>DV-compatible per-packet compression for AEDAT-4.<br>"
                 + "LZ4 is best for real-time recording. HIGH modes shrink files more but may slow live display "
-                + "at high event rates. Takes effect on the next Start logging.");
+                + "at high event rates. Takes effect on the next Start recording.");
         aedat4CompressionCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -545,31 +548,70 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         p.add(aedat4CompressionCB, gbcField(y++));
 
-        loggingPlaybackImmediatelyCB = new JCheckBox("Playback logged data immediately after logging enabled");
-        loggingPlaybackImmediatelyCB.setToolTipText("If enabled, logged data plays back immediately");
-        loggingPlaybackImmediatelyCB.addActionListener(new ActionListener() {
+        recordingPlaybackImmediatelyCB = new JCheckBox("Playback recorded data immediately after recording");
+        recordingPlaybackImmediatelyCB.setToolTipText("If enabled, recorded data plays back immediately");
+        recordingPlaybackImmediatelyCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (updatingUi) {
                     return;
                 }
-                viewer.setLoggingPlaybackImmediatelyEnabled(loggingPlaybackImmediatelyCB.isSelected());
+                viewer.setRecordingPlaybackImmediatelyEnabled(recordingPlaybackImmediatelyCB.isSelected());
             }
         });
-        p.add(loggingPlaybackImmediatelyCB, gbc(y++));
+        p.add(recordingPlaybackImmediatelyCB, gbc(y++));
 
-        logFilteredEventsCB = new JCheckBox("Enable filtering of logged or network output events");
-        logFilteredEventsCB.setToolTipText("Logging or network writes apply active filters first");
-        logFilteredEventsCB.addActionListener(new ActionListener() {
+        recordFilteredEventsCB = new JCheckBox("Enable filtering of recorded or network output events");
+        recordFilteredEventsCB.setToolTipText("Recording or network writes apply active filters first");
+        recordFilteredEventsCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (updatingUi) {
                     return;
                 }
-                viewer.setLogFilteredEventsEnabled(logFilteredEventsCB.isSelected());
+                viewer.setRecordFilteredEventsEnabled(recordFilteredEventsCB.isSelected());
             }
         });
-        p.add(logFilteredEventsCB, gbc(y++));
+        p.add(recordFilteredEventsCB, gbc(y++));
+
+        showRecordingOverlayCB = new JCheckBox("Show recording overlay");
+        showRecordingOverlayCB.setToolTipText("Show a transparent red Recording overlay on the chip view while recording");
+        showRecordingOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowRecordingOverlay(showRecordingOverlayCB.isSelected());
+            }
+        });
+        p.add(showRecordingOverlayCB, gbc(y++));
+
+        showRosOutputOverlayCB = new JCheckBox("Show ROS2 / Foxglove overlay");
+        showRosOutputOverlayCB.setToolTipText("Show publishing status on the chip view while ROSOutput is enabled");
+        showRosOutputOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowRosOutputOverlay(showRosOutputOverlayCB.isSelected());
+            }
+        });
+        p.add(showRosOutputOverlayCB, gbc(y++));
+
+        showDnnSharedMemoryOverlayCB = new JCheckBox("Show DNN shared memory overlay");
+        showDnnSharedMemoryOverlayCB.setToolTipText("Show mmap publishing status on the chip view while DNNOutputViaSharedMemory is enabled");
+        showDnnSharedMemoryOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowDnnSharedMemoryOverlay(showDnnSharedMemoryOverlayCB.isSelected());
+            }
+        });
+        p.add(showDnnSharedMemoryOverlayCB, gbc(y++));
 
         checkNonMonotonicCB = new JCheckBox("Check for non-monotonic time in input streams");
         checkNonMonotonicCB.setToolTipText("If enabled, nonmonotonic timestamps are checked for in input streams from file or network");
@@ -584,8 +626,8 @@ public class AEViewerPreferencesDialog extends JDialog {
         });
         p.add(checkNonMonotonicCB, gbc(y++));
 
-        syncEnabledCB = new JCheckBox("Synchronized logging/playback enabled");
-        syncEnabledCB.setToolTipText("All viewers start/stop logging in synchrony and playback times are synchronized");
+        syncEnabledCB = new JCheckBox("Synchronized recording/playback enabled");
+        syncEnabledCB.setToolTipText("All viewers start/stop recording in synchrony and playback times are synchronized");
         syncEnabledCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -688,7 +730,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         p.add(desiredFpsSpinner, gbcField(y++));
 
         adaptiveRenderSkippingCB = new JCheckBox("Adaptive render skipping");
-        adaptiveRenderSkippingCB.setToolTipText("Skip packets when rendering cannot keep up; raw logging is unaffected");
+        adaptiveRenderSkippingCB.setToolTipText("Skip packets when rendering cannot keep up; raw recording is unaffected");
         adaptiveRenderSkippingCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -827,16 +869,19 @@ public class AEViewerPreferencesDialog extends JDialog {
     private void refreshFromViewer() {
         updatingUi = true;
         try {
-            loggingPlaybackImmediatelyCB.setSelected(viewer.isLoggingPlaybackImmediatelyEnabled());
-            logFilteredEventsCB.setSelected(viewer.isLogFilteredEventsEnabled());
+            recordingPlaybackImmediatelyCB.setSelected(viewer.isRecordingPlaybackImmediatelyEnabled());
+            recordFilteredEventsCB.setSelected(viewer.isRecordFilteredEventsEnabled());
+            showRecordingOverlayCB.setSelected(viewer.isShowRecordingOverlay());
+            showRosOutputOverlayCB.setSelected(viewer.isShowRosOutputOverlay());
+            showDnnSharedMemoryOverlayCB.setSelected(viewer.isShowDnnSharedMemoryOverlay());
             checkNonMonotonicCB.setSelected(viewer.isCheckNonMonotonicTimeExceptionsEnabled());
             JAERViewer jaerViewer = viewer.getJaerViewer();
             syncEnabledCB.setSelected(jaerViewer != null && jaerViewer.isSyncEnabled());
             timestampResetBitmaskTF.setText(Integer.toHexString(viewer.getAeFileInputStreamTimestampResetBitmask()));
-            String version = viewer.getLoggingDataFileVersion();
-            int versionIndex = loggingFormatIndexForVersion(version);
+            String version = viewer.getRecordingDataFileVersion();
+            int versionIndex = recordingFormatIndexForVersion(version);
             boolean aedat4 = versionIndex == 0;
-            loggingFormatCB.setSelectedIndex(versionIndex);
+            recordingFormatCB.setSelectedIndex(versionIndex);
             aedat4CompressionCB.setSelectedIndex(viewer.getAedat4Compression());
             aedat4CompressionCB.setEnabled(aedat4);
 

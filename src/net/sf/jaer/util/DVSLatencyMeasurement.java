@@ -32,6 +32,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -47,6 +48,32 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobi, Feb 2021
  */
 @Description("Measures DVS-computer latency using 2 LEDs controlled by Ardunino")
+@Help("""
+<html>
+<body>
+<h2>DVSLatencyMeasurement</h2>
+<p>Measures DVS-to-PC latency with two LEDs driven by an Arduino sketch
+(<code>DVSLatencyMeasurement</code>). One LED is the stimulus; the other can mark the
+command. Encloses a denoiser and <code>XYTypeFilter</code> to isolate the LEDs.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Flash the Arduino firmware. Connect USB serial. Set <code>serialPortName</code> and
+<code>serialBaudRate</code> (firmware often 2&nbsp;Mbaud).</li>
+<li>Place two LEDs in the FOV, split by <code>xborder</code> (left vs right).</li>
+<li>Enable the filter. Use <code>flash</code> / <code>flashOnce</code> / <code>idle</code>
+or <code>turnOnBothLeds</code>.</li>
+<li><code>masterMode</code>: PC timestamps the command vs DVS events
+(<code>thresholdEventCount</code> to detect the LED).
+<code>slaveMode</code>: the MCU measures latency.
+<code>pingTest</code> is USB round-trip only.</li>
+<li>Histogram: <code>histMin</code> / <code>histMax</code> / <code>histNumBins</code>,
+<code>autoScaleHist</code>, <code>logLogScale</code>, <code>statsWindowLength</code>.
+<code>logging</code> writes CSV.</li>
+</ol>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 

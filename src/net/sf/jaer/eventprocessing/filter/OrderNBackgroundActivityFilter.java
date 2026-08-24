@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -40,6 +41,29 @@ import net.sf.jaer.util.RemoteControlCommand;
  * @author Tobi Delbruck
  */
 @Description("filters noise based on IEEE emerging topics paper Khodamoradi, A., and R. Kastner. 2018. “O(N)-Space Spatiotemporal Filter for Reducing Noise in Neuromorphic Vision Sensors.” IEEE Transactions on Emerging Topics in Computing PP (99): 1–1. https://doi.org/10.1109/TETC.2017.2788865.")
+@Help("""
+<html>
+<body>
+<h2>OrderNBackgroundActivityFilter</h2>
+<p>O(<i>N</i>)-memory BA denoiser: stores only last timestamp and address per <b>row and column</b>
+(not a full 2D timestamp image). An event is correlated if the last event in its row or column
+was nearby in space and within <code>correlationTimeS</code>.</p>
+<p>Source paper:
+<a href="https://doi.org/10.1109/TETC.2017.2788865">O(N)-Space Spatiotemporal Filter for Reducing
+Noise in Neuromorphic Vision Sensors</a>
+(Khodamoradi &amp; Kastner, <i>IEEE Trans. Emerging Topics in Computing</i>, 2018).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li>Tune <code>correlationTimeS</code> as for other BA filters (this class hides some
+<code>AbstractNoiseFilter</code> properties that do not apply).</li>
+</ol>
+<p>Cheaper memory than <code>SpatioTemporalCorrelationFilter</code>; usually slightly weaker
+denoising. Evaluate with <code>NoiseTesterFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implements FrameAnnotater {
 

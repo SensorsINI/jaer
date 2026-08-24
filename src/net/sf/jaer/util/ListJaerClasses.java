@@ -90,6 +90,10 @@ public class ListJaerClasses {
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
                 File classpathElement = new File(token);
+                if (classpathElement.isDirectory() && JaerAllowedSubclasses.isPackaged()) {
+                    log.info(String.format("Skipping classpath directory scan in packaged mode: %s", token));
+                    continue;
+                }
                 if(classpathElement.isFile() && !token.endsWith(INCLUDED_JAR)) {
                     log.info(String.format("Skipping scanning %s",token));
                     continue;

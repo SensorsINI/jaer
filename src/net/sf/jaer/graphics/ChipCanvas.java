@@ -234,6 +234,9 @@ public class ChipCanvas implements GLEventListener, Observer {
                 glCanvas.setAutoSwapBufferMode(true);
             } else {
                 reusedGlCanvas = false;
+                // Do not construct ChipCanvas from file-dialog preview (ChipDataFilePreview): a
+                // second GLCanvas crashes Intel Arc (igxelpgicd64.dll) in SetPixelFormat or in
+                // TextRenderer glDrawArrays while the welcome overlay paints.
 //            final GLProfile glp = GLProfile.getMaxProgrammable(true);//GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
@@ -567,6 +570,9 @@ public class ChipCanvas implements GLEventListener, Observer {
             renderer.draw3D(s, 1f, 1f, 0f, (float) (chip.getSizeX() / 2 / r.getWidth()));
             renderer.end3DRendering();
         }
+        drawRecordingOverlayIfNeeded(drawable);
+        drawRemoteOutputOverlaysIfNeeded(drawable);
+        drawSkipChipRenderingOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
         gl.glFlush();
         // gl.glPopMatrix();
@@ -580,6 +586,192 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     float[] rgbVec = new float[3];
+
+    /** Semi-transparent red for the Recording overlay. */
+    private static final Color RECORDING_OVERLAY_COLOR = new Color(1f, 0.12f, 0.12f, 0.55f);
+
+    /**
+     * Overlay while recording: transparent red {@code Recording}, Apply Filters
+     * flag ({@link AEViewer#isRecordFilteredEventsEnabled()}), elapsed
+     * {@code Recorded XXhYYmZZs}, plus total and remaining when a recording time
+     * limit is set. Gated by {@link AEViewer#isShowRecordingOverlay()}.
+     */
+    private void drawRecordingOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || !viewer.isShowRecordingOverlay() || !viewer.isRecordingEnabled()) {
+            return;
+        }
+        String recordingLine = viewer.isRecordingPaused() ? "Recording paused" : "Recording";
+        boolean applyFilters = viewer.isRecordFilteredEventsEnabled();
+        String applyFiltersLine = applyFilters ? "Apply filters: ON" : "Apply filters: OFF";
+        String limitText = viewer.getRecordingTimeLimitOverlayText();
+        String[] limitLines = (limitText == null || limitText.isEmpty()) ? new String[0] : limitText.split("\n");
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            int fontsize = Math.max(8, Math.round(14 * (chip.getSizeX() / 346f)));
+            float scale = 1f;
+            if (fontsize < 10) {
+                fontsize *= 2;
+                scale = .5f;
+            }
+            int limitFontsize = Math.max(8, Math.round(fontsize * 0.75f));
+            gl.glPushMatrix();
+            gl.glScalef(scale, scale, scale);
+            float lineSpace = fontsize * 1.35f;
+            float xpos = (chip.getSizeX() / 2f) / scale;
+            float y = (chip.getSizeY() * 0.92f) / scale;
+            DrawGL.drawString(fontsize, xpos, y, .5f, RECORDING_OVERLAY_COLOR, recordingLine);
+            y -= lineSpace;
+            DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f,
+                    applyFilters ? Color.yellow : Color.lightGray, applyFiltersLine);
+            y -= limitFontsize * 1.4f;
+            for (String line : limitLines) {
+                DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.yellow, line);
+                y -= limitFontsize * 1.4f;
+            }
+            gl.glPopMatrix();
+        } catch (GLException e) {
+            log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
+
+    private static final Color SKIP_RENDER_OVERLAY_COLOR = new Color(1f, 0.85f, 0.2f, 0.85f);
+
+    /**
+     * Overlay when a filter called
+     * {@link AEViewer#setSkipChipRenderingOverlay(String)}.
+     */
+    private void drawSkipChipRenderingOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || viewer.isJaerAviRecordingActive()) {
+            return;
+        }
+        String text = viewer.getSkipChipRenderingOverlay();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        String[] lines = text.split("\n", -1);
+        try {
+            if (renderer == null) {
+                renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, true);
+                renderer.setUseVertexArrays(false);
+            }
+            renderer.begin3DRendering();
+            renderer.setColor(SKIP_RENDER_OVERLAY_COLOR);
+            float maxW = chip.getSizeX() * 0.9f;
+            float maxH = Math.max(8f, chip.getSizeY() * 0.07f);
+            float scale = Float.MAX_VALUE;
+            Rectangle2D[] bounds = new Rectangle2D[lines.length];
+            for (int i = 0; i < lines.length; i++) {
+                bounds[i] = renderer.getBounds(lines[i]);
+                if (bounds[i].getWidth() > 0) {
+                    scale = Math.min(scale, (float) (maxW / bounds[i].getWidth()));
+                }
+                if (bounds[i].getHeight() > 0) {
+                    scale = Math.min(scale, (float) (maxH / bounds[i].getHeight()));
+                }
+            }
+            if (scale == Float.MAX_VALUE || scale <= 0) {
+                scale = 0.25f;
+            }
+            float lineSpace = 0;
+            if (lines.length > 0 && bounds[0].getHeight() > 0) {
+                lineSpace = (float) bounds[0].getHeight() * scale * 1.25f;
+            }
+            float y = chip.getSizeY() * 0.08f;
+            for (int i = 0; i < lines.length; i++) {
+                float x = (chip.getSizeX() / 2f) - (float) (bounds[i].getWidth() * scale / 2f);
+                renderer.draw3D(lines[i], x, y + i * lineSpace, 0, scale);
+            }
+            renderer.end3DRendering();
+        } catch (GLException e) {
+            log.log(Level.FINE, "skip-render overlay: {0}", e.toString());
+        }
+    }
+
+    private static final Color ROS_OUTPUT_OVERLAY_COLOR = new Color(0.15f, 0.85f, 0.55f, 0.7f);
+    private static final Color DNN_OUTPUT_OVERLAY_COLOR = new Color(1f, 0.65f, 0.2f, 0.75f);
+
+    /**
+     * Overlay while File → Remote sinks are publishing (ROS2 / Foxglove and DNN mmap).
+     * Stacked from the bottom of the chip view. Gated by
+     * {@link AEViewer#isShowRosOutputOverlay()} and
+     * {@link AEViewer#isShowDnnSharedMemoryOverlay()}.
+     */
+    private void drawRemoteOutputOverlaysIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null) {
+            return;
+        }
+        float y = chip.getSizeY() * 0.08f;
+        if (viewer.isShowRosOutputOverlay()) {
+            net.sf.jaer.eventio.ros2.ROSOutput ros = net.sf.jaer.eventio.ros2.ROSOutput.find(aeChip);
+            if (ros != null && ros.isFilterEnabled()) {
+                y = drawCenteredStatusOverlay(drawable, y, ROS_OUTPUT_OVERLAY_COLOR, ros.getOverlayText());
+            }
+        }
+        if (viewer.isShowDnnSharedMemoryOverlay()) {
+            net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory dnn
+                    = net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory.find(aeChip);
+            if (dnn != null && dnn.isFilterEnabled()) {
+                y = drawCenteredStatusOverlay(drawable, y, DNN_OUTPUT_OVERLAY_COLOR, dnn.getOverlayText());
+            }
+        }
+    }
+
+    /**
+     * Centered multi-line status text. Returns the chip-Y just above the last line
+     * so another overlay can stack on top.
+     */
+    private float drawCenteredStatusOverlay(final GLAutoDrawable drawable, float yChip, Color color, String text) {
+        if (text == null || text.isEmpty()) {
+            return yChip;
+        }
+        String[] lines = text.split("\n", -1);
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            int fontsize = Math.max(8, Math.round(12 * (chip.getSizeX() / 346f)));
+            float scale = 1f;
+            if (fontsize < 10) {
+                fontsize *= 2;
+                scale = .5f;
+            }
+            gl.glPushMatrix();
+            gl.glScalef(scale, scale, scale);
+            float lineSpace = fontsize * 1.35f;
+            float xpos = (chip.getSizeX() / 2f) / scale;
+            float y = yChip / scale;
+            for (int i = 0; i < lines.length; i++) {
+                DrawGL.drawString(fontsize, xpos, y + i * lineSpace, .5f, color, lines[i]);
+            }
+            gl.glPopMatrix();
+            return yChip + lines.length * lineSpace * scale + chip.getSizeY() * 0.02f;
+        } catch (GLException e) {
+            log.log(Level.FINE, "status overlay: {0}", e.toString());
+            return yChip;
+        }
+    }
 
     /**
      * Centered welcome text when waiting with no open hardware (blank AEChip view).
@@ -596,6 +788,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (viewer == null || viewer.getPlayMode() != PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
             return;
         }
+        // File-dialog preview used to construct a second ChipCanvas that still saw WAITING;
+        // skip if this canvas is not the chip's live view.
+        if (chip.getCanvas() != null && chip.getCanvas() != this) {
+            return;
+        }
         HardwareInterface hw = aeChip.getHardwareInterface();
         if (hw != null && hw.isOpen()) {
             return;
@@ -605,7 +802,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         String[] lines = {
             "Welcome to jAER-" + welcomeReleaseVersion,
-            "Plug in a device or use File/Open logged data file..",
+            "Plug in a device or use File/Open recorded data file..",
             "Choose device from AEChip menu",
             "Get sample data via Help / Sample data",
             "See Help menu for more information"
@@ -2052,6 +2249,15 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         if (!annotationEnabled) {
             return;
+        }
+        if (chip instanceof AEChip) {
+            AEViewer v = ((AEChip) chip).getAeViewer();
+            if (v == null) {
+                v = aeViewer;
+            }
+            if (v != null && v.isSkipChipRenderingRequested() && !v.isJaerAviRecordingActive()) {
+                return;
+            }
         }
         if (getDisplayMethod() == null) {
             return;

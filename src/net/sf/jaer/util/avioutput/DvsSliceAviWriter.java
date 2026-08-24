@@ -40,8 +40,10 @@ import ml.options.Options.Multiplicity;
 import ml.options.Options.Separator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -65,6 +67,31 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author Tobi Delbruck
  */
 @Description("Writes out AVI movie with DVS constant-number-of-event subsampled 2D histogram slices as AVI frame images with desired output resolution")
+@Help("""
+<html>
+<body>
+<h2>DvsSliceAviWriter</h2>
+<p>Renders DVS events as <b>time or event slices</b> (2D histograms, optional subsample /
+output size) and writes them to AVI. Can put APS on the left and DVS on the right, or APS+DVS
+in RG channels. Recording start/stop is the same as <code>AbstractAviWriter</code>.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable the filter. Expand enclosed <code>DvsFramer</code> to set slice method
+(event count vs time), output resolution, and polarity rendering.</li>
+<li><code>writeDvsFrames</code> / <code>writeApsFrames</code>. If both are on, DVS is the
+right half unless <code>writeAPSDVSToRGChannels</code> (APS in R, DVS in G).</li>
+<li><code>writeDvsSliceImageOnApsFrame</code> emits a DVS slice at each APS frame end
+(playback must be slow enough to render every frame).</li>
+<li><code>startRecordingAndSaveAs</code>, play, <code>finishRecording</code>.</li>
+</ol>
+<p><code>showOutput</code> previews the slice. <code>showStatistics</code> shows ON/OFF
+counts, slice FPS, sparsity.
+<code>writeDvsEventsToTextFile</code> dumps timestamp,x,y,pol.
+<code>writeTargetLocations</code> writes <code>TargetLabeler</code> boxes if present.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 
@@ -225,7 +252,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             "timeslicemethod=" + dvsFrame.getTimeSliceMethod().toString(),
             "grayScale=" + dvsFrame.getDvsGrayScale(),
             "normalize=" + dvsFrame.isNormalizeFrame(),
-            "normalizeDVSForZsNullhop=" + dvsFrame.isNormalizeDVSForZsNullhop(),
             "dvsMinEvents=" + dvsFrame.getDvsEventsPerFrame(),
             "timeDurationUsPerFrame=" + dvsFrame.getTimeDurationUsPerFrame(),
             "format=" + format.toString(),
@@ -805,7 +831,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         opt.getSet().addOption("timeslicemethod", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("rectify", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("normalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("nullhopnormalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
         opt.getSet().addOption("writetargetlocations", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
@@ -851,7 +876,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 log.info("from " + chipname + " found fully qualified class name " + className);
             }
             log.info("constructing AEChip " + className);
-            Class chipClass = Class.forName(className);
+            Class chipClass = JaerAllowedSubclasses.load(className, AEChip.class);
             Constructor<AEChip> constructor = chipClass.getConstructor();
             chip = constructor.newInstance((java.lang.Object[]) null);
         } catch (Exception ex) {
@@ -1003,11 +1028,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.getDvsFrame().setNormalizeFrame(b);
         }
 
-        if (opt.getSet().isSet("nullhopnormalize")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("nullhopnormalize").getResultValue(0));
-            writer.getDvsFrame().setNormalizeDVSForZsNullhop(b);
-        }
-
         if (opt.getSet().isSet("showoutput")) {
             boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
             writer.setShowOutput(b);
@@ -1136,7 +1156,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 + "writeapsframes=%s writedvsframes=%s\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
                 + "timeslicemethod=%s numevents=%d framedurationus=%d\n"
-                + " rectify=%s normalize=%s nullhopnormalize=%s showoutput=%s maxframes=%d",
+                + " rectify=%s normalize=%s showoutput=%s maxframes=%d",
                 chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
                 writer.getCompressionQuality(), writer.getFormat().toString(),
                 writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(),
@@ -1146,7 +1166,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 writer.getDvsFrame().getDvsEventsPerFrame(), writer.getDvsFrame().getTimeDurationUsPerFrame(),
                 writer.getDvsFrame().isRectifyPolarities(),
                 writer.getDvsFrame().isNormalizeFrame(),
-                writer.getDvsFrame().isNormalizeDVSForZsNullhop(),
                 writer.isShowOutput(), writer.getMaxFrames()));
         log.info("Successfully wrote file " + outfile.getAbsolutePath() + " with " + writer.getFramesWritten() + " frames");
         System.exit(0);

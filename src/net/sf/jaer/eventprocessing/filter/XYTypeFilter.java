@@ -57,6 +57,9 @@ import net.sf.jaer.util.DrawGL;
 <html>
 <body>
 <h2>XYTypeFilter</h2>
+<p><b>lockSelections is on by default</b> so a stray click does not set a one-pixel ROI
+that then filters almost everything out. Uncheck <code>lockSelections</code> before
+drawing a rectangle on the display.</p>
 <p>Passes (or blocks) events in a <b>region of interest</b> defined by column <code>x</code>,
 row <code>y</code>, and event <code>type</code> (usually 0=OFF, 1=ON for DVS/DAVIS).
 Use it to crop borders, isolate a target, or keep only one polarity.</p>
@@ -111,7 +114,7 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     private boolean multiSelectionEnabled = prefs().getBoolean("multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
     protected boolean showTypeFilteringText = getBoolean("showTypeFilteringText", true);
-    private boolean lockSelections = getBoolean("lockSelections", false);
+    private boolean lockSelections = getBoolean("lockSelections", true);
 
     private boolean circularShapeFilter = getBoolean("circularShapeFilter", false);
     private int circularRadiusPixels = getInt("circularRadiusPixels", 50);

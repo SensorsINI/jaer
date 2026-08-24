@@ -219,7 +219,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
-        log.setLevel(Level.FINE);
 
         log.info("reading rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
@@ -1464,6 +1463,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     public String toString() {
         return super.toString() + Character.LINE_SEPARATOR + rosbagInfoString;
+    }
+
+    @Override
+    public String getFileInfo() {
+        return rosbagInfoString != null ? rosbagInfoString : toString();
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {

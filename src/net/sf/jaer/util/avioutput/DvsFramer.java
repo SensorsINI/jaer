@@ -75,7 +75,6 @@ abstract public class DvsFramer extends EventFilter2D {
     private int timeDurationUsPerFrame = getInt("timeDurationUsPerFrame", 10000);
     protected int dvsGrayScale = getInt("dvsGrayScale", 100); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean normalizeFrame = getBoolean("normalizeFrame", true);
-    private boolean normalizeDVSForZsNullhop = getBoolean("normalizeDVSForZsNullhop", false); // uses DvsFramer normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1
     protected float dvsGrayScaleRecip;
     protected int warningsBadEvent = 0;
 
@@ -143,7 +142,6 @@ abstract public class DvsFramer extends EventFilter2D {
         setPropertyTooltip("showFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
         setPropertyTooltip("dvsGrayScale", "sets the full scale value for the DVS frame rendering");
         setPropertyTooltip("rectifyPolarities", "whether DVS events have their polarity ignored.");
-        setPropertyTooltip("normalizeDVSForZsNullhop", "uses DvsSubsamplerToFrame normalizeFrame method to normalize DVS histogram images and in addition it shifts the pixel values to be centered around zero with range -1 to +1");
         setPropertyTooltip("doNotNormalize", "Supresses post-accumulation 3-sigma normalization so that gray levels are simply accumulated using +/-1/dvsGrayScale per event");
         setPropertyTooltip("outputImageHeight", "height of output image");
         setPropertyTooltip("outputImageWidth", "width of output image");
@@ -320,13 +318,6 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     /**
-     * @return the normalizeDVSForZsNullhop
-     */
-    public boolean isNormalizeDVSForZsNullhop() {
-        return normalizeDVSForZsNullhop;
-    }
-
-    /**
      * @return the normalizeFrame
      */
     public boolean isNormalizeFrame() {
@@ -339,14 +330,6 @@ abstract public class DvsFramer extends EventFilter2D {
     public void setNormalizeFrame(boolean normalizeFrame) {
         this.normalizeFrame = normalizeFrame;
         putBoolean("normalizeFrame", normalizeFrame);
-    }
-
-    /**
-     * @param normalizeDVSForZsNullhop the normalizeDVSForZsNullhop to set
-     */
-    public void setNormalizeDVSForZsNullhop(boolean normalizeDVSForZsNullhop) {
-        this.normalizeDVSForZsNullhop = normalizeDVSForZsNullhop;
-        putBoolean("normalizeDVSForZsNullhop", normalizeDVSForZsNullhop);
     }
 
     protected void checkActivationsFrame() {
@@ -596,7 +579,7 @@ abstract public class DvsFramer extends EventFilter2D {
             if (filled) {
                 normalizeFrame();
                 lastDvsFrame = this;
-                if (showFrames) {
+                if (isShowFramesPreviewActive()) {
                     final float[] pixmapCopy = Arrays.copyOf(pixmap, pixmap.length);
                     final int w = width;
                     final int h = height;
@@ -735,7 +718,6 @@ abstract public class DvsFramer extends EventFilter2D {
             if (!normalizeFrame) {
                 return;
             }
-            final float zeroValue = getZeroCountPixelValue(), fullscale = 1 - zeroValue;
             // net trained gets 0-1 range inputs, so make our input so
             int n = eventSum.length;
             float sum = 0, var = 0, count = 0;
@@ -781,8 +763,7 @@ abstract public class DvsFramer extends EventFilter2D {
                     } else if (f < 0) {
                         f = 0;
                     }
-                    float v = normalizeDVSForZsNullhop ? (f - zeroValue) / fullscale : f;
-                    pixmap[i] = v;
+                    pixmap[i] = f;
                 }
             }
             sparsity = (float) (n - nonZeroCount) / n;
@@ -909,6 +890,32 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     /**
+     * Whether the EventCountFrames ImageDisplay preview should exist.
+     * Subclasses can return false to drop the window (e.g. EventWindows mode).
+     */
+    protected boolean isShowFramesPreviewActive() {
+        return showFrames;
+    }
+
+    /**
+     * Disposes the showFrames ImageDisplay window so it can be recreated later.
+     */
+    protected void disposeShowFramesWindow() {
+        Runnable r = () -> {
+            if (activationsFrame != null) {
+                activationsFrame.dispose();
+                activationsFrame = null;
+            }
+            imageDisplay = null;
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
      * Draws a snapshot of a DVS frame on the EDT. Does not block the AE thread.
      *
      * @param width frame width
@@ -916,6 +923,9 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param pixmapCopy gray values 0-1, length width*height
      */
     protected void drawCopied(int width, int height, float[] pixmapCopy) {
+        if (!isShowFramesPreviewActive()) {
+            return;
+        }
         checkActivationsFrame();
         if (imageDisplay == null) {
             JPanel panel = new JPanel();

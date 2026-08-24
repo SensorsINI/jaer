@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.logging.Level;
 
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
@@ -327,11 +328,12 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
-        if (framePacketsInBundle > 0 || log.isLoggable(java.util.logging.Level.FINER)) {
-            log.log(framePacketsInBundle > 0 ? java.util.logging.Level.FINE : java.util.logging.Level.FINER,
-                    String.format("render(PacketBundle) mixedApsDvs=%s displayFrames=%s framePackets=%d applied=%s polarityEvents=%d",
-                            renderedMixedApsDvs, displayFrames, framePacketsInBundle, renderedApsFrame,
-                            bundle.getNumPolarityEvents()));
+        Level bundleLogLevel = framePacketsInBundle > 0 ? Level.FINE : Level.FINER;
+        if (log.isLoggable(bundleLogLevel)) {
+            log.log(bundleLogLevel,
+                    "render(PacketBundle) mixedApsDvs={0} displayFrames={1} framePackets={2} applied={3} polarityEvents={4}",
+                    new Object[]{renderedMixedApsDvs, displayFrames, framePacketsInBundle, renderedApsFrame,
+                        bundle.getNumPolarityEvents()});
         }
 
         // USB demux / extractBundle / AEDAT-4: keep chip.imuSample current for overlay
@@ -378,11 +380,15 @@ public class DavisRenderer extends AEChipRenderer {
             return;
         }
         if (frame.isEmpty()) {
-            log.fine("applyFramePacket: empty " + frame);
+            if (log.isLoggable(Level.FINE)) {
+                log.fine("applyFramePacket: empty " + frame);
+            }
             return;
         }
         if (skipFrame()) {
-            log.fine("applyFramePacket: skipped by adaptive render skipping " + frame);
+            if (log.isLoggable(Level.FINE)) {
+                log.fine("applyFramePacket: skipped by adaptive render skipping " + frame);
+            }
             return;
         }
         if (getChip() instanceof DavisBaseCamera) {
@@ -455,10 +461,12 @@ public class DavisRenderer extends AEChipRenderer {
         if (chip instanceof DavisChip) {
             ((DavisChip) chip).controlExposure();
         }
-        log.fine(String.format(
-                "applyFramePacket OK %s rgb=%s min=%d max=%d written=%d clipped=%d sizeX=%d sizeY=%d pixmapLen=%d",
-                frame, rgb, (int) minValue, (int) maxValue, written, clipped, sizeX, sizeY,
-                buf == null ? -1 : buf.length));
+        if (log.isLoggable(Level.FINE)) {
+            log.log(Level.FINE,
+                    "applyFramePacket OK {0} rgb={1} min={2} max={3} written={4} clipped={5} sizeX={6} sizeY={7} pixmapLen={8}",
+                    new Object[]{frame, rgb, (int) minValue, (int) maxValue, written, clipped, sizeX, sizeY,
+                        buf == null ? -1 : buf.length});
+        }
     }
 
     /**
@@ -953,12 +961,14 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns pixmap for ON events
+     * Returns pixmap for DVS events (RGBA, same {@link #getPixMapIndex} layout
+     * as the APS pixmap). Used by the chip display overlay and by
+     * {@code SingleCameraCalibration} for {@code RenderedEventFrames}.
      *
      * @return a float buffer. Obtain a pixel from it using getPixMapIndex
      * @see #getPixMapIndex(int, int)
      */
-    protected FloatBuffer getDvsEventsMap() {
+    public FloatBuffer getDvsEventsMap() {
         dvsEventsMap.rewind();
         checkPixmapAllocation();
         return dvsEventsMap;

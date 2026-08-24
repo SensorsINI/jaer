@@ -20,6 +20,7 @@ import java.util.logging.Level;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -45,6 +46,32 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobid
  */
 @Description("Plays DVS/DAVIS recordings (with APS frames) at constant frame duration or constant DVS event count or time interval per frame")
+@Help("""
+<html>
+<body>
+<h2>FlexTimePlayer</h2>
+<p>Re-packets a recording (or live stream) so each displayed packet has a <b>constant DVS event
+count</b> (or count per subsampled area), with optional min/max duration. APS frames are kept
+with the events. Use it when default time-sliced playback is too empty or too dense.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Open a recording, check <b>Enabled</b>.</li>
+<li><code>method</code> <b>ConstantEventNumber</b> fills until
+<code>constantEventNumber</code> DVS events.</li>
+<li><b>AreaEventCount</b> fills when some subsampled block
+(<code>areaEventNumberSubsampling</code>) reaches that count (avoids waiting forever on
+sparse scenes).</li>
+<li><code>maxPacketDurationUs</code> / <code>minPacketDurationUs</code> (0 = off) clamp
+duration so playback is not instant or stuck.</li>
+<li><code>automaticallyControlInputRate</code> adjusts the AEPlayer packet size to limit leftovers.</li>
+</ol>
+<p><code>showStatistics</code> / <code>showSpeedo</code> overlay event count, duration, FPS
+and slow-mo factor. There is also View &rarr; FlexTime in the AEViewer menu for a related
+player mode.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 

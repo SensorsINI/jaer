@@ -7,6 +7,7 @@ import java.awt.event.WindowEvent;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -35,6 +36,26 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
  * @author Damien Joubert, Tobi Delbruck
  */
 @Description("Method to extract polarization information from a stream of APS/DVS events using Cedric's complementary filter")
+@Help("""
+<html>
+<body>
+<h2>PolarizationComplementaryFilter</h2>
+<p>Polarization DAVIS: reconstructs log intensity per mosaic channel (0&deg;/45&deg;/90&deg;/135&deg;)
+with Cedric Brandli&rsquo;s <b>complementary filter</b> (APS + DVS), then computes AoP and DoLP
+on 2&times;2 macropixels. Extends <code>DavisComplementaryFilter</code>.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Use a polarization DAVIS chip. Enable this filter (it encloses the complementary filter).</li>
+<li>Draw an ROI on the display to average AoP/DoLP (mean and std).</li>
+<li><code>writePolarizationCSV</code> logs those statistics every
+<code>statisticsLoggingIntervalMs</code>.</li>
+<li><code>plotAoPDoLP</code> plots accumulated results with matplotlib (Python required).</li>
+</ol>
+<p>For APS-only polarization frames see <code>PolarizationExtractor</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 

@@ -7,6 +7,7 @@ package net.sf.jaer.eventprocessing.filter;
 import java.beans.PropertyChangeListener;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -20,6 +21,24 @@ import net.sf.jaer.event.TypedEvent;
  * @author tobi
  */
 @Description("Estimates event rates of TypedEvent in a packet, optionally per cell type")
+@Help("""
+<html>
+<body>
+<h2>TypedEventRateEstimator</h2>
+<p>Subclass of <code>EventRateEstimator</code> that can split the rate by event
+<code>type</code> (usually 0=OFF, 1=ON) in one pass without allocating extra packets.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Enable the filter (often enclosed inside <code>Info</code>).</li>
+<li>Check <code>measureIndividualTypesEnabled</code> for per-polarity rates;
+uncheck for a single combined rate.</li>
+<li>Share <code>eventRateTauMs</code> / <code>maxRate</code> with the parent estimator.</li>
+</ol>
+<p>Events themselves are not filtered.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class TypedEventRateEstimator extends EventRateEstimator {
 

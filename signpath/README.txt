@@ -11,18 +11,22 @@ Fill in these files (one value per file; see stubs created beside this README):
       overview block; scripts extract the UUID automatically.
 
   signpath-api-token.txt
-      API token from SignPath user "CI builds" → API Token tab.
-      Single line, no quotes.
+      API token from SignPath CI user "CI builds" (Users and Groups →
+      CI users → that user → Generate token). Not your personal token.
+      Single line, no quotes. GitHub secret SIGNPATH_API_TOKEN must be
+      this same value; GitHub has no separate submitter setting.
 
   install4j-license.txt
-      Your install4j license key (single line). Used by local Ant when
-      present; also synced to GitHub Actions secret INSTALL4J_LICENSE.
+      Your install4j license key (single line). Fallback for local Ant and
+      this folder's sync script when install4j/license.txt is missing.
+      Preferred location: install4j/license.txt (gitignored).
 
   signpath-project-slug.txt
       Default: jaer
 
   signpath-signing-policy-slug.txt
-      Default: test-signing  (use release-signing later when VALID)
+      Current CI policy: test-signing2 (workflow hardcodes this).
+      Use release-signing later when that policy is VALID.
 
 Sync to GitHub Actions (secrets are set via gh CLI; nothing is committed):
 
