@@ -11,6 +11,11 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -60,6 +65,11 @@ import net.sf.jaer.util.IndexFileFilter;
 public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInterface {
 
     JFileChooser fileChooser;
+    private final Object openStateLock = new Object();
+    private final Map<Long, SwingWorker<AEFileInputStreamInterface, Void>> pendingOpenWorkers = new HashMap<>();
+    private long openGeneration;
+    private long playbackOpenGeneration = -1;
+    private boolean closed;
 
     /**
      * Make a new AEPlayer
@@ -201,7 +211,35 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void close() throws IOException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        final List<SwingWorker<AEFileInputStreamInterface, Void>> workers;
+        final AEFileInputStreamInterface stream;
+        synchronized (openStateLock) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            openGeneration++;
+            playbackOpenGeneration = -1;
+            workers = new ArrayList<>(pendingOpenWorkers.values());
+            pendingOpenWorkers.clear();
+            stream = aeInputStream;
+            aeInputStream = null;
+        }
+
+        // SwingWorker.cancel never waits for doInBackground(), so close remains safe on the EDT.
+        for (SwingWorker<AEFileInputStreamInterface, Void> worker : workers) {
+            worker.cancel(true);
+        }
+        if (viewer != null) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                viewer.endFilePlaybackOpen();
+            } else {
+                SwingUtilities.invokeLater(viewer::endFilePlaybackOpen);
+            }
+        }
+        if (stream != null) {
+            stream.close();
+        }
     }
 
     @Override
@@ -330,9 +368,22 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
-        if (aeInputStream != null) {
+        final long generation;
+        final AEFileInputStreamInterface previousStream;
+        synchronized (openStateLock) {
+            if (closed) {
+                throw new IOException("AEPlayer is closed");
+            }
+            generation = ++openGeneration;
+            if (playbackOpenGeneration >= 0) {
+                playbackOpenGeneration = generation;
+            }
+            previousStream = aeInputStream;
+            aeInputStream = null;
+        }
+        if (previousStream != null) {
             try {
-                aeInputStream.close();
+                previousStream.close();
             } catch (IOException e) {
                 log.warning(String.format("Could not close existing file: %s", e.toString()));
             }
@@ -340,23 +391,26 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         log.info("starting playback with file=" + file);
         inputFile = file;
         if ((file == null) || !file.isFile()) {
+            endPlaybackOpenIfOwned(generation);
             throw new FileNotFoundException("file not found: " + file);
         }
         // Stop ViewLoop from opening USB / flipping to LIVE before any AEChip switch.
         // Chip switch may close a live interface; doing that while ViewLoop is in LIVE hangs
         // (seen with NRV plugged in). Known race: ViewLoop openAEMonitor() can set LIVE.
-        viewer.beginFilePlaybackOpen();
+        if (!beginPlaybackOpen(generation)) {
+            return;
+        }
         setPaused(true);
         // Filename / header / multi-stream check (may switch AEChip or cancel).
         if (!viewer.ensureChipCompatibleWithRecording(file)) {
-            viewer.endFilePlaybackOpen();
+            endPlaybackOpenIfOwned(generation);
             setPaused(false);
             return;
         }
         // Dependent-block LZ4 DV files: offer sibling *-rerecord.aedat4 for fast playback.
         final Aedat4Lz4Rerecorder.OpenPlan lz4Plan = viewer.offerAedat4Lz4Rerecord(file);
         if (lz4Plan == null || lz4Plan.fileToOpen == null) {
-            viewer.endFilePlaybackOpen();
+            endPlaybackOpenIfOwned(generation);
             setPaused(false);
             return;
         }
@@ -372,7 +426,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     viewer.getJaerViewer().getSyncPlayer().startPlayback(playFile);
                 }
             } finally {
-                viewer.endFilePlaybackOpen();
+                endPlaybackOpenIfOwned(generation);
                 setPaused(false);
             }
             return;
@@ -388,7 +442,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
         }
         if (viewer.getChip() == null) {
-            viewer.endFilePlaybackOpen();
+            endPlaybackOpenIfOwned(generation);
             setPaused(false);
             throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
         }
@@ -400,6 +454,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         final Timer[] cancelPollRef = new Timer[1];
         final SwingWorker<AEFileInputStreamInterface, Void> worker = new SwingWorker<AEFileInputStreamInterface, Void>() {
             volatile Exception exception = null;
+            private final AtomicBoolean resultClosed = new AtomicBoolean();
+
+            private void closeResultOnce(AEFileInputStreamInterface stream) {
+                if (stream != null && resultClosed.compareAndSet(false, true)) {
+                    try {
+                        stream.close();
+                    } catch (IOException ignore) {
+                    }
+                }
+            }
 
             @Override
             protected AEFileInputStreamInterface doInBackground() throws Exception {
@@ -426,7 +490,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             e.printStackTrace();
                             return null;
                         }
-                        if (isCancelled() || progressMonitor.isCanceled()) {
+                        if (isCancelled() || progressMonitor.isCanceled() || !isCurrentOpenGeneration(generation)) {
                             log.info("File open canceled after re-record: " + playFile.getName());
                             return null;
                         }
@@ -447,14 +511,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         e.printStackTrace();
                         return null;
                     }
-                    if (isCancelled() || progressMonitor.isCanceled()) {
+                    if (isCancelled() || progressMonitor.isCanceled() || !isCurrentOpenGeneration(generation)) {
                         log.info("File open canceled after construct: " + playFile.getName());
-                        if (stream != null) {
-                            try {
-                                stream.close();
-                            } catch (IOException ignore) {
-                            }
-                        }
+                        closeResultOnce(stream);
                         return null;
                     }
                     // Configure stream only on this worker thread; UI updates run in done() on EDT.
@@ -475,17 +534,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             e.printStackTrace();
                         }
                     }
+                    if (isCancelled() || progressMonitor.isCanceled() || !isCurrentOpenGeneration(generation)) {
+                        log.info("File open superseded after configuration: " + playFile.getName());
+                        closeResultOnce(stream);
+                        return null;
+                    }
                     log.fine("doInBackground returning stream ok");
                     return stream;
                 } catch (Exception e) {
                     exception = e;
                     log.warning("AEPlayer.startPlayback background failed: " + e);
-                    if (stream != null) {
-                        try {
-                            stream.close();
-                        } catch (IOException ignore) {
-                        }
-                    }
+                    closeResultOnce(stream);
                     return null;
                 }
             }
@@ -507,6 +566,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             exception = e;
                         }
                     }
+                    if (!isCurrentOpenGeneration(generation)) {
+                        log.fine("done(): rejecting stale open generation " + generation);
+                        closeResultOnce(stream);
+                        return;
+                    }
                     if (exception != null) {
                         JOptionPane.showMessageDialog(
                                 viewer != null ? viewer : null,
@@ -516,20 +580,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     }
                     if (stream == null || isCancelled() || progressMonitor.isCanceled()) {
                         log.fine("done(): aborting open (null stream or cancel)");
-                        if (stream != null) {
-                            try {
-                                stream.close();
-                            } catch (IOException ignore) {
-                            }
-                        }
-                        aeInputStream = null;
+                        closeResultOnce(stream);
                         // beginFilePlaybackOpen() forced PLAYBACK before the stream existed;
                         // leave WAITING so ViewLoop does not call getNextPacket() on a null stream.
-                        if (viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                            viewer.setPlayMode(AEViewer.PlayMode.WAITING);
+                        if (isCurrentOpenGeneration(generation)) {
+                            if (viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                                viewer.setPlayMode(AEViewer.PlayMode.WAITING);
+                            }
+                            endPlaybackOpenIfOwned(generation);
+                            viewer.setPaused(false);
                         }
-                        viewer.endFilePlaybackOpen();
-                        viewer.setPaused(false);
                         if (isCancelled() || progressMonitor.isCanceled()) {
                             log.info("Playback open canceled for " + playFile.getName());
                         } else if (rerecordFrom != null) {
@@ -540,7 +600,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         }
                         return;
                     }
-                    aeInputStream = stream;
+                    if (!installStreamIfCurrent(generation, stream)) {
+                        log.fine("done(): generation was superseded before stream installation");
+                        closeResultOnce(stream);
+                        return;
+                    }
                     // Close progress before setPlayMode — dialog/EDT must not contend with ViewLoop locks.
                     try {
                         progressMonitor.setProgress(100);
@@ -552,7 +616,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     viewer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
                     log.info("AEDAT-4 open: setPlayMode(PLAYBACK) returned");
                     log.fine("done(): addMeToPropertyChangeListeners");
-                    viewer.getPlayerControls().addMeToPropertyChangeListeners(aeInputStream);
+                    viewer.getPlayerControls().addMeToPropertyChangeListeners(stream);
                     log.fine("done(): setPlaybackControlsEnabledState");
                     viewer.setPlaybackControlsEnabledState(true);
                     log.fine("done(): fixRecordingControls");
@@ -564,7 +628,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         log.warning("tried to reset renderer but caught " + e);
                     }
                     log.fine("done(): applying restored marks to player controls");
-                    applyRestoredMarksToPlayerControls(aeInputStream);
+                    applyRestoredMarksToPlayerControls(stream);
                     if (viewer.getChip().getRenderer() != null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)) {
                         log.fine("done(): showRenderingModeTextOnAeViewer");
                         AEChipRenderer renderer = (AEChipRenderer) viewer.getChip().getRenderer();
@@ -575,7 +639,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     log.fine("done(): setInputFile");
                     viewer.setInputFile(file);
                     log.fine("done(): endFilePlaybackOpen + setPaused(false)");
-                    viewer.endFilePlaybackOpen();
+                    endPlaybackOpenIfOwned(generation);
                     viewer.setPaused(false);
                     log.info("AEDAT-4 open: EDT setup complete, playback should run");
                     log.fine("done(): playback UI setup complete");
@@ -590,16 +654,23 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     } catch (Exception ignore) {
                     }
                     if (viewer != null) {
-                        viewer.endFilePlaybackOpen(); // idempotent if already cleared after successful setup
-                        viewer.setCursor(Cursor.getDefaultCursor());
+                        endPlaybackOpenIfOwned(generation);
+                        if (isCurrentOpenGeneration(generation)) {
+                            viewer.setCursor(Cursor.getDefaultCursor());
+                        }
                     }
                     if (cancelPollRef[0] != null) {
                         cancelPollRef[0].stop();
                     }
+                    unregisterPendingOpen(generation, this);
                     log.fine("done(): finally complete");
                 }
             }
         };
+        if (!registerPendingOpen(generation, worker)) {
+            progressMonitor.close();
+            return;
+        }
         cancelPollRef[0] = new Timer(200, e -> {
             if (progressMonitor.isCanceled() && !worker.isDone()) {
                 log.info("Cancel requested while opening " + file.getName());
@@ -618,6 +689,60 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         });
 
         worker.execute();
+    }
+
+    private boolean beginPlaybackOpen(long generation) {
+        synchronized (openStateLock) {
+            if (closed || generation != openGeneration) {
+                return false;
+            }
+            playbackOpenGeneration = generation;
+            viewer.beginFilePlaybackOpen();
+            return true;
+        }
+    }
+
+    private boolean endPlaybackOpenIfOwned(long generation) {
+        synchronized (openStateLock) {
+            if (closed || generation != openGeneration || generation != playbackOpenGeneration) {
+                return false;
+            }
+            playbackOpenGeneration = -1;
+            viewer.endFilePlaybackOpen();
+            return true;
+        }
+    }
+
+    private boolean isCurrentOpenGeneration(long generation) {
+        synchronized (openStateLock) {
+            return !closed && generation == openGeneration;
+        }
+    }
+
+    private boolean installStreamIfCurrent(long generation, AEFileInputStreamInterface stream) {
+        synchronized (openStateLock) {
+            if (closed || generation != openGeneration) {
+                return false;
+            }
+            aeInputStream = stream;
+            return true;
+        }
+    }
+
+    private boolean registerPendingOpen(long generation, SwingWorker<AEFileInputStreamInterface, Void> worker) {
+        synchronized (openStateLock) {
+            if (closed || generation != openGeneration) {
+                return false;
+            }
+            pendingOpenWorkers.put(generation, worker);
+            return true;
+        }
+    }
+
+    private void unregisterPendingOpen(long generation, SwingWorker<AEFileInputStreamInterface, Void> worker) {
+        synchronized (openStateLock) {
+            pendingOpenWorkers.remove(generation, worker);
+        }
     }
 
     /**
@@ -700,10 +825,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             viewer.setPlayMode(AEViewer.PlayMode.WAITING);
         }
         viewer.setPlaybackControlsEnabledState(false);
+        final AEFileInputStreamInterface stream;
+        synchronized (openStateLock) {
+            stream = aeInputStream;
+            aeInputStream = null;
+        }
         try {
-            if (aeInputStream != null) {
-                aeInputStream.close();
-                aeInputStream = null;
+            if (stream != null) {
+                stream.close();
             }
         } catch (IOException ignore) {
             ignore.printStackTrace();
