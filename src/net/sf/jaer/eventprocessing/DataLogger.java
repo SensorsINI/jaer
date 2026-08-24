@@ -30,6 +30,7 @@ import net.sf.jaer.util.FileAccessTimeout;
 @Description("Records event data to disk according to various criteria.")
 public class DataLogger extends EventFilter2D {
 
+    private static final long AEDAT2_BYTES_PER_EVENT = 8L;
     private boolean recordingEnabled = false; // controlled by filterEnabled
     private AEFileOutputStream recordingOutputStream;
     private String defaultRecordingFolderName = System.getProperty("user.dir");
@@ -80,8 +81,9 @@ public class DataLogger extends EventFilter2D {
         if (recordingEnabled) {
             try {
                 recordingOutputStream.writePacket(eventPacket); // record all events
-                bytesWritten += eventPacket.getSize();
-                if (bytesWritten >>> 20 > maxLogFileSizeMB) {
+                bytesWritten += AEDAT2_BYTES_PER_EVENT * eventPacket.getSizeNotFilteredOut();
+                long maxLogFileSizeBytes = ((long) maxLogFileSizeMB) << 20;
+                if (bytesWritten > maxLogFileSizeBytes) {
                     setRecordingEnabled(false);
                     if (rotateFilesEnabled) {
                         startRecording();
@@ -180,6 +182,7 @@ public class DataLogger extends EventFilter2D {
             recordingOutputStream = newRecordingOutputStream;
             activeRecordingSnapshot = snapshot;
             recordingSnapshotCapturedHere = capturedHere;
+            bytesWritten = 0;
             recordingEnabled = true;
             getSupport().firePropertyChange("recordingEnabled", null, true);
             log.info("starting recording to " + recordingFile);
@@ -253,7 +256,6 @@ public class DataLogger extends EventFilter2D {
         }
 
         File lf = startRecording(filename);
-        bytesWritten = 0;
         return lf;
 
     }
