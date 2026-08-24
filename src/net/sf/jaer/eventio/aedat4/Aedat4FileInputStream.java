@@ -56,7 +56,7 @@ import net.sf.jaer.util.EngineeringFormat;
  * decoded on demand for the current playback window (not stored for the whole file).
  * <p>
  * First open prefers the trailing FileDataTable (decompress once, no per-packet LZ4);
- * falls back to a linear packet scan when the table is missing or invalid. A small
+ * falls back to a linear packet scan when the table is missing or empty. A small
  * index cache under {@code java.io.tmpdir} then makes reopen effectively instant.
  */
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
@@ -70,6 +70,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
+    /**
+     * Maximum encoded IOHeader FlatBuffer. Real headers are normally a few KiB;
+     * 16 MiB leaves ample room for large DV infoNode metadata without allowing a
+     * corrupt size prefix to control an unbounded allocation.
+     */
+    private static final long MAX_IO_HEADER_BYTES = 16L * 1024 * 1024;
+    /**
+     * Maximum encoded payload of one EVTS/FRME/IMUS packet. Packet payloads are
+     * independently decoded, so a 64 MiB cap bounds every file-controlled packet
+     * allocation while remaining well above normal DV packet sizes.
+     */
+    private static final long MAX_PACKET_PAYLOAD_BYTES = 64L * 1024 * 1024;
+    /**
+     * Maximum encoded or decoded trailing FileDataTable. The table is read as one
+     * region; bounding it to 64 MiB prevents a corrupt table offset from turning
+     * the rest of a large recording into one allocation.
+     */
+    private static final long MAX_FILE_DATA_TABLE_BYTES = 64L * 1024 * 1024;
     /**
      * Max polarity events returned from one {@code readPacketBy*}. Prevents OOM / multi-second
      * hangs when on-demand decode would otherwise walk millions of FlatBuffer events.
@@ -163,9 +181,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         this.file = file;
         this.chip = chip;
         this.requestedEventStreamId = eventStreamId;
-        this.randomAccessFile = new RandomAccessFile(file, "r");
-        this.channel = randomAccessFile.getChannel();
         try {
+            this.randomAccessFile = new RandomAccessFile(file, "r");
+            this.channel = randomAccessFile.getChannel();
             log.fine("Aedat4FileInputStream open begin: " + file + " requestedEventStreamId=" + eventStreamId);
             readHeaderAndResolveStreams();
             log.fine("header compression=" + Aedat4Compression.nameOf(compression)
@@ -189,31 +207,51 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 progressMonitor.setProgress(99);
             }
             log.fine("clearMarks / EVENT_INIT");
+            clearMarks();
+            EngineeringFormat eng = new EngineeringFormat();
+            eng.setPrecision(3);
+            log.info(String.format(
+                    "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%ss (%d EVTS packets indexed)",
+                    file.getName(),
+                    Aedat4Compression.nameOf(compression),
+                    this.eventStreamId,
+                    selectedSource == null ? "" : " (" + selectedSource + ")",
+                    eng.format((double) eventCount).trim(),
+                    eng.format((double) frameCount).trim(),
+                    eng.format((double) imuSampleCount).trim(),
+                    eng.format(getDurationUsLong() * 1e-6).trim(),
+                    eventRefs.length));
+            support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
+            log.fine("Aedat4FileInputStream constructor returning");
         } catch (IOException e) {
             log.fine("open failed: " + e);
-            try {
-                close();
-            } catch (IOException ignore) {
-                // already failing open
-            }
+            closeAfterFailedOpen(e);
+            throw e;
+        } catch (RuntimeException e) {
+            log.fine("open failed: " + e);
+            closeAfterFailedOpen(e);
             throw e;
         }
-        clearMarks();
-        EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
-        log.info(String.format(
-                "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%ss (%d EVTS packets indexed)",
-                file.getName(),
-                Aedat4Compression.nameOf(compression),
-                this.eventStreamId,
-                selectedSource == null ? "" : " (" + selectedSource + ")",
-                eng.format((double) eventCount).trim(),
-                eng.format((double) frameCount).trim(),
-                eng.format((double) imuSampleCount).trim(),
-                eng.format(getDurationUsLong() * 1e-6).trim(),
-                eventRefs.length));
-        support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
-        log.fine("Aedat4FileInputStream constructor returning");
+    }
+
+    /** Close both resources owned by a constructor that did not return. */
+    private void closeAfterFailedOpen(Throwable failure) {
+        if (channel != null) {
+            try {
+                channel.close();
+            } catch (IOException | RuntimeException closeFailure) {
+                failure.addSuppressed(closeFailure);
+            }
+        }
+        if (randomAccessFile != null) {
+            try {
+                randomAccessFile.close();
+            } catch (IOException | RuntimeException closeFailure) {
+                failure.addSuppressed(closeFailure);
+            }
+        }
+        channel = null;
+        randomAccessFile = null;
     }
 
     /** Selected polarity stream ID after open. */
@@ -338,11 +376,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (!Arrays.equals(version.array(), Aedat4FileOutputStream.VERSION_LINE)) {
             throw new IOException(file + " is not an AEDAT-4 file");
         }
-        ByteBuffer headerBytes = readSizePrefixed(channel);
-        IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
-        compression = Aedat4Compression.clamp(header.compression());
-        dataTablePosition = header.dataTablePosition();
-        resolveStreamIds(header.infoNode());
+        ByteBuffer headerBytes = readSizePrefixed(channel, "IOHeader", MAX_IO_HEADER_BYTES);
+        IOHeader header = parseIoHeader(headerBytes);
+        try {
+            compression = Aedat4Compression.clamp(header.compression());
+            dataTablePosition = header.dataTablePosition();
+            resolveStreamIds(header.infoNode());
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("IOHeader", e);
+        }
         log.info(String.format(
                 "AEDAT-4 header %s: compression=%s dataTablePosition=%d",
                 file.getName(),
@@ -476,9 +518,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     private boolean tryIndexFromFileDataTable(ProgressMonitor progressMonitor) throws IOException {
         long fileSize = channel.size();
-        if (dataTablePosition < 0 || dataTablePosition >= fileSize) {
+        if (dataTablePosition < 0) {
             log.fine("AEDAT-4 FileDataTable unavailable (dataTablePosition=" + dataTablePosition + ")");
             return false;
+        }
+        if (dataTablePosition < channel.position() || dataTablePosition >= fileSize) {
+            throw new IOException(String.format(
+                    "AEDAT-4 FileDataTable position %d is outside the data region [%d,%d)",
+                    dataTablePosition, channel.position(), fileSize));
         }
         long t0 = System.currentTimeMillis();
         if (progressMonitor != null) {
@@ -487,10 +534,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         throwIfCanceled(progressMonitor, "AEDAT-4 FileDataTable index");
         final long remaining = fileSize - dataTablePosition;
-        if (remaining < 8 || remaining > 512L * 1024 * 1024) {
-            log.warning("AEDAT-4 FileDataTable remaining bytes implausible (" + remaining + "); scanning packets");
-            return false;
-        }
+        checkedAllocationSize(remaining, remaining, MAX_FILE_DATA_TABLE_BYTES,
+                "FileDataTable region at offset " + dataTablePosition);
         // The FileDataTable uses the IOHeader codec. Legacy jAER files wrote it
         // uncompressed, so retain raw-FTAB detection. Region is [dataTablePosition, EOF).
         channel.position(dataTablePosition);
@@ -498,8 +543,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         try {
             readFully(channel, rawTable);
         } catch (IOException e) {
-            log.warning("AEDAT-4 FileDataTable region read failed; scanning packets: " + e.getMessage());
-            return false;
+            throw new IOException("AEDAT-4 FileDataTable truncated while reading " + remaining
+                    + " bytes at offset " + dataTablePosition, e);
         }
         rawTable.flip();
         ByteBuffer tableBytes;
@@ -508,39 +553,31 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 tableBytes = rawTable;
             } else {
                 // Decompress entire trailing region (one LZ4/ZSTD frame).
-                byte[] compressed = new byte[rawTable.remaining()];
-                rawTable.get(compressed);
-                byte[] flat = Aedat4Compression.decompress(compressed, compression);
+                byte[] flat = Aedat4Compression.decompress(rawTable.array(), compression);
+                checkedAllocationSize(flat.length, flat.length, MAX_FILE_DATA_TABLE_BYTES,
+                        "decoded FileDataTable");
                 tableBytes = ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
             }
         } catch (IOException e) {
-            log.warning("AEDAT-4 FileDataTable decompress failed; scanning packets: " + e.getMessage());
-            return false;
+            throw new IOException("AEDAT-4 FileDataTable decode failed at offset "
+                    + dataTablePosition + ": " + e.getMessage(), e);
         }
         if (!looksLikeFileDataTable(tableBytes)) {
-            log.warning("AEDAT-4 FileDataTable after decompress is not FTAB; scanning packets");
-            return false;
+            throw new IOException("AEDAT-4 FileDataTable malformed FlatBuffer: missing FTAB identifier");
         }
-        // Size-prefixed root: reject absurd prefixes before FlatBuffers walk.
-        if (tableBytes.remaining() >= 4) {
-            int prefix = tableBytes.getInt(tableBytes.position());
-            if (prefix < 8 || prefix + 4L > tableBytes.remaining()) {
-                log.warning("AEDAT-4 FileDataTable size prefix=" + prefix + " vs buffer="
-                        + tableBytes.remaining() + "; scanning packets");
-                return false;
-            }
-        }
-        FileDataTable table;
+        FileDataTable table = parseFileDataTable(tableBytes);
+        final int n;
         try {
-            table = FileDataTable.getSizePrefixedRootAsFileDataTable(tableBytes);
-        } catch (Exception e) {
-            log.warning("AEDAT-4 FileDataTable parse failed; scanning packets: " + e);
+            n = table.tableLength();
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("FileDataTable", e);
+        }
+        if (n == 0) {
+            log.fine("AEDAT-4 FileDataTable is empty; scanning packet region");
             return false;
         }
-        int n = table.tableLength();
-        if (n <= 0 || n > INDEX_CACHE_MAX_PACKETS) {
-            log.warning("AEDAT-4 FileDataTable length=" + n + " unusable; scanning packets");
-            return false;
+        if (n < 0 || n > INDEX_CACHE_MAX_PACKETS) {
+            throw new IOException("AEDAT-4 FileDataTable malformed length " + n);
         }
         ArrayList<PacketRef> events = new ArrayList<>();
         ArrayList<PacketRef> frames = new ArrayList<>();
@@ -559,34 +596,44 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (progressMonitor != null && (i & 1023) == 0) {
                 progressMonitor.setProgress(5 + (int) Math.min(80, (i * 80L) / n));
             }
-            FileDataDefinition d = table.table(def, i);
-            if (d == null) {
-                log.warning("AEDAT-4 FileDataTable null entry at " + i + "; scanning packets");
-                return false;
+            final FileDataDefinition d;
+            final int streamId;
+            final int payloadSize;
+            final long byteOffset;
+            final long numElements;
+            final long tStart;
+            final long tEnd;
+            try {
+                d = table.table(def, i);
+                if (d == null) {
+                    throw new IndexOutOfBoundsException("null entry");
+                }
+                streamId = d.packetInfoStreamID();
+                payloadSize = checkedPacketPayloadSize(d.packetInfoSize(), Long.MAX_VALUE,
+                        "FileDataTable entry " + i);
+                byteOffset = d.byteOffset();
+                numElements = d.numElements();
+                tStart = d.timestampStart();
+                tEnd = d.timestampEnd();
+            } catch (RuntimeException e) {
+                throw malformedFlatBuffer("FileDataTable entry " + i, e);
             }
-            int streamId = d.packetInfoStreamID();
-            int payloadSize = d.packetInfoSize();
-            long byteOffset = d.byteOffset();
-            long numElements = d.numElements();
-            long tStart = d.timestampStart();
-            long tEnd = d.timestampEnd();
-            if (payloadSize < 0 || byteOffset < 0) {
-                log.warning(String.format(
-                        "AEDAT-4 FileDataTable entry %d invalid (off=%d size=%d); scanning packets",
-                        i, byteOffset, payloadSize));
-                return false;
+            if (byteOffset < 0 || byteOffset > dataEnd) {
+                throw new IOException(String.format(
+                        "AEDAT-4 FileDataTable entry %d invalid payload offset %d (dataEnd=%d)",
+                        i, byteOffset, dataEnd));
             }
             if (offsetIsPayload == null) {
                 offsetIsPayload = detectFtabOffsetIsPayload(byteOffset, streamId, payloadSize, dataEnd);
                 log.fine("AEDAT-4 FileDataTable byteOffset points to "
                         + (offsetIsPayload ? "payload (DV)" : "PacketHeader (jAER)"));
             }
-            long payloadOffset = offsetIsPayload ? byteOffset : byteOffset + 8L;
-            if (payloadOffset + (long) payloadSize > dataEnd) {
-                log.warning(String.format(
-                        "AEDAT-4 FileDataTable entry %d out of range (off=%d payloadOff=%d size=%d dataEnd=%d); scanning packets",
+            long payloadOffset = offsetIsPayload ? byteOffset
+                    : checkedAdd(byteOffset, 8L, "FileDataTable entry " + i + " payload offset");
+            if (payloadOffset > dataEnd || (long) payloadSize > dataEnd - payloadOffset) {
+                throw new IOException(String.format(
+                        "AEDAT-4 FileDataTable entry %d payload out of range (off=%d payloadOff=%d size=%d dataEnd=%d)",
                         i, byteOffset, payloadOffset, payloadSize, dataEnd));
-                return false;
             }
             boolean known = streamId == eventStreamId
                     || streamId == frameStreamId
@@ -642,7 +689,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 return true; // header immediately before offset → DV payload offset
             }
         }
-        if (byteOffset + 8L <= dataEnd) {
+        if (byteOffset <= dataEnd - 8L) {
             channel.position(byteOffset);
             hdr.clear();
             readFully(channel, hdr);
@@ -652,8 +699,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         // Geometry fallback: last packets often only fit if offset is the payload.
-        return byteOffset + (long) payloadSize <= dataEnd
-                && byteOffset + 8L + payloadSize > dataEnd;
+        boolean payloadFits = (long) payloadSize <= dataEnd - byteOffset;
+        boolean headerPayloadFits = byteOffset <= dataEnd - 8L
+                && (long) payloadSize <= dataEnd - byteOffset - 8L;
+        return payloadFits && !headerPayloadFits;
     }
 
     /** Slow path: decompress every packet to recover counts/timestamps. */
@@ -672,10 +721,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw new IOException(file + " is not an AEDAT-4 file");
         }
 
-        ByteBuffer headerBytes = readSizePrefixed(channel);
-        IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
-        compression = Aedat4Compression.clamp(header.compression());
-        long tablePos = header.dataTablePosition();
+        ByteBuffer headerBytes = readSizePrefixed(channel, "IOHeader", MAX_IO_HEADER_BYTES);
+        IOHeader header = parseIoHeader(headerBytes);
+        final long tablePos;
+        try {
+            compression = Aedat4Compression.clamp(header.compression());
+            tablePos = header.dataTablePosition();
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("IOHeader", e);
+        }
         long fileSize = channel.size();
         ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         long scannedPackets = 0;
@@ -683,7 +737,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (progressMonitor != null) {
             progressMonitor.setNote("Indexing AEDAT-4 packets (stream " + eventStreamId + ")");
         }
-        while (channel.position() + 8 <= fileSize) {
+        while (channel.position() <= fileSize && fileSize - channel.position() >= 8L) {
             throwIfCanceled(progressMonitor, "AEDAT-4 indexing");
             if (tablePos >= 0 && channel.position() >= tablePos) {
                 break;
@@ -693,11 +747,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             readFully(channel, packetHeader);
             packetHeader.flip();
             int streamId = packetHeader.getInt();
-            int payloadSize = packetHeader.getInt();
-            long remaining = fileSize - channel.position();
-            if (payloadSize < 0 || payloadSize > remaining) {
-                break;
-            }
+            int declaredPayloadSize = packetHeader.getInt();
+            long payloadBoundary = tablePos >= channel.position() ? Math.min(fileSize, tablePos) : fileSize;
+            long remaining = payloadBoundary - channel.position();
+            int payloadSize = checkedPacketPayloadSize(declaredPayloadSize, remaining,
+                    "packet at offset " + packetOffset + " stream " + streamId);
             boolean known = streamId == eventStreamId
                     || streamId == frameStreamId
                     || streamId == imuStreamId;
@@ -710,7 +764,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             long payloadOffset = channel.position();
             ByteBuffer payload = ByteBuffer.allocate(payloadSize).order(ByteOrder.LITTLE_ENDIAN);
-            readFully(channel, payload);
+            try {
+                readFully(channel, payload);
+            } catch (IOException e) {
+                throw new IOException("AEDAT-4 packet payload truncated at offset " + payloadOffset
+                        + " (declared " + payloadSize + " bytes)", e);
+            }
             payload.flip();
             scannedPackets++;
             if (!known) {
@@ -728,29 +787,53 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 throw ex;
             }
             if (streamId == eventStreamId) {
-                EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(flat);
-                int num = packet.elementsLength();
+                EventPacket packet = parseEventPacket(flat, "EVTS event packet at offset " + payloadOffset);
+                int num;
+                try {
+                    num = packet.elementsLength();
+                } catch (RuntimeException e) {
+                    throw malformedFlatBuffer("EVTS event packet at offset " + payloadOffset, e);
+                }
                 long start = 0;
                 long end = 0;
-                if (num > 0) {
-                    start = packet.elements(0).timestamp();
-                    end = packet.elements(num - 1).timestamp();
+                try {
+                    if (num > 0) {
+                        start = packet.elements(0).timestamp();
+                        end = packet.elements(num - 1).timestamp();
+                    }
+                } catch (RuntimeException e) {
+                    throw malformedFlatBuffer("EVTS event packet at offset " + payloadOffset, e);
                 }
                 events.add(new PacketRef(payloadOffset, payloadSize, start, end, num, cumEvents));
                 cumEvents += num;
             } else if (streamId == frameStreamId) {
-                Frame frame = Frame.getSizePrefixedRootAsFrame(flat);
-                long start = frame.timestampStartOfFrame() != 0 ? frame.timestampStartOfFrame() : frame.timestamp();
-                long end = frame.timestampEndOfFrame() != 0 ? frame.timestampEndOfFrame() : start;
+                Frame frame = parseFrame(flat, "FRME frame packet at offset " + payloadOffset);
+                final long start;
+                final long end;
+                try {
+                    start = frame.timestampStartOfFrame() != 0 ? frame.timestampStartOfFrame() : frame.timestamp();
+                    end = frame.timestampEndOfFrame() != 0 ? frame.timestampEndOfFrame() : start;
+                } catch (RuntimeException e) {
+                    throw malformedFlatBuffer("FRME frame packet at offset " + payloadOffset, e);
+                }
                 frames.add(new PacketRef(payloadOffset, payloadSize, start, end, 1, 0));
             } else if (streamId == imuStreamId) {
-                IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(flat);
-                int num = packet.elementsLength();
+                IMUPacket packet = parseImuPacket(flat, "IMUS packet at offset " + payloadOffset);
+                int num;
+                try {
+                    num = packet.elementsLength();
+                } catch (RuntimeException e) {
+                    throw malformedFlatBuffer("IMUS packet at offset " + payloadOffset, e);
+                }
                 long start = 0;
                 long end = 0;
-                if (num > 0) {
-                    start = packet.elements(0).timestamp();
-                    end = packet.elements(num - 1).timestamp();
+                try {
+                    if (num > 0) {
+                        start = packet.elements(0).timestamp();
+                        end = packet.elements(num - 1).timestamp();
+                    }
+                } catch (RuntimeException e) {
+                    throw malformedFlatBuffer("IMUS packet at offset " + payloadOffset, e);
                 }
                 imus.add(new PacketRef(payloadOffset, payloadSize, start, end, num, 0));
                 imuElems += num;
@@ -969,7 +1052,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         ByteBuffer view = cachedEventFlat.duplicate().order(ByteOrder.LITTLE_ENDIAN);
         view.rewind();
-        return EventPacket.getSizePrefixedRootAsEventPacket(view);
+        return parseEventPacket(view, "EVTS event packet " + packetIndex);
     }
 
     private AEPacketRaw extractPolarity(long startIdx, long endIdx) throws IOException {
@@ -1129,15 +1212,29 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private FramePacket decodeFrame(PacketRef ref) throws IOException {
         ByteBuffer payload = readPayload(ref);
-        Frame frame = Frame.getSizePrefixedRootAsFrame(payload);
-        int w = frame.sizeX() & 0xffff;
-        int h = frame.sizeY() & 0xffff;
+        Frame frame = parseFrame(payload, "FRME frame packet at offset " + ref.payloadOffset);
+        final int parsedWidth;
+        final int parsedHeight;
+        try {
+            parsedWidth = frame.sizeX() & 0xffff;
+            parsedHeight = frame.sizeY() & 0xffff;
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("FRME frame packet at offset " + ref.payloadOffset, e);
+        }
+        int w = parsedWidth;
+        int h = parsedHeight;
         if (w <= 0 || h <= 0) {
             w = chip != null ? chip.getSizeX() : 0;
             h = chip != null ? chip.getSizeY() : 0;
         }
-        final int nbytes = frame.pixelsLength();
-        final byte fmt = frame.format();
+        final int nbytes;
+        final byte fmt;
+        try {
+            nbytes = frame.pixelsLength();
+            fmt = frame.format();
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("FRME frame packet at offset " + ref.payloadOffset, e);
+        }
         final FrameLayout layout = resolveFrameLayout(fmt, w, h, nbytes);
         FramePacket out = new FramePacket(w, h, layout.colorMode);
         out.setTimestampStartUs((int) ref.unixStart);
@@ -1252,17 +1349,30 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private ImuPacket decodeImu(PacketRef ref) throws IOException {
         ByteBuffer payload = readPayload(ref);
-        IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(payload);
-        int n = packet.elementsLength();
+        IMUPacket packet = parseImuPacket(payload, "IMUS packet at offset " + ref.payloadOffset);
+        final int n;
+        try {
+            n = packet.elementsLength();
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("IMUS packet at offset " + ref.payloadOffset, e);
+        }
         ImuPacket out = new ImuPacket(Math.max(ImuPacket.DEFAULT_CAPACITY, n));
         for (int i = 0; i < n; i++) {
-            IMU imu = packet.elements(i);
-            int ts = (int) (imu.timestamp() - baseUnixUs + ref.wrapOffset);
-            IMUSample sample = out.nextOutput();
-            sample.setFromPhysicalUnits(ts,
-                    imu.accelerometerX(), imu.accelerometerY(), imu.accelerometerZ(),
-                    imu.gyroscopeX(), imu.gyroscopeY(), imu.gyroscopeZ(),
-                    imu.temperature());
+            try {
+                IMU imu = packet.elements(i);
+                if (imu == null) {
+                    throw new IndexOutOfBoundsException("null IMU element " + i);
+                }
+                int ts = (int) (imu.timestamp() - baseUnixUs + ref.wrapOffset);
+                IMUSample sample = out.nextOutput();
+                sample.setFromPhysicalUnits(ts,
+                        imu.accelerometerX(), imu.accelerometerY(), imu.accelerometerZ(),
+                        imu.gyroscopeX(), imu.gyroscopeY(), imu.gyroscopeZ(),
+                        imu.temperature());
+            } catch (RuntimeException e) {
+                throw malformedFlatBuffer("IMUS packet at offset " + ref.payloadOffset
+                        + " element " + i, e);
+            }
         }
         return out;
     }
@@ -1300,14 +1410,35 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private ByteBuffer readPayload(PacketRef ref) throws IOException {
         ensureChannelOpen();
-        ByteBuffer payload = ByteBuffer.allocate(ref.payloadSize).order(ByteOrder.LITTLE_ENDIAN);
+        long fileSize = channel.size();
+        if (ref.payloadOffset < 0 || ref.payloadOffset > fileSize) {
+            throw new IOException("AEDAT-4 packet payload offset " + ref.payloadOffset
+                    + " is outside file size " + fileSize);
+        }
+        int payloadSize = checkedPacketPayloadSize(ref.payloadSize,
+                fileSize - ref.payloadOffset, "packet at offset " + ref.payloadOffset);
+        ByteBuffer payload = ByteBuffer.allocate(payloadSize).order(ByteOrder.LITTLE_ENDIAN);
         try {
             channel.position(ref.payloadOffset);
             readFully(channel, payload);
         } catch (ClosedChannelException e) {
             ensureChannelOpen();
+            fileSize = channel.size();
+            if (ref.payloadOffset < 0 || ref.payloadOffset > fileSize
+                    || (long) payloadSize > fileSize - ref.payloadOffset) {
+                throw new IOException("AEDAT-4 packet payload truncated after channel reopen at offset "
+                        + ref.payloadOffset + " (declared " + payloadSize + " bytes)", e);
+            }
             channel.position(ref.payloadOffset);
-            readFully(channel, payload);
+            try {
+                readFully(channel, payload);
+            } catch (IOException readFailure) {
+                throw new IOException("AEDAT-4 packet payload truncated at offset " + ref.payloadOffset
+                        + " (declared " + payloadSize + " bytes)", readFailure);
+            }
+        } catch (EOFException e) {
+            throw new IOException("AEDAT-4 packet payload truncated at offset " + ref.payloadOffset
+                    + " (declared " + payloadSize + " bytes)", e);
         }
         payload.flip();
         return maybeDecompress(payload);
@@ -1337,19 +1468,224 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         cachedEventFlat = null;
     }
 
-    private static ByteBuffer readSizePrefixed(FileChannel channel) throws IOException {
+    private static ByteBuffer readSizePrefixed(FileChannel channel, String context, long maximumBytes)
+            throws IOException {
+        long prefixRemaining = remainingFileBytes(channel, context + " size prefix");
+        if (prefixRemaining < Integer.BYTES) {
+            throw new IOException("AEDAT-4 " + context + " truncated size prefix: only "
+                    + prefixRemaining + " bytes remaining");
+        }
         ByteBuffer sizeBuffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
         readFully(channel, sizeBuffer);
         sizeBuffer.flip();
-        int size = sizeBuffer.getInt();
-        if (size < 0) {
-            throw new IOException("Negative FlatBuffer size prefix " + size);
+        int encodedSize = sizeBuffer.getInt();
+        long declaredSize = Integer.toUnsignedLong(encodedSize);
+        long remaining = remainingFileBytes(channel, context + " payload");
+        checkedAllocationSize(declaredSize, remaining, maximumBytes, context);
+        int allocationSize = checkedAllocationSize(
+                checkedAdd(declaredSize, Integer.BYTES, context + " framed size"),
+                checkedAdd(remaining, Integer.BYTES, context + " remaining bytes"),
+                checkedAdd(maximumBytes, Integer.BYTES, context + " maximum"),
+                context);
+        ByteBuffer payload = ByteBuffer.allocate(allocationSize).order(ByteOrder.LITTLE_ENDIAN);
+        payload.putInt(encodedSize);
+        try {
+            readFully(channel, payload);
+        } catch (EOFException e) {
+            throw new IOException("AEDAT-4 " + context + " truncated: declared " + declaredSize
+                    + " bytes but the file ended while reading", e);
         }
-        ByteBuffer payload = ByteBuffer.allocate(size + 4).order(ByteOrder.LITTLE_ENDIAN);
-        payload.putInt(size);
-        readFully(channel, payload);
         payload.flip();
         return payload;
+    }
+
+    private static long remainingFileBytes(FileChannel channel, String context) throws IOException {
+        long position = channel.position();
+        long size = channel.size();
+        if (position < 0 || position > size) {
+            throw new IOException("AEDAT-4 " + context + " position " + position
+                    + " is outside file size " + size);
+        }
+        return size - position;
+    }
+
+    private static int checkedPacketPayloadSize(int encodedSize, long remaining, String context)
+            throws IOException {
+        long declaredSize = Integer.toUnsignedLong(encodedSize);
+        return checkedAllocationSize(declaredSize, remaining, MAX_PACKET_PAYLOAD_BYTES,
+                "packet payload " + context);
+    }
+
+    /** Validate an untrusted length before narrowing it to an allocation size. */
+    private static int checkedAllocationSize(long declaredSize, long remaining, long maximum,
+            String context) throws IOException {
+        if (declaredSize < 0) {
+            throw new IOException("AEDAT-4 " + context + " has negative size " + declaredSize);
+        }
+        if (declaredSize > maximum) {
+            throw new IOException("AEDAT-4 " + context + " size " + declaredSize
+                    + " exceeds maximum " + maximum + " bytes");
+        }
+        if (remaining < 0 || declaredSize > remaining) {
+            throw new IOException("AEDAT-4 " + context + " truncated: declared " + declaredSize
+                    + " bytes but only " + Math.max(0L, remaining) + " bytes remaining");
+        }
+        if (declaredSize > Integer.MAX_VALUE) {
+            throw new IOException("AEDAT-4 " + context + " size " + declaredSize
+                    + " exceeds the Java buffer limit");
+        }
+        return (int) declaredSize;
+    }
+
+    private static long checkedAdd(long left, long right, String context) throws IOException {
+        try {
+            return Math.addExact(left, right);
+        } catch (ArithmeticException e) {
+            throw new IOException("AEDAT-4 " + context + " size arithmetic overflow: "
+                    + left + " + " + right, e);
+        }
+    }
+
+    private static IOHeader parseIoHeader(ByteBuffer bytes) throws IOException {
+        validateSizePrefixedFlatBuffer(bytes, "IOHeader", "IOHE");
+        try {
+            IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(bytes);
+            // Force all fields, including the variable-length string, through bounds checks now.
+            header.compression();
+            header.dataTablePosition();
+            header.infoNode();
+            return header;
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("IOHeader", e);
+        }
+    }
+
+    private static EventPacket parseEventPacket(ByteBuffer bytes, String context) throws IOException {
+        validateSizePrefixedFlatBuffer(bytes, context, "EVTS");
+        try {
+            EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(bytes);
+            int n = packet.elementsLength();
+            if (n < 0 || (long) n * 16L > bytes.remaining()) {
+                throw new IndexOutOfBoundsException("event vector length " + n
+                        + " exceeds FlatBuffer size " + bytes.remaining());
+            }
+            if (n > 0 && (packet.elements(0) == null || packet.elements(n - 1) == null)) {
+                throw new IndexOutOfBoundsException("null event vector endpoint");
+            }
+            return packet;
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer(context, e);
+        }
+    }
+
+    private static Frame parseFrame(ByteBuffer bytes, String context) throws IOException {
+        validateSizePrefixedFlatBuffer(bytes, context, "FRME");
+        try {
+            Frame frame = Frame.getSizePrefixedRootAsFrame(bytes);
+            int pixels = frame.pixelsLength();
+            if (pixels < 0 || pixels > bytes.remaining()) {
+                throw new IndexOutOfBoundsException("pixel vector length " + pixels
+                        + " exceeds FlatBuffer size " + bytes.remaining());
+            }
+            if (pixels > 0) {
+                frame.pixels(0);
+                frame.pixels(pixels - 1);
+            }
+            return frame;
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer(context, e);
+        }
+    }
+
+    private static IMUPacket parseImuPacket(ByteBuffer bytes, String context) throws IOException {
+        validateSizePrefixedFlatBuffer(bytes, context, "IMUS");
+        try {
+            IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(bytes);
+            int n = packet.elementsLength();
+            if (n < 0 || (long) n * Integer.BYTES > bytes.remaining()) {
+                throw new IndexOutOfBoundsException("IMU vector length " + n
+                        + " exceeds FlatBuffer size " + bytes.remaining());
+            }
+            if (n > 0 && (packet.elements(0) == null || packet.elements(n - 1) == null)) {
+                throw new IndexOutOfBoundsException("null IMU vector endpoint");
+            }
+            return packet;
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer(context, e);
+        }
+    }
+
+    private static FileDataTable parseFileDataTable(ByteBuffer bytes) throws IOException {
+        validateSizePrefixedFlatBuffer(bytes, "FileDataTable", "FTAB");
+        try {
+            FileDataTable table = FileDataTable.getSizePrefixedRootAsFileDataTable(bytes);
+            int n = table.tableLength();
+            if (n < 0 || (long) n * Integer.BYTES > bytes.remaining()) {
+                throw new IndexOutOfBoundsException("table vector length " + n
+                        + " exceeds FlatBuffer size " + bytes.remaining());
+            }
+            if (n > 0 && (table.table(0) == null || table.table(n - 1) == null)) {
+                throw new IndexOutOfBoundsException("null FileDataTable vector endpoint");
+            }
+            return table;
+        } catch (RuntimeException e) {
+            throw malformedFlatBuffer("FileDataTable", e);
+        }
+    }
+
+    /**
+     * Validate the size prefix, identifier, root table, and vtable using long
+     * arithmetic before generated FlatBuffers accessors perform int offsets.
+     */
+    private static void validateSizePrefixedFlatBuffer(ByteBuffer bytes, String context,
+            String identifier) throws IOException {
+        ByteBuffer view = bytes.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        int start = view.position();
+        long available = view.remaining();
+        if (available < 12L) {
+            throw new IOException("AEDAT-4 " + context + " malformed FlatBuffer: only "
+                    + available + " bytes");
+        }
+        long prefix = Integer.toUnsignedLong(view.getInt(start));
+        if (prefix != available - Integer.BYTES) {
+            throw new IOException("AEDAT-4 " + context + " malformed FlatBuffer size prefix "
+                    + prefix + " for " + available + " bytes");
+        }
+        for (int i = 0; i < 4; i++) {
+            if (view.get(start + 8 + i) != (byte) identifier.charAt(i)) {
+                throw new IOException("AEDAT-4 " + context
+                        + " malformed FlatBuffer: expected " + identifier + " identifier");
+            }
+        }
+        long rootOffset = Integer.toUnsignedLong(view.getInt(start + Integer.BYTES));
+        long root = checkedAdd((long) start + Integer.BYTES, rootOffset,
+                context + " FlatBuffer root");
+        long limit = view.limit();
+        if (root < (long) start + 12L || root > limit - Integer.BYTES) {
+            throw new IOException("AEDAT-4 " + context + " malformed FlatBuffer root offset "
+                    + rootOffset + " outside " + available + " bytes");
+        }
+        int rootIndex = (int) root;
+        int vtableDistance = view.getInt(rootIndex);
+        long vtable = root - (long) vtableDistance;
+        if (vtableDistance <= 0 || vtable < (long) start + 12L || vtable > root - 4L) {
+            throw new IOException("AEDAT-4 " + context + " malformed FlatBuffer vtable offset "
+                    + vtableDistance);
+        }
+        int vtableIndex = (int) vtable;
+        int vtableSize = Short.toUnsignedInt(view.getShort(vtableIndex));
+        int objectSize = Short.toUnsignedInt(view.getShort(vtableIndex + 2));
+        if (vtableSize < 4 || (vtableSize & 1) != 0 || vtableSize > root - vtable
+                || objectSize < 4 || (long) rootIndex + objectSize > limit) {
+            throw new IOException("AEDAT-4 " + context + " malformed FlatBuffer table bounds"
+                    + " (vtable=" + vtableSize + ", object=" + objectSize + ")");
+        }
+    }
+
+    private static IOException malformedFlatBuffer(String context, RuntimeException cause) {
+        return new IOException("AEDAT-4 " + context + " malformed FlatBuffer: "
+                + cause.getClass().getSimpleName()
+                + (cause.getMessage() == null ? "" : ": " + cause.getMessage()), cause);
     }
 
     private static void readFully(FileChannel channel, ByteBuffer buffer) throws IOException {
