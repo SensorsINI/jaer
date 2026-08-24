@@ -60,7 +60,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
      */
     protected CypressFX2LibUsbDVS128HardwareInterface(final Device device) {
         super(device);
-        CypressFX2.log.info("DVS128 libusb USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+        CypressFX2.log.fine("DVS128 libusb USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
     }
 
     @Override

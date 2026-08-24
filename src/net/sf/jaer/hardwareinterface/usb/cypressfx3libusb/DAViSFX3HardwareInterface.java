@@ -60,7 +60,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         super(device);
         usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
         dualWriteApsImuAe = PREFS.getBoolean(PREF_DUAL_WRITE_APS_IMU_AE, false);
-        CypressFX3.log.info(String.format(
+        CypressFX3.log.fine(String.format(
                 "DAViSFX3 USB typed demux=%s dualWriteApsImuAe=%s (prefs %s/%s)",
                 usbTypedDemuxActive, dualWriteApsImuAe, PREF_USB_TYPED_DEMUX, PREF_DUAL_WRITE_APS_IMU_AE));
     }

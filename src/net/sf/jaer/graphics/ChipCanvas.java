@@ -176,6 +176,11 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** Cached first-line release version for welcome overlay. */
     private static String welcomeReleaseVersion;
 
+    /** USB link overlay after a live camera open (cleared after {@link #USB_LINK_OVERLAY_MS}). */
+    private volatile String usbLinkOverlayText;
+    private volatile long usbLinkOverlayUntilMs;
+    public static final long USB_LINK_OVERLAY_MS = 10_000L;
+
     private Point mdStPt = null; // start point of drag in screen coordinates
     private Vec drStPx = null; // start point of drag in px, arb origin
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
@@ -579,6 +584,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         drawRemoteOutputOverlaysIfNeeded(drawable);
         drawSkipChipRenderingOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
+        drawUsbLinkOverlayIfNeeded(drawable);
         gl.glFlush();
         // gl.glPopMatrix();
         checkGLError(gl, glu, "after display");
@@ -850,6 +856,48 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glPopMatrix();
         } catch (GLException e) {
             log.log(Level.FINE, "welcome overlay: {0}", e.toString());
+        }
+    }
+
+    /**
+     * Show USB speed/topology on the chip view for {@link #USB_LINK_OVERLAY_MS}
+     * after a live camera open (AEChip already matched).
+     */
+    public void showUsbLinkOverlay(String text) {
+        if (text == null || text.isEmpty()) {
+            usbLinkOverlayText = null;
+            usbLinkOverlayUntilMs = 0;
+            return;
+        }
+        usbLinkOverlayText = text;
+        usbLinkOverlayUntilMs = System.currentTimeMillis() + USB_LINK_OVERLAY_MS;
+    }
+
+    private void drawUsbLinkOverlayIfNeeded(final GLAutoDrawable drawable) {
+        String text = usbLinkOverlayText;
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        if (System.currentTimeMillis() > usbLinkOverlayUntilMs) {
+            usbLinkOverlayText = null;
+            return;
+        }
+        try {
+            drawable.getGL().getGL2();
+            String[] lines = text.split("\n", -1);
+            float chipW = Math.max(1, chip.getSizeX());
+            int fontsize = Math.max(6, Math.round(12 * (chipW / 346f)));
+            fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
+            float lineSpace = fontsize * 2.0f;
+            float blockH = lineSpace * lines.length;
+            float xpos = chipW / 2f;
+            float y = (chip.getSizeY() / 2f) + (blockH / 2f) - fontsize;
+            for (String line : lines) {
+                DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, line);
+                y -= lineSpace;
+            }
+        } catch (GLException e) {
+            log.log(Level.FINE, "USB link overlay: {0}", e.toString());
         }
     }
 

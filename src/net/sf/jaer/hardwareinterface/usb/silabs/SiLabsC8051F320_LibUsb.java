@@ -31,6 +31,7 @@ import net.sf.jaer.biasgen.PotArray;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -300,6 +301,7 @@ public abstract class SiLabsC8051F320_LibUsb implements
         isOpened = true;
 
         SiLabsC8051F320_LibUsb.log.info("open(): device opened");
+        LibUsbLinkInfo.logOnOpen(SiLabsC8051F320_LibUsb.log, "SiLabs C8051F320", retina, deviceDescriptor);
 
         if (LibUsb.getDeviceSpeed(retina) != LibUsb.SPEED_FULL) {
             SiLabsC8051F320_LibUsb.log

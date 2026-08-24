@@ -30,6 +30,7 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
@@ -1709,6 +1710,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             isOpened = true;
 
             CypressFX2.log.info("open(): device opened");
+            LibUsbLinkInfo.logOnOpen(CypressFX2.log, "CypressFX2", device, deviceDescriptor);
 
             if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
                 CypressFX2.log

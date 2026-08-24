@@ -25,6 +25,7 @@ import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
 import nrv.chip.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -90,7 +91,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     public NRVHardwareInterface(Device device) {
         this.device = device;
-        log.info("NRV USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+        log.fine("NRV USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
     }
 
     boolean isUsbTypedDemuxActive() {
@@ -250,6 +251,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         isOpened = true;
         log.info("NRV device opened VID:PID="
                 + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
+        LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
     }
 
     /**

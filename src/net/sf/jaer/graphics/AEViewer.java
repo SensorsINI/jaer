@@ -175,6 +175,7 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
 import net.sf.jaer.hardwareinterface.usb.LiveDeviceChipDetector;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
@@ -2416,7 +2417,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setFont(item.getFont().deriveFont(Font.ITALIC));
 //            interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i)); // has no number, already opened
             item.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, chip.getHardwareInterface());
-            item.setToolTipText("Currently selected hardware interface");
+            LibUsbLinkInfo.Snapshot usbLink = LibUsbLinkInfo.lastOpen();
+            item.setToolTipText(usbLink != null ? usbLink.tooltipHtml()
+                    : "Currently selected hardware interface");
             interfaceMenu.add(item);
 
             item.setSelected(true);
@@ -2931,6 +2934,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (aemon instanceof HasUsbStatistics) {
                         printUSBStatisticsCBMI.setSelected(((HasUsbStatistics) aemon).isPrintUsbStatistics());
                     }
+                    showUsbLinkOverlayAfterOpen();
                 } else if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof AESequencerInterface)) {
                     // the 'chip's' hardware interface is a pure sequencer
                     enableMonSeqMenu(true);
@@ -2983,6 +2987,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.LIVE);
             runPendingFirstHardwareUseAfterLive();
         }
+    }
+
+    /**
+     * After AEChip matching and a successful USB open, show speed/topology on
+     * the chip view for 10 s. Snapshot comes from {@link LibUsbLinkInfo#logOnOpen}.
+     */
+    private void showUsbLinkOverlayAfterOpen() {
+        LibUsbLinkInfo.Snapshot snap = LibUsbLinkInfo.lastOpen();
+        if (snap == null || chip == null) {
+            return;
+        }
+        ChipCanvas canvas = chip.getCanvas();
+        if (canvas == null) {
+            return;
+        }
+        canvas.showUsbLinkOverlay(snap.overlayText());
     }
 
     /**
