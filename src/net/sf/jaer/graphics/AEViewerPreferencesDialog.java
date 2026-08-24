@@ -769,7 +769,7 @@ public class AEViewerPreferencesDialog extends JFrame {
         int y = 0;
 
         activeRenderingCB = new JCheckBox("Active rendering enabled");
-        activeRenderingCB.setToolTipText("Enables active display of each rendered frame");
+        activeRenderingCB.setToolTipText("<html>On: ViewLoop waits for each OpenGL present (display()). Off: async repaint(); the loop continues without waiting.<br>Recommend <b>on</b> for daily use. Use <b>off</b> with a high target FPS for latency-sensitive applications, e.g. robots.");
         activeRenderingCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

@@ -5312,7 +5312,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.setText("View options");
 
         viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
-        viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
+        viewActiveRenderingEnabledMenuItem.setToolTipText("<html>On: ViewLoop waits for each OpenGL present (display()). Off: async repaint(); the loop continues without waiting.<br>Recommend <b>on</b> for daily use. Use <b>off</b> with a high target FPS for latency-sensitive applications, e.g. robots.");
         viewActiveRenderingEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewActiveRenderingEnabledMenuItemActionPerformed(evt);

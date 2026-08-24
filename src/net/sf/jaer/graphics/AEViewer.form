@@ -427,7 +427,7 @@
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewActiveRenderingEnabledMenuItem">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="Active rendering enabled"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables active display of each rendered frame if enabled.&#xa;If disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint."/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;On: ViewLoop waits for each OpenGL present (display()). Off: async repaint(); the loop continues without waiting.&lt;br&gt;Recommend &lt;b&gt;on&lt;/b&gt; for daily use. Use &lt;b&gt;off&lt;/b&gt; with a high target FPS for latency-sensitive applications, e.g. robots."/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewActiveRenderingEnabledMenuItemActionPerformed"/>

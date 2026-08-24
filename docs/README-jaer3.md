@@ -218,7 +218,8 @@ After filtering:
 1. `chip.setLastBundle(cookedBundle)` / `setLastData(polarity packet)`.
 2. `renderBundle` → chip renderer (`DavisRenderer`, etc.) updates event maps /
    frame textures from typed packets.
-3. `ChipCanvas.paintFrame()` or `repaint()` draws via JOGL.
+3. `ChipCanvas.paintFrame()` or `repaint()` draws via JOGL. See
+   [active-vs-passive-rendering.md](active-vs-passive-rendering.md).
 
 Rendering can be **skipped** adaptively under load (`packetLevelRenderSkipping`)
 when no filters need every packet and AVI sync recording is not active; recording
