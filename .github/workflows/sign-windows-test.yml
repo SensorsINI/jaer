@@ -53,7 +53,13 @@ jobs:
           "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "jAER version: $v"
 
-      - name: Build Windows installer (ant release-windows-ci)
+      - name: Build tagged Windows installer (verified tag)
+        if: ${{ github.ref_type == 'tag' }}
+        shell: pwsh
+        run: ant "-Djaer.release.tag=${{ github.ref_name }}" release-windows-ci
+
+      - name: Build manual Windows test installer
+        if: ${{ github.ref_type != 'tag' }}
         shell: pwsh
         run: ant release-windows-ci
 

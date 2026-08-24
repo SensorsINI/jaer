@@ -1,0 +1,6 @@
+public final class IntentionalFailureTest {
+    @org.junit.Test
+    public void failsDeliberately() {
+        org.junit.Assert.fail("INTENTIONAL_RELEASE_GATE_FAILURE");
+    }
+}

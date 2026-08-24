@@ -589,6 +589,56 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <echo message="jAER version from VERSION.txt: ${jaer.version}"/>
     </target>
 
+    <target name="-verify-release-tag" depends="-load-version">
+        <condition property="jaer.release.tag.valid">
+            <or>
+                <not>
+                    <isset property="jaer.release.tag"/>
+                </not>
+                <equals arg1="${jaer.version}" arg2="${jaer.release.tag}" casesensitive="true"/>
+            </or>
+        </condition>
+        <fail unless="jaer.release.tag.valid"
+              message="Release tag '${jaer.release.tag}' must exactly match VERSION.txt '${jaer.version}'"/>
+    </target>
+
+    <target name="-verify-release-headless-probes" depends="test">
+        <java classname="net.sf.jaer.eventio.RecordingConfigSnapshotDemo"
+              fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath path="${run.classpath}"/>
+        </java>
+        <java classname="net.sf.jaer.eventio.Aedat4ConfigSnapshotDemo"
+              fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath path="${run.classpath}"/>
+        </java>
+        <java classname="net.sf.jaer.eventio.DataLoggerMetadataDemo"
+              fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath path="${run.classpath}"/>
+        </java>
+        <java classname="net.sf.jaer.eventio.AEDZRoundtripDemo"
+              fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath path="${run.classpath}"/>
+        </java>
+        <java classname="net.sf.jaer.eventio.aedat4.Aedat4RoundtripDemo"
+              fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath path="${run.classpath}"/>
+        </java>
+        <java classname="net.sf.jaer.graphics.AEViewerSnapshotProbe"
+              fork="true" failonerror="true">
+            <jvmarg value="-Djava.awt.headless=true"/>
+            <classpath path="${run.classpath}"/>
+        </java>
+    </target>
+
+    <target name="verify-release"
+            depends="-verify-release-tag,-verify-release-headless-probes"
+            description="Run all JUnit tests and explicit headless release probes before packaging."/>
+
     <target name="-compile-splash-tool" depends="init">
         <mkdir dir="${build.dir}/tools"/>
         <javac srcdir="${basedir}/scripts"
@@ -803,7 +853,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc-with-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="verify-release,-require-install4j-project,-load-version,-load-install4j-license-local"
             if="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
@@ -813,7 +863,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc-without-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="verify-release,-require-install4j-project,-load-version,-load-install4j-license-local"
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
@@ -822,7 +872,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc"
-            depends="split-opencv-natives,stage-install4j-runtime,-run-install4jc-with-license,-run-install4jc-without-license"/>
+            depends="verify-release,split-opencv-natives,stage-install4j-runtime,-run-install4jc-with-license,-run-install4jc-without-license"/>
 
     <target name="-require-opencv-slim">
         <available type="dir" file="${opencv.slim.dir}" property="opencv.slim.dir.exists"/>
@@ -833,7 +883,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     <!-- Public name: Ant treats CLI args starting with "-" as options, so
          ant -run-install4jc-with-license does not work. -->
     <target name="install4j"
-            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,stage-install4j-runtime,-run-install4jc-with-license,-run-install4jc-without-license"
+            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,verify-release,stage-install4j-runtime,-run-install4jc-with-license,-run-install4jc-without-license"
             description="Run install4jc only (existing dist/jAER.jar; no splash/clean/jar).">
         <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
@@ -842,7 +892,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
 
     <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
     <target name="-run-install4jc-windows-with-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="verify-release,-require-install4j-project,-load-version,-load-install4j-license-local"
             if="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
@@ -853,7 +903,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc-windows-without-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="verify-release,-require-install4j-project,-load-version,-load-install4j-license-local"
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
@@ -863,7 +913,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc-windows"
-            depends="split-opencv-natives,stage-install4j-runtime,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
+            depends="verify-release,split-opencv-natives,stage-install4j-runtime,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
     <!-- Copy install4j updates.xml from currentInstallers/<version>/ to repo root (auto-update descriptor). -->
     <macrodef name="jaer-copy-updates-xml">
@@ -910,7 +960,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="release"
-            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
+            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,verify-release,-run-install4jc"
             description="Confirm VERSION.txt (default y), generate splash PNGs, sync install4j, clean/jar, run install4jc.">
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
         <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
@@ -920,7 +970,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="release-windows-ci"
-            depends="-load-version,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc-windows"
+            depends="-load-version,generate-splash,-sync-install4j-version,clean,jar,verify-release,-run-install4jc-windows"
             description="Non-interactive Windows-only install4j media for SignPath CI (no confirm prompt).">
         <echo message="${line.separator}Windows install4j media build finished for ${jaer.version}."/>
         <echo message="Output: currentInstallers/${jaer.version}/jAER_windows-x64_*.exe"/>
