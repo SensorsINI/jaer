@@ -65,8 +65,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -380,6 +383,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** If {@link System#exit} itself hangs in shutdown hooks, {@link Runtime#halt} after this. */
     private static final long EXIT_HALT_AFTER_EXIT_MS = 3000;
     private final AtomicBoolean exitWatchdogArmed = new AtomicBoolean(false);
+    /** Shared completion is initialized lazily for constructor-bypassed viewers. */
+    private AtomicReference<CompletableFuture<Void>> finalDisposalCompletion
+            = new AtomicReference<>();
+    private boolean finalDisposalUiClaimed;
+    private boolean finalDisposalWorkerStarted;
+    private int finalDisposalCleanupClaims;
+    private volatile boolean finalDisposalUiPhase;
     FilterChain filterChain = null;
     private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
@@ -879,12 +889,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * for other classes, e.g. Chip classes that open sockets.
      */
     private void cleanup() {
+        cleanup(true);
+    }
+
+    /**
+     * Performs non-Swing cleanup. Final disposal has already stopped recording
+     * on the EDT and closed the viewer-owned player off the EDT, so it skips the
+     * legacy preparation here.
+     */
+    private void cleanup(boolean prepareRecordingAndPlayback) {
         log.fine("cleanup()");
         LibUsbHotplug.removeListener(usbHotplugListener);
-        stopRecording(true); // in case recording, make sure we give chance to save file
-        // Close the playback file without starting USB; aemon.close() follows.
-        if (aePlayer != null && !suppressHardwareOpen) {
-            aePlayer.stopPlayback(false);
+        if (prepareRecordingAndPlayback) {
+            stopRecording(true); // in case recording, make sure we give chance to save file
+            // Close the playback file without starting USB; aemon.close() follows.
+            if (aePlayer != null && !suppressHardwareOpen) {
+                aePlayer.stopPlayback(false);
+            }
         }
         if ((aemon != null) && aemon.isOpen()) {
             log.fine("closing device " + aemon);
@@ -1141,6 +1162,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void buildDeviceMenu() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            runOnEdtAndWait(this::buildDeviceMenu, "build AEChip menu");
+            return;
+        }
+        deviceMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         ButtonGroup deviceGroup = new ButtonGroup();
         deviceMenu.removeAll();
         chipClasses = new ArrayList<Class>();
@@ -2318,7 +2344,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * ViewLoop.run() method that is also trying to open devices.
      *
      */
-    synchronized private void buildInterfaceMenu() {
+    private void buildInterfaceMenu() {
         buildInterfaceMenu(interfaceMenu);
     }
 
@@ -2330,6 +2356,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * code below.
      */
     public void buildInterfaceMenu(JMenu interfaceMenu) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            runOnEdtAndWait(() -> buildInterfaceMenu(interfaceMenu), "build hardware interface menu");
+            return;
+        }
+        interfaceMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         interfaceMenu.removeAll();
         boolean interfaceAlreadyOpen = false;
         // make an item for the currently opened hardware interface, if there is one for this chip, and select it.
@@ -2543,6 +2574,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(new RememberLastInterfaceAction());
         interfaceMenu.add(rememberSeletedInterfaceMI);
 
+    }
+
+    /** Runs a synchronous Swing projection without holding an AEViewer lock. */
+    private static void runOnEdtAndWait(Runnable action, String description) {
+        try {
+            SwingUtilities.invokeAndWait(action);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while trying to " + description, e);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new IllegalStateException("Could not " + description, cause);
+        }
     }
 
     /**
@@ -3491,16 +3541,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             // Loop Cleanup
             log.info("AEViewer.run() ending: stop=" + stop + " isInterrupted=" + isInterrupted());
-            // Hardware close is done on the EDT via cleanup(); closing here during stop=true
-            // can deadlock with stopViewLoopForExit() (synchronized NRV close + USB join).
-            if (aemon != null && !stop) {
-                aemon.close();
-            }
-            if (unicastOutput != null) {
-                unicastOutput.close();
-            }
-            if (unicastInput != null) {
-                unicastInput.close();
+            // Final disposal owns all resource closes after this thread has
+            // stopped. Keep the legacy ViewLoop cleanup for every other exit.
+            if (!isFinalDisposalRequested()) {
+                if (aemon != null && !stop) {
+                    aemon.close();
+                }
+                if (unicastOutput != null) {
+                    unicastOutput.close();
+                }
+                if (unicastInput != null) {
+                    unicastInput.close();
+                }
             }
 
         } // viewLoop.run()
@@ -4596,6 +4648,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * closes device
      */
     public void stopMe() {
+        if (finalDisposalUiPhase) {
+            // Keep recording recovery and Swing state on the EDT. ViewLoop,
+            // player, monitor, network, and chip cleanup follow in the final
+            // disposal worker.
+            stopRecording(false);
+            getSupport().firePropertyChange(EVENT_STOPME, null, null);
+            showBiasgen(false);
+            return;
+        }
         stopRecording(true); // in case recording, make sure we give chance to save file
         getSupport().firePropertyChange(EVENT_STOPME, null, null);
         //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
@@ -6028,8 +6089,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_viewIgnorePolarityCheckBoxMenuItemActionPerformed
 
 	private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-            log.info("window closed event, calling stopMe");
-            stopMe();
+            if (!isFinalDisposalRequested()) {
+                log.info("window closed event, calling stopMe");
+                stopMe();
+            }
 	}//GEN-LAST:event_formWindowClosed
 
 	private void monSeqMissedEventsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqMissedEventsMenuItemActionPerformed
@@ -6135,41 +6198,459 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //        }
     //    }
     //    Statistics statistics;
+
+    private static final int FINAL_CLEANUP_VIEW_LOOP = 1;
+    private static final int FINAL_CLEANUP_PLAYER = 1 << 1;
+    private static final int FINAL_CLEANUP_HOTPLUG = 1 << 2;
+    private static final int FINAL_CLEANUP_MONITOR = 1 << 3;
+    private static final int FINAL_CLEANUP_UNICAST_INPUT = 1 << 4;
+    private static final int FINAL_CLEANUP_UNICAST_OUTPUT = 1 << 5;
+    private static final int FINAL_CLEANUP_CHIP = 1 << 6;
+    private static final int FINAL_CLEANUP_REMOTE_CONTROL = 1 << 7;
+    private static final int FINAL_CLEANUP_LOGGING_HANDLER = 1 << 8;
+
+    /**
+     * Requests final disposal without terminating the JVM. Swing state is
+     * detached once on the EDT; one non-daemon worker then releases every
+     * potentially blocking resource and completes the shared stage.
+     *
+     * @return the one terminal stage shared by all callers
+     */
+    public CompletionStage<Void> requestFinalDisposal() {
+        AtomicReference<CompletableFuture<Void>> completionReference
+                = getFinalDisposalCompletionReference();
+        CompletableFuture<Void> completion = completionReference.get();
+        if (completion == null) {
+            CompletableFuture<Void> requested = new CompletableFuture<>();
+            if (completionReference.compareAndSet(null, requested)) {
+                completion = requested;
+                scheduleFinalDisposalUi(completion);
+            } else {
+                completion = completionReference.get();
+            }
+        }
+        trackFinalDisposalWithManager(completion);
+        return completion;
+    }
+
+    private AtomicReference<CompletableFuture<Void>> getFinalDisposalCompletionReference() {
+        AtomicReference<CompletableFuture<Void>> current = finalDisposalCompletion;
+        if (current != null) {
+            return current;
+        }
+        synchronized (this) {
+            if (finalDisposalCompletion == null) {
+                finalDisposalCompletion = new AtomicReference<>();
+            }
+            return finalDisposalCompletion;
+        }
+    }
+
+    private boolean isFinalDisposalRequested() {
+        AtomicReference<CompletableFuture<Void>> current = finalDisposalCompletion;
+        return current != null && current.get() != null;
+    }
+
+    private void trackFinalDisposalWithManager(CompletionStage<Void> completion) {
+        JAERViewer manager = jaerViewer;
+        if (manager == null) {
+            return;
+        }
+        try {
+            manager.trackViewerDisposal(this, completion);
+        } catch (Throwable failure) {
+            reportFinalDisposalFailure("track viewer disposal with manager", failure);
+        }
+    }
+
+    private void scheduleFinalDisposalUi(CompletableFuture<Void> completion) {
+        try {
+            if (SwingUtilities.isEventDispatchThread()) {
+                beginFinalDisposalOnEdt(completion);
+            } else {
+                SwingUtilities.invokeLater(() -> beginFinalDisposalOnEdt(completion));
+            }
+        } catch (Throwable failure) {
+            reportFinalDisposalFailure("schedule final-disposal Swing work", failure);
+            completion.complete(null);
+        }
+    }
+
+    private synchronized boolean claimFinalDisposalUi() {
+        if (finalDisposalUiClaimed) {
+            return false;
+        }
+        finalDisposalUiClaimed = true;
+        return true;
+    }
+
+    private synchronized boolean claimFinalDisposalWorker() {
+        if (finalDisposalWorkerStarted) {
+            return false;
+        }
+        finalDisposalWorkerStarted = true;
+        return true;
+    }
+
+    private synchronized boolean claimFinalCleanupAttempt(int claim) {
+        if ((finalDisposalCleanupClaims & claim) != 0) {
+            return false;
+        }
+        finalDisposalCleanupClaims |= claim;
+        return true;
+    }
+
+    /** Detaches and disposes all Swing-owned state before background cleanup. */
+    private void beginFinalDisposalOnEdt(CompletableFuture<Void> completion) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> beginFinalDisposalOnEdt(completion));
+            return;
+        }
+        if (!claimFinalDisposalUi()) {
+            return;
+        }
+
+        runFinalDisposalUiActions();
+        startFinalDisposalWorker(completion);
+    }
+
+    private void runFinalDisposalUiActions() {
+        final FilterFrame closingFilterFrame = filterFrame;
+        filterFrame = null;
+        filterFrameBuilt = false;
+        if (closingFilterFrame != null) {
+            runFinalDisposalUiAction("dispose filter frame", closingFilterFrame::dispose);
+        }
+        runFinalDisposalUiAction("dispose ROS output dialog", this::disposeRosOutputDialog);
+        runFinalDisposalUiAction("dispose shared-memory output dialog", this::disposeDnnSharedMemoryDialog);
+
+        finalDisposalUiPhase = true;
+        try {
+            runFinalDisposalUiAction("stop viewer UI", this::stopMe);
+        } finally {
+            finalDisposalUiPhase = false;
+        }
+        runFinalDisposalUiAction("dispose viewer window", this::dispose);
+    }
+
+    private void runFinalDisposalUiAction(String description, Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable failure) {
+            reportFinalDisposalFailure(description, failure);
+        }
+    }
+
+    private void startFinalDisposalWorker(CompletableFuture<Void> completion) {
+        if (!claimFinalDisposalWorker()) {
+            return;
+        }
+        Thread cleanupThread = new Thread(
+                () -> finishFinalDisposalOffEdt(completion),
+                "AEViewer-FinalDisposal");
+        cleanupThread.setDaemon(false);
+        cleanupThread.start();
+    }
+
+    /** Runs every potentially blocking final-cleanup operation away from the EDT. */
+    private void finishFinalDisposalOffEdt(CompletableFuture<Void> completion) {
+        try {
+            runAllFinalCleanupAttempts();
+        } finally {
+            completion.complete(null);
+        }
+    }
+
+    private void runAllFinalCleanupAttempts() {
+        runFinalCleanupAttempt(FINAL_CLEANUP_VIEW_LOOP,
+                "stop ViewLoop", this::stopViewLoopForExit);
+        runFinalCleanupAttempt(FINAL_CLEANUP_PLAYER,
+                "close AEPlayer and playback stream", this::closeFinalPlayerAndStream);
+        runFinalCleanupAttempt(FINAL_CLEANUP_HOTPLUG,
+                "detach USB hotplug listener", () -> LibUsbHotplug.removeListener(usbHotplugListener));
+        runFinalCleanupAttempt(FINAL_CLEANUP_MONITOR,
+                "close event monitor", () -> {
+                    AEMonitorInterface monitor = aemon;
+                    if (monitor != null) {
+                        monitor.close();
+                    }
+                });
+        runFinalCleanupAttempt(FINAL_CLEANUP_UNICAST_INPUT,
+                "close unicast input", () -> {
+                    AEUnicastInput input = unicastInput;
+                    if (input != null) {
+                        input.close();
+                    }
+                });
+        runFinalCleanupAttempt(FINAL_CLEANUP_UNICAST_OUTPUT,
+                "close unicast output", () -> {
+                    AEUnicastOutput output = unicastOutput;
+                    if (output != null) {
+                        output.close();
+                    }
+                });
+        runFinalCleanupAttempt(FINAL_CLEANUP_CHIP,
+                "clean up chip", () -> {
+                    AEChip ownedChip = chip;
+                    if (ownedChip == null) {
+                        ownedChip = getChip();
+                    }
+                    if (ownedChip != null) {
+                        ownedChip.cleanup();
+                    }
+                });
+        runFinalCleanupAttempt(FINAL_CLEANUP_REMOTE_CONTROL,
+                "close remote control", () -> {
+                    RemoteControl control = remoteControl;
+                    if (control != null) {
+                        control.close();
+                    }
+                });
+        runFinalCleanupAttempt(FINAL_CLEANUP_LOGGING_HANDLER,
+                "close viewer logging handler", this::closeFinalLoggingHandler);
+    }
+
+    private void runFinalCleanupAttempt(
+            int claim, String description, FinalCleanupAction action) {
+        if (!claimFinalCleanupAttempt(claim)) {
+            return;
+        }
+        try {
+            action.run();
+        } catch (Throwable failure) {
+            reportFinalDisposalFailure(description, failure);
+        }
+    }
+
+    private void closeFinalPlayerAndStream() throws Throwable {
+        AEPlayer player = aePlayer;
+        if (player == null) {
+            return;
+        }
+
+        AEFileInputStreamInterface stream = null;
+        Throwable failure = null;
+        try {
+            stream = player.getAEInputStream();
+        } catch (Throwable streamLookupFailure) {
+            failure = streamLookupFailure;
+        }
+        try {
+            player.close();
+        } catch (Throwable playerFailure) {
+            failure = appendFinalCleanupFailure(failure, playerFailure);
+            if (stream != null) {
+                boolean stillOwned = false;
+                try {
+                    stillOwned = player.getAEInputStream() == stream;
+                } catch (Throwable lookupFailure) {
+                    failure = appendFinalCleanupFailure(failure, lookupFailure);
+                }
+                if (stillOwned) {
+                    try {
+                        stream.close();
+                    } catch (Throwable streamFailure) {
+                        failure = appendFinalCleanupFailure(failure, streamFailure);
+                    }
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
+    }
+
+    private void closeFinalLoggingHandler() throws Throwable {
+        AEViewerLoggingHandler handler = loggingHandler;
+        if (handler == null) {
+            return;
+        }
+        Throwable failure = null;
+        try {
+            Logger.getLogger("").removeHandler(handler);
+        } catch (Throwable removalFailure) {
+            failure = removalFailure;
+        }
+        try {
+            handler.close();
+        } catch (Throwable closeFailure) {
+            failure = appendFinalCleanupFailure(failure, closeFailure);
+        }
+        if (failure != null) {
+            throw failure;
+        }
+    }
+
+    private static Throwable appendFinalCleanupFailure(
+            Throwable primary, Throwable additional) {
+        if (primary == null) {
+            return additional;
+        }
+        if (primary != additional) {
+            try {
+                primary.addSuppressed(additional);
+            } catch (Throwable ignored) {
+            }
+        }
+        return primary;
+    }
+
+    private static void reportFinalDisposalFailure(String action, Throwable failure) {
+        try {
+            log.log(Level.SEVERE, "Could not " + action + " during final disposal", failure);
+        } catch (Throwable ignored) {
+            try {
+                System.err.println("AEViewer final disposal could not " + action + ": " + failure);
+            } catch (Throwable ignoredAgain) {
+            }
+        }
+    }
+
+    /**
+     * Bounded shutdown-hook fallback used only when the EDT cannot process the
+     * ordinary final-disposal request. Every unclaimed cleanup is started once;
+     * queued EDT work observes the claims and becomes inert.
+     *
+     * @param deadlineNanos absolute {@link System#nanoTime()} deadline
+     */
+    public void performShutdownHookFallback(long deadlineNanos) {
+        CompletableFuture<Void> completion
+                = requestFinalDisposal().toCompletableFuture();
+        List<Thread> attempts = new ArrayList<>();
+
+        if (claimFinalDisposalUi()) {
+            FilterFrame closingFilterFrame = filterFrame;
+            filterFrame = null;
+            filterFrameBuilt = false;
+            if (closingFilterFrame != null) {
+                startHookCleanupAttempt(attempts, "filter-frame",
+                        closingFilterFrame::dispose);
+            }
+            startHookCleanupAttempt(attempts, "ros-dialog", this::disposeRosOutputDialog);
+            startHookCleanupAttempt(attempts, "shared-memory-dialog",
+                    this::disposeDnnSharedMemoryDialog);
+            startHookCleanupAttempt(attempts, "viewer-stop", () -> {
+                finalDisposalUiPhase = true;
+                try {
+                    stopMe();
+                } finally {
+                    finalDisposalUiPhase = false;
+                }
+            });
+            startHookCleanupAttempt(attempts, "viewer-dispose", this::dispose);
+        }
+
+        claimFinalDisposalWorker();
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_VIEW_LOOP,
+                "view-loop", this::stopViewLoopForExit);
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_PLAYER,
+                "player", this::closeFinalPlayerAndStream);
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_HOTPLUG,
+                "hotplug", () -> LibUsbHotplug.removeListener(usbHotplugListener));
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_MONITOR,
+                "monitor", () -> {
+                    if (aemon != null) {
+                        aemon.close();
+                    }
+                });
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_UNICAST_INPUT,
+                "unicast-input", () -> {
+                    if (unicastInput != null) {
+                        unicastInput.close();
+                    }
+                });
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_UNICAST_OUTPUT,
+                "unicast-output", () -> {
+                    if (unicastOutput != null) {
+                        unicastOutput.close();
+                    }
+                });
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_CHIP,
+                "chip", () -> {
+                    AEChip ownedChip = chip != null ? chip : getChip();
+                    if (ownedChip != null) {
+                        ownedChip.cleanup();
+                    }
+                });
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_REMOTE_CONTROL,
+                "remote-control", () -> {
+                    if (remoteControl != null) {
+                        remoteControl.close();
+                    }
+                });
+        startHookFinalCleanupAttempt(attempts, FINAL_CLEANUP_LOGGING_HANDLER,
+                "logging-handler", this::closeFinalLoggingHandler);
+
+        awaitHookCleanupAttempts(attempts, deadlineNanos);
+        completion.complete(null);
+    }
+
+    private void startHookFinalCleanupAttempt(List<Thread> attempts, int claim,
+            String name, FinalCleanupAction action) {
+        if (claimFinalCleanupAttempt(claim)) {
+            startHookCleanupAttempt(attempts, name, action);
+        }
+    }
+
+    private void startHookCleanupAttempt(
+            List<Thread> attempts, String name, FinalCleanupAction action) {
+        Thread attempt = new Thread(() -> {
+            try {
+                action.run();
+            } catch (Throwable failure) {
+                reportFinalDisposalFailure("run shutdown-hook " + name, failure);
+            }
+        }, "AEViewer-HookCleanup-" + name);
+        attempt.setDaemon(true);
+        attempts.add(attempt);
+        try {
+            attempt.start();
+        } catch (Throwable failure) {
+            reportFinalDisposalFailure("start shutdown-hook " + name, failure);
+        }
+    }
+
+    private static void awaitHookCleanupAttempts(
+            List<Thread> attempts, long deadlineNanos) {
+        boolean interrupted = false;
+        for (Thread attempt : attempts) {
+            long remaining = deadlineNanos - System.nanoTime();
+            if (remaining <= 0) {
+                break;
+            }
+            try {
+                long millis = Math.max(1L,
+                        java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(remaining));
+                attempt.join(millis);
+            } catch (InterruptedException failure) {
+                interrupted = true;
+                break;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @FunctionalInterface
+    private interface FinalCleanupAction {
+
+        void run() throws Throwable;
+    }
+
 	private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
             log.info("window closing");
             if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
                 return;
             }
-            final boolean lastViewer = jaerViewer.getViewers().size() == 1;
-            // Arm before any work that can block the EDT (USB close, ViewLoop join).
+            JAERViewer manager = jaerViewer;
+            boolean lastViewer = manager != null
+                    && manager.getViewers() != null
+                    && manager.getViewers().size() == 1;
+            requestFinalDisposal();
             if (lastViewer) {
                 armExitWatchdog();
-            }
-            try {
-                stopViewLoopForExit();
-                cleanup();
-
-                if (lastViewer) {
-                    log.info("window closing event, only 1 viewer, calling System.exit");
-                    //            stopMe(); // TODO seems to deadlock
-                    System.exit(0);
-                } else {
-                    log.info("window closing event with more than one AEViewer window, calling stopMe");
-                    if ((filterFrame != null) && filterFrame.isVisible()) {
-                        filterFrame.dispose();  // close this frame if the window is closed
-                    }
-                    disposeRosOutputDialog();
-                    disposeDnnSharedMemoryDialog();
-
-                    // TODO should close biasgen window also
-                    stopMe();
-                    dispose();
-                }
-            } catch (Throwable t) {
-                log.log(Level.SEVERE, "orderly window-close shutdown failed", t);
-                if (lastViewer) {
-                    System.exit(1);
-                }
+                manager.requestExit();
             }
 	}//GEN-LAST:event_formWindowClosing
 
@@ -7924,8 +8405,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewLoop.stopThread();
         stopLiveAcquisitionForExit();
         interruptViewloop();
-        synchronized (viewLoopPauseLock) {
-            viewLoopPauseLock.notifyAll();
+        Object pauseLock = viewLoopPauseLock;
+        if (pauseLock != null) {
+            synchronized (pauseLock) {
+                pauseLock.notifyAll();
+            }
         }
         if (!viewLoop.isAlive()) {
             log.info("AEViewer.ViewLoop already exited before shutdown");
@@ -8287,14 +8771,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 
             armExitWatchdog();
-            try {
-                stopViewLoopForExit();
-                cleanup();
-                dispose();
-                System.exit(0);
-            } catch (Throwable t) {
-                log.log(Level.SEVERE, "orderly Exit-menu shutdown failed; forcing System.exit(1)", t);
-                System.exit(1);
+            if (jaerViewer != null) {
+                jaerViewer.requestExit();
+            } else {
+                requestFinalDisposal();
             }
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 

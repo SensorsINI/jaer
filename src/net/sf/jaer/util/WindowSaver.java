@@ -12,11 +12,20 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.AWTEventListener;
+import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+import java.awt.event.WindowStateListener;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -60,7 +69,7 @@ import net.sf.jaer.JaerConstants;
  */
 public class WindowSaver implements AWTEventListener {
 
-    Preferences preferences = null;
+    private final Preferences preferences;
     static final Logger log = Logger.getLogger("net.sf.jaer");
     /* Accounts for task bar at bottom; don't want window to underlap it. */
     public final int WINDOWS_TASK_BAR_HEIGHT = 100;
@@ -68,14 +77,71 @@ public class WindowSaver implements AWTEventListener {
      * Offset from last window with same name.
      */
     public final int OFFSET_FROM_SAME = 20;
-    private HashMap<String, Integer> lastframemap = new HashMap();
+    private final Object stateLock = new Object();
+    private final Map<String, Integer> lastframemap = new HashMap<>();
     /**
      * Default width and height values. Width and height are not set for a
      * window unless preferences are saved
      */
     public final int DEFAULT_WIDTH = 500, DEFAULT_HEIGHT = 500;
-    private HashMap<String, JFrame> framemap = new HashMap(); // this hashmap maps from windows to settings
+    private final Map<String, JFrame> framemap = new HashMap<>(); // this hashmap maps from windows to settings
+    private final Map<JFrame, FrameRegistration> registrations = new IdentityHashMap<>();
+    private final Map<String, FrameSnapshot> snapshots = new HashMap<>();
     private int lowerInset = WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
+    private long captureGeneration;
+    private long snapshotGeneration;
+    private long persistedSnapshotGeneration = -1;
+    private boolean captureQueued;
+    private boolean captureDirty;
+    private boolean closing;
+    private boolean closed;
+    private Thread closeSaveThread;
+
+    private static final class FrameRegistration {
+
+        final String name;
+        final JFrame frame;
+        final ComponentListener componentListener;
+        final WindowStateListener stateListener;
+        final WindowListener lifecycleListener;
+
+        FrameRegistration(String name, JFrame frame, ComponentListener componentListener,
+                WindowStateListener stateListener, WindowListener lifecycleListener) {
+            this.name = name;
+            this.frame = frame;
+            this.componentListener = componentListener;
+            this.stateListener = stateListener;
+            this.lifecycleListener = lifecycleListener;
+        }
+    }
+
+    private static final class FrameTarget {
+
+        final String name;
+        final JFrame frame;
+
+        FrameTarget(String name, JFrame frame) {
+            this.name = name;
+            this.frame = frame;
+        }
+    }
+
+    private static final class FrameSnapshot {
+
+        final int x;
+        final int y;
+        final int width;
+        final int height;
+        final int extendedState;
+
+        FrameSnapshot(int x, int y, int width, int height, int extendedState) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.extendedState = extendedState;
+        }
+    }
 
     /**
      * Creates a new instance of WindowSaver.
@@ -135,6 +201,18 @@ public class WindowSaver implements AWTEventListener {
      * @param frame JFrame to load settings for
      */
     public void loadSettings(final JFrame frame) throws IOException {
+        if (frame == null) {
+            return;
+        }
+        runOnEdtAndWait(() -> loadSettingsOnEdt(frame));
+    }
+
+    private void loadSettingsOnEdt(final JFrame frame) {
+        synchronized (stateLock) {
+            if (closing || closed || registrations.containsKey(frame)) {
+                return;
+            }
+        }
         boolean resize = false; // set true if window is too big for screen
         if(frame instanceof DontRestore){
             log.info("Frame implements DontRestore, not loading settings for it");
@@ -155,6 +233,7 @@ public class WindowSaver implements AWTEventListener {
         int y = preferences.getInt(loadKey + ".y", 10); // UL corner
         int w = preferences.getInt(loadKey + ".w", DEFAULT_WIDTH);
         int h = preferences.getInt(loadKey + ".h", DEFAULT_HEIGHT);
+        int extendedState = preferences.getInt(loadKey + ".state", frame.getExtendedState());
         if (w != DEFAULT_WIDTH | h != DEFAULT_HEIGHT) {
             resize = true;
         }
@@ -224,29 +303,135 @@ public class WindowSaver implements AWTEventListener {
             resize = true;
         }
         // check for last window with same name, if there is one, offset this one by OFFSET_FROM_SAME
-        if (framemap.containsKey(name)) { // we had a frame already with this name
-            int offset = lastframemap.containsKey(name) ? lastframemap.get(name) : 0;
-            offset += OFFSET_FROM_SAME;
+        synchronized (stateLock) {
+            if (framemap.containsKey(name)) { // we had a frame already with this name
+                int offset = lastframemap.containsKey(name) ? lastframemap.get(name) : 0;
+                offset += OFFSET_FROM_SAME;
 //            Insets insets=frame.getInsets();
-            x += offset;//+insets.left;
-            y += offset;//+insets.top;
-            lastframemap.put(name, offset);
+                x += offset;//+insets.left;
+                y += offset;//+insets.top;
+                lastframemap.put(name, offset);
+            }
         }
 
-        final boolean resize2 = resize;
-        final int w2=w, h2=h, x2=x, y2=y;
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                if (resize2 && !(frame instanceof DontResize)) {
-                    frame.setSize(new Dimension(w2, h2));
-                }
-                frame.setLocation(x2, y2);  // sets UL corner position to these values
+        if (resize && !(frame instanceof DontResize)) {
+            frame.setSize(new Dimension(w, h));
+        }
+        frame.setLocation(x, y);  // sets UL corner position to these values
+        frame.setExtendedState(extendedState);
 //        log.info("loaded settings location for "+frame.getName());
-                framemap.put(name, frame);
-                frame.validate();
-            }
-        });
+        installListenersOnEdt(name, frame);
+        frame.validate();
+        captureFrameOnEdt(name, frame);
 
+    }
+
+    private void installListenersOnEdt(final String name, final JFrame frame) {
+        ComponentListener componentListener = new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent event) {
+                requestCapture();
+            }
+
+            @Override
+            public void componentResized(ComponentEvent event) {
+                requestCapture();
+            }
+        };
+        WindowStateListener stateListener = event -> requestCapture();
+        WindowListener lifecycleListener = new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                requestCapture();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent event) {
+                requestCapture();
+            }
+        };
+
+        frame.addComponentListener(componentListener);
+        frame.addWindowStateListener(stateListener);
+        frame.addWindowListener(lifecycleListener);
+        synchronized (stateLock) {
+            framemap.put(name, frame);
+            registrations.put(frame, new FrameRegistration(name, frame, componentListener,
+                    stateListener, lifecycleListener));
+        }
+    }
+
+    private void requestCapture() {
+        final long generation;
+        synchronized (stateLock) {
+            if (closing || closed) {
+                return;
+            }
+            captureDirty = true;
+            if (captureQueued) {
+                return;
+            }
+            captureQueued = true;
+            generation = captureGeneration;
+        }
+        SwingUtilities.invokeLater(() -> runQueuedCaptureOnEdt(generation));
+    }
+
+    private void runQueuedCaptureOnEdt(long generation) {
+        synchronized (stateLock) {
+            if (closing || closed || generation != captureGeneration) {
+                if (generation == captureGeneration) {
+                    captureQueued = false;
+                    captureDirty = false;
+                }
+                return;
+            }
+            captureDirty = false;
+        }
+
+        captureAllFramesOnEdt();
+        try {
+            persistSnapshots();
+        } catch (BackingStoreException ex) {
+            log.log(Level.WARNING, "Could not persist window settings", ex);
+        }
+
+        boolean repeat;
+        synchronized (stateLock) {
+            if (closing || closed || generation != captureGeneration) {
+                captureQueued = false;
+                captureDirty = false;
+                return;
+            }
+            repeat = captureDirty;
+            if (!repeat) {
+                captureQueued = false;
+            }
+        }
+        if (repeat) {
+            SwingUtilities.invokeLater(() -> runQueuedCaptureOnEdt(generation));
+        }
+    }
+
+    private void captureAllFramesOnEdt() {
+        List<FrameTarget> targets = new ArrayList<>();
+        synchronized (stateLock) {
+            for (Map.Entry<String, JFrame> entry : framemap.entrySet()) {
+                targets.add(new FrameTarget(entry.getKey(), entry.getValue()));
+            }
+        }
+        for (FrameTarget target : targets) {
+            captureFrameOnEdt(target.name, target.frame);
+        }
+    }
+
+    private void captureFrameOnEdt(String name, JFrame frame) {
+        FrameSnapshot snapshot = new FrameSnapshot(frame.getX(), frame.getY(),
+                frame.getWidth(), frame.getHeight(), frame.getExtendedState());
+        synchronized (stateLock) {
+            snapshots.put(name, snapshot);
+            snapshotGeneration++;
+        }
     }
 
     // returns true if there is a stored preference
@@ -270,24 +455,247 @@ public class WindowSaver implements AWTEventListener {
             log.info("skipping WindowSaver.saveSettings (preferences were reverted)");
             return;
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("saved window settings for \n");
-        Iterator it = framemap.keySet().iterator();
-        while (it.hasNext()) {
-            String name = (String) it.next();
-            JFrame frame = (JFrame) framemap.get(name);
-            preferences.putInt(name + ".x", frame.getX());
-            sb.append(name + ".x=" + frame.getX() + "\n");
-            preferences.putInt(name + ".y", frame.getY());
-            sb.append(name + ".y=" + frame.getY() + "\n");
-            preferences.putInt(name + ".w", frame.getWidth());
-            sb.append(name + ".w=" + frame.getWidth() + "\n");
-            preferences.putInt(name + ".h", frame.getHeight());
-            sb.append(name + ".h=" + frame.getHeight() + "\n");
-            sb.append("for window " + name);
+        flush();
+    }
+
+    /**
+     * Drains queued capture work, snapshots all tracked frames on the EDT, and
+     * persists the latest geometry and extended state. Safe to call from any
+     * thread.
+     */
+    public void flush() throws IOException, BackingStoreException {
+        boolean closeSave;
+        synchronized (stateLock) {
+            closeSave = closing && Thread.currentThread() == closeSaveThread;
         }
-        preferences.flush();
-        log.fine(sb.toString());
+        if (closeSave) {
+            persistSnapshots();
+            return;
+        }
+        runOnEdtAndWait(() -> {
+            synchronized (stateLock) {
+                if (closing || closed) {
+                    return;
+                }
+                captureGeneration++;
+                captureQueued = false;
+                captureDirty = false;
+            }
+            captureAllFramesOnEdt();
+        });
+        synchronized (stateLock) {
+            if (closing || closed) {
+                return;
+            }
+        }
+        persistSnapshots();
+    }
+
+    /**
+     * Performs the final capture, removes all listeners installed by this
+     * saver, and unregisters it from the Toolkit. Repeated calls are harmless.
+     */
+    public void close() throws IOException, BackingStoreException {
+        synchronized (stateLock) {
+            if (closing || closed) {
+                return;
+            }
+            closing = true;
+            captureGeneration++;
+            captureQueued = false;
+            captureDirty = false;
+        }
+
+        Throwable failure = null;
+        try {
+            runOnEdtAndWait(this::captureAndRemoveListenersOnEdt);
+        } catch (Throwable ex) {
+            failure = recordFailure(failure, ex);
+        }
+        try {
+            synchronized (stateLock) {
+                closeSaveThread = Thread.currentThread();
+            }
+            // Preserve the long-standing virtual contract: subclasses that
+            // customize saveSettings still observe exactly one final save.
+            saveSettings();
+        } catch (Throwable ex) {
+            failure = recordFailure(failure, ex);
+        } finally {
+            synchronized (stateLock) {
+                closeSaveThread = null;
+            }
+        }
+        try {
+            ensureFinalSnapshotPersisted();
+        } catch (Throwable ex) {
+            failure = recordFailure(failure, ex);
+        }
+        try {
+            Toolkit.getDefaultToolkit().removeAWTEventListener(this);
+        } catch (Throwable ex) {
+            failure = recordFailure(failure, ex);
+        } finally {
+            synchronized (stateLock) {
+                captureGeneration++;
+                captureQueued = false;
+                captureDirty = false;
+                closing = false;
+                closed = true;
+            }
+        }
+
+        rethrowCloseFailure(failure);
+    }
+
+    private void ensureFinalSnapshotPersisted() throws BackingStoreException {
+        synchronized (stateLock) {
+            if (persistedSnapshotGeneration == snapshotGeneration) {
+                return;
+            }
+        }
+        persistSnapshots();
+    }
+
+    private void captureAndRemoveListenersOnEdt() {
+        Throwable failure = null;
+        try {
+            captureAllFramesOnEdt();
+        } catch (Throwable ex) {
+            failure = recordFailure(failure, ex);
+        }
+
+        List<FrameRegistration> installed;
+        synchronized (stateLock) {
+            installed = new ArrayList<>(registrations.values());
+        }
+        for (FrameRegistration registration : installed) {
+            try {
+                registration.frame.removeComponentListener(registration.componentListener);
+            } catch (Throwable ex) {
+                failure = recordFailure(failure, ex);
+            }
+            try {
+                registration.frame.removeWindowStateListener(registration.stateListener);
+            } catch (Throwable ex) {
+                failure = recordFailure(failure, ex);
+            }
+            try {
+                registration.frame.removeWindowListener(registration.lifecycleListener);
+            } catch (Throwable ex) {
+                failure = recordFailure(failure, ex);
+            }
+        }
+        synchronized (stateLock) {
+            registrations.clear();
+            framemap.clear();
+            lastframemap.clear();
+        }
+        rethrowUnchecked(failure);
+    }
+
+    private static Throwable recordFailure(Throwable primary, Throwable additional) {
+        if (primary == null) {
+            return additional;
+        }
+        if (primary != additional) {
+            primary.addSuppressed(additional);
+        }
+        return primary;
+    }
+
+    private static void rethrowUnchecked(Throwable failure) {
+        if (failure == null) {
+            return;
+        }
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        if (failure instanceof Error) {
+            throw (Error) failure;
+        }
+        throw new IllegalStateException("Unexpected checked failure during EDT cleanup", failure);
+    }
+
+    private static void rethrowCloseFailure(Throwable failure)
+            throws IOException, BackingStoreException {
+        if (failure == null) {
+            return;
+        }
+        if (failure instanceof IOException) {
+            throw (IOException) failure;
+        }
+        if (failure instanceof BackingStoreException) {
+            throw (BackingStoreException) failure;
+        }
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        if (failure instanceof Error) {
+            throw (Error) failure;
+        }
+        throw new IOException("Unexpected failure while closing WindowSaver", failure);
+    }
+
+    private void persistSnapshots() throws BackingStoreException {
+        if (JaerConstants.skipPreferenceWriteOnExit) {
+            return;
+        }
+        while (true) {
+            Map<String, FrameSnapshot> current;
+            long generation;
+            synchronized (stateLock) {
+                current = new HashMap<>(snapshots);
+                generation = snapshotGeneration;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("saved window settings for \n");
+            for (Map.Entry<String, FrameSnapshot> entry : current.entrySet()) {
+                String name = entry.getKey();
+                FrameSnapshot snapshot = entry.getValue();
+                preferences.putInt(name + ".x", snapshot.x);
+                sb.append(name).append(".x=").append(snapshot.x).append('\n');
+                preferences.putInt(name + ".y", snapshot.y);
+                sb.append(name).append(".y=").append(snapshot.y).append('\n');
+                preferences.putInt(name + ".w", snapshot.width);
+                sb.append(name).append(".w=").append(snapshot.width).append('\n');
+                preferences.putInt(name + ".h", snapshot.height);
+                sb.append(name).append(".h=").append(snapshot.height).append('\n');
+                preferences.putInt(name + ".state", snapshot.extendedState);
+                sb.append(name).append(".state=").append(snapshot.extendedState).append('\n');
+                sb.append("for window ").append(name);
+            }
+            preferences.flush();
+            synchronized (stateLock) {
+                if (generation == snapshotGeneration) {
+                    persistedSnapshotGeneration = generation;
+                    log.fine(sb.toString());
+                    return;
+                }
+            }
+        }
+    }
+
+    private void runOnEdtAndWait(Runnable operation) throws IOException {
+        if (SwingUtilities.isEventDispatchThread()) {
+            operation.run();
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(operation);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while waiting for the EDT", ex);
+        } catch (InvocationTargetException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+            throw new IOException("EDT operation failed", cause);
+        }
     }
 
     /**

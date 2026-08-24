@@ -32,6 +32,13 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -101,6 +108,20 @@ public class JAERViewer {
     //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
 //    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     private WindowSaver windowSaver; // TODO: encapsulate
+    private Thread shutdownHook;
+    private AtomicReference<CompletableFuture<Void>> shutdownCompletion = new AtomicReference<>();
+    private IdentityHashMap<AEViewer, CompletionStage<Void>> trackedViewerDisposals
+            = new IdentityHashMap<>();
+    private boolean shutdownSwingPhaseClaimed;
+    private boolean shutdownFinalPhaseClaimed;
+    private boolean shutdownHookFallbackClaimed;
+    private boolean shutdownRegistrationsCleared;
+    private boolean shutdownWindowSaverClaimed;
+    private boolean shutdownHookRemovalClaimed;
+    private boolean shutdownLogCleanupClaimed;
+    private boolean exitRequested;
+    private static final long SHUTDOWN_HOOK_EDT_WAIT_MS = 250L;
+    private static final long SHUTDOWN_HOOK_FALLBACK_BUDGET_MS = 2_000L;
     private boolean playBack = false;
     //some time variables for timing across threads
     static public long globalTime1, globalTime2, globalTime3;
@@ -151,73 +172,538 @@ public class JAERViewer {
         SwingUtilities.invokeLater(new RunningThread());
 
         markViewerRunning();
-        Runtime.getRuntime().addShutdownHook(new Thread() {
+        shutdownHook = new Thread() {
             @Override
             public void run() {
                 System.out.println("JAERViewer shutdown hook - start of shutdown");
                 System.out.flush();
-                if ((viewers != null) && !viewers.isEmpty()) {
-                    System.out.println("JAERViewer shutdown hook - shutting down AEViewers");
-                    System.out.flush();
-                    if (!JaerConstants.skipPreferenceWriteOnExit) {
-                        try {
-
-                            ArrayList<String> viewerChipClassNames = new ArrayList<String>();
-                            for (AEViewer v : viewers) {
-                                viewerChipClassNames.add(v.getChip().getClass().getName());
-                            }
-                            // Serialize to a byte array
-                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                            ObjectOutput out = new ObjectOutputStream(bos);
-                            out.writeObject(viewerChipClassNames);
-                            out.close();
-
-                            // Get the bytes of the serialized object
-                            byte[] buf = bos.toByteArray();
-                            prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
-                            prefs.flush();
-                        } catch (IOException e) {
-                            System.err.println(String.format("could not store class names: %s", e.toString()));
-                        } catch (IllegalArgumentException e2) {
-                            System.err.println("tried to store too many classes in last chip classes? " + e2.toString());
-                        } catch (BackingStoreException ex) {
-                            System.err.println("could not flush the preferences holding AEChip class names: " + ex.toString());
-                        }
-                    } else {
-                        System.out.println("JAERViewer shutdown hook - skipping last-chip Preferences write (reverted)");
-                    }
-                    System.out.println("JAERViewer shutdown hook - saving possible open data recording");
-                    try {
-                        for (AEViewer v : viewers) {
-                            if (v.getRecordingFile() != null) {
-                                v.stopRecording(true);
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.err.println(String.format("stopping recording, caught Exception %s", e.toString()));
-                    }
+                boolean ordinaryShutdownCompleted = false;
+                try {
+                    requestShutdown().toCompletableFuture().get(
+                            SHUTDOWN_HOOK_EDT_WAIT_MS, TimeUnit.MILLISECONDS);
+                    ordinaryShutdownCompleted = true;
+                } catch (TimeoutException edtUnavailable) {
+                    // System.exit can be running on the EDT, which then waits
+                    // for this hook. Fall through to the bounded direct path.
+                } catch (Throwable failure) {
+                    System.err.println("JAERViewer shutdown hook failed: " + failure);
                 }
-
-                System.out.println("JAERViewer shutdown hook - saving window settings");
-                if (windowSaver != null && !JaerConstants.skipPreferenceWriteOnExit) {
-                    try {
-                        windowSaver.saveSettings();
-                    } catch (Exception e) {
-                        System.err.println(String.format("could not save window settings: %s", e.toString()));
-                    }
-                }
-                if (JaerConstants.skipPreferenceWriteOnExit) {
-                    try {
-                        JaerPreferencesStore.deleteAllJaerPreferences();
-                    } catch (Exception e) {
-                        System.err.println("could not re-wipe Preferences after shutdown writes: " + e);
-                    }
+                if (!ordinaryShutdownCompleted) {
+                    performShutdownHookFallback();
                 }
                 System.out.println("JAERViewer shutdown hook - end of shutdown");
                 System.out.flush();
+            }
+        };
+        shutdownHook.setName("JAERViewer-shutdown");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+    }
 
+    /**
+     * Requests one noninteractive, process-level teardown. Swing-owned cleanup
+     * is performed on the EDT, while repeated callers observe the same terminal
+     * stage.
+     *
+     * @return the shared terminal shutdown stage
+     */
+    public CompletionStage<Void> requestShutdown() {
+        AtomicReference<CompletableFuture<Void>> completionReference = getShutdownCompletionReference();
+        CompletableFuture<Void> existing = completionReference.get();
+        if (existing != null) {
+            return existing;
+        }
+
+        CompletableFuture<Void> requested = new CompletableFuture<>();
+        if (!completionReference.compareAndSet(null, requested)) {
+            return completionReference.get();
+        }
+
+        try {
+            // Always enqueue, including for an EDT caller, so requesting
+            // process shutdown itself never waits for viewer or preference work.
+            SwingUtilities.invokeLater(() -> performRequestedShutdownOnEdt(requested));
+        } catch (Throwable schedulingFailure) {
+            reportShutdownFailure("scheduling requested shutdown", schedulingFailure);
+            requested.complete(null);
+        }
+        return requested;
+    }
+
+    /** Records cleanup already started by a viewer that may soon be removed. */
+    public void trackViewerDisposal(
+            AEViewer viewer, CompletionStage<Void> completion) {
+        if (viewer == null || completion == null) {
+            return;
+        }
+        synchronized (this) {
+            if (trackedViewerDisposals == null) {
+                trackedViewerDisposals = new IdentityHashMap<>();
+            }
+            trackedViewerDisposals.put(viewer, completion);
+        }
+    }
+
+    /**
+     * Requests process exit after the shared shutdown stage, never from the EDT.
+     * Repeated menu/window requests share the same exit path.
+     */
+    public void requestExit() {
+        synchronized (this) {
+            if (exitRequested) {
+                return;
+            }
+            exitRequested = true;
+        }
+        CompletionStage<Void> shutdown = requestShutdown();
+        shutdown.whenComplete((ignored, failure) -> {
+            Thread exitThread = new Thread(() -> {
+                if (failure != null) {
+                    reportShutdownFailure("completing asynchronous exit", failure);
+                }
+                System.exit(failure == null ? 0 : 1);
+            }, "JAERViewer-Exit");
+            exitThread.setDaemon(false);
+            try {
+                exitThread.start();
+            } catch (Throwable startFailure) {
+                reportShutdownFailure("starting asynchronous exit", startFailure);
             }
         });
+    }
+
+    private AtomicReference<CompletableFuture<Void>> getShutdownCompletionReference() {
+        AtomicReference<CompletableFuture<Void>> current = shutdownCompletion;
+        if (current != null) {
+            return current;
+        }
+        synchronized (this) {
+            if (shutdownCompletion == null) {
+                shutdownCompletion = new AtomicReference<>();
+            }
+            return shutdownCompletion;
+        }
+    }
+
+    private synchronized boolean claimShutdownSwingPhase() {
+        if (shutdownSwingPhaseClaimed || shutdownHookFallbackClaimed) {
+            return false;
+        }
+        shutdownSwingPhaseClaimed = true;
+        return true;
+    }
+
+    private synchronized boolean claimShutdownFinalPhase() {
+        if (shutdownFinalPhaseClaimed) {
+            return false;
+        }
+        shutdownFinalPhaseClaimed = true;
+        return true;
+    }
+
+    private void performRequestedShutdownOnEdt(CompletableFuture<Void> completion) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> performRequestedShutdownOnEdt(completion));
+            return;
+        }
+        if (!claimShutdownSwingPhase()) {
+            return;
+        }
+
+        ArrayList<AEViewer> viewerSnapshot = snapshotRegisteredViewers();
+        try {
+            persistViewerChipClasses(viewerSnapshot);
+        } catch (Throwable failure) {
+            reportShutdownFailure("persisting viewer chip classes", failure);
+        }
+
+        for (AEViewer viewer : viewerSnapshot) {
+            if (viewer == null) {
+                continue;
+            }
+            try {
+                trackViewerDisposal(viewer, viewer.requestFinalDisposal());
+            } catch (Throwable failure) {
+                reportShutdownFailure("requesting final viewer disposal", failure);
+            }
+        }
+
+        List<CompletionStage<Void>> viewerStages = snapshotTrackedViewerStages();
+        try {
+            clearViewerRegistrations();
+        } catch (Throwable failure) {
+            reportShutdownFailure("clearing registered viewers", failure);
+        }
+        try {
+            closeWindowSaverOnEdt();
+        } catch (Throwable failure) {
+            reportShutdownFailure("releasing WindowSaver", failure);
+        }
+
+        if (JaerConstants.skipPreferenceWriteOnExit) {
+            try {
+                JaerPreferencesStore.deleteAllJaerPreferences();
+            } catch (Throwable failure) {
+                reportShutdownFailure("re-wiping reverted preferences", failure);
+            }
+        }
+
+        completeAfterViewerStages(viewerStages, completion);
+    }
+
+    private ArrayList<AEViewer> snapshotRegisteredViewers() {
+        ArrayList<AEViewer> viewerSnapshot = new ArrayList<>();
+        try {
+            if (viewers != null) {
+                IdentityHashMap<AEViewer, Boolean> seen = new IdentityHashMap<>();
+                for (AEViewer viewer : viewers) {
+                    if (viewer != null && seen.put(viewer, Boolean.TRUE) == null) {
+                        viewerSnapshot.add(viewer);
+                    }
+                }
+            }
+        } catch (Throwable failure) {
+            reportShutdownFailure("snapshotting registered viewers", failure);
+        }
+        return viewerSnapshot;
+    }
+
+    private List<CompletionStage<Void>> snapshotTrackedViewerStages() {
+        ArrayList<CompletionStage<Void>> stages = new ArrayList<>();
+        IdentityHashMap<CompletionStage<Void>, Boolean> seen = new IdentityHashMap<>();
+        synchronized (this) {
+            if (trackedViewerDisposals == null) {
+                return stages;
+            }
+            for (CompletionStage<Void> stage : trackedViewerDisposals.values()) {
+                if (stage != null && seen.put(stage, Boolean.TRUE) == null) {
+                    stages.add(stage);
+                }
+            }
+        }
+        return stages;
+    }
+
+    private void clearViewerRegistrations() {
+        synchronized (this) {
+            if (shutdownRegistrationsCleared) {
+                return;
+            }
+            shutdownRegistrationsCleared = true;
+        }
+        if (viewers != null) {
+            viewers.clear();
+        }
+        if (syncEnableButtons != null) {
+            syncEnableButtons.clear();
+        }
+    }
+
+    private void completeAfterViewerStages(
+            List<CompletionStage<Void>> stages, CompletableFuture<Void> completion) {
+        ArrayList<CompletableFuture<Void>> observed = new ArrayList<>();
+        for (CompletionStage<Void> stage : stages) {
+            try {
+                observed.add(stage.handle((ignored, failure) -> {
+                    if (failure != null) {
+                        reportShutdownFailure("waiting for viewer disposal", failure);
+                    }
+                    return (Void) null;
+                }).toCompletableFuture());
+            } catch (Throwable failure) {
+                reportShutdownFailure("observing viewer disposal", failure);
+            }
+        }
+        CompletableFuture.allOf(observed.toArray(new CompletableFuture<?>[0]))
+                .whenComplete((ignored, failure) -> finishRequestedShutdown(completion));
+    }
+
+    private void finishRequestedShutdown(CompletableFuture<Void> completion) {
+        if (!claimShutdownFinalPhase()) {
+            completion.complete(null);
+            return;
+        }
+        try {
+            closeOwnedLogHandlers();
+        } catch (Throwable failure) {
+            reportShutdownFailure("closing logging handlers", failure);
+        }
+        try {
+            removeRetainedShutdownHook();
+        } catch (Throwable failure) {
+            reportShutdownFailure("removing shutdown hook", failure);
+        }
+        synchronized (this) {
+            if (trackedViewerDisposals != null) {
+                trackedViewerDisposals.clear();
+            }
+        }
+        completion.complete(null);
+    }
+
+    private void persistViewerChipClasses(ArrayList<AEViewer> viewerSnapshot) {
+        if (JaerConstants.skipPreferenceWriteOnExit || viewerSnapshot.isEmpty()) {
+            return;
+        }
+
+        ArrayList<String> viewerChipClassNames = new ArrayList<>();
+        for (AEViewer viewer : viewerSnapshot) {
+            try {
+                viewerChipClassNames.add(viewer.getChip().getClass().getName());
+            } catch (Throwable failure) {
+                reportShutdownFailure("reading a viewer chip class", failure);
+            }
+        }
+
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            try (ObjectOutput out = new ObjectOutputStream(bytes)) {
+                out.writeObject(viewerChipClassNames);
+            }
+            prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, bytes.toByteArray());
+            prefs.flush();
+        } catch (Throwable failure) {
+            reportShutdownFailure("storing viewer chip classes", failure);
+        }
+    }
+
+    private synchronized boolean claimWindowSaverClose() {
+        if (shutdownWindowSaverClaimed) {
+            return false;
+        }
+        shutdownWindowSaverClaimed = true;
+        return true;
+    }
+
+    private void closeWindowSaverOnEdt() {
+        if (!claimWindowSaverClose()) {
+            return;
+        }
+        WindowSaver saver = windowSaver;
+        windowSaver = null;
+        if (saver == null) {
+            return;
+        }
+        try {
+            saver.close();
+        } catch (Throwable failure) {
+            reportShutdownFailure("closing WindowSaver", failure);
+        }
+    }
+
+    private synchronized boolean claimShutdownHookRemoval() {
+        if (shutdownHookRemovalClaimed) {
+            return false;
+        }
+        shutdownHookRemovalClaimed = true;
+        return true;
+    }
+
+    private void removeRetainedShutdownHook() {
+        if (!claimShutdownHookRemoval()) {
+            return;
+        }
+        Thread hook = shutdownHook;
+        shutdownHook = null;
+        if (hook == null) {
+            return;
+        }
+        try {
+            Runtime.getRuntime().removeShutdownHook(hook);
+        } catch (IllegalStateException shutdownAlreadyRunning) {
+            // Safe when this method is reached from the hook itself.
+        }
+    }
+
+    private synchronized boolean claimShutdownLogCleanup() {
+        if (shutdownLogCleanupClaimed) {
+            return false;
+        }
+        shutdownLogCleanupClaimed = true;
+        return true;
+    }
+
+    private void closeOwnedLogHandlers() {
+        if (!claimShutdownLogCleanup()) {
+            return;
+        }
+        Logger ownedLogger = log;
+        if (ownedLogger == null) {
+            return;
+        }
+        Handler[] handlers = ownedLogger.getHandlers();
+        IdentityHashMap<Handler, Boolean> closed = new IdentityHashMap<>();
+        for (Handler handler : handlers) {
+            try {
+                ownedLogger.removeHandler(handler);
+            } catch (Throwable failure) {
+                reportShutdownFailure("removing a logging handler", failure);
+            }
+            if (closed.put(handler, Boolean.TRUE) == null) {
+                try {
+                    handler.close();
+                } catch (Throwable failure) {
+                    reportShutdownFailure("closing a logging handler", failure);
+                }
+            }
+        }
+    }
+
+    private synchronized boolean claimShutdownHookFallback() {
+        if (shutdownHookFallbackClaimed) {
+            return false;
+        }
+        shutdownHookFallbackClaimed = true;
+        // The queued EDT phase must not repeat direct fallback work.
+        shutdownSwingPhaseClaimed = true;
+        return true;
+    }
+
+    private void performShutdownHookFallback() {
+        if (!claimShutdownHookFallback()) {
+            return;
+        }
+        long deadlineNanos = System.nanoTime()
+                + TimeUnit.MILLISECONDS.toNanos(SHUTDOWN_HOOK_FALLBACK_BUDGET_MS);
+        CompletableFuture<Void> completion = getShutdownCompletionReference().get();
+        if (completion == null) {
+            completion = new CompletableFuture<>();
+            getShutdownCompletionReference().compareAndSet(null, completion);
+            completion = getShutdownCompletionReference().get();
+        }
+
+        ArrayList<AEViewer> viewerSnapshot = snapshotRegisteredViewers();
+        try {
+            persistViewerChipClasses(viewerSnapshot);
+        } catch (Throwable failure) {
+            reportShutdownFailure("persisting viewer chip classes in hook fallback", failure);
+        }
+        try {
+            clearViewerRegistrations();
+        } catch (Throwable failure) {
+            reportShutdownFailure("clearing viewers in hook fallback", failure);
+        }
+        for (AEViewer viewer : viewerSnapshot) {
+            try {
+                viewer.performShutdownHookFallback(deadlineNanos);
+            } catch (Throwable failure) {
+                reportShutdownFailure("running viewer hook fallback", failure);
+            }
+        }
+
+        ArrayList<Thread> boundedAttempts = new ArrayList<>();
+        if (claimWindowSaverClose()) {
+            WindowSaver saver = windowSaver;
+            windowSaver = null;
+            if (saver != null) {
+                if (!JaerConstants.skipPreferenceWriteOnExit) {
+                    startHookAttempt(boundedAttempts, "WindowSaver-save", () -> saver.saveSettings());
+                }
+                try {
+                    Toolkit.getDefaultToolkit().removeAWTEventListener(saver);
+                } catch (Throwable failure) {
+                    reportShutdownFailure("unregistering WindowSaver in hook fallback", failure);
+                }
+            }
+        }
+        closeOwnedLogHandlersForHook(boundedAttempts);
+        awaitHookAttempts(boundedAttempts, deadlineNanos);
+        removeRetainedShutdownHook();
+
+        if (JaerConstants.skipPreferenceWriteOnExit) {
+            try {
+                JaerPreferencesStore.deleteAllJaerPreferences();
+            } catch (Throwable failure) {
+                reportShutdownFailure("re-wiping preferences in hook fallback", failure);
+            }
+        }
+        synchronized (this) {
+            shutdownFinalPhaseClaimed = true;
+            if (trackedViewerDisposals != null) {
+                trackedViewerDisposals.clear();
+            }
+        }
+        completion.complete(null);
+    }
+
+    private void closeOwnedLogHandlersForHook(List<Thread> attempts) {
+        if (!claimShutdownLogCleanup()) {
+            return;
+        }
+        Logger ownedLogger = log;
+        if (ownedLogger == null) {
+            return;
+        }
+        IdentityHashMap<Handler, Boolean> closed = new IdentityHashMap<>();
+        for (Handler handler : ownedLogger.getHandlers()) {
+            try {
+                ownedLogger.removeHandler(handler);
+            } catch (Throwable failure) {
+                reportShutdownFailure("removing a logging handler in hook fallback", failure);
+            }
+            if (handler != null && closed.put(handler, Boolean.TRUE) == null) {
+                startHookAttempt(attempts, "log-handler-close", handler::close);
+            }
+        }
+    }
+
+    private static void startHookAttempt(
+            List<Thread> attempts, String name, HookAction action) {
+        Thread attempt = new Thread(() -> {
+            try {
+                action.run();
+            } catch (Throwable failure) {
+                reportShutdownFailure("running hook fallback " + name, failure);
+            }
+        }, "JAERViewer-HookFallback-" + name);
+        attempt.setDaemon(true);
+        attempts.add(attempt);
+        try {
+            attempt.start();
+        } catch (Throwable failure) {
+            reportShutdownFailure("starting hook fallback " + name, failure);
+        }
+    }
+
+    private static void awaitHookAttempts(List<Thread> attempts, long deadlineNanos) {
+        boolean interrupted = false;
+        for (Thread attempt : attempts) {
+            long remaining = deadlineNanos - System.nanoTime();
+            if (remaining <= 0) {
+                break;
+            }
+            try {
+                long millis = Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remaining));
+                attempt.join(millis);
+            } catch (InterruptedException failure) {
+                interrupted = true;
+                break;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @FunctionalInterface
+    private interface HookAction {
+
+        void run() throws Throwable;
+    }
+
+    private static void reportShutdownFailure(String action, Throwable failure) {
+        Logger logger = log;
+        if (logger != null) {
+            try {
+                logger.log(Level.WARNING, "Failure while " + action, failure);
+                return;
+            } catch (Throwable loggingFailure) {
+                // Fall back to stderr when logging itself is being torn down.
+            }
+        }
+        try {
+            System.err.println("JAERViewer: failure while " + action + ": " + failure);
+        } catch (Throwable ignored) {
+        }
     }
 
     /**
