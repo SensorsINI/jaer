@@ -11,12 +11,15 @@ package net.sf.jaer;
 import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.SplashScreen;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.net.URI;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -111,6 +114,11 @@ public class JAERViewer {
      * the working directory). Also used by {@link JAERTrayLauncher}.
      */
     public static final String RUNNING_SEMAPHORE_FILENAME = "JAERViewerRunning.txt";
+    /**
+     * Preference key for the last jAER release version that was started on this
+     * machine. Used to detect the first run of a new release.
+     */
+    public static final String LAST_RELEASE_RUN_KEY = "JAERViewer.lastReleaseRun";
 
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
@@ -257,6 +265,58 @@ public class JAERViewer {
         return start;
     }
 
+    /**
+     * On the first run of a new release, inform the user and offer to open
+     * {@link JaerConstants#JAER_RELEASES}. Stores
+     * {@link #LAST_RELEASE_RUN_KEY} after the dialog so the offer appears once
+     * per version.
+     *
+     * @param parent dialog parent, typically the first {@link AEViewer}
+     */
+    public static void maybeOfferNewReleaseNotes(Component parent) {
+        String current = JaerConstants.getReleaseVersion();
+        if (current == null || current.isEmpty()) {
+            return;
+        }
+        String last = prefs.get(LAST_RELEASE_RUN_KEY, "");
+        if (current.equals(last)) {
+            return;
+        }
+        Logger logger = log != null ? log : Logger.getLogger("net.sf.jaer");
+        String previousNote = last.isEmpty() ? ""
+                : "<br>Previously you ran <b>" + escapeHtml(last) + "</b>.";
+        String msg = "<html>You are running a new jAER release <b>" + escapeHtml(current) + "</b>."
+                + previousNote
+                + "<br><br>Open the release notes on GitHub?</html>";
+        Object[] options = {"Open release notes", "Not now"};
+        int choice = JOptionPane.showOptionDialog(parent, msg, "New jAER release " + current,
+                JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (choice == 0) {
+            logger.info("Opening release notes for new release " + current);
+            openUrlInBrowser(JaerConstants.JAER_RELEASES, parent);
+        } else {
+            logger.info("New release " + current + " noted; release notes not opened");
+        }
+        prefs.put(LAST_RELEASE_RUN_KEY, current);
+        try {
+            prefs.flush();
+        } catch (BackingStoreException e) {
+            logger.warning("Could not store last release run " + current + ": " + e);
+        }
+    }
+
+    private static void openUrlInBrowser(String url, Component parent) {
+        if (!Desktop.isDesktopSupported()) {
+            JOptionPane.showMessageDialog(parent, "No Desktop support, can't open " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parent, "Couldn't open " + url + "; caught " + ex);
+        }
+    }
+
     private static String readSemaphoreDetail(File semaphore) {
         try {
             String s = Files.readString(semaphore.toPath(), StandardCharsets.UTF_8).trim();
@@ -316,12 +376,14 @@ public class JAERViewer {
                 log.info("couldn't load previous viewer AEChip classes, starting with last class");
             }
 
+            AEViewer firstViewer = null;
             try {
                 if (classNames == null) {
                     AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
                     v.setVisible(true);
+                    firstViewer = v;
                     //                splashThread.interrupt();
                 } else {
                     for (String s : classNames) {
@@ -329,6 +391,9 @@ public class JAERViewer {
                         AEViewer v;
                         v = new AEViewer(JAERViewer.this, s);
                         v.setVisible(true);
+                        if (firstViewer == null) {
+                            firstViewer = v;
+                        }
                     }
                 }
             } catch (java.lang.UnsatisfiedLinkError err) {
@@ -338,6 +403,10 @@ public class JAERViewer {
                 err.printStackTrace();
             } finally {
                 SplashStartupAbort.disarm();
+            }
+            if (firstViewer != null) {
+                final AEViewer parent = firstViewer;
+                SwingUtilities.invokeLater(() -> maybeOfferNewReleaseNotes(parent));
             }
 
         }
