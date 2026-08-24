@@ -106,6 +106,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="recordingSetTimelimitMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableFiltersOnStartupCheckBoxMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Enable filters on startup"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables creation of event processing filters on startup"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="enableFiltersOnStartupCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="recordFilteredEventsCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Enable filtering of recorded or network output events"/>
@@ -464,17 +473,6 @@
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setBorderSpaceMenuItemActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator27">
-                </MenuItem>
-                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableFiltersOnStartupCheckBoxMenuItem">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Enable filters on startup"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables creation of event processing filters on startup"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="enableFiltersOnStartupCheckBoxMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
               </SubComponents>

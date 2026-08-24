@@ -186,6 +186,7 @@ import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
@@ -639,6 +640,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
+        // Temporary: Ctrl+Shift+F12 tests uncaught-exception / native-crash issue reporting.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_F12
+                        || !e.isControlDown() || !e.isShiftDown()) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                JaerIssueReporter.offerCrashTest(AEViewer.this);
+                e.consume();
+                return true;
+            }
+        });
         setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
@@ -764,6 +782,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             addHelpURLItem(JaerConstants.HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
             addHelpURLItem(JaerConstants.HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
+            addHelpURLItem(JaerConstants.JAER_ISSUES, "Give feedback/File issue...",
+                    "Opens the jAER GitHub Issues page to give feedback or file a bug");
             addHelpURLItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home", "jAER project home on Github");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
@@ -4730,7 +4750,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setFrameRateMenuItem = new javax.swing.JMenuItem();
         skipPacketsRenderingCheckBoxMenuItem = new ScrollWheelTunableCheckBoxMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
-        jSeparator27 = new javax.swing.JPopupMenu.Separator();
         enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         playbackMenu = new javax.swing.JMenu();
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -5036,6 +5055,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(recordingSetTimelimitMenuItem);
 
+        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
+
         recordFilteredEventsCheckBoxMenuItem.setText("Enable filtering of recorded or network output events");
         recordFilteredEventsCheckBoxMenuItem.setToolTipText("Recording or network writes apply active filters first (reduces file size or network traffic)");
         recordFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -5333,16 +5361,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         graphicsSubMenu.add(setBorderSpaceMenuItem);
-        graphicsSubMenu.add(jSeparator27);
-
-        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
 
         viewMenu.add(graphicsSubMenu);
 
@@ -9073,6 +9091,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rosOutputMenuItem.setText(streaming
                 ? "ROS2 / Foxglove frame output (streaming)..."
                 : "ROS2 / Foxglove frame output (stopped)...");
+        applyRemoteMenuStreamingStyle(rosOutputMenuItem, streaming);
+        updateRemoteMenuStreamingStyle();
     }
 
     private ROSOutput findRosOutput() {
@@ -9135,6 +9155,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         dnnSharedMemoryMenuItem.setText(streaming
                 ? "DNN shared memory output (streaming)..."
                 : "DNN shared memory output (stopped)...");
+        applyRemoteMenuStreamingStyle(dnnSharedMemoryMenuItem, streaming);
+        updateRemoteMenuStreamingStyle();
     }
 
     private void bindRemoteOutputMenuItems() {
@@ -9235,6 +9257,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openCvOutputMenuItem.setText(streaming
                 ? "OpenCV camera output (streaming)..."
                 : "OpenCV camera output (stopped)...");
+        applyRemoteMenuStreamingStyle(openCvOutputMenuItem, streaming);
+        updateRemoteMenuStreamingStyle();
+    }
+
+    /** Dark green for File → Remote items that are currently publishing. */
+    private static final Color REMOTE_STREAMING_MENU_FOREGROUND = new Color(0, 100, 0);
+
+    private static void applyRemoteMenuStreamingStyle(JMenuItem item, boolean streaming) {
+        if (item == null) {
+            return;
+        }
+        item.setForeground(streaming ? REMOTE_STREAMING_MENU_FOREGROUND : null);
+    }
+
+    private void updateRemoteMenuStreamingStyle() {
+        ROSOutput ros = findRosOutput();
+        DNNOutputViaSharedMemory dnn = DNNOutputViaSharedMemory.find(getChip());
+        OpenCVOutput opencv = findOpenCvOutput();
+        boolean anyStreaming = (ros != null && ros.isFilterEnabled())
+                || (dnn != null && dnn.isFilterEnabled())
+                || (opencv != null && opencv.isFilterEnabled());
+        applyRemoteMenuStreamingStyle(remoteMenu, anyStreaming);
     }
 
     private OpenCVOutput findOpenCvOutput() {
@@ -9500,6 +9544,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return jaerViewer;
     }
 
+    /** In-app console text for issue reports; empty if the console is unavailable. */
+    public String getConsoleText() {
+        if (loggingHandler == null || loggingHandler.getConsoleWindow() == null) {
+            return "";
+        }
+        return loggingHandler.getConsoleWindow().getText();
+    }
+
     public void setJaerViewer(JAERViewer jaerViewer) {
         this.jaerViewer = jaerViewer;
     }
@@ -9735,7 +9787,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JPopupMenu.Separator jSeparator26;
-    private javax.swing.JPopupMenu.Separator jSeparator27;
     private javax.swing.JPopupMenu.Separator jSeparator28;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JSeparator jSeparator4;

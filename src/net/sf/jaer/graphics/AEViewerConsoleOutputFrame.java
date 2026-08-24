@@ -250,6 +250,15 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         });
     }
 
+    /** Current console document text (for issue reports). */
+    public String getText() {
+        try {
+            return doc.getText(0, doc.getLength());
+        } catch (BadLocationException e) {
+            return "";
+        }
+    }
+
     public void clear() {
         EventQueue.invokeLater(new Runnable() {
 

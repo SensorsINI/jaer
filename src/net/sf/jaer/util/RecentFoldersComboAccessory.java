@@ -50,7 +50,7 @@ public class RecentFoldersComboAccessory extends JPanel {
 
         combo = new JComboBox<>();
         combo.setRenderer(new FolderRenderer());
-        combo.setMaximumRowCount(RecentFiles.MAX_FOLDERS);
+        combo.setMaximumRowCount(recentFiles != null ? recentFiles.getMaxFolders() : RecentFiles.DEFAULT_MAX_FOLDERS);
         combo.setToolTipText("Open this folder in the save dialog");
         combo.setPreferredSize(new Dimension(280, combo.getPreferredSize().height));
         add(combo, BorderLayout.CENTER);

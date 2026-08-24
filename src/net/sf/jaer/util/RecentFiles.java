@@ -36,7 +36,20 @@ public class RecentFiles {
     ArrayList<File> fileList; // contains files and folders mixed together
     transient JMenu fileMenu;
     transient ActionListener listener;
-    public static final int MAX_FILES=20, MAX_FOLDERS=15;
+    /** Default cap for recent files shown in the File menu. */
+    public static final int DEFAULT_MAX_FILES = 10;
+    /** Default cap for recent folders shown in the File menu. */
+    public static final int DEFAULT_MAX_FOLDERS = 15;
+    /** @deprecated use {@link #DEFAULT_MAX_FILES} / {@link #getMaxFiles()} */
+    @Deprecated
+    public static final int MAX_FILES = DEFAULT_MAX_FILES;
+    /** @deprecated use {@link #DEFAULT_MAX_FOLDERS} / {@link #getMaxFolders()} */
+    @Deprecated
+    public static final int MAX_FOLDERS = DEFAULT_MAX_FOLDERS;
+    public static final String PREF_MAX_FILES = "RecentFiles.maxFiles";
+    public static final String PREF_MAX_FOLDERS = "RecentFiles.maxFolders";
+    private int maxFiles;
+    private int maxFolders;
     ArrayList<JMenuItem> fileMenuList=null;
     private static Logger log=Logger.getLogger("net.sf.jaer");
 
@@ -55,9 +68,50 @@ public class RecentFiles {
         this.prefs=prefs;
         this.fileMenu=fileMenu;
         this.listener=listener;
+        maxFiles = clampLimit(prefs.getInt(PREF_MAX_FILES, DEFAULT_MAX_FILES));
+        maxFolders = clampLimit(prefs.getInt(PREF_MAX_FOLDERS, DEFAULT_MAX_FOLDERS));
         getPrefs();
-        fileMenuList=new ArrayList<JMenuItem>(MAX_FILES);
+        fileMenuList=new ArrayList<JMenuItem>(maxFiles);
         buildMenu();
+    }
+
+    public int getMaxFiles() {
+        return maxFiles;
+    }
+
+    public int getMaxFolders() {
+        return maxFolders;
+    }
+
+    public void setMaxFiles(int maxFiles) {
+        int n = clampLimit(maxFiles);
+        if (this.maxFiles == n) {
+            return;
+        }
+        this.maxFiles = n;
+        prefs.putInt(PREF_MAX_FILES, this.maxFiles);
+        pruneList();
+        putPrefs();
+        buildMenu();
+    }
+
+    public void setMaxFolders(int maxFolders) {
+        int n = clampLimit(maxFolders);
+        if (this.maxFolders == n) {
+            return;
+        }
+        this.maxFolders = n;
+        prefs.putInt(PREF_MAX_FOLDERS, this.maxFolders);
+        pruneList();
+        putPrefs();
+        buildMenu();
+    }
+
+    /** Preferences-store and menu-display range for recent-file/folder caps. */
+    public static final int MIN_LIMIT = 1, MAX_LIMIT = 50;
+
+    private static int clampLimit(int n) {
+        return Math.max(MIN_LIMIT, Math.min(MAX_LIMIT, n));
     }
 
     /**
@@ -134,7 +188,7 @@ public class RecentFiles {
                 item.setMnemonic(item.getText().charAt(0));
                 fileItems.add(item);
                 fileIndex++;
-                if(fileIndex>MAX_FILES) break;
+                if(fileIndex>=maxFiles) break;
             }else if(k != FileAccessTimeout.Kind.DIRECTORY){
                 log.info(String.format("File %s dis not a file or directory",f.toString()));
             }
@@ -153,7 +207,7 @@ public class RecentFiles {
                 item.addActionListener(listener);
                 folderItems.add(item);
                 folderIndex++;
-                if(folderIndex>MAX_FOLDERS) break;
+                if(folderIndex>=maxFolders) break;
             }
         }
 
@@ -215,7 +269,7 @@ public class RecentFiles {
                 fileList = (ArrayList<File>) in.readObject();
                 in.close();
             }else{
-                fileList=new ArrayList<File>(MAX_FILES);
+                fileList=new ArrayList<File>(maxFiles);
             }
         }catch(ClassCastException e){
             e.printStackTrace();
@@ -224,7 +278,7 @@ public class RecentFiles {
         } catch (IOException e) {
             e.printStackTrace();
         }finally{
-            if(fileList==null) fileList=new ArrayList<File>(MAX_FILES);
+            if(fileList==null) fileList=new ArrayList<File>(maxFiles);
         }
     }
     
@@ -320,7 +374,7 @@ public class RecentFiles {
         return true;
     }
     
-    // prunes list to MAX_FILES and MAX_FOLDERS
+    // prunes list to maxFiles and maxFolders
     private void pruneList(){
         Map<File, FileAccessTimeout.Kind> kinds = FileAccessTimeout.classify(fileList);
         dropUnreachable(kinds);
@@ -330,12 +384,12 @@ public class RecentFiles {
             FileAccessTimeout.Kind k = kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING);
             if(k == FileAccessTimeout.Kind.FILE){
                 nfiles++;
-                if(nfiles>MAX_FILES){
+                if(nfiles>maxFiles){
                     removeList.add(f);
                }
             }else if(k == FileAccessTimeout.Kind.DIRECTORY){
                 ndirs++;
-                if(ndirs>MAX_FOLDERS){
+                if(ndirs>maxFolders){
                     removeList.add(f);
                 }
             }
@@ -345,7 +399,7 @@ public class RecentFiles {
     
     /**
      * Existing directories from the recent list, most recent first (at most
-     * {@link #MAX_FOLDERS}). Missing or timed-out paths are forgotten.
+     * {@link #getMaxFolders()}). Missing or timed-out paths are forgotten.
      */
     public List<File> getRecentFolders() {
         ArrayList<File> folders = new ArrayList<>();
@@ -359,7 +413,7 @@ public class RecentFiles {
         for (File f : fileList) {
             if (f != null && kinds.getOrDefault(f, FileAccessTimeout.Kind.MISSING) == FileAccessTimeout.Kind.DIRECTORY) {
                 folders.add(f);
-                if (folders.size() >= MAX_FOLDERS) {
+                if (folders.size() >= maxFolders) {
                     break;
                 }
             }
