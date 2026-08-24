@@ -35,130 +35,19 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
+      <dirEntry mountPoint="24" file="../build/install4j-stage" overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
         <exclude>
-          <!-- Secrets / gitignored credentials. file=".." packs the repo root; a missing
-               exclude here ships Dropbox secrets in every local ant release. CI is safer
-               only because these paths are not in git — still exclude them. -->
-          <entry location="signpath" />
-          <entry location=".signpath" />
-          <entry location="install4j" />
-          <entry location="install4j License key  2024-01-02 0834.txt" />
-          <entry location="install4j_windows-x64_13_0_2.exe" />
-          <!-- VCS / IDE / CI / editor — not needed to run jAER. .install4j is created by
-               the installer at install time; do not exclude it. -->
-          <entry location=".git" />
-          <entry location=".github" />
-          <entry location=".gitignore" />
-          <entry location=".gitattributes" />
-          <entry location=".classpath" />
-          <entry location=".project" />
-          <entry location=".settings" />
-          <entry location=".idea" />
-          <entry location=".cursor" />
-          <entry location=".vscode" />
-          <entry location=".travis.yml" />
-          <entry location="jaer.code-workspace" />
-          <!-- Build system / Ivy / packaging. -->
-          <entry location="build" />
-          <entry location="build.xml" />
-          <entry location="docs" />
-          <entry location="dist/javadoc" />
-          <entry location="dist/jAER.jar.7z" />
-          <entry location="dvs-slice-avi-writer.exe4j" />
-          <entry location="dvs-slice-avi-writer.exe" />
-          <entry location="dvs-slice-avi-writer.sh" />
-          <entry location="exe4j-launcher" />
-          <!-- Literal Ant-property folder names on some local trees. $$ so install4j does
-               not treat ${build.dir} as a compiler variable. -->
-          <entry location="$${build.dir}" />
-          <entry location="$${build.generated.sources.dir}" />
-          <!-- Repo art / demos (~29MB). Splash PNGs are added as fileEntries after this dirEntry
-               so they sit next to the exe / under jaer/ for Java -splash and the Swing fallback. -->
+          <!-- The staged splash is installed explicitly next to the launcher below. -->
           <entry location="images" />
-          <entry location="installers" />
-          <entry location="currentInstallers" />
-          <entry location="jaer-older-installers" />
-          <entry location="ivy" />
-          <entry location="ivy.xml" />
-          <entry location="ivysettings.xml" />
-          <entry location="_ivy_report.xml" />
-          <entry location="_ivy_try.xml" />
-          <entry location="jaer.install4j" />
-          <entry location="JAERViewerRunning.txt" />
-          <entry location="jAERViewer_linux.xml" />
-          <entry location="jAERViewer_linux.sh" />
-          <entry location="jAERViewer_win64.exe" />
-          <entry location="jAERViewer.exe" />
-          <entry location="jaer_win_jre_x64.exe4j" />
-          <entry location="javac.20240124_184101.args" />
-          <entry location="javac.20240124_184643.args" />
-          <entry location="jogl-osx-problem" />
-          <entry location="manifest.mf" />
-          <entry location="nbproject" />
-          <entry location="README-releasing-tagging.md" />
-          <entry location="release-notes" />
-          <entry location="sven_goethel" />
-          <entry location="test" />
-          <entry location="davis-color-renderer-benchmark.sh" />
-          <!-- Local scratch / sources / tooling — not needed at runtime (tmp alone was ~676MB). -->
-          <entry location="tmp" />
-          <entry location="src" />
-          <entry location="scripts" />
-          <entry location="logs" />
-          <entry location="bin" />
-          <entry location="tools" />
-          <entry location="packaging" />
-          <!-- Prefer javacpp 1.5.10 (TensorFlow); drop leftover 1.4 from older Ivy resolves. -->
-          <entry location="lib/javacpp-1.4.jar" />
           <!-- Fat OpenCV (~102MB, all OS natives). Each media fileset below installs a
                slim lib/opencv-4.8.1-0.jar with Java classes + that OS native only. -->
           <entry location="lib/opencv-4.8.1-0.jar" />
-          <!-- NetBeans source attachments; not needed at runtime. -->
-          <entry location="jars/apache-ant-1.10.14-src.zip" />
-          <entry location="jars/jogamp-fat-java-src.zip" />
-          <entry location="jars/usb4java-usb4java-1.3.0.zip" />
-          <!-- Safety net: OS TensorFlow natives (~70–150MB). Ivy no longer retrieves these;
-               MLPNoiseFilter downloads via TensorFlowNativeSupport. Keep API + stub jars. -->
-          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-linux-arm64.jar" />
-          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-linux-x86_64.jar" />
-          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-macosx-arm64.jar" />
-          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-macosx-x86_64.jar" />
-          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-windows-x86_64.jar" />
-          <!-- Safety net: Ivy test-scope leakage (commons-text→GraalJS, zstd-jni→scalatest). -->
-          <entry location="lib/js-22.0.0.2.jar" />
-          <entry location="lib/js-scriptengine-22.0.0.2.jar" />
-          <entry location="lib/truffle-api-22.0.0.2.jar" />
-          <entry location="lib/regex-22.0.0.2.jar" />
-          <entry location="lib/graal-sdk-22.0.0.2.jar" />
-          <entry location="lib/scala-library-2.13.11.jar" />
-          <entry location="lib/scala-reflect-2.13.10.jar" />
-          <entry location="lib/scala-xml_2.13-2.1.0.jar" />
-          <entry location="lib/scalactic_2.13-3.2.17.jar" />
-          <entry location="lib/scalacheck_2.13-1.17.0.jar" />
-          <entry location="lib/scalacheck-1-17_2.13-3.2.17.0.jar" />
-          <entry location="lib/scalatest_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-compatible-3.2.17.jar" />
-          <entry location="lib/scalatest-core_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-diagrams_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-featurespec_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-flatspec_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-freespec_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-funspec_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-funsuite_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-matchers-core_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-mustmatchers_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-propspec_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-refspec_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-shouldmatchers_2.13-3.2.17.jar" />
-          <entry location="lib/scalatest-wordspec_2.13-3.2.17.jar" />
-          <entry location="lib/test-interface-1.0.jar" />
         </exclude>
       </dirEntry>
       <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 1024w
            next to the exe for -splash: and install4j.exeDir. 256h is compile-time only
            (iconImageFiles); fileEntry.subDirectory does not relocate it. -->
-      <fileEntry mountPoint="24" file="../images/1024w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <fileEntry mountPoint="24" file="../build/install4j-stage/images/1024w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
       <dirEntry mountPoint="9021" file="../build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
       <dirEntry mountPoint="9022" file="../build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />

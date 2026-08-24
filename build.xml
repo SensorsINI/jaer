@@ -706,6 +706,56 @@ and put it on PATH (or set JAVA_HOME).</fail>
     <property name="opencv.fat.jar" value="${basedir}/lib/opencv-${opencv.ivy.rev}.jar"/>
     <property name="opencv.unpack.dir" value="${basedir}/build/opencv-unpack"/>
     <property name="opencv.slim.dir" value="${basedir}/build/opencv-slim"/>
+    <property name="install4j.stage.dir" value="${basedir}/build/install4j-stage"/>
+
+    <target name="stage-install4j-runtime" depends="-require-dist-jar"
+            description="Recreate the fail-closed runtime tree consumed by install4j.">
+        <delete dir="${install4j.stage.dir}" failonerror="true"/>
+        <mkdir dir="${install4j.stage.dir}"/>
+        <copy todir="${install4j.stage.dir}" failonerror="true"
+              includeemptydirs="true" preservelastmodified="true">
+            <fileset dir="${basedir}" followsymlinks="false">
+                <include name="COPYING"/>
+                <include name="README.md"/>
+                <include name="VERSION.txt"/>
+                <include name="biasgenSettings/**"/>
+                <include name="conf/**"/>
+                <include name="deviceSettings/**"/>
+                <include name="dist/jAER.jar"/>
+                <include name="filterSettings/**"/>
+                <include name="images/1024w/SplashScreen.png"/>
+                <include name="jars/**"/>
+                <include name="lib/**"/>
+                <include name="sounds/**"/>
+                <!-- Runtime trees are recursive, but source archives, generated documentation,
+                     VCS metadata, and credential material remain denied at every depth. -->
+                <exclude name="**/.git*"/>
+                <exclude name="**/.svn/**"/>
+                <exclude name="**/.hg/**"/>
+                <exclude name="**/javadoc/**"/>
+                <exclude name="**/*credentials*"/>
+                <exclude name="**/*secret*"/>
+                <exclude name="**/*private-key*"/>
+                <exclude name="**/*license*"/>
+                <exclude name="**/*sources.jar"/>
+                <exclude name="**/*-javadoc.jar"/>
+                <exclude name="**/*-src.zip"/>
+                <exclude name="**/*sources.zip"/>
+                <exclude name="**/*.java"/>
+                <exclude name="**/*.form"/>
+                <exclude name="**/*.orig"/>
+                <exclude name="**/*.tmp"/>
+                <exclude name="**/*.7z"/>
+                <exclude name="**/*.pem"/>
+                <exclude name="**/*.p12"/>
+                <exclude name="**/*.pfx"/>
+                <exclude name="**/*.keystore"/>
+                <exclude name="**/*.jks"/>
+                <!-- Install4j adds one slim OpenCV jar per target platform below. -->
+                <exclude name="lib/opencv-${opencv.ivy.rev}.jar"/>
+            </fileset>
+        </copy>
+    </target>
 
     <macrodef name="opencv-slim-jar">
         <attribute name="platform"/>
@@ -772,7 +822,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc"
-            depends="split-opencv-natives,-run-install4jc-with-license,-run-install4jc-without-license"/>
+            depends="split-opencv-natives,stage-install4j-runtime,-run-install4jc-with-license,-run-install4jc-without-license"/>
 
     <target name="-require-opencv-slim">
         <available type="dir" file="${opencv.slim.dir}" property="opencv.slim.dir.exists"/>
@@ -783,7 +833,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     <!-- Public name: Ant treats CLI args starting with "-" as options, so
          ant -run-install4jc-with-license does not work. -->
     <target name="install4j"
-            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-run-install4jc-with-license,-run-install4jc-without-license"
+            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,stage-install4j-runtime,-run-install4jc-with-license,-run-install4jc-without-license"
             description="Run install4jc only (existing dist/jAER.jar; no splash/clean/jar).">
         <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
@@ -813,7 +863,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc-windows"
-            depends="split-opencv-natives,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
+            depends="split-opencv-natives,stage-install4j-runtime,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
     <!-- Copy install4j updates.xml from currentInstallers/<version>/ to repo root (auto-update descriptor). -->
     <macrodef name="jaer-copy-updates-xml">
