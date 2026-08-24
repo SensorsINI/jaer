@@ -34,7 +34,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(EXTENSION4) || extension.equals(EXTENSIONZ) || extension.equals(OLDEXTENSION) 
+            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(EXTENSION4) || extension.equals(EXTENSIONZ) || extension.equals(OLDEXTENSION)
                     || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
                     || extension.equals(TextFileInputStream.FILE_EXTENSION_CSV) || extension.equals(TextFileInputStream.FILE_EXTENSION_TXT)
                     || extension.equals(MetavisionRawFileInputStream.DATA_FILE_EXTENSION)
