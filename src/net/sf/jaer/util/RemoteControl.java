@@ -141,9 +141,9 @@ public class RemoteControl /* implements RemoteControlled */{
         RemoteControlCommand command = new RemoteControlCommand(cmd,description);
         String cmdKey = command.getCmdName();
         if ( cmdMap.containsKey(cmdKey) && (warningCount++<MAX_WARNINGS)){
-            log.warning("remote control commands already contains command " + cmdKey + ", replacing existing command with " + cmd + ": " + description);
-            if(warningCount==MAX_WARNINGS) {
-				log.info("suppressing further warnings about replacing commands");
+            log.FINE("remote control commands already contains command " + cmdKey + ", replacing existing command with " + cmd + ": " + description);
+            if(warningCount>=MAX_WARNINGS) {
+				log.FINE("suppressing further warnings about replacing commands");
 			}
         }
         cmdMap.put(cmdKey,command);
