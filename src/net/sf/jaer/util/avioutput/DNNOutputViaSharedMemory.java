@@ -88,8 +88,8 @@ python consumer.py --jaer-mmap {mmapPath} --serial_port None --windowed
 <code>--jaer-mmap</code>. Use <code>--jaer-tcp None</code> to poll mmap sequence
 numbers only.</li>
 </ol>
-<p>Linux/macOS typical path: <code>/tmp/jaer_dvs_frames.mmap</code>.
-Windows: <code>%TEMP%\\jaer_dvs_frames.mmap</code>.</p>
+<p>Linux/macOS typical path: <code>/tmp/jaer/jaer_dvs_frames.mmap</code>.
+Windows: <code>%TEMP%\\jaer\\jaer_dvs_frames.mmap</code>.</p>
 <p>If the CNN image looks upside-down, toggle <code>flipY</code> so row 0 matches
 the training set (OpenCV / top-left origin). Default is off (jAER lower-left).</p>
 <p>Pixels are rectified event counts clipped at <code>dvsGrayScale</code> and
@@ -114,8 +114,8 @@ uv run python live_reconstruction.py -c pretrained/E2VID_lightweight.pth.tar --a
 </pre>
 Default TCP is <code>127.0.0.1:{controlPort}</code>.</li>
 </ol>
-<p>Default path: <code>%TEMP%\\jaer_dvs_events.mmap</code> (Windows) or
-<code>/tmp/jaer_dvs_events.mmap</code>.</p>
+<p>Default path: <code>%TEMP%\\jaer\\jaer_dvs_events.mmap</code> (Windows) or
+<code>/tmp/jaer/jaer_dvs_events.mmap</code>.</p>
 <p>Double-buffered mmap: two slots of 64-byte header plus
 <code>maxEvents &times; 16</code> bytes. Magic <code>JAER</code>,
 <code>dtype=EVENT</code> (2). Event record (little-endian, 16 bytes):
@@ -302,7 +302,7 @@ public class DNNOutputViaSharedMemory extends DvsFramerSingleFrame {
 
     public static String defaultMmapPath(OutputMode mode) {
         String name = mode == OutputMode.EventWindows ? "jaer_dvs_events.mmap" : "jaer_dvs_frames.mmap";
-        return new File(System.getProperty("java.io.tmpdir"), name).getAbsolutePath();
+        return new File(net.sf.jaer.util.JaerTmpdir.get(), name).getAbsolutePath();
     }
 
     public static int defaultControlPort(OutputMode mode) {

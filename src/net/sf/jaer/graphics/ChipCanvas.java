@@ -38,7 +38,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JRadioButtonMenuItem;
 
-import net.sf.jaer.JaerConstants;
+import net.sf.jaer.Welcome;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -173,8 +173,12 @@ public class ChipCanvas implements GLEventListener, Observer {
     // chip fills glCanvas space
     private float ZCLIP = 1;
     private TextRenderer renderer = null;
-    /** Cached first-line release version for welcome overlay. */
-    private static String welcomeReleaseVersion;
+    /**
+     * Welcome overlay lines set by {@link AEViewer#setWelcomeOverlay(String[])}.
+     * {@code null} means use {@link Welcome#linesFor(AEViewer)}; empty means do
+     * not draw (cleared).
+     */
+    private volatile String[] welcomeOverlayLines;
 
     /** USB link overlay after a live camera open (cleared after {@link #USB_LINK_OVERLAY_MS}). */
     private volatile String usbLinkOverlayText;
@@ -666,13 +670,48 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * True when a filter requested skip of chip pixmap rendering. DisplayMethod
-     * (APS, DVS, IMU, frame markers) and annotations are omitted; a blank frame
-     * plus {@link AEViewer#getSkipChipRenderingOverlay()} is drawn instead.
+     * True when a filter requested skip of chip pixmap rendering, or when the
+     * Welcome / opening overlay is active (WAITING, no open hardware). In both
+     * cases DisplayMethod (APS, DVS, IMU, frame markers) and annotations are
+     * omitted so the overlay is not painted over leftover events.
      */
     private boolean shouldSkipChipDisplay() {
+        if (isWelcomeOverlayActive()) {
+            return true;
+        }
         AEViewer v = resolveAeViewer();
         return v != null && v.isSkipChipRenderingRequested() && !v.isJaerAviRecordingActive();
+    }
+
+    /**
+     * Same gates as {@link #drawWelcomeOverlayIfNeeded}: WAITING, no open
+     * camera, overlay not cleared. Multiple Interface devices and in-progress
+     * USB open both use this so the chip pixmap is blank.
+     */
+    private boolean isWelcomeOverlayActive() {
+        String[] lines = welcomeOverlayLines;
+        if (lines != null && lines.length == 0) {
+            return false;
+        }
+        if (!(chip instanceof AEChip)) {
+            return false;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || viewer.getPlayMode() != AEViewer.PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
+            return false;
+        }
+        if (chip.getCanvas() != null && chip.getCanvas() != this) {
+            return false;
+        }
+        HardwareInterface hw = aeChip.getHardwareInterface();
+        if (hw != null && hw.isOpen()) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -801,39 +840,54 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
+     * Sets centered welcome overlay lines. {@code null} restores
+     * {@link Welcome#linesFor(AEViewer)} defaults. An empty array suppresses
+     * drawing (see {@link #clearWelcomeOverlay()}).
+     * Visibility is still gated by WAITING / no-open-hardware in
+     * {@link #drawWelcomeOverlayIfNeeded}.
+     *
+     * @param lines overlay lines, {@code null} for defaults, empty to hide
+     */
+    public void setWelcomeOverlay(String[] lines) {
+        welcomeOverlayLines = lines;
+    }
+
+    /**
+     * Stops drawing the welcome overlay even while WAITING.
+     */
+    public void clearWelcomeOverlay() {
+        welcomeOverlayLines = new String[0];
+    }
+
+    /**
+     * Lines that will be drawn (defaults from {@link Welcome} if none were set).
+     *
+     * @return overlay lines, never {@code null}; empty if cleared
+     */
+    public String[] getWelcomeOverlay() {
+        String[] lines = welcomeOverlayLines;
+        if (lines != null) {
+            return lines;
+        }
+        return Welcome.linesFor(resolveAeViewer());
+    }
+
+    /**
      * Centered welcome text when waiting with no open hardware (blank AEChip view).
+     * Copy comes from {@link #setWelcomeOverlay(String[])} or {@link Welcome}.
      */
     private void drawWelcomeOverlayIfNeeded(final GLAutoDrawable drawable) {
-        if (!(chip instanceof AEChip)) {
+        if (!isWelcomeOverlayActive()) {
             return;
         }
-        AEChip aeChip = (AEChip) chip;
-        AEViewer viewer = aeChip.getAeViewer();
-        if (viewer == null) {
-            viewer = aeViewer;
+        String[] lines = welcomeOverlayLines;
+        AEViewer viewer = resolveAeViewer();
+        if (lines == null) {
+            lines = Welcome.linesFor(viewer);
         }
-        if (viewer == null || viewer.getPlayMode() != PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
+        if (lines == null || lines.length == 0) {
             return;
         }
-        // File-dialog preview used to construct a second ChipCanvas that still saw WAITING;
-        // skip if this canvas is not the chip's live view.
-        if (chip.getCanvas() != null && chip.getCanvas() != this) {
-            return;
-        }
-        HardwareInterface hw = aeChip.getHardwareInterface();
-        if (hw != null && hw.isOpen()) {
-            return;
-        }
-        if (welcomeReleaseVersion == null) {
-            welcomeReleaseVersion = JaerConstants.getReleaseVersion();
-        }
-        String[] lines = {
-            "Welcome to jAER-" + welcomeReleaseVersion,
-            "Plug in a device or use File/Open recorded data file..",
-            "Choose active camera from Interface menu (if you have multiple cameras)",
-            "Get sample data via Help / Sample data",
-            "See Help menu for more information"
-        };
         try {
             GL2 gl = drawable.getGL().getGL2();
             // ~1.5× smaller than initial welcome overlay sizing

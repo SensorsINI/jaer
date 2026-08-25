@@ -53,11 +53,10 @@ public abstract class CypressFX3Biasgen extends CypressFX3 implements BiasgenHar
 	@Override
 	synchronized public void open() throws HardwareInterfaceException {
             super.open();
-
-		// And now send the current bias values to the device to enable it.
-		if ((getChip() != null) && (getChip().getBiasgen() != null)) {
-			getChip().getBiasgen().sendConfiguration(getChip().getBiasgen());
-		}
+            // Do not sendConfiguration here. After Interface switch, Davis SPI vendor
+            // requests hang forever when LibUsb.controlTransfer timeout is 0
+            // (jAER 11:51:56: USB claimed in 0 ms, then 12 s abandon). Biases are
+            // sent from AEViewer after open() returns.
 	}
 
 	@Override

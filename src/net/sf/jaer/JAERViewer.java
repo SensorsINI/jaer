@@ -133,8 +133,9 @@ public class JAERViewer {
     private SyncPlayer syncPlayer = null; // add a sync player once we have a viewer to assign it to
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
     /**
-     * Semaphore file name under {@code java.io.tmpdir} (and leftover name in
-     * the working directory). Also used by {@link JAERTrayLauncher}.
+     * Semaphore file name under {@link net.sf.jaer.util.JaerTmpdir} (and leftover
+     * names in the working directory / system temp root). Also used by
+     * {@link JAERTrayLauncher}.
      */
     public static final String RUNNING_SEMAPHORE_FILENAME = "JAERViewerRunning.txt";
     /**
@@ -726,10 +727,11 @@ public class JAERViewer {
     }
 
     /**
-     * Semaphore file in the system temp folder (writable for installed jAER).
+     * Semaphore file under {@link net.sf.jaer.util.JaerTmpdir} (writable for
+     * installed jAER).
      */
     public static File getRunningSemaphoreFile() {
-        return new File(System.getProperty("java.io.tmpdir"), RUNNING_SEMAPHORE_FILENAME);
+        return net.sf.jaer.util.JaerTmpdir.file(RUNNING_SEMAPHORE_FILENAME);
     }
 
     /**
@@ -742,7 +744,13 @@ public class JAERViewer {
     public static boolean confirmStartIfPossiblyAlreadyRunning() {
         File semaphore = getRunningSemaphoreFile();
         if (semaphore == null || !semaphore.isFile()) {
-            return true;
+            // Legacy location before ${java.io.tmpdir}/jaer/
+            File legacy = new File(net.sf.jaer.util.JaerTmpdir.systemTmp(), RUNNING_SEMAPHORE_FILENAME);
+            if (legacy.isFile()) {
+                semaphore = legacy;
+            } else {
+                return true;
+            }
         }
         String detail = readSemaphoreDetail(semaphore);
         Long pid = JaerIssueReporter.parseSemaphorePid(detail);
@@ -873,18 +881,19 @@ public class JAERViewer {
     }
 
     /**
-     * Writes the running-instance semaphore under {@code java.io.tmpdir} and
-     * removes a leftover copy from the working directory (old location).
+     * Writes the running-instance semaphore under {@link net.sf.jaer.util.JaerTmpdir}
+     * and removes leftovers from the working directory and system temp root.
      */
     private void markViewerRunning() {
         File[] leftovers = {
             new File(RUNNING_SEMAPHORE_FILENAME),
-            new File("jAERViewerRunning.txt")
+            new File("jAERViewerRunning.txt"),
+            new File(net.sf.jaer.util.JaerTmpdir.systemTmp(), RUNNING_SEMAPHORE_FILENAME)
         };
         for (File leftover : leftovers) {
-            if (leftover.isFile() && !leftover.delete()) {
-                log.warning("Could not delete leftover " + leftover.getAbsolutePath()
-                        + " from working directory");
+            if (leftover.isFile() && !leftover.equals(getRunningSemaphoreFile())
+                    && !leftover.delete()) {
+                log.warning("Could not delete leftover " + leftover.getAbsolutePath());
             }
         }
         File temp = getRunningSemaphoreFile();
@@ -1435,6 +1444,8 @@ public class JAERViewer {
      */
     public static void main(String[] args) {
         final String[] fileArgs = applyLauncherArgsAsSystemProperties(args);
+        // Before first Logger (and FileHandler): ensure ${java.io.tmpdir}/jaer exists.
+        net.sf.jaer.util.JaerTmpdir.get();
 
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
@@ -1474,7 +1485,9 @@ public class JAERViewer {
         net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
                 + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
-                + "\nEdit this file to configure logging." + "\nThe value of java.io.tmpdir is " + System.getProperty("java.io.tmpdir"));
+                + "\nEdit this file to configure logging."
+                + "\njava.io.tmpdir=" + System.getProperty("java.io.tmpdir")
+                + "\njaer.tmpdir=" + net.sf.jaer.util.JaerTmpdir.get().getAbsolutePath());
         log.info("Preferences come from root located at " + prefs.absolutePath());
         Logger root = log;
         while (root.getParent() != null) {

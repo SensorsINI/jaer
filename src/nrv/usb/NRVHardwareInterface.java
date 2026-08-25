@@ -26,6 +26,7 @@ import net.sf.jaer.util.VendorPrefsMigration;
 import nrv.chip.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -417,6 +418,22 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             return "NRV DVS CX3";
         }
         return "NRV DVS";
+    }
+
+    /** Libusb device pointer for identity compares; does not open the handle. */
+    public Device getLibUsbDevice() {
+        return device;
+    }
+
+    @Override
+    public String toString() {
+        if (isOpened && stringDescriptors != null && stringDescriptors[1] != null
+                && !stringDescriptors[1].isBlank()) {
+            String sn = (stringDescriptors[2] != null && !stringDescriptors[2].isBlank())
+                    ? " " + stringDescriptors[2] : "";
+            return stringDescriptors[1] + sn;
+        }
+        return UsbIds.unopenedLabel(this, getTypeName());
     }
 
     @Override

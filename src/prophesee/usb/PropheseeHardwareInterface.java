@@ -47,6 +47,7 @@ import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import prophesee.usb.evt3.Evt3Parser;
@@ -135,6 +136,10 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private boolean deviceInitialized;
 
     private boolean isOpened = false;
+    /** True while {@link #open()} is between LibUsb.open and isOpened=true. */
+    private volatile boolean openInProgress = false;
+    /** Set by Interface switch so a stuck/slow open can bail out between steps. */
+    private volatile boolean openAbortRequested = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
     /** True after {@link Imx636Init#startStreaming}; USB URBs must be queued before this. */
@@ -147,6 +152,54 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     public PropheseeHardwareInterface(Device device) {
         this.device = device;
         log.fine("Prophesee USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+    }
+
+    /**
+     * Ask an in-progress {@link #open()} to abort at the next checkpoint (Interface switch).
+     * Safe from any thread; does not block on the open monitor.
+     */
+    public void requestOpenAbort() {
+        openAbortRequested = true;
+        log.fine("Prophesee requestOpenAbort " + UsbLog.t());
+    }
+
+    public boolean isOpenInProgress() {
+        return openInProgress;
+    }
+
+    private void checkOpenAbort() throws HardwareInterfaceException {
+        if (openAbortRequested || Thread.currentThread().isInterrupted()) {
+            throw new HardwareInterfaceException("Prophesee open aborted (interface switched)");
+        }
+    }
+
+    private void releasePartialOpen() {
+        log.fine("Prophesee releasePartialOpen " + UsbLog.t());
+        try {
+            if (deviceHandle != null) {
+                try {
+                    Imx636Init.shutdown(deviceHandle);
+                } catch (Exception e) {
+                    log.fine("shutdown during abort: " + e.getMessage());
+                }
+                try {
+                    releaseDevice();
+                } catch (Exception e) {
+                    log.fine("release during abort: " + e.getMessage());
+                }
+                try {
+                    LibUsb.close(deviceHandle);
+                } catch (Exception e) {
+                    log.fine("LibUsb.close during abort: " + e.getMessage());
+                }
+                deviceHandle = null;
+            }
+        } finally {
+            deviceInitialized = false;
+            sensorStreaming = false;
+            isOpened = false;
+            openInProgress = false;
+        }
     }
 
     boolean isUsbTypedDemuxActive() {
@@ -332,56 +385,84 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     @Override
-    public synchronized void open() throws HardwareInterfaceException {
-        if (isOpen()) {
-            return;
-        }
-        deviceHandle = new DeviceHandle();
-        int status = LibUsb.open(device, deviceHandle);
-        if (status != LibUsb.SUCCESS) {
-            deviceHandle = null;
-            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + libUsbOpenHint(status));
-        }
-
-        deviceDescriptor = new DeviceDescriptor();
-        status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        if (status != LibUsb.SUCCESS) {
-            LibUsb.close(deviceHandle);
-            deviceHandle = null;
-            throw new HardwareInterfaceException("getDeviceDescriptor(): " + LibUsb.errorName(status));
-        }
-
-        if (deviceDescriptor.idProduct() != PID_EVK4_HD) {
-            LibUsb.close(deviceHandle);
-            deviceHandle = null;
-            throw new HardwareInterfaceException("Unsupported Prophesee PID: "
-                    + String.format("%04x", deviceDescriptor.idProduct()));
-        }
-
-        acquireDevice();
-        log.fine("Prophesee open: USB interface claimed");
-
-        try {
-            for (int i = 0; i < stringDescriptors.length; i++) {
-                stringDescriptors[i] = LibUsb.getStringDescriptor(deviceHandle, (byte) (i + 1));
+    public void open() throws HardwareInterfaceException {
+        synchronized (this) {
+            if (isOpened) {
+                return;
             }
-        } catch (Exception e) {
-            log.warning("Could not read all USB string descriptors: " + e.getMessage());
+            if (openInProgress) {
+                throw new HardwareInterfaceException("Prophesee open already in progress");
+            }
+            openAbortRequested = false;
+            openInProgress = true;
         }
+        final long t0 = System.currentTimeMillis();
+        try {
+            log.info("Prophesee EVK4 open: LibUsb.open + claim (ISSD init follows, often several seconds)");
+            log.fine("Prophesee open() begin " + UsbLog.t());
+            deviceHandle = new DeviceHandle();
+            int status = LibUsb.open(device, deviceHandle);
+            log.fine("Prophesee LibUsb.open status=" + status + " " + UsbLog.t());
+            if (status != LibUsb.SUCCESS) {
+                deviceHandle = null;
+                throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + libUsbOpenHint(status));
+            }
 
-        log.fine("Prophesee open: running ISSD init pipeline (streaming deferred until USB reader starts)");
-        final Imx636Init.InitResult initResult = Imx636Init.initialize(deviceHandle, biases);
-        serial = initResult.serial;
-        chipFirmwareBiases = initResult.chipBiases;
-        deviceInitialized = true;
-        sensorStreaming = false;
+            deviceDescriptor = new DeviceDescriptor();
+            status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+            if (status != LibUsb.SUCCESS) {
+                throw new HardwareInterfaceException("getDeviceDescriptor(): " + LibUsb.errorName(status));
+            }
 
-        usbTransferFailed = false;
-        closing = false;
-        isOpened = true;
-        log.info("Prophesee EVK4 opened serial=" + serial + " VID:PID="
-                + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
-        LibUsbLinkInfo.logOnOpen(log, "Prophesee EVK4", device, deviceDescriptor);
+            if (deviceDescriptor.idProduct() != PID_EVK4_HD) {
+                throw new HardwareInterfaceException("Unsupported Prophesee PID: "
+                        + String.format("%04x", deviceDescriptor.idProduct()));
+            }
+
+            checkOpenAbort();
+            acquireDevice();
+            log.info(String.format("Prophesee open: USB claimed after %d ms", System.currentTimeMillis() - t0));
+            log.fine("Prophesee claim done " + UsbLog.t());
+
+            // Do NOT call LibUsb.getStringDescriptor here: on Windows it can hang with no
+            // timeout (jAER log 10:49:00 — claimed, never reached ISSD; ViewLoop stuck, next
+            // Interface selection only showed "Switch interface done"). Serial comes from ISSD.
+            stringDescriptors[0] = "Prophesee";
+            stringDescriptors[1] = "EVK4 HD";
+            stringDescriptors[2] = null;
+
+            checkOpenAbort();
+            log.info("Prophesee open: ISSD init (includes ~2.5s sleep)");
+            log.fine("Prophesee Imx636Init.initialize() enter " + UsbLog.t());
+            final Imx636Init.InitResult initResult = Imx636Init.initialize(deviceHandle, biases);
+            log.fine("Prophesee Imx636Init.initialize() returned " + UsbLog.t());
+            checkOpenAbort();
+            serial = initResult.serial;
+            chipFirmwareBiases = initResult.chipBiases;
+            stringDescriptors[2] = serial;
+            deviceInitialized = true;
+            sensorStreaming = false;
+
+            usbTransferFailed = false;
+            closing = false;
+            synchronized (this) {
+                if (openAbortRequested) {
+                    throw new HardwareInterfaceException("Prophesee open aborted (interface switched)");
+                }
+                isOpened = true;
+            }
+            log.info("Prophesee EVK4 opened serial=" + serial + " VID:PID="
+                    + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct())
+                    + " in " + (System.currentTimeMillis() - t0) + " ms");
+            LibUsbLinkInfo.logOnOpen(log, "Prophesee EVK4", device, deviceDescriptor);
+        } catch (HardwareInterfaceException | RuntimeException e) {
+            releasePartialOpen();
+            throw (e instanceof HardwareInterfaceException)
+                    ? (HardwareInterfaceException) e
+                    : new HardwareInterfaceException("Prophesee open failed: " + e, e);
+        } finally {
+            openInProgress = false;
+        }
     }
 
     /**
@@ -517,33 +598,44 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     @Override
-    public synchronized void close() {
-        if (!isOpen()) {
-            return;
+    public void close() {
+        openAbortRequested = true;
+        synchronized (this) {
+            if (!isOpened && !openInProgress) {
+                return;
+            }
+            // Mid-open: open() checks abort and releasePartialOpen; still force-release here
+            // if the opener is stuck in native USB without reaching a checkpoint.
+            if (openInProgress && !isOpened) {
+                log.info("Prophesee close during in-progress open; forcing USB release");
+                releasePartialOpen();
+                return;
+            }
+            closing = true;
+            try {
+                setEventAcquisitionEnabled(false);
+            } catch (HardwareInterfaceException e) {
+                log.warning("Error disabling event acquisition on close: " + e.getMessage());
+            }
+            sensorStreaming = false;
+            if (deviceHandle != null) {
+                Imx636Init.shutdown(deviceHandle);
+            }
+            try {
+                releaseDevice();
+            } catch (HardwareInterfaceException e) {
+                log.warning("Error releasing device: " + e.getMessage());
+            }
+            if (deviceHandle != null) {
+                LibUsb.close(deviceHandle);
+                deviceHandle = null;
+            }
+            deviceDescriptor = null;
+            deviceInitialized = false;
+            aePacketRawPool.reset();
+            isOpened = false;
+            openInProgress = false;
         }
-        closing = true;
-        try {
-            setEventAcquisitionEnabled(false);
-        } catch (HardwareInterfaceException e) {
-            log.warning("Error disabling event acquisition on close: " + e.getMessage());
-        }
-        sensorStreaming = false;
-        if (deviceHandle != null) {
-            Imx636Init.shutdown(deviceHandle);
-        }
-        try {
-            releaseDevice();
-        } catch (HardwareInterfaceException e) {
-            log.warning("Error releasing device: " + e.getMessage());
-        }
-        if (deviceHandle != null) {
-            LibUsb.close(deviceHandle);
-            deviceHandle = null;
-        }
-        deviceDescriptor = null;
-        deviceInitialized = false;
-        aePacketRawPool.reset();
-        isOpened = false;
     }
 
     @Override
@@ -554,6 +646,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     @Override
     public String getTypeName() {
         return "Prophesee EVK4 HD";
+    }
+
+    /** Libusb device pointer for identity compares; does not open the handle. */
+    public Device getLibUsbDevice() {
+        return device;
     }
 
     @Override

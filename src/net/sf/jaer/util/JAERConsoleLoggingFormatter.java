@@ -46,7 +46,7 @@ handlers = java.util.logging.ConsoleHandler, java.util.logging.FileHandler
 #   %h - value of the user.home system property
 #   %g - generation number for rotating logs
 #   %u - unique number to avoid conflicts
-java.util.logging.FileHandler.pattern=%t/jAER.log
+java.util.logging.FileHandler.pattern=%t/jaer/jAER.log
 
 # Set the default formatter for new ConsoleHandler instances
 java.util.logging.ConsoleHandler.formatter = net.sf.jaer.util.JAERConsoleLoggingFormatter

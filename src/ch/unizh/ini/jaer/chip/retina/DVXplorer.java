@@ -53,6 +53,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
 import net.sf.jaer.util.TextRendererScale;
@@ -283,11 +284,13 @@ public class DVXplorer extends AETemporalConstastRetina {
      */
     public void dvxConfig() {
         fx3 = (DVXplorerFX3HardwareInterface) this.getHardwareInterface();
-        
-        // Refer to libcaer for details.
+        log.fine("dvxConfig begin " + UsbLog.t());
         dvxReceiveInitParams(fx3);
+        log.fine("dvxConfig after dvxReceiveInitParams " + UsbLog.t());
         dvxSendOpeningConfig(fx3);
+        log.fine("dvxConfig after dvxSendOpeningConfig " + UsbLog.t());
         dvxSendDefaultConfig(fx3);
+        log.fine("dvxConfig after dvxSendDefaultConfig " + UsbLog.t());
     }
     
     /**
@@ -313,6 +316,15 @@ public class DVXplorer extends AETemporalConstastRetina {
             }
         }
 
+        if (isNextGenFirmware()) {
+            sizeX = 640;
+            sizeY = 480;
+            setSizeX(sizeX);
+            setSizeY(sizeY);
+            DVXplorer.log.info("Mini/Micro firmware 10+: using 640x480 (SPI size/orientation IN hangs)");
+            return;
+        }
+
         sizeX = (short)spiConfigReceive(fx3, DVX_DVS, DVX_DVS_SIZE_COLUMNS);
         sizeY = (short)spiConfigReceive(fx3, DVX_DVS, DVX_DVS_SIZE_ROWS);
         if (sizeX <= 0 || sizeY <= 0) {
@@ -324,16 +336,14 @@ public class DVXplorer extends AETemporalConstastRetina {
         setSizeY(sizeY);
         
         final int dvsOrientation = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
-        if (!isNextGenFirmware()) {
-            dvsInvertXY = (short)(dvsOrientation & 0x04);
-            dvsFlipX = (short)(dvsOrientation & 0x02);
-            dvsFlipY = (short)(dvsOrientation & 0x01);
+        dvsInvertXY = (short)(dvsOrientation & 0x04);
+        dvsFlipX = (short)(dvsOrientation & 0x02);
+        dvsFlipY = (short)(dvsOrientation & 0x01);
 
-            final int imuOrientation = spiConfigReceive(fx3, DVX_IMU, DVX_IMU_ORIENTATION_INFO);
-            imuFlipX = (short)(imuOrientation & 0x04);
-            imuFlipY = (short)(imuOrientation & 0x02);
-            imuFlipZ = (short)(imuOrientation & 0x01);
-        }
+        final int imuOrientation = spiConfigReceive(fx3, DVX_IMU, DVX_IMU_ORIENTATION_INFO);
+        imuFlipX = (short)(imuOrientation & 0x04);
+        imuFlipY = (short)(imuOrientation & 0x02);
+        imuFlipZ = (short)(imuOrientation & 0x01);
     }
     
     /**
@@ -600,11 +610,9 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSend(fx3, DVX_DVS, DVS_CROP_WIDTH, sizeX);
         spiConfigSend(fx3, DVX_DVS, DVS_CROP_HEIGHT, sizeY);
         spiConfigSend(fx3, DVX_DVS, DVS_CROP_APPLY, 0);
-        final int ori = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
-        final char ox = (char) ((ori >>> 8) & 0xFF);
-        final char oy = (char) (ori & 0xFF);
-        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_HORIZONTAL, (ox == 'X' || ox == 'x') ? 1 : 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_VERTICAL, (oy == 'Y' || oy == 'y') ? 1 : 0);
+        // Do not SPI-IN orientation on firmware 10+ (native hang). Default no flip.
+        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_HORIZONTAL, 0);
+        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_VERTICAL, 0);
         // Firmware ≥10 SPI uses BMI160 ODR register values (dv-processing
         // BoschBMI160* enums). Gyro ODR 5 is reserved and yields frozen ~0 dps.
         spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 11); // 800 Hz
@@ -615,8 +623,8 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2); // 500 dps
         if (debug) {
             DVXplorer.log.info(String.format(
-                    "Mini/Micro next-gen defaults: %dx%d orientation X='%c' Y='%c' MIPI timeout 2000 us",
-                    sizeX, sizeY, ox, oy));
+                    "Mini/Micro next-gen defaults: %dx%d no SPI orientation IN, MIPI timeout 2000 us",
+                    sizeX, sizeY));
         }
     }
     
@@ -837,6 +845,9 @@ public class DVXplorer extends AETemporalConstastRetina {
     
     public boolean spiConfigSendAndCheck(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
         spiConfigSend(fx3, moduleAddr, paramAddr, param);
+        if (isNextGenFirmware()) {
+            return true;
+        }
         final int ret = spiConfigReceive(fx3, moduleAddr, paramAddr);
         if (ret != param) {
             DVXplorer.log.severe(String.format("DVXplorer spi config checking error: moduleAddr = %x, paramAddr = %x, param = %x, ret = %x", moduleAddr, paramAddr, param, ret));

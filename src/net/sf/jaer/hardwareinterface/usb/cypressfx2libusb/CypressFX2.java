@@ -31,6 +31,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
@@ -481,24 +482,20 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
-     * Returns string description of device including the USB vendor/project
-     * IDs. If the device has not been opened then it is minimally opened to
-     * populate the deviceDescriptor and then closed.
-     *
-     * @return the string description of the device.
+     * USB product/serial string after a real {@link #open()}, otherwise class
+     * name plus VID:PID and bus/addr. Never {@code LibUsb.open} (EDT / menu).
      */
     @Override
     public String toString() {
-        if (numberOfStringDescriptors == 0) {
-            try {
-                open_minimal_close(); // populates stringDescription and sets
-                // numberOfStringDescriptors!=0
-            } catch (final Exception e) {
-                // Must not throw: AEViewer catch blocks stringify this interface.
-                CypressFX2.log.fine("toString(): could not populate descriptors: " + e);
-            }
+        if (numberOfStringDescriptors != 0) {
+            return stringDescription;
         }
-        return stringDescription;
+        return UsbIds.unopenedLabel(this, getClass().getSimpleName());
+    }
+
+    /** Libusb device pointer for identity compares; does not open the handle. */
+    public Device getLibUsbDevice() {
+        return device;
     }
 
     /**

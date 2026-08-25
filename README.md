@@ -62,20 +62,22 @@ Live USB cameras selectable in the AEViewer **AEChip** menu (default list and re
 | Camera / product | Manufacturer | Sensor / resolution | Interface | jAER chip class(es) | Status |
 |------------------|--------------|---------------------|-----------|---------------------|--------|
 | **DAVIS346** (red/blue/color) | [iniVation](https://inivation.com/) | APS+DVS 346×260 | USB 3 (FX3) | `Davis346red`, `Davis346blue`, `Davis346redColor`, … | Stable |
-| **DAVIS240** (A/B/C) | iniVation / inilabs | APS+DVS 240×180 | USB 2/3 | `DAVIS240C`, `DAVIS240B`, … | Stable (`DAVIS240C`); Experimental (`DAVIS240A`/`B`) |
-| **DVXplorer** | iniVation | DVS (Samsung S5K231Y) 640×480, 9 µm | USB 3 (FX3) | `DVXplorer` | Stable |
-| **DVXplorer Mini** | iniVation | same Samsung DVS 640×480, 9 µm | USB 3 (CX3 MIPI) | `DVXplorer` | Stable |
-| **DVXplorer Micro** | iniVation | same Samsung DVS 640×480, 9 µm | USB-C (CX3 MIPI) | `DVXplorer` | Stable |
-| **DVS128** | inilabs / SensorsINI | DVS 128×128 | USB 2 (FX2) | `DVS128` | Stable |
+| **DAVIS240** (A/B/C) | [iniVation](https://inivation.com/) / [inilabs](https://inilabs.com/) | APS+DVS 240×180 | USB 2/3 | `DAVIS240C`, `DAVIS240B`, … | Stable (`DAVIS240C`); Experimental (`DAVIS240A`/`B`) |
+| **DVXplorer** | [iniVation](https://inivation.com/) | DVS (Samsung S5K231Y) 640×480, 9 µm | USB 3 (FX3) | `DVXplorer` | Stable |
+| **DVXplorer Mini** | [iniVation](https://inivation.com/) | same Samsung DVS 640×480, 9 µm | USB 3 (CX3 MIPI) | `DVXplorer` | Stable |
+| **DVXplorer Micro** | [iniVation](https://inivation.com/) | same Samsung DVS 640×480, 9 µm | USB-C (CX3 MIPI) | `DVXplorer` | Stable |
+| **DVS128** | [inilabs](https://inilabs.com/) / [SensorsINI](https://sensors.ini.ch) | DVS 128×128 | USB 2 (FX2) | `DVS128` | Stable |
 | **EVK4 HD** | [Prophesee](https://www.prophesee.ai/) | Sony IMX636 DVS 1280×720 | USB 3 (Cypress) | `PropheseeIMX636HD` | Stable ([notes](src/prophesee/README.md)); also Metavision `.raw` EVT3 playback |
 | **DELTA01** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3 (FX20/CX3) | `NRVS5KRC1S` | Stable ([notes](src/nrv/README.md)) |
-| **CDAVIS** | SensorsINI / partners | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Experimental |
-| **CochleaAMS / CochleaLP** | SensorsINI / inilabs | Silicon cochlea (audio AER) | USB 2/3 | `CochleaAMS1c`, `CochleaLP`, … | Stable (`CochleaAMS1c`); Experimental (`CochleaLP`) |
+| **CDAVIS** | [SensorsINI](https://sensors.ini.ch) / [iniVation](https://inivation.com/) | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Experimental |
+| **SciDVS** | [SensorsINI](https://sensors.ini.ch) | Sensitive 100x114 DVS / Basic APS  | USB 3 | `SciDVS` | Experimental |
+| **CochleaAMS / CochleaLP** | [SensorsINI](https://sensors.ini.ch) / [inilabs](https://inilabs.com/) | Silicon cochlea (audio AER) | USB 2/3 | `CochleaAMS1c`, `CochleaLP`, … | Stable (`CochleaAMS1c`); Experimental (`CochleaLP`) |
 | Generic DVS viewers | — | 640×480, 1280×720 | Playback / viz | `DVS640`, `DVS1280x720SD` | Stable |
 
 Stereo and multi-camera wrappers (e.g. `DVS128StereoPair`, `MultiDAVIS346BCameraChip`) combine several of the above over separate USB interfaces.
 
 Hardware docs in Help menu: iniVation cameras, Prophesee sensors, NRV cameras.
+USB enumeration, the Interface menu, EDT rules, and per-camera libusb quirks: [`docs/README-usb.md`](docs/README-usb.md).
 
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 

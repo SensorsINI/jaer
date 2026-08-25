@@ -63,7 +63,7 @@ java ^
   -XX:+UseCompactObjectHeaders ^
   -Xmx10g ^
   -Xrs ^
-  -splash:SplashScreen.png ^
+  -splash:images/800w/SplashScreen.png ^
   !JVM_EXTRA! ^
   -cp "%JAER_CP%" ^
   net.sf.jaer.JAERViewer !APP_ARGS!

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
-  <directoryPresets config="../images/1024w" />
+  <directoryPresets config="../images/800w" />
   <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.4.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
@@ -37,17 +37,54 @@
     <entries>
       <dirEntry mountPoint="24" file="../build/install4j-stage" overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
         <exclude>
-          <!-- The staged splash is installed explicitly next to the launcher below. -->
+          <!-- Secrets / gitignored credentials. file=".." packs the repo root; a missing
+               exclude here ships Dropbox secrets in every local ant release. CI is safer
+               only because these paths are not in git — still exclude them. -->
+          <entry location="signpath" />
+          <entry location=".signpath" />
+          <entry location="install4j" />
+          <entry location="install4j License key  2024-01-02 0834.txt" />
+          <entry location="install4j_windows-x64_13_0_2.exe" />
+          <!-- VCS / IDE / CI / editor — not needed to run jAER. .install4j is created by
+               the installer at install time; do not exclude it. -->
+          <entry location=".git" />
+          <entry location=".github" />
+          <entry location=".gitignore" />
+          <entry location=".gitattributes" />
+          <entry location=".classpath" />
+          <entry location=".project" />
+          <entry location=".settings" />
+          <entry location=".idea" />
+          <entry location=".cursor" />
+          <entry location=".vscode" />
+          <entry location=".travis.yml" />
+          <entry location="jaer.code-workspace" />
+          <!-- Build system / Ivy / packaging. -->
+          <entry location="build" />
+          <entry location="build.xml" />
+          <entry location="docs" />
+          <entry location="dist/javadoc" />
+          <entry location="dist/jAER.jar.7z" />
+          <entry location="dvs-slice-avi-writer.exe4j" />
+          <entry location="dvs-slice-avi-writer.exe" />
+          <entry location="dvs-slice-avi-writer.sh" />
+          <entry location="exe4j-launcher" />
+          <!-- Literal Ant-property folder names on some local trees. $$ so install4j does
+               not treat ${build.dir} as a compiler variable. -->
+          <entry location="$${build.dir}" />
+          <entry location="$${build.generated.sources.dir}" />
+          <!-- Repo art / demos (~29MB). Splash PNGs are added as fileEntries after this dirEntry
+               so they sit next to the exe / under jaer/ for the native splash and Swing fallback. -->
           <entry location="images" />
           <!-- Fat OpenCV (~102MB, all OS natives). Each media fileset below installs a
                slim lib/opencv-4.8.1-0.jar with Java classes + that OS native only. -->
           <entry location="lib/opencv-4.8.1-0.jar" />
         </exclude>
       </dirEntry>
-      <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 1024w
-           next to the exe for -splash: and install4j.exeDir. 256h is compile-time only
-           (iconImageFiles); fileEntry.subDirectory does not relocate it. -->
-      <fileEntry mountPoint="24" file="../build/install4j-stage/images/1024w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 800w
+           next to the exe for the native launcher splash. 256h/1024w are compile-time only
+           (iconImageFiles); fileEntry.subDirectory does not relocate them. -->
+      <fileEntry mountPoint="24" file="../images/800w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
       <dirEntry mountPoint="9021" file="../build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
       <dirEntry mountPoint="9022" file="../build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
@@ -61,10 +98,12 @@
         <versionInfo fileDescription="jAER event sensor application" />
       </executable>
       <!-- Native splash: not java.awt.SplashScreen. writeMessage() updates statusLine
-           off the EDT. Do not show a Swing window until AEViewer or this splash closes. -->
-      <splashScreen show="true" width="1024" height="1024" bitmapFile="../images/1024w/SplashScreen.png" textOverlay="true">
+           off the EDT. Do not show a Swing window until AEViewer or this splash closes.
+           800x800 (non-power-of-two) so the bitmap and status line fit typical laptop
+           screens; 1024x1024 clipped the bottom log line on 1080p and smaller. -->
+      <splashScreen show="true" width="800" height="800" bitmapFile="../images/800w/SplashScreen.png" textOverlay="true">
         <text>
-          <statusLine x="45" y="1000" text="Press ESC to abort startup" />
+          <statusLine x="45" y="776" text="Press ESC to abort startup" />
         </text>
       </splashScreen>
       <!-- add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+). Valid on 9+. -->
@@ -79,7 +118,7 @@
       </java>
       <vmOptionsFile mode="none" />
       <iconImageFiles>
-        <!-- Windows .ico / multi-res icons: keep 256 for shell icons; splash above uses 1024. -->
+        <!-- Windows ICO max useful size is 256; macOS icns wants 1024 (Retina). Splash is 800. -->
         <file path="../images/256h/SplashScreen.png" />
         <file path="../images/1024w/SplashScreen.png" />
       </iconImageFiles>

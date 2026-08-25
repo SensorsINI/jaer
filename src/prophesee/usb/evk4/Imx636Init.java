@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 import org.usb4java.DeviceHandle;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import prophesee.usb.PropheseeBiases;
 
 /**
@@ -51,7 +52,8 @@ public final class Imx636Init {
     }
 
     private static void fineStep(String step, long stepStartMs) {
-        log.fine(String.format("Prophesee IMX636 init: %s (+%dms)", step, System.currentTimeMillis() - stepStartMs));
+        log.fine(String.format("Prophesee IMX636 init: %s (+%dms) %s", step,
+                System.currentTimeMillis() - stepStartMs, UsbLog.t()));
     }
 
     public static PropheseeBiases readDefaultBiases(DeviceHandle handle) throws HardwareInterfaceException {
@@ -111,7 +113,7 @@ public final class Imx636Init {
     public static InitResult initialize(DeviceHandle handle, PropheseeBiases biases)
             throws HardwareInterfaceException {
         long t0 = System.currentTimeMillis();
-        log.fine("Prophesee IMX636 init: begin");
+        log.fine("Prophesee IMX636 init: begin " + UsbLog.t());
         Evk4BoardCommand.readFirmwareInfo(handle);
         fineStep("firmware info", t0);
         final String serial = Evk4BoardCommand.runDeviceDiscoveryHandshake(handle);
@@ -126,10 +128,13 @@ public final class Imx636Init {
         fineStep("read chip biases", t0);
 
         issdStop(handle);
+        abortIfInterrupted();
         fineStep("issdStop", t0);
         issdDestroy(handle);
+        abortIfInterrupted();
         fineStep("issdDestroy", t0);
         issdInit(handle);
+        abortIfInterrupted();
         fineStep("issdInit", t0);
         final int flushed = Evk4BoardCommand.flushEventEndpoint(handle);
         fineStep("flush 0x81 flushedBytes=" + flushed, t0);
@@ -139,9 +144,15 @@ public final class Imx636Init {
         fineStep("apply DEFAULT biases", t0);
         applyDefaultRoiAndMasks(handle);
         fineStep("apply ROI/masks", t0);
-        log.fine(String.format("Prophesee IMX636 init: complete in %dms serial=%s (streaming not started)",
+        log.info(String.format("Prophesee IMX636 init: complete in %dms serial=%s (streaming not started)",
                 System.currentTimeMillis() - t0, serial));
         return new InitResult(serial, chipBiases);
+    }
+
+    private static void abortIfInterrupted() throws HardwareInterfaceException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new HardwareInterfaceException("Prophesee ISSD aborted (interface switched or open timed out)");
+        }
     }
 
     public static InitResult initializeAndStart(DeviceHandle handle, PropheseeBiases biases)
@@ -455,19 +466,21 @@ public final class Imx636Init {
         return iphMirrEn | (iphMirrAmpEn << 1);
     }
 
-    private static void sleepMs(long ms) {
+    private static void sleepMs(long ms) throws HardwareInterfaceException {
         try {
             Thread.sleep(ms);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new HardwareInterfaceException("Prophesee ISSD sleep interrupted (open abort)");
         }
+        abortIfInterrupted();
     }
 
-    private static void sleepUs(long us) {
+    private static void sleepUs(long us) throws HardwareInterfaceException {
         sleepMs(Math.max(1, us / 1000));
     }
 
-    private static void sleepSec(long sec) {
+    private static void sleepSec(long sec) throws HardwareInterfaceException {
         sleepMs(sec * 1000);
     }
 }

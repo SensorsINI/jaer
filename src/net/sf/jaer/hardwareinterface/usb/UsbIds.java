@@ -8,6 +8,9 @@ package net.sf.jaer.hardwareinterface.usb;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.usb4java.Device;
+import org.usb4java.LibUsb;
+
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
@@ -64,15 +67,81 @@ public final class UsbIds {
             try {
                 vid = usb.getVID_THESYCON_FX2_CPLD();
             } catch (Throwable t2) {
-                log.log(Level.FINE, "Could not read VID from " + hw, t2);
+                log.log(Level.FINE, "Could not read VID from " + hw.getClass().getSimpleName(), t2);
             }
         }
         try {
             pid = usb.getPID();
         } catch (Throwable t) {
-            log.log(Level.FINE, "Could not read PID from " + hw, t);
+            log.log(Level.FINE, "Could not read PID from " + hw.getClass().getSimpleName(), t);
         }
         return new Pair(vid, pid);
+    }
+
+    /**
+     * Libusb {@link Device} when the implementation exposes {@code getLibUsbDevice()}.
+     */
+    public static Device libUsbDevice(HardwareInterface hw) {
+        if (hw == null) {
+            return null;
+        }
+        try {
+            java.lang.reflect.Method m = hw.getClass().getMethod("getLibUsbDevice");
+            Object o = m.invoke(hw);
+            return (o instanceof Device) ? (Device) o : null;
+        } catch (NoSuchMethodException ignored) {
+            return null;
+        } catch (Throwable t) {
+            log.log(Level.FINE, "getLibUsbDevice failed on " + hw.getClass().getSimpleName(), t);
+            return null;
+        }
+    }
+
+    /**
+     * True when both interfaces wrap the same USB bus address (not VID/PID alone).
+     */
+    public static boolean samePhysicalDevice(HardwareInterface a, HardwareInterface b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a == b) {
+            return true;
+        }
+        Device da = libUsbDevice(a);
+        Device db = libUsbDevice(b);
+        if (da == null || db == null) {
+            return false;
+        }
+        try {
+            return LibUsb.getBusNumber(da) == LibUsb.getBusNumber(db)
+                    && LibUsb.getDeviceAddress(da) == LibUsb.getDeviceAddress(db);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Menu label that does not {@code LibUsb.open}: type, VID:PID, bus/addr.
+     */
+    public static String unopenedLabel(HardwareInterface hw, String typeName) {
+        String name = (typeName == null || typeName.isBlank()) ? "USB" : typeName;
+        if (hw == null) {
+            return name;
+        }
+        Pair ids = hw instanceof USBInterface ? peek(hw) : new Pair((short) 0, (short) 0);
+        Device d = libUsbDevice(hw);
+        String topo = "";
+        if (d != null) {
+            try {
+                topo = String.format(" bus%d-addr%d",
+                        LibUsb.getBusNumber(d) & 0xff, LibUsb.getDeviceAddress(d) & 0xff);
+            } catch (RuntimeException ignored) {
+            }
+        }
+        if (ids.isKnown()) {
+            return name + " " + ids.key() + topo;
+        }
+        return name + topo;
     }
 
     /**

@@ -396,12 +396,14 @@ public final class SplashStartupAbort {
     private static BufferedImage loadSplashImage() {
         List<File> files = new ArrayList<>();
         files.add(new File("SplashScreen.png"));
+        files.add(new File("images/800w/SplashScreen.png"));
         files.add(new File("images/1024w/SplashScreen.png"));
         files.add(new File("images/SplashScreen.png"));
         String exeDir = System.getProperty("install4j.exeDir");
         if (exeDir != null && !exeDir.isBlank()) {
             files.add(new File(exeDir, "SplashScreen.png"));
             files.add(new File(exeDir, "jaer/SplashScreen.png"));
+            files.add(new File(exeDir, "jaer/images/800w/SplashScreen.png"));
             files.add(new File(exeDir, "jaer/images/1024w/SplashScreen.png"));
         }
         for (File f : files) {

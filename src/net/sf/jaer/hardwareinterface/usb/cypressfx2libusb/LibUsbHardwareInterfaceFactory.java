@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
-import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 import org.usb4java.LibUsbException;
@@ -140,26 +139,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
             }
 
             log.finer(String.format("Checking if can open vid=0x%04x pid=0x%04x", vidPid.left, vidPid.right));
-            final DeviceHandle devHandle = new DeviceHandle();
-            final int openStatus = LibUsb.open(dev, devHandle);
-            if (openStatus == LibUsb.SUCCESS) {
-                final int driverStatus = LibUsb.kernelDriverActive(devHandle, 0);
-                LibUsb.close(devHandle);
-                if (driverStatus != LibUsb.ERROR_NOT_SUPPORTED && driverStatus != LibUsb.SUCCESS) {
-                    log.warning(String.format(
-                            "LibUsb FX2 %04x:%04x found but a kernel driver is bound (status=%d)",
-                            vidPid.left & 0xffff, vidPid.right & 0xffff, driverStatus));
-                }
-            } else if (openStatus == LibUsb.ERROR_ACCESS || openStatus == LibUsb.ERROR_BUSY) {
-                log.info(String.format(
-                        "LibUsb FX2 %04x:%04x present but LibUsb.open=%s; still listing",
-                        vidPid.left & 0xffff, vidPid.right & 0xffff, LibUsb.errorName(openStatus)));
-            } else {
-                log.warning(String.format(
-                        "LibUsb FX2 %04x:%04x detected but LibUsb.open failed: %s; still listing",
-                        vidPid.left & 0xffff, vidPid.right & 0xffff, LibUsb.errorName(openStatus)));
-            }
-
+            // List by VID/PID only. LibUsb.open during scan races with a live handle.
             compatibleDevicesListLocal.add(LibUsb.refDevice(dev));
             nFound++;
             devicesFound += String.format("\n %s for USB VID/PID 0x%x/0x%x",

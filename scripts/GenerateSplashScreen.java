@@ -18,13 +18,15 @@ import javax.imageio.ImageIO;
 
 /**
  * Overlays "jAER" and the full VERSION.txt string onto the splash base PNG and
- * writes 1024x1024 and 256x256 outputs for jar / install4j.
+ * writes 1024x1024 (macOS icns), 256x256 (Windows / installer wizard), and
+ * 800x800 (install4j launcher splash + Java -splash) PNGs.
  *
- * Usage: GenerateSplashScreen &lt;base.png&gt; &lt;version&gt; &lt;out-1024.png&gt; &lt;out-256.png&gt;
+ * Usage: GenerateSplashScreen &lt;base.png&gt; &lt;version&gt; &lt;out-1024.png&gt; &lt;out-256.png&gt; &lt;out-800.png&gt;
  */
 public final class GenerateSplashScreen {
 
     private static final int SIZE_1024 = 1024;
+    private static final int SIZE_800 = 800;
     private static final int SIZE_256 = 256;
     private static final Color GRADIENT_LEFT = new Color(0x7A, 0x5C, 0xC8);
     private static final Color GRADIENT_RIGHT = new Color(0x1E, 0x3A, 0x8A);
@@ -34,14 +36,15 @@ public final class GenerateSplashScreen {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 4) {
-            System.err.println("Usage: GenerateSplashScreen <base.png> <version> <out-1024.png> <out-256.png>");
+        if (args.length != 5) {
+            System.err.println("Usage: GenerateSplashScreen <base.png> <version> <out-1024.png> <out-256.png> <out-800.png>");
             System.exit(1);
         }
         File baseFile = new File(args[0]);
         String fullVersion = args[1].trim();
         File out1024 = new File(args[2]);
         File out256 = new File(args[3]);
+        File out800 = new File(args[4]);
         if (!baseFile.isFile()) {
             throw new IllegalArgumentException("Base splash not found: " + baseFile.getAbsolutePath());
         }
@@ -69,20 +72,25 @@ public final class GenerateSplashScreen {
 
         Files.createDirectories(out1024.toPath().getParent());
         Files.createDirectories(out256.toPath().getParent());
+        Files.createDirectories(out800.toPath().getParent());
         ImageIO.write(canvas, "png", out1024);
+        writeScaled(canvas, SIZE_800, out800);
+        writeScaled(canvas, SIZE_256, out256);
 
-        BufferedImage small = new BufferedImage(SIZE_256, SIZE_256, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D gs = small.createGraphics();
+        System.out.println("Wrote " + out1024.getAbsolutePath() + ", " + out256.getAbsolutePath()
+                + ", and " + out800.getAbsolutePath() + " (overlay jAER / " + fullVersion + ")");
+    }
+
+    private static void writeScaled(BufferedImage src, int size, File out) throws Exception {
+        BufferedImage dst = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = dst.createGraphics();
         try {
-            gs.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            gs.drawImage(canvas, 0, 0, SIZE_256, SIZE_256, null);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(src, 0, 0, size, size, null);
         } finally {
-            gs.dispose();
+            g.dispose();
         }
-        ImageIO.write(small, "png", out256);
-
-        System.out.println("Wrote " + out1024.getAbsolutePath() + " and " + out256.getAbsolutePath()
-                + " (overlay jAER / " + fullVersion + ")");
+        ImageIO.write(dst, "png", out);
     }
 
     private static void drawTitle(Graphics2D g, String title, String version) {

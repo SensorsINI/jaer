@@ -1560,7 +1560,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     synchronized private boolean maybeLoadCachedMsgIndexes(ProgressMonitor progressMonitor) {
         try {
-            File file = new File(messageIndexesCacheFileName());
+            File file = resolveMessageIndexesCacheFile();
             if (!file.exists() || !file.canRead() || !file.isFile()) {
                 log.info("cached indexes " + file + " for file " + getFile() + " does not exist");
                 return false;
@@ -1600,7 +1600,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private String messageIndexesCacheFileName() {
-        return System.getProperty("java.io.tmpdir") + File.separator + getFile().getName() + ".rosbagidx";
+        return net.sf.jaer.util.JaerTmpdir.file(getFile().getName() + ".rosbagidx").getAbsolutePath();
+    }
+
+    /** Prefer {@link net.sf.jaer.util.JaerTmpdir}; fall back to legacy system-temp root. */
+    private File resolveMessageIndexesCacheFile() {
+        File preferred = new File(messageIndexesCacheFileName());
+        if (preferred.isFile()) {
+            return preferred;
+        }
+        File legacy = new File(net.sf.jaer.util.JaerTmpdir.systemTmp(), preferred.getName());
+        return legacy.isFile() ? legacy : preferred;
     }
 
     private int lastAeFifoTimestampPopped = Integer.MIN_VALUE; // to check for nonmonotonic in popping events

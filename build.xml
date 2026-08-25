@@ -60,7 +60,7 @@ Releases
   signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
                           Policy: -Dsignpath.policy=test-signing2|release-signing
   install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
-  generate-splash         VERSION.txt overlay on splash PNGs
+  generate-splash         VERSION.txt overlay on splash PNGs (1024/256 icons, 800 splash)
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
   upload-release-notes    GitHub Release body from release-notes/ (needs gh)
   split-opencv-natives    per-OS slim OpenCV jars for install4j
@@ -515,7 +515,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
 
     <!--    copy splash image to src tree so that it gets into main jar-->
     <target name="jaer-copySplashImage">
-        <copy file="images/1024w/SplashScreen.png" todir="build/classes"/>
+        <copy file="images/800w/SplashScreen.png" todir="build/classes"/>
     </target>
 
     <!-- Windows/macOS/Linux launchers come from install4j (ant release / install4j/jaer.install4j).
@@ -655,12 +655,13 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="generate-splash" depends="-load-version,-compile-splash-tool"
-            description="Overlay jAER/version on images/SplashScreen.png into 1024w and 256h PNGs.">
+            description="Overlay jAER/version on images/SplashScreen.png into 1024w, 256h, and 800w PNGs.">
         <available file="${basedir}/images/SplashScreen.png" property="jaer.splash.base.exists"/>
         <fail unless="jaer.splash.base.exists"
               message="Base splash missing: ${basedir}/images/SplashScreen.png (export text-free PNG from SplashScreen.pdf)"/>
         <mkdir dir="${basedir}/images/1024w"/>
         <mkdir dir="${basedir}/images/256h"/>
+        <mkdir dir="${basedir}/images/800w"/>
         <java classname="GenerateSplashScreen"
               classpath="${build.dir}/tools"
               fork="true"
@@ -669,6 +670,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
             <arg value="${jaer.version}"/>
             <arg value="${basedir}/images/1024w/SplashScreen.png"/>
             <arg value="${basedir}/images/256h/SplashScreen.png"/>
+            <arg value="${basedir}/images/800w/SplashScreen.png"/>
         </java>
     </target>
 
