@@ -25,8 +25,7 @@ public final class SciDVSDeviceAutoDetectionDemo {
         testExactGeometryClassifier();
         testProbeReadsOnlyDvsGeometry();
         testProbeUsesOneNormalOpenLifecycle();
-        testViewerUsesProbeBeforeRememberedChoice();
-        testSharedPidKeyUsesSerialAfterProbeOpen();
+        testViewerRemembersBeforeProbeAndSkipsProbeOnEdt();
         testNonSciDvsFingerprintExcludesSciDvsCandidate();
         testBindingInstallsReverseAssociationFirst();
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION ASSERTIONS=" + assertions);
@@ -90,30 +89,25 @@ public final class SciDVSDeviceAutoDetectionDemo {
                 "the probe's still-open interface prevents a second reset at binding");
     }
 
-    private static void testViewerUsesProbeBeforeRememberedChoice() throws Exception {
+    private static void testViewerRemembersBeforeProbeAndSkipsProbeOnEdt() throws Exception {
         String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
         String method = between(source,
                 "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
                 "private Class<? extends AEChip> loadRememberedLiveChip");
-        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
         int remembered = method.indexOf("loadRememberedLiveChip(");
-        require(probe >= 0 && remembered >= 0 && probe < remembered,
-                "exact FPGA fingerprint is considered before remembered VID/PID choice");
+        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
+        require(remembered >= 0 && probe > remembered,
+                "remembered AEChip is applied before any SciDVS FPGA probe (keeps EDT responsive)");
+        require(method.contains("!SwingUtilities.isEventDispatchThread()"),
+                "SciDVS FPGA probe is skipped on the EDT (Interface menu must not LibUsb.open)");
         require(method.contains("setAeChipClass(SciDVS.class)"),
-                "positive fingerprint selects SciDVS directly");
+                "positive fingerprint selects SciDVS directly when probe runs off-EDT");
         require(method.contains("catch (HardwareInterfaceException"),
                 "probe failure falls back to existing chooser path");
-    }
-
-    private static void testSharedPidKeyUsesSerialAfterProbeOpen() throws Exception {
-        String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
-        String method = between(source,
-                "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
-                "private Class<? extends AEChip> loadRememberedLiveChip");
-        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
-        int deviceKey = method.indexOf("liveDevicePromptKey(hw, ids)");
-        require(probe >= 0 && deviceKey > probe,
-                "shared-PID device key is resolved after the geometry probe opens the interface");
+        // When probe runs off-EDT, refresh deviceKey after open so serial can disambiguate.
+        int deviceKeyAfterProbe = method.indexOf("liveDevicePromptKey(hw, ids)", probe);
+        require(deviceKeyAfterProbe > probe,
+                "shared-PID device key is refreshed after the geometry probe opens the interface");
     }
 
     private static void testNonSciDvsFingerprintExcludesSciDvsCandidate() throws Exception {

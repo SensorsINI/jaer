@@ -49,6 +49,9 @@ import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
+import net.sf.jaer.hardwareinterface.usb.LibUsbStringDescriptors;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
+import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
@@ -177,6 +180,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * checked on every attempt to acquire events.
      */
     public static long NO_AE_REOPEN_TIMEOUT = 3000;
+    /** Vendor control-transfer timeout. 0 means wait forever and hangs WinUSB after an Interface switch. */
+    private static final long VENDOR_REQUEST_TIMEOUT_MS = 500L;
     /**
      * Time in us of each timestamp count here on host, could be different on
      * board.
@@ -252,29 +257,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 numberOfStringDescriptors = 2;
             }
 
-            stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
-            if (stringDescriptor1 == null) {
-                throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor1");
+            // Never issue USB string-descriptor control transfers during open.
+            // On Windows WinUSB after a rapid Interface switch, both
+            // LibUsb.getStringDescriptor and controlTransfer(GET_DESCRIPTOR)
+            // hang with no usable timeout (jAER 11:14:01 — claimed in 1 ms,
+            // then 12 s open abandon, then retry of the same locked instance).
+            stringDescriptor1 = "Cypress";
+            stringDescriptor2 = friendlyUnopenedTypeName();
+            if (numberOfStringDescriptors == 3 && device != null) {
+                stringDescriptor3 = String.format("bus%d-addr%d",
+                        LibUsb.getBusNumber(device), LibUsb.getDeviceAddress(device));
             }
-
-            stringDescriptor2 = LibUsb.getStringDescriptor(deviceHandle, (byte) 2);
-            if (stringDescriptor2 == null) {
-                throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor2");
-            }
-
-            if (numberOfStringDescriptors == 3) {
-                stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
-                if (stringDescriptor3 == null) {
-                    throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor3");
-                }
-            }
-
-            // build toString string
-            if (numberOfStringDescriptors == 3) {
-                stringDescription = (getStringDescriptors()[1] + " " + getStringDescriptors()[2]);
-            } else if (numberOfStringDescriptors == 2) {
-                stringDescription = (getStringDescriptors()[1] + ": Interface " + device);
-            }
+            stringDescription = UsbIds.unopenedLabel(this, stringDescriptor2);
         } catch (final BlankDeviceException bd) {
             stringDescription = "Blank Cypress FX2 : Interface " + device;
         } catch (final Exception e) {
@@ -298,9 +292,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     // because i need to access
     // this member
     /**
-     * device open status
+     * device open status. Volatile so {@link #isOpen()} can be read without
+     * taking the USB monitor (EDT paint must not wait on a hung controlTransfer).
      */
-    private boolean isOpened = false;
+    private volatile boolean isOpened = false;
     /**
      * the device number, out of all potential compatible devices that could be
      * opened
@@ -357,23 +352,43 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
-     * Returns string description of device including the USB vendor/project
-     * IDs. If the device has not been opened then it is minimally opened to
-     * populate the deviceDescriptor and then closed.
-     *
-     * @return the string description of the device.
+     * USB product/serial string after a real {@link #open()}, otherwise class
+     * name plus VID:PID and bus/addr. Never {@code LibUsb.open}: that was
+     * invoked from the EDT via the Interface menu and hung WinUSB when the
+     * device was already claimed.
      */
     @Override
     public String toString() {
-        if (numberOfStringDescriptors == 0) {
-            try {
-                open_minimal_close(); // populates stringDescription and sets
-                // numberOfStringDescriptors!=0
-            } catch (final Exception e) {
-                log.warning("caught exception when trying to populate stringDescription: " + e.toString());
+        if (numberOfStringDescriptors != 0) {
+            return stringDescription;
+        }
+        return UsbIds.unopenedLabel(this, friendlyUnopenedTypeName());
+    }
+
+    /**
+     * Short product family for Interface menu / logs before USB strings are
+     * read. Avoids raw class names like {@code DAViSFX3HardwareInterface}.
+     */
+    protected String friendlyUnopenedTypeName() {
+        ensureUsbDeviceDescriptor();
+        if (deviceDescriptor != null) {
+            final short pid = deviceDescriptor.idProduct();
+            if (pid == DAViSFX3HardwareInterface.PID_FX3 || pid == DAViSFX3HardwareInterface.PID_FX2) {
+                return "Davis / SciDVS";
+            }
+            if (pid == DVXplorerFX3HardwareInterface.PID_FX3) {
+                return "DVXplorer";
+            }
+            if (pid == CochleaFX3HardwareInterface.PID_FX3) {
+                return "CochleaFX3";
             }
         }
-        return stringDescription;
+        return getClass().getSimpleName();
+    }
+
+    /** Libusb device pointer for identity compares; does not open the handle. */
+    public Device getLibUsbDevice() {
+        return device;
     }
 
     /**
@@ -396,7 +411,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // sendVendorRequest(CypressFX3.VR_SET_DEVICE_NAME, (short) 0, (short)
         // 0, buffer);
-        stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
+        stringDescriptor3 = LibUsbStringDescriptors.read(deviceHandle, (byte) 3);
         if (stringDescriptor3 == null) {
             CypressFX3.log.warning("Could not get new device name!");
         } else {
@@ -673,9 +688,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
         log.info(String.format("Closing %s", this.toString()));
 
-        isOpened = false;
+        // Stop bulk AEReader WHILE isOpen() is still true. Setting isOpened=false
+        // first made setEventAcquisitionEnabled(false) a no-op (it returns when
+        // !isOpen). None→Davis then hung in the first controlTransfer because
+        // WinUSB still had in-flight bulk URBs (jAER 12:57:03).
         try {
-            setEventAcquisitionEnabled(false);
+            if (getAeReader() != null) {
+                log.info("stopping AEReader");
+                stopAEReader();
+            }
+            if (inEndpointEnabled) {
+                setInEndpointEnabled(false);
+            }
             inEndpointEnabled = false;
 
             if (asyncStatusThread != null) {
@@ -684,6 +708,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         } catch (final HardwareInterfaceException | IllegalStateException e) {
             log.warning(String.format("Error stopping event aquisition: %s", e.toString()));
         }
+        isOpened = false;
 
         if (deviceHandle != null) {
             try {
@@ -1576,7 +1601,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             throw new IllegalStateException("null deviceHandle");
         }
         log.fine(String.format("Getting string identifier for deviceHandle %s", deviceHandle.toString()));
-        final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
+        final String stringDescriptor1 = LibUsbStringDescriptors.read(deviceHandle, (byte) 1);
 
         if (stringDescriptor1 == null) {
             return false;
@@ -1588,11 +1613,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
-     * FX3 DAVIS needs a USB reset after open (string-descriptor timeout workaround).
-     * CX3 Mini/Micro SuperSpeed bulk IN often dies after {@code LibUsb.resetDevice}.
+     * Historically FX3 DAVIS reset after open to work around hanging
+     * {@code LibUsb.getStringDescriptor}. That API has no timeout and the reset
+     * itself can also hang after rapid Interface switches (jAER 11:05:33).
+     * String descriptors now use timed control transfers
+     * ({@link LibUsbStringDescriptors}); subclasses may still opt in to reset.
      */
     protected boolean shouldResetUsbDevice() {
-        return true;
+        return false;
     }
 
     /**
@@ -1619,6 +1647,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             return;
         }
 
+        final long tOpen = System.currentTimeMillis();
+        CypressFX3.log.info("open(): begin " + UsbIds.unopenedLabel(this, friendlyUnopenedTypeName()));
         int status;
 
         // Open device.
@@ -1630,11 +1660,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
                 }
                 deviceHandle = handle;
+                CypressFX3.log.info(String.format("open(): LibUsb.open ok after %d ms", System.currentTimeMillis() - tOpen));
                 if (shouldResetUsbDevice()) {
-                    status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+                    CypressFX3.log.info("open(): LibUsb.resetDevice…");
+                    status = LibUsb.resetDevice(deviceHandle); // string-descriptor hang workaround
                     if (status != LibUsb.SUCCESS) {
-                        throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
+                        throw new HardwareInterfaceException("open(): failed to reset device: " + LibUsb.errorName(status));
                     }
+                    CypressFX3.log.info(String.format("open(): reset done after %d ms", System.currentTimeMillis() - tOpen));
                 }
             } catch (IllegalStateException e) {
                 deviceHandle = null;
@@ -1712,11 +1745,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             log.log(Level.SEVERE, "Exception try to LibUsb.claimInterface: " + e.toString(), e);
             return;
         }
+        CypressFX3.log.info(String.format("open(): interface claimed after %d ms (skipping USB string descriptors)",
+                System.currentTimeMillis() - tOpen));
         populateDescriptors();
 
         isOpened = true;
 
-        CypressFX3.log.info("open(): device opened");
+        CypressFX3.log.info(String.format("open(): device opened in %d ms (%s)",
+                System.currentTimeMillis() - tOpen, stringDescription));
         LibUsbLinkInfo.logOnOpen(CypressFX3.log, "CypressFX3", device, deviceDescriptor);
 
         try {
@@ -1928,7 +1964,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * @return true if already open
      */
     @Override
-    synchronized public boolean isOpen() {
+    public boolean isOpen() {
         return isOpened;
     }
 
@@ -2038,7 +2074,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // dataBuffer.limit()));
         final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
-        final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
+        log.fine(String.format("controlTransfer OUT req=0x%x value=0x%x index=0x%x len=%d timeout=%d %s",
+                request & 0xff, value & 0xffff, index & 0xffff, dataBuffer.capacity(),
+                VENDOR_REQUEST_TIMEOUT_MS, UsbLog.t()));
+        final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer,
+                VENDOR_REQUEST_TIMEOUT_MS);
+        log.fine(String.format("controlTransfer OUT done status=%d %s", status, UsbLog.t()));
         if (status < LibUsb.SUCCESS) {
             throw new HardwareInterfaceException(
                     "Unable to send vendor OUT request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));
@@ -2079,7 +2120,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (deviceHandle == null) {
             throw new HardwareInterfaceException(String.format("deviceHandle is null for %s which should not occur", this.toString()));
         }
-        final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
+        log.fine(String.format("controlTransfer IN req=0x%x value=0x%x index=0x%x len=%d timeout=%d %s",
+                request & 0xff, value & 0xffff, index & 0xffff, dataLength,
+                VENDOR_REQUEST_TIMEOUT_MS, UsbLog.t()));
+        final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer,
+                VENDOR_REQUEST_TIMEOUT_MS);
+        log.fine(String.format("controlTransfer IN done status=%d %s", status, UsbLog.t()));
         if (status < LibUsb.SUCCESS) {
             throw new HardwareInterfaceException(
                     "Unable to send vendor IN request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));

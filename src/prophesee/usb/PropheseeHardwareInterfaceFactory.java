@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
-import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 import org.usb4java.LibUsbException;
@@ -95,30 +94,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
                 continue;
             }
 
-            final DeviceHandle devHandle = new DeviceHandle();
-            final int openStatus = LibUsb.open(dev, devHandle);
-            if (openStatus == LibUsb.SUCCESS) {
-                final int driverStatus = LibUsb.kernelDriverActive(devHandle, 0);
-                LibUsb.close(devHandle);
-                if (driverStatus != LibUsb.ERROR_NOT_SUPPORTED && driverStatus != LibUsb.SUCCESS) {
-                    log.warning(String.format(
-                            "Prophesee EVK4 HD %04x:%04x found but a kernel driver is bound. %s",
-                            devDesc.idVendor(), devDesc.idProduct(),
-                            PropheseeHardwareInterface.kernelDriverHint()));
-                }
-            } else if (openStatus == LibUsb.ERROR_ACCESS || openStatus == LibUsb.ERROR_BUSY) {
-                log.fine(String.format(
-                        "Prophesee EVK4 HD %04x:%04x present but LibUsb.open failed: %s (device likely already open).%s",
-                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus),
-                        PropheseeHardwareInterface.libUsbOpenHint(openStatus)));
-            } else {
-                log.warning(String.format(
-                        "Prophesee EVK4 HD %04x:%04x detected but LibUsb.open failed: %s.%s",
-                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus),
-                        PropheseeHardwareInterface.libUsbOpenHint(openStatus)));
-            }
-
-            // List matching devices even when open fails so they appear in Interface menu.
+            // List by VID/PID only. LibUsb.open during scan races with a live handle.
             list.add(LibUsb.refDevice(dev));
         }
         LibUsb.freeDeviceList(devList, true);

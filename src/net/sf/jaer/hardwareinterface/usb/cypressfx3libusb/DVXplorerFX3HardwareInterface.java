@@ -47,6 +47,7 @@ import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -202,17 +203,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     }
 
     private void cleanupCx3DataBuffers() {
-        try {
-            sendVendorRequest(VR_DATA_CLEANUP);
-            if (debug) {
-                CypressFX3.log.info("Sent VR_DATA_CLEANUP 0xC6");
-            }
-        } catch (HardwareInterfaceException e) {
-            if (debug) {
-                CypressFX3.log.info("VR_DATA_CLEANUP 0xC6 not accepted, using clearHalt: " + e.getMessage());
-            }
-            usbControlResetDataEndpoint();
-        }
+        // Skip VR 0xC6: on Windows it can block forever in native controlTransfer
+        // even with VENDOR_REQUEST_TIMEOUT_MS=500 (jAER-0.log 12:32:06–17).
+        log.fine("cleanupCx3DataBuffers: skipping VR_DATA_CLEANUP 0xC6 " + UsbLog.t());
+        usbControlResetDataEndpoint();
     }
 
     private final List<Transfer> cx3ImuTransfers = new ArrayList<>();
@@ -375,22 +369,18 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     @Override
 	synchronized public void open() throws HardwareInterfaceException {
 		super.open();
-        if (isMipiCX3Device()) {
-            if (debug) {
-                CypressFX3.log.info(String.format(
-                        "DVXplorer Mini/Micro CX3 MIPI (bcdDevice=0x%04x, firmware=%d%s)",
-                        getDID() & 0xFFFF, getFirmwareVersion(),
-                        isNextGenFirmware() ? ", 8-byte SPI / DVXplorerM protocol" : ", pre-v10 4-byte SPI"));
-                logUsbLayout();
-            }
-            cleanupCx3DataBuffers();
-        }
-        if (getChip() instanceof DVXplorer chip) {
-			chip.dvxConfig();
-            if (chip.getBiasgen() instanceof DVXplorerConfig cfg) {
-                cfg.sendConfiguration(cfg);
-            }
-		}
+        log.fine("DVXplorerFX3 super.open() returned " + UsbLog.t());
+        final int did = getDID() & 0xFFFF;
+        final int type = getUsbDeviceType();
+        final boolean cx3 = isMipiCX3Device();
+        CypressFX3.log.info(String.format(
+                "DVXplorer USB open: bcdDevice=0x%04x (high byte type=%d %s, firmware=%d) %s",
+                did, type,
+                cx3 ? "CX3 MIPI Mini/Micro" : "FX3 DVXplorer (type 1-3)",
+                getFirmwareVersion(), UsbLog.t()));
+        // Do not VR_DATA_CLEANUP 0xC6 or dvxConfig here. 0xC6 stuck in native
+        // LibUsb.controlTransfer (timeout 500 ms never returned; jAER 12:32:06).
+        // Logic config runs on jaer-send-biases after this method returns.
 	}
 
     @Override
@@ -426,12 +416,13 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         if (!isNextGenFirmware()) {
             return super.spiConfigReceive(moduleAddr, paramAddr);
         }
-        final ByteBuffer configBytes = sendVendorRequestIN(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, 8);
-        long returnedParam = 0;
-        for (int i = 0; i < 8; i++) {
-            returnedParam = (returnedParam << 8) | (configBytes.get(i) & 0xFF);
-        }
-        return (int) returnedParam;
+        // Firmware 10 CX3: 8-byte SPI IN (req 0xBF) never returns from
+        // LibUsb.controlTransfer even with a 500 ms timeout (jAER 12:39 Micro).
+        // ViewLoop then blocks on the same CypressFX3 monitor in LIVE acquire.
+        log.fine(String.format(
+                "skipping SPI IN on Mini/Micro firmware %d module=0x%x param=0x%x %s",
+                getFirmwareVersion(), moduleAddr, paramAddr, UsbLog.t()));
+        return 0;
     }
 
     @Override
@@ -624,15 +615,17 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                             dvx.getFirmwareVersion(),
                             dvx.isNextGenFirmware() ? "DVXplorerM 8-byte SPI" : "libcaer 4-byte SPI"));
                 }
-                try {
-                    final int rx = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
-                    final int ry = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
-                    if (rx > 0 && ry > 0) {
-                        resolvedSizeX = rx;
-                        resolvedSizeY = ry;
+                if (!dvx.isNextGenFirmware()) {
+                    try {
+                        final int rx = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+                        final int ry = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+                        if (rx > 0 && ry > 0) {
+                            resolvedSizeX = rx;
+                            resolvedSizeY = ry;
+                        }
+                    } catch (HardwareInterfaceException e) {
+                        CypressFX3.log.warning("CX3 DVS resolution SPI failed, using 640x480: " + e.getMessage());
                     }
-                } catch (HardwareInterfaceException e) {
-                    CypressFX3.log.warning("CX3 DVS resolution SPI failed, using 640x480: " + e.getMessage());
                 }
                 if (!dvx.isNextGenFirmware()) {
                     try {

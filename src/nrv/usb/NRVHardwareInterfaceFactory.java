@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
-import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 import org.usb4java.LibUsbException;
@@ -95,34 +94,7 @@ public class NRVHardwareInterfaceFactory implements HardwareInterfaceFactoryInte
                 continue;
             }
 
-            // Match Prophesee: list by VID/PID even when open fails. Requiring a successful
-            // open here hides the device from the Interface menu whenever WinUSB already has
-            // an exclusive handle (or open fails with ACCESS for other reasons).
-            final DeviceHandle devHandle = new DeviceHandle();
-            final int openStatus = LibUsb.open(dev, devHandle);
-            if (openStatus == LibUsb.SUCCESS) {
-                final int driverStatus = LibUsb.kernelDriverActive(devHandle, 0);
-                LibUsb.close(devHandle);
-                if (driverStatus != LibUsb.ERROR_NOT_SUPPORTED && driverStatus != LibUsb.SUCCESS) {
-                    log.warning(String.format(
-                            "NRV %04x:%04x found but a kernel driver is bound (status=%d). "
-                                    + "On Windows use Zadig to install WinUSB (not libusb-win32) for this device.",
-                            devDesc.idVendor() & 0xffff, devDesc.idProduct() & 0xffff, driverStatus));
-                }
-            } else if (openStatus == LibUsb.ERROR_ACCESS || openStatus == LibUsb.ERROR_BUSY) {
-                log.info(String.format(
-                        "NRV %04x:%04x present but LibUsb.open=%s (often already open by jAER, or wrong driver). "
-                                + "Still listing in Interface menu. Prefer WinUSB via Zadig for usb4java.",
-                        devDesc.idVendor() & 0xffff, devDesc.idProduct() & 0xffff,
-                        LibUsb.errorName(openStatus)));
-            } else {
-                log.warning(String.format(
-                        "NRV %04x:%04x detected but LibUsb.open failed: %s. "
-                                + "On Windows, Zadig → WinUSB for USB ID 04B4:00F0 (FX20) or 04B4:00F1 (CX3).",
-                        devDesc.idVendor() & 0xffff, devDesc.idProduct() & 0xffff,
-                        LibUsb.errorName(openStatus)));
-            }
-
+            // List by VID/PID only. LibUsb.open during scan races with a live handle.
             list.add(LibUsb.refDevice(dev));
         }
         LibUsb.freeDeviceList(devList, true);

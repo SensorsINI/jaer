@@ -77,6 +77,7 @@ Live USB cameras selectable in the AEViewer **AEChip** menu (default list and re
 Stereo and multi-camera wrappers (e.g. `DVS128StereoPair`, `MultiDAVIS346BCameraChip`) combine several of the above over separate USB interfaces.
 
 Hardware docs in Help menu: iniVation cameras, Prophesee sensors, NRV cameras.
+USB enumeration, the Interface menu, EDT rules, and per-camera libusb quirks: [`docs/README-usb.md`](docs/README-usb.md).
 
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 

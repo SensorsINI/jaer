@@ -10,6 +10,7 @@ import org.usb4java.DeviceHandle;
 import org.usb4java.LibUsb;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.UsbLog;
 
 /**
  * Treuzell bulk control for Prophesee EVK4 (port of neuromorphic-drivers request/register I/O).
@@ -31,6 +32,8 @@ public final class Evk4BoardCommand {
     }
 
     public static byte[] request(DeviceHandle handle, byte[] request) throws HardwareInterfaceException {
+        final int op = request.length > 0 ? (request[0] & 0xff) : -1;
+        log.fine(String.format("EVK4 request op=0x%02x len=%d %s", op, request.length, UsbLog.t()));
         final ByteBuffer out = BufferUtils.allocateByteBuffer(request.length);
         out.put(request);
         out.rewind();
@@ -43,7 +46,9 @@ public final class Evk4BoardCommand {
                     "EVK4 short write: requested %d, wrote %d", request.length, written));
         }
         final ByteBuffer in = BufferUtils.allocateByteBuffer(MAX_RESPONSE);
+        log.fine(String.format("EVK4 request op=0x%02x write ok, reading %s", op, UsbLog.t()));
         final int read = bulkTransfer(handle, EP_CONTROL_IN, in, TIMEOUT_MS);
+        log.fine(String.format("EVK4 request op=0x%02x read=%d %s", op, read, UsbLog.t()));
         if (read < 0) {
             throw new HardwareInterfaceException("EVK4 control read: " + LibUsb.errorName(read));
         }

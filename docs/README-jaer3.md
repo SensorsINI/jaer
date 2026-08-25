@@ -301,7 +301,9 @@ ViewLoop does not fight the open dialog (`beginFilePlaybackOpen` /
 ## USB VID/PID and AEChip auto-offer
 
 Libusb factories register `(VID, PID) → HardwareInterface` classes in
-[`UsbHardwareRegistry`](../src/net/sf/jaer/hardwareinterface/usb/UsbHardwareRegistry.java).
+[`UsbHardwareRegistry`](../src/net/sf/jaer/hardwareinterface/usb/UsbHardwareRegistry.java)
+(the shared lookup; see [README-usb.md](README-usb.md#vidpid-mapping-source-of-truth)
+for which factory writes each pair).
 AEChip classes may optionally declare the same IDs with `@UsbDevices` /
 `@UsbDevice` (inherited), for example on `DavisBaseCamera` or a unique camera
 class such as `NRVS5KRC1S`.
@@ -314,12 +316,18 @@ matches that device against the AEChip menu. AEViewer then:
 - if a **Remember this selection** mapping exists for `{vid:pid[#serial]}` and is
   still a valid match, applies that AEChip silently;
 - binds without prompting if the current chip is the **sole** VID/PID match;
-- offers Yes / Remember / No when exactly one menu chip matches but differs from current;
+- switches automatically when exactly one menu chip matches but differs from current;
 - offers a chooser (OK / Remember this selection / Cancel) when several chips share
-  the PID (typical for Davis FX3) — USB cannot distinguish e.g. Davis346 red vs blue;
+  the PID (typical for Davis FX3) — USB cannot distinguish e.g. Davis346 red vs blue:
+  - **OK** uses the choice now and as the dialog default next time (still prompts);
+  - **Remember this selection** also auto-opens that AEChip when the device is found;
+- choosing an AEChip from the **AEChip menu** clears Remember mappings so a different
+  camera is not forced to the old variant;
 - without Remember, prompts at most once per device key per session.
 
-Remembered mapping prefs key: `AEViewer.liveChipOffer.chip.<deviceKey>` → AEChip FQCN.
+Prefs keys:
+- `AEViewer.liveChipOffer.chip.<deviceKey>` → Remember auto-open FQCN
+- `AEViewer.liveChipOffer.default.<deviceKey>` → OK dialog default FQCN
 
 To support a new camera chip, register its VID/PID in the appropriate
 hardware-interface factory (which also updates the registry) and annotate the
@@ -380,4 +388,5 @@ update the active chip). The user can cancel or load anyway.
 
 ## Related docs
 
+- [README-usb.md](README-usb.md) — USB enumeration, Interface menu, EDT rules, per-camera libusb quirks.
 - [CDAVIS_GPU_DEMOSAIC.md](CDAVIS_GPU_DEMOSAIC.md) — GPU demosaic / color display path (orthogonal to PacketBundle).

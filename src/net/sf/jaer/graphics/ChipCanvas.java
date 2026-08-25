@@ -670,13 +670,48 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * True when a filter requested skip of chip pixmap rendering. DisplayMethod
-     * (APS, DVS, IMU, frame markers) and annotations are omitted; a blank frame
-     * plus {@link AEViewer#getSkipChipRenderingOverlay()} is drawn instead.
+     * True when a filter requested skip of chip pixmap rendering, or when the
+     * Welcome / opening overlay is active (WAITING, no open hardware). In both
+     * cases DisplayMethod (APS, DVS, IMU, frame markers) and annotations are
+     * omitted so the overlay is not painted over leftover events.
      */
     private boolean shouldSkipChipDisplay() {
+        if (isWelcomeOverlayActive()) {
+            return true;
+        }
         AEViewer v = resolveAeViewer();
         return v != null && v.isSkipChipRenderingRequested() && !v.isJaerAviRecordingActive();
+    }
+
+    /**
+     * Same gates as {@link #drawWelcomeOverlayIfNeeded}: WAITING, no open
+     * camera, overlay not cleared. Multiple Interface devices and in-progress
+     * USB open both use this so the chip pixmap is blank.
+     */
+    private boolean isWelcomeOverlayActive() {
+        String[] lines = welcomeOverlayLines;
+        if (lines != null && lines.length == 0) {
+            return false;
+        }
+        if (!(chip instanceof AEChip)) {
+            return false;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || viewer.getPlayMode() != AEViewer.PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
+            return false;
+        }
+        if (chip.getCanvas() != null && chip.getCanvas() != this) {
+            return false;
+        }
+        HardwareInterface hw = aeChip.getHardwareInterface();
+        if (hw != null && hw.isOpen()) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -842,32 +877,16 @@ public class ChipCanvas implements GLEventListener, Observer {
      * Copy comes from {@link #setWelcomeOverlay(String[])} or {@link Welcome}.
      */
     private void drawWelcomeOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!isWelcomeOverlayActive()) {
+            return;
+        }
         String[] lines = welcomeOverlayLines;
-        if (lines != null && lines.length == 0) {
-            return;
-        }
-        if (!(chip instanceof AEChip)) {
-            return;
-        }
-        AEChip aeChip = (AEChip) chip;
-        AEViewer viewer = aeChip.getAeViewer();
-        if (viewer == null) {
-            viewer = aeViewer;
-        }
-        if (viewer == null || viewer.getPlayMode() != PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
-            return;
-        }
-        // File-dialog preview used to construct a second ChipCanvas that still saw WAITING;
-        // skip if this canvas is not the chip's live view.
-        if (chip.getCanvas() != null && chip.getCanvas() != this) {
-            return;
-        }
-        HardwareInterface hw = aeChip.getHardwareInterface();
-        if (hw != null && hw.isOpen()) {
-            return;
-        }
+        AEViewer viewer = resolveAeViewer();
         if (lines == null) {
             lines = Welcome.linesFor(viewer);
+        }
+        if (lines == null || lines.length == 0) {
+            return;
         }
         try {
             GL2 gl = drawable.getGL().getGL2();

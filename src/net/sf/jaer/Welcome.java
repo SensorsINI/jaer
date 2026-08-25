@@ -21,7 +21,9 @@ import net.sf.jaer.graphics.AEViewer;
  * builds ({@link AEViewer#getInterfaceMenuDeviceLabels()}):
  * <ul>
  * <li>no devices listed: plug in a camera or open a recording</li>
- * <li>several devices: list those menu labels inline and point at Interface</li>
+ * <li>several devices: list those menu labels one per line and point at Interface</li>
+ * <li>user chose a camera: {@link #opening(AEViewer, String)} keeps the title
+ * and adds opening-progress lines until LIVE or None</li>
  * </ul>
  *
  * @author tobi
@@ -58,10 +60,27 @@ public final class Welcome {
         if (devices.isEmpty()) {
             addIfPresent(lines, plugInOrOpenFile(viewer));
         } else if (devices.size() > 1) {
-            addIfPresent(lines, chooseCamera(viewer, devices));
+            lines.addAll(chooseCamera(viewer, devices));
         }
         addIfPresent(lines, sampleData(viewer));
         addIfPresent(lines, helpMenu(viewer));
+        return lines.toArray(String[]::new);
+    }
+
+    /**
+     * Overlay while a camera is opening. Keeps {@link #title(AEViewer)} and
+     * adds progress lines (not the idle plug-in / sample-data copy).
+     *
+     * @param viewer used for the title line
+     * @param cameraName Interface-menu label or hardware {@code toString}
+     * @return overlay lines naming the camera being opened
+     */
+    public static String[] opening(AEViewer viewer, String cameraName) {
+        String name = (cameraName == null || cameraName.isEmpty()) ? "camera" : cameraName;
+        List<String> lines = new ArrayList<>(3);
+        addIfPresent(lines, title(viewer));
+        lines.add("Opening " + name + "…");
+        lines.add("USB setup can take several seconds");
         return lines.toArray(String[]::new);
     }
 
@@ -86,16 +105,23 @@ public final class Welcome {
     }
 
     /**
-     * Shown when the Interface menu lists several devices: those labels inline,
-     * then a pointer to the menu.
+     * Shown when the Interface menu lists several devices: a header line, then
+     * one indented line per menu label so names fit the overlay width.
      *
      * @param viewer unused
      * @param devices Interface-menu item text from
      * {@link AEViewer#getInterfaceMenuDeviceLabels()}
-     * @return hint line
+     * @return hint lines (header plus one line per device)
      */
-    public static String chooseCamera(AEViewer viewer, List<String> devices) {
-        return "Choose one from Interface menu: " + String.join(", ", devices);
+    public static List<String> chooseCamera(AEViewer viewer, List<String> devices) {
+        List<String> out = new ArrayList<>(devices.size() + 1);
+        out.add("Multiple devices found. Choose one from Interface menu:");
+        for (String device : devices) {
+            if (device != null && !device.isEmpty()) {
+                out.add("  " + device);
+            }
+        }
+        return out;
     }
 
     /**

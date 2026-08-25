@@ -118,6 +118,7 @@ public final class JaerIssueReporter {
         appendProp(sb, "java.home");
         appendProp(sb, "user.dir");
         appendProp(sb, "java.io.tmpdir");
+        sb.append("jaer.tmpdir=").append(JaerTmpdir.get().getAbsolutePath()).append('\n');
         appendProp(sb, "java.util.logging.config.file");
         try {
             sb.append("pid=").append(ProcessHandle.current().pid()).append('\n');
@@ -133,7 +134,8 @@ public final class JaerIssueReporter {
     }
 
     /**
-     * Newest rotating JUL session log ({@code %t/jAER-%g.log}), or null.
+     * Newest rotating JUL session log ({@code %t/jaer/jAER-%g.log}), or null.
+     * Also checks the legacy {@code %t/jAER-%g.log} location.
      */
     public static File sessionLogFile() {
         List<File> logs = findSessionLogs();
@@ -141,31 +143,41 @@ public final class JaerIssueReporter {
     }
 
     public static List<File> findSessionLogs() {
-        File tmp = new File(System.getProperty("java.io.tmpdir", "."));
-        File[] files = tmp.listFiles((dir, name) -> name.startsWith(SESSION_LOG_PREFIX)
-                && name.endsWith(SESSION_LOG_SUFFIX));
         List<File> list = new ArrayList<>();
-        if (files != null) {
-            for (File f : files) {
-                if (f.isFile()) {
-                    list.add(f);
-                }
-            }
+        collectSessionLogs(JaerTmpdir.get(), list);
+        // Legacy location before ${java.io.tmpdir}/jaer/
+        File systemTmp = JaerTmpdir.systemTmp();
+        if (!systemTmp.equals(JaerTmpdir.get())) {
+            collectSessionLogs(systemTmp, list);
         }
         list.sort(Comparator.comparingLong(File::lastModified).reversed());
         return list;
     }
 
+    private static void collectSessionLogs(File dir, List<File> list) {
+        File[] files = dir.listFiles((d, name) -> name.startsWith(SESSION_LOG_PREFIX)
+                && name.endsWith(SESSION_LOG_SUFFIX));
+        if (files == null) {
+            return;
+        }
+        for (File f : files) {
+            if (f.isFile()) {
+                list.add(f);
+            }
+        }
+    }
+
     /**
-     * {@code hs_err_pid*.log} and {@code replay_pid*.log} in {@code user.dir}
-     * and tmpdir, matching {@code pid} when known, otherwise newer than
-     * {@code sinceMs}.
+     * {@code hs_err_pid*.log} and {@code replay_pid*.log} in {@code user.dir},
+     * {@link JaerTmpdir}, and the system temp root, matching {@code pid} when known,
+     * otherwise newer than {@code sinceMs}.
      */
     public static List<File> findCrashDumps(Long pid, long sinceMs) {
         List<File> found = new ArrayList<>();
         File[] dirs = {
             new File(System.getProperty("user.dir", ".")),
-            new File(System.getProperty("java.io.tmpdir", "."))
+            JaerTmpdir.get(),
+            JaerTmpdir.systemTmp()
         };
         for (File dir : dirs) {
             File[] files = dir.listFiles();
@@ -314,7 +326,7 @@ public final class JaerIssueReporter {
     private static void appendSessionLogs(StringBuilder report) {
         List<File> logs = findSessionLogs();
         if (logs.isEmpty()) {
-            report.append("=== Session log ===\n(none found in ").append(System.getProperty("java.io.tmpdir"))
+            report.append("=== Session log ===\n(none found in ").append(JaerTmpdir.get().getAbsolutePath())
                     .append(")\n\n");
             return;
         }
@@ -335,7 +347,7 @@ public final class JaerIssueReporter {
 
     private static File writeReportFile(String text) {
         String stamp = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
-        File file = new File(System.getProperty("java.io.tmpdir"), "jaer-issue-report-" + stamp + ".txt");
+        File file = JaerTmpdir.file("jaer-issue-report-" + stamp + ".txt");
         try {
             Files.writeString(file.toPath(), text, StandardCharsets.UTF_8);
             log.info("Wrote issue report " + file.getAbsolutePath());

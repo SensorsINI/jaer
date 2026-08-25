@@ -57,7 +57,7 @@ import net.sf.jaer.util.EngineeringFormat;
  * <p>
  * First open prefers the trailing FileDataTable (decompress once, no per-packet LZ4);
  * falls back to a linear packet scan when the table is missing or invalid. A small
- * index cache under {@code java.io.tmpdir} then makes reopen effectively instant.
+ * index cache under {@link net.sf.jaer.util.JaerTmpdir} then makes reopen effectively instant.
  */
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
@@ -1363,11 +1363,21 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private File indexCacheFile() {
         String name = String.format("%s.%d.%d.s%d.aedat4idx",
                 file.getName(), file.length(), file.lastModified(), eventStreamId);
-        return new File(System.getProperty("java.io.tmpdir"), name);
+        return net.sf.jaer.util.JaerTmpdir.file(name);
+    }
+
+    /** Prefer {@link net.sf.jaer.util.JaerTmpdir}; fall back to legacy system-temp root. */
+    private File resolveIndexCacheFile() {
+        File preferred = indexCacheFile();
+        if (preferred.isFile()) {
+            return preferred;
+        }
+        File legacy = new File(net.sf.jaer.util.JaerTmpdir.systemTmp(), preferred.getName());
+        return legacy.isFile() ? legacy : preferred;
     }
 
     private boolean maybeLoadCachedIndex(ProgressMonitor progressMonitor) throws IOException {
-        File cache = indexCacheFile();
+        File cache = resolveIndexCacheFile();
         if (!cache.isFile() || !cache.canRead() || cache.length() == 0) {
             return false;
         }
