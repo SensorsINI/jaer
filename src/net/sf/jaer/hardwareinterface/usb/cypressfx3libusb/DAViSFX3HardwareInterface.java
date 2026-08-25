@@ -37,6 +37,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
     private int warningCount = 0;
+    private static final long STARTUP_TIMESTAMP_RESET_TIMEOUT_MS = 1_000L;
+    private static final long QUIESCENT_DRAIN_QUIET_MS = 100L;
+    private static final long QUIESCENT_DRAIN_TIMEOUT_MS = 500L;
     private static final int WARNING_INTERVAL = 100000;
 
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("DAViSFX3");
@@ -130,11 +133,88 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     @Override
     public void startAEReader() throws HardwareInterfaceException {
         log.info("starting AE reader thread");
-        setAeReader(new RetinaAEReader(this));
+        final RetinaAEReader reader = new RetinaAEReader(this);
+        final boolean gaerActive = SciDVSGaerMode.resolveFromSystemProperty(
+                getChip() instanceof SciDVS, CypressFX3.log);
+        setAeReader(reader);
         allocateAEBuffers();
 
-        getAeReader().startThread(); // arg is number of errors before giving up
+        reader.startThread(); // arg is number of errors before giving up
+        if (gaerActive) {
+            // A new decoder starts with no wrap state while the device endpoint can
+            // still contain pre-stop words. Put a positive reset marker behind that
+            // backlog, wait until this exact reader decodes it, then discard every
+            // packet accumulated through the marker. Acquisition is exposed only
+            // from the next transfer, which belongs wholly to the new epoch.
+            resetTimestamps();
+            final boolean resetObserved;
+            try {
+                resetObserved = reader.awaitStartupTimestampReset(
+                        STARTUP_TIMESTAMP_RESET_TIMEOUT_MS);
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+                abortStartupTimestampReset(reader);
+                throw new HardwareInterfaceException(
+                        "Interrupted waiting for SciDVS startup timestamp reset", e);
+            }
+            if (!resetObserved) {
+                abortStartupTimestampReset(reader);
+                throw new HardwareInterfaceException(
+                        "Timed out waiting for SciDVS startup timestamp reset marker");
+            }
+            // The marker callback and this clear use the same packet-pool lock, so
+            // this runs only after the complete marker-containing transfer returns.
+            allocateAEBuffers();
+            log.info("SciDVS startup timestamp reset observed; discarded pre-boundary packets");
+        }
         HardwareInterfaceException.clearException();
+    }
+
+    private void abortStartupTimestampReset(final RetinaAEReader reader) {
+        try {
+            setInEndpointEnabled(false);
+        } catch (final HardwareInterfaceException e) {
+            log.warning("Could not disable endpoint after startup timestamp-reset failure: " + e);
+        }
+        if (getAeReader() == reader) {
+            stopAEReader();
+        }
+    }
+
+    @Override
+    protected void beforeDisableINEndpoint() throws HardwareInterfaceException {
+        if (!(getAeReader() instanceof RetinaAEReader reader)
+                || !SciDVSGaerMode.resolveFromSystemProperty(
+                        getChip() instanceof SciDVS, CypressFX3.log)) {
+            return;
+        }
+
+        reader.quiescentDrain.beginDrain();
+        try {
+            // Stop all event producers and timestamp generation while leaving
+            // the mux and FPGA USB output running so queued payload can drain.
+            spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 0);
+            spiConfigSend(CypressFX3.FPGA_IMU, (short) 2, 0);
+            spiConfigSend(CypressFX3.FPGA_IMU, (short) 3, 0);
+            spiConfigSend(CypressFX3.FPGA_IMU, (short) 4, 0);
+            spiConfigSend(CypressFX3.FPGA_APS, (short) 4, 0);
+            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0);
+            spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 0);
+
+            final boolean quiescent = reader.quiescentDrain.awaitQuiescence(
+                    QUIESCENT_DRAIN_QUIET_MS, QUIESCENT_DRAIN_TIMEOUT_MS);
+            if (!quiescent) {
+                throw new HardwareInterfaceException(
+                        "Timed out waiting for SciDVS USB payload to drain");
+            }
+            log.info("SciDVS USB payload reached quiescence before endpoint disable");
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new HardwareInterfaceException(
+                    "Interrupted waiting for SciDVS USB payload to drain", e);
+        } finally {
+            reader.quiescentDrain.endDrain();
+        }
     }
 
     private void getRealClockValues() {
@@ -244,6 +324,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         private final SciDVSGaerDecoder gaerDecoder;
         private final SciDVSGaerRawSink gaerRawSink;
         private final SciDVSGaerTypedSink gaerTypedSink;
+        private final Fx3StartupTimestampResetBarrier startupTimestampReset
+                = new Fx3StartupTimestampResetBarrier();
+        private final Fx3QuiescentDrainBarrier quiescentDrain
+                = new Fx3QuiescentDrainBarrier();
         private Boolean gaerResolved;
 
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
@@ -311,9 +395,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         }
 
         private void handleGaerTimestampReset() {
+            startupTimestampReset.markResetObserved();
             updateTimestampMasterStatus();
             CypressFX3.log.info("Timestamp reset event received on " + super.toString()
                     + " at System.currentTimeMillis()=" + System.currentTimeMillis());
+        }
+
+        private boolean awaitStartupTimestampReset(final long timeoutMs)
+                throws InterruptedException {
+            return startupTimestampReset.awaitReset(timeoutMs);
+        }
+
+        @Override
+        protected void noteCompletedTransfer(final int actualLength) {
+            quiescentDrain.noteCompletedTransfer(actualLength);
         }
 
         private void checkMonotonicTimestamp() {

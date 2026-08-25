@@ -858,8 +858,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (inEndpointEnabled) {
             enableINEndpoint();
         } else {
-            disableINEndpoint();
+            try {
+                beforeDisableINEndpoint();
+            } finally {
+                disableINEndpoint();
+            }
         }
+    }
+
+    protected void beforeDisableINEndpoint() throws HardwareInterfaceException {
     }
 
     public final static short FPGA_MUX = 0;
@@ -1285,6 +1292,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             CypressFX3.log.severe("Error: This method should never be called, it must be overridden!");
         }
 
+        protected void noteCompletedTransfer(final int actualLength) {
+        }
+
         class ProcessAEData implements RestrictedTransferCallback {
 
             private final long generation;
@@ -1314,6 +1324,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         return;
                     }
                     if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                        noteCompletedTransfer(transfer.actualLength());
                         if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
                             dvx.noteUsbTransfer(LibUsb.TRANSFER_COMPLETED, transfer.actualLength());
                         }
@@ -1637,7 +1648,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             return;
         }
         log.info(String.format("Setting event acquisition = %s",enable));
-        // Start reader before sending data enable commands.
+        // Configure the endpoint before starting or stopping its reader.
         setInEndpointEnabled(enable);
         if (enable) {
             startAEReader();

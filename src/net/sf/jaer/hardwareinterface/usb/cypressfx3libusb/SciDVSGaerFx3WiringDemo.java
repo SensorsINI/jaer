@@ -11,6 +11,8 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Frozen source-structure and reflection acceptance test for routing SciDVS GAER
@@ -24,8 +26,10 @@ public final class SciDVSGaerFx3WiringDemo {
     private static final Path SOURCE = Paths.get("src", "net", "sf", "jaer",
             "hardwareinterface", "usb", "cypressfx3libusb",
             "DAViSFX3HardwareInterface.java");
+    private static final Path CYPRESS_SOURCE = Paths.get("src", "net", "sf", "jaer",
+            "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
     private static final String STANDARD_LOOP_SHA256
-            = "ea21529c5cedb0e26d284b1a5c9cecb3798db3ccdab248d9e25cdceab29fc03f";
+            = "350e0256b375ec2bedb793ee6522ea62ed1b1e1344d54caac409437892583be4";
     private static int assertions;
 
     private SciDVSGaerFx3WiringDemo() {
@@ -33,10 +37,13 @@ public final class SciDVSGaerFx3WiringDemo {
 
     public static void main(final String[] args) throws Exception {
         final String source = Files.readString(SOURCE, StandardCharsets.UTF_8);
+        final String cypressSource = Files.readString(CYPRESS_SOURCE, StandardCharsets.UTF_8);
         testExpectedFields();
         testProtectedTranslateAndNoDuplicateGaerParserState();
         testEagerConstructionReusesExistingConfiguration(source);
         testSinkWiringAndLazyHarden(source);
+        testStartupTimestampResetBarrier(source, cypressSource);
+        testQuiescentDrainShutdownWiring(source, cypressSource);
         testLazyResolutionAndEarlyGaerBranch(source);
         testStandardDavisLoopHash(source);
         System.out.println("SCIDVS_GAER_FX3_WIRING ASSERTIONS=" + assertions);
@@ -54,6 +61,8 @@ public final class SciDVSGaerFx3WiringDemo {
         require(fields.containsKey("gaerRawSink"), "reader owns gaerRawSink");
         require(fields.containsKey("gaerTypedSink"), "reader owns gaerTypedSink");
         require(fields.containsKey("gaerResolved"), "reader owns lazy gaerResolved");
+        require(fields.containsKey("startupTimestampReset"),
+                "reader owns startup timestamp-reset barrier");
         require(fields.get("gaerDecoder").getType().getSimpleName().equals("SciDVSGaerDecoder"),
                 "gaerDecoder has exact production type");
         require(fields.get("gaerRawSink").getType().getSimpleName().equals("SciDVSGaerRawSink"),
@@ -64,8 +73,9 @@ public final class SciDVSGaerFx3WiringDemo {
                 "gaerResolved is nullable Boolean for lazy resolution");
         require(Modifier.isFinal(fields.get("gaerDecoder").getModifiers())
                 && Modifier.isFinal(fields.get("gaerRawSink").getModifiers())
-                && Modifier.isFinal(fields.get("gaerTypedSink").getModifiers()),
-                "GAER decoder and sinks are eager final state owners");
+                && Modifier.isFinal(fields.get("gaerTypedSink").getModifiers())
+                && Modifier.isFinal(fields.get("startupTimestampReset").getModifiers()),
+                "GAER decoder, sinks, and startup reset barrier are final state owners");
         require(!Modifier.isFinal(fields.get("gaerResolved").getModifiers()),
                 "lazy resolution field remains assignable");
     }
@@ -141,6 +151,172 @@ public final class SciDVSGaerFx3WiringDemo {
                 "active GAER branch is null-safe so an unknown chip falls through and later retries");
     }
 
+    private static void testQuiescentDrainShutdownWiring(final String source,
+            final String cypressSource) {
+        final String endpoint = method(cypressSource,
+                "public void setInEndpointEnabled(final boolean inEndpointEnabled)");
+        final int disableBranch = endpoint.indexOf("else");
+        final int tryBlock = endpoint.indexOf("try", disableBranch);
+        final int hook = endpoint.indexOf("beforeDisableINEndpoint()", tryBlock);
+        final int finallyBlock = endpoint.indexOf("finally", hook);
+        final int finalDisable = endpoint.indexOf("disableINEndpoint()", finallyBlock);
+        require(disableBranch >= 0 && tryBlock > disableBranch && hook > tryBlock,
+                "endpoint disable invokes the pre-disable hook inside try");
+        require(finallyBlock > hook && finalDisable > finallyBlock,
+                "endpoint disable always invokes disableINEndpoint from finally");
+        require(endpoint.indexOf("disableINEndpoint()", disableBranch) == finalDisable,
+                "endpoint disable has no bypass around the finally block");
+
+        final String baseHook = method(cypressSource,
+                "protected void beforeDisableINEndpoint()");
+        require(baseHook.substring(0, baseHook.indexOf("{")).contains(
+                "throws HardwareInterfaceException"),
+                "pre-disable hook exposes checked shutdown failure");
+
+        final String readerHook = method(cypressSource,
+                "protected void noteCompletedTransfer(");
+        require(readerHook.substring(0, readerHook.indexOf("{")).contains(
+                "int actualLength"),
+                "completed-transfer reader hook accepts actualLength");
+        final String callback = method(cypressSource,
+                "public void processTransfer(final RestrictedTransfer transfer)");
+        final int completed = callback.indexOf(
+                "transfer.status() == LibUsb.TRANSFER_COMPLETED");
+        final int note = callback.indexOf(
+                "noteCompletedTransfer(transfer.actualLength())", completed);
+        final int translate = callback.indexOf(
+                "translateEvents(transfer.buffer())", completed);
+        require(completed >= 0 && note > completed,
+                "completed USB callback forwards actualLength to the reader hook");
+        require(translate > note,
+                "completed USB callback notes payload activity before translating");
+
+        final String shutdown = method(source,
+                "protected void beforeDisableINEndpoint()");
+        require(shutdown.substring(0, shutdown.indexOf("{")).contains(
+                "throws HardwareInterfaceException"),
+                "DAViS pre-disable hook preserves checked failure");
+        final String compact = shutdown.replaceAll("\\s+", " ");
+        final int beginDrain = compact.indexOf(".beginDrain()");
+        final int await = compact.indexOf(".awaitQuiescence(");
+        require(beginDrain >= 0 && await > beginDrain,
+                "DAViS begins its reader drain before awaiting quiescence");
+
+        final String[][] shutoffs = {
+            {"FPGA_EXTINPUT", "0", "external input"},
+            {"FPGA_IMU", "2", "IMU accelerometer"},
+            {"FPGA_IMU", "3", "IMU gyroscope"},
+            {"FPGA_IMU", "4", "IMU temperature"},
+            {"FPGA_APS", "4", "APS"},
+            {"FPGA_DVS", "3", "DVS"},
+            {"FPGA_MUX", "1", "timestamp generation"}
+        };
+        for (final String[] shutoff : shutoffs) {
+            final String send = "spiConfigSend(CypressFX3." + shutoff[0]
+                    + ", (short) " + shutoff[1] + ", 0)";
+            final int at = compact.indexOf(send);
+            require(at > beginDrain && at < await,
+                    "DAViS disables " + shutoff[2] + " before drain wait");
+        }
+
+        final String beforeAwait = compact.substring(0, await);
+        require(!beforeAwait.contains(
+                "spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 0)"),
+                "event mux remains enabled while payload drains");
+        require(!beforeAwait.contains(
+                "spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 0)"),
+                "FPGA USB output remains enabled while payload drains");
+
+        final int argumentsStart = compact.indexOf("(", await);
+        final int argumentsEnd = compact.indexOf(")", argumentsStart);
+        final String[] arguments = compact.substring(argumentsStart + 1,
+                argumentsEnd).split(",");
+        require(arguments.length == 2,
+                "quiescence wait has quiet and timeout bounds");
+        final long quietMillis = positiveMillisBound(source, arguments[0],
+                "quiescence quiet interval");
+        final long timeoutMillis = positiveMillisBound(source, arguments[1],
+                "quiescence timeout");
+        require(timeoutMillis >= quietMillis,
+                "quiescence timeout covers at least one quiet interval");
+
+        final int failClosedIf = compact.lastIndexOf("if (!", await);
+        final int timeoutThrow = compact.indexOf(
+                "throw new HardwareInterfaceException", await);
+        final int interrupted = compact.indexOf("InterruptedException", await);
+        final int reinterrupt = compact.indexOf(
+                "Thread.currentThread().interrupt()", interrupted);
+        final int interruptionThrow = compact.indexOf(
+                "throw new HardwareInterfaceException", interrupted);
+        require(failClosedIf >= 0 && timeoutThrow > await
+                && timeoutThrow < interrupted,
+                "quiescence timeout fails closed with a checked exception");
+        require(interrupted > await && reinterrupt > interrupted
+                && interruptionThrow > interrupted,
+                "quiescence interruption restores interrupt and fails closed");
+        final int finallyDrain = compact.indexOf("finally", interrupted);
+        final int endDrain = compact.indexOf(".endDrain()", finallyDrain);
+        require(finallyDrain > interrupted && endDrain > finallyDrain,
+                "DAViS always ends the reader drain state");
+
+        final String davisReaderHook = method(source,
+                "protected void noteCompletedTransfer(");
+        require(davisReaderHook.replaceAll("\\s+", " ").contains(
+                ".noteCompletedTransfer(actualLength)"),
+                "DAViS reader forwards completed payload length to its barrier");
+
+        Field drainField = null;
+        int drainFieldCount = 0;
+        for (final Field field : DAViSFX3HardwareInterface.RetinaAEReader.class
+                .getDeclaredFields()) {
+            if (field.getType().getSimpleName().equals(
+                    "Fx3QuiescentDrainBarrier")) {
+                drainField = field;
+                drainFieldCount++;
+            }
+        }
+        require(drainFieldCount == 1,
+                "each DAViS reader owns exactly one quiescent drain barrier");
+        require(drainField != null && Modifier.isFinal(drainField.getModifiers()),
+                "per-reader quiescent drain barrier is final");
+    }
+
+    private static void testStartupTimestampResetBarrier(final String source,
+            final String cypressSource) {
+        final String start = between(source,
+                "public void startAEReader()",
+                "private void getRealClockValues()");
+        final int startThread = start.indexOf("reader.startThread()");
+        final int resetCommand = start.indexOf("resetTimestamps()");
+        final int waitForMarker = start.indexOf("reader.awaitStartupTimestampReset(");
+        final int initialPoolAllocation = start.indexOf("allocateAEBuffers()");
+        final int postMarkerPoolClear = start.indexOf("allocateAEBuffers()",
+                initialPoolAllocation + 1);
+        require(startThread >= 0, "new reader starts before startup reset command");
+        require(resetCommand > startThread,
+                "hardware timestamp reset follows reader start");
+        require(waitForMarker > resetCommand,
+                "startup waits for the decoded hardware reset marker");
+        require(postMarkerPoolClear > waitForMarker,
+                "packet pools clear only after the reset marker is observed");
+        require(start.contains("abortStartupTimestampReset(reader)"),
+                "timeout and interruption abort the startup reader");
+
+        final String acquisition = between(cypressSource,
+                "public synchronized void setEventAcquisitionEnabled",
+                "public boolean isEventAcquisitionEnabled()");
+        final int endpointEnable = acquisition.indexOf("setInEndpointEnabled(enable)");
+        final int readerStart = acquisition.indexOf("startAEReader()");
+        require(endpointEnable >= 0 && readerStart > endpointEnable,
+                "input endpoint is configured before the reader reset barrier runs");
+
+        final String handler = between(source,
+                "private void handleGaerTimestampReset()",
+                "private void checkMonotonicTimestamp()");
+        require(handler.contains("startupTimestampReset.markResetObserved()"),
+                "GAER reset callback releases the exact reader barrier");
+    }
+
     private static void testLazyResolutionAndEarlyGaerBranch(final String source) {
         final String translate = between(source,
                 "protected void translateEvents(final ByteBuffer b)",
@@ -185,6 +361,43 @@ public final class SciDVSGaerFx3WiringDemo {
         final String loop = source.substring(start, end + last.length()) + "\n";
         require(STANDARD_LOOP_SHA256.equals(sha256(loop)),
                 "standard DAViS loop hash remains " + STANDARD_LOOP_SHA256);
+    }
+
+    private static String method(final String source, final String signature) {
+        final int start = source.indexOf(signature);
+        require(start >= 0, "source method exists: " + signature);
+        final int openingBrace = source.indexOf("{", start);
+        require(openingBrace > start, "source method opens: " + signature);
+        int depth = 0;
+        for (int i = openingBrace; i < source.length(); i++) {
+            final char item = source.charAt(i);
+            if (item == "{".charAt(0)) {
+                depth++;
+            } else if (item == "}".charAt(0) && --depth == 0) {
+                return source.substring(start, i + 1);
+            }
+        }
+        throw new AssertionError("unterminated source method: " + signature);
+    }
+
+    private static long positiveMillisBound(final String source,
+            final String argument, final String description) {
+        final String token = argument.trim();
+        final String literal = token.replace("_", "").replaceAll("[lL]$", "");
+        long value;
+        if (literal.matches("[0-9]+")) {
+            value = Long.parseLong(literal);
+        } else {
+            final String compact = source.replaceAll("\\s+", " ");
+            final Matcher matcher = Pattern.compile(
+                    "(?:private |protected |public )?static final (?:long|int) "
+                    + Pattern.quote(token) + " = ([0-9][0-9_]*)[lL]?;")
+                    .matcher(compact);
+            require(matcher.find(), description + " is a finite millisecond constant");
+            value = Long.parseLong(matcher.group(1).replace("_", ""));
+        }
+        require(value > 0, description + " is positive");
+        return value;
     }
 
     private static String between(final String source, final String first,
