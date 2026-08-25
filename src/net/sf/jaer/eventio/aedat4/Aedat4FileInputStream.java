@@ -336,9 +336,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return n;
     }
 
+    private static boolean isCanceled(ProgressMonitor progressMonitor) {
+        return Thread.currentThread().isInterrupted()
+                || (progressMonitor != null && progressMonitor.isCanceled());
+    }
+
     private static void throwIfCanceled(ProgressMonitor progressMonitor, String what) throws IOException {
-        if (Thread.currentThread().isInterrupted()
-                || (progressMonitor != null && progressMonitor.isCanceled())) {
+        if (isCanceled(progressMonitor)) {
             throw new IOException(what + " canceled");
         }
     }
@@ -513,8 +517,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * falls back to a full packet scan when the table is missing or invalid.
      */
     private void indexFile(ProgressMonitor progressMonitor) throws IOException {
-        if (tryIndexFromFileDataTable(progressMonitor)) {
-            return;
+        try {
+            if (tryIndexFromFileDataTable(progressMonitor)) {
+                return;
+            }
+        } catch (IOException invalidTable) {
+            if (isCanceled(progressMonitor)) {
+                throw invalidTable;
+            }
+            log.log(Level.WARNING,
+                    "AEDAT-4 FileDataTable is unusable; scanning packet region instead: {0}",
+                    invalidTable.getMessage());
         }
         indexFileByScanningPackets(progressMonitor);
     }
@@ -742,14 +755,22 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
         ByteBuffer headerBytes = readSizePrefixed(channel, "IOHeader", MAX_IO_HEADER_BYTES);
         IOHeader header = parseIoHeader(headerBytes);
-        final long tablePos;
+        final long declaredTablePos;
         try {
             compression = Aedat4Compression.clamp(header.compression());
-            tablePos = header.dataTablePosition();
+            declaredTablePos = header.dataTablePosition();
         } catch (RuntimeException e) {
             throw malformedFlatBuffer("IOHeader", e);
         }
         long fileSize = channel.size();
+        final long packetRegionStart = channel.position();
+        final long tablePos = declaredTablePos >= packetRegionStart && declaredTablePos < fileSize
+                ? declaredTablePos : -1L;
+        if (declaredTablePos >= 0 && tablePos < 0) {
+            log.warning(String.format(
+                    "Ignoring invalid AEDAT-4 FileDataTable position %d outside packet/table region [%d,%d)",
+                    declaredTablePos, packetRegionStart, fileSize));
+        }
         ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         long scannedPackets = 0;
         long skippedOtherStreams = 0;

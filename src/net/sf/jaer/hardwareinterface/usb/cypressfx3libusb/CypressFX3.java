@@ -298,7 +298,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     private volatile boolean isOpened = false;
     /** Serializes native open/close ownership without being held while reader threads join. */
     private final Object lifecycleLock = new Object();
-    private boolean closeInProgress = false;
+    private volatile boolean closeInProgress = false;
     /** Reader generation whose termination could not be confirmed during shutdown. */
     private AEReader nonterminalReaderGeneration = null;
     /** Transfer thread used to prove a retained generation terminal when it is observable. */

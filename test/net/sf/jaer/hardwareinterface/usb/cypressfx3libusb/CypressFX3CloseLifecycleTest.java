@@ -262,6 +262,11 @@ public class CypressFX3CloseLifecycleTest {
             inEndpointEnabled = false;
         }
 
+        @Override
+        protected boolean shouldResetUsbDevice() {
+            return true;
+        }
+
         private boolean stopReaderGeneration() {
             NativeCalls.record("reader-stop-requested");
             if (readerStop == ReaderStop.REMAINS_NONTERMINAL) {

@@ -104,43 +104,39 @@ public class Aedat4FileInputStreamBoundsTest {
     }
 
     @Test
-    public void decodedFileDataTableLimitRejectsPlusOneAndAdmitsExactBoundary() throws Exception {
+    public void decodedFileDataTableLimitFallsBackWithoutUncheckedAllocationFailure() throws Exception {
         File exact = compressedFileDataTableFixture("decoded-ftab-exact",
                 MAX_DECODED_FILE_DATA_TABLE_BYTES);
-        IOException exactFailure = expectConstructorIOException(exact);
-        assertContext(exactFailure, "filedatatable");
-        assertMessageContainsAny(exactFailure, "flatbuffer", "ftab", "malformed");
-        assertMessageDoesNotContain(exactFailure, "exceeds maximum");
+        assertEmptyIndexOpen(exact);
 
         File over = compressedFileDataTableFixture("decoded-ftab-over",
                 MAX_DECODED_FILE_DATA_TABLE_BYTES + 1);
-        IOException overFailure = expectConstructorIOException(over);
-        assertContext(overFailure, "filedatatable", "decoded",
-                Integer.toString(MAX_DECODED_FILE_DATA_TABLE_BYTES + 1));
-        assertMessageContainsAny(overFailure, "maximum", "limit", "too large");
+        assertEmptyIndexOpen(over);
+    }
+
+    @Test
+    public void malformedFileDataTableFallsBackToPacketScan() throws Exception {
+        byte[] pixels = new byte[]{1, 0, 2, 0, 3, 0, 4, 0};
+        byte[] framePayload = framePayload(2, 2, FrameFormat.OPENCV_16U_C1, pixels);
+        File fixture = frameFixtureWithMalformedTable("malformed-ftab-fallback", framePayload);
+
+        assertFramePacketCanBeRead(fixture);
+    }
+
+    @Test
+    public void invalidFileDataTablePositionFallsBackToPacketScan() throws Exception {
+        byte[] pixels = new byte[]{1, 0, 2, 0, 3, 0, 4, 0};
+        byte[] framePayload = framePayload(2, 2, FrameFormat.OPENCV_16U_C1, pixels);
+        File fixture = frameFixtureWithInvalidTablePosition("invalid-ftab-position", framePayload);
+
+        assertFramePacketCanBeRead(fixture);
     }
 
     @Test
     public void frameGeometryRequiresExactSupportedPixelBytesBeforeAllocation() throws Exception {
         byte[] exactPixels = new byte[]{1, 0, 2, 0, 3, 0, 4, 0};
         File exact = frameFixture("frame-exact", 2, 2, FrameFormat.OPENCV_16U_C1, exactPixels);
-        Aedat4FileInputStream input = null;
-        try {
-            input = new Aedat4FileInputStream(exact, null);
-            input.readPacketByNumber(1);
-            PacketBundle bundle = new PacketBundle();
-            input.appendTypedPackets(bundle);
-            FramePacket frame = bundle.getFirstFramePacket();
-            assertNotNull("Exact 2x2 16-bit frame must decode through the reader", frame);
-            assertEquals(2, frame.getWidth());
-            assertEquals(2, frame.getHeight());
-            assertEquals(4, frame.getPixels().length);
-        } finally {
-            if (input != null) {
-                input.close();
-            }
-            deleteIndexCacheQuietly(exact);
-        }
+        assertFramePacketCanBeRead(exact);
 
         File huge = frameFixture("frame-huge-tiny-data", 0xffff, 0xffff,
                 FrameFormat.OPENCV_16U_C4, new byte[]{1});
@@ -327,14 +323,7 @@ public class Aedat4FileInputStreamBoundsTest {
 
     private File frameFixture(String prefix, int width, int height, byte format, byte[] pixels)
             throws IOException {
-        FlatBufferBuilder builder = new FlatBufferBuilder(256);
-        int pixelVector = Frame.createPixelsVector(builder, pixels);
-        int root = Frame.createFrame(builder, 100L, 100L, 101L, 100L, 101L,
-                format, (short) width, (short) height, (short) 0, (short) 0,
-                pixelVector, 1L, (byte) 0);
-        builder.finishSizePrefixed(root, "FRME");
-        byte[] payload = builder.sizedByteArray();
-
+        byte[] payload = framePayload(width, height, format, pixels);
         File fixture = newFixture(prefix);
         try (DataOutputStream out = output(fixture)) {
             out.write(Aedat4FileOutputStream.VERSION_LINE);
@@ -343,6 +332,81 @@ public class Aedat4FileInputStreamBoundsTest {
             out.write(payload);
         }
         return fixture;
+    }
+
+    private static byte[] framePayload(int width, int height, byte format, byte[] pixels) {
+        FlatBufferBuilder builder = new FlatBufferBuilder(256);
+        int pixelVector = Frame.createPixelsVector(builder, pixels);
+        int root = Frame.createFrame(builder, 100L, 100L, 101L, 100L, 101L,
+                format, (short) width, (short) height, (short) 0, (short) 0,
+                pixelVector, 1L, (byte) 0);
+        builder.finishSizePrefixed(root, "FRME");
+        return builder.sizedByteArray();
+    }
+
+    private File frameFixtureWithMalformedTable(String prefix, byte[] payload) throws IOException {
+        File fixture = newFixture(prefix);
+        byte[] probeHeader = validIoHeader(CompressionType.NONE, 0L);
+        long tablePosition = Aedat4FileOutputStream.VERSION_LINE.length
+                + probeHeader.length + 8L + payload.length;
+        byte[] header = validIoHeader(CompressionType.NONE, tablePosition);
+        assertEquals("IOHeader size must remain stable when table position is patched",
+                probeHeader.length, header.length);
+        try (DataOutputStream out = output(fixture)) {
+            out.write(Aedat4FileOutputStream.VERSION_LINE);
+            out.write(header);
+            writePacketHeader(out, Aedat4FileOutputStream.STREAM_FRAMES, payload.length);
+            out.write(payload);
+            out.write(malformedSizePrefixedFlatBuffer("FTAB"));
+        }
+        return fixture;
+    }
+
+    private File frameFixtureWithInvalidTablePosition(String prefix, byte[] payload) throws IOException {
+        File fixture = newFixture(prefix);
+        byte[] header = validIoHeader(CompressionType.NONE,
+                Aedat4FileOutputStream.VERSION_LINE.length);
+        try (DataOutputStream out = output(fixture)) {
+            out.write(Aedat4FileOutputStream.VERSION_LINE);
+            out.write(header);
+            writePacketHeader(out, Aedat4FileOutputStream.STREAM_FRAMES, payload.length);
+            out.write(payload);
+        }
+        return fixture;
+    }
+
+    private static void assertFramePacketCanBeRead(File fixture) throws Exception {
+        Aedat4FileInputStream input = null;
+        try {
+            input = new Aedat4FileInputStream(fixture, null);
+            input.readPacketByNumber(1);
+            PacketBundle bundle = new PacketBundle();
+            input.appendTypedPackets(bundle);
+            FramePacket frame = bundle.getFirstFramePacket();
+            assertNotNull("Exact 2x2 16-bit frame must decode through the reader", frame);
+            assertEquals(2, frame.getWidth());
+            assertEquals(2, frame.getHeight());
+            assertEquals(4, frame.getPixels().length);
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+            deleteIndexCacheQuietly(fixture);
+        }
+    }
+
+    private static void assertEmptyIndexOpen(File fixture) throws Exception {
+        Aedat4FileInputStream input = null;
+        try {
+            input = new Aedat4FileInputStream(fixture, null);
+            assertEquals("Malformed FileDataTable without packets must fall back to an empty index",
+                    0L, input.size());
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+            deleteIndexCacheQuietly(fixture);
+        }
     }
 
     private static byte[] lz4Zeros(int decodedBytes) throws IOException {
