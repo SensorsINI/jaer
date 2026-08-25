@@ -82,12 +82,21 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * allocation while remaining well above normal DV packet sizes.
      */
     private static final long MAX_PACKET_PAYLOAD_BYTES = 64L * 1024 * 1024;
+    /** Maximum decoded EVTS FlatBuffer (about 500,000 16-byte events). */
+    private static final long MAX_DECODED_EVENT_PACKET_BYTES = 8L * 1024 * 1024;
+    /** Maximum decoded FRME FlatBuffer, including its pixel vector. */
+    private static final long MAX_DECODED_FRAME_PACKET_BYTES = 8L * 1024 * 1024;
+    /** Maximum decoded IMUS FlatBuffer. */
+    private static final long MAX_DECODED_IMU_PACKET_BYTES = 4L * 1024 * 1024;
     /**
-     * Maximum encoded or decoded trailing FileDataTable. The table is read as one
-     * region; bounding it to 64 MiB prevents a corrupt table offset from turning
-     * the rest of a large recording into one allocation.
+     * Maximum encoded trailing FileDataTable region. The table is read as one
+     * region; bounding it prevents a corrupt table offset from turning the rest
+     * of a large recording into one allocation. Its decoded form has a lower,
+     * context-specific limit below.
      */
     private static final long MAX_FILE_DATA_TABLE_BYTES = 64L * 1024 * 1024;
+    /** Maximum decoded trailing FileDataTable FlatBuffer. */
+    private static final long MAX_DECODED_FILE_DATA_TABLE_BYTES = 16L * 1024 * 1024;
     /**
      * Max polarity events returned from one {@code readPacketBy*}. Prevents OOM / multi-second
      * hangs when on-demand decode would otherwise walk millions of FlatBuffer events.
@@ -534,11 +543,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         throwIfCanceled(progressMonitor, "AEDAT-4 FileDataTable index");
         final long remaining = fileSize - dataTablePosition;
-        checkedAllocationSize(remaining, remaining, MAX_FILE_DATA_TABLE_BYTES,
-                "FileDataTable region at offset " + dataTablePosition);
         // The FileDataTable uses the IOHeader codec. Legacy jAER files wrote it
         // uncompressed, so retain raw-FTAB detection. Region is [dataTablePosition, EOF).
         channel.position(dataTablePosition);
+        ByteBuffer tablePrefix = ByteBuffer.allocate((int) Math.min(12L, remaining))
+                .order(ByteOrder.LITTLE_ENDIAN);
+        readFully(channel, tablePrefix);
+        tablePrefix.flip();
+        boolean rawTableEncoding = compression == CompressionType.NONE
+                || looksLikeFileDataTable(tablePrefix);
+        channel.position(dataTablePosition);
+        long encodedMaximum = rawTableEncoding
+                ? MAX_DECODED_FILE_DATA_TABLE_BYTES : MAX_FILE_DATA_TABLE_BYTES;
+        checkedAllocationSize(remaining, remaining, encodedMaximum,
+                "FileDataTable region at offset " + dataTablePosition);
         ByteBuffer rawTable = ByteBuffer.allocate((int) remaining).order(ByteOrder.LITTLE_ENDIAN);
         try {
             readFully(channel, rawTable);
@@ -549,13 +567,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         rawTable.flip();
         ByteBuffer tableBytes;
         try {
-            if (compression == CompressionType.NONE || looksLikeFileDataTable(rawTable)) {
+            if (rawTableEncoding) {
+                checkedAllocationSize(rawTable.remaining(), rawTable.remaining(),
+                        MAX_DECODED_FILE_DATA_TABLE_BYTES, "decoded FileDataTable");
                 tableBytes = rawTable;
             } else {
                 // Decompress entire trailing region (one LZ4/ZSTD frame).
-                byte[] flat = Aedat4Compression.decompress(rawTable.array(), compression);
-                checkedAllocationSize(flat.length, flat.length, MAX_FILE_DATA_TABLE_BYTES,
-                        "decoded FileDataTable");
+                byte[] flat = Aedat4Compression.decompress(rawTable.array(), compression,
+                        MAX_DECODED_FILE_DATA_TABLE_BYTES, "decoded FileDataTable");
                 tableBytes = ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
             }
         } catch (IOException e) {
@@ -755,6 +774,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             boolean known = streamId == eventStreamId
                     || streamId == frameStreamId
                     || streamId == imuStreamId;
+            if (known && compression == CompressionType.NONE) {
+                checkedAllocationSize(payloadSize, remaining, decodedMaximumForStream(streamId),
+                        "decoded " + streamName(streamId) + " packet at offset "
+                        + channel.position());
+            }
             // tablePos may be unset (-1) or pending (-2); stop before FTAB.
             if (tablePos < 0 && !known && streamId > 64) {
                 log.info(String.format(
@@ -778,7 +802,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             ByteBuffer flat;
             try {
-                flat = maybeDecompress(payload);
+                flat = maybeDecompress(payload, decodedMaximumForStream(streamId),
+                        "decoded " + streamName(streamId) + " packet at offset " + payloadOffset);
             } catch (IOException ex) {
                 if (tablePos < 0 && looksLikeFileDataTable(payload)) {
                     log.info("Stopping AEDAT-4 index before FileDataTable (dataTablePosition unset)");
@@ -1045,7 +1070,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private EventPacket eventPacketAt(int packetIndex) throws IOException {
         if (packetIndex != cachedEventPacketIndex || cachedEventFlat == null) {
-            cachedEventFlat = readPayload(eventRefs[packetIndex]);
+            cachedEventFlat = readPayload(eventRefs[packetIndex], MAX_DECODED_EVENT_PACKET_BYTES,
+                    "decoded EVTS event packet " + packetIndex);
             cachedEventPacketIndex = packetIndex;
             // Verbose playback trace (re-enable for decode hangs):
             // log.fine(String.format("AEDAT-4 decompress EVTS[%d] payload=%d B", packetIndex, eventRefs[packetIndex].payloadSize));
@@ -1211,15 +1237,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private FramePacket decodeFrame(PacketRef ref) throws IOException {
-        ByteBuffer payload = readPayload(ref);
-        Frame frame = parseFrame(payload, "FRME frame packet at offset " + ref.payloadOffset);
+        final String context = "FRME frame packet at offset " + ref.payloadOffset;
+        ByteBuffer payload = readPayload(ref, MAX_DECODED_FRAME_PACKET_BYTES,
+                "decoded " + context);
+        Frame frame = parseFrame(payload, context);
         final int parsedWidth;
         final int parsedHeight;
         try {
             parsedWidth = frame.sizeX() & 0xffff;
             parsedHeight = frame.sizeY() & 0xffff;
         } catch (RuntimeException e) {
-            throw malformedFlatBuffer("FRME frame packet at offset " + ref.payloadOffset, e);
+            throw malformedFlatBuffer(context, e);
         }
         int w = parsedWidth;
         int h = parsedHeight;
@@ -1233,17 +1261,38 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             nbytes = frame.pixelsLength();
             fmt = frame.format();
         } catch (RuntimeException e) {
-            throw malformedFlatBuffer("FRME frame packet at offset " + ref.payloadOffset, e);
+            throw malformedFlatBuffer(context, e);
         }
-        final FrameLayout layout = resolveFrameLayout(fmt, w, h, nbytes);
-        FramePacket out = new FramePacket(w, h, layout.colorMode);
+        final FrameLayout layout = resolveFrameLayout(fmt, context);
+        final long pixelCount = checkedMultiply(w, h, context + " geometry");
+        final long sampleCount = checkedMultiply(pixelCount, layout.channels,
+                context + " sample count");
+        final long expectedBytes = checkedMultiply(sampleCount, layout.bytesPerSample,
+                context + " pixel byte count");
+        if (expectedBytes != nbytes) {
+            throw new IOException("AEDAT-4 " + context + " pixel byte count " + nbytes
+                    + " does not match " + w + "x" + h + " format " + (fmt & 0xff)
+                    + " (expected " + expectedBytes + ")");
+        }
+        if (sampleCount > Integer.MAX_VALUE) {
+            throw new IOException("AEDAT-4 " + context + " geometry " + w + "x" + h
+                    + " with " + layout.channels + " channels requires " + sampleCount
+                    + " samples, exceeding the Java array limit");
+        }
+        final FramePacket out;
+        try {
+            out = new FramePacket(w, h, layout.colorMode);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("AEDAT-4 " + context + " invalid frame geometry "
+                    + w + "x" + h + ": " + e.getMessage(), e);
+        }
         out.setTimestampStartUs((int) ref.unixStart);
         out.setTimestampEndUs((int) ref.unixEnd);
         out.setExposureUs((int) Math.min(Integer.MAX_VALUE, Math.max(0, frame.exposure())));
         out.setSource(frame.source());
         short[] pixels = out.getPixels();
         final int ch = layout.channels;
-        final int srcStride = w * ch * (layout.u16 ? 2 : 1);
+        final int srcStride = (int) ((long) w * ch * layout.bytesPerSample);
         // DV/OpenCV: y=0 at top. jAER Davis pixmap: y=0 at bottom — flip while copying.
         // jAER-written frames are already bottom-origin; copy without Y remap.
         for (int y = 0; y < h; y++) {
@@ -1251,7 +1300,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             final int srcRow = srcY * srcStride;
             final int dstRow = y * w * ch;
             for (int x = 0; x < w; x++) {
-                final int srcPix = srcRow + x * ch * (layout.u16 ? 2 : 1);
+                final int srcPix = srcRow + x * ch * layout.bytesPerSample;
                 final int dstPix = dstRow + x * ch;
                 if (layout.u16) {
                     for (int c = 0; c < ch; c++) {
@@ -1291,64 +1340,50 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
-     * Maps DV {@link FrameFormat} (+ nbytes fallback) to {@link FramePacket} layout.
-     * OpenCV multi-channel frames are BGR(A) in the file.
+     * Maps supported DV {@link FrameFormat} values to {@link FramePacket} layout.
+     * OpenCV multi-channel frames are BGR(A) in the file; unsupported sample
+     * types are rejected rather than inferred from attacker-controlled lengths.
      */
-    private static FrameLayout resolveFrameLayout(byte fmt, int w, int h, int nbytes) {
-        final int n = Math.max(0, w) * Math.max(0, h);
+    private static FrameLayout resolveFrameLayout(byte fmt, String context) throws IOException {
         switch (fmt) {
             case FrameFormat.OPENCV_8U_C3:
-                return new FrameLayout(FramePacket.ColorMode.RGB, 3, false, true);
+                return new FrameLayout(FramePacket.ColorMode.RGB, 3, 1, true);
             case FrameFormat.OPENCV_16U_C3:
-                return new FrameLayout(FramePacket.ColorMode.RGB, 3, true, true);
+                return new FrameLayout(FramePacket.ColorMode.RGB, 3, 2, true);
             case FrameFormat.OPENCV_8U_C4:
-                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, false, true);
+                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, 1, true);
             case FrameFormat.OPENCV_16U_C4:
-                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, true, true);
+                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, 2, true);
             case FrameFormat.OPENCV_16U_C1:
-                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, true, false);
+                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, 2, false);
             case FrameFormat.OPENCV_8U_C1:
-                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, false, false);
+                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, 1, false);
             default:
-                break;
+                throw new IOException("AEDAT-4 " + context + " unsupported frame format "
+                        + (fmt & 0xff));
         }
-        // Infer from payload size when format is missing/unknown (do not treat C3 as u16 C1).
-        if (n > 0) {
-            if (nbytes == n * 3) {
-                return new FrameLayout(FramePacket.ColorMode.RGB, 3, false, true);
-            }
-            if (nbytes == n * 6) {
-                return new FrameLayout(FramePacket.ColorMode.RGB, 3, true, true);
-            }
-            if (nbytes == n * 4) {
-                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, false, true);
-            }
-            if (nbytes == n * 8) {
-                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, true, true);
-            }
-            if (nbytes >= n * 2) {
-                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, true, false);
-            }
-        }
-        return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, false, false);
     }
 
     private static final class FrameLayout {
         final FramePacket.ColorMode colorMode;
         final int channels;
+        final int bytesPerSample;
         final boolean u16;
         final boolean opencvBgr;
 
-        FrameLayout(FramePacket.ColorMode colorMode, int channels, boolean u16, boolean opencvBgr) {
+        FrameLayout(FramePacket.ColorMode colorMode, int channels, int bytesPerSample,
+                boolean opencvBgr) {
             this.colorMode = colorMode;
             this.channels = channels;
-            this.u16 = u16;
+            this.bytesPerSample = bytesPerSample;
+            this.u16 = bytesPerSample == 2;
             this.opencvBgr = opencvBgr;
         }
     }
 
     private ImuPacket decodeImu(PacketRef ref) throws IOException {
-        ByteBuffer payload = readPayload(ref);
+        ByteBuffer payload = readPayload(ref, MAX_DECODED_IMU_PACKET_BYTES,
+                "decoded IMUS packet at offset " + ref.payloadOffset);
         IMUPacket packet = parseImuPacket(payload, "IMUS packet at offset " + ref.payloadOffset);
         final int n;
         try {
@@ -1377,16 +1412,44 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return out;
     }
 
-    private ByteBuffer maybeDecompress(ByteBuffer payload) throws IOException {
+    private ByteBuffer maybeDecompress(ByteBuffer payload, long maximumDecodedBytes, String context)
+            throws IOException {
         if (compression == CompressionType.NONE) {
+            checkedAllocationSize(payload.remaining(), payload.remaining(), maximumDecodedBytes, context);
             return payload;
         }
         byte[] raw = new byte[payload.remaining()];
         int pos = payload.position();
         payload.get(raw);
         payload.position(pos);
-        byte[] flat = Aedat4Compression.decompress(raw, compression);
+        byte[] flat = Aedat4Compression.decompress(raw, compression, maximumDecodedBytes, context);
         return ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
+    }
+
+    private long decodedMaximumForStream(int streamId) {
+        if (streamId == eventStreamId) {
+            return MAX_DECODED_EVENT_PACKET_BYTES;
+        }
+        if (streamId == frameStreamId) {
+            return MAX_DECODED_FRAME_PACKET_BYTES;
+        }
+        if (streamId == imuStreamId) {
+            return MAX_DECODED_IMU_PACKET_BYTES;
+        }
+        return MAX_PACKET_PAYLOAD_BYTES;
+    }
+
+    private String streamName(int streamId) {
+        if (streamId == eventStreamId) {
+            return "EVTS";
+        }
+        if (streamId == frameStreamId) {
+            return "FRME";
+        }
+        if (streamId == imuStreamId) {
+            return "IMUS";
+        }
+        return "stream " + streamId;
     }
 
     /** True if buffer looks like a size-prefixed or bare FileDataTable ("FTAB") FlatBuffer. */
@@ -1408,7 +1471,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return false;
     }
 
-    private ByteBuffer readPayload(PacketRef ref) throws IOException {
+    private ByteBuffer readPayload(PacketRef ref, long maximumDecodedBytes, String context)
+            throws IOException {
         ensureChannelOpen();
         long fileSize = channel.size();
         if (ref.payloadOffset < 0 || ref.payloadOffset > fileSize) {
@@ -1417,6 +1481,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         int payloadSize = checkedPacketPayloadSize(ref.payloadSize,
                 fileSize - ref.payloadOffset, "packet at offset " + ref.payloadOffset);
+        if (compression == CompressionType.NONE) {
+            checkedAllocationSize(payloadSize, fileSize - ref.payloadOffset,
+                    maximumDecodedBytes, context);
+        }
         ByteBuffer payload = ByteBuffer.allocate(payloadSize).order(ByteOrder.LITTLE_ENDIAN);
         try {
             channel.position(ref.payloadOffset);
@@ -1441,7 +1509,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     + " (declared " + payloadSize + " bytes)", e);
         }
         payload.flip();
-        return maybeDecompress(payload);
+        return maybeDecompress(payload, maximumDecodedBytes, context);
     }
 
     /**
@@ -1543,6 +1611,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         } catch (ArithmeticException e) {
             throw new IOException("AEDAT-4 " + context + " size arithmetic overflow: "
                     + left + " + " + right, e);
+        }
+    }
+
+    private static long checkedMultiply(long left, long right, String context) throws IOException {
+        try {
+            return Math.multiplyExact(left, right);
+        } catch (ArithmeticException e) {
+            throw new IOException("AEDAT-4 " + context + " size arithmetic overflow: "
+                    + left + " * " + right, e);
         }
     }
 

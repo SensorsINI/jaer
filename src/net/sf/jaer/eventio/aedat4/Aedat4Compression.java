@@ -1,6 +1,7 @@
 package net.sf.jaer.eventio.aedat4;
 
 import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -41,6 +42,8 @@ public final class Aedat4Compression {
     private static final int ZSTD_LEVEL = 3;
     /** Higher ZSTD level for {@link CompressionType#ZSTD_HIGH}. */
     private static final int ZSTD_HIGH_LEVEL = 9;
+    /** Matches the reader's IOHeader allocation limit for the preflight probe. */
+    private static final long MAX_PROBE_IO_HEADER_BYTES = 16L * 1024 * 1024;
 
     /** LZ4 frame magic little-endian {@code 0x184D2204}. */
     private static final int LZ4_MAGIC_0 = 0x04;
@@ -156,6 +159,105 @@ public final class Aedat4Compression {
                 return Zstd.decompress(compressed, (int) size);
             default:
                 return compressed;
+        }
+    }
+
+    /**
+     * Decompresses an untrusted AEDAT-4 region while enforcing its decoded-size
+     * contract during, rather than after, decompression.
+     *
+     * @param maximumDecodedBytes context-specific maximum decoded byte count
+     * @param context description included in checked failures
+     */
+    static byte[] decompress(byte[] compressed, int compression, long maximumDecodedBytes,
+            String context) throws IOException {
+        if (maximumDecodedBytes < 0 || maximumDecodedBytes > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("maximumDecodedBytes outside Java array range: "
+                    + maximumDecodedBytes);
+        }
+        String checkedContext = context == null || context.isBlank()
+                ? "decoded AEDAT-4 payload" : context;
+        compression = clamp(compression);
+        if (compressed == null) {
+            return null;
+        }
+        if (compression == CompressionType.NONE || compressed.length == 0) {
+            checkDecodedSize(compressed.length, maximumDecodedBytes, checkedContext);
+            return compressed;
+        }
+        try {
+            switch (compression) {
+                case CompressionType.LZ4:
+                case CompressionType.LZ4_HIGH:
+                    return lz4FrameDecompressBounded(compressed, maximumDecodedBytes, checkedContext);
+                case CompressionType.ZSTD:
+                case CompressionType.ZSTD_HIGH:
+                    return zstdDecompressBounded(compressed, maximumDecodedBytes, checkedContext);
+                default:
+                    checkDecodedSize(compressed.length, maximumDecodedBytes, checkedContext);
+                    return compressed;
+            }
+        } catch (RuntimeException e) {
+            throw new IOException("AEDAT-4 " + checkedContext + " decompression failed: "
+                    + e.getClass().getSimpleName()
+                    + (e.getMessage() == null ? "" : ": " + e.getMessage()), e);
+        }
+    }
+
+    private static byte[] zstdDecompressBounded(byte[] compressed, long maximumDecodedBytes,
+            String context) throws IOException {
+        long declaredSize = Zstd.decompressedSize(compressed);
+        if (declaredSize > 0) {
+            checkDecodedSize(declaredSize, maximumDecodedBytes, context);
+            byte[] decoded = Zstd.decompress(compressed, (int) declaredSize);
+            checkDecodedSize(decoded.length, maximumDecodedBytes, context);
+            return decoded;
+        }
+        try (InputStream in = new ZstdInputStream(new ByteArrayInputStream(compressed))) {
+            return readBounded(in, compressed.length, maximumDecodedBytes, context);
+        }
+    }
+
+    private static byte[] lz4FrameDecompressBounded(byte[] data, long maximumDecodedBytes,
+            String context) throws IOException {
+        InputStream decoder = isDependentBlockLz4Frame(data)
+                ? new FramedLZ4CompressorInputStream(new ByteArrayInputStream(data))
+                : new LZ4FrameInputStream(new ByteArrayInputStream(data));
+        try (InputStream in = decoder) {
+            return readBounded(in, data.length, maximumDecodedBytes, context);
+        }
+    }
+
+    private static byte[] readBounded(InputStream in, int encodedBytes, long maximumDecodedBytes,
+            String context) throws IOException {
+        long doubledEncoded = Math.min((long) Integer.MAX_VALUE, (long) encodedBytes * 2L);
+        int initialCapacity = (int) Math.min(maximumDecodedBytes,
+                Math.max(64L, doubledEncoded));
+        ByteArrayOutputStream out = new ByteArrayOutputStream(initialCapacity);
+        byte[] buffer = new byte[8192];
+        long decodedBytes = 0;
+        while (true) {
+            long bytesThroughLimit = maximumDecodedBytes - decodedBytes + 1L;
+            int requested = (int) Math.min(buffer.length, Math.max(1L, bytesThroughLimit));
+            int n = in.read(buffer, 0, requested);
+            if (n < 0) {
+                return out.toByteArray();
+            }
+            if (n == 0) {
+                continue;
+            }
+            long nextSize = decodedBytes + n;
+            checkDecodedSize(nextSize, maximumDecodedBytes, context);
+            out.write(buffer, 0, n);
+            decodedBytes = nextSize;
+        }
+    }
+
+    private static void checkDecodedSize(long decodedBytes, long maximumDecodedBytes, String context)
+            throws IOException {
+        if (decodedBytes > maximumDecodedBytes) {
+            throw new IOException("AEDAT-4 " + context + " size " + decodedBytes
+                    + " exceeds maximum " + maximumDecodedBytes + " bytes");
         }
     }
 
@@ -285,7 +387,7 @@ public final class Aedat4Compression {
             ByteBuffer prefix = ByteBuffer.allocate(Math.min(16, payloadSize));
             readFully(ch, prefix);
             return isDependentBlockLz4Frame(prefix.array());
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             return false;
         }
     }
@@ -320,12 +422,25 @@ public final class Aedat4Compression {
         ByteBuffer sizeBuffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
         readFully(channel, sizeBuffer);
         sizeBuffer.flip();
-        int size = sizeBuffer.getInt();
-        if (size < 0) {
-            throw new IOException("Negative FlatBuffer size prefix " + size);
+        int encodedSize = sizeBuffer.getInt();
+        long size = Integer.toUnsignedLong(encodedSize);
+        long remaining = channel.size() - channel.position();
+        if (size > MAX_PROBE_IO_HEADER_BYTES) {
+            throw new IOException("AEDAT-4 preflight IOHeader size " + size
+                    + " exceeds maximum " + MAX_PROBE_IO_HEADER_BYTES + " bytes");
         }
-        ByteBuffer payload = ByteBuffer.allocate(size + 4).order(ByteOrder.LITTLE_ENDIAN);
-        payload.putInt(size);
+        if (remaining < 0 || size > remaining) {
+            throw new IOException("AEDAT-4 preflight IOHeader truncated: declared " + size
+                    + " bytes but only " + Math.max(0L, remaining) + " bytes remain");
+        }
+        int framedSize;
+        try {
+            framedSize = Math.toIntExact(Math.addExact(size, Integer.BYTES));
+        } catch (ArithmeticException e) {
+            throw new IOException("AEDAT-4 preflight IOHeader size arithmetic overflow", e);
+        }
+        ByteBuffer payload = ByteBuffer.allocate(framedSize).order(ByteOrder.LITTLE_ENDIAN);
+        payload.putInt(encodedSize);
         readFully(channel, payload);
         payload.flip();
         return payload;

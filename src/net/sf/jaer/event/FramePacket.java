@@ -51,13 +51,44 @@ public class FramePacket implements TypedDataPacket {
      * Allocates or reallocates the pixel buffer for the given geometry.
      */
     public final void allocate(int width, int height, ColorMode colorMode) {
+        if (width < 0 || height < 0) {
+            throw new IllegalArgumentException("negative frame geometry " + width + "x" + height);
+        }
+        ColorMode resolvedColorMode = colorMode == null ? ColorMode.GRAYSCALE : colorMode;
+        final int channels;
+        switch (resolvedColorMode) {
+            case RGB:
+                channels = 3;
+                break;
+            case RGBA:
+                channels = 4;
+                break;
+            case GRAYSCALE:
+            default:
+                channels = 1;
+                break;
+        }
+        final long sampleCount;
+        try {
+            sampleCount = Math.multiplyExact(Math.multiplyExact((long) width, (long) height),
+                    (long) channels);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("frame geometry size overflow for " + width + "x"
+                    + height + "x" + channels, e);
+        }
+        if (sampleCount > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("frame geometry " + width + "x" + height + "x"
+                    + channels + " requires " + sampleCount + " samples");
+        }
+        int n = (int) sampleCount;
+        short[] allocated = pixels;
+        if (allocated == null || allocated.length != n) {
+            allocated = new short[n];
+        }
         this.width = width;
         this.height = height;
-        this.colorMode = colorMode == null ? ColorMode.GRAYSCALE : colorMode;
-        int n = width * height * channelsPerPixel();
-        if (pixels == null || pixels.length != n) {
-            pixels = new short[n];
-        }
+        this.colorMode = resolvedColorMode;
+        pixels = allocated;
     }
 
     public int channelsPerPixel() {

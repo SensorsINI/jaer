@@ -1,10 +1,13 @@
 package net.sf.jaer.eventio.aedat4;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.google.flatbuffers.FlatBufferBuilder;
+import java.io.ByteArrayOutputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
@@ -19,7 +22,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.stream.Stream;
+import net.jpountz.lz4.LZ4FrameOutputStream;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
+import net.sf.jaer.eventio.aedat4.dv.Frame;
+import net.sf.jaer.eventio.aedat4.dv.FrameFormat;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -40,6 +48,8 @@ public class Aedat4FileInputStreamBoundsTest {
      * {@code -Xmx64m} without writing or retaining a large byte array.
      */
     private static final int MAX_PACKET_PAYLOAD_BYTES = 64 * 1024 * 1024;
+    private static final int MAX_DECODED_EVENT_PACKET_BYTES = 8 * 1024 * 1024;
+    private static final int MAX_DECODED_FILE_DATA_TABLE_BYTES = 16 * 1024 * 1024;
     private static final int REPEATED_OPEN_COUNT = 64;
     private static final Path PROC_SELF_FD = Paths.get("/proc/self/fd");
 
@@ -56,6 +66,87 @@ public class Aedat4FileInputStreamBoundsTest {
 
         IOException failure = expectConstructorIOException(fixture);
         assertContext(failure, "ioheader", Integer.toString(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void maxIntPreflightPrefixReturnsFalseWithoutUncheckedAllocationFailure() throws Exception {
+        File fixture = newFixture("max-int-preflight-ioheader");
+        try (DataOutputStream out = output(fixture)) {
+            out.write(Aedat4FileOutputStream.VERSION_LINE);
+            writeIntLittleEndian(out, Integer.MAX_VALUE);
+        }
+
+        try {
+            assertFalse("Malformed max-int IOHeader must not be identified as dependent-block LZ4",
+                    Aedat4Compression.probeUsesDependentBlockLz4(fixture));
+        } catch (RuntimeException | OutOfMemoryError unchecked) {
+            AssertionError assertion = new AssertionError(
+                    "Preflight must reject a max-int IOHeader prefix without unchecked allocation failure: "
+                    + unchecked);
+            assertion.initCause(unchecked);
+            throw assertion;
+        }
+    }
+
+    @Test
+    public void decodedEventPacketLimitRejectsPlusOneAndAdmitsExactBoundary() throws Exception {
+        File exact = compressedPacketFixture("decoded-evts-exact",
+                Aedat4FileOutputStream.STREAM_EVENTS, MAX_DECODED_EVENT_PACKET_BYTES);
+        IOException exactFailure = expectConstructorIOException(exact);
+        assertContext(exactFailure, "evts", "flatbuffer");
+        assertMessageDoesNotContain(exactFailure, "exceeds maximum");
+
+        File over = compressedPacketFixture("decoded-evts-over",
+                Aedat4FileOutputStream.STREAM_EVENTS, MAX_DECODED_EVENT_PACKET_BYTES + 1);
+        IOException overFailure = expectConstructorIOException(over);
+        assertContext(overFailure, "evts", "decoded", Integer.toString(MAX_DECODED_EVENT_PACKET_BYTES + 1));
+        assertMessageContainsAny(overFailure, "maximum", "limit", "too large");
+    }
+
+    @Test
+    public void decodedFileDataTableLimitRejectsPlusOneAndAdmitsExactBoundary() throws Exception {
+        File exact = compressedFileDataTableFixture("decoded-ftab-exact",
+                MAX_DECODED_FILE_DATA_TABLE_BYTES);
+        IOException exactFailure = expectConstructorIOException(exact);
+        assertContext(exactFailure, "filedatatable");
+        assertMessageContainsAny(exactFailure, "flatbuffer", "ftab", "malformed");
+        assertMessageDoesNotContain(exactFailure, "exceeds maximum");
+
+        File over = compressedFileDataTableFixture("decoded-ftab-over",
+                MAX_DECODED_FILE_DATA_TABLE_BYTES + 1);
+        IOException overFailure = expectConstructorIOException(over);
+        assertContext(overFailure, "filedatatable", "decoded",
+                Integer.toString(MAX_DECODED_FILE_DATA_TABLE_BYTES + 1));
+        assertMessageContainsAny(overFailure, "maximum", "limit", "too large");
+    }
+
+    @Test
+    public void frameGeometryRequiresExactSupportedPixelBytesBeforeAllocation() throws Exception {
+        byte[] exactPixels = new byte[]{1, 0, 2, 0, 3, 0, 4, 0};
+        File exact = frameFixture("frame-exact", 2, 2, FrameFormat.OPENCV_16U_C1, exactPixels);
+        Aedat4FileInputStream input = null;
+        try {
+            input = new Aedat4FileInputStream(exact, null);
+            input.readPacketByNumber(1);
+            PacketBundle bundle = new PacketBundle();
+            input.appendTypedPackets(bundle);
+            FramePacket frame = bundle.getFirstFramePacket();
+            assertNotNull("Exact 2x2 16-bit frame must decode through the reader", frame);
+            assertEquals(2, frame.getWidth());
+            assertEquals(2, frame.getHeight());
+            assertEquals(4, frame.getPixels().length);
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+            deleteIndexCacheQuietly(exact);
+        }
+
+        File huge = frameFixture("frame-huge-tiny-data", 0xffff, 0xffff,
+                FrameFormat.OPENCV_16U_C4, new byte[]{1});
+        IOException failure = expectPlaybackIOException(huge);
+        assertContext(failure, "frme");
+        assertMessageContainsAny(failure, "geometry", "pixel", "expected", "size");
     }
 
     @Test
@@ -195,11 +286,77 @@ public class Aedat4FileInputStreamBoundsTest {
     }
 
     private static byte[] validIoHeader() {
+        return validIoHeader(CompressionType.NONE, -1L);
+    }
+
+    private static byte[] validIoHeader(int compression, long dataTablePosition) {
         FlatBufferBuilder builder = new FlatBufferBuilder(64);
         int infoNode = builder.createString("");
-        int root = IOHeader.createIOHeader(builder, CompressionType.NONE, -1L, infoNode);
+        int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, infoNode);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
+    }
+
+    private File compressedPacketFixture(String prefix, int streamId, int decodedBytes) throws IOException {
+        File fixture = newFixture(prefix);
+        byte[] compressed = lz4Zeros(decodedBytes);
+        try (DataOutputStream out = output(fixture)) {
+            out.write(Aedat4FileOutputStream.VERSION_LINE);
+            out.write(validIoHeader(CompressionType.LZ4, -1L));
+            writePacketHeader(out, streamId, compressed.length);
+            out.write(compressed);
+        }
+        return fixture;
+    }
+
+    private File compressedFileDataTableFixture(String prefix, int decodedBytes) throws IOException {
+        File fixture = newFixture(prefix);
+        byte[] probeHeader = validIoHeader(CompressionType.LZ4, 0L);
+        long tablePosition = Aedat4FileOutputStream.VERSION_LINE.length + probeHeader.length;
+        byte[] header = validIoHeader(CompressionType.LZ4, tablePosition);
+        assertEquals("IOHeader size must remain stable when table position is patched",
+                probeHeader.length, header.length);
+        byte[] compressed = lz4Zeros(decodedBytes);
+        try (DataOutputStream out = output(fixture)) {
+            out.write(Aedat4FileOutputStream.VERSION_LINE);
+            out.write(header);
+            out.write(compressed);
+        }
+        return fixture;
+    }
+
+    private File frameFixture(String prefix, int width, int height, byte format, byte[] pixels)
+            throws IOException {
+        FlatBufferBuilder builder = new FlatBufferBuilder(256);
+        int pixelVector = Frame.createPixelsVector(builder, pixels);
+        int root = Frame.createFrame(builder, 100L, 100L, 101L, 100L, 101L,
+                format, (short) width, (short) height, (short) 0, (short) 0,
+                pixelVector, 1L, (byte) 0);
+        builder.finishSizePrefixed(root, "FRME");
+        byte[] payload = builder.sizedByteArray();
+
+        File fixture = newFixture(prefix);
+        try (DataOutputStream out = output(fixture)) {
+            out.write(Aedat4FileOutputStream.VERSION_LINE);
+            out.write(validIoHeader());
+            writePacketHeader(out, Aedat4FileOutputStream.STREAM_FRAMES, payload.length);
+            out.write(payload);
+        }
+        return fixture;
+    }
+
+    private static byte[] lz4Zeros(int decodedBytes) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        byte[] zeros = new byte[8192];
+        try (LZ4FrameOutputStream compressed = new LZ4FrameOutputStream(bytes)) {
+            int remaining = decodedBytes;
+            while (remaining > 0) {
+                int n = Math.min(remaining, zeros.length);
+                compressed.write(zeros, 0, n);
+                remaining -= n;
+            }
+        }
+        return bytes.toByteArray();
     }
 
     private static byte[] malformedSizePrefixedFlatBuffer(String identifier) {
@@ -251,6 +408,32 @@ public class Aedat4FileInputStreamBoundsTest {
         return null;
     }
 
+    private static IOException expectPlaybackIOException(File fixture) throws Exception {
+        Aedat4FileInputStream opened = null;
+        try {
+            opened = new Aedat4FileInputStream(fixture, null);
+            try {
+                opened.readPacketByNumber(1);
+            } catch (IOException failure) {
+                return failure;
+            } catch (RuntimeException | OutOfMemoryError unchecked) {
+                AssertionError assertion = new AssertionError(
+                        "Expected contextual IOException while reading " + fixture.getName()
+                        + " but playback threw " + unchecked.getClass().getName() + ": "
+                        + unchecked.getMessage());
+                assertion.initCause(unchecked);
+                throw assertion;
+            }
+        } finally {
+            if (opened != null) {
+                opened.close();
+            }
+            deleteIndexCacheQuietly(fixture);
+        }
+        fail("Expected malformed AEDAT-4 playback to fail for " + fixture.getName());
+        return null;
+    }
+
     private static void openOnceIgnoringExpectedFailure(File fixture) throws IOException {
         Aedat4FileInputStream opened = null;
         try {
@@ -297,6 +480,15 @@ public class Aedat4FileInputStreamBoundsTest {
             }
         }
         fail("IOException message must contain one of " + String.join(", ", alternatives) + ": " + message);
+    }
+
+    private static void assertMessageDoesNotContain(IOException failure, String forbidden) {
+        assertNotNull("IOException is required", failure);
+        String message = failure.getMessage();
+        assertTrue("IOException must have a contextual message, got " + failure,
+                message != null && !message.trim().isEmpty());
+        assertFalse("IOException must not contain '" + forbidden + "': " + message,
+                message.toLowerCase(Locale.ROOT).contains(forbidden.toLowerCase(Locale.ROOT)));
     }
 
     private static boolean hasContext(IOException failure, String... requiredTokens) {
