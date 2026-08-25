@@ -446,9 +446,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return readEventForwards(Integer.MAX_VALUE);
     }
 
-    private int zeroTimestampWarningCount = 0;
-    private final int ZERO_TIMESTAMP_MAX_WARNINGS = 10;
-
     /**
      * Reads the next event forward, sets mostRecentTimestamp, returns null if
      * the next timestamp is later than maxTimestamp.
@@ -507,32 +504,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 ts = byteBuffer.getInt();
             }
 
-            if (ts == 0) {
-                if (zeroTimestampWarningCount++ < ZERO_TIMESTAMP_MAX_WARNINGS) {
-                    log.warning("zero timestamp: position=" + position + " ts=" + ts);
-                }
-                if (zeroTimestampWarningCount == ZERO_TIMESTAMP_MAX_WARNINGS) {
-                    log.warning("suppressing further messages about zero timestamps");
-                }
-
-                if (jaer3EnableFlg) {
-                    tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
-                    tmpEventBuffer = jaer3BufferParser.getJaer2EventBuf();
-                    int etypeValue = tmpEventBuffer.getInt();
-                    etype = EventType.values()[etypeValue];
-                    addr = tmpEventBuffer.getInt();
-                    ts = tmpEventBuffer.getInt();
-                    pixelData = tmpEventBuffer.getInt();
-                } else {
-                    if (addressType == Integer.TYPE) {
-                        addr = byteBuffer.getInt();
-                    } else {
-                        addr = (byteBuffer.getShort() & 0xffff); // TODO reads addr as negative number if msb is set
-                    }
-                    ts = byteBuffer.getInt();
-                }
-
-            }
             // for marking sync in a recording using the result of bitmask with input
             if ((addr & timestampResetBitmask) != 0) {
                 log.log(Level.INFO, "found timestamp reset event addr={0} position={1} timstamp={2}", new Object[]{addr, position, ts});
@@ -1136,7 +1107,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         long old = marks.markIn;
         marks.markIn = here;
-        marks.markIn = (marks.markIn / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
         getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, marks.markIn);
         return marks.markIn;
     }
@@ -1167,7 +1137,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @Override
     public boolean toggleMarker() {
         final long EVENT_COUNT_TOLERANCE = 1000000L;
-        long here = (position() / eventSizeBytes) * eventSizeBytes;
+        long here = position();
         boolean added = false;
         Long ceil = marks.otherMarks.ceiling(here), floor = marks.otherMarks.floor(here);
 
