@@ -18,7 +18,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
@@ -33,14 +37,19 @@ public class MjpegHttpServer {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final String BOUNDARY = "jaerframe";
     private static final byte[] CRLF = {'\r', '\n'};
+    private static final int CLIENT_WORKERS = 4;
+    private static final int CLIENT_QUEUE_CAPACITY = 8;
+    private static final long STOP_TIMEOUT_MS = 2000;
 
     private final String bindAddress;
     private final int port;
     private ServerSocket serverSocket;
     private Thread acceptThread;
+    private ThreadPoolExecutor clientExecutor;
     private volatile boolean stop;
     private final AtomicReference<byte[]> latestJpeg = new AtomicReference<>();
     private final AtomicLong jpegSeq = new AtomicLong();
+    private final AtomicLong clientThreadSeq = new AtomicLong();
     private final Object jpegLock = new Object();
     private final CopyOnWriteArrayList<Socket> clients = new CopyOnWriteArrayList<>();
 
@@ -53,13 +62,41 @@ public class MjpegHttpServer {
         if (serverSocket != null && !serverSocket.isClosed()) {
             return;
         }
-        stop = false;
-        serverSocket = new ServerSocket();
-        serverSocket.setReuseAddress(true);
-        serverSocket.bind(new InetSocketAddress(bindAddress, port));
-        acceptThread = new Thread(this::acceptLoop, "OpenCV-MJPEG-accept");
-        acceptThread.setDaemon(true);
-        acceptThread.start();
+        ServerSocket candidateSocket = new ServerSocket();
+        ThreadPoolExecutor candidateExecutor = null;
+        Thread candidateAcceptThread = null;
+        try {
+            candidateSocket.setReuseAddress(true);
+            candidateSocket.bind(new InetSocketAddress(bindAddress, port));
+            candidateExecutor = newClientExecutor();
+            ServerSocket boundSocket = candidateSocket;
+            ThreadPoolExecutor executor = candidateExecutor;
+            candidateAcceptThread = new Thread(
+                    () -> acceptLoop(boundSocket, executor), "OpenCV-MJPEG-accept");
+            candidateAcceptThread.setDaemon(true);
+
+            stop = false;
+            serverSocket = candidateSocket;
+            clientExecutor = candidateExecutor;
+            acceptThread = candidateAcceptThread;
+            candidateAcceptThread.start();
+        } catch (IOException | RuntimeException | Error e) {
+            stop = true;
+            closeQuietly(candidateSocket);
+            if (candidateExecutor != null) {
+                candidateExecutor.shutdownNow();
+            }
+            if (serverSocket == candidateSocket) {
+                serverSocket = null;
+            }
+            if (clientExecutor == candidateExecutor) {
+                clientExecutor = null;
+            }
+            if (acceptThread == candidateAcceptThread) {
+                acceptThread = null;
+            }
+            throw e;
+        }
         log.info("OpenCV MJPEG at " + getStreamUrl());
     }
 
@@ -68,23 +105,31 @@ public class MjpegHttpServer {
         synchronized (jpegLock) {
             jpegLock.notifyAll();
         }
-        for (Socket s : clients) {
-            try {
-                s.close();
-            } catch (IOException ignore) {
-            }
+        ServerSocket socketToClose = serverSocket;
+        Thread threadToJoin = acceptThread;
+        ThreadPoolExecutor executorToStop = clientExecutor;
+        serverSocket = null;
+        acceptThread = null;
+        clientExecutor = null;
+
+        closeQuietly(socketToClose);
+        closeClients();
+        if (executorToStop != null) {
+            executorToStop.shutdownNow();
         }
+        if (threadToJoin != null) {
+            threadToJoin.interrupt();
+        }
+
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(STOP_TIMEOUT_MS);
+        boolean acceptStopped = joinUntil(threadToJoin, deadline);
+        closeClients();
+        boolean clientsStopped = awaitUntil(executorToStop, deadline);
         clients.clear();
-        if (serverSocket != null) {
-            try {
-                serverSocket.close();
-            } catch (IOException ignore) {
-            }
-            serverSocket = null;
-        }
-        if (acceptThread != null) {
-            acceptThread.interrupt();
-            acceptThread = null;
+        if (!acceptStopped || !clientsStopped) {
+            log.log(Level.WARNING,
+                    "MJPEG stop timed out (acceptStopped={0}, clientsStopped={1})",
+                    new Object[]{acceptStopped, clientsStopped});
         }
     }
 
@@ -128,15 +173,31 @@ public class MjpegHttpServer {
         return bind;
     }
 
-    private void acceptLoop() {
-        while (!stop) {
+    private ThreadPoolExecutor newClientExecutor() {
+        return new ThreadPoolExecutor(
+                CLIENT_WORKERS,
+                CLIENT_WORKERS,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(CLIENT_QUEUE_CAPACITY),
+                runnable -> {
+                    Thread thread = new Thread(runnable,
+                            "OpenCV-MJPEG-client-" + clientThreadSeq.incrementAndGet());
+                    thread.setDaemon(true);
+                    return thread;
+                },
+                new ThreadPoolExecutor.AbortPolicy());
+    }
+
+    private void acceptLoop(ServerSocket boundSocket, ThreadPoolExecutor executor) {
+        while (!stop && !boundSocket.isClosed()) {
+            Socket accepted = null;
             try {
-                Socket sock = serverSocket.accept();
-                sock.setTcpNoDelay(true);
-                Thread t = new Thread(() -> handle(sock), "OpenCV-MJPEG-client");
-                t.setDaemon(true);
-                t.start();
+                accepted = boundSocket.accept();
+                accepted.setTcpNoDelay(true);
+                dispatch(executor, accepted);
             } catch (SocketException e) {
+                closeClient(accepted);
                 if (!stop) {
                     log.log(Level.FINE, e.toString(), e);
                 }
@@ -145,12 +206,29 @@ public class MjpegHttpServer {
                 if (!stop) {
                     log.log(Level.WARNING, "MJPEG accept: " + e, e);
                 }
+                closeClient(accepted);
             }
         }
     }
 
+    private void dispatch(ThreadPoolExecutor executor, Socket socket) {
+        if (stop || executor.isShutdown()) {
+            closeClient(socket);
+            return;
+        }
+        clients.add(socket);
+        if (stop || executor.isShutdown()) {
+            closeClient(socket);
+            return;
+        }
+        try {
+            executor.execute(() -> handle(socket));
+        } catch (RejectedExecutionException e) {
+            closeClient(socket);
+        }
+    }
+
     private void handle(Socket sock) {
-        clients.add(sock);
         try {
             sock.setSoTimeout(15000);
             BufferedReader in = new BufferedReader(
@@ -184,11 +262,72 @@ public class MjpegHttpServer {
         } catch (IOException e) {
             log.log(Level.FINE, "MJPEG client: {0}", e.toString());
         } finally {
-            clients.remove(sock);
-            try {
-                sock.close();
-            } catch (IOException ignore) {
+            closeClient(sock);
+        }
+    }
+
+    private void closeClients() {
+        for (Socket socket : clients) {
+            closeClient(socket);
+        }
+    }
+
+    private void closeClient(Socket socket) {
+        if (socket == null) {
+            return;
+        }
+        clients.remove(socket);
+        closeQuietly(socket);
+    }
+
+    private static void closeQuietly(Socket socket) {
+        if (socket == null) {
+            return;
+        }
+        try {
+            socket.close();
+        } catch (IOException ignore) {
+        }
+    }
+
+    private static void closeQuietly(ServerSocket socket) {
+        if (socket == null) {
+            return;
+        }
+        try {
+            socket.close();
+        } catch (IOException ignore) {
+        }
+    }
+
+    private static boolean joinUntil(Thread thread, long deadline) {
+        if (thread == null || thread == Thread.currentThread()) {
+            return true;
+        }
+        try {
+            long remaining = deadline - System.nanoTime();
+            if (remaining > 0) {
+                TimeUnit.NANOSECONDS.timedJoin(thread, remaining);
             }
+            return !thread.isAlive();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return !thread.isAlive();
+        }
+    }
+
+    private static boolean awaitUntil(ThreadPoolExecutor executor, long deadline) {
+        if (executor == null || executor.isTerminated()) {
+            return true;
+        }
+        try {
+            long remaining = deadline - System.nanoTime();
+            return remaining > 0
+                    ? executor.awaitTermination(remaining, TimeUnit.NANOSECONDS)
+                    : executor.isTerminated();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return executor.isTerminated();
         }
     }
 
