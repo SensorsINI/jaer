@@ -69,7 +69,8 @@ Live USB cameras selectable in the AEViewer **AEChip** menu (default list and re
 | **DVS128** | inilabs / SensorsINI | DVS 128×128 | USB 2 (FX2) | `DVS128` | Stable |
 | **EVK4 HD** | [Prophesee](https://www.prophesee.ai/) | Sony IMX636 DVS 1280×720 | USB 3 (Cypress) | `PropheseeIMX636HD` | Stable ([notes](src/prophesee/README.md)); also Metavision `.raw` EVT3 playback |
 | **DELTA01** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3 (FX20/CX3) | `NRVS5KRC1S` | Stable ([notes](src/nrv/README.md)) |
-| **CDAVIS** | SensorsINI / partners | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Experimental |
+| **CDAVIS** | [SensorsINI](https://sensors.ini.ch) / [inivation](https://inivation.com/)) | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Experimental |
+| **SciDVS** | SensorsINI | Sensitive APS+DVS | USB 3 | `SciDVS` | Experimental |
 | **CochleaAMS / CochleaLP** | SensorsINI / inilabs | Silicon cochlea (audio AER) | USB 2/3 | `CochleaAMS1c`, `CochleaLP`, … | Stable (`CochleaAMS1c`); Experimental (`CochleaLP`) |
 | Generic DVS viewers | — | 640×480, 1280×720 | Playback / viz | `DVS640`, `DVS1280x720SD` | Stable |
 
