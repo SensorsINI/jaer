@@ -38,7 +38,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JRadioButtonMenuItem;
 
-import net.sf.jaer.JaerConstants;
+import net.sf.jaer.Welcome;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -173,8 +173,12 @@ public class ChipCanvas implements GLEventListener, Observer {
     // chip fills glCanvas space
     private float ZCLIP = 1;
     private TextRenderer renderer = null;
-    /** Cached first-line release version for welcome overlay. */
-    private static String welcomeReleaseVersion;
+    /**
+     * Welcome overlay lines set by {@link AEViewer#setWelcomeOverlay(String[])}.
+     * {@code null} means use {@link Welcome#linesFor(AEViewer)}; empty means do
+     * not draw (cleared).
+     */
+    private volatile String[] welcomeOverlayLines;
 
     /** USB link overlay after a live camera open (cleared after {@link #USB_LINK_OVERLAY_MS}). */
     private volatile String usbLinkOverlayText;
@@ -801,9 +805,47 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
+     * Sets centered welcome overlay lines. {@code null} restores
+     * {@link Welcome#linesFor(AEViewer)} defaults. An empty array suppresses
+     * drawing (see {@link #clearWelcomeOverlay()}).
+     * Visibility is still gated by WAITING / no-open-hardware in
+     * {@link #drawWelcomeOverlayIfNeeded}.
+     *
+     * @param lines overlay lines, {@code null} for defaults, empty to hide
+     */
+    public void setWelcomeOverlay(String[] lines) {
+        welcomeOverlayLines = lines;
+    }
+
+    /**
+     * Stops drawing the welcome overlay even while WAITING.
+     */
+    public void clearWelcomeOverlay() {
+        welcomeOverlayLines = new String[0];
+    }
+
+    /**
+     * Lines that will be drawn (defaults from {@link Welcome} if none were set).
+     *
+     * @return overlay lines, never {@code null}; empty if cleared
+     */
+    public String[] getWelcomeOverlay() {
+        String[] lines = welcomeOverlayLines;
+        if (lines != null) {
+            return lines;
+        }
+        return Welcome.linesFor(resolveAeViewer());
+    }
+
+    /**
      * Centered welcome text when waiting with no open hardware (blank AEChip view).
+     * Copy comes from {@link #setWelcomeOverlay(String[])} or {@link Welcome}.
      */
     private void drawWelcomeOverlayIfNeeded(final GLAutoDrawable drawable) {
+        String[] lines = welcomeOverlayLines;
+        if (lines != null && lines.length == 0) {
+            return;
+        }
         if (!(chip instanceof AEChip)) {
             return;
         }
@@ -824,16 +866,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (hw != null && hw.isOpen()) {
             return;
         }
-        if (welcomeReleaseVersion == null) {
-            welcomeReleaseVersion = JaerConstants.getReleaseVersion();
+        if (lines == null) {
+            lines = Welcome.linesFor(viewer);
         }
-        String[] lines = {
-            "Welcome to jAER-" + welcomeReleaseVersion,
-            "Plug in a device or use File/Open recorded data file..",
-            "Choose active camera from Interface menu (if you have multiple cameras)",
-            "Get sample data via Help / Sample data",
-            "See Help menu for more information"
-        };
         try {
             GL2 gl = drawable.getGL().getGL2();
             // ~1.5× smaller than initial welcome overlay sizing

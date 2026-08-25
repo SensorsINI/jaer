@@ -119,6 +119,7 @@ import javax.swing.KeyStroke;
 import net.sf.jaer.Description;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.Welcome;
 import net.sf.jaer.JaerUpdaterFrame;
 import net.sf.jaer.JaerUpdaterInstall4j;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -2257,6 +2258,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (chip.getRenderer() != null) {
                 chip.getRenderer().ensurePixmapReadyForDisplay();
             }
+            showWelcomeOverlay();
         }
 
     }
@@ -2638,6 +2640,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(new RememberLastInterfaceAction());
         interfaceMenu.add(rememberSeletedInterfaceMI);
 
+        snapshotInterfaceMenuDevices();
+        showWelcomeOverlay();
     }
 
     /**
@@ -2758,6 +2762,140 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 showActionText(s);
             }
         }
+    }
+
+    /**
+     * Labels of choosable devices currently in the Interface menu (radio items
+     * with a {@link HardwareInterface} client property). Excludes None, Refresh,
+     * Reset, and chooser-dialog factories. Updated at the end of
+     * {@link #buildInterfaceMenu(JMenu, boolean)}.
+     */
+    private volatile List<String> interfaceMenuDeviceLabels = List.of();
+
+    /**
+     * Interface menu this viewer builds (devices, None, Refresh).
+     *
+     * @return the menu, or null before init
+     */
+    public javax.swing.JMenu getInterfaceMenu() {
+        return interfaceMenu;
+    }
+
+    /**
+     * Device labels from the last Interface menu build (same text as the radio
+     * items). Empty when no choosable interface is listed. Safe to call from
+     * the render thread; the list is an immutable snapshot.
+     *
+     * @return never {@code null}
+     * @see #buildInterfaceMenu(JMenu, boolean)
+     */
+    public List<String> getInterfaceMenuDeviceLabels() {
+        List<String> labels = interfaceMenuDeviceLabels;
+        return labels != null ? labels : List.of();
+    }
+
+    /**
+     * Copies choosable Interface-menu item text for {@link Welcome}. Call on
+     * the same thread that just rebuilt the menu.
+     */
+    private void snapshotInterfaceMenuDevices() {
+        List<String> labels = new ArrayList<>();
+        if (interfaceMenu != null) {
+            for (Component c : interfaceMenu.getMenuComponents()) {
+                if (!(c instanceof AbstractButton)) {
+                    continue;
+                }
+                AbstractButton item = (AbstractButton) c;
+                Object hw = item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY);
+                if (hw instanceof HardwareInterface) {
+                    String text = item.getText();
+                    if (text != null && !text.isEmpty()) {
+                        labels.add(text);
+                    }
+                }
+            }
+        }
+        interfaceMenuDeviceLabels = List.copyOf(labels);
+    }
+
+    /**
+     * Chip canvas for this viewer (may be null before {@link #makeCanvas()}).
+     *
+     * @return the live {@link ChipCanvas}, or null
+     */
+    public ChipCanvas getChipCanvas() {
+        if (chipCanvas != null) {
+            return chipCanvas;
+        }
+        if (chip != null) {
+            return chip.getCanvas();
+        }
+        return null;
+    }
+
+    /**
+     * Pushes {@link Welcome#linesFor(AEViewer)} onto the chip canvas. Called
+     * from {@link #makeCanvas()} so the overlay is applied after each canvas
+     * (re)build. The canvas still only paints while play mode is WAITING and
+     * no hardware is open.
+     *
+     * @see ChipCanvas#setWelcomeOverlay(String[])
+     * @see Welcome#linesFor(AEViewer)
+     */
+    public void showWelcomeOverlay() {
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas == null) {
+            return;
+        }
+        canvas.setWelcomeOverlay(Welcome.linesFor(this));
+    }
+
+    /**
+     * Replaces the welcome overlay lines on the chip canvas. Pass {@code null}
+     * to restore {@link Welcome} defaults; pass an empty array to hide the
+     * overlay even while WAITING.
+     *
+     * @param lines overlay lines, or {@code null} for {@link Welcome} defaults
+     * @see ChipCanvas#setWelcomeOverlay(String[])
+     * @see #showWelcomeOverlay()
+     * @see #clearWelcomeOverlay()
+     */
+    public void setWelcomeOverlay(String[] lines) {
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas == null) {
+            return;
+        }
+        canvas.setWelcomeOverlay(lines);
+    }
+
+    /**
+     * Hides the welcome overlay even while WAITING (empty lines on the canvas).
+     *
+     * @see ChipCanvas#clearWelcomeOverlay()
+     * @see #showWelcomeOverlay()
+     */
+    public void clearWelcomeOverlay() {
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas == null) {
+            return;
+        }
+        canvas.clearWelcomeOverlay();
+    }
+
+    /**
+     * Lines currently set on the chip canvas (defaults from {@link Welcome} if
+     * none were pushed yet).
+     *
+     * @return overlay lines, or an empty array if the canvas is missing or the
+     * overlay was cleared
+     * @see ChipCanvas#getWelcomeOverlay()
+     */
+    public String[] getWelcomeOverlay() {
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas == null) {
+            return new String[0];
+        }
+        return canvas.getWelcomeOverlay();
     }
 
     /**
