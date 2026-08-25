@@ -42,7 +42,7 @@ After a rebuild, hashes in `updates.xml` change. Repeat `ant copy-updates-xml`, 
 `VERSION.txt` at the repo root is the single source of truth. It drives:
 
 - install4j application version (synced into `install4j/jaer.install4j`; also `install4jc --release=...`)
-- splash overlay text (full `VERSION.txt`, e.g. 3.2.0)
+- splash overlay text (full `VERSION.txt`, e.g. 3.2.0) on generated 1024 / 256 / 800 PNGs
 - About / `BUILDVERSION.txt` first line on jar build
 
 See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsINI/jaer/tags .
@@ -58,9 +58,9 @@ Prerequisites:
 
     ant release
 
-On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
+On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w`, `images/256h`, `images/800w`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
 
-Splash only: `ant generate-splash`. install4j launcher splash uses the 1024w PNG; keep 256h for Windows shell / wizard icons.
+Splash only: `ant generate-splash`. The install4j launcher splash is the **800×800** PNG (`images/800w`). Keep **256h** for Windows / wizard icons and **1024w** for macOS icns. Details: [`install4j/README.md`](install4j/README.md).
 
 TensorFlow for MLPNoiseFilter (two layers):
 - Ivy (lib/ for compile & ant release tree): tensorflow-core-api + unclassified
@@ -81,8 +81,6 @@ TensorFlow for MLPNoiseFilter (two layers):
   install4j media fileset packs only that OS's slim jar (same filename under `lib/`).
   Newer openpnp 4.9.0-0 is still a fat jar; bytedeco classifiers are a different Java API.
   Standalone: `ant split-opencv-natives`. Slim output is `build/opencv-slim/<platform>/lib/`.
-
-Splash only (no installer build): ant generate-splash
 
 ## Fallback: install4j GUI (config changes / dry run)
 
