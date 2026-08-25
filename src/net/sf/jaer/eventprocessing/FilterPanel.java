@@ -926,7 +926,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     if (hidden) {
                         // hideNonEnabledEnclosedFilters is hidden on every EventFilter; skip log to reduce chatter
                         if (!"hideNonEnabledEnclosedFilters".equals(p.getName())) {
-                            log.log(Level.INFO, "not constructing control for {0} for hidden property {1}", new Object[]{filter.getClass().getSimpleName(), p.getName()});
+                            log.log(Level.FINE, "not constructing control for {0} for hidden property {1}", new Object[]{filter.getClass().getSimpleName(), p.getName()});
                         }
                         continue;
                     }
