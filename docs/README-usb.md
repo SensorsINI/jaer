@@ -109,8 +109,12 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
   not product-string equality.
 - Menu text: `interfaceMenuLabel` / `UsbIds.unopenedLabel`. Do not call
   `getStringDescriptors()` unless `isOpen()`.
-- **None** closes asynchronously: `closeHardwareInterfaceWithTimeout` (3 s,
-  thread `jaer-hw-close`).
+- **None** closes asynchronously: `closeHardwareInterfaceWithTimeout` (3 s
+  watcher, thread `jaer-hw-close`).
+- Selection sets `hardwareSwitchInProgress` until bind + `WAITING`. ViewLoop
+  must not `openAEMonitor` while the previous HI is nulled and the next chip
+  is still being constructed. `interruptViewloop` runs **after** that flag
+  clears, and open/close waits ignore it (do not unbind a 1 ms Davis open).
 - Selection binds on the EDT (`ensureChipCompatibleWithLiveDevice`). SciDVS FPGA
   probe is **not** on the EDT.
 - Several plugged cameras: no auto-bind (`openHardwareIfNonambiguous` requires a
@@ -147,6 +151,20 @@ FX3 `close()` must stop the AEReader and `setInEndpointEnabled(false)` **while
 made `setEventAcquisitionEnabled(false)` a no-op; leftover bulk URBs then hung
 the next open (None → Davis). `isOpen()` is not synchronized (`volatile isOpened`)
 so EDT paint does not wait on a hung USB monitor.
+
+If the AEReader join times out, **do not** `LibUsb.releaseInterface` /
+`LibUsb.close`: that crashed the JVM (`hs_err_pid34924`, `ntdll` AV on
+`jaer-hw-close` with two `AEReaderThread`s still in native). Abandon the Java
+handle. `CypressFX3-USB-recover` must not start a second `close()` from inside
+the synchronized closer.
+
+ViewLoop `openAEMonitor` **joins** the previous `jaer-hw-close` (20 s,
+`HARDWARE_CLOSE_JOIN_MS`) before starting the next camera. Prophesee ISSD
+stop/destroy often exceeds 3 s; a 3 s join then opened Davis while EVK4 close
+was still in Treuzell, and `interruptViewloop` unbound the Davis wrapper.
+`interruptViewloop` during that join or the following `open()` wait is ignored
+unless ViewLoop is stopping. Interface switch must not open Prophesee/Davis
+while the previous close is still in native USB.
 
 FX2 libusb `close()` already stops acquisition before `isOpened = false`.
 
@@ -191,11 +209,11 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
 
 - Skip vendor `VR_DATA_CLEANUP` (0xC6) on open: native `controlTransfer` did not
   return (timeout unused).
-- Skip 8-byte SPI **IN** (`spiConfigReceive` / req 0xBF): hangs like DAVIS SPI.
-  Size/orientation default to **640×480**, no flip.
-- Firmware 10 SPI **OUT** (`spiConfigSend` / `sendNextGenDefaultConfig`, e.g.
-  `DVS_FLATTEN`) can hang the same way. The 8 s abort unbinds; native USB may
-  remain stuck until process exit.
+- Skip 8-byte SPI **IN** and non-run **OUT** (`spiConfigReceive` / `spiConfigSend`,
+  req 0xBF): size/orientation and DVS_FLATTEN hang on WinUSB. Size defaults to
+  **640×480**. After USB IN is queued, send **8-byte** `DVS_RUN` only (firmware
+  10 stalls 4-byte `wLength` with `LIBUSB_ERROR_PIPE`; jAER 8:58:38). Do not
+  spawn+join that send while holding the CypressFX3 monitor.
 - Classic FX3 DVXplorer (types 1–3) still uses SPI IN/OUT and USB reset on close/open.
 
 ### Prophesee EVK4 HD — VID:PID `04b4:00f5`

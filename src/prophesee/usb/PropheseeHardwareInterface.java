@@ -612,12 +612,23 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                 return;
             }
             closing = true;
-            try {
-                setEventAcquisitionEnabled(false);
-            } catch (HardwareInterfaceException e) {
-                log.warning("Error disabling event acquisition on close: " + e.getMessage());
+            boolean readerDead = true;
+            if (aeReader != null) {
+                stopSensorStreaming();
+                aeReader.prepareForStop();
+                readerDead = aeReader.finishStop();
             }
+            eventAcquisitionEnabled = false;
             sensorStreaming = false;
+            if (UsbAsyncBulkReaderLifecycle.abandonNativeHandle(readerDead, log, "Prophesee")) {
+                deviceHandle = null;
+                deviceDescriptor = null;
+                deviceInitialized = false;
+                aePacketRawPool.reset();
+                isOpened = false;
+                openInProgress = false;
+                return;
+            }
             if (deviceHandle != null) {
                 Imx636Init.shutdown(deviceHandle);
             }

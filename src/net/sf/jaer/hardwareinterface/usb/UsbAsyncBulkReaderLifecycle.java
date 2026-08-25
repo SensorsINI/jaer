@@ -379,6 +379,23 @@ public final class UsbAsyncBulkReaderLifecycle {
         return true;
     }
 
+    /**
+     * {@code LibUsb.close} / {@code releaseInterface} with a live
+     * {@code USBTransferThread} in native libusb crashed the JVM
+     * ({@code hs_err_pid34924}: {@code EXCEPTION_ACCESS_VIOLATION} in
+     * {@code ntdll} from {@code LibUsb.close} on {@code jaer-hw-close}).
+     *
+     * @return {@code true} when native close must be skipped
+     */
+    public static boolean abandonNativeHandle(boolean readerStopped, Logger log, String label) {
+        if (readerStopped) {
+            return false;
+        }
+        log.warning(label
+                + ": AEReader still in native LibUsb; abandoning USB handle — do not LibUsb.close (hs_err pid34924)");
+        return true;
+    }
+
     public void awaitIdle(long timeoutMs) throws InterruptedException, TimeoutException {
         final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Math.max(1L, timeoutMs));
         while (true) {

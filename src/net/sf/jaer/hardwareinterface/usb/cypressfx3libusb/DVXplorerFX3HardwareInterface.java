@@ -383,6 +383,15 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         // Logic config runs on jaer-send-biases after this method returns.
 	}
 
+    /**
+     * Firmware 10 rejects 4-byte {@code VR_FPGA_CONFIG} ({@code LIBUSB_ERROR_PIPE},
+     * jAER 8:58:38). 8-byte is required. Only {@code DVS_RUN} is sent; DVS_FLATTEN
+     * and size IN still hang on WinUSB.
+     */
+    private static boolean isNextGenStreamingParam(final short moduleAddr, final short paramAddr) {
+        return moduleAddr == CypressFX3.FPGA_DVS && paramAddr == DVXplorer.DVX_DVS_RUN;
+    }
+
     @Override
     public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, int param)
             throws HardwareInterfaceException {
@@ -390,23 +399,37 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             super.spiConfigSend(moduleAddr, paramAddr, param);
             return;
         }
+        if (isNextGenStreamingParam(moduleAddr, paramAddr)) {
+            sendNextGenDvsRun(moduleAddr, paramAddr, param);
+            return;
+        }
+        // Firmware 10 CX3: 8-byte SPI OUT hangs in LibUsb.controlTransfer the
+        // same way SPI IN does (jAER 7:42:25 open, timeout 8 s on DVS_FLATTEN
+        // in sendNextGenDefaultConfig). Leave those device firmware defaults.
+        log.fine(String.format(
+                "skipping SPI OUT on Mini/Micro firmware %d module=0x%x param=0x%x %s",
+                getFirmwareVersion(), moduleAddr, paramAddr, UsbLog.t()));
+    }
+
+    /** Big-endian uint64 payload; firmware 10 stalls 4-byte wLength. */
+    private void sendNextGenDvsRun(final short moduleAddr, final short paramAddr, int param)
+            throws HardwareInterfaceException {
         param = adjustHWParam(moduleAddr, paramAddr, param);
         final byte[] configBytes = new byte[8];
         final long p = param & 0xFFFFFFFFL;
-        configBytes[0] = (byte) ((p >>> 56) & 0xFF);
-        configBytes[1] = (byte) ((p >>> 48) & 0xFF);
-        configBytes[2] = (byte) ((p >>> 40) & 0xFF);
-        configBytes[3] = (byte) ((p >>> 32) & 0xFF);
-        configBytes[4] = (byte) ((p >>> 24) & 0xFF);
-        configBytes[5] = (byte) ((p >>> 16) & 0xFF);
-        configBytes[6] = (byte) ((p >>> 8) & 0xFF);
-        configBytes[7] = (byte) (p & 0xFF);
-        final ByteBuffer dataBuffer = org.usb4java.BufferUtils.allocateByteBuffer(8);
-        dataBuffer.put(configBytes);
-        dataBuffer.rewind();
-        sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, dataBuffer);
-        if (getChip() != null) {
-            getChip().getSupport().firePropertyChange(Chip.EVENT_HARDWARE_CHANGE, false, true);
+        for (int i = 0; i < 8; i++) {
+            configBytes[i] = (byte) ((p >>> ((7 - i) * 8)) & 0xFF);
+        }
+        log.fine(String.format(
+                "Mini/Micro 8-byte SPI OUT firmware %d module=0x%x param=0x%x value=%d %s",
+                getFirmwareVersion(), moduleAddr, paramAddr, param, UsbLog.t()));
+        try {
+            sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
+        } catch (HardwareInterfaceException e) {
+            if (deviceHandle != null) {
+                LibUsb.clearHalt(deviceHandle, (byte) 0);
+            }
+            throw e;
         }
     }
 
@@ -512,18 +535,19 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         getAeReader().startThread();
         if (isNextGenFirmware() && getChip() instanceof DVXplorer chip) {
             startCx3ImuTransfers();
-            if (debug) {
-                CypressFX3.log.info("Mini/Micro: USB IN queued, sending DVS_RUN");
-            }
+            // Do not spawn+join here: setEventAcquisitionEnabled holds this
+            // monitor, so the worker cannot enter spiConfigSend (jAER 8:58:36
+            // 2 s "native USB" wait was that deadlock; 4-byte then PIPE).
+            CypressFX3.log.info("Mini/Micro: USB IN queued, sending DVS_RUN (8-byte SPI)");
             chip.dvxDataStart();
         }
         HardwareInterfaceException.clearException();
     }
 
     @Override
-    public void stopAEReader() {
+    public boolean stopAEReader() {
         stopCx3ImuTransfers();
-        super.stopAEReader();
+        return super.stopAEReader();
     }
 
     /**

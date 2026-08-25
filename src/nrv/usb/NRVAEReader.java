@@ -165,13 +165,13 @@ public class NRVAEReader {
         }
     }
 
-    public void stopThread() {
+    public boolean stopThread() {
         bufferLifecycle.discardPendingRestart();
         bufferLifecycle.markQuiescing();
         readerActive = false;
         if (usbTransfer == null) {
             bufferLifecycle.markStopped();
-            return;
+            return true;
         }
         log.info("Stopping NRV AEReader");
         final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
@@ -180,11 +180,12 @@ public class NRVAEReader {
             bufferLifecycle.markFailed();
             monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
                     "NRV AEReader did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms"));
-            return;
+            return false;
         }
         usbTransfer = null;
         bufferLifecycle.markStopped();
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
+        return true;
     }
 
     public void resetTimestamps() {
