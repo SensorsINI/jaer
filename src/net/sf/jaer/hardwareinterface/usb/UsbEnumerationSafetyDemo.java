@@ -96,6 +96,11 @@ public final class UsbEnumerationSafetyDemo {
                 "Davis / SciDVS chooser runs on the EDT during Interface selection");
         require(action.contains("bindLiveHardwareIfCompatible(bind,"),
                 "selected interface is bound on the EDT so ViewLoop can go LIVE");
+        require(action.indexOf("hardwareSwitchInProgress = false")
+                < action.indexOf("interruptViewloop();"),
+                "interruptViewloop runs after switch flag clears, not during bind");
+        require(action.contains("HARDWARE_CLOSE_JOIN_MS"),
+                "Prophesee ISSD close uses the 20 s join, not the 3 s watcher");
         require(action.contains("requestOpenAbort()")
                 || action.contains("isOpenInProgress()"),
                 "Interface switch aborts an in-progress Prophesee open (not only isOpen)");
@@ -138,6 +143,19 @@ public final class UsbEnumerationSafetyDemo {
                 "firmware 10+ must not LibUsb SPI IN (native hang / UI freeze)");
         require(!spiIn.contains("sendVendorRequestIN("),
                 "next-gen spiConfigReceive must not issue 8-byte vendor IN");
+        String spiOut = methodBody(
+                Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                        "cypressfx3libusb", "DVXplorerFX3HardwareInterface.java"),
+                "private static boolean isNextGenStreamingParam",
+                "public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr)");
+        require(spiOut.contains("skipping SPI OUT on Mini/Micro firmware"),
+                "firmware 10+ must not 8-byte SPI OUT for DVS_FLATTEN (hung open 8 s)");
+        require(spiOut.contains("sendNextGenDvsRun("),
+                "Mini/Micro DVS_RUN uses 8-byte SPI (4-byte stalled PIPE 8:58:38)");
+        require(spiOut.contains("new byte[8]"),
+                "firmware 10 DVS_RUN payload is 8 bytes");
+        require(!spiOut.contains("Mini/Micro 4-byte SPI OUT"),
+                "firmware 10 DVS_RUN must not use 4-byte wLength");
     }
 
     /**
@@ -180,6 +198,28 @@ public final class UsbEnumerationSafetyDemo {
                 "close timeout join is on a watcher, not the menu click");
         require(asyncClose.contains("\"jaer-hw-close-watch\""),
                 "EDT does not closer.join during None");
+        require(asyncClose.contains("hardwareCloseThread = closer"),
+                "closer is stored so the next open can join it");
+        require(Files.readString(viewer, StandardCharsets.UTF_8).contains("awaitPendingHardwareClose()"),
+                "ViewLoop waits for previous jaer-hw-close before aemon.open");
+        String awaitClose = methodBody(viewer,
+                "private void awaitPendingHardwareClose() {",
+                "private Thread closeHardwareInterfaceWithTimeout(");
+        require(awaitClose.contains("HARDWARE_CLOSE_JOIN_MS"),
+                "ViewLoop joins previous close up to 20 s (Prophesee ISSD exceeds 3 s)");
+        require(awaitClose.contains("interrupt during previous close wait; still waiting"),
+                "interruptViewloop must not abort the previous-close join");
+        require(!awaitClose.contains("unbindAbandonedHardware("),
+                "close-wait interrupt must not unbind the next camera");
+        String openWait = methodBody(viewer,
+                "if (openDone.await(100, TimeUnit.MILLISECONDS)) {",
+                "if (abandoned) {");
+        require(openWait.contains("interrupt while waiting for open of"),
+                "open wait logs Interface-switch interrupt");
+        require(openWait.contains("; continuing"),
+                "open wait continues after interruptViewloop instead of unbind");
+        require(openWait.contains("ViewLoop stopping"),
+                "only ViewLoop stop aborts open wait on interrupt");
 
         String stopAcq = methodBody(fx3,
                 "public synchronized void setEventAcquisitionEnabled(final boolean enable) throws HardwareInterfaceException {",
@@ -191,13 +231,19 @@ public final class UsbEnumerationSafetyDemo {
 
         String fx3Close = methodBody(fx3,
                 "public void close() {",
-                "public void stopAEReader()");
-        require(fx3Close.indexOf("stopAEReader()") < fx3Close.indexOf("isOpened = false"),
+                "public boolean stopAEReader()");
+        require(fx3Close.contains("readerToStop = aeReader"),
+                "FX3 close captures one reader generation with the native handle");
+        require(fx3Close.indexOf("stopAEReader(readerToStop)") < fx3Close.indexOf("isOpened = false"),
                 "FX3 close stops AEReader while still open (None then Davis hung)");
         require(fx3Close.indexOf("setInEndpointEnabled(false)") < fx3Close.indexOf("isOpened = false"),
                 "FX3 close disables IN endpoint before clearing isOpened");
         require(fx3Close.indexOf("isOpened = false") < fx3Close.indexOf("LibUsb.close("),
                 "handle is released only after the AEReader is stopped");
+        require(fx3Close.contains("abandonNativeHandle(readerDead"),
+                "FX3 must not LibUsb.close while AEReader is still in native USB");
+        require(Files.readString(fx3, StandardCharsets.UTF_8).contains("not starting USB-recover"),
+                "failed AEReader join during close must not start a second LibUsb.close");
 
         String isOpen = methodBody(fx3,
                 "public boolean isOpen() {",

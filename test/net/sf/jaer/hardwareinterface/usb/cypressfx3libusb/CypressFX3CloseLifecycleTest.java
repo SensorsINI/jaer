@@ -143,6 +143,22 @@ public class CypressFX3CloseLifecycleTest {
             monitor.close();
             assertTrue("fixture must retain the simulated nonterminal reader generation",
                     monitor.readerGeneration.isAlive());
+            assertEquals("native reset must be skipped while the reader generation is nonterminal; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("native-reset"));
+            assertEquals("native interface release must be skipped while the reader generation is nonterminal; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("native-release"));
+            assertEquals("native handle close must be skipped while the reader generation is nonterminal; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("native-close"));
+            assertEquals("endpoint disable must be skipped while the reader generation is nonterminal; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("endpoint-disabled"));
+
+            boolean clearRejected = false;
+            try {
+                monitor.setAeReader(null);
+            } catch (final IllegalStateException expected) {
+                clearRejected = true;
+            }
+            assertTrue("a retained nonterminal reader generation must not be cleared", clearRejected);
 
             try {
                 monitor.open();
@@ -152,6 +168,27 @@ public class CypressFX3CloseLifecycleTest {
 
             assertEquals("LibUsb.open must not run while the prior reader generation is nonterminal; events="
                     + NativeCalls.snapshot(), 0, NativeCalls.count("native-open"));
+        } finally {
+            monitor.forceReaderTermination();
+        }
+    }
+
+    @Test
+    public void nativeHandleIsAbandonedWhenReaderStopThrows() throws Exception {
+        final TestMonitor monitor = new TestMonitor(ReaderStop.THROWS_NONTERMINAL);
+        try {
+            monitor.markOpenWithFakeHandle();
+
+            monitor.close();
+
+            assertTrue("fixture must retain the reader after a stop failure",
+                    monitor.readerGeneration.isAlive());
+            assertEquals("native reset must be skipped after reader stop failure; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("native-reset"));
+            assertEquals("native interface release must be skipped after reader stop failure; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("native-release"));
+            assertEquals("native handle close must be skipped after reader stop failure; events="
+                    + NativeCalls.snapshot(), 0, NativeCalls.count("native-close"));
         } finally {
             monitor.forceReaderTermination();
         }
@@ -175,7 +212,8 @@ public class CypressFX3CloseLifecycleTest {
 
     private enum ReaderStop {
         TERMINATES,
-        REMAINS_NONTERMINAL
+        REMAINS_NONTERMINAL,
+        THROWS_NONTERMINAL
     }
 
     private static final class TestMonitor extends CypressFX3 {
@@ -204,8 +242,8 @@ public class CypressFX3CloseLifecycleTest {
 
             setAeReader(new AEReader(this) {
                 @Override
-                public void stopThread() {
-                    stopReaderGeneration();
+                public boolean stopThread() {
+                    return stopReaderGeneration();
                 }
             });
         }
@@ -224,11 +262,15 @@ public class CypressFX3CloseLifecycleTest {
             inEndpointEnabled = false;
         }
 
-        private void stopReaderGeneration() {
+        private boolean stopReaderGeneration() {
             NativeCalls.record("reader-stop-requested");
             if (readerStop == ReaderStop.REMAINS_NONTERMINAL) {
                 NativeCalls.record("reader-nonterminal");
-                throw new IllegalStateException("simulated reader join timeout");
+                return false;
+            }
+            if (readerStop == ReaderStop.THROWS_NONTERMINAL) {
+                NativeCalls.record("reader-stop-failed");
+                throw new IllegalStateException("simulated reader stop failure");
             }
 
             readerGeneration.interrupt();
@@ -242,6 +284,7 @@ public class CypressFX3CloseLifecycleTest {
                 throw new IllegalStateException("fake reader did not become terminal");
             }
             NativeCalls.record("reader-terminal");
+            return true;
         }
 
         void forceReaderTermination() throws InterruptedException {

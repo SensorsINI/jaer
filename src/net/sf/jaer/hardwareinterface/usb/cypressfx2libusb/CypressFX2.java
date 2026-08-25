@@ -725,24 +725,32 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     synchronized public void close() {
         try {
             if (isOpen()) {
+                boolean readerDead = true;
                 try {
-                    setEventAcquisitionEnabled(false);
-
-                    if (asyncStatusThread != null) {
-                        asyncStatusThread.stopThread();
+                    if (getAeReader() != null) {
+                        readerDead = stopAEReader();
+                    }
+                    if (readerDead) {
+                        setInEndpointEnabled(false);
+                        if (asyncStatusThread != null) {
+                            asyncStatusThread.stopThread();
+                        }
+                        try {
+                            LibUsb.releaseInterface(deviceHandle, 0);
+                        } catch (final IllegalStateException e) {
+                            CypressFX2.log.fine("close(): releaseInterface: " + e.getMessage());
+                        }
+                        discardLibUsbHandle();
+                    } else {
+                        UsbAsyncBulkReaderLifecycle.abandonNativeHandle(false, log, "CypressFX2");
+                        deviceHandle = null;
+                        deviceDescriptor = null;
                     }
                 } catch (final HardwareInterfaceException e) {
                     e.printStackTrace();
                 }
-
-                try {
-                    LibUsb.releaseInterface(deviceHandle, 0);
-                } catch (final IllegalStateException e) {
-                    CypressFX2.log.fine("close(): releaseInterface: " + e.getMessage());
-                }
             }
         } finally {
-            discardLibUsbHandle();
             inEndpointEnabled = false;
             isOpened = false;
         }
@@ -787,16 +795,20 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     // not really necessary to stop this thread, i believe, because close will
     // unbind already according to usbio docs
-    public void stopAEReader() {
+    /**
+     * @return {@code false} if {@code USBTransferThread} is still in native
+     * libusb after the join timeout
+     */
+    public boolean stopAEReader() {
         final AEReader reader = getAeReader();
 
         if (reader != null) {
-            reader.stopThread();
-
+            final boolean stopped = reader.stopThread();
             setAeReader(null);
-        } else {
-            CypressFX2.log.warning("null reader, nothing to stop");
+            return stopped;
         }
+        CypressFX2.log.warning("null reader, nothing to stop");
+        return true;
     }
 
     /**
@@ -1090,26 +1102,31 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             getSupport().firePropertyChange("readerStarted", false, true);
         }
 
-        public void stopThread() {
+        public boolean stopThread() {
             bufferLifecycle.discardPendingRestart();
             bufferLifecycle.markQuiescing();
             readerActive = false;
             if (usbTransfer == null) {
                 bufferLifecycle.markStopped();
-                return;
+                return true;
             }
             final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
                     usbTransfer, UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS, CypressFX2.log, "CypressFX2 AEReader");
             if (!stopped) {
                 bufferLifecycle.markFailed();
-                monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
-                        "CypressFX2 AEReader did not stop within "
-                                + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
-                return;
+                if (!Thread.holdsLock(monitor)) {
+                    monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                            "CypressFX2 AEReader did not stop within "
+                                    + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
+                } else {
+                    CypressFX2.log.warning("CypressFX2 AEReader join timed out during close; not starting USB-recover");
+                }
+                return false;
             }
             usbTransfer = null;
             bufferLifecycle.markStopped();
             getSupport().firePropertyChange("readerStopped", false, true);
+            return true;
         }
 
         boolean isBufferReconfigPending() {
@@ -2079,6 +2096,10 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         CypressFX2.log.warning("CypressFX2 USB reader session failed (" + cause
                 + "); closing device instead of overlapping transfers");
         if (!isOpened) {
+            return;
+        }
+        if (Thread.holdsLock(this)) {
+            CypressFX2.log.warning("CypressFX2 already in synchronized close(); skipping USB-recover");
             return;
         }
         new Thread(() -> {

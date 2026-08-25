@@ -690,6 +690,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     @Override
     public void close() {
         final DeviceHandle handleToClose;
+        final AEReader readerToStop;
         synchronized (lifecycleLock) {
             if (closeInProgress) {
                 log.info("close(): close already in progress");
@@ -701,45 +702,71 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             }
             closeInProgress = true;
             handleToClose = deviceHandle;
+            readerToStop = aeReader;
         }
 
         log.info("Closing " + getClass().getSimpleName());
+        boolean readerDead = true;
+        boolean closeCapturedHandle = false;
         try {
             // Keep the connection logically open until the current reader has been
             // stopped. Do not hold this monitor or lifecycleLock while joining it:
             // transfer completion and shutdown callbacks may call back into us.
             try {
-                if (getAeReader() != null) {
+                if (readerToStop != null) {
                     log.info("stopping AEReader");
-                    stopAEReader();
+                    readerDead = stopAEReader(readerToStop);
                 }
             } catch (final RuntimeException e) {
+                readerDead = false;
                 log.warning(String.format("Error stopping event acquisition: %s", e.toString()));
             }
 
-            try {
-                if (inEndpointEnabled) {
-                    setInEndpointEnabled(false);
+            if (readerDead) {
+                try {
+                    if (inEndpointEnabled) {
+                        setInEndpointEnabled(false);
+                    }
+                } catch (final HardwareInterfaceException | RuntimeException e) {
+                    log.warning(String.format("Error disabling event endpoint: %s", e.toString()));
+                } finally {
+                    inEndpointEnabled = false;
                 }
-            } catch (final HardwareInterfaceException | RuntimeException e) {
-                log.warning(String.format("Error disabling event endpoint: %s", e.toString()));
-            } finally {
+
+                if (asyncStatusThread != null) {
+                    try {
+                        asyncStatusThread.stopThread();
+                    } catch (final RuntimeException e) {
+                        log.warning(String.format("Error stopping asynchronous status reader: %s", e.toString()));
+                    }
+                }
+            } else {
+                // The reader may still own native transfers. Record logical closure,
+                // but make no further USB calls on this handle.
                 inEndpointEnabled = false;
             }
 
-            if (asyncStatusThread != null) {
-                try {
-                    asyncStatusThread.stopThread();
-                } catch (final RuntimeException e) {
-                    log.warning(String.format("Error stopping asynchronous status reader: %s", e.toString()));
-                }
-            }
             synchronized (lifecycleLock) {
                 isOpened = false;
             }
 
             if (handleToClose != null) {
-                if (shouldResetUsbDevice()) {
+                // Fail closed if the abandonment decision itself fails. Native
+                // teardown is safe only after terminal reader proof.
+                boolean abandoned = true;
+                try {
+                    abandoned = UsbAsyncBulkReaderLifecycle.abandonNativeHandle(readerDead, log, "CypressFX3");
+                } catch (final RuntimeException e) {
+                    log.warning(String.format("Error checking native handle ownership: %s", e.toString()));
+                }
+
+                if (readerDead && !abandoned) {
+                    // Set before reset/release so either failure still reaches the
+                    // single safe LibUsb.close in finally.
+                    closeCapturedHandle = true;
+                }
+
+                if (closeCapturedHandle && shouldResetUsbDevice()) {
                     try {
                         log.info("Doing USB reset on device before releasing it");
                         final int status = LibUsb.resetDevice(handleToClose);
@@ -751,22 +778,24 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     }
                 }
 
-                try {
-                    log.info("Releasing device handle");
-                    final int status = LibUsb.releaseInterface(handleToClose, 0);
-                    if (status != LibUsb.SUCCESS) {
-                        log.warning("Failed to release interface: " + LibUsb.errorName(status));
+                if (closeCapturedHandle) {
+                    try {
+                        log.info("Releasing device handle");
+                        final int status = LibUsb.releaseInterface(handleToClose, 0);
+                        if (status != LibUsb.SUCCESS) {
+                            log.warning("Failed to release interface: " + LibUsb.errorName(status));
+                        }
+                    } catch (final RuntimeException e) {
+                        log.warning(String.format("Error releasing interface: %s", e.toString()));
                     }
-                } catch (final RuntimeException e) {
-                    log.warning(String.format("Error releasing interface: %s", e.toString()));
                 }
             }
         } catch (final RuntimeException e) {
             log.warning(String.format("Unexpected error while closing device: %s", e.toString()));
         } finally {
-            // The native handle has exactly one owner for this close generation.
-            // It must be closed even when reset or interface release fails.
-            if (handleToClose != null) {
+            // The native handle has exactly one owner for this close generation,
+            // but must be abandoned if a transfer thread may still be inside USB.
+            if (handleToClose != null && closeCapturedHandle) {
                 try {
                     LibUsb.close(handleToClose);
                 } catch (final RuntimeException e) {
@@ -787,19 +816,30 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     // not really necessary to stop this thread, i believe, because close will
     // unbind already according to usbio docs
-    public void stopAEReader() {
-        final AEReader reader = getAeReader();
+    /**
+     * @return {@code false} if {@code USBTransferThread} is still in native
+     * libusb after the join timeout
+     */
+    public boolean stopAEReader() {
+        final AEReader reader;
+        synchronized (lifecycleLock) {
+            reader = aeReader;
+        }
+        return stopAEReader(reader);
+    }
 
+    private boolean stopAEReader(final AEReader reader) {
         if (reader != null) {
             log.info("Stopping thread " + reader);
             RuntimeException stopFailure = null;
+            boolean stopped = false;
             try {
-                reader.stopThread();
+                stopped = reader.stopThread();
             } catch (final RuntimeException e) {
                 stopFailure = e;
             }
 
-            final boolean terminal = stopFailure == null && reader.isTerminal();
+            final boolean terminal = stopFailure == null && stopped && reader.isTerminal();
             synchronized (lifecycleLock) {
                 if (terminal) {
                     if (aeReader == reader) {
@@ -820,9 +860,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             if (!terminal) {
                 CypressFX3.log.warning("AEReader stop returned without proving the reader generation terminal");
             }
-        } else {
-            CypressFX3.log.warning("null reader, nothing to stop");
+            return terminal;
         }
+        CypressFX3.log.warning("null reader, nothing to stop");
+        return true;
     }
 
     private void clearNonterminalReaderGenerationLocked() {
@@ -1243,28 +1284,38 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             getSupport().firePropertyChange("readerStarted", false, true);
         }
 
-        public void stopThread() {
+        /**
+         * @return {@code false} if the transfer thread is still in native USB
+         */
+        public boolean stopThread() {
             bufferLifecycle.discardPendingRestart();
             bufferLifecycle.markQuiescing();
             readerActive = false;
             if (usbTransfer == null) {
                 bufferLifecycle.markStopped();
-                return;
+                return true;
             }
             log.info("Interrupting USBTransferThread " + usbTransfer);
             final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
                     usbTransfer, UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS, CypressFX3.log, "CypressFX3 AEReader");
             if (!stopped) {
                 bufferLifecycle.markFailed();
-                monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
-                        "CypressFX3 AEReader did not stop within "
-                                + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
-                return;
+                // Do not start CypressFX3-USB-recover while close owns this
+                // generation; that path could close a live native reader.
+                if (!closeInProgress && !Thread.holdsLock(monitor)) {
+                    monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                            "CypressFX3 AEReader did not stop within "
+                                    + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
+                } else {
+                    log.warning("CypressFX3 AEReader join timed out during close; not starting USB-recover");
+                }
+                return false;
             }
             usbTransfer = null;
             bufferLifecycle.markStopped();
             getSupport().firePropertyChange("readerStopped", false, true);
             log.info("USBTransferThread join()'ed");
+            return true;
         }
 
         private boolean isTerminal() {
@@ -2289,6 +2340,16 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (!isOpened) {
             return;
         }
+        synchronized (lifecycleLock) {
+            if (closeInProgress) {
+                CypressFX3.log.warning("CypressFX3 close already owns this generation; skipping USB-recover");
+                return;
+            }
+        }
+        if (Thread.holdsLock(this)) {
+            CypressFX3.log.warning("CypressFX3 already in synchronized close(); skipping USB-recover");
+            return;
+        }
         new Thread(() -> {
             try {
                 close();
@@ -2331,6 +2392,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 if (hasNonterminalReaderGenerationLocked()) {
                     throw new IllegalStateException(
                             "Cannot install AEReader before the prior reader generation terminates");
+                }
+            } else if (this.aeReader != null) {
+                if (closeInProgress) {
+                    throw new IllegalStateException("Cannot clear AEReader while device close is in progress");
+                }
+                if (this.aeReader == nonterminalReaderGeneration && hasNonterminalReaderGenerationLocked()) {
+                    throw new IllegalStateException("Cannot clear a nonterminal AEReader generation");
                 }
             }
             this.aeReader = aeReader;

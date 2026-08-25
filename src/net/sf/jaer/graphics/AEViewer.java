@@ -552,6 +552,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Max wait for {@link HardwareInterface#close()} from UI actions (NRV LibUsb can hang). */
     private static final long HARDWARE_CLOSE_TIMEOUT_MS = 3000L;
     /**
+     * ViewLoop join of {@code jaer-hw-close} before the next {@code aemon.open()}.
+     * Prophesee ISSD stop/destroy is many Treuzell writes and often exceeds
+     * {@link #HARDWARE_CLOSE_TIMEOUT_MS} (EVK4 → Davis 8:12:14).
+     */
+    private static final long HARDWARE_CLOSE_JOIN_MS = 20_000L;
+    /** In-flight {@code jaer-hw-close}; next {@link #openAEMonitor()} joins this first. */
+    private volatile Thread hardwareCloseThread;
+    /**
+     * Interface menu is detaching/binding a camera. ViewLoop must not call
+     * {@link #openAEMonitor()} until bind finishes; {@link #interruptViewloop()}
+     * after that must not unbind the camera that is still opening.
+     */
+    private volatile boolean hardwareSwitchInProgress;
+    /**
      * Max wait for worker-thread {@code aemon.open()} on FX3/Davis (claim is fast;
      * biases are sent off-thread).
      */
@@ -2559,40 +2573,52 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 && UsbIds.samePhysicalDevice(hw, currentHw)) {
                             return;
                         }
-                        showOpeningCameraOverlay(hw);
-                        // Allow auto/manual reopen after Interface→None.
-                        nullInterface = false;
-                        final HardwareInterface previous = currentHw;
-                        aemon = null;
-                        // Detach first; close previous async so EDT does not block on USB.
-                        chip.setHardwareInterface(null);
-                        if (previous != null) {
-                            // Mid-open Prophesee isOpen()==false but still holds LibUsb — always abort/close.
-                            if (previous instanceof PropheseeHardwareInterface) {
-                                ((PropheseeHardwareInterface) previous).requestOpenAbort();
+                        // Block ViewLoop open until bind finishes. LIVE + nulled HI
+                        // otherwise starts the next camera during chip construct and
+                        // Prophesee ISSD shutdown (EVK4 → Davis 8:12:14).
+                        hardwareSwitchInProgress = true;
+                        try {
+                            showOpeningCameraOverlay(hw);
+                            // Allow auto/manual reopen after Interface→None.
+                            nullInterface = false;
+                            final HardwareInterface previous = currentHw;
+                            aemon = null;
+                            // Detach first; close previous async so EDT does not block on USB.
+                            chip.setHardwareInterface(null);
+                            if (previous != null) {
+                                // Mid-open Prophesee isOpen()==false but still holds LibUsb — always abort/close.
+                                if (previous instanceof PropheseeHardwareInterface) {
+                                    ((PropheseeHardwareInterface) previous).requestOpenAbort();
+                                }
+                                if (previous.isOpen()
+                                        || (previous instanceof PropheseeHardwareInterface
+                                        && ((PropheseeHardwareInterface) previous).isOpenInProgress())) {
+                                    log.info("closing previous interface before selecting " + hw);
+                                    long closeWait = (previous instanceof PropheseeHardwareInterface)
+                                            ? HARDWARE_CLOSE_JOIN_MS : HARDWARE_CLOSE_TIMEOUT_MS;
+                                    closeHardwareInterfaceWithTimeout(previous, closeWait, "Switch interface");
+                                }
                             }
-                            if (previous.isOpen()
-                                    || (previous instanceof PropheseeHardwareInterface
-                                    && ((PropheseeHardwareInterface) previous).isOpenInProgress())) {
-                                log.info("closing previous interface before selecting " + hw);
-                                closeHardwareInterfaceWithTimeout(previous, HARDWARE_CLOSE_TIMEOUT_MS, "Switch interface");
+                            // Chip chooser / SciDVS probe / bind must stay on the EDT.
+                            // Off-EDT open with a timeout abandoned mid-dialog and left the
+                            // wrong AEChip bound (see jAER log: Not binding … to Prophesee…).
+                            ensureChipCompatibleWithLiveDevice(hw);
+                            if (chip.getHardwareInterface() == null) {
+                                HardwareInterface bind = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
+                                if (bind == null) {
+                                    bind = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                                }
+                                bindLiveHardwareIfCompatible(bind, "selected interface " + evt.getActionCommand()
+                                        + " with HardwareInterface number" + interfaceNumber + " which is ");
                             }
-                        }
-                        // Chip chooser / SciDVS probe / bind must stay on the EDT.
-                        // Off-EDT open with a timeout abandoned mid-dialog and left the
-                        // wrong AEChip bound (see jAER log: Not binding … to Prophesee…).
-                        ensureChipCompatibleWithLiveDevice(hw);
-                        if (chip.getHardwareInterface() == null) {
-                            HardwareInterface bind = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
-                            if (bind == null) {
-                                bind = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                            if (getPlayMode() != PlayMode.PLAYBACK && getPlayMode() != PlayMode.FILTER_INPUT) {
+                                setPlayMode(PlayMode.WAITING);
                             }
-                            bindLiveHardwareIfCompatible(bind, "selected interface " + evt.getActionCommand()
-                                    + " with HardwareInterface number" + interfaceNumber + " which is ");
+                        } finally {
+                            hardwareSwitchInProgress = false;
                         }
-                        if (getPlayMode() != PlayMode.PLAYBACK && getPlayMode() != PlayMode.FILTER_INPUT) {
-                            setPlayMode(PlayMode.WAITING);
-                        }
+                        // Wake WAITING sleep only after bind. interruptViewloop during
+                        // openAEMonitor must not unbind the camera that is still opening.
                         interruptViewloop();
                     }
                 });
@@ -3115,10 +3141,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // open/aemon.open() blocked EDT setPlayMode(PLAYBACK) indefinitely.
         boolean wantLive = false;
         boolean wantWaiting = false;
-        if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
-            // don't open hardware if playing a file or a file open is in progress
+        if (hardwareSwitchInProgress || suppressHardwareOpen
+                || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+            // don't open hardware if playing a file, a file open is in progress,
+            // or Interface menu is still binding the next camera
             return;
         }
+        awaitPendingHardwareClose();
         if ((aemon != null) && aemon.isOpen()) {
             if (getPlayMode() != PlayMode.SEQUENCING) {
                 wantLive = true;
@@ -3126,7 +3155,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else {
             try {
                 openHardwareIfNonambiguous();
-                if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+                if (hardwareSwitchInProgress || suppressHardwareOpen
+                        || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
                     return;
                 }
                 // openHardwareIfNonambiguous will set chip's hardware interface, here we store local reference
@@ -3186,58 +3216,72 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             ? HARDWARE_OPEN_WAIT_PROPHESEE_MS : HARDWARE_OPEN_WAIT_MS;
                     final long openDeadline = System.currentTimeMillis() + openWaitMs;
                     long lastOpenWaitFineMs = 0;
-                    try {
-                        while (!openDone.await(100, TimeUnit.MILLISECONDS)) {
-                            long now = System.currentTimeMillis();
-                            if (now - lastOpenWaitFineMs >= 5000) {
-                                lastOpenWaitFineMs = now;
-                                log.fine("openAEMonitor waiting " + (now - (openDeadline - openWaitMs))
-                                        + " ms for " + opening + " waiter=" + UsbLog.t()
-                                        + " worker=" + UsbLog.stack(opener, 8));
-                            }
-                            if (chip.getHardwareInterface() != opening) {
-                                log.info("openAEMonitor: interface changed while opening " + opening
-                                        + "; aborting (not closing hung USB handle)");
-                                log.fine("openAEMonitor abort (HI changed) " + UsbLog.t()
-                                        + " worker=" + UsbLog.stack(opener, 10));
-                                if (opening instanceof PropheseeHardwareInterface) {
-                                    ((PropheseeHardwareInterface) opening).requestOpenAbort();
-                                }
-                                opener.interrupt();
-                                abandoned = true;
+                    while (true) {
+                        try {
+                            if (openDone.await(100, TimeUnit.MILLISECONDS)) {
                                 break;
                             }
-                            if (now >= openDeadline) {
-                                log.warning("openAEMonitor: open of " + opening + " timed out after "
-                                        + openWaitMs + " ms; aborting");
-                                log.fine("openAEMonitor timeout " + UsbLog.t()
-                                        + " worker=" + UsbLog.stack(opener, 12));
-                                showActionText("Open timed out — aborting");
+                        } catch (InterruptedException ie) {
+                            if (viewLoop != null && viewLoop.stop) {
+                                Thread.currentThread().interrupt();
+                                log.info("openAEMonitor: ViewLoop stopping; aborting open of " + opening);
                                 if (opening instanceof PropheseeHardwareInterface) {
                                     ((PropheseeHardwareInterface) opening).requestOpenAbort();
                                 }
                                 opener.interrupt();
-                                // Let ISSD unwind and release USB so the next select is not ACCESS.
+                                unbindAbandonedHardware(opening);
+                                aemon = null;
+                                wantWaiting = true;
+                                return;
+                            }
+                            // Interface switch interruptViewloop must not unbind a camera
+                            // whose open() is about to return (Davis 1 ms after EVK4 close).
+                            log.info("openAEMonitor: interrupt while waiting for open of " + opening
+                                    + "; continuing");
+                            continue;
+                        }
+                        long now = System.currentTimeMillis();
+                        if (now - lastOpenWaitFineMs >= 5000) {
+                            lastOpenWaitFineMs = now;
+                            log.fine("openAEMonitor waiting " + (now - (openDeadline - openWaitMs))
+                                    + " ms for " + opening + " waiter=" + UsbLog.t()
+                                    + " worker=" + UsbLog.stack(opener, 8));
+                        }
+                        if (chip.getHardwareInterface() != opening) {
+                            log.info("openAEMonitor: interface changed while opening " + opening
+                                    + "; aborting (not closing hung USB handle)");
+                            log.fine("openAEMonitor abort (HI changed) " + UsbLog.t()
+                                    + " worker=" + UsbLog.stack(opener, 10));
+                            if (opening instanceof PropheseeHardwareInterface) {
+                                ((PropheseeHardwareInterface) opening).requestOpenAbort();
+                            }
+                            opener.interrupt();
+                            abandoned = true;
+                            break;
+                        }
+                        if (now >= openDeadline) {
+                            log.warning("openAEMonitor: open of " + opening + " timed out after "
+                                    + openWaitMs + " ms; aborting");
+                            log.fine("openAEMonitor timeout " + UsbLog.t()
+                                    + " worker=" + UsbLog.stack(opener, 12));
+                            showActionText("Open timed out — aborting");
+                            if (opening instanceof PropheseeHardwareInterface) {
+                                ((PropheseeHardwareInterface) opening).requestOpenAbort();
+                            }
+                            opener.interrupt();
+                            // Let ISSD unwind and release USB so the next select is not ACCESS.
+                            try {
                                 if (!openDone.await(HARDWARE_CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                                     log.warning("openAEMonitor: open thread still alive after abort of " + opening);
                                     log.fine("openAEMonitor still alive after abort wait "
                                             + UsbLog.stack(opener, 12));
                                 }
-                                abandoned = true;
-                                break;
+                            } catch (InterruptedException abortWaitIe) {
+                                log.fine("openAEMonitor: interrupt during abort wait of " + opening);
                             }
+                            abandoned = true;
+                            break;
                         }
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        log.info("openAEMonitor: interrupted while waiting for open of " + opening);
-                        if (opening instanceof PropheseeHardwareInterface) {
-                            ((PropheseeHardwareInterface) opening).requestOpenAbort();
-                        }
-                        opener.interrupt();
-                        unbindAbandonedHardware(opening);
-                        aemon = null;
-                        wantWaiting = true;
-                        return;
                     }
                     if (abandoned) {
                         // Do not close() the same instance: open() is synchronized and
@@ -3570,6 +3614,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * ViewLoop must not start the next {@code aemon.open()} while
+     * {@code jaer-hw-close} is still in native USB. Wait up to
+     * {@link #HARDWARE_CLOSE_JOIN_MS}; {@link #interruptViewloop()} from the
+     * same Interface click must not abort this join. FX3/FX2/Prophesee/NRV skip
+     * {@code LibUsb.close} if the AEReader is still alive.
+     */
+    private void awaitPendingHardwareClose() {
+        final Thread closer = hardwareCloseThread;
+        if (closer == null || !closer.isAlive()) {
+            return;
+        }
+        log.info("openAEMonitor: waiting for previous hardware close");
+        final long deadline = System.currentTimeMillis() + HARDWARE_CLOSE_JOIN_MS;
+        while (closer.isAlive()) {
+            long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) {
+                break;
+            }
+            try {
+                closer.join(Math.min(200L, remaining));
+            } catch (InterruptedException e) {
+                if (viewLoop != null && viewLoop.stop) {
+                    Thread.currentThread().interrupt();
+                    log.info("openAEMonitor: ViewLoop stopping during previous close wait");
+                    return;
+                }
+                log.fine("openAEMonitor: interrupt during previous close wait; still waiting");
+            }
+        }
+        if (closer.isAlive()) {
+            log.warning("openAEMonitor: previous close still alive after "
+                    + HARDWARE_CLOSE_JOIN_MS
+                    + " ms; opening next camera (native close skipped if AEReader hung)");
+        }
+    }
+
+    /**
      * Close a detached hardware interface on a daemon thread. Waits up to
      * {@code timeoutMs} then abandons the close so the EDT cannot hang forever
      * (seen with NRV {@code LibUsb.close} / transfer teardown).
@@ -3591,6 +3672,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.fine(actionLabel + " close() end " + UsbLog.t());
         }, "jaer-hw-close");
         closer.setDaemon(true);
+        hardwareCloseThread = closer;
         closer.start();
         // Do not block the EDT: schedule a timeout watcher on a background thread.
         Thread watcher = new Thread(() -> {
@@ -4299,7 +4381,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return emptyRawPacket; // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
                     }
                 case LIVE:
-                    if (!nullInterface) {
+                    if (!nullInterface && !hardwareSwitchInProgress) {
                         openAEMonitor();
                     }
                     if ((aemon == null) || !aemon.isOpen()) {
@@ -4387,7 +4469,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         setPlayMode(PlayMode.REMOTE);
                         return emptyRawPacket;
                     }
-                    if (suppressHardwareOpen) {
+                    if (suppressHardwareOpen || hardwareSwitchInProgress) {
                         try {
                             Thread.sleep(200);
                         } catch (InterruptedException e) {

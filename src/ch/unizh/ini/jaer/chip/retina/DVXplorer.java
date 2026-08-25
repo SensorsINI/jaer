@@ -594,38 +594,10 @@ public class DVXplorer extends AETemporalConstastRetina {
 
     /** dv-processing {@code DVXplorerM} constructor defaults (firmware ≥10). */
     private void sendNextGenDefaultConfig(DVXplorerFX3HardwareInterface fx3) {
-        spiConfigSend(fx3, DVX_DVS, DVS_FLATTEN, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_SUBSAMPLE_HORIZONTAL, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_SUBSAMPLE_VERTICAL, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_GLOBAL_HOLD, 1);
-        spiConfigSend(fx3, DVX_DVS, DVS_GLOBAL_RESET, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_GLOBAL_RESET_SKIP, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_MIPI_TIMEOUT_ENABLE, 1);
-        spiConfigSend(fx3, DVX_DVS, DVS_MIPI_TIMEOUT_VALUE, 2000);
-        spiConfigSend(fx3, DVX_DVS, DVS_EFPS_S5K231Y, 8); // VARIABLE_5000
-        spiConfigSend(fx3, DVX_DVS, DVS_CONTRAST_THRESHOLD_ON, 9);
-        spiConfigSend(fx3, DVX_DVS, DVS_CONTRAST_THRESHOLD_OFF, 9);
-        spiConfigSend(fx3, DVX_DVS, DVS_CROP_X, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_CROP_Y, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_CROP_WIDTH, sizeX);
-        spiConfigSend(fx3, DVX_DVS, DVS_CROP_HEIGHT, sizeY);
-        spiConfigSend(fx3, DVX_DVS, DVS_CROP_APPLY, 0);
-        // Do not SPI-IN orientation on firmware 10+ (native hang). Default no flip.
-        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_HORIZONTAL, 0);
-        spiConfigSend(fx3, DVX_DVS, DVS_FLIP_VERTICAL, 0);
-        // Firmware ≥10 SPI uses BMI160 ODR register values (dv-processing
-        // BoschBMI160* enums). Gyro ODR 5 is reserved and yields frozen ~0 dps.
-        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 11); // 800 Hz
-        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2); // NORMAL
-        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1); // 4 g
-        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 11); // 800 Hz
-        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2); // NORMAL
-        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2); // 500 dps
-        if (debug) {
-            DVXplorer.log.info(String.format(
-                    "Mini/Micro next-gen defaults: %dx%d no SPI orientation IN, MIPI timeout 2000 us",
-                    sizeX, sizeY));
-        }
+        // Firmware 10+ 8-byte SPI OUT never returns on WinUSB (jAER 7:42:25 Micro:
+        // first DVS_FLATTEN hung jaer-aemon-open until the 8 s abort). Keep
+        // factory firmware defaults; spiConfigSend also no-ops for this firmware.
+        DVXplorer.log.info("Mini/Micro firmware 10+: skipping SPI OUT defaults (native hang)");
     }
     
     /**
@@ -838,12 +810,17 @@ public class DVXplorer extends AETemporalConstastRetina {
             return true;
         }
         catch (final HardwareInterfaceException e) {
-            DVXplorer.log.severe(String.format("DVXplorer spi config sending failed: moduleAddr = %x, paramAddr = %x, param = %x", moduleAddr, paramAddr, param));
+            DVXplorer.log.severe(String.format(
+                    "DVXplorer spi config sending failed: moduleAddr = %x, paramAddr = %x, param = %x: %s",
+                    moduleAddr, paramAddr, param, e.getMessage()));
             return false;
         }
     }
     
     public boolean spiConfigSendAndCheck(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
+        if (fx3 == null) {
+            return false;
+        }
         spiConfigSend(fx3, moduleAddr, paramAddr, param);
         if (isNextGenFirmware()) {
             return true;

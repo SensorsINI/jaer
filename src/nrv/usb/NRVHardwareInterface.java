@@ -344,6 +344,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     public void close() {
         final NRVAEReader reader;
         final DeviceHandle handle;
+        boolean readerDead = true;
         synchronized (this) {
             if (!isOpen()) {
                 return;
@@ -364,12 +365,16 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
         if (reader != null) {
             try {
-                reader.stopThread(); // already join-limited
+                readerDead = reader.stopThread();
             } catch (Exception e) {
                 log.warning("Error stopping NRV AEReader on close: " + e.getMessage());
+                readerDead = false;
             }
         }
         if (handle == null) {
+            return;
+        }
+        if (UsbAsyncBulkReaderLifecycle.abandonNativeHandle(readerDead, log, "NRV")) {
             return;
         }
         // releaseInterface / LibUsb.close can hang forever on Windows WinUSB; bound it.
