@@ -394,8 +394,9 @@ public class Chip extends Observable {
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
 //        System.out.println(Thread.currentThread()+" : Chip.setHardwareInterface("+hardwareInterface+")");
         this.hardwareInterface = hardwareInterface;
-        if ((getBiasgen() != null) && (hardwareInterface instanceof BiasgenHardwareInterface)) {
-            biasgen.setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
+        if (getBiasgen() != null) {
+            biasgen.setHardwareInterface(hardwareInterface instanceof BiasgenHardwareInterface
+                    ? (BiasgenHardwareInterface) hardwareInterface : null);
         }
         setChanged();
         notifyObservers(hardwareInterface);
