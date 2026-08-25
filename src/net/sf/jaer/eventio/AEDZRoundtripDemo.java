@@ -3,9 +3,14 @@ package net.sf.jaer.eventio;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 
@@ -31,8 +36,22 @@ public class AEDZRoundtripDemo {
 
     static final int CHUNK_EVENTS = 65536;
     static final int[] COUNTS = {0, 1, 65536, 65537};
+    private static final int TEST_MAX_METADATA_BYTES = 8 * 1024 * 1024;
+    private static final int TEST_MAX_CHUNKS = 262144;
+    private static final long TEST_MAX_INDEX_BYTES = 4L * 1024 * 1024;
+    private static final int TEST_MAX_COMPRESSED_PLANE_BYTES = 128 * 1024;
+    private static final int TEST_MAX_COMPRESSED_CHUNK_BYTES
+            = 8 * 4 + 8 * TEST_MAX_COMPRESSED_PLANE_BYTES;
+    private static final int REPEATED_OPEN_COUNT = 64;
+    private static final Path PROC_SELF_FD = Paths.get("/proc/self/fd");
 
     public static void main(String[] args) throws Exception {
+        if (args.length == 1 && "--bounds-only".equals(args[0])) {
+            malformedResourceBoundaryTests();
+            descriptorStabilityTests();
+            System.out.println("ALL AEDZ BOUNDS TESTS PASS");
+            return;
+        }
         for (int n : COUNTS) {
             roundtripCount(n);
         }
@@ -44,6 +63,8 @@ public class AEDZRoundtripDemo {
         roundtripPartialChunk();
         seekAcrossChunkBoundary();
         extendedIndexFixture();
+        malformedResourceBoundaryTests();
+        descriptorStabilityTests();
         corruptionTests();
         System.out.println("ALL AEDZ ROUNDTRIP TESTS PASS");
     }
@@ -393,7 +414,150 @@ public class AEDZRoundtripDemo {
         System.out.println("PASS corruptionTests (" + cases.size() + " cases)");
     }
 
+    /** Exact hostile length boundaries must fail before allocation or large compressed-input reads. */
+    private static void malformedResourceBoundaryTests() throws IOException {
+        assertTrue(AEDZInputStream.MAX_AEDAT_HEADER_BYTES == TEST_MAX_METADATA_BYTES,
+                "AEDAT header cap remains policy-pinned");
+        assertTrue(AEDZInputStream.MAX_TRAILING_METADATA_BYTES == TEST_MAX_METADATA_BYTES,
+                "trailing metadata cap remains policy-pinned");
+        assertTrue(AEDZInputStream.MAX_SUMMARY_METADATA_BYTES == TEST_MAX_METADATA_BYTES,
+                "summary metadata cap remains policy-pinned");
+        assertTrue(AEDZInputStream.MAX_CHUNKS == TEST_MAX_CHUNKS,
+                "chunk-count cap remains policy-pinned");
+        assertTrue(AEDZInputStream.MAX_INDEX_BYTES == TEST_MAX_INDEX_BYTES,
+                "index-byte cap remains policy-pinned");
+        assertTrue(AEDZInputStream.MAX_COMPRESSED_PLANE_BYTES == TEST_MAX_COMPRESSED_PLANE_BYTES,
+                "compressed-plane cap remains policy-pinned");
+        assertTrue(AEDZInputStream.MAX_COMPRESSED_CHUNK_BYTES == TEST_MAX_COMPRESSED_CHUNK_BYTES,
+                "compressed-chunk cap remains policy-pinned");
+        List<File> fixtures = new ArrayList<>();
+        try {
+            File footerOverflow = newCapTempFile("aedzfooter");
+            fixtures.add(footerOverflow);
+            try (RandomAccessFile out = new RandomAccessFile(footerOverflow, "rw")) {
+                long dataStart = writeSparseHeader(out, 0, 0, 0, 0);
+                assertTrue(dataStart == 29, "minimal sparse header length");
+                out.seek(dataStart);
+                writeIntLE(out, 0);
+                writeFooter(out, dataStart + 4, Long.MAX_VALUE, Long.MAX_VALUE);
+            }
+            expectRejectContaining(footerOverflow, "footer addition overflow", "summary", "offset");
+
+            File headerOverCap = sparseEmptyFixture(
+                    "aedzheadercap", TEST_MAX_METADATA_BYTES + 1, 0, 0);
+            fixtures.add(headerOverCap);
+            expectRejectContaining(headerOverCap, "AEDAT header cap + 1", "header", "maximum");
+
+            File trailingOverCap = sparseEmptyFixture(
+                    "aedztrailingcap", 0, TEST_MAX_METADATA_BYTES + 1, 0);
+            fixtures.add(trailingOverCap);
+            expectRejectContaining(trailingOverCap, "trailing metadata cap + 1", "trailing", "maximum");
+
+            File summaryOverCap = sparseEmptyFixture(
+                    "aedzsummarycap", 0, 0, TEST_MAX_METADATA_BYTES + 1);
+            fixtures.add(summaryOverCap);
+            expectRejectContaining(summaryOverCap, "summary metadata cap + 1", "summary", "maximum");
+
+            File chunksOverCap = sparseIndexFixture(
+                    "aedzchunkcap", TEST_MAX_CHUNKS + 1, AEDZInputStream.INDEX_ENTRY_LEGACY);
+            fixtures.add(chunksOverCap);
+            expectRejectContaining(chunksOverCap, "chunk count cap + 1", "chunk count", "maximum");
+
+            int extendedChunksOverIndexCap = (int) (TEST_MAX_INDEX_BYTES
+                    / AEDZInputStream.INDEX_ENTRY_EXTENDED) + 1;
+            File indexOverCap = sparseIndexFixture(
+                    "aedzindexcap", extendedChunksOverIndexCap, AEDZInputStream.INDEX_ENTRY_EXTENDED);
+            fixtures.add(indexOverCap);
+            expectRejectContaining(indexOverCap, "index byte cap + one entry", "index", "maximum");
+
+            File chunkOverCap = sparseSingleChunkFixture(
+                    "aedzchunkinputcap", TEST_MAX_COMPRESSED_CHUNK_BYTES + 1, null);
+            fixtures.add(chunkOverCap);
+            expectRejectContaining(chunkOverCap, "compressed chunk cap + 1", "compressed_size", "maximum");
+
+            int[] oversizedPlaneSizes = new int[8];
+            oversizedPlaneSizes[0] = TEST_MAX_COMPRESSED_PLANE_BYTES + 1;
+            for (int p = 1; p < oversizedPlaneSizes.length; p++) {
+                oversizedPlaneSizes[p] = 1;
+            }
+            int planeBoundedChunkSize = 8 * 4;
+            for (int planeSize : oversizedPlaneSizes) {
+                planeBoundedChunkSize += planeSize;
+            }
+            File planeOverCap = sparseSingleChunkFixture(
+                    "aedzplaneinputcap", planeBoundedChunkSize, oversizedPlaneSizes);
+            fixtures.add(planeOverCap);
+            expectRejectContaining(planeOverCap, "compressed plane cap + 1", "plane 0", "maximum");
+        } finally {
+            for (File fixture : fixtures) {
+                Files.deleteIfExists(fixture.toPath());
+            }
+        }
+        System.out.println("PASS malformedResourceBoundaryTests footer/metadata/chunk/index/compressed caps");
+    }
+
+    /** Repeated checked and Error constructor failures must leave the process descriptor count unchanged. */
+    private static void descriptorStabilityTests() throws IOException {
+        if (!Files.isDirectory(PROC_SELF_FD) || !Files.isReadable(PROC_SELF_FD)) {
+            System.out.println("SKIP descriptorStabilityTests: /proc/self/fd is unavailable");
+            return;
+        }
+
+        File malformed = newCapTempFile("aedzbadmagic");
+        File valid = writeFixture(makePacket(1, 73));
+        try {
+            Files.write(malformed.toPath(), new byte[]{'B', 'A', 'D'});
+
+            // Warm class loading, native zstd, logging, and /proc enumeration before baselining.
+            try (AEDZInputStream ignored = new AEDZInputStream(valid)) {
+                // no-op
+            }
+            expectReject(malformed, "descriptor warm-up malformed");
+            countOpenFileDescriptors();
+
+            long beforeMalformed = countOpenFileDescriptors();
+            for (int i = 0; i < REPEATED_OPEN_COUNT; i++) {
+                expectRejectQuietly(malformed, "descriptor malformed iteration " + i);
+            }
+            long afterMalformed = countOpenFileDescriptors();
+            assertTrue(afterMalformed == beforeMalformed,
+                    "malformed constructor descriptors stable: before=" + beforeMalformed + " after=" + afterMalformed);
+
+            File errorOnName = new ErrorOnNameFile(valid.getPath());
+            long beforeError = countOpenFileDescriptors();
+            for (int i = 0; i < REPEATED_OPEN_COUNT; i++) {
+                try {
+                    AEDZInputStream opened = new AEDZInputStream(errorOnName);
+                    opened.close();
+                    throw new AssertionError("constructor Error probe unexpectedly opened at iteration " + i);
+                } catch (ConstructorProbeError expected) {
+                    // The constructor must preserve Error while releasing its RandomAccessFile.
+                }
+            }
+            long afterError = countOpenFileDescriptors();
+            assertTrue(afterError == beforeError,
+                    "Error constructor descriptors stable: before=" + beforeError + " after=" + afterError);
+        } finally {
+            Files.deleteIfExists(malformed.toPath());
+            Files.deleteIfExists(valid.toPath());
+        }
+        System.out.println("PASS descriptorStabilityTests checked/Error failures x" + REPEATED_OPEN_COUNT);
+    }
+
     private static void expectReject(File bad, String tag) {
+        expectRejectContaining(bad, tag);
+    }
+
+    private static void expectRejectQuietly(File bad, String tag) {
+        expectRejectContaining(false, bad, tag);
+    }
+
+    private static void expectRejectContaining(File bad, String tag, String... requiredMessageTokens) {
+        expectRejectContaining(true, bad, tag, requiredMessageTokens);
+    }
+
+    private static void expectRejectContaining(boolean reportPass, File bad, String tag,
+            String... requiredMessageTokens) {
         String failure = null;
         try {
             AEDZInputStream in = new AEDZInputStream(bad);
@@ -404,14 +568,139 @@ public class AEDZRoundtripDemo {
             String msg = String.valueOf(e.getMessage());
             if (msg == null || msg.isEmpty()) {
                 failure = "IOException with empty message";
+            } else {
+                String lower = msg.toLowerCase(java.util.Locale.ROOT);
+                for (String token : requiredMessageTokens) {
+                    if (!lower.contains(token.toLowerCase(java.util.Locale.ROOT))) {
+                        failure = "IOException message [" + msg + "] lacks required token [" + token + "]";
+                        break;
+                    }
+                }
             }
         } catch (RuntimeException e) {
             failure = "unchecked " + e.getClass().getSimpleName() + " thrown instead of IOException: " + e.getMessage();
+        } catch (OutOfMemoryError e) {
+            failure = "OutOfMemoryError thrown instead of pre-allocation IOException";
         }
         if (failure != null) {
             throw new AssertionError("corruption case [" + tag + "] " + failure);
         }
-        System.out.println("PASS corruption rejected: " + tag);
+        if (reportPass) {
+            System.out.println("PASS corruption rejected: " + tag);
+        }
+    }
+
+    private static File sparseEmptyFixture(String prefix, int headerLen, int trailingLen, int summaryLen)
+            throws IOException {
+        File file = newCapTempFile(prefix);
+        try (RandomAccessFile out = new RandomAccessFile(file, "rw")) {
+            long dataStart = writeSparseHeader(out, 0, 0, headerLen, trailingLen);
+            out.seek(dataStart);
+            writeIntLE(out, summaryLen);
+            long footerStart = dataStart + 4L + summaryLen;
+            writeFooter(out, footerStart, dataStart, dataStart);
+        }
+        return file;
+    }
+
+    private static File sparseIndexFixture(String prefix, int nChunks, int entrySize) throws IOException {
+        File file = newCapTempFile(prefix);
+        try (RandomAccessFile out = new RandomAccessFile(file, "rw")) {
+            long indexOffset = writeSparseHeader(out, 0, nChunks, 0, 0);
+            long summaryOffset = indexOffset + (long) nChunks * entrySize;
+            out.seek(summaryOffset);
+            writeIntLE(out, 0);
+            writeFooter(out, summaryOffset + 4, indexOffset, summaryOffset);
+        }
+        return file;
+    }
+
+    private static File sparseSingleChunkFixture(String prefix, int compressedSize, int[] planeSizes)
+            throws IOException {
+        File file = newCapTempFile(prefix);
+        try (RandomAccessFile out = new RandomAccessFile(file, "rw")) {
+            long chunkOffset = writeSparseHeader(out, 1, 1, 0, 0);
+            out.seek(chunkOffset);
+            writeIntLE(out, 1);
+            writeIntLE(out, compressedSize);
+            for (int p = 0; p < 8; p++) {
+                writeIntLE(out, planeSizes == null ? 0 : planeSizes[p]);
+            }
+            long indexOffset = chunkOffset + 8L + compressedSize;
+            out.seek(indexOffset);
+            writeLongLE(out, chunkOffset);
+            writeIntLE(out, 1);
+            long summaryOffset = indexOffset + AEDZInputStream.INDEX_ENTRY_LEGACY;
+            writeIntLE(out, 0);
+            writeFooter(out, summaryOffset + 4, indexOffset, summaryOffset);
+        }
+        return file;
+    }
+
+    private static long writeSparseHeader(RandomAccessFile out, long totalEvents, int nChunks,
+            int headerLen, int trailingLen) throws IOException {
+        out.setLength(0);
+        out.seek(0);
+        out.write(AEDZInputStream.MAGIC);
+        writeLongLE(out, totalEvents);
+        writeIntLE(out, nChunks);
+        out.writeByte(0);
+        writeIntLE(out, headerLen);
+        long trailingLengthOffset = 8L + 8 + 4 + 1 + 4 + headerLen;
+        out.seek(trailingLengthOffset);
+        writeIntLE(out, trailingLen);
+        long dataStart = trailingLengthOffset + 4L + trailingLen;
+        out.seek(dataStart);
+        return dataStart;
+    }
+
+    private static void writeFooter(RandomAccessFile out, long footerStart, long indexOffset, long summaryOffset)
+            throws IOException {
+        out.seek(footerStart);
+        writeLongLE(out, indexOffset);
+        writeLongLE(out, summaryOffset);
+        writeIntLE(out, 0);
+        out.write(AEDZInputStream.FOOTER_MAGIC);
+    }
+
+    private static void writeIntLE(RandomAccessFile out, int value) throws IOException {
+        out.writeByte(value);
+        out.writeByte(value >>> 8);
+        out.writeByte(value >>> 16);
+        out.writeByte(value >>> 24);
+    }
+
+    private static void writeLongLE(RandomAccessFile out, long value) throws IOException {
+        for (int i = 0; i < 8; i++) {
+            out.writeByte((int) (value >>> (8 * i)));
+        }
+    }
+
+    private static long countOpenFileDescriptors() throws IOException {
+        try (Stream<Path> descriptors = Files.list(PROC_SELF_FD)) {
+            return descriptors.count();
+        }
+    }
+
+    private static File newCapTempFile(String prefix) throws IOException {
+        return File.createTempFile(prefix, ".aedz");
+    }
+
+    private static final class ConstructorProbeError extends AssertionError {
+        ConstructorProbeError() {
+            super("deterministic AEDZ constructor Error probe");
+        }
+    }
+
+    private static final class ErrorOnNameFile extends File {
+        ErrorOnNameFile(String pathname) {
+            super(pathname);
+        }
+
+        @Override
+        public String getName() {
+            throw new ConstructorProbeError();
+        }
     }
 
     // ------------------------------------------------------------------

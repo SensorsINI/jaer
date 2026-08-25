@@ -51,11 +51,24 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     static final int INDEX_ENTRY_LEGACY = 12, INDEX_ENTRY_EXTENDED = 20;
     static final int N_PLANES = 8;
     static final int PLANE_SIZES_LEN = N_PLANES * 4;
+    static final int FOOTER_LEN = 24;
+    static final int CHUNK_HEADER_LEN = 8 + PLANE_SIZES_LEN;
 
     /** Upper bound on a single chunk's event count; matches the writer's fixed chunk size. */
     static final int MAX_CHUNK_EVENTS = 65536;
     /** Upper bound on decompressed plane length (== chunk event count). */
     static final int MAX_PLANE_LEN = MAX_CHUNK_EVENTS;
+    /** Independent caps for file-supplied metadata regions. */
+    static final int MAX_AEDAT_HEADER_BYTES = 8 * 1024 * 1024;
+    static final int MAX_TRAILING_METADATA_BYTES = 8 * 1024 * 1024;
+    static final int MAX_SUMMARY_METADATA_BYTES = 8 * 1024 * 1024;
+    /** Caps index allocations even when a sparse file makes large offsets plausible. */
+    static final int MAX_CHUNKS = 262144;
+    static final long MAX_INDEX_BYTES = 4L * 1024 * 1024;
+    /** Zstd output is bounded separately; these caps bound attacker-controlled compressed input. */
+    static final int MAX_COMPRESSED_PLANE_BYTES = 128 * 1024;
+    static final int MAX_COMPRESSED_CHUNK_BYTES
+            = PLANE_SIZES_LEN + N_PLANES * MAX_COMPRESSED_PLANE_BYTES;
 
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -77,6 +90,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     // Footer
     private long indexOffset;
     private long summaryOffset;
+    private long dataOffset;
     private int crc32Value;
 
     // Decoded chunk cache
@@ -119,26 +133,37 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         this.raf = new RandomAccessFile(file, "r");
         try {
             readFile();
+            parseAbsoluteStartingTime();
         } catch (IOException e) {
-            // Never leak the open handle on a malformed file.
-            try {
-                raf.close();
-            } catch (IOException ignored) {
-            }
-            raf = null;
+            closeAfterConstructorFailure(e);
             throw e;
         } catch (RuntimeException e) {
             // Parsing/decompression implementation exceptions are part of the
             // malformed-input boundary, never an unchecked public-file result.
-            try {
-                raf.close();
-            } catch (IOException closeFailure) {
-                e.addSuppressed(closeFailure);
-            }
-            raf = null;
-            throw new IOException("Malformed AEDZ file: " + e.getMessage(), e);
+            IOException wrapped = new IOException("Malformed AEDZ file: " + e.getMessage(), e);
+            closeAfterConstructorFailure(wrapped);
+            throw wrapped;
+        } catch (Error e) {
+            // Preserve VM/linkage/assertion Error identity, but constructor
+            // ownership still requires deterministic descriptor release.
+            closeAfterConstructorFailure(e);
+            throw e;
         }
-        parseAbsoluteStartingTime();
+    }
+
+    private void closeAfterConstructorFailure(Throwable failure) {
+        RandomAccessFile opened = raf;
+        raf = null;
+        if (opened == null) {
+            return;
+        }
+        try {
+            opened.close();
+        } catch (IOException | RuntimeException | Error closeFailure) {
+            if (closeFailure != failure) {
+                failure.addSuppressed(closeFailure);
+            }
+        }
     }
 
     /**
@@ -148,10 +173,12 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     private void readFile() throws IOException {
         long fileLen = raf.length();
 
-        // ---- Minimum structural length: header (8+8+4+1+4+4) + footer (24) = 53 bytes.
-        if (fileLen < 8 + 8 + 4 + 1 + 4 + 4 + 24) {
+        // ---- Minimum structural length: fixed header and trailing length (29),
+        // ---- summary length (4), and footer (24) = 57 bytes.
+        if (fileLen < 8 + 8 + 4 + 1 + 4 + 4 + 4 + FOOTER_LEN) {
             throw new IOException("AEDZ file too short: " + fileLen + " bytes");
         }
+        long footerStart = fileLen - FOOTER_LEN;
 
         // ---- Magic and version.
         byte[] magic = new byte[8];
@@ -180,37 +207,38 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         if (aedatHeaderLen < 0) {
             throw new IOException("Negative AEDAT header length: " + aedatHeaderLen);
         }
-        // header region: after magic(8)+n_events(8)+n_chunks(4)+flags(1)+hlen(4)
-        long headerEnd = 8L + 8 + 4 + 1 + 4 + aedatHeaderLen;
-        if (headerEnd > fileLen) {
-            throw new IOException("AEDAT header length " + aedatHeaderLen + " exceeds file size " + fileLen);
+        if (aedatHeaderLen > MAX_AEDAT_HEADER_BYTES) {
+            throw new IOException("AEDAT header length " + aedatHeaderLen
+                    + " exceeds maximum " + MAX_AEDAT_HEADER_BYTES);
         }
+        requireRegion(raf.getFilePointer(), aedatHeaderLen, footerStart, "AEDAT header");
         aedatHeader = new byte[aedatHeaderLen];
         raf.readFully(aedatHeader);
 
+        if (raf.getFilePointer() > footerStart - 4) {
+            throw new IOException("AEDZ file has no complete trailing metadata length before footer");
+        }
         raf.readFully(buf4);
         int trailingLen = getIntLE(buf4, 0);
         if (trailingLen < 0) {
             throw new IOException("Negative trailing length: " + trailingLen);
         }
-        long dataStart = 8L + 8 + 4 + 1 + 4 + aedatHeaderLen + 4;
+        if (trailingLen > MAX_TRAILING_METADATA_BYTES) {
+            throw new IOException("Trailing metadata length " + trailingLen
+                    + " exceeds maximum " + MAX_TRAILING_METADATA_BYTES);
+        }
+        requireRegion(raf.getFilePointer(), trailingLen, footerStart, "trailing metadata");
         if (trailingLen > 0) {
-            long trailingEnd = dataStart + trailingLen;
-            if (trailingEnd > fileLen) {
-                throw new IOException("Trailing length " + trailingLen + " exceeds file size " + fileLen);
-            }
             trailing = new byte[trailingLen];
             raf.readFully(trailing);
         } else {
             trailing = new byte[0];
         }
+        dataOffset = raf.getFilePointer();
 
         // ---- Footer (in the last 24 bytes).
-        if (fileLen < 24) {
-            throw new IOException("AEDZ file too short for footer");
-        }
-        raf.seek(fileLen - 24);
-        byte[] footerBuf = new byte[24];
+        raf.seek(footerStart);
+        byte[] footerBuf = new byte[FOOTER_LEN];
         raf.readFully(footerBuf);
         indexOffset = getLongLE(footerBuf, 0);
         summaryOffset = getLongLE(footerBuf, 8);
@@ -226,9 +254,14 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         if (indexOffset > summaryOffset) {
             throw new IOException("AEDZ index offset " + indexOffset + " after summary offset " + summaryOffset);
         }
-        // summary block must be at least 4 bytes (summary_len); footer occupies the last 24.
-        if (summaryOffset + 4 + 24 > fileLen) {
-            throw new IOException("AEDZ summary offset " + summaryOffset + " overruns file size " + fileLen);
+        if (indexOffset < dataOffset) {
+            throw new IOException("AEDZ index offset " + indexOffset
+                    + " overlaps header/metadata ending at " + dataOffset);
+        }
+        // Subtraction-based checks cannot wrap for hostile near-Long.MAX offsets.
+        if (summaryOffset > footerStart - 4) {
+            throw new IOException("AEDZ summary offset " + summaryOffset
+                    + " leaves no complete summary length before footer at " + footerStart);
         }
 
         // ---- Chunk event totals must be nonnegative and internally consistent
@@ -239,10 +272,35 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         if (nChunks < 0) {
             throw new IOException("Negative chunk count: " + nChunks);
         }
+        if (nChunks > MAX_CHUNKS) {
+            throw new IOException("AEDZ chunk count " + nChunks
+                    + " exceeds maximum " + MAX_CHUNKS);
+        }
+
+        // ---- Validate the summary length without allocating or reading its body.
+        raf.seek(summaryOffset);
+        raf.readFully(buf4);
+        int summaryLen = getIntLE(buf4, 0);
+        if (summaryLen < 0) {
+            throw new IOException("Negative AEDZ summary metadata length: " + summaryLen);
+        }
+        if (summaryLen > MAX_SUMMARY_METADATA_BYTES) {
+            throw new IOException("AEDZ summary metadata length " + summaryLen
+                    + " exceeds maximum " + MAX_SUMMARY_METADATA_BYTES);
+        }
+        long summaryBytesInFile = footerStart - (summaryOffset + 4);
+        if ((long) summaryLen != summaryBytesInFile) {
+            throw new IOException("AEDZ summary metadata length " + summaryLen
+                    + " does not match " + summaryBytesInFile + " bytes before footer");
+        }
 
         // ---- Read the chunk index; accept exactly the legacy 12-byte or the
         // ---- extended 20-byte record, rejecting anything else deterministically.
         long indexRegionLen = summaryOffset - indexOffset;
+        if (indexRegionLen > MAX_INDEX_BYTES) {
+            throw new IOException("AEDZ index region " + indexRegionLen
+                    + " bytes exceeds maximum " + MAX_INDEX_BYTES);
+        }
         if (nChunks == 0) {
             if (totalEvents != 0) {
                 throw new IOException("Zero chunks but totalEvents=" + totalEvents);
@@ -264,8 +322,10 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         }
 
         // ---- totalEvents must agree with the sum of chunk event counts.
-        if (sumChunkEvents() != totalEvents) {
-            throw new IOException("AEDZ totalEvents=" + totalEvents + " inconsistent with chunk event sum=" + sumChunkEvents());
+        long indexedEvents = sumChunkEvents();
+        if (indexedEvents != totalEvents) {
+            throw new IOException("AEDZ totalEvents=" + totalEvents
+                    + " inconsistent with chunk event sum=" + indexedEvents);
         }
 
         // ---- First and last timestamps by decoding the relevant chunks.
@@ -288,21 +348,25 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
      */
     private void readChunkIndex(int entrySize) throws IOException {
         long expectedRegion = (long) nChunks * entrySize;
-        if (expectedRegion > Integer.MAX_VALUE) {
-            throw new IOException("AEDZ index region too large: " + expectedRegion + " bytes");
+        if (expectedRegion > MAX_INDEX_BYTES) {
+            throw new IOException("AEDZ index region " + expectedRegion
+                    + " bytes exceeds maximum " + MAX_INDEX_BYTES);
         }
         chunkOffsets = new long[nChunks];
         chunkEventCounts = new int[nChunks];
         chunkEventStarts = new long[nChunks];
 
-        byte[] indexBuf = new byte[(int) expectedRegion];
+        // Random access needs the three compact primitive arrays, but index bytes
+        // themselves are consumed one record at a time rather than duplicated in heap.
+        byte[] entryBuf = new byte[entrySize];
         raf.seek(indexOffset);
-        raf.readFully(indexBuf);
 
         long cumEvents = 0;
+        long previousOffset = -1;
         for (int i = 0; i < nChunks; i++) {
-            long off = getLongLE(indexBuf, i * entrySize);
-            int nEv = getIntLE(indexBuf, i * entrySize + 8);
+            raf.readFully(entryBuf);
+            long off = getLongLE(entryBuf, 0);
+            int nEv = getIntLE(entryBuf, 8);
             if (off < 0) {
                 throw new IOException("Negative chunk " + i + " offset: " + off);
             }
@@ -315,13 +379,24 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             if (nEv > MAX_CHUNK_EVENTS) {
                 throw new IOException("Chunk " + i + " event count " + nEv + " exceeds max " + MAX_CHUNK_EVENTS);
             }
-            // Chunk must lie within the data region strictly before the index.
-            // Worst-case chunk header is 8 + 32 = 40 bytes; the actual compressed
-            // size is read at decode time and bounded there too. Here we require
-            // at least the header to fit.
-            long chunkHdr = off + 8L + PLANE_SIZES_LEN;
-            if (chunkHdr > indexOffset) {
+            if (off < dataOffset) {
+                throw new IOException("Chunk " + i + " offset " + off
+                        + " overlaps header/metadata ending at " + dataOffset);
+            }
+            // At least the fixed chunk header must fit before the index. Use
+            // subtraction after ordering checks so hostile offsets cannot wrap.
+            if (off > indexOffset || CHUNK_HEADER_LEN > indexOffset - off) {
                 throw new IOException("Chunk " + i + " header at " + off + " overruns index at " + indexOffset);
+            }
+            if (i > 0) {
+                if (off <= previousOffset) {
+                    throw new IOException("Chunk " + i + " offset " + off
+                            + " is not after previous chunk offset " + previousOffset);
+                }
+                if (off - previousOffset < CHUNK_HEADER_LEN) {
+                    throw new IOException("Chunk " + (i - 1) + " header at " + previousOffset
+                            + " overlaps chunk " + i + " at " + off);
+                }
             }
             // No overflow when accumulating event starts.
             long newCum = cumEvents + nEv;
@@ -332,6 +407,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             chunkEventCounts[i] = nEv;
             chunkEventStarts[i] = cumEvents;
             cumEvents = newCum;
+            previousOffset = off;
         }
     }
 
@@ -355,12 +431,13 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         if (chunkIdx < 0 || chunkIdx >= nChunks) {
             throw new IOException("Chunk index " + chunkIdx + " out of range [0," + nChunks + ")");
         }
-        long fileLen = raf.length();
         long off = chunkOffsets[chunkIdx];
+        long chunkLimit = chunkIdx + 1 < nChunks ? chunkOffsets[chunkIdx + 1] : indexOffset;
 
         // Chunk header: n_events(4) + compressed_size(4).
-        if (off + 8 > indexOffset) {
-            throw new IOException("Chunk " + chunkIdx + " header at " + off + " overruns index at " + indexOffset);
+        if (off > chunkLimit || 8 > chunkLimit - off) {
+            throw new IOException("Chunk " + chunkIdx + " header at " + off
+                    + " overruns chunk boundary " + chunkLimit);
         }
         raf.seek(off);
         byte[] hdr = new byte[8];
@@ -376,53 +453,48 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             throw new IOException("Chunk " + chunkIdx + " compressed_size " + compressedSize
                     + " too small to hold plane sizes (" + PLANE_SIZES_LEN + ")");
         }
-        // compressed_size must fit in the region before the index/footer.
-        long chunkEnd = off + 8L + compressedSize;
-        if (chunkEnd > indexOffset) {
-            throw new IOException("Chunk " + chunkIdx + " payload ends at " + chunkEnd + " beyond index " + indexOffset);
+        if (compressedSize > MAX_COMPRESSED_CHUNK_BYTES) {
+            throw new IOException("Chunk " + chunkIdx + " compressed_size " + compressedSize
+                    + " exceeds maximum " + MAX_COMPRESSED_CHUNK_BYTES);
+        }
+        long payloadStart = off + 8;
+        if ((long) compressedSize > chunkLimit - payloadStart) {
+            throw new IOException("Chunk " + chunkIdx + " compressed payload of " + compressedSize
+                    + " bytes overruns chunk boundary " + chunkLimit);
         }
 
-        byte[] chunkData = new byte[compressedSize];
-        raf.readFully(chunkData);
-
         // Read and validate the 8 plane sizes.
+        byte[] planeSizeBuf = new byte[PLANE_SIZES_LEN];
+        raf.readFully(planeSizeBuf);
         int[] planeSizes = new int[N_PLANES];
-        int planeSum = 0;
+        long planeSum = 0;
         for (int p = 0; p < N_PLANES; p++) {
-            int ps = getIntLE(chunkData, p * 4);
-            if (ps < 0) {
-                throw new IOException("Chunk " + chunkIdx + " plane " + p + " negative size " + ps);
+            int ps = getIntLE(planeSizeBuf, p * 4);
+            if (ps <= 0) {
+                throw new IOException("Chunk " + chunkIdx + " plane " + p
+                        + " has non-positive compressed size " + ps);
+            }
+            if (ps > MAX_COMPRESSED_PLANE_BYTES) {
+                throw new IOException("Chunk " + chunkIdx + " plane " + p + " compressed size " + ps
+                        + " exceeds maximum " + MAX_COMPRESSED_PLANE_BYTES);
             }
             planeSizes[p] = ps;
             planeSum += ps;
-            if (planeSum < 0) {
-                throw new IOException("Chunk " + chunkIdx + " plane size sum overflow");
-            }
         }
         // Plane-size sum must be exactly the compressed payload after the 32-byte sizes block.
         long payloadLen = compressedSize - PLANE_SIZES_LEN;
-        if ((long) planeSum != payloadLen) {
+        if (planeSum != payloadLen) {
             throw new IOException("Chunk " + chunkIdx + " plane sizes sum " + planeSum
                     + " != compressed payload " + payloadLen);
         }
 
         // Decompress each plane; the decompressed length must be exactly nEvents.
-        int offset = PLANE_SIZES_LEN;
         byte[][] planes = new byte[N_PLANES][];
         for (int p = 0; p < N_PLANES; p++) {
             int ps = planeSizes[p];
-            if (offset + ps > chunkData.length) {
-                throw new IOException("Chunk " + chunkIdx + " plane " + p + " data overruns chunk");
-            }
-            if (ps == 0) {
-                // a zero-length compressed plane is only valid if nEvents == 0, which we forbid;
-                // reject to avoid a silent zero-filled plane.
-                throw new IOException("Chunk " + chunkIdx + " plane " + p + " has zero compressed length");
-            }
             byte[] compPlane = new byte[ps];
-            System.arraycopy(chunkData, offset, compPlane, 0, ps);
+            raf.readFully(compPlane);
             planes[p] = decompressPlane(compPlane, nEvents, chunkIdx, p);
-            offset += ps;
         }
 
         // Un-transpose addresses: little-endian byte planes, plane0 = LSB.
@@ -1037,6 +1109,13 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
                 | ((buf[offset + 5] & 0xFFL) << 40)
                 | ((buf[offset + 6] & 0xFFL) << 48)
                 | ((buf[offset + 7] & 0xFFL) << 56);
+    }
+
+    private static void requireRegion(long start, long length, long limit, String context) throws IOException {
+        if (start < 0 || length < 0 || start > limit || length > limit - start) {
+            throw new IOException(context + " length " + length
+                    + " exceeds remaining file region " + Math.max(0, limit - start));
+        }
     }
 
     /**
