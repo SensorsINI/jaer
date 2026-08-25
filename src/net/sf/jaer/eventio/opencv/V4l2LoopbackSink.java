@@ -11,6 +11,10 @@ package net.sf.jaer.eventio.opencv;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,8 +40,15 @@ public class V4l2LoopbackSink {
     /** Linux x86_64 / aarch64 {@code sizeof(v4l2_format)==208}. */
     private static final int VIDIOC_S_FMT = 0xc0d05605;
     private static final int VIDIOC_QUERYCAP = 0x80685600;
+    private static final List<String> DEFAULT_V4L2_CTL_COMMAND = List.of("v4l2-ctl");
+    private static final long DEFAULT_V4L2_CTL_TIMEOUT_MILLIS = 5_000L;
+    private static final long PROCESS_TERMINATION_GRACE_MILLIS = 250L;
+    private static final long PROCESS_TERMINATION_FORCE_MILLIS = 1_000L;
+    private static final long PROCESS_TERMINATION_POLL_MILLIS = 10L;
 
     private final String device;
+    private final List<String> v4l2CtlCommand;
+    private final long v4l2CtlTimeoutMillis;
     private int fd = -1;
     private FileOutputStream fos;
     private int fmtW;
@@ -46,7 +57,25 @@ public class V4l2LoopbackSink {
     private boolean openFailedLogged;
 
     public V4l2LoopbackSink(String device) {
+        this(device, DEFAULT_V4L2_CTL_COMMAND, DEFAULT_V4L2_CTL_TIMEOUT_MILLIS);
+    }
+
+    V4l2LoopbackSink(String device, List<String> v4l2CtlCommand,
+            long v4l2CtlTimeoutMillis) {
         this.device = device == null || device.isBlank() ? "/dev/video10" : device;
+        if (v4l2CtlCommand == null || v4l2CtlCommand.isEmpty()) {
+            throw new IllegalArgumentException("v4l2-ctl command must not be empty");
+        }
+        for (String argument : v4l2CtlCommand) {
+            if (argument == null || argument.isBlank()) {
+                throw new IllegalArgumentException("v4l2-ctl command arguments must not be blank");
+            }
+        }
+        if (v4l2CtlTimeoutMillis <= 0L) {
+            throw new IllegalArgumentException("v4l2-ctl timeout must be positive");
+        }
+        this.v4l2CtlCommand = List.copyOf(v4l2CtlCommand);
+        this.v4l2CtlTimeoutMillis = v4l2CtlTimeoutMillis;
     }
 
     public static boolean isLinux() {
@@ -212,19 +241,142 @@ public class V4l2LoopbackSink {
     }
 
     private void setFmtWithV4l2Ctl(int w, int h) throws IOException {
-        ProcessBuilder pb = new ProcessBuilder("v4l2-ctl", "-d", device,
-                "--set-fmt-video=width=" + w + ",height=" + h + ",pixelformat=YUYV");
-        pb.redirectErrorStream(true);
+        List<String> command = new ArrayList<>(v4l2CtlCommand);
+        command.add("-d");
+        command.add(device);
+        command.add("--set-fmt-video=width=" + w + ",height=" + h + ",pixelformat=YUYV");
+        String context = "v4l2-ctl command " + command + " for device " + device
+                + " format " + w + "x" + h;
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+        Process process;
         try {
-            Process p = pb.start();
-            int rc = p.waitFor();
+            process = pb.start();
+        } catch (IOException e) {
+            throw new IOException(context + " could not start", e);
+        }
+        try {
+            process.getOutputStream().close();
+        } catch (IOException ignore) {
+        }
+
+        try {
+            if (!process.waitFor(v4l2CtlTimeoutMillis, TimeUnit.MILLISECONDS)) {
+                boolean cleanupInterrupted = terminateProcessTree(process);
+                IOException failure = new IOException(context + " timed out after "
+                        + v4l2CtlTimeoutMillis + " ms");
+                if (cleanupInterrupted) {
+                    Thread.currentThread().interrupt();
+                    failure.addSuppressed(new InterruptedException(
+                            "interrupted while terminating timed-out v4l2-ctl process tree"));
+                }
+                throw failure;
+            }
+            int rc = process.exitValue();
             if (rc != 0) {
-                throw new IOException("v4l2-ctl exited " + rc + " (install v4l2-utils or use JNA)");
+                throw new IOException(context + " exited " + rc
+                        + " (install v4l2-utils or use JNA)");
             }
         } catch (InterruptedException e) {
+            boolean cleanupInterrupted = terminateProcessTree(process);
             Thread.currentThread().interrupt();
-            throw new IOException("v4l2-ctl interrupted", e);
+            IOException failure = new IOException(context + " interrupted", e);
+            if (cleanupInterrupted) {
+                failure.addSuppressed(new InterruptedException(
+                        "interrupted again while terminating v4l2-ctl process tree"));
+            }
+            throw failure;
+        } finally {
+            try {
+                process.getInputStream().close();
+            } catch (IOException ignore) {
+            }
+            try {
+                process.getErrorStream().close();
+            } catch (IOException ignore) {
+            }
         }
+    }
+
+    private static boolean terminateProcessTree(Process process) {
+        List<ProcessHandle> handles = processTree(process);
+        destroyProcesses(handles, false);
+        boolean interrupted = waitForProcesses(handles, PROCESS_TERMINATION_GRACE_MILLIS);
+
+        addMissingHandles(handles, processTree(process));
+        destroyProcesses(handles, true);
+        interrupted |= waitForProcesses(handles, PROCESS_TERMINATION_FORCE_MILLIS);
+        return interrupted;
+    }
+
+    private static List<ProcessHandle> processTree(Process process) {
+        List<ProcessHandle> handles = new ArrayList<>(
+                process.toHandle().descendants().toList());
+        Collections.reverse(handles);
+        handles.add(process.toHandle());
+        return handles;
+    }
+
+    private static void addMissingHandles(List<ProcessHandle> destination,
+            List<ProcessHandle> candidates) {
+        for (ProcessHandle candidate : candidates) {
+            boolean present = false;
+            for (ProcessHandle existing : destination) {
+                if (existing.pid() == candidate.pid()) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) {
+                destination.add(candidate);
+            }
+        }
+    }
+
+    private static void destroyProcesses(List<ProcessHandle> handles, boolean forcibly) {
+        for (ProcessHandle handle : handles) {
+            if (!handle.isAlive()) {
+                continue;
+            }
+            try {
+                if (forcibly) {
+                    handle.destroyForcibly();
+                } else {
+                    handle.destroy();
+                }
+            } catch (SecurityException | UnsupportedOperationException ignore) {
+            }
+        }
+    }
+
+    private static boolean waitForProcesses(List<ProcessHandle> handles,
+            long timeoutMillis) {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+        boolean interrupted = false;
+        while (hasLiveProcess(handles)) {
+            long remainingNanos = deadline - System.nanoTime();
+            if (remainingNanos <= 0L) {
+                break;
+            }
+            try {
+                TimeUnit.NANOSECONDS.sleep(Math.min(remainingNanos,
+                        TimeUnit.MILLISECONDS.toNanos(PROCESS_TERMINATION_POLL_MILLIS)));
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        return interrupted;
+    }
+
+    private static boolean hasLiveProcess(List<ProcessHandle> handles) {
+        for (ProcessHandle handle : handles) {
+            if (handle.isAlive()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int fourcc(char a, char b, char c, char d) {
