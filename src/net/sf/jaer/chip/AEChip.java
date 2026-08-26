@@ -40,6 +40,7 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.CellStatsProber;
 import net.sf.jaer.eventprocessing.filter.Info;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
+import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
@@ -194,6 +195,10 @@ public class AEChip extends Chip2D {
 //        addDefaultEventFilter(SubSampler.class);
         addDefaultEventFilter(RefractoryFilter.class);
         addDefaultEventFilter(HotPixelFilter.class);
+        // IMU gyros: DAVIS and DVXplorer only (not Prophesee / NRV)
+        if (Steadicam.chipHasImu(this)) {
+            addDefaultEventFilter(Steadicam.class);
+        }
         addDefaultEventFilter(Info.class);
         addDefaultEventFilter(CellStatsProber.class);
         addDefaultEventFilter(JaerAviWriter.class);
@@ -218,6 +223,7 @@ public class AEChip extends Chip2D {
         if (opencv != null) {
             opencv.setPreferredEnabledState();
         }
+        Steadicam.ensurePresent(this);
     }
 
     /**

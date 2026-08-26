@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -31,6 +32,8 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
     public static final String PROPERTY_READOUT_FPS = "readoutFps";
     public static final String PROPERTY_GLOBAL_HOLD = "globalHold";
     public static final String PROPERTY_GLOBAL_RESET = "globalReset";
+    public static final String PROPERTY_IMU_ENABLED = "imuEnabled";
+    public static final String PROPERTY_IMU_DISPLAY = "displayImu";
 
     public static final int CONTRAST_MIN = 0;
     public static final int CONTRAST_MAX = 17;
@@ -44,12 +47,18 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
     private static final String PREF_FPS = "DVXplorerConfig.readoutFps";
     private static final String PREF_HOLD = "DVXplorerConfig.globalHold";
     private static final String PREF_RESET = "DVXplorerConfig.globalReset";
+    private static final String PREF_IMU = "DVXplorerConfig.imuEnabled";
+    private static final String PREF_IMU_DISPLAY = "DVXplorerConfig.displayImu";
+    /** Legacy Shift-I pref on the chip node (default was off). */
+    private static final String LEGACY_PREF_IMU = "isImuEnabled";
 
     private int contrastThresholdOn = CONTRAST_DEFAULT;
     private int contrastThresholdOff = CONTRAST_DEFAULT;
     private ReadoutFPS readoutFps = ReadoutFPS.VARIABLE_5000;
     private boolean globalHold = true;
     private boolean globalReset = false;
+    private boolean imuEnabled = true;
+    private boolean displayImu = true;
 
     private DVXplorerControlPanel controlUi;
 
@@ -111,6 +120,14 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
 
     public boolean isGlobalReset() {
         return globalReset;
+    }
+
+    public boolean isImuEnabled() {
+        return imuEnabled;
+    }
+
+    public boolean isDisplayImu() {
+        return displayImu;
     }
 
     public void setContrastThresholdOn(int value) {
@@ -198,6 +215,37 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         }
     }
 
+    /**
+     * Enable BMI160 capture. Mini/Micro firmware 10+ uses 8-byte {@code IMU_RUN_*}
+     * (same as dv-processing {@code DVXplorerM}) plus interrupt EP 0x81.
+     */
+    public void setImuEnabled(boolean enable) {
+        if (enable == imuEnabled) {
+            return;
+        }
+        final boolean old = imuEnabled;
+        imuEnabled = enable;
+        try {
+            applyImuRun();
+            markFileModified();
+            support.firePropertyChange(PROPERTY_IMU_ENABLED, old, enable);
+        } catch (HardwareInterfaceException e) {
+            imuEnabled = old;
+            log.warning(e.toString());
+        }
+    }
+
+    /** Overlay the last IMU sample on the chip canvas (Shift-I also toggles this). */
+    public void setDisplayImu(boolean enable) {
+        if (enable == displayImu) {
+            return;
+        }
+        final boolean old = displayImu;
+        displayImu = enable;
+        markFileModified();
+        support.firePropertyChange(PROPERTY_IMU_DISPLAY, old, enable);
+    }
+
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         applyToHardware();
@@ -213,6 +261,7 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         applyContrastOff();
         applyGlobalHoldReset();
         applyReadoutFps();
+        applyImuRun();
     }
 
     @Override
@@ -223,7 +272,11 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         readoutFps = parseFps(p.get(PREF_FPS, ReadoutFPS.VARIABLE_5000.name()));
         globalHold = p.getBoolean(PREF_HOLD, true);
         globalReset = p.getBoolean(PREF_RESET, false);
+        imuEnabled = p.getBoolean(PREF_IMU, p.getBoolean(LEGACY_PREF_IMU, true));
+        displayImu = p.getBoolean(PREF_IMU_DISPLAY, imuEnabled);
         super.loadPreferences();
+        support.firePropertyChange(PROPERTY_IMU_ENABLED, null, imuEnabled);
+        support.firePropertyChange(PROPERTY_IMU_DISPLAY, null, displayImu);
         if (controlUi != null) {
             controlUi.syncFromConfig();
         }
@@ -237,6 +290,9 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         p.put(PREF_FPS, readoutFps.name());
         p.putBoolean(PREF_HOLD, globalHold);
         p.putBoolean(PREF_RESET, globalReset);
+        p.putBoolean(PREF_IMU, imuEnabled);
+        p.putBoolean(PREF_IMU_DISPLAY, displayImu);
+        p.putBoolean(LEGACY_PREF_IMU, imuEnabled);
         super.storePreferences();
     }
 
@@ -262,8 +318,11 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
     public JPanel getControlPanel() {
         if (controlPanel == null) {
             controlUi = new DVXplorerControlPanel(this);
+            final JTabbedPane tabs = new JTabbedPane();
+            tabs.addTab("DVS / Readout", controlUi);
+            tabs.addTab("IMU Config", DVXplorerControlPanel.createImuTab(this));
             controlPanel = new JPanel(new BorderLayout());
-            controlPanel.add(controlUi, BorderLayout.CENTER);
+            controlPanel.add(tabs, BorderLayout.CENTER);
         }
         return controlPanel;
     }
@@ -328,6 +387,20 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
             reg &= ~0x02;
         }
         fx3.spiConfigSend(DVXplorer.DEVICE_DVS, DVXplorer.REGISTER_DIGITAL_MODE_CONTROL, reg & 0xFF);
+    }
+
+    void applyImuRun() throws HardwareInterfaceException {
+        final DVXplorerFX3HardwareInterface fx3 = fx3();
+        if (fx3 == null || !fx3.isOpen()) {
+            return;
+        }
+        final int param = imuEnabled ? 1 : 0;
+        fx3.spiConfigSend(DVXplorer.DVX_IMU, DVXplorer.DVX_IMU_RUN_ACCELEROMETER, param);
+        fx3.spiConfigSend(DVXplorer.DVX_IMU, DVXplorer.DVX_IMU_RUN_GYROSCOPE, param);
+        fx3.spiConfigSend(DVXplorer.DVX_IMU, DVXplorer.DVX_IMU_RUN_TEMPERATURE, param);
+        if (fx3.isNextGenFirmware() && fx3.getAeReader() != null) {
+            fx3.setCx3ImuCaptureEnabled(imuEnabled);
+        }
     }
 
     private void applyReadoutFps() throws HardwareInterfaceException {

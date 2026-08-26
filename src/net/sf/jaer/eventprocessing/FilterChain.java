@@ -345,6 +345,16 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     }
 
     /**
+     * Inserts a filter at {@code index}. Same as {@link #add(EventFilter2D)}
+     * besides position.
+     */
+    @Override
+    public void add(int index, EventFilter2D filter) {
+        super.add(index, filter);
+        filter.setControlsVisible(false);
+    }
+
+    /**
      * remove the filter
      *
      * @return true if successful

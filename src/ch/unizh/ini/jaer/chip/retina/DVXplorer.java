@@ -118,6 +118,25 @@ public class DVXplorer extends AETemporalConstastRetina {
 
         setBiasgen(new DVXplorerConfig(this));
     }
+
+    public DVXplorerConfig getDvxConfig() {
+        if (getBiasgen() instanceof DVXplorerConfig cfg) {
+            return cfg;
+        }
+        return null;
+    }
+
+    /** BMI160 capture (SPI IMU_RUN and Mini/Micro EP 0x81). Default on. */
+    public boolean isImuCaptureEnabled() {
+        final DVXplorerConfig cfg = getDvxConfig();
+        return cfg == null || cfg.isImuEnabled();
+    }
+
+    /** Canvas overlay of the last IMU sample. */
+    public boolean isDisplayImu() {
+        final DVXplorerConfig cfg = getDvxConfig();
+        return cfg != null && cfg.isDisplayImu();
+    }
     
     // Module address
     public final static short DEVICE_DVS = 5;
@@ -594,10 +613,19 @@ public class DVXplorer extends AETemporalConstastRetina {
 
     /** dv-processing {@code DVXplorerM} constructor defaults (firmware ≥10). */
     private void sendNextGenDefaultConfig(DVXplorerFX3HardwareInterface fx3) {
-        // Firmware 10+ 8-byte SPI OUT never returns on WinUSB (jAER 7:42:25 Micro:
-        // first DVS_FLATTEN hung jaer-aemon-open until the 8 s abort). Keep
-        // factory firmware defaults; spiConfigSend also no-ops for this firmware.
-        DVXplorer.log.info("Mini/Micro firmware 10+: skipping SPI OUT defaults (native hang)");
+        // c6ec5a073 skipped every firmware-10 SPI OUT because DVS_FLATTEN hung
+        // WinUSB. That also dropped BMI160 ODR/range; factory gyro ODR 5 is
+        // reserved and freezes ~0 dps (Steadicam dead, overlay gyros stuck).
+        // Restore IMU 8-byte SPI only. Keep DVS_FLATTEN / contrast / size IN skipped.
+        // Firmware ≥10 SPI uses BMI160 ODR register values (dv-processing
+        // BoschBMI160* enums). Gyro ODR 5 is reserved and yields frozen ~0 dps.
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 11); // 800 Hz
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2); // NORMAL
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1); // 4 g
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 11); // 800 Hz
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2); // NORMAL
+        spiConfigSend(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2); // 500 dps (MPU-6150 65.5 LSB/dps)
+        DVXplorer.log.info("Mini/Micro firmware 10+: BMI160 800 Hz, accel 4 g, gyro 500 dps");
     }
     
     /**
@@ -610,9 +638,7 @@ public class DVXplorer extends AETemporalConstastRetina {
 
         if (isNextGenFirmware()) {
             spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 1);
-            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 1);
-            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 1);
-            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 1);
+            applyImuRunFromConfig();
             if (debug) {
                 final int run = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_RUN);
                 DVXplorer.log.info("Mini/Micro DVS_RUN readback=" + run);
@@ -660,9 +686,7 @@ public class DVXplorer extends AETemporalConstastRetina {
             spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 1);
         }
 
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 1);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 1);
-        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 1);
+        applyImuRunFromConfig();
         spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 1);
 
         // Enable streaming from DVS chip.
@@ -671,6 +695,23 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(2));
     }
     
+    /** SPI IMU_RUN from Hardware Configuration / Shift-I. Firmware 10+ is 8-byte. */
+    void applyImuRunFromConfig() {
+        final DVXplorerConfig cfg = getDvxConfig();
+        if (cfg != null) {
+            try {
+                cfg.applyImuRun();
+                return;
+            } catch (HardwareInterfaceException e) {
+                DVXplorer.log.warning("IMU_RUN: " + e);
+                return;
+            }
+        }
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 1);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 1);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 1);
+    }
+
     /**
      * Refer to libcaer dvxplorer.c dvXplorerDataStop() and dvXplorerClose() for details.
      */
@@ -877,8 +918,12 @@ public class DVXplorer extends AETemporalConstastRetina {
 
     /** Show IMU overlay (Shift-I). Used when Mini/Micro EP 0x81 IMU is running. */
     public void setImuOverlayEnabled(boolean yes) {
+        final DVXplorerConfig cfg = getDvxConfig();
+        if (cfg != null) {
+            cfg.setDisplayImu(yes);
+        }
         if (toggleIMU != null) {
-            toggleIMU.isImuEnabled = yes;
+            toggleIMU.putValue(Action.SELECTED_KEY, isImuCaptureEnabled());
         }
     }
 
@@ -1145,30 +1190,25 @@ public class DVXplorer extends AETemporalConstastRetina {
     }
     
     final public class ToggleIMU extends DVXMenuAction {
-        
-        public boolean isImuEnabled = getPrefs().getBoolean("isImuEnabled", false);
 
         public ToggleIMU() {
             super("Toggle IMU",
                 "<html>Toggles IMU (inertial measurement unit) capture and display<p>See <i>IMU Config</i> tab in HW configuration panel for more control",
                 "ToggleIMU");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_I, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.SELECTED_KEY, isImuCaptureEnabled());
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            setImuEnabled(!isImuEnabled);
-            dvxDisplayMethod.showActionText("IMU enabled = " + isImuEnabled);
-            putValue(Action.SELECTED_KEY, true);
-            isImuEnabled = !isImuEnabled;
-        }
-        
-        public void setImuEnabled(boolean yes) {
-            getPrefs().putBoolean("isImuEnabled", yes);
-            int param = yes? 1: 0;
-            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, param);
-            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, param);
-            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, param);
+            final DVXplorerConfig cfg = getDvxConfig();
+            final boolean next = !isImuCaptureEnabled();
+            if (cfg != null) {
+                cfg.setImuEnabled(next);
+                cfg.setDisplayImu(next);
+            }
+            dvxDisplayMethod.showActionText("IMU enabled = " + isImuCaptureEnabled());
+            putValue(Action.SELECTED_KEY, isImuCaptureEnabled());
         }
     }
     
@@ -1220,7 +1260,7 @@ public class DVXplorer extends AETemporalConstastRetina {
             super.display(drawable);
 
             // Draw last IMU output
-            if (toggleIMU.isImuEnabled) {
+            if (isDisplayImu()) {
                 IMUSample overlay = dvxExtractor.imuSample;
                 final PacketBundle last = chip.getLastBundle();
                 if (last != null) {

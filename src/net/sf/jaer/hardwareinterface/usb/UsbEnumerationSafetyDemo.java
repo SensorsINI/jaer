@@ -146,7 +146,7 @@ public final class UsbEnumerationSafetyDemo {
         String spiOut = methodBody(
                 Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
                         "cypressfx3libusb", "DVXplorerFX3HardwareInterface.java"),
-                "private static boolean isNextGenStreamingParam",
+                "static boolean isNextGenStreamingParam",
                 "public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr)");
         require(spiOut.contains("skipping SPI OUT on Mini/Micro firmware"),
                 "firmware 10+ must not 8-byte SPI OUT for DVS_FLATTEN (hung open 8 s)");
@@ -156,6 +156,12 @@ public final class UsbEnumerationSafetyDemo {
                 "firmware 10 DVS_RUN payload is 8 bytes");
         require(!spiOut.contains("Mini/Micro 4-byte SPI OUT"),
                 "firmware 10 DVS_RUN must not use 4-byte wLength");
+        require(spiOut.contains("DVX_IMU_RUN_ACCELEROMETER"),
+                "Mini/Micro IMU_RUN_* uses 8-byte SPI like DVXplorerM (not skipped)");
+        require(spiOut.contains("DVX_IMU_GYRO_DATA_RATE"),
+                "Mini/Micro BMI160 gyro ODR uses 8-byte SPI (c6ec5a073 skip froze gyros)");
+        require(spiOut.contains("FPGA_IMU"),
+                "next-gen streaming params include MODULE_IMU=3");
     }
 
     /**
