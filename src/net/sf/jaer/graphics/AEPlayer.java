@@ -18,7 +18,6 @@ import javax.swing.ProgressMonitor;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
-import javax.swing.filechooser.FileFilter;
 
 import com.jogamp.opengl.GLException;
 import java.time.ZoneId;
@@ -79,7 +78,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public boolean isChoosingFile() {
         return (fileChooser != null) && fileChooser.isVisible();
     }
-    FileFilter lastFilter = null;
 
     /**
      * Called when user asks to open data file file dialog.
@@ -96,16 +94,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         String lastFilePath = this.viewer.prefs.get("AEViewer.lastFile", "");
         // get the last folder
         viewer.lastFile = new File(lastFilePath);
-//            fileChooser.setFileFilter(datFileFilter);
-        IndexFileFilter indexFileFilter = new IndexFileFilter();
-        fileChooser.addChoosableFileFilter(indexFileFilter);
-        DATFileFilter datFileFilter = new DATFileFilter();
-        fileChooser.addChoosableFileFilter(datFileFilter);
-        if (lastFilter == null) {
-            fileChooser.setFileFilter(datFileFilter);
-        } else {
-            fileChooser.setFileFilter(lastFilter);
-        }
+        DATFileFilter.installOpenDialogFilters(fileChooser, null);
         fileChooser.setCurrentDirectory(viewer.lastFile);
         // sets the working directory of the chooser
 //            boolean wasPaused=isPaused();
@@ -113,7 +102,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         try {
             int retValue = fileChooser.showOpenDialog(viewer);
             if (retValue == JFileChooser.APPROVE_OPTION) {
-                lastFilter = fileChooser.getFileFilter();
                 viewer.lastFile = fileChooser.getSelectedFile();
                 if (viewer.lastFile != null) {
                     viewer.recentFiles.addFile(viewer.lastFile);

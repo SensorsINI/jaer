@@ -79,6 +79,22 @@ public class AEDZRoutingDemo {
                 "DATFileFilter.accept(recording.aedat4)");
         assertTrue(!filter.accept(new File("recording.foo")),
                 "DATFileFilter rejects .foo");
+        DATFileFilter aedat4 = new DATFileFilter(DATFileFilter.Category.AEDAT4);
+        assertTrue(aedat4.accept(new File("recording.aedat4")),
+                "AEDAT4 filter accepts .aedat4");
+        assertTrue(!aedat4.accept(new File("recording.aedat2")),
+                "AEDAT4 filter rejects .aedat2");
+        DATFileFilter other = new DATFileFilter(DATFileFilter.Category.OTHER);
+        assertTrue(other.accept(new File("recording.aedz")),
+                "OTHER filter accepts .aedz");
+        assertTrue(!other.accept(new File("recording.aedat4")),
+                "OTHER filter rejects .aedat4");
+        DATFileFilter allFiles = new DATFileFilter(DATFileFilter.Category.ALL_FILES);
+        assertTrue(allFiles.accept(new File("recording.foo")),
+                "ALL_FILES accepts any file");
+        File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+        assertTrue(aedat4.accept(tmpDir) && other.accept(tmpDir) && allFiles.accept(tmpDir),
+                "every filter shows directories");
         System.out.println("PASS DATFileFilter routing");
     }
 

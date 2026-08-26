@@ -6530,8 +6530,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 lastFile = new File(lastFilePath);
 
-                DATFileFilter datFileFilter = new DATFileFilter();
-                fileChooser.addChoosableFileFilter(datFileFilter);
+                DATFileFilter.installOpenDialogFilters(fileChooser, null);
                 fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
                 //            boolean wasPaused=isPaused();
                 //        setPaused(true);
