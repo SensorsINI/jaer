@@ -67,7 +67,7 @@ Paths in `rules.dropboxignore` are **relative to the Dropbox root**, with `/` se
 
 ## Two mechanisms (you need both)
 
-1. **`rules.dropboxignore`** (Dropbox **root** only) — future files/folders matching a rule stay local. **Forward-only:** already-synced items stay on dropbox.com. This is Dropbox’s official ignore-rules file; it is **not** the same as per-folder `.dropboxignore` files.
+1. **`rules.dropboxignore`** (Dropbox **root** only) — future files/folders matching a rule stay local. **Forward-only:** already-synced items stay on dropbox.com. This is Dropbox’s official ignore-rules file; it is **not** the same as per-folder `.dropboxignore` files. On Linux the GNOME tray has **no** “Modify Rules” UI; create or edit the file yourself at `<DropboxRoot>/rules.dropboxignore` (this machine: `~/Dropbox/rules.dropboxignore`).
 2. **Ignore attribute on existing folders** — gray minus icon; item stays on disk, is removed from dropbox.com and other devices.
 
 New `.venv` / `__pycache__` / `build` after the rules exist are ignored by (1). Existing `jaer/build` and `jaer/bin` need (2).
@@ -79,7 +79,7 @@ On **Linux**, a local helper (`dropbox-ignore` / `apply-dropboxignore`) applies 
 ## Agent checklist (another computer)
 
 1. Find the **Personal** Dropbox root (see [Find Dropbox root](#find-dropbox-root)).
-2. Open or create `<DropboxRoot>/rules.dropboxignore`. If missing: Dropbox app → Preferences → Sync → Ignore Rules → Modify Rules.
+2. Open or create `<DropboxRoot>/rules.dropboxignore`. Windows/macOS: Dropbox app → Preferences → Sync → Ignore Rules → Modify Rules. **Linux:** the GNOME tray has no “Modify Rules”; create the file by hand in the Dropbox root (see [Find Dropbox root](#find-dropbox-root)).
 3. Append the [canonical rules](#canonical-rules) if they are not already present. Do not duplicate the block.
 4. Confirm this jAER clone is under that Dropbox root at `GitHub/SensorsINI/jaer` (or edit the three `jaer/…` paths).
 5. Apply the ignore attribute to **existing** `build`, `bin`, and `dist` (if present). Optionally to any existing `.venv` next to sibling repos (`rpg_e2vid`, etc.). On Linux, prefer `dropbox-ignore` with a repo `.dropboxignore` (see [Linux: `.dropboxignore` helper](#linux-dropboxignore-helper)).
@@ -102,6 +102,8 @@ __pycache__/
 GitHub/SensorsINI/jaer/build/
 GitHub/SensorsINI/jaer/bin/
 GitHub/SensorsINI/jaer/dist/
+GitHub/SensorsINI/jaer/lib/
+GitHub/SensorsINI/jaer/ivy/
 jAER.jar
 jaer.jar
 ```
@@ -120,7 +122,24 @@ Typical locations:
 | macOS (older) | `~/Dropbox` or `~/Dropbox (Personal)` |
 | Linux | `~/Dropbox` or `~/Dropbox (Personal)` |
 
-`rules.dropboxignore` must live in that root, not inside `jaer/`.
+`rules.dropboxignore` must live in that root, not inside `jaer/`. Dropbox does not sync this file. The Linux tray/preferences pane does **not** offer “Set Ignore Rules”; put the file there with a text editor.
+
+Linux, this checkout’s Dropbox root is `~/Dropbox` (`~/.dropbox/info.json` → `personal.path`). The ignore-rules file is therefore:
+
+```
+~/Dropbox/rules.dropboxignore
+```
+
+Create it if missing (it is not created automatically on Linux):
+
+```bash
+python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.dropbox/info.json')))['personal']['path'])"
+ls -l ~/Dropbox/rules.dropboxignore
+# if missing:
+nano ~/Dropbox/rules.dropboxignore
+```
+
+Paste the [canonical rules](#canonical-rules), save. Dropbox applies the file when it is saved; no GNOME restart is required.
 
 Windows, locate it:
 
@@ -279,7 +298,8 @@ Ignore rules do **not** delete copies already on dropbox.com. The ignore attribu
 
 ## Do not
 
-- Put `rules.dropboxignore` inside `jaer/` — Dropbox only reads the **Dropbox root** copy.
+- Put `rules.dropboxignore` inside `jaer/` — Dropbox only reads the **Dropbox root** copy (`~/Dropbox/rules.dropboxignore` on this Linux machine).
+- Wait for a GNOME Dropbox “edit ignore file” / “Modify Rules” control — that UI is Windows/macOS only. On Linux, create the root file yourself.
 - Confuse `.dropboxignore` (per-folder; Linux `dropbox-ignore` helper only) with `rules.dropboxignore` (Dropbox root; official ignore rules on every OS).
 - Rely on git `.gitignore` — that does not control Dropbox.
 - Expect this setup to appear automatically on a new PC; copy the canonical block and re-apply the ignore attribute. On Linux, also install `dropbox-ignore` if you use `.dropboxignore` files.
