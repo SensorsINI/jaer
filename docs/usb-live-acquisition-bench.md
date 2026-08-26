@@ -1,13 +1,15 @@
 # Live USB acquisition benchmarks
 
 Use these flags to capture **before/after** baselines when enabling USB-side
-typed `PacketBundle` demux (retire live `AEPacketRaw` → `extractBundle`).
+typed `PacketBundle` demux. AEViewer's authoritative route currently applies to
+DAVIS FX3 and SciDVS; other interfaces remain explicit legacy raw compatibility
+routes even if they expose a typed helper.
 
 ## Flags
 
 | System property | Purpose |
 |-----------------|--------|
-| `-Djaer.live.bench=true` | ViewLoop metrics: FPS, polarity keps, overruns, loop ms, heap |
+| `-Djaer.live.bench=true` | ViewLoop metrics: FPS, rendered polarity rate, source accepted counts/rate, structured loss, timestamp epochs, legacy raw overruns, loop ms, heap |
 | `-Djaer.live.bench.file=logs/live-bench.csv` | Append CSV summary rows |
 | `-Djaer.live.bench.intervalMs=2000` | Summary interval |
 | `-Djaer.usb.trace.pipeline=true` | USB-thread chunk timings (`UsbPipelineBench`) |
@@ -37,23 +39,52 @@ The following table lists preference keys ("prefs") and system properties you ca
     ```
     (Replace `<key>` and `<value>` as needed. On Linux/macOS, use `./scripts/run-jaer-fast.sh -D...`.)
 
-| Family                    | Pref / property                        | Default demux      |
-|---------------------------|----------------------------------------|--------------------|
-| Davis FX3 (Davis346, SciDVS via same PID) | `hardware/DAViSFX3/usbTypedDemux` | `true` (mono); color RGB stays off |
+| Family                    | Pref / property                        | AEViewer route      |
+|---------------------------|----------------------------------------|---------------------|
+| Davis FX3 (Davis346, SciDVS via same PID) | `hardware/DAViSFX3/usbTypedDemux` | Authoritative typed by default (mono); color RGB stays legacy |
 | Davis dual-write APS/IMU AE | `hardware/DAViSFX3/dualWriteApsImuAe` | `false` when demux on |
-| NRV | `hardware/NRV/usbTypedDemux` | `true` (skips live `AEPacketRaw` dual-write) |
-| Prophesee | `hardware/Prophesee/usbTypedDemux` | `true` |
-| DVS128 libusb FX2 | `hardware/CypressFX2DVS128/usbTypedDemux` | `true` |
+| NRV | `hardware/NRV/usbTypedDemux` | Legacy raw compatibility |
+| Prophesee | `hardware/Prophesee/usbTypedDemux` | Legacy raw compatibility |
+| DVS128 libusb FX2 | `hardware/CypressFX2DVS128/usbTypedDemux` | Legacy raw compatibility |
 
 Set the boolean pref to `false` to restore raw + `extractBundle` during validation.
 
+## Route and accounting columns
+
+For normal DAVIS/SciDVS rendering, filtering, AEDAT-4, and AEDZ (with no raw
+sink), `typedDemux=true` means the USB source published a sealed authoritative
+bundle with no raw sidecar. The CSV keeps the original columns and appends:
+
+- `sourceEvents`, `kepsSource`, and `sourceAcceptedCounts`: accepted source
+  elements from sealed metadata, grouped by `PacketType`;
+- `exactLossEvents` and `unquantifiedLossRecords`: structured loss without
+  treating an unavailable count as zero;
+- `timestampEpochObservations`, `acquisitionSessionId`, `sequenceId`, and
+  `timestampEpochs`: source lifecycle context for the last slice in the window;
+- `lossDetail`: packet type and source-provided reason.
+
+The legacy adapter continues to populate `rawEvents`, `kepsRaw`, and `overruns`
+from the raw source count and `DroppedDataInfo`. It does not inspect an
+`AEPacketRaw` inside the benchmark collector.
+
+AEDAT-2 recording, sequencing, raw unicast/queue output, acquisition-thread
+filtering, RGB DAVIS, and unmigrated interfaces select legacy raw acquisition.
+If this classification changes while live acquisition is enabled, AEViewer
+disables acquisition before Cypress switches mode; typed and raw acquisition
+are never run together.
+
 ## Baseline checklist
 
-For each of **Davis346** (DVS-only and DVS+APS), **NRV**, **Prophesee EVK4**, **DVS128**:
+For **Davis346/SciDVS** (DVS-only and DVS+APS):
 
-1. Run ~60 s with demux **off**; note keps, overrun count, heapMB from live-bench log.
+1. Run ~60 s with demux **off**; note legacy raw rate, overrun count, loop time, and heap from the live-bench log.
 2. Enable demux (pref / restart); repeat same scene / illumination.
-3. Success: polarity rate within ~10% of baseline, no overrun regression; Davis APS+DVS should show lower heap / AE-buffer pressure when APS AE dual-write is off.
+3. Compare rendered polarity rate with `sourceAcceptedCounts`, structured loss,
+   epoch observations, and heap pressure. Davis APS+DVS should show lower heap /
+   AE-buffer pressure when APS AE dual-write is off.
+
+For **NRV, Prophesee EVK4, and DVS128**, use the same measurements as legacy
+compatibility baselines; they do not demonstrate authoritative routing yet.
 
 Record results next to the CSV path for the PR / release notes.
 
@@ -99,4 +130,3 @@ For each live device above:
 5. Confirm the live view resumes within about a second of each restart.
 6. Optional: force a hung stop path and confirm Status shows `Failed` with
    detail and the device recovers/closes without overlapping transfers.
-
