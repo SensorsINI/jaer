@@ -23,7 +23,7 @@ public class SciDVS extends DavisBaseCamera {
 
 	public SciDVS() {
 		setName("SciDVS");
-		setDefaultPreferencesFile("biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml");
+		setDefaultPreferencesFileForFamily("SciDVS");
 
 		setSizeX(SciDVS.WIDTH_PIXELS);
 		setSizeY(SciDVS.HEIGHT_PIXELS);
