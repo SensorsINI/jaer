@@ -1030,9 +1030,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int showMultipleInterfacesMessageCount = 0;
 
     private long lastInterfaceCheckTime = 0;
+    /** Last libusb ARRIVED/LEFT; empty scans retry until this window elapses. */
+    private volatile long lastUsbHotplugTimeMs = 0;
     private static final long INTERFACE_CHECK_INTERVAL_MS = 3000; // don't scan USB bus too often while paused
     /** Fallback full scan when libusb hotplug is active (events handle the fast path). */
     private static final long HOTPLUG_FALLBACK_CHECK_INTERVAL_MS = 15_000;
+    /** After ARRIVED, {@code getDeviceList} can still be empty; retry WAITING scans this long. */
+    private static final long HOTPLUG_EMPTY_SCAN_RETRY_MS = 2_000;
     private final LibUsbHotplug.Listener usbHotplugListener = this::onLibUsbHotplug;
 
     /**
@@ -1047,6 +1051,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners
         // check to see if null interface required instead
         if (nullInterface) {
+            log.fine("openHardwareIfNonambiguous skipped (nullInterface; Interface → None or failed ACCESS open)");
             return;
         }
         final boolean dirty = HardwareInterfaceFactory.instance().isUsbEnumerationDirty();
@@ -1064,6 +1069,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        log.fine("openHardwareIfNonambiguous ninterfaces=" + ninterfaces + " dirtyWas=" + dirty);
+        if (ninterfaces == 0 && LibUsbHotplug.isSupported()
+                && (System.currentTimeMillis() - lastUsbHotplugTimeMs) < HOTPLUG_EMPTY_SCAN_RETRY_MS) {
+            lastInterfaceCheckTime = 0;
+            HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+            log.fine("hotplug scan found 0 devices; will retry on next WAITING tick");
+        }
         if (ninterfaces > 1) {
             if (isRememberLastInterface() && rememberLastInterfaceDeviceID != null) {
                 log.info(String.format("Last interface was %s; %d devices present — pick one from the Interface menu (no USB open to match serial)",
@@ -2965,6 +2977,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (canvas == null) {
             return;
         }
+        canvas.clearUsbLinkOverlay();
         if (pendingOpeningCameraLabel != null) {
             canvas.setWelcomeOverlay(Welcome.opening(this, pendingOpeningCameraLabel));
         } else {
@@ -3123,6 +3136,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             chip.setHardwareInterface(null); // should set chip's biasgen to null also
             //            if(chip.getBiasgen()!=null) chip.getBiasgen().setHardwareInterface(null);
         }
+        pendingOpeningCameraLabel = null;
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas != null) {
+            canvas.clearUsbLinkOverlay();
+        }
     }
 
     /**
@@ -3147,6 +3165,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         } else {
             try {
+                HardwareInterface bound = (chip != null) ? chip.getHardwareInterface() : null;
+                // AEReader shutdown closes the live wrapper on unplug but leaves it on the
+                // chip. Reopening that instance throws devicePointer-not-initialized and
+                // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
+                if (bound != null && aemon == bound && !bound.isOpen()) {
+                    log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
+                    nullifyHardware();
+                }
                 openHardwareIfNonambiguous();
                 if (hardwareSwitchInProgress || suppressHardwareOpen
                         || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
@@ -3408,9 +3434,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     aemon.close();
                 }
                 nullifyHardware();
-                // Stop WAITING from rebinding the same ghost device every 3 s
-                // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
-                nullInterface = true;
+                if (isUsbDeviceGone(e)) {
+                    log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
+                    nullInterface = false;
+                } else {
+                    // Stop WAITING from rebinding the same ghost device every 3 s
+                    // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
+                    nullInterface = true;
+                }
                 setPlaybackControlsEnabledState(false);
                 fixDeviceControlMenuItems();
                 fixRecordingControls();
@@ -3428,6 +3459,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else if (wantLive && getPlayMode() == PlayMode.WAITING && !suppressHardwareOpen) {
             // Only WAITING→LIVE; never overwrite PLAYBACK/REMOTE/FILTER_INPUT (file-open race).
             pendingOpeningCameraLabel = null;
+            ChipCanvas liveCanvas = getChipCanvas();
+            if (liveCanvas != null) {
+                liveCanvas.setWelcomeOverlay(null); // idle defaults if unplug returns to WAITING
+            }
             setPlayMode(PlayMode.LIVE);
             runPendingFirstHardwareUseAfterLive();
         }
@@ -3435,7 +3470,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * After AEChip matching and a successful USB open, show speed/topology on
-     * the chip view for 10 s. Snapshot comes from {@link LibUsbLinkInfo#logOnOpen}.
+     * the chip view for {@link ChipCanvas#USB_LINK_OVERLAY_MS}. Snapshot comes
+     * from {@link LibUsbLinkInfo#logOnOpen}.
      */
     private void showUsbLinkOverlayAfterOpen() {
         LibUsbLinkInfo.Snapshot snap = LibUsbLinkInfo.lastOpen();
@@ -4377,6 +4413,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     if ((aemon == null) || !aemon.isOpen()) {
                         setPlayMode(PlayMode.WAITING);
+                        if (!hardwareSwitchInProgress) {
+                            showWelcomeOverlay();
+                        }
                         try {
                             Thread.sleep(300);
                         } catch (InterruptedException e) {
@@ -4402,6 +4441,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             aemon.close(); // TODO check if this is OK -tobi
                         }
                         nullifyHardware();
+                        showWelcomeOverlay();
 //                        stopMe();
 
                         return emptyRawPacket;
@@ -4410,6 +4450,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.warning("Interface changed out from under us: " + cce.toString());
                         log.log(Level.SEVERE, cce.toString(), cce);
                         nullifyHardware();
+                        showWelcomeOverlay();
                         return emptyRawPacket;
                     }
                 case PLAYBACK:
@@ -8603,11 +8644,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void onLibUsbHotplug(boolean arrived, int vid, int pid) {
         log.info(String.format("USB hotplug %s %04x:%04x; scanning for cameras",
                 arrived ? "add" : "remove", vid, pid));
-        log.fine("onLibUsbHotplug playMode=" + getPlayMode() + " " + UsbLog.t());
+        log.fine("onLibUsbHotplug playMode=" + getPlayMode() + " nullInterface=" + nullInterface
+                + " " + UsbLog.t());
+        lastUsbHotplugTimeMs = System.currentTimeMillis();
         lastInterfaceCheckTime = 0;
-        if (getPlayMode() == PlayMode.WAITING && viewLoop != null) {
+        if (arrived) {
+            // Plug-in is user intent. Do not keep the block set by a failed reopen of
+            // the unplugged wrapper (or Interface → Refresh already clears this).
+            if (nullInterface) {
+                log.info("USB hotplug add: clearing nullInterface so WAITING can open the camera");
+            }
+            nullInterface = false;
+        } else {
+            HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+            if (hw != null) {
+                UsbIds.Pair ids = UsbIds.peek(hw);
+                boolean vidPidMatch = ids.isKnown()
+                        && ((ids.vid & 0xffff) == vid) && ((ids.pid & 0xffff) == pid);
+                if (vidPidMatch || (getPlayMode() == PlayMode.LIVE && !hw.isOpen())) {
+                    log.info("USB hotplug remove: unbinding " + hw);
+                    nullifyHardware();
+                }
+            }
+        }
+        if (viewLoop != null && (getPlayMode() == PlayMode.WAITING || getPlayMode() == PlayMode.LIVE)) {
             interruptViewloop();
         }
+    }
+
+    /** True when open/close failed because the USB device has already left the bus. */
+    private static boolean isUsbDeviceGone(Throwable t) {
+        for (; t != null; t = t.getCause()) {
+            String m = t.getMessage();
+            if (m == null) {
+                continue;
+            }
+            if (m.contains("devicePointer") || m.contains("LIBUSB_ERROR_NO_DEVICE")
+                    || m.contains("NO_DEVICE") || m.contains("not initialized")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Stop USB/live reader before joining ViewLoop so shutdown does not fill AE buffers. */

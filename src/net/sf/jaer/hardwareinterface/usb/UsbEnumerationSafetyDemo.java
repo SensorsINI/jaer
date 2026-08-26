@@ -27,6 +27,7 @@ public final class UsbEnumerationSafetyDemo {
         testViewerSkipsOpenDeviceByIdentity();
         testViewerSelectsOnEdtWithFriendlyLabels();
         testDavisNoneDavisReopenSequence();
+        testHotplugUnplugDoesNotBlockReplug();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -297,6 +298,56 @@ public final class UsbEnumerationSafetyDemo {
                 "private void drawSkipChipRenderingOverlayIfNeeded");
         require(skip.contains("isWelcomeOverlayActive()"),
                 "WAITING welcome/opening overlay blanks the chip pixmap");
+    }
+
+    /**
+     * Unplug while LIVE closed the wrapper then ViewLoop reopened it
+     * ({@code devicePointer is not initialized}), set {@code nullInterface}, and
+     * ignored the next libusb ARRIVED (jAER-0.log 17:44:59 / 17:46:00).
+     */
+    private static void testHotplugUnplugDoesNotBlockReplug() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String hotplug = methodBody(viewer,
+                "private void onLibUsbHotplug(boolean arrived, int vid, int pid) {",
+                "private static boolean isUsbDeviceGone(Throwable t) {");
+        require(hotplug.contains("nullInterface = false"),
+                "hotplug add must clear nullInterface so WAITING can open a replugged camera");
+        require(hotplug.contains("nullifyHardware()"),
+                "hotplug remove of the live camera unbinds the closed wrapper");
+        require(hotplug.contains("PlayMode.LIVE"),
+                "hotplug remove interrupts LIVE so ViewLoop does not reopen the dead wrapper");
+        String open = methodBody(viewer,
+                "private void openAEMonitor() {",
+                "private void showUsbLinkOverlayAfterOpen()");
+        require(open.contains("dropping closed hardware wrapper"),
+                "openAEMonitor drops a closed wrapper instead of reopening devicePointer-null");
+        require(open.contains("isUsbDeviceGone(e)"),
+                "failed open of an unplugged device is distinguished from ACCESS");
+        require(open.contains("nullInterface = false"),
+                "device-gone open failure must not block the next plug");
+        String gone = methodBody(viewer,
+                "private static boolean isUsbDeviceGone(Throwable t) {",
+                "private void stopLiveAcquisitionForExit()");
+        require(gone.contains("devicePointer"),
+                "devicePointer-not-initialized is treated as USB device gone");
+        require(gone.contains("LIBUSB_ERROR_NO_DEVICE"),
+                "LIBUSB_ERROR_NO_DEVICE is treated as USB device gone");
+        String welcome = methodBody(viewer,
+                "public void showWelcomeOverlay() {",
+                "public void showOpeningCameraOverlay(HardwareInterface hw) {");
+        require(welcome.contains("clearUsbLinkOverlay()"),
+                "Welcome overlay must hide the USB bus-speed overlay");
+        String nullify = methodBody(viewer,
+                "private void nullifyHardware() {",
+                "private void openAEMonitor() {");
+        require(nullify.contains("clearUsbLinkOverlay()"),
+                "unplug nullifyHardware must hide the USB bus-speed overlay");
+        String usbDraw = methodBody(
+                Paths.get("src", "net", "sf", "jaer", "graphics", "ChipCanvas.java"),
+                "private void drawUsbLinkOverlayIfNeeded(final GLAutoDrawable drawable) {",
+                "public void displayChanged(final GLAutoDrawable drawable, final boolean modeChanged, final boolean deviceChanged) {");
+        require(usbDraw.contains("isWelcomeOverlayActive()"),
+                "USB bus-speed overlay is not painted over Welcome after unplug");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {
