@@ -6,6 +6,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
@@ -40,6 +44,8 @@ import net.sf.jaer.eventio.export.SaveAsOptions;
  */
 public class AEDZRoutingDemo {
 
+    private static int assertions;
+
     public static void main(String[] args) throws Exception {
         extensionAndConstantMappings();
         fileFilterRouting();
@@ -47,6 +53,9 @@ public class AEDZRoutingDemo {
         rejectUnknownExtension();
         aedat2NotCapturedByAedzBranch();
         saveAsAedzRouting();
+        System.out.println("AEDZ_ROUTING EXISTING_ASSERTIONS=" + assertions);
+        typedLiveRouteUsesAdapter();
+        System.out.println("AEDZ_ROUTING ASSERTIONS=" + assertions);
         System.out.println("ALL AEDZ ROUTING TESTS PASS");
     }
 
@@ -203,6 +212,30 @@ public class AEDZRoutingDemo {
         System.out.println("PASS File -> Save As AEDZ menu and real writer routing");
     }
 
+    private static void typedLiveRouteUsesAdapter() throws Exception {
+        final Path sourcePath = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        final String source = Files.readString(sourcePath, StandardCharsets.UTF_8);
+        assertTrue(source.contains("AEDZDvsWriterAdapter"),
+                "AEDZ live route writes through AEDZDvsWriterAdapter");
+
+        final String branch = between(source,
+                "} else if (aedzRecordingOutputStream != null) {",
+                "} else if (!isRecordFilteredEventsEnabled()) {");
+        assertTrue(branch.contains("writeBundle(") && branch.contains("aedz"),
+                "AEDZ live branch writes the typed PacketBundle through its adapter");
+        assertTrue(!branch.contains("rawPacket") && !branch.contains("getRawPacket()")
+                && !branch.contains("reconstructRawPacket"),
+                "AEDZ live branch never reads or reconstructs a raw packet");
+    }
+
+    private static String between(String source, String first, String second) {
+        int start = source.indexOf(first);
+        int end = source.indexOf(second, start);
+        assertTrue(start >= 0, "source anchor exists: " + first);
+        assertTrue(end > start, "source end anchor exists: " + second);
+        return source.substring(start, end);
+    }
+
     private static AEPacketRaw makePacket(int n, int seed) throws IOException {
         AEPacketRaw p = new AEPacketRaw(Math.max(1, n));
         int[] addr = p.getAddresses();
@@ -220,6 +253,7 @@ public class AEDZRoutingDemo {
     }
 
     private static void assertTrue(boolean cond, String msg) {
+        assertions++;
         if (!cond) {
             throw new AssertionError(msg);
         }

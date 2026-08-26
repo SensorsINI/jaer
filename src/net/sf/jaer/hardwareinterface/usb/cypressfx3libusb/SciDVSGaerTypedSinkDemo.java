@@ -4,10 +4,13 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisUsbPacketBundleBuilder;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -44,6 +47,8 @@ public final class SciDVSGaerTypedSinkDemo {
         testFlushIsIdempotent();
         testTypedOutputSurvivesRawOverrun();
         testNoFrameEndOrExposureOverrides();
+        System.out.println("SCIDVS_GAER_TYPED_SINK EXISTING_ASSERTIONS=" + assertions);
+        testNoRawSinkDependencyAndResetSplitsEpochs();
         System.out.println("SCIDVS_GAER_TYPED_SINK ASSERTIONS=" + assertions);
         System.out.println("SCIDVS_GAER_TYPED_SINK PASS");
     }
@@ -212,6 +217,41 @@ public final class SciDVSGaerTypedSinkDemo {
                 "typed sink declares no exposure-end override");
     }
 
+    private static void testNoRawSinkDependencyAndResetSplitsEpochs() throws Exception {
+        boolean constructorUsesRawSink = false;
+        for (final Constructor<?> constructor : SciDVSGaerTypedSink.class.getDeclaredConstructors()) {
+            for (final Class<?> parameter : constructor.getParameterTypes()) {
+                constructorUsesRawSink |= parameter == SciDVSGaerRawSink.class;
+            }
+        }
+        require(!constructorUsesRawSink, "typed sink constructor has no raw sink dependency");
+
+        boolean fieldUsesRawSink = false;
+        for (final Field field : SciDVSGaerTypedSink.class.getDeclaredFields()) {
+            fieldUsesRawSink |= field.getType() == SciDVSGaerRawSink.class;
+        }
+        require(!fieldUsesRawSink, "typed sink owns no raw sink field");
+
+        final Method getEpoch = TypedDataPacket.class.getMethod("getTimestampEpoch");
+        final Harness harness = new Harness(defaultConfig(), 112, false, 4096, 16);
+        harness.decode(0x8064, 0x100A, 0x2001,
+                0x0001,
+                0x8005, 0x100B, 0x2002);
+        harness.finish();
+
+        final List<Long> epochs = new ArrayList<>();
+        for (final TypedDataPacket packet : harness.bundle) {
+            if (packet.getPacketType() == net.sf.jaer.event.PacketType.POLARITY) {
+                epochs.add(((Number) getEpoch.invoke(packet)).longValue());
+            }
+        }
+        require(epochs.size() == 2, "timestamp reset splits polarity into two typed packets");
+        require(epochs.get(0) >= 0 && epochs.get(1) >= 0,
+                "both reset-split typed packets carry non-negative epochs");
+        require(epochs.get(1) == epochs.get(0) + 1,
+                "timestamp reset advances the typed epoch exactly once");
+    }
+
     private static boolean declares(final String name, final Class<?>... parameters) {
         try {
             final Method ignored = SciDVSGaerTypedSink.class.getDeclaredMethod(name, parameters);
@@ -237,6 +277,42 @@ public final class SciDVSGaerTypedSinkDemo {
                 .getDeclaredConstructor(IntSupplier.class, Runnable.class, BooleanSupplier.class);
         constructor.setAccessible(true);
         return constructor.newInstance((IntSupplier) () -> limit, reset, gate);
+    }
+
+    private static ConstructedTypedSink constructTypedSink(
+            final DavisUsbPacketBundleBuilder builder, final SciDVSGaerRawSink raw,
+            final IntSupplier sizeX, final Runnable reset) throws Exception {
+        for (final Constructor<?> constructor : SciDVSGaerTypedSink.class.getDeclaredConstructors()) {
+            final Class<?>[] parameterTypes = constructor.getParameterTypes();
+            final Object[] arguments = new Object[parameterTypes.length];
+            boolean supported = true;
+            boolean rawDependency = false;
+            boolean resetDependency = false;
+            for (int i = 0; i < parameterTypes.length; i++) {
+                final Class<?> parameter = parameterTypes[i];
+                if (parameter == DavisUsbPacketBundleBuilder.class) {
+                    arguments[i] = builder;
+                } else if (parameter == SciDVSGaerRawSink.class) {
+                    arguments[i] = raw;
+                    rawDependency = true;
+                } else if (parameter == IntSupplier.class) {
+                    arguments[i] = sizeX;
+                } else if (parameter == Runnable.class) {
+                    arguments[i] = reset;
+                    resetDependency = true;
+                } else {
+                    supported = false;
+                    break;
+                }
+            }
+            if (supported) {
+                constructor.setAccessible(true);
+                return new ConstructedTypedSink(
+                        (SciDVSGaerTypedSink) constructor.newInstance(arguments),
+                        rawDependency, resetDependency);
+            }
+        }
+        throw new AssertionError("no supported SciDVSGaerTypedSink constructor");
     }
 
     private static void assertRaw(final AEPacketRaw packet, final int[] addresses,
@@ -290,12 +366,90 @@ public final class SciDVSGaerTypedSinkDemo {
         }
     }
 
+    private static final class ConstructedTypedSink {
+        final SciDVSGaerTypedSink sink;
+        final boolean rawDependency;
+        final boolean resetDependency;
+
+        ConstructedTypedSink(final SciDVSGaerTypedSink sink,
+                final boolean rawDependency, final boolean resetDependency) {
+            this.sink = sink;
+            this.rawDependency = rawDependency;
+            this.resetDependency = resetDependency;
+        }
+    }
+
+    private static final class TypedAndLegacyRawSink implements SciDVSGaerSink {
+        private final SciDVSGaerTypedSink typed;
+        private final SciDVSGaerRawSink raw;
+        private final Runnable resetCounter;
+        private final boolean typedOwnsResetCounter;
+
+        TypedAndLegacyRawSink(final SciDVSGaerTypedSink typed,
+                final SciDVSGaerRawSink raw, final Runnable resetCounter,
+                final boolean typedOwnsResetCounter) {
+            this.typed = typed;
+            this.raw = raw;
+            this.resetCounter = resetCounter;
+            this.typedOwnsResetCounter = typedOwnsResetCounter;
+        }
+
+        @Override
+        public void onTimestampReset() {
+            if (!typedOwnsResetCounter) {
+                resetCounter.run();
+            }
+            typed.onTimestampReset();
+        }
+
+        @Override
+        public void onExternalInput(final int code, final int packedAddress, final int timestamp) {
+            typed.onExternalInput(code, packedAddress, timestamp);
+            raw.onExternalInput(code, packedAddress, timestamp);
+        }
+
+        @Override
+        public void onFrameStart(final boolean rolling, final int timestamp) {
+            typed.onFrameStart(rolling, timestamp);
+        }
+
+        @Override
+        public void onPolarity(final int packedAddress, final int x, final int y,
+                final boolean on, final int timestamp) {
+            typed.onPolarity(packedAddress, x, y, on, timestamp);
+            raw.onPolarity(packedAddress, x, y, on, timestamp);
+        }
+
+        @Override
+        public void onApsSample(final int packedAddress, final int adcData,
+                final int x, final int y, final boolean resetRead,
+                final boolean pixelFirst, final boolean pixelLast, final int timestamp) {
+            typed.onApsSample(packedAddress, adcData, x, y, resetRead,
+                    pixelFirst, pixelLast, timestamp);
+            raw.onApsSample(packedAddress, adcData, x, y, resetRead,
+                    pixelFirst, pixelLast, timestamp);
+        }
+
+        @Override
+        public void onImuSample(final IMUSample sample, final int timestamp) {
+            typed.onImuSample(sample, timestamp);
+            raw.onImuSample(sample, timestamp);
+        }
+
+        @Override
+        public void onAddressPatch(final int orMask) {
+            typed.onAddressPatch(orMask);
+            raw.onAddressPatch(orMask);
+        }
+    }
+
     private static final class Harness {
         final DavisUsbPacketBundleBuilder builder = new DavisUsbPacketBundleBuilder();
         final PacketBundle bundle = new PacketBundle();
         final AEPacketRaw rawPacket;
         final SciDVSGaerRawSink raw;
         final SciDVSGaerTypedSink sink;
+        final SciDVSGaerSink decodeSink;
         final SciDVSGaerDecoder decoder;
         final int[] typedResets = {0};
         final int[] rawResets = {0};
@@ -306,14 +460,18 @@ public final class SciDVSGaerTypedSinkDemo {
             builder.attach(bundle, null, APS_WIDTH, APS_HEIGHT);
             rawPacket = new AEPacketRaw(rawCapacity);
             raw = gatedRaw(rawLimit, () -> rawResets[0]++, () -> rawApsImu);
-            sink = new SciDVSGaerTypedSink(
+            final ConstructedTypedSink constructed = constructTypedSink(
                     builder, raw, () -> suppliedSizeX, () -> typedResets[0]++);
+            sink = constructed.sink;
+            decodeSink = constructed.rawDependency ? sink
+                    : new TypedAndLegacyRawSink(sink, raw, () -> typedResets[0]++,
+                            constructed.resetDependency);
             decoder = new SciDVSGaerDecoder(config);
             raw.begin(rawPacket, 0);
         }
 
         void decode(final int... inputWords) {
-            decoder.decode(words(inputWords), sink);
+            decoder.decode(words(inputWords), decodeSink);
         }
 
         void finish() {

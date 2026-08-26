@@ -24,8 +24,10 @@ public final class SciDVSGaerFx3WiringDemo {
     private static final Path SOURCE = Paths.get("src", "net", "sf", "jaer",
             "hardwareinterface", "usb", "cypressfx3libusb",
             "DAViSFX3HardwareInterface.java");
+    private static final Path CYPRESS_SOURCE = Paths.get("src", "net", "sf", "jaer",
+            "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
     private static final String STANDARD_LOOP_SHA256
-            = "ea21529c5cedb0e26d284b1a5c9cecb3798db3ccdab248d9e25cdceab29fc03f";
+            = "350e0256b375ec2bedb793ee6522ea62ed1b1e1344d54caac409437892583be4";
     private static int assertions;
 
     private SciDVSGaerFx3WiringDemo() {
@@ -39,6 +41,8 @@ public final class SciDVSGaerFx3WiringDemo {
         testSinkWiringAndLazyHarden(source);
         testLazyResolutionAndEarlyGaerBranch(source);
         testStandardDavisLoopHash(source);
+        System.out.println("SCIDVS_GAER_FX3_WIRING EXISTING_ASSERTIONS=" + assertions);
+        testTypedAuthorityDoesNotAcquireOrPublishRaw(source);
         System.out.println("SCIDVS_GAER_FX3_WIRING ASSERTIONS=" + assertions);
         System.out.println("SCIDVS_GAER_FX3_WIRING PASS");
     }
@@ -185,6 +189,28 @@ public final class SciDVSGaerFx3WiringDemo {
         final String loop = source.substring(start, end + last.length()) + "\n";
         require(STANDARD_LOOP_SHA256.equals(sha256(loop)),
                 "standard DAViS loop hash remains " + STANDARD_LOOP_SHA256);
+    }
+
+    private static void testTypedAuthorityDoesNotAcquireOrPublishRaw(final String davisSource)
+            throws Exception {
+        final String cypressSource = Files.readString(CYPRESS_SOURCE, StandardCharsets.UTF_8);
+        final String acquire = between(cypressSource,
+                "public PacketBundle acquireAvailablePacketBundle()",
+                "public PacketBundle getLastPacketBundle()");
+        require(!acquire.contains("acquireAvailableEventsFromDriver()"),
+                "typed acquisition does not delegate to raw acquisition");
+        require(!acquire.contains("aePacketRawPool.swap()"),
+                "typed acquisition does not swap the raw packet pool");
+        require(acquire.contains("packetBundlePool.swap()"),
+                "typed acquisition swaps the typed bundle pool");
+
+        final String translate = between(davisSource,
+                "protected void translateEvents(final ByteBuffer b)",
+                "public void propertyChange(final PropertyChangeEvent arg0)");
+        require(!translate.contains("typedOut.setRawPacket"),
+                "typed decoding never attaches a raw sidecar");
+        require(!translate.contains("typedOut != null ? gaerTypedSink : gaerRawSink"),
+                "typed and legacy raw GAER decoding are mutually exclusive branches");
     }
 
     private static String between(final String source, final String first,
