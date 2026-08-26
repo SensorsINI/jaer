@@ -6,7 +6,10 @@
 package eu.seebetter.ini.chips.davis;
 
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.util.EnumMap;
+import java.util.function.IntSupplier;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.AcquisitionMetadata;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.ExternalEvent;
@@ -14,6 +17,7 @@ import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
@@ -52,14 +56,44 @@ public class DavisUsbPacketBundleBuilder {
     private boolean rollingShutter;
     private int apsWidth;
     private int apsHeight;
+    private long timestampEpoch;
+    private long acquisitionSessionId = -1;
+    private long acceptedElements;
+    private boolean imuAssemblyInProgress;
+    private IntSupplier hostCapacitySupplier = () -> Integer.MAX_VALUE;
+    private final EnumMap<PacketType, Long> pendingHostCapacityLoss
+            = new EnumMap<>(PacketType.class);
+
+    /** Sets the authoritative typed host-capacity limit for subsequent slices. */
+    public void setHostCapacitySupplier(final IntSupplier hostCapacitySupplier) {
+        if (hostCapacitySupplier == null) {
+            throw new NullPointerException("hostCapacitySupplier");
+        }
+        this.hostCapacitySupplier = hostCapacitySupplier;
+    }
 
     public void attach(PacketBundle writeBundle, AEChip aeChip, int apsWidth, int apsHeight) {
         if (aeChip instanceof DavisBaseCamera) {
             this.chip = (DavisBaseCamera) aeChip;
         }
-        if (writeBundle != this.out) {
+        final AcquisitionMetadata metadata = writeBundle.getAcquisitionMetadata();
+        final long attachedSessionId = metadata == null
+                ? -1 : metadata.getAcquisitionSessionId();
+        final boolean newAcquisitionSession = metadata != null
+                && attachedSessionId != acquisitionSessionId;
+        if (writeBundle != this.out || newAcquisitionSession) {
             // Different pool slot after swap — reuse grown packets for this slot.
             this.out = writeBundle;
+            if (newAcquisitionSession) {
+                acquisitionSessionId = attachedSessionId;
+                timestampEpoch = 0;
+                imuAssemblyInProgress = false;
+                pendingHostCapacityLoss.clear();
+                if (frameAssembler != null) {
+                    frameAssembler.reset();
+                }
+            }
+            acceptedElements = 0;
             bindSlot(writeBundle);
             polarityOut = polarity.outputIterator();
             polarityInBundle = false;
@@ -158,6 +192,9 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addPolarity(final int x, final int y, final boolean on, final int timestamp, final int address) {
+        if (!accept(PacketType.POLARITY)) {
+            return;
+        }
         if (polarity == null) {
             polarity = new EventPacket<>(PolarityEvent.class);
             polarityOut = polarity.outputIterator();
@@ -165,6 +202,9 @@ public class DavisUsbPacketBundleBuilder {
         }
         if (polarityOut == null) {
             polarityOut = polarity.isEmpty() ? polarity.outputIterator() : polarity.getOutputIterator();
+        }
+        if (polarity.isEmpty()) {
+            polarity.setTimestampEpoch(timestampEpoch);
         }
         PolarityEvent e = polarityOut.nextOutput();
         e.reset();
@@ -178,12 +218,18 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addExternal(final int code, final int timestamp) {
+        if (!accept(PacketType.SPECIAL)) {
+            return;
+        }
         if (external == null) {
             external = new EventPacket<>(ExternalEvent.class);
             externalInBundle = false;
         }
         if (externalOut == null) {
             externalOut = external.isEmpty() ? external.outputIterator() : external.getOutputIterator();
+        }
+        if (external.isEmpty()) {
+            external.setTimestampEpoch(timestampEpoch);
         }
         ExternalEvent e = externalOut.nextOutput();
         e.reset();
@@ -207,9 +253,16 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addImu(final IMUSample sample) {
+        imuAssemblyInProgress = false;
+        if (!accept(PacketType.IMU6)) {
+            return;
+        }
         if (imu == null) {
             imu = new ImuPacket();
             imuInBundle = false;
+        }
+        if (imu.isEmpty()) {
+            imu.setTimestampEpoch(timestampEpoch);
         }
         imu.appendCopy(sample);
         // Overlay / Steadicam still read DavisBaseCamera.getImuSample()
@@ -225,12 +278,66 @@ public class DavisUsbPacketBundleBuilder {
         FramePacket frame = frameAssembler.process(adcSample, timestamp, (short) x, (short) y, type, pixFirst, pixLast,
                 rollingShutter);
         if (frame != null && out != null) {
-            out.add(frame);
-            if (chip != null) {
-                chip.noteUsbAssembledFrame(frame);
+            if (accept(PacketType.FRAME)) {
+                frame.setTimestampEpoch(timestampEpoch);
+                out.add(frame);
+                if (chip != null) {
+                    chip.noteUsbAssembledFrame(frame);
+                }
             }
         }
         return frame;
+    }
+
+    /** Notes that the standard DAVIS parser has started assembling one IMU sample. */
+    public void onImuStart() {
+        imuAssemblyInProgress = true;
+    }
+
+    /** Records an incomplete IMU sample exactly only when its start was observed. */
+    public void onIncompleteImuSample(final String reason) {
+        if (imuAssemblyInProgress) {
+            recordExactLoss(PacketType.IMU6, 1, reason);
+        } else {
+            recordUnquantifiedLoss(PacketType.IMU6,
+                    reason + "; no tracked IMU start, count unavailable");
+        }
+        imuAssemblyInProgress = false;
+    }
+
+    /** Applies the standard DAVIS address patch to the most recent typed polarity event. */
+    public void patchLastPolarityAddress(final int orMask) {
+        if (polarity == null || polarity.isEmpty()) {
+            return;
+        }
+        final PolarityEvent event = polarity.getEvent(polarity.getSize() - 1);
+        event.address |= orMask;
+    }
+
+    /**
+     * Flushes the current epoch, records reset-discarded assembly state, and
+     * advances to fresh packets for the next epoch.
+     *
+     * @param imuStateUnknown true when the decoder cannot expose whether an IMU
+     * sample was partial at reset
+     */
+    public void onTimestampReset(final boolean imuStateUnknown) {
+        flushAll();
+        if (frameAssembler != null && frameAssembler.isInFrame()) {
+            recordExactLoss(PacketType.FRAME, 1,
+                    "timestamp reset discarded one incomplete frame");
+            frameAssembler.reset();
+        }
+        if (imuAssemblyInProgress) {
+            recordExactLoss(PacketType.IMU6, 1,
+                    "timestamp reset discarded one incomplete IMU sample");
+        } else if (imuStateUnknown) {
+            recordUnquantifiedLoss(PacketType.IMU6,
+                    "timestamp reset may have discarded decoder IMU assembly state; count unavailable");
+        }
+        imuAssemblyInProgress = false;
+        timestampEpoch = Math.addExact(timestampEpoch, 1);
+        startEpochPackets();
     }
 
     public void flushAll() {
@@ -248,6 +355,67 @@ public class DavisUsbPacketBundleBuilder {
         if (polarity != null && !polarity.isEmpty() && !polarityInBundle) {
             out.add(polarity);
             polarityInBundle = true;
+        }
+        flushHostCapacityLoss();
+    }
+
+    private boolean accept(final PacketType packetType) {
+        final int configuredCapacity = hostCapacitySupplier.getAsInt();
+        final long capacity = configuredCapacity < 0 ? 0 : configuredCapacity;
+        if (acceptedElements >= capacity) {
+            pendingHostCapacityLoss.merge(packetType, 1L, Math::addExact);
+            return false;
+        }
+        acceptedElements++;
+        return true;
+    }
+
+    private void flushHostCapacityLoss() {
+        final AcquisitionMetadata metadata = out == null ? null : out.getAcquisitionMetadata();
+        if (metadata == null || pendingHostCapacityLoss.isEmpty()) {
+            return;
+        }
+        for (final var loss : pendingHostCapacityLoss.entrySet()) {
+            metadata.recordExactLoss(loss.getKey(), loss.getValue(),
+                    "authoritative typed host capacity exhausted");
+        }
+        pendingHostCapacityLoss.clear();
+    }
+
+    private void recordExactLoss(final PacketType packetType, final long count,
+            final String reason) {
+        final AcquisitionMetadata metadata = out == null ? null : out.getAcquisitionMetadata();
+        if (metadata != null) {
+            metadata.recordExactLoss(packetType, count, reason);
+        }
+    }
+
+    private void recordUnquantifiedLoss(final PacketType packetType,
+            final String reason) {
+        final AcquisitionMetadata metadata = out == null ? null : out.getAcquisitionMetadata();
+        if (metadata != null) {
+            metadata.recordUnquantifiedLoss(packetType, reason);
+        }
+    }
+
+    private void startEpochPackets() {
+        polarity = new EventPacket<>(PolarityEvent.class);
+        polarityOut = polarity.outputIterator();
+        polarityInBundle = false;
+        imu = new ImuPacket();
+        imuInBundle = false;
+        external = new EventPacket<>(ExternalEvent.class);
+        externalOut = external.outputIterator();
+        externalInBundle = false;
+
+        if (out == slot0) {
+            polarity0 = polarity;
+            imu0 = imu;
+            external0 = external;
+        } else if (out == slot1) {
+            polarity1 = polarity;
+            imu1 = imu;
+            external1 = external;
         }
     }
 }
