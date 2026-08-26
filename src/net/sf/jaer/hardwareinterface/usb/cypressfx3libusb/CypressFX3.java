@@ -225,7 +225,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     protected PacketBundle lastPacketBundle = new PacketBundle();
     /**
      * When true, {@link #acquireAvailablePacketBundle()} returns the USB-demuxed
-     * bundle (DAViSFX3). When false, returns null so ViewLoop uses extractBundle.
+     * bundle (DAVIS, DVX, …). When false, returns null so ViewLoop uses extractBundle.
      */
     protected volatile boolean usbTypedDemuxActive = false;
     private String stringDescription = "CypressFX3"; // default which is
@@ -503,7 +503,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         nEvents = lastEventsAcquired.getNumEvents();
-        computeEstimatedEventRate(lastEventsAcquired);
+        if (usbTypedDemuxActive) {
+            computeEstimatedEventRate(lastPacketBundle);
+            if (lastPacketBundle != null) {
+                nEvents = Math.max(nEvents, lastPacketBundle.getNumPolarityEvents());
+            }
+        } else {
+            computeEstimatedEventRate(lastEventsAcquired);
+        }
         if (nEvents != 0) {
             support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_NEW_EVENTS, null, lastEventsAcquired); // call
             // listeners
@@ -513,7 +520,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     /**
      * jAER 3.0: returns USB-demuxed {@link PacketBundle} when
-     * {@link #usbTypedDemuxActive} (DAVIS). Performs the same buffer swap as
+     * {@link #usbTypedDemuxActive}. Performs the same buffer swap as
      * {@link #acquireAvailableEventsFromDriver()}.
      */
     @Override
@@ -566,6 +573,24 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
+     * Rate from USB-demuxed polarity (when live {@link AEPacketRaw} is not filled).
+     */
+    void computeEstimatedEventRate(final PacketBundle bundle) {
+        if (bundle == null) {
+            estimatedEventRate = 0;
+            return;
+        }
+        final EventPacket<?> polarity = bundle.getFirstPolarityPacket();
+        if (polarity == null || polarity.getSize() < 2) {
+            estimatedEventRate = 0;
+            return;
+        }
+        final int n = polarity.getSize();
+        final int dt = polarity.getEvent(n - 1).timestamp - polarity.getEvent(0).timestamp;
+        estimatedEventRate = dt <= 0 ? 0 : (int) ((1e6f * n) / dt);
+    }
+
+    /**
      * Returns the number of events acquired by the last call to {@link #acquireAvailableEventsFromDriver
      * }
      *
@@ -573,6 +598,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public int getNumEventsAcquired() {
+        if (usbTypedDemuxActive && lastPacketBundle != null) {
+            return lastPacketBundle.getNumPolarityEvents();
+        }
         return lastEventsAcquired.getNumEvents();
     }
 
@@ -1241,7 +1269,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         usbPacketStatistics.addSample(transfer);
                         translateEvents(transfer.buffer());
 
-                        if ((chip != null) && (chip.getFilterChain() != null)
+                        if (!usbTypedDemuxActive && (chip != null) && (chip.getFilterChain() != null)
                                 && (chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
                             // here we do the realTimeFiltering. We finished
                             // capturing this buffer's worth of events,

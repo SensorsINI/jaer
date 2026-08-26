@@ -89,13 +89,15 @@ sequenceDiagram
 | Family | USB typed demux | Pref (under `hardware/`) |
 |--------|-----------------|--------------------------|
 | Davis FX3 / SciDVS (same PID) | Polarity + Frame + IMU | `DAViSFX3/usbTypedDemux` (RGB color stays legacy) |
+| DVXplorer / Mini / Micro | Polarity + IMU (skips live `AEPacketRaw`) | `DVXplorerFX3/usbTypedDemux` |
 | NRV | Polarity | `NRV/usbTypedDemux` |
 | Prophesee EVK4 | Polarity | `Prophesee/usbTypedDemux` |
 | DVS128 libusb FX2 | Polarity + sync special | `CypressFX2DVS128.usbTypedDemux` |
 
 When demux is active on Davis, APS/IMU synthetic AEs are **not** dual-written
 into `AEPacketRaw` by default (`DAViSFX3/dualWriteApsImuAe=false`) — the largest
-live memory win under APS+DVS.
+live memory win under APS+DVS. DVXplorer (classic FX3 and Mini/Micro MIPI) skips
+filling live `AEPacketRaw` entirely when demux is on (`DVXplorerFX3/usbTypedDemux`).
 
 **Overrun:** if the USB thread fills the write buffer before ViewLoop swaps, the
 pool sets `overrunOccuredFlag` (lost events). Increase AE buffer size (Control →

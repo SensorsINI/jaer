@@ -30,6 +30,7 @@ public final class DVXplorerImuConfigDemo {
         testOverlayUsesDisplayPref();
         testEp81UrbRateLimitFrom6b726b46d();
         testImuSampleDtFrom952cfae41e();
+        testUsbTypedDemuxSkipsAePacketRaw();
         System.out.println("DVXPLORER_IMU ASSERTIONS=" + assertions);
         System.out.println("DVXPLORER_IMU PASS");
     }
@@ -168,6 +169,30 @@ public final class DVXplorerImuConfigDemo {
                 "fromRawUntracked must not set deltaTimeUs (encode-then-decode path)");
         require(first.getTimestampUs() == 1_000 && second.getTimestampUs() == 2_250,
                 "timestamps are stored on the sample");
+    }
+
+    /**
+     * Live DVX USB should cook {@code PacketBundle} in the reader (no
+     * {@code AEPacketRaw} → {@code extractBundle} on the default path).
+     */
+    private static void testUsbTypedDemuxSkipsAePacketRaw() throws Exception {
+        String hw = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(hw.contains("PREF_USB_TYPED_DEMUX = \"usbTypedDemux\""),
+                "DVXplorerFX3 kill-switch pref is usbTypedDemux");
+        require(hw.contains("UsbPolarityBundleBuilder"),
+                "reader uses UsbPolarityBundleBuilder for cooked polarity");
+        require(hw.contains("emitPackedPolarity"),
+                "MIPI and classic FX3 emit cooked polarity from one helper");
+        require(hw.contains("buffer.setNumEvents(0)"),
+                "typed demux does not fill AEPacketRaw (skip intermediate)");
+        require(hw.contains("drainImuIntoLiveBundle"),
+                "acquireAvailablePacketBundle attaches IMU after USB polarity demux");
+        require(hw.contains("offerCx3Imu(new IMUSample(currentTimestamp, imuEvents))"),
+                "classic FX3 IMU End queues ImuPacket samples when demux is on");
+        require("usbTypedDemux".equals(DVXplorerFX3HardwareInterface.PREF_USB_TYPED_DEMUX),
+                "PREF_USB_TYPED_DEMUX constant is usbTypedDemux");
     }
 
     private static void require(boolean cond, String msg) {

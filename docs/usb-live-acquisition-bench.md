@@ -41,6 +41,7 @@ The following table lists preference keys ("prefs") and system properties you ca
 |---------------------------|----------------------------------------|--------------------|
 | Davis FX3 (Davis346, SciDVS via same PID) | `hardware/DAViSFX3/usbTypedDemux` | `true` (mono); color RGB stays off |
 | Davis dual-write APS/IMU AE | `hardware/DAViSFX3/dualWriteApsImuAe` | `false` when demux on |
+| DVXplorer / Mini / Micro | `hardware/DVXplorerFX3/usbTypedDemux` | `true` (skips live `AEPacketRaw`) |
 | NRV | `hardware/NRV/usbTypedDemux` | `true` (skips live `AEPacketRaw` dual-write) |
 | Prophesee | `hardware/Prophesee/usbTypedDemux` | `true` |
 | DVS128 libusb FX2 | `hardware/CypressFX2DVS128/usbTypedDemux` | `true` |
@@ -49,7 +50,7 @@ Set the boolean pref to `false` to restore raw + `extractBundle` during validati
 
 ## Baseline checklist
 
-For each of **Davis346** (DVS-only and DVS+APS), **NRV**, **Prophesee EVK4**, **DVS128**:
+For each of **Davis346** (DVS-only and DVS+APS), **DVXplorer Mini**, **NRV**, **Prophesee EVK4**, **DVS128**:
 
 1. Run ~60 s with demux **off**; note keps, overrun count, heapMB from live-bench log.
 2. Enable demux (pref / restart); repeat same scene / illumination.

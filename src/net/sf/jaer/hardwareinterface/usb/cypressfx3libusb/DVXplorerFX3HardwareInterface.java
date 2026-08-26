@@ -32,6 +32,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import org.usb4java.BufferUtils;
 import org.usb4java.ConfigDescriptor;
@@ -46,9 +47,12 @@ import org.usb4java.TransferCallback;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
+import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
@@ -59,6 +63,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * Mini/Micro share VID/PID {@code 152a:8419} with DVXplorer; they are CX3 MIPI
  * ({@code bcdDevice} high byte {@link #DEVICE_TYPE_CX3_MIPI}). Firmware 10+ uses
  * 8-byte SPI like dv-processing {@code DVXplorerM}; USB events are 32-bit MIPI words.
+ * Live USB demux (pref {@code hardware/DVXplorerFX3/usbTypedDemux}, default true)
+ * writes cooked {@link PacketBundle} polarity in the reader and skips
+ * {@link AEPacketRaw} → {@code extractBundle}.
  *
  * @author Pei Haoxiang
  * @see <a href="https://gitlab.com/inivation/dv/dv-processing/-/blob/master/include/dv-processing/io/camera/dvxplorer_m.hpp">dvxplorer_m.hpp</a>
@@ -86,9 +93,17 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     static public final byte VR_DATA_CLEANUP = (byte) 0xC6;
     /** Extra Mini/Micro USB/MIPI/IMU logs: {@code -Djaer.dvx.debug=true}. */
     public static final boolean debug = Boolean.getBoolean("jaer.dvx.debug");
+    private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("DVXplorerFX3");
+    /** Pref kill-switch for USB→PacketBundle polarity demux. Default true. */
+    public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
+    private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
+    private ImuPacket liveImuDrain;
 
     protected DVXplorerFX3HardwareInterface(final Device device) {
         super(device);
+        usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
+        CypressFX3.log.fine("DVXplorerFX3 USB typed demux=" + usbTypedDemuxActive
+                + " (pref " + PREF_USB_TYPED_DEMUX + ")");
     }
     
     /** USB device type from {@code bcdDevice} high byte (FX3=1–3, CX3 MIPI=4). */
@@ -324,8 +339,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     }
 
     /**
-     * Live Mini/Micro IMU for {@code extractBundle}. Not mixed into the DVS
-     * {@link AEPacketRaw} (that made extractPacket treat thousands of events as IMU).
+     * Live Mini/Micro (and classic FX3 when typed demux is on) IMU samples.
+     * Called from {@link #acquireAvailablePacketBundle()} on the live path and
+     * from {@code extractBundle} when the kill-switch restores raw extract.
      */
     public int drainCx3Imu(final ImuPacket dest) {
         if (dest == null) {
@@ -341,6 +357,31 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             }
         }
         return n;
+    }
+
+    /**
+     * jAER 3: USB demux already filled polarity; attach Mini/classic IMU that
+     * arrived on a side channel (not in the DVS bulk stream).
+     */
+    @Override
+    public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        final PacketBundle bundle = super.acquireAvailablePacketBundle();
+        if (bundle != null) {
+            drainImuIntoLiveBundle(bundle);
+        }
+        return bundle;
+    }
+
+    private void drainImuIntoLiveBundle(final PacketBundle bundle) {
+        if (liveImuDrain == null) {
+            liveImuDrain = new ImuPacket();
+        } else {
+            liveImuDrain.clear();
+        }
+        if (drainCx3Imu(liveImuDrain) > 0) {
+            bundle.add(liveImuDrain);
+            liveImuDrain = new ImuPacket();
+        }
     }
 
     private void offerCx3Imu(final IMUSample sample) {
@@ -727,6 +768,13 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         }
 
         private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
+            if (usbTypedDemuxActive) {
+                if (capacity > getAEBufferSize()) {
+                    buffer.overrunOccuredFlag = true;
+                    return false;
+                }
+                return true;
+            }
             if (buffer.getCapacity() > getAEBufferSize()) {
                 if (buffer.overrunOccuredFlag || (capacity > buffer.getCapacity())) {
                     buffer.overrunOccuredFlag = true;
@@ -739,6 +787,43 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             return (true);
         }
 
+        private void beginTypedDemux() {
+            if (!usbTypedDemuxActive) {
+                return;
+            }
+            polarityBuilder.ensureCapacity(getAEBufferSize());
+            polarityBuilder.attach(packetBundlePool.writeBuffer());
+        }
+
+        private void endTypedDemux(final AEPacketRaw buffer) {
+            buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+            if (usbTypedDemuxActive) {
+                polarityBuilder.flushAll();
+                buffer.setNumEvents(0);
+                return;
+            }
+            buffer.setNumEvents(eventCounter);
+        }
+
+        /**
+         * Cooked polarity matching {@code DVXExtractor.extractPacket}: display
+         * {@code y = (sizeY-1) - packedY}. When demux is on, skip {@link AEPacketRaw}.
+         */
+        private void emitPackedPolarity(final AEPacketRaw buffer, final int xAddr, final int yAddr, final int polarity) {
+            final int addr = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT)
+                    | ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT)
+                    | ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
+            if (usbTypedDemuxActive) {
+                final int sizeY = getChip() != null ? getChip().getSizeY() : dvsSizeY;
+                polarityBuilder.addPolarity(xAddr, (sizeY - 1) - yAddr, polarity != 0, currentTimestamp, addr);
+                eventCounter++;
+                return;
+            }
+            buffer.getTimestamps()[eventCounter] = currentTimestamp;
+            buffer.getAddresses()[eventCounter] = addr;
+            eventCounter++;
+        }
+
         @Override
         protected void translateEvents(final ByteBuffer b) {
             if (mipiCx3) {
@@ -747,6 +832,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             }
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                beginTypedDemux();
 
                 // Truncate off any extra partial event.
                 if ((b.limit() & 0x01) != 0) {
@@ -812,7 +898,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         CypressFX3.log.fine("IMU End event received.");
 
                                         if (imuCount == (2 * IMU_DATA_LENGTH)) {
-                                            if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
+                                            if (usbTypedDemuxActive) {
+                                                offerCx3Imu(new IMUSample(currentTimestamp, imuEvents));
+                                            } else if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
                                                 // Check for buffer space is also done inside writeToPacket().
                                                 final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
                                                 eventCounter += imuSample.writeToPacket(buffer, eventCounter);
@@ -876,16 +964,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         yAddr = temp;
                                     }
 
-                                    buffer.getTimestamps()[eventCounter] = currentTimestamp;
-
-                                    // aedat2 format
-                                    final int y_addr_bits = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT);
-                                    final int x_addr_bits = ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT);
-                                    final int polarity_bits = ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
-                                    final int bits32 = y_addr_bits | x_addr_bits | polarity_bits;
-
-                                    buffer.getAddresses()[eventCounter] = bits32;
-                                    eventCounter++;
+                                    emitPackedPolarity(buffer, xAddr, yAddr, polarity);
                                 }
 
                                 break;
@@ -1112,9 +1191,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     }
                 } // end loop over usb data buffer
 
-                buffer.setNumEvents(eventCounter);
-                // write capture size
-                buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                endTypedDemux(buffer);
             } // sync on aePacketRawPool
         }
 
@@ -1133,6 +1210,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private void translateMipiCx3Events(final ByteBuffer b) {
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                beginTypedDemux();
                 final int byteLen = b.remaining() > 0 ? b.remaining() : b.limit();
                 if ((byteLen & 0x03) != 0) {
                     CypressFX3.log.warning(String.format(
@@ -1177,8 +1255,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     }
                 }
                 mipiEmitted += eventCounter - eventsBefore;
-                buffer.setNumEvents(eventCounter);
-                buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                endTypedDemux(buffer);
                 if (debug) {
                     final long now = System.currentTimeMillis();
                     if ((now - mipiLastLogMs) >= 2000) {
@@ -1226,11 +1303,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     xAddr = yAddr;
                     yAddr = temp;
                 }
-                buffer.getTimestamps()[eventCounter] = currentTimestamp;
-                buffer.getAddresses()[eventCounter] = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT)
-                        | ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT)
-                        | ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
-                eventCounter++;
+                emitPackedPolarity(buffer, xAddr, yAddr, polarity);
             }
         }
 

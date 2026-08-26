@@ -214,6 +214,9 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
             hasTypes = chip.getNumCellTypes() > 1;
         }
 
+        if (n > 0) {
+            out.allocate((n + skipBy - 1) / skipBy);
+        }
         OutputEventIterator<?> outItr = out.outputIterator();
         for (int i = 0; i < n; i += skipBy) {
             int addr = a[i];

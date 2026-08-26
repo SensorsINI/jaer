@@ -6,7 +6,7 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * Shared helper for polarity-only USB demux (NRV, Prophesee, DVS128): fill a
+ * Shared helper for polarity-only USB demux (NRV, Prophesee, DVS128, DVX): fill a
  * pooled {@link PacketBundle} write buffer with {@link PolarityEvent}s.
  * <p>
  * Accumulates into one polarity packet for the write-buffer lifetime (across
