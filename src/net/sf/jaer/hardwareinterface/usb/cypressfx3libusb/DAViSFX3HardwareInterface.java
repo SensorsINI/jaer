@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
 
 import org.usb4java.Device;
@@ -90,6 +91,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     private Boolean sciDVSFpgaGeometryMatch;
     /** Prior active DVS.Run state retained until a gated GAER startup succeeds. */
     private boolean gaerStartupDvsRunRestorePending;
+    /** First timestamp-order failure caught at the native USB callback boundary. */
+    private final AtomicReference<SciDVSGaerTimestampOrderGuard.ValidationException>
+            gaerTimestampCallbackFailure = new AtomicReference<>();
 
     /**
      * Probes the two read-only FPGA DVS geometry registers and caches whether
@@ -206,6 +210,51 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 ? retinaReader.gaerDecoder.getMaxBackwardTimestampUs() : 0;
     }
 
+    private void retainGaerTimestampCallbackFailure(
+            final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
+        if (gaerTimestampCallbackFailure.compareAndSet(null, failure)) {
+            final byte[] snapshot = failure.getTransferSnapshot();
+            CypressFX3.log.log(java.util.logging.Level.SEVERE,
+                    "SCIDVS_GAER_TIMESTAMP_CALLBACK_FAILURE byteOffset="
+                    + failure.getByteOffset() + " transferBytes="
+                    + (snapshot == null ? "unavailable" : snapshot.length),
+                    failure);
+        }
+    }
+
+    private void clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset() {
+        gaerTimestampCallbackFailure.set(null);
+    }
+
+    private void throwIfGaerTimestampCallbackFailure()
+            throws HardwareInterfaceException {
+        final SciDVSGaerTimestampOrderGuard.ValidationException failure
+                = gaerTimestampCallbackFailure.get();
+        if (failure != null) {
+            throw new HardwareInterfaceException(
+                    "SciDVS GAER timestamp callback failure retained at byte offset "
+                    + failure.getByteOffset(), failure);
+        }
+    }
+
+    @Override
+    public AEPacketRaw acquireAvailableEventsFromDriver()
+            throws HardwareInterfaceException {
+        throwIfGaerTimestampCallbackFailure();
+        final AEPacketRaw events = super.acquireAvailableEventsFromDriver();
+        throwIfGaerTimestampCallbackFailure();
+        return events;
+    }
+
+    @Override
+    public PacketBundle acquireAvailablePacketBundle()
+            throws HardwareInterfaceException {
+        throwIfGaerTimestampCallbackFailure();
+        final PacketBundle bundle = super.acquireAvailablePacketBundle();
+        throwIfGaerTimestampCallbackFailure();
+        return bundle;
+    }
+
     private boolean updatedRealClockValues = false;
     public float logicClockFreq = 90.0f;
     public float adcClockFreq = 30.0f;
@@ -222,6 +271,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         final RetinaAEReader reader = new RetinaAEReader(this);
         final boolean gaerActive = SciDVSGaerMode.resolveFromSystemProperty(
                 getChip() instanceof SciDVS, CypressFX3.log);
+        reader.gaerTimestampCallbackRecoveryPending = gaerActive
+                && gaerTimestampCallbackFailure.get() != null;
         setAeReader(reader);
         allocateAEBuffers();
 
@@ -260,6 +311,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             // this runs only after the complete marker-containing transfer returns.
             allocateAEBuffers();
             reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset();
+            clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset();
+            reader.gaerTimestampCallbackRecoveryPending = false;
             log.info("SciDVS startup timestamp reset observed; discarded pre-boundary packets");
         }
         HardwareInterfaceException.clearException();
@@ -463,12 +516,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 = new SciDVSGaerTimestampOrderGuard();
         private final SciDVSGaerRawSink gaerRawSink;
         private final SciDVSGaerTypedSink gaerTypedSink;
+        private final SciDVSGaerSink gaerTimestampResetOnlySink
+                = new SciDVSGaerSink() {
+                    @Override
+                    public void onTimestampReset() {
+                        handleGaerTimestampReset();
+                    }
+                };
         private final Fx3StartupTimestampResetBarrier startupTimestampReset
                 = new Fx3StartupTimestampResetBarrier();
         private final Fx3QuiescentDrainBarrier quiescentDrain
                 = new Fx3QuiescentDrainBarrier();
         private int completedTransferActualLength;
         private Boolean gaerResolved;
+        private boolean gaerTimestampCallbackRecoveryPending;
 
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
@@ -596,14 +657,31 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     }
                 }
 
+                boolean callbackRecovery = false;
                 if (Boolean.TRUE.equals(gaerResolved)) {
-                    gaerTimestampOrderGuard.validate(b);
+                    callbackRecovery
+                            = gaerTimestampCallbackRecoveryPending
+                            && gaerTimestampCallbackFailure.get() != null;
+                    if (gaerTimestampCallbackFailure.get() != null
+                            && !callbackRecovery) {
+                        return;
+                    }
+                    try {
+                        gaerTimestampOrderGuard.validate(b);
+                    } catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
+                        retainGaerTimestampCallbackFailure(failure);
+                        return;
+                    }
                 }
 
                 if (quiescentDrain.isDraining()) {
                     quiescentDrain.noteCompletedTransfer(
                             completedTransferActualLength,
                             SciDVSGaerDecoder.containsSourcePayload(b));
+                }
+                if (callbackRecovery) {
+                    gaerDecoder.decode(b, gaerTimestampResetOnlySink);
+                    return;
                 }
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
                 final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
