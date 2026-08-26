@@ -60,7 +60,8 @@ Record results next to the CSV path for the PR / release notes.
 
 ## USB FIFO / buffer-count reconfiguration (manual)
 
-Live USB readers replace the whole transfer session after a ~400 ms idle delay,
+Live USB readers replace the whole transfer session after a 1 s idle delay
+(`UsbAsyncBulkReaderLifecycle.DEFAULT_DEBOUNCE_MS`),
 so rapid edits coalesce into one restart. The lifecycle logs
 `USB buffer config … active after N ms of no acquisition`; on healthy hardware N
 is well under a second. A multi-second N means the device path is blocking (see

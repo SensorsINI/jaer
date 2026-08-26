@@ -1481,6 +1481,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 if (usbTransfer == null) {
                     return true;
                 }
+                // USBTransferThread resubmits until the list is empty; a live
+                // sensor never joins. ViewLoop pause does not stop DVS_RUN.
+                monitor.quiesceStreamingForUsbRestart();
                 final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
                         usbTransfer, joinTimeoutMs, CypressFX3.log, "CypressFX3 AEReader");
                 if (!stopped) {
@@ -1510,6 +1513,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         });
                 usbTransfer.setName("AEReaderThread");
                 usbTransfer.start();
+                monitor.resumeStreamingAfterUsbRestart();
                 getSupport().firePropertyChange("readerStarted", false, true);
                 return requested;
             }
@@ -2194,6 +2198,21 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         dataBuffer.limit(dataLength);
 
         return (dataBuffer);
+    }
+
+    /**
+     * Stop the chip data source before replacing the USB transfer session.
+     * {@link USBTransferThread} resubmits every completed URB; a streaming
+     * device never joins. Default is no-op (DAVIS). DVX sends {@code DVS_RUN=0}.
+     * ViewLoop pause does not call this.
+     */
+    protected void quiesceStreamingForUsbRestart() {
+    }
+
+    /**
+     * Restore streaming after a successful USB transfer-session replace.
+     */
+    protected void resumeStreamingAfterUsbRestart() {
     }
 
     void recoverFailedBufferReconfig(Exception cause) {

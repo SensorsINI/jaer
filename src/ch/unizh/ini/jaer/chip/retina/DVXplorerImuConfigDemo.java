@@ -31,6 +31,7 @@ public final class DVXplorerImuConfigDemo {
         testEp81UrbRateLimitFrom6b726b46d();
         testImuSampleDtFrom952cfae41e();
         testUsbTypedDemuxSkipsAePacketRaw();
+        testUsbBufferReconfigQuiescesDvsRun();
         System.out.println("DVXPLORER_IMU ASSERTIONS=" + assertions);
         System.out.println("DVXPLORER_IMU PASS");
     }
@@ -193,6 +194,35 @@ public final class DVXplorerImuConfigDemo {
                 "classic FX3 IMU End queues ImuPacket samples when demux is on");
         require("usbTypedDemux".equals(DVXplorerFX3HardwareInterface.PREF_USB_TYPED_DEMUX),
                 "PREF_USB_TYPED_DEMUX constant is usbTypedDemux");
+    }
+
+    /**
+     * ViewLoop pause does not stop DVS_RUN; buffer reconfig must quiesce
+     * streaming before joining USBTransferThread (jAER-0.log 6:37:06).
+     */
+    private static void testUsbBufferReconfigQuiescesDvsRun() throws Exception {
+        String fx3 = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "CypressFX3.java"), StandardCharsets.UTF_8);
+        int stop = fx3.indexOf("public boolean stopSession");
+        int start = fx3.indexOf("public Config startSession");
+        require(stop >= 0 && start > stop, "BufferHost stopSession exists before startSession");
+        String stopBody = fx3.substring(stop, start);
+        require(stopBody.contains("quiesceStreamingForUsbRestart()"),
+                "stopSession must DVS_RUN=0 / quiesce before interruptAndJoin");
+        require(stopBody.indexOf("quiesceStreamingForUsbRestart()")
+                        < stopBody.indexOf("interruptAndJoin"),
+                "quiesceStreamingForUsbRestart must run before interruptAndJoin");
+        String startBody = fx3.substring(start, fx3.indexOf("public void applyIdleConfig"));
+        require(startBody.contains("resumeStreamingAfterUsbRestart()"),
+                "startSession must restore DVS_RUN after the new transfer thread starts");
+        String hw = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(hw.contains("void quiesceStreamingForUsbRestart()"),
+                "DVX overrides quiesceStreamingForUsbRestart");
+        require(hw.contains("chip.dvxDataStop()"),
+                "DVX quiesce sends DVS_RUN=0 (ViewLoop pause does not)");
     }
 
     private static void require(boolean cond, String msg) {

@@ -64,7 +64,7 @@ public class NRVAEReader {
 
     /**
      * Queue a FIFO/buffer change. Rapid Control-menu scrolls coalesce; one
-     * transfer-session replace runs after a short idle delay.
+     * transfer-session replace runs after {@link UsbAsyncBulkReaderLifecycle#DEFAULT_DEBOUNCE_MS}.
      */
     void applyBufferSettingsAndRestart(int fifoSize, int numBuffers) {
         syncUsbBufferSettings(fifoSize, numBuffers);

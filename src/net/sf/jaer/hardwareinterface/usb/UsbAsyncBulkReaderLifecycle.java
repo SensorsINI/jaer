@@ -20,8 +20,10 @@ import java.util.logging.Logger;
 /**
  * Serializes USB async-bulk reader sessions so FIFO/buffer-count changes never
  * overlap libusb transfer sets. Scroll-wheel adjustments update a pending
- * {@link Config}; one idle-time reconfiguration replaces the session after the
- * previous generation has quiesced.
+ * {@link Config}; one idle-time reconfiguration replaces the session after
+ * {@link #DEFAULT_DEBOUNCE_MS} with no further edits. Edits that arrive while a
+ * replace is in flight are stored as the next requested size and applied only
+ * after that replace finishes and another idle interval has elapsed.
  * <p>
  * In-flight {@code USBTransferThread.setBufferSize}/{@code setBufferNumber} is
  * not used: reallocating URBs owned by libusb causes {@code LIBUSB_ERROR_IO}.
@@ -35,7 +37,8 @@ public final class UsbAsyncBulkReaderLifecycle {
     /** Fired with a {@link Status} snapshot whenever phase/requested/active changes. */
     public static final String EVENT_CONFIG_STATUS = "usbBufferConfigStatus";
 
-    public static final long DEFAULT_DEBOUNCE_MS = 400L;
+    /** Idle time after the last FIFO/buffer edit before replacing the USB session. */
+    public static final long DEFAULT_DEBOUNCE_MS = 1000L;
     public static final long DEFAULT_JOIN_TIMEOUT_MS = 3000L;
 
     public enum State {
@@ -268,21 +271,31 @@ public final class UsbAsyncBulkReaderLifecycle {
 
     /**
      * Queue a FIFO/buffer change. Coalesces rapid calls; applies after
-     * {@code debounceMs} of idle time.
+     * {@code debounceMs} of idle time. While a replace is running, only the
+     * requested snapshot is updated — no new session is started until the
+     * current one finishes.
      */
     public void schedule(Config config) {
         Objects.requireNonNull(config, "config");
         pending.set(config);
         lastFailure.set(null);
         fire(EVENT_CONFIG_PENDING, config);
-        fireStatus();
         restartEnabled.set(true);
+        if (applying.get()) {
+            fireStatus();
+            return;
+        }
+        scheduleApplyAfterIdle();
+    }
+
+    private void scheduleApplyAfterIdle() {
         synchronized (debounceLock) {
             if (debounceTask != null) {
                 debounceTask.cancel(false);
             }
             debounceTask = executor.schedule(this::applyPending, debounceMs, TimeUnit.MILLISECONDS);
         }
+        fireStatus();
     }
 
     /** Test helper: apply the current pending snapshot immediately. */
@@ -433,6 +446,12 @@ public final class UsbAsyncBulkReaderLifecycle {
     private void applyPending() {
         applying.set(true);
         try {
+            synchronized (debounceLock) {
+                if (debounceTask != null) {
+                    debounceTask.cancel(false);
+                    debounceTask = null;
+                }
+            }
             Config want = pending.get();
             if (want == null) {
                 return;
@@ -481,7 +500,6 @@ public final class UsbAsyncBulkReaderLifecycle {
                 fireStatus();
                 return;
             }
-            want = pending.get();
             final long newGen = generation.incrementAndGet();
             state.set(State.STARTING);
             fireStatus();
@@ -509,7 +527,9 @@ public final class UsbAsyncBulkReaderLifecycle {
             final Config nowApplied = applied.get();
             if (restartEnabled.get() && stillPending != null && !stillPending.equals(nowApplied)
                     && host.hasActiveTransfer() && state.get() == State.RUNNING) {
-                executor.execute(this::applyPending);
+                // Wheel moved during this replace: keep the last requested size
+                // and wait a full idle interval after the session is up.
+                scheduleApplyAfterIdle();
             }
         }
     }

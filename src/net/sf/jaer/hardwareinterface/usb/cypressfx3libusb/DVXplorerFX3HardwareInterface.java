@@ -618,6 +618,43 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         HardwareInterfaceException.clearException();
     }
 
+    /**
+     * {@code USBTransferThread} never joins while Mini/Micro is filling bulk IN.
+     * ViewLoop pause only skips ViewLoop consume; it does not send {@code DVS_RUN=0}.
+     */
+    @Override
+    protected void quiesceStreamingForUsbRestart() {
+        if (!(getChip() instanceof DVXplorer chip)) {
+            return;
+        }
+        CypressFX3.log.info("Mini/Micro: DVS_RUN=0 before USB buffer-session replace");
+        chip.dvxDataStop();
+        if (chip.isNextGenFirmware()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        stopCx3ImuTransfers();
+    }
+
+    @Override
+    protected void resumeStreamingAfterUsbRestart() {
+        if (!(getChip() instanceof DVXplorer chip)) {
+            return;
+        }
+        if (isNextGenFirmware()) {
+            if (chip.isImuCaptureEnabled()) {
+                startCx3ImuTransfers();
+            }
+            CypressFX3.log.info("Mini/Micro: USB IN queued after buffer reconfig, sending DVS_RUN / IMU_RUN");
+            chip.dvxDataStart();
+            return;
+        }
+        chip.dvxDataStart();
+    }
+
     @Override
     public boolean stopAEReader() {
         stopCx3ImuTransfers();
