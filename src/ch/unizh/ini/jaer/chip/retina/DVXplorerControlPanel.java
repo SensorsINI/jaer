@@ -6,6 +6,8 @@ import java.awt.Insets;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -15,7 +17,7 @@ import javax.swing.SwingConstants;
 
 /**
  * User-facing DVXplorer controls matching the DV / dv-processing API:
- * contrast thresholds 0–17 and ReadoutFPS.
+ * contrast thresholds 0–17, ReadoutFPS, and IMU enable/display.
  */
 public class DVXplorerControlPanel extends JPanel implements PropertyChangeListener {
 
@@ -40,7 +42,17 @@ public class DVXplorerControlPanel extends JPanel implements PropertyChangeListe
             + "<li><b>VARIABLE</b> — tries to hit 1/FPS, then stretches if the load needs more time "
             + "(<i>no loss</i>). DV default <b>VARIABLE_5000</b> (200&nbsp;µs min). Faster VARIABLE "
             + "modes lower quiet-scene latency; under load the period grows.</li>"
-            + "</ul>File → Save in this window stores values in Preferences.";
+            + "</ul>File → Save in this window stores values in Preferences. IMU Enable/Display "
+            + "are on the <b>IMU Config</b> tab (Shift-I).";
+
+    private static final String IMU_HELP = "<html><body width='480'>"
+            + "BMI160 6-axis IMU (accel + gyro + temperature). Mini/Micro shares VID/PID "
+            + "<code>152a:8419</code> with FX3 DVXplorer; CX3 is <code>bcdDevice</code> type 4, "
+            + "firmware ≥10.<br><br>"
+            + "<b>Enable</b> starts capture: 8-byte SPI <code>IMU_RUN_*</code> (dv-processing "
+            + "<code>DVXplorerM</code>) and, on Mini/Micro, interrupt EP 0x81. Other SPI "
+            + "(DVS_FLATTEN, SPI IN) is skipped on firmware 10+ because it hangs WinUSB.<br>"
+            + "<b>Display</b> draws the last sample on the chip canvas. Shift-I toggles both.";
 
     private final DVXplorerConfig config;
     private boolean updating;
@@ -58,7 +70,7 @@ public class DVXplorerControlPanel extends JPanel implements PropertyChangeListe
     public DVXplorerControlPanel(DVXplorerConfig config) {
         super(new GridBagLayout());
         this.config = config;
-        setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
 
         final GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
@@ -100,10 +112,76 @@ public class DVXplorerControlPanel extends JPanel implements PropertyChangeListe
         c.gridwidth = 3;
         holdBox.setToolTipText("REGISTER_DIGITAL_MODE_CONTROL bit 0. Default enabled in DV.");
         add(holdBox, c);
-        c.gridy = row;
+        c.gridy = row++;
         resetBox.setToolTipText("REGISTER_DIGITAL_MODE_CONTROL bit 1. Default disabled in DV.");
         add(resetBox, c);
 
+        wireDvsListeners();
+        config.getSupport().addPropertyChangeListener(this);
+        syncFromConfig();
+    }
+
+    /**
+     * Hardware Configuration <i>IMU Config</i> tab: Enable/Display plus Mini/Micro SPI note.
+     */
+    static JPanel createImuTab(DVXplorerConfig config) {
+        return new ImuTabPanel(config);
+    }
+
+    private static final class ImuTabPanel extends JPanel implements PropertyChangeListener {
+        private final DVXplorerConfig config;
+        private boolean updating;
+        private final JCheckBox imuEnabledBox = new JCheckBox("Enable");
+        private final JCheckBox imuDisplayBox = new JCheckBox("Display");
+
+        ImuTabPanel(DVXplorerConfig config) {
+            super();
+            this.config = config;
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+            setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+            add(new JLabel(IMU_HELP));
+            final JPanel imu = new JPanel();
+            imu.setLayout(new BoxLayout(imu, BoxLayout.Y_AXIS));
+            imu.setBorder(BorderFactory.createTitledBorder("IMU"));
+            imuEnabledBox.setToolTipText(
+                    "Capture BMI160 samples. Mini/Micro: 8-byte SPI IMU_RUN_* and EP 0x81.");
+            imuEnabledBox.setHorizontalTextPosition(SwingConstants.LEADING);
+            imuDisplayBox.setToolTipText("Draw the last IMU sample on the chip canvas (Shift-I).");
+            imuDisplayBox.setHorizontalTextPosition(SwingConstants.LEADING);
+            imuEnabledBox.addActionListener(e -> {
+                if (!updating) {
+                    config.setImuEnabled(imuEnabledBox.isSelected());
+                }
+            });
+            imuDisplayBox.addActionListener(e -> {
+                if (!updating) {
+                    config.setDisplayImu(imuDisplayBox.isSelected());
+                }
+            });
+            imu.add(imuEnabledBox);
+            imu.add(imuDisplayBox);
+            add(imu);
+            config.getSupport().addPropertyChangeListener(this);
+            sync();
+        }
+
+        private void sync() {
+            updating = true;
+            try {
+                imuEnabledBox.setSelected(config.isImuEnabled());
+                imuDisplayBox.setSelected(config.isDisplayImu());
+            } finally {
+                updating = false;
+            }
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            sync();
+        }
+    }
+
+    private void wireDvsListeners() {
         onSlider.addChangeListener(e -> {
             onValue.setText(Integer.toString(onSlider.getValue()));
             if (!updating) {
@@ -131,9 +209,6 @@ public class DVXplorerControlPanel extends JPanel implements PropertyChangeListe
                 config.setGlobalReset(resetBox.isSelected());
             }
         });
-
-        config.getSupport().addPropertyChangeListener(this);
-        syncFromConfig();
     }
 
     private void addLabeledSlider(GridBagConstraints c, int row, String name, JSlider slider, JLabel value,

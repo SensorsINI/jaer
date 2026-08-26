@@ -256,9 +256,25 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     "Mini/Micro IMU: interrupt EP 0x81 %d x %d bytes",
                     cx3ImuTransfers.size(), CX3_IMU_TRANSFER_SIZE));
         }
-        if (getChip() instanceof DVXplorer chip) {
-            chip.setImuOverlayEnabled(true);
+    }
+
+    /**
+     * Mini/Micro firmware 10+: start or stop interrupt EP {@code 0x81} IMU
+     * capture. SPI {@code IMU_RUN_*} is sent separately (8-byte, like {@code DVS_RUN}).
+     */
+    public void setCx3ImuCaptureEnabled(final boolean yes) {
+        if (!isNextGenFirmware()) {
+            return;
         }
+        if (yes) {
+            startCx3ImuTransfers();
+        } else {
+            stopCx3ImuTransfers();
+        }
+    }
+
+    public boolean isCx3ImuCaptureEnabled() {
+        return cx3ImuRunning;
     }
 
     private void onCx3ImuTransfer(final Transfer transfer) {
@@ -385,11 +401,26 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
     /**
      * Firmware 10 rejects 4-byte {@code VR_FPGA_CONFIG} ({@code LIBUSB_ERROR_PIPE},
-     * jAER 8:58:38). 8-byte is required. Only {@code DVS_RUN} is sent; DVS_FLATTEN
-     * and size IN still hang on WinUSB.
+     * jAER 8:58:38). 8-byte is required. {@code DVS_FLATTEN} and SPI IN still hang
+     * on WinUSB. Allowed 8-byte OUT: {@code DVS_RUN}, {@code IMU_RUN_*}, and BMI160
+     * ODR/range/filter (without those, factory gyro ODR 5 freezes ~0 dps).
      */
-    private static boolean isNextGenStreamingParam(final short moduleAddr, final short paramAddr) {
-        return moduleAddr == CypressFX3.FPGA_DVS && paramAddr == DVXplorer.DVX_DVS_RUN;
+    public static boolean isNextGenStreamingParam(final short moduleAddr, final short paramAddr) {
+        if (moduleAddr == CypressFX3.FPGA_DVS && paramAddr == DVXplorer.DVX_DVS_RUN) {
+            return true;
+        }
+        if (moduleAddr == CypressFX3.FPGA_IMU) {
+            return paramAddr == DVXplorer.DVX_IMU_RUN_ACCELEROMETER
+                    || paramAddr == DVXplorer.DVX_IMU_RUN_GYROSCOPE
+                    || paramAddr == DVXplorer.DVX_IMU_RUN_TEMPERATURE
+                    || paramAddr == DVXplorer.DVX_IMU_ACCEL_DATA_RATE
+                    || paramAddr == DVXplorer.DVX_IMU_ACCEL_FILTER
+                    || paramAddr == DVXplorer.DVX_IMU_ACCEL_RANGE
+                    || paramAddr == DVXplorer.DVX_IMU_GYRO_DATA_RATE
+                    || paramAddr == DVXplorer.DVX_IMU_GYRO_FILTER
+                    || paramAddr == DVXplorer.DVX_IMU_GYRO_RANGE;
+        }
+        return false;
     }
 
     @Override
@@ -534,11 +565,13 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
         getAeReader().startThread();
         if (isNextGenFirmware() && getChip() instanceof DVXplorer chip) {
-            startCx3ImuTransfers();
+            if (chip.isImuCaptureEnabled()) {
+                startCx3ImuTransfers();
+            }
             // Do not spawn+join here: setEventAcquisitionEnabled holds this
             // monitor, so the worker cannot enter spiConfigSend (jAER 8:58:36
             // 2 s "native USB" wait was that deadlock; 4-byte then PIPE).
-            CypressFX3.log.info("Mini/Micro: USB IN queued, sending DVS_RUN (8-byte SPI)");
+            CypressFX3.log.info("Mini/Micro: USB IN queued, sending DVS_RUN / IMU_RUN (8-byte SPI)");
             chip.dvxDataStart();
         }
         HardwareInterfaceException.clearException();
@@ -1315,7 +1348,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     ? (currentTimestamp > 0 ? currentTimestamp : dtUs)
                     : (int) (cx3ImuLastTimestamp + dtUs);
             cx3ImuLastTimestamp = ts;
-            DVXplorerFX3HardwareInterface.this.offerCx3Imu(IMUSample.fromRawUntracked(ts, imuEvents));
+            // Direct ImuPacket (no AEPacketRaw round-trip): use the tracked
+            // constructor so updateStatistics fills deltaTimeUs (952cfae41e).
+            // fromRawUntracked is only for encode-then-constructFromAEPacketRaw.
+            DVXplorerFX3HardwareInterface.this.offerCx3Imu(new IMUSample(ts, imuEvents));
             cx3ImuWritten++;
             if (debug && (cx3ImuPackets <= 4 || (cx3ImuPackets % 400) == 0)) {
                 CypressFX3.log.info(String.format(

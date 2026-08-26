@@ -12,8 +12,10 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.logging.Level;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -40,7 +42,9 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
@@ -778,17 +782,55 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     /**
-     * DAVIS and DVXplorer (and subclasses) expose IMU rate gyros. Other chips
-     * such as DVS128 have no IMU stream.
+     * DAVIS and DVXplorer (and subclasses) expose IMU rate gyros. Prophesee and
+     * NRV cameras have no IMU stream, nor do chips such as DVS128.
      */
-    private boolean chipHasImu() {
+    public static boolean chipHasImu(AEChip chip) {
         return chip instanceof DavisChip || chip instanceof DVXplorer;
+    }
+
+    /**
+     * Inserts a disabled Steadicam immediately before {@link Info} on IMU
+     * cameras when the saved filter chain does not already include it.
+     */
+    public static void ensurePresent(AEChip chip) {
+        if (chip == null || !chipHasImu(chip)) {
+            return;
+        }
+        FilterChain chain = chip.getFilterChain();
+        if (chain == null || chain.findFilter(Steadicam.class) != null) {
+            return;
+        }
+        try {
+            Steadicam f = new Steadicam(chip);
+            int insertAt = -1;
+            for (int i = 0; i < chain.size(); i++) {
+                if (chain.get(i).getClass() == Info.class) {
+                    insertAt = i;
+                    break;
+                }
+            }
+            if (insertAt >= 0) {
+                chain.add(insertAt, f);
+            } else {
+                chain.add(f);
+            }
+            f.setPreferredEnabledState();
+            ArrayList<String> names = new ArrayList<>();
+            for (EventFilter2D x : chain) {
+                names.add(x.getClass().getName());
+            }
+            chain.storePreferredFiltersForChip(names);
+            log.info("Inserted Steadicam before Info in filter chain for " + chip.getClass().getSimpleName());
+        } catch (Exception e) {
+            log.log(Level.WARNING, "Could not add Steadicam: " + e, e);
+        }
     }
 
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         boolean rejectedNoImu = false;
-        if (yes && !chipHasImu()) {
+        if (yes && !chipHasImu(chip)) {
             String name = chip != null ? chip.getClass().getSimpleName() : "This camera";
             showWarningDialogInSwingThread(
                     String.format("%s has no IMU output.\nSteadicam needs a camera with IMU (for example DAVIS or DVXplorer).\nSteadicam has been disabled.", name),

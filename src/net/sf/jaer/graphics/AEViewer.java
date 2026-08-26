@@ -719,6 +719,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
+        // Ctrl+Shift+U: Interface → Refresh. Menu accelerators are not always delivered
+        // when the heavyweight GL canvas has focus; Windows has no libusb hotplug.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_U
+                        || !e.isControlDown() || !e.isShiftDown() || e.isAltDown()) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                refreshInterfaceMenuItem.doClick();
+                e.consume();
+                return true;
+            }
+        });
         setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
@@ -1076,7 +1094,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-        HardwareInterface rememberedInterface = null;
         if (ninterfaces > 1) {
             if (isRememberLastInterface() && rememberLastInterfaceDeviceID != null) {
                 log.info(String.format("Last interface was %s; %d devices present — pick one from the Interface menu (no USB open to match serial)",
@@ -1087,27 +1104,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         }
-        if ((jaerViewer != null) && (jaerViewer.getViewers().size() == 1) && (chip.getHardwareInterface() == null) && (ninterfaces == 1 || rememberedInterface != null)) {
-            HardwareInterface hw = rememberedInterface != null
-                    ? rememberedInterface
-                    : HardwareInterfaceFactory.instance().getFirstAvailableInterface();
-            //UDP interfaces should only be opened if the chip is a NetworkChip
-            if (UDPInterface.class.isInstance(hw)) {
-                if (NetworkChip.class.isInstance(chip)) {
-                    log.info("opening unambiguous network device");
-                    chip.setHardwareInterface(hw);
-                }
-            } else if (!NetworkChip.class.isInstance(chip)) {
-                ensureChipCompatibleWithLiveDevice(hw);
-                // Chip switch closes HW; re-fetch sole interface if needed.
-                if (chip.getHardwareInterface() == null && hw != null) {
-                    if (ninterfaces == 1) {
-                        hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
-                    }
-                    bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous device to ");
-                }
-            }
+        bindUnambiguousInterfaceIfPossible(ninterfaces);
+    }
+
+    /**
+     * Bind the sole enumerated interface (startup, WAITING poll, or Interface →
+     * Refresh) so ViewLoop {@link #openAEMonitor()} can open it. Uses the cached
+     * factory list; does not scan USB.
+     *
+     * @return true if the chip hardware interface was set in this call
+     */
+    private boolean bindUnambiguousInterfaceIfPossible(int ninterfaces) {
+        if (nullInterface || chip == null || jaerViewer == null || jaerViewer.getViewers().size() != 1) {
+            return false;
         }
+        if (chip.getHardwareInterface() != null) {
+            return false;
+        }
+        if (ninterfaces != 1) {
+            return false;
+        }
+        HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+        if (hw == null) {
+            return false;
+        }
+        // UDP interfaces should only be opened if the chip is a NetworkChip
+        if (UDPInterface.class.isInstance(hw)) {
+            if (NetworkChip.class.isInstance(chip)) {
+                log.info("opening unambiguous network device");
+                chip.setHardwareInterface(hw);
+                return true;
+            }
+            return false;
+        }
+        if (NetworkChip.class.isInstance(chip)) {
+            return false;
+        }
+        ensureChipCompatibleWithLiveDevice(hw);
+        // Chip switch closes HW; re-fetch sole interface if needed.
+        if (chip.getHardwareInterface() == null && hw != null) {
+            hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+            bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous device to ");
+        }
+        return chip.getHardwareInterface() != null;
     }
     private ArrayList<String> chipClassNames;
     private ArrayList<Class> chipClasses;
@@ -2772,7 +2811,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // The generated menu item is absent in lightweight/test menu projections.
         if (refreshInterfaceMenuItem != null) {
             interfaceMenu.add(new JSeparator());
-            refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface");
+            refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface. Opens the camera if exactly one is found (Ctrl+Shift+U; needed on Windows which lacks USB hotplug)");
             interfaceMenu.add(refreshInterfaceMenuItem);
         }
 
@@ -6372,9 +6411,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
+        refreshInterfaceMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_U, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
         refreshInterfaceMenuItem.setMnemonic('R');
         refreshInterfaceMenuItem.setText("Refresh");
-        refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface");
+        refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface. Opens the camera if exactly one is found (Ctrl+Shift+U; needed on Windows which lacks USB hotplug)");
         refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentShown(java.awt.event.ComponentEvent evt) {
                 refreshInterfaceMenuItemComponentShown(evt);
@@ -7448,8 +7488,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
                     final int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
                     SwingUtilities.invokeLater(() -> {
+                        // User asked to find cameras; allow auto-open even after Interface→None
+                        // or a failed open (those set nullInterface and block WAITING).
+                        nullInterface = false;
+                        lastInterfaceCheckTime = System.currentTimeMillis();
+                        boolean playback = getPlayMode() == PlayMode.PLAYBACK
+                                || getPlayMode() == PlayMode.FILTER_INPUT;
+                        boolean bound = !playback && bindUnambiguousInterfaceIfPossible(n);
                         buildInterfaceMenu();
-                        showActionText(String.format("Found %d hardware interface(s)", n));
+                        if (bound) {
+                            interruptViewloop();
+                            showActionText("Found 1 hardware interface, opening…");
+                        } else if (n > 1) {
+                            showActionText(String.format("Found %d hardware interfaces; choose one from Interface menu", n));
+                        } else {
+                            showActionText(String.format("Found %d hardware interface(s)", n));
+                        }
                     });
                 } catch (Exception e) {
                     log.warning("USB refresh failed: " + e);
