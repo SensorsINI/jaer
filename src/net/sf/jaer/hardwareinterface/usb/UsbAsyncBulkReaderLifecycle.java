@@ -285,6 +285,35 @@ public final class UsbAsyncBulkReaderLifecycle {
         }
     }
 
+    /**
+     * Store a configuration synchronously for the next externally initiated
+     * reader start. No replacement session is queued or started.
+     *
+     * @throws IllegalStateException if a transfer session is active
+     */
+    public void storeForNextStart(Config config) {
+        Objects.requireNonNull(config, "config");
+        synchronized (debounceLock) {
+            if (host.hasActiveTransfer()) {
+                throw new IllegalStateException(
+                        host.deviceLabel() + " reader must be stopped before storing USB buffer settings");
+            }
+            restartEnabled.set(false);
+            if (debounceTask != null) {
+                debounceTask.cancel(false);
+                debounceTask = null;
+            }
+            pending.set(config);
+            applied.set(config);
+            state.set(State.STOPPED);
+            lastFailure.set(null);
+            host.applyIdleConfig(config);
+        }
+        fire(EVENT_CONFIG_PENDING, config);
+        fire(EVENT_CONFIG_APPLIED, config);
+        fireStatus();
+    }
+
     /** Test helper: apply the current pending snapshot immediately. */
     public void applyNow() {
         synchronized (debounceLock) {

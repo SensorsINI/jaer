@@ -958,25 +958,26 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     protected final void clearEventEndpointHaltChecked()
             throws HardwareInterfaceException {
-        final DeviceHandle handle;
         synchronized (lifecycleLock) {
             guardNativeOpenLocked("event endpoint reset");
             if (aeReader != null) {
                 throw new HardwareInterfaceException(
                         "event endpoint reset requires a terminal AEReader");
             }
-            handle = deviceHandle;
+            final DeviceHandle handle = deviceHandle;
             if (handle == null) {
                 throw new HardwareInterfaceException(
                         "event endpoint reset requires an open device handle");
             }
-        }
-        final int status = LibUsb.clearHalt(handle, AE_MONITOR_ENDPOINT_ADDRESS);
-        if (status != LibUsb.SUCCESS) {
-            throw new HardwareInterfaceException(
-                    "Could not reset event endpoint "
-                    + String.format("0x%02x", AE_MONITOR_ENDPOINT_ADDRESS & 0xff)
-                    + ": " + LibUsb.errorName(status));
+            final int status = LibUsb.clearHalt(handle,
+                    AE_MONITOR_ENDPOINT_ADDRESS);
+            if (status != LibUsb.SUCCESS) {
+                throw new HardwareInterfaceException(
+                        "Could not reset event endpoint "
+                        + String.format("0x%02x",
+                                AE_MONITOR_ENDPOINT_ADDRESS & 0xff)
+                        + ": " + LibUsb.errorName(status));
+            }
         }
     }
 
@@ -1653,6 +1654,22 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 fifoSize = AEReader.CYPRESS_FIFO_SIZE;
             }
 
+            if (!monitor.permitsLiveUsbBufferReconfiguration()) {
+                synchronized (monitor) {
+                    if (usbTransfer != null && usbTransfer.isAlive()) {
+                        CypressFX3.log.warning(
+                                "Stop SciDVS acquisition before changing the USB FIFO size");
+                        return;
+                    }
+                    this.fifoSize = fifoSize;
+                    CypressFX3.prefs.putInt(
+                            "CypressFX3.AEReader.fifoSize", fifoSize);
+                    monitor.aeReaderFifoSize = fifoSize;
+                    bufferLifecycle.storeForNextStart(
+                            new Config(this.fifoSize, this.numBuffers));
+                }
+                return;
+            }
             this.fifoSize = fifoSize;
             CypressFX3.prefs.putInt("CypressFX3.AEReader.fifoSize", fifoSize);
             monitor.aeReaderFifoSize = fifoSize;
@@ -1666,6 +1683,22 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         @Override
         public void setNumBuffers(final int numBuffers) {
+            if (!monitor.permitsLiveUsbBufferReconfiguration()) {
+                synchronized (monitor) {
+                    if (usbTransfer != null && usbTransfer.isAlive()) {
+                        CypressFX3.log.warning(
+                                "Stop SciDVS acquisition before changing the USB buffer count");
+                        return;
+                    }
+                    this.numBuffers = numBuffers;
+                    CypressFX3.prefs.putInt(
+                            "CypressFX3.AEReader.numBuffers", numBuffers);
+                    monitor.aeReaderNumBuffers = numBuffers;
+                    bufferLifecycle.storeForNextStart(
+                            new Config(this.fifoSize, this.numBuffers));
+                }
+                return;
+            }
             this.numBuffers = numBuffers;
             CypressFX3.prefs.putInt("CypressFX3.AEReader.numBuffers", numBuffers);
             monitor.aeReaderNumBuffers = numBuffers;
@@ -1915,6 +1948,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         aeBufferSize = size;
         CypressFX3.prefs.putInt("CypressFX3.aeBufferSize", aeBufferSize);
         allocateAEBuffers();
+    }
+
+    /**
+     * Whether an active USB reader may be replaced to apply new transfer
+     * buffer settings. Subclasses with a coordinated startup protocol can
+     * require acquisition to be stopped instead.
+     */
+    protected boolean permitsLiveUsbBufferReconfiguration() {
+        return true;
     }
 
     /**

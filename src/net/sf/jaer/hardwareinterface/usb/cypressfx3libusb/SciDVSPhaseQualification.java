@@ -35,7 +35,6 @@ final class SciDVSPhaseQualification {
         committed = false;
         completedBytes = 0;
         completedCallbacks = 0;
-        failure = null;
         notifyAll();
     }
 

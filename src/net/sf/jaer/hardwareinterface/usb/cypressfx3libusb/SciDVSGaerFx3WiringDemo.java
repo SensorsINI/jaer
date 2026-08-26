@@ -30,6 +30,9 @@ public final class SciDVSGaerFx3WiringDemo {
             "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
     private static final Path PACKET_BUNDLE_POOL_SOURCE = Paths.get("src", "net", "sf", "jaer",
             "event", "PacketBundlePool.java");
+    private static final Path PHASE_QUALIFICATION_SOURCE = Paths.get("src", "net", "sf",
+            "jaer", "hardwareinterface", "usb", "cypressfx3libusb",
+            "SciDVSPhaseQualification.java");
     /** Secondary structure guard; StandardDavisTypedParserDemo is the semantic oracle. */
     private static final String STANDARD_LOOP_SHA256
             = "01670958696bdda9f4073afc2fb6f2b26df93a8e855438febad42e91053d8f97";
@@ -332,8 +335,26 @@ public final class SciDVSGaerFx3WiringDemo {
                 "direct SciDVS reader startup cannot bypass host phase correction");
         require(startThread > rejectBypass,
                 "coordinator-authorized reader starts only after the bypass gate");
+        require(start.contains("!Thread.holdsLock(this)"),
+                "SciDVS reader startup also requires the acquisition lifecycle lock");
         require(!start.contains("resetTimestamps()"),
                 "reader startup cannot issue the legacy unchecked timestamp reset");
+
+        final String liveBufferPolicy = method(source,
+                "protected boolean permitsLiveUsbBufferReconfiguration()");
+        require(liveBufferPolicy.contains("SciDVSGaerMode.resolveFromSystemProperty")
+                && liveBufferPolicy.contains("getChip() instanceof SciDVS"),
+                "SciDVS GAER mode refuses uncoordinated live USB reader replacement");
+        final String setFifoSize = method(cypressSource,
+                "public void setFifoSize(int fifoSize)");
+        final String setNumBuffers = method(cypressSource,
+                "public void setNumBuffers(final int numBuffers)");
+        require(setFifoSize.contains("!monitor.permitsLiveUsbBufferReconfiguration()")
+                && setFifoSize.contains("bufferLifecycle.storeForNextStart"),
+                "forbidden live FIFO changes are refused and stopped-reader changes cannot queue a restart");
+        require(setNumBuffers.contains("!monitor.permitsLiveUsbBufferReconfiguration()")
+                && setNumBuffers.contains("bufferLifecycle.storeForNextStart"),
+                "forbidden live buffer-count changes are refused and stopped-reader changes cannot queue a restart");
 
         final String startupDrain = method(source,
                 "private void awaitGaerStartupSourceQuiescence(")
@@ -364,11 +385,15 @@ public final class SciDVSGaerFx3WiringDemo {
 
         final String clearEndpoint = method(cypressSource,
                 "protected final void clearEventEndpointHaltChecked()");
+        final String compactClearEndpoint = clearEndpoint.replaceAll("\\s+", " ");
         require(clearEndpoint.contains("aeReader != null")
-                && clearEndpoint.contains("LibUsb.clearHalt(handle, AE_MONITOR_ENDPOINT_ADDRESS)"),
+                && compactClearEndpoint.contains(
+                        "LibUsb.clearHalt(handle, AE_MONITOR_ENDPOINT_ADDRESS)"),
                 "checked endpoint reset requires reader terminality and targets the event endpoint");
         require(clearEndpoint.contains("status != LibUsb.SUCCESS"),
                 "endpoint reset status is checked");
+        require(clearEndpoint.contains("synchronized (lifecycleLock)"),
+                "endpoint reset holds the lifecycle lock through clear-halt");
 
         final String infrastructure = method(cypressSource,
                 "protected synchronized void configureINEndpointWithUsbStopped()");
@@ -444,6 +469,27 @@ public final class SciDVSGaerFx3WiringDemo {
 
     private static void testPhaseQualificationWiring(final String source,
             final String cypressSource) throws Exception {
+        final String qualificationSource = Files.readString(
+                PHASE_QUALIFICATION_SOURCE, StandardCharsets.UTF_8);
+        final String beginQualification = method(qualificationSource,
+                "synchronized void begin()");
+        require(!beginQualification.contains("failure = null"),
+                "beginning byte accounting cannot erase a fault seen earlier in quarantine");
+        final SciDVSPhaseQualification preBeginFailure
+                = new SciDVSPhaseQualification(4, 1);
+        preBeginFailure.noteFailure("post-marker fault before byte accounting");
+        preBeginFailure.begin();
+        preBeginFailure.noteCompletedTransfer(4);
+        require(!preBeginFailure.awaitSuccess(1),
+                "a post-marker fault before begin permanently prevents qualification");
+        try {
+            preBeginFailure.commit();
+            require(false,
+                    "a post-marker fault before begin cannot commit publication");
+        } catch (final IllegalStateException expected) {
+            require(true,
+                    "a post-marker fault before begin cannot commit publication");
+        }
         final Field qualification = DAViSFX3HardwareInterface.RetinaAEReader.class
                 .getDeclaredField("gaerPhaseQualification");
         require(qualification.getType() == SciDVSPhaseQualification.class
@@ -484,10 +530,20 @@ public final class SciDVSGaerFx3WiringDemo {
 
         final String resetHandler = method(source,
                 "private void handleGaerTimestampReset()");
-        require(resetHandler.contains("gaerPhaseQualification.isActive()")
+        require(resetHandler.contains("gaerPhaseQualification.isQuarantining()")
                 && resetHandler.contains(
                         "additional timestamp reset during stream qualification"),
-                "an additional reset marker permanently fails stream qualification");
+                "an additional reset marker fails the whole post-marker quarantine window");
+
+        final int validationCatch = translate.indexOf(
+                "catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure)");
+        final int quarantineFailureGate = translate.indexOf(
+                "gaerPhaseQualification.isQuarantining()", validationCatch);
+        final int retainFailure = translate.indexOf(
+                "retainGaerTimestampCallbackFailure(failure)", validationCatch);
+        require(validationCatch >= 0 && quarantineFailureGate > validationCatch
+                && retainFailure > quarantineFailureGate,
+                "malformed or decreasing timestamps fail quarantine before the retained fault can later be cleared");
 
         final String rawAcquire = method(source,
                 "public AEPacketRaw acquireAvailableEventsFromDriver()");
@@ -503,9 +559,10 @@ public final class SciDVSGaerFx3WiringDemo {
         require(failClosed.contains("FPGA_DVS")
                 && failClosed.contains("FPGA_USB")
                 && failClosed.contains("stopAEReader()")
+                && failClosed.contains("disarmFreshReaderTimestampReset()")
                 && failClosed.contains(
                         "abandonNativeHandleAfterNonterminalReader()"),
-                "phase failure stops both run controls and abandons an unproven reader handle");
+                "phase failure disarms reset ownership, stops run controls when safe, and abandons an unproven reader handle");
         final String abandon = method(cypressSource,
                 "protected final void abandonNativeHandleAfterNonterminalReader()");
         require(abandon.contains("nativeHandleAbandoned = true")

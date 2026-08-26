@@ -283,6 +283,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         @Override
         public void sendTimestampReset() throws IOException {
+            // TimestampReset is a held/readable FPGA config bit. The FPGA
+            // PulseDetector reduces any host-visible assertion width to one
+            // logic pulse and one reset event.
             writeAndVerifyConfig(CypressFX3.FPGA_MUX, (short) 2, 1,
                     "timestamp reset assertion");
             writeAndVerifyConfig(CypressFX3.FPGA_MUX, (short) 2, 0,
@@ -347,8 +350,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         @Override
         public void failClosed() {
+            disarmFreshReaderTimestampReset();
             qualification.noteFailure("phase correction failed");
             if (readerTerminalityUnknown) {
+                // A possibly live native transfer thread may still own this
+                // handle. Further control transfers would be unsafe, so the
+                // run controls cannot be confirmed stopped until unplug/replug.
                 inEndpointEnabled = false;
                 abandonNativeHandleAfterNonterminalReader();
                 CypressFX3.log.severe(
@@ -378,6 +385,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 return;
             }
             disableINEndpoint();
+        }
+
+        private void disarmFreshReaderTimestampReset() {
+            final AEReader current = getAeReader();
+            if (current instanceof RetinaAEReader reader
+                    && reader.gaerPhaseQualification == qualification) {
+                reader.disarmStartupTimestampReset();
+            }
         }
 
         private void verifyStopped(final short module, final short parameter,
@@ -528,6 +543,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             throw new HardwareInterfaceException(
                     "SciDVS GAER reader startup requires host phase correction");
         }
+        if (gaerActive && !Thread.holdsLock(this)) {
+            throw new HardwareInterfaceException(
+                    "SciDVS GAER reader startup requires the acquisition lifecycle lock");
+        }
         final RetinaAEReader reader = new RetinaAEReader(this);
         reader.gaerTimestampCallbackRecoveryPending = gaerActive
                 && gaerTimestampCallbackFailure.get() != null;
@@ -536,6 +555,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         reader.startThread(); // arg is number of errors before giving up
         HardwareInterfaceException.clearException();
+    }
+
+    @Override
+    protected boolean permitsLiveUsbBufferReconfiguration() {
+        return !SciDVSGaerMode.resolveFromSystemProperty(
+                getChip() instanceof SciDVS, CypressFX3.log);
     }
 
     private void awaitGaerStartupSourceQuiescence(final RetinaAEReader reader)
@@ -815,7 +840,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 gaerStartupTimestampResetArmed = false;
                 startupTimestampReset.markResetObserved();
             } else if (gaerPhaseQualification != null
-                    && gaerPhaseQualification.isActive()) {
+                    && gaerPhaseQualification.isQuarantining()) {
                 gaerPhaseQualification.noteFailure(
                         "additional timestamp reset during stream qualification");
             }
@@ -846,7 +871,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         protected void noteTransferFailure(final int status,
                 final int actualLength) {
             if (gaerPhaseQualification != null
-                    && gaerPhaseQualification.isActive()) {
+                    && gaerPhaseQualification.isQuarantining()) {
                 gaerPhaseQualification.noteFailure(
                         "USB transfer failed during stream qualification: status="
                         + LibUsb.errorName(status) + " bytes=" + actualLength);
@@ -914,7 +939,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     gaerTimestampOrderGuard.validate(b);
                 } catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
                     if (gaerPhaseQualification != null
-                            && gaerPhaseQualification.isActive()) {
+                            && gaerPhaseQualification.isQuarantining()) {
                         gaerPhaseQualification.noteFailure(failure.getMessage());
                     }
                     retainGaerTimestampCallbackFailure(failure);

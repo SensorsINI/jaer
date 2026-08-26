@@ -35,6 +35,8 @@ public final class UsbAsyncBulkReaderLifecycleTest {
         testStaleCallbacksIgnored();
         testTimeoutRecoversWithoutConcurrentSessions();
         testIdleConfigDoesNotStart();
+        testStoreForNextStartNeverRestarts();
+        testStoreForNextStartRejectsActiveReader();
         testStatusRequestedVsActive();
         testStatusFailedPhase();
     }
@@ -133,6 +135,43 @@ public final class UsbAsyncBulkReaderLifecycleTest {
             assertEquals(new Config(8192, 4), life.appliedConfig());
             assertEquals(UsbAsyncBulkReaderLifecycle.Phase.STORED_FOR_NEXT_START,
                     life.statusSnapshot().phase);
+        } finally {
+            life.shutdown();
+        }
+    }
+
+    static void testStoreForNextStartNeverRestarts() throws Exception {
+        final FakeHost host = new FakeHost();
+        final UsbAsyncBulkReaderLifecycle life = new UsbAsyncBulkReaderLifecycle(
+                host, 5L, 500L);
+        try {
+            final Config stored = new Config(16384, 8);
+            life.storeForNextStart(stored);
+            life.awaitIdle(2000L);
+            assertEquals(0, host.stopCount.get());
+            assertEquals(0, host.startCount.get());
+            assertEquals(stored, host.lastIdle);
+            assertEquals(stored, life.appliedConfig());
+            assertEquals(UsbAsyncBulkReaderLifecycle.Phase.STORED_FOR_NEXT_START,
+                    life.statusSnapshot().phase);
+        } finally {
+            life.shutdown();
+        }
+    }
+
+    static void testStoreForNextStartRejectsActiveReader() {
+        final FakeHost host = new FakeHost();
+        host.running.set(true);
+        final UsbAsyncBulkReaderLifecycle life = new UsbAsyncBulkReaderLifecycle(host);
+        try {
+            try {
+                life.storeForNextStart(new Config(16384, 8));
+                throw new AssertionError(
+                        "active reader accepted next-start-only buffer settings");
+            } catch (final IllegalStateException expected) {
+                assertEquals(0, host.stopCount.get());
+                assertEquals(0, host.startCount.get());
+            }
         } finally {
             life.shutdown();
         }

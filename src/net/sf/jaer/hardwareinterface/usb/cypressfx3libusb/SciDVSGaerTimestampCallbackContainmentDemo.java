@@ -265,6 +265,8 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
                 && guardClear > postBarrierAllocation
                 && recoveryClear > guardClear,
                 "post-marker transition uses the active callback pool lock and clears buffers, guard, then recovery state");
+        require(barrierSuccess.contains("synchronized (poolLock)"),
+                "post-marker transition actually holds the selected callback pool lock");
         require(!barrierSuccess.contains(
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()"),
                 "marker observation alone cannot clear a retained callback fault");
@@ -276,6 +278,8 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()");
         require(qualification >= 0 && callbackClear > qualification,
                 "only successful stream qualification clears the retained callback fault");
+        require(qualificationCommit.contains("synchronized (poolLock)"),
+                "qualification commit and retained-fault clear are atomic against callbacks");
         require(count(source,
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()") == 2,
                 "callback fault clear has exactly one production call site");
