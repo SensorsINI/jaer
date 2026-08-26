@@ -93,6 +93,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public int size = 0;
     private Class<E> eventClass = null;
+    private PacketType packetType = PacketType.POLARITY;
     /**
      * Constructs new events for this packet.
      */
@@ -982,22 +983,28 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * jAER 3.0: uniform packet kind for this EventPacket. Inferred from
-     * {@link #eventClass} (e.g. {@link PolarityEvent} → {@link PacketType#POLARITY}).
+     * jAER 3.0: uniform packet kind for this EventPacket. Classified once from
+     * the declared {@link #eventClass}, without inspecting packet contents.
      */
     @Override
     public PacketType getPacketType() {
-        if (eventClass == null) {
+        return packetType;
+    }
+
+    private static PacketType classifyPacketType(
+            final Class<? extends BasicEvent> declaredEventClass) {
+        if (declaredEventClass == null) {
             return PacketType.POLARITY;
         }
-        if (ExternalEvent.class.isAssignableFrom(eventClass)) {
+        if (ExternalEvent.class.isAssignableFrom(declaredEventClass)) {
             return PacketType.SPECIAL;
         }
-        if (PolarityEvent.class.isAssignableFrom(eventClass)) {
+        if (PolarityEvent.class.isAssignableFrom(declaredEventClass)) {
             // ApsDvsEvent extends PolarityEvent — treat as polarity until purged
             return PacketType.POLARITY;
         }
-        if (eventClass.getName().contains("Ear") || eventClass.getName().contains("Cochlea")) {
+        if (declaredEventClass.getName().contains("Ear")
+                || declaredEventClass.getName().contains("Cochlea")) {
             return PacketType.EAR;
         }
         return PacketType.POLARITY;
@@ -1045,6 +1052,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     public final void setEventClass(final Constructor<? extends BasicEvent> constructor) {
         this.eventConstructor = (Constructor<E>) constructor;
         this.eventClass = eventConstructor.getDeclaringClass();
+        this.packetType = classifyPacketType(this.eventClass);
         initializeEvents();
     }
 
@@ -1056,6 +1064,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public final void setEventClass(final Class<? extends BasicEvent> eventClass) {
         this.eventClass = (Class<E>) eventClass;
+        this.packetType = classifyPacketType(eventClass);
         try {
             eventConstructor = (Constructor<E>) eventClass.getConstructor();
         } catch (final NoSuchMethodException e) {

@@ -26,6 +26,8 @@ public final class SciDVSGaerFx3WiringDemo {
             "DAViSFX3HardwareInterface.java");
     private static final Path CYPRESS_SOURCE = Paths.get("src", "net", "sf", "jaer",
             "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
+    private static final Path PACKET_BUNDLE_POOL_SOURCE = Paths.get("src", "net", "sf", "jaer",
+            "event", "PacketBundlePool.java");
     private static final String STANDARD_LOOP_SHA256
             = "350e0256b375ec2bedb793ee6522ea62ed1b1e1344d54caac409437892583be4";
     private static int assertions;
@@ -109,8 +111,16 @@ public final class SciDVSGaerFx3WiringDemo {
                 "GAER decoder config is built only from already-read DAViS values");
         require(compact.contains("gaerRawSink = new SciDVSGaerRawSink("),
                 "GAER raw sink is constructed eagerly");
-        require(compact.contains("gaerTypedSink = new SciDVSGaerTypedSink( typedBuilder, gaerRawSink,"),
-                "GAER typed sink uses the existing typed builder and raw sink");
+        final int typedSinkStart = compact.indexOf(
+                "gaerTypedSink = new SciDVSGaerTypedSink(");
+        final int typedSinkEnd = compact.indexOf(");", typedSinkStart);
+        require(typedSinkStart >= 0 && typedSinkEnd > typedSinkStart,
+                "GAER typed sink construction has stable source anchors");
+        final String typedSinkConstruction = compact.substring(typedSinkStart, typedSinkEnd);
+        require(typedSinkConstruction.contains("typedBuilder,"),
+                "GAER typed sink uses the existing typed builder");
+        require(!typedSinkConstruction.contains("gaerRawSink"),
+                "GAER typed sink construction has no raw-sink dependency");
         require(!constructor.contains("SciDVSGaerMode.resolve"),
                 "GAER mode is not resolved eagerly before chip attachment");
     }
@@ -123,8 +133,17 @@ public final class SciDVSGaerFx3WiringDemo {
 
         require(compact.contains("super.toString(), this::shouldLogGaerWarning)"),
                 "eager decoder receives super.toString and this::shouldLogGaerWarning");
-        require(compact.contains("() -> !usbTypedDemuxActive || dualWriteApsImuAe"),
-                "raw sink gate is exactly the dual-write predicate");
+        final int rawSinkStart = compact.indexOf(
+                "gaerRawSink = new SciDVSGaerRawSink(");
+        final int rawSinkEnd = compact.indexOf(");", rawSinkStart);
+        require(rawSinkStart >= 0 && rawSinkEnd > rawSinkStart,
+                "GAER raw sink construction has stable source anchors");
+        final String rawSinkConstruction = compact.substring(rawSinkStart, rawSinkEnd);
+        require(rawSinkConstruction.contains("() -> true"),
+                "legacy raw GAER sink writes its complete raw payload");
+        require(!rawSinkConstruction.contains(
+                "!usbTypedDemuxActive || dualWriteApsImuAe"),
+                "legacy raw GAER sink no longer uses the obsolete dual-write predicate");
         require(compact.contains("() -> getChip() != null ? getChip().getSizeX() : dvsSizeX"),
                 "typed X supplier is exactly the chip-null fallback supplier");
         require(count(constructor, "this::handleGaerTimestampReset") == 2,
@@ -149,35 +168,78 @@ public final class SciDVSGaerFx3WiringDemo {
         final String translate = between(source,
                 "protected void translateEvents(final ByteBuffer b)",
                 "public void propertyChange(final PropertyChangeEvent arg0)");
-        final int resolver = translate.indexOf("SciDVSGaerMode.resolveFromSystemProperty");
-        final int branchStart = translate.indexOf("if (gaerResolved");
+        final int typedModeStart = translate.indexOf(
+                "if (isAuthoritativeTypedDelivery())");
+        final int typedPoolLock = translate.indexOf(
+                "synchronized (packetBundlePool)", typedModeStart);
+        final int typedAttach = translate.indexOf(
+                "typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY)",
+                typedPoolLock);
+        final int typedResolver = translate.indexOf(
+                "SciDVSGaerMode.resolveFromSystemProperty", typedAttach);
+        final int typedBranchStart = translate.indexOf(
+                "if (gaerResolved != null && gaerResolved)", typedResolver);
+        final int typedBranchReturn = translate.indexOf("return;", typedBranchStart);
+        final int typedModeReturn = translate.indexOf("return;", typedBranchReturn + 1);
+        final int rawPoolLock = translate.indexOf(
+                "synchronized (aePacketRawPool)", typedModeReturn);
+        final int rawResolver = translate.indexOf(
+                "SciDVSGaerMode.resolveFromSystemProperty", rawPoolLock);
+        final int rawBranchStart = translate.indexOf(
+                "if (gaerResolved != null && gaerResolved)", rawResolver);
+        final int rawBranchReturn = translate.indexOf("return;", rawBranchStart);
         final int standardLoop = translate.indexOf("for (int i = 0; i < sBuf.limit(); i++) {");
-        require(resolver >= 0, "translateEvents lazily invokes the production mode resolver");
-        require(branchStart > resolver, "GAER branch follows lazy resolution");
-        require(standardLoop > branchStart, "GAER branch is before the standard DAViS loop");
-        require(translate.substring(0, resolver).contains("gaerResolved == null"),
-                "mode resolver is guarded by nullable unresolved state");
+        require(typedModeStart >= 0, "translateEvents has an authoritative typed delivery branch");
+        require(typedPoolLock > typedModeStart && typedAttach > typedPoolLock,
+                "authoritative typed delivery locks its own pool before attaching geometry");
+        require(typedResolver > typedAttach && typedBranchStart > typedResolver,
+                "typed GAER resolution follows typed metadata and builder attachment");
+        require(rawPoolLock > typedModeReturn && rawResolver > rawPoolLock
+                && rawBranchStart > rawResolver,
+                "legacy raw GAER resolution is isolated after the typed branch returns");
+        require(count(translate, "gaerModeUnresolved && getChip() != null") == 2,
+                "both mutually exclusive GAER branches retain the chip-nonnull lazy guard");
+        require(count(translate, "gaerResolved == null") == 2,
+                "both mutually exclusive GAER branches retain nullable unresolved state");
 
-        final int branchReturn = translate.indexOf("return;", branchStart);
-        require(branchReturn > branchStart && branchReturn < standardLoop,
-                "GAER branch returns before standard DAViS parsing");
-        final String branch = translate.substring(branchStart, branchReturn + "return;".length());
-        require(translate.substring(0, branchStart).contains(
+        final String typedDelivery = translate.substring(typedModeStart, rawPoolLock);
+        final String typedGaerBranch = translate.substring(
+                typedBranchStart, typedBranchReturn + "return;".length());
+        require(typedDelivery.contains("prepareAuthoritativeTypedBundle(typedOut)"),
+                "authoritative typed delivery begins metadata on its own write bundle");
+        require(typedDelivery.contains(
                 "typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY)"),
-                "shared prologue attaches actual typed bundle geometry before GAER routing");
-        require(branch.contains("gaerRawSink.begin(buffer, eventCounter)"),
-                "GAER branch begins the actual raw sink at existing cursor");
-        require(branch.replaceAll("\\s+", " ").contains(
-                "gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink)"),
-                "GAER branch selects typed composite or raw sink for one decoder pass");
-        require(branch.contains("eventCounter = gaerRawSink.end()"),
-                "GAER branch adopts raw sink final cursor");
-        require(count(branch, "typedBuilder.flushAll()") == 1,
-                "GAER branch flushes typed packets exactly once");
-        require(count(branch, "typedOut.setRawPacket(buffer)") == 1,
-                "GAER branch links raw packet exactly once");
-        require(!branch.contains("for (int i = 0; i < sBuf.limit(); i++)"),
-                "GAER branch does not duplicate the DAViS parser loop");
+                "authoritative typed delivery attaches actual geometry on its own branch");
+        require(typedGaerBranch.contains("gaerDecoder.decode(b, gaerTypedSink)"),
+                "authoritative typed GAER delivery decodes only into the typed sink");
+        require(count(typedGaerBranch, "typedBuilder.flushAll()") == 1,
+                "authoritative typed GAER delivery flushes exactly once before return");
+        require(typedBranchReturn > typedBranchStart
+                && typedModeReturn > typedBranchReturn
+                && typedModeReturn < rawPoolLock && typedModeReturn < standardLoop,
+                "typed GAER and standard typed routes return before raw delivery and the legacy loop");
+        require(!typedDelivery.contains("gaerRawSink")
+                && !typedDelivery.contains("AEPacketRaw")
+                && !typedDelivery.contains("setRawPacket"),
+                "authoritative typed delivery invokes no raw sink, raw packet, or raw sidecar");
+
+        final String rawDelivery = translate.substring(rawPoolLock, standardLoop);
+        final String rawGaerBranch = translate.substring(
+                rawBranchStart, rawBranchReturn + "return;".length());
+        require(rawGaerBranch.contains("gaerRawSink.begin(buffer, eventCounter)"),
+                "legacy raw GAER delivery begins the raw sink at the existing cursor");
+        require(rawGaerBranch.contains("gaerDecoder.decode(b, gaerRawSink)"),
+                "legacy raw GAER delivery decodes only into the raw sink");
+        require(rawGaerBranch.contains("eventCounter = gaerRawSink.end()"),
+                "legacy raw GAER delivery adopts the raw sink final cursor");
+        require(rawBranchReturn > rawBranchStart && rawBranchReturn < standardLoop,
+                "legacy raw GAER delivery returns before the unchanged standard DAVIS loop");
+        require(!rawDelivery.contains("packetBundlePool")
+                && !rawDelivery.contains("typedBuilder")
+                && !rawDelivery.contains("gaerTypedSink"),
+                "legacy raw delivery never mutates the typed pool or typed builder");
+        require(!translate.contains("typedOut != null ? gaerTypedSink : gaerRawSink"),
+                "typed and legacy raw GAER delivery never use ternary sink selection");
     }
 
     private static void testStandardDavisLoopHash(final String source) throws Exception {
@@ -203,6 +265,30 @@ public final class SciDVSGaerFx3WiringDemo {
                 "typed acquisition does not swap the raw packet pool");
         require(acquire.contains("packetBundlePool.swap()"),
                 "typed acquisition swaps the typed bundle pool");
+
+        final int selectTyped = acquire.indexOf(
+                "selectDeliveryMode(DeliveryMode.AUTHORITATIVE_TYPED)");
+        final int enableAcquisition = acquire.indexOf("setEventAcquisitionEnabled(true)");
+        final int beginMetadata = acquire.indexOf(
+                "prepareAuthoritativeTypedBundle(packetBundlePool.writeBuffer())");
+        final int swapTyped = acquire.indexOf("packetBundlePool.swap()");
+        final int publishTyped = acquire.indexOf(
+                "lastPacketBundle = packetBundlePool.readBuffer()");
+        require(selectTyped >= 0 && selectTyped < enableAcquisition,
+                "typed delivery mode is selected before acquisition is enabled");
+        require(beginMetadata > enableAcquisition && swapTyped > beginMetadata
+                && publishTyped > swapTyped,
+                "typed metadata, sealing swap, and publication retain strict source order");
+
+        final String poolSource = Files.readString(
+                PACKET_BUNDLE_POOL_SOURCE, StandardCharsets.UTF_8);
+        final String poolSwap = between(poolSource,
+                "public final synchronized void swap()",
+                "public final synchronized PacketBundle readBuffer()");
+        final int sealCompletedWrite = poolSwap.indexOf("completedWrite.seal()");
+        final int publishCompletedWrite = poolSwap.indexOf("if (readBuffer == 0)");
+        require(sealCompletedWrite >= 0 && publishCompletedWrite > sealCompletedWrite,
+                "typed pool seals the completed write bundle before publishing it");
 
         final String translate = between(davisSource,
                 "protected void translateEvents(final ByteBuffer b)",
