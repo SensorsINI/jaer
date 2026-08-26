@@ -10,6 +10,8 @@ import java.util.function.LongSupplier;
  */
 final class Fx3QuiescentDrainBarrier {
 
+    private static final int TRANSFER_TIMELINE_CAPACITY = 4_096;
+
     @FunctionalInterface
     interface Sleeper {
         void sleep(long millis) throws InterruptedException;
@@ -20,6 +22,14 @@ final class Fx3QuiescentDrainBarrier {
     private boolean draining;
     private long drainStartedNanos;
     private long lastPayloadNanos;
+    private final int[] completedTransferLengths
+            = new int[TRANSFER_TIMELINE_CAPACITY];
+    private final long[] completedTransferElapsedNanos
+            = new long[TRANSFER_TIMELINE_CAPACITY];
+    private final boolean[] completedTransferSourcePayload
+            = new boolean[TRANSFER_TIMELINE_CAPACITY];
+    private int completedTransferCount;
+    private boolean transferTimelineTruncated;
 
     Fx3QuiescentDrainBarrier() {
         this(System::nanoTime, Thread::sleep);
@@ -35,16 +45,63 @@ final class Fx3QuiescentDrainBarrier {
         final long now = nanoTime.getAsLong();
         drainStartedNanos = now;
         lastPayloadNanos = now;
+        completedTransferCount = 0;
+        transferTimelineTruncated = false;
         draining = true;
     }
 
-    synchronized void noteCompletedTransfer(final int actualLength) {
+    synchronized void noteCompletedTransfer(final int actualLength,
+            final boolean sourcePayload) {
         if (actualLength < 0) {
             throw new IllegalArgumentException("actualLength must be nonnegative");
         }
-        if (draining && actualLength > 0) {
-            lastPayloadNanos = nanoTime.getAsLong();
+        if (sourcePayload && actualLength == 0) {
+            throw new IllegalArgumentException(
+                    "zero-length transfer cannot contain source payload");
         }
+        if (draining) {
+            final long now = nanoTime.getAsLong();
+            if (completedTransferCount < TRANSFER_TIMELINE_CAPACITY) {
+                completedTransferLengths[completedTransferCount] = actualLength;
+                completedTransferElapsedNanos[completedTransferCount]
+                        = now - drainStartedNanos;
+                completedTransferSourcePayload[completedTransferCount]
+                        = sourcePayload;
+                completedTransferCount++;
+            } else {
+                transferTimelineTruncated = true;
+            }
+            if (sourcePayload) {
+                lastPayloadNanos = now;
+            }
+        }
+    }
+
+    synchronized boolean isDraining() {
+        return draining;
+    }
+
+    synchronized int getCompletedTransferCount() {
+        return completedTransferCount;
+    }
+
+    synchronized int getCompletedTransferLength(final int index) {
+        checkCompletedTransferIndex(index);
+        return completedTransferLengths[index];
+    }
+
+    synchronized long getCompletedTransferElapsedNanos(final int index) {
+        checkCompletedTransferIndex(index);
+        return completedTransferElapsedNanos[index];
+    }
+
+    synchronized boolean getCompletedTransferSourcePayload(final int index) {
+        checkCompletedTransferIndex(index);
+        return completedTransferSourcePayload[index];
+    }
+
+    synchronized boolean isTransferTimelineTruncated() {
+        return transferTimelineTruncated;
     }
 
     boolean awaitQuiescence(final long quietMillis, final long timeoutMillis)
@@ -79,6 +136,14 @@ final class Fx3QuiescentDrainBarrier {
 
     synchronized void endDrain() {
         draining = false;
+    }
+
+    private void checkCompletedTransferIndex(final int index) {
+        if (index < 0 || index >= completedTransferCount) {
+            throw new IndexOutOfBoundsException(
+                    "completed transfer index " + index + " outside [0, "
+                    + completedTransferCount + ")");
+        }
     }
 
     private static long checkedMillisToNanos(final long millis,

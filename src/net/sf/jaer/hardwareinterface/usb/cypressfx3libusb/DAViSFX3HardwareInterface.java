@@ -39,6 +39,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     private int warningCount = 0;
     private static final long STARTUP_TIMESTAMP_RESET_TIMEOUT_MS = 1_000L;
     private static final long QUIESCENT_DRAIN_QUIET_MS = 100L;
+    private static final long STARTUP_SOURCE_DRAIN_TIMEOUT_MS = 3_000L;
     private static final long QUIESCENT_DRAIN_TIMEOUT_MS = 500L;
     private static final int WARNING_INTERVAL = 100000;
 
@@ -87,6 +88,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
     /** Cached exact FPGA-geometry fingerprint for the shared DAVIS/SciDVS PID. */
     private Boolean sciDVSFpgaGeometryMatch;
+    /** Prior active DVS.Run state retained until a gated GAER startup succeeds. */
+    private boolean gaerStartupDvsRunRestorePending;
 
     /**
      * Probes the two read-only FPGA DVS geometry registers and caches whether
@@ -120,6 +123,89 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         return dvsSizeX == 126 && dvsSizeY == 112;
     }
 
+    @Override
+    public synchronized void setEventAcquisitionEnabled(final boolean enable)
+            throws HardwareInterfaceException {
+        if (!enable || !(getChip() instanceof SciDVS)
+                || !SciDVSGaerMode.resolveFromSystemProperty(true, CypressFX3.log)) {
+            super.setEventAcquisitionEnabled(enable);
+            return;
+        }
+
+        try {
+            pauseDvsForGaerStartup();
+        } catch (final HardwareInterfaceException | RuntimeException pauseFailure) {
+            failClosedAfterGaerStartup(pauseFailure);
+            throw pauseFailure;
+        }
+
+        try {
+            super.setEventAcquisitionEnabled(true);
+        } catch (final HardwareInterfaceException | RuntimeException startupFailure) {
+            failClosedAfterGaerStartup(startupFailure);
+            throw startupFailure;
+        }
+
+        try {
+            restoreDvsAfterGaerStartup();
+        } catch (final HardwareInterfaceException | RuntimeException restoreFailure) {
+            failClosedAfterGaerStartup(restoreFailure);
+            throw restoreFailure;
+        }
+    }
+
+    private void pauseDvsForGaerStartup() throws HardwareInterfaceException {
+        final int dvsRun = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 3);
+        if (dvsRun != 0) {
+            gaerStartupDvsRunRestorePending = true;
+        }
+        if (gaerStartupDvsRunRestorePending) {
+            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0);
+        }
+    }
+
+    private void restoreDvsAfterGaerStartup() throws HardwareInterfaceException {
+        if (gaerStartupDvsRunRestorePending) {
+            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 1);
+            gaerStartupDvsRunRestorePending = false;
+        }
+    }
+
+    private void failClosedAfterGaerStartup(final Throwable originalFailure) {
+        try {
+            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0);
+        } catch (final HardwareInterfaceException | RuntimeException cleanupFailure) {
+            originalFailure.addSuppressed(cleanupFailure);
+        }
+
+        boolean delegatedStop = false;
+        try {
+            super.setEventAcquisitionEnabled(false);
+            delegatedStop = true;
+        } catch (final HardwareInterfaceException | RuntimeException cleanupFailure) {
+            originalFailure.addSuppressed(cleanupFailure);
+        }
+        if (!delegatedStop) {
+            try {
+                stopAEReader();
+            } catch (final RuntimeException cleanupFailure) {
+                originalFailure.addSuppressed(cleanupFailure);
+            }
+        }
+    }
+
+    public long getGaerNonMonotonicTimestampCount() {
+        final AEReader reader = getAeReader();
+        return reader instanceof RetinaAEReader retinaReader
+                ? retinaReader.gaerDecoder.getNonMonotonicTimestampCount() : 0L;
+    }
+
+    public int getGaerMaxBackwardTimestampUs() {
+        final AEReader reader = getAeReader();
+        return reader instanceof RetinaAEReader retinaReader
+                ? retinaReader.gaerDecoder.getMaxBackwardTimestampUs() : 0;
+    }
+
     private boolean updatedRealClockValues = false;
     public float logicClockFreq = 90.0f;
     public float adcClockFreq = 30.0f;
@@ -141,6 +227,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         reader.startThread(); // arg is number of errors before giving up
         if (gaerActive) {
+            if (getChip() instanceof SciDVS) {
+                try {
+                    awaitGaerStartupSourceQuiescence(reader);
+                } catch (final HardwareInterfaceException e) {
+                    abortStartupTimestampReset(reader);
+                    throw e;
+                }
+            }
             // A new decoder starts with no wrap state while the device endpoint can
             // still contain pre-stop words. Put a positive reset marker behind that
             // backlog, wait until this exact reader decodes it, then discard every
@@ -165,9 +259,52 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             // The marker callback and this clear use the same packet-pool lock, so
             // this runs only after the complete marker-containing transfer returns.
             allocateAEBuffers();
+            reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset();
             log.info("SciDVS startup timestamp reset observed; discarded pre-boundary packets");
         }
         HardwareInterfaceException.clearException();
+    }
+
+    private void awaitGaerStartupSourceQuiescence(final RetinaAEReader reader)
+            throws HardwareInterfaceException {
+        reader.quiescentDrain.beginDrain();
+        try {
+            final boolean quiescent = reader.quiescentDrain.awaitQuiescence(
+                    QUIESCENT_DRAIN_QUIET_MS, STARTUP_SOURCE_DRAIN_TIMEOUT_MS);
+            if (!quiescent) {
+                throw new HardwareInterfaceException(
+                        "Timed out waiting for paused SciDVS source payload to drain");
+            }
+            log.info("Paused SciDVS source payload reached quiescence before timestamp reset");
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new HardwareInterfaceException(
+                    "Interrupted waiting for paused SciDVS source payload to drain", e);
+        } finally {
+            reader.quiescentDrain.endDrain();
+            logStartupSourceDrainTimeline(reader);
+        }
+    }
+
+    private void logStartupSourceDrainTimeline(final RetinaAEReader reader) {
+        final int retainedCount
+                = reader.quiescentDrain.getCompletedTransferCount();
+        final boolean truncated
+                = reader.quiescentDrain.isTransferTimelineTruncated();
+        log.info(String.format(
+                "SciDVS startup source-drain transfer timeline: retained=%d truncated=%s",
+                retainedCount, truncated));
+        for (int index = 0; index < retainedCount; index++) {
+            final long elapsedMicros
+                    = reader.quiescentDrain.getCompletedTransferElapsedNanos(index) / 1_000L;
+            final int actualLength
+                    = reader.quiescentDrain.getCompletedTransferLength(index);
+            final boolean sourcePayload
+                    = reader.quiescentDrain.getCompletedTransferSourcePayload(index);
+            log.info(String.format(
+                    "SciDVS startup source-drain transfer: index=%d elapsedUs=%d actualLength=%d sourcePayload=%s",
+                    index, elapsedMicros, actualLength, sourcePayload));
+        }
     }
 
     private void abortStartupTimestampReset(final RetinaAEReader reader) {
@@ -322,12 +459,15 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         /** SciDVS GAER decode path: eager decoder and sinks, lazy resolved mode flag. */
         private final SciDVSGaerDecoder gaerDecoder;
+        private final SciDVSGaerTimestampOrderGuard gaerTimestampOrderGuard
+                = new SciDVSGaerTimestampOrderGuard();
         private final SciDVSGaerRawSink gaerRawSink;
         private final SciDVSGaerTypedSink gaerTypedSink;
         private final Fx3StartupTimestampResetBarrier startupTimestampReset
                 = new Fx3StartupTimestampResetBarrier();
         private final Fx3QuiescentDrainBarrier quiescentDrain
                 = new Fx3QuiescentDrainBarrier();
+        private int completedTransferActualLength;
         private Boolean gaerResolved;
 
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
@@ -408,7 +548,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         @Override
         protected void noteCompletedTransfer(final int actualLength) {
-            quiescentDrain.noteCompletedTransfer(actualLength);
+            completedTransferActualLength = actualLength;
         }
 
         private void checkMonotonicTimestamp() {
@@ -442,12 +582,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         @Override
         protected void translateEvents(final ByteBuffer b) {
             synchronized (aePacketRawPool) {
-                final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
-                final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
-                if (typedOut != null) {
-                    typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY);
-                }
-
                 final boolean gaerModeUnresolved = gaerResolved == null;
                 if (gaerModeUnresolved && getChip() != null) {
                     gaerResolved = SciDVSGaerMode.resolveFromSystemProperty(
@@ -460,6 +594,21 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                 + getChip().getSizeY() + " differs from FPGA DVS geometry "
                                 + dvsSizeX + "x" + dvsSizeY);
                     }
+                }
+
+                if (Boolean.TRUE.equals(gaerResolved)) {
+                    gaerTimestampOrderGuard.validate(b);
+                }
+
+                if (quiescentDrain.isDraining()) {
+                    quiescentDrain.noteCompletedTransfer(
+                            completedTransferActualLength,
+                            SciDVSGaerDecoder.containsSourcePayload(b));
+                }
+                final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
+                if (typedOut != null) {
+                    typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY);
                 }
 
                 if (gaerResolved != null && gaerResolved) {

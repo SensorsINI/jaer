@@ -61,6 +61,16 @@ final class SciDVSGaerDecoder {
     private int wrapAdd;
     private int lastTimestamp;
     private int currentTimestamp;
+    private int lastTimestampWord;
+    private int currentTimestampWord;
+    private long transferSequence;
+    private long lastTimestampTransferSequence = -1L;
+    private long currentTimestampTransferSequence = -1L;
+    private int currentWordIndex = -1;
+    private int lastTimestampWordIndex = -1;
+    private int currentTimestampWordIndex = -1;
+    private volatile long nonMonotonicTimestampCount;
+    private volatile int maxBackwardTimestampUs;
     private int dvsLastY;
     private int apsCurrentReadoutType;
     private int apsRGBPixelOffset;
@@ -89,6 +99,25 @@ final class SciDVSGaerDecoder {
         initFrame();
     }
 
+    static boolean containsSourcePayload(final ByteBuffer input) {
+        if ((input.remaining() & 0x01) != 0) {
+            return true;
+        }
+        final ShortBuffer words = input.duplicate()
+                .order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+        for (int index = 0; index < words.limit(); index++) {
+            final int word = words.get(index) & 0xFFFF;
+            if ((word & 0x8000) != 0) {
+                continue;
+            }
+            final int code = (word & 0x7000) >>> 12;
+            if (code != 7) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void decode(final ByteBuffer input, final SciDVSGaerSink sink) {
         if ((input.limit() & 0x01) != 0) {
             LOG.severe(input.limit() + " bytes received via USB, which is not a multiple of two.");
@@ -96,16 +125,16 @@ final class SciDVSGaerDecoder {
         }
 
         final ShortBuffer words = input.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+        transferSequence++;
         for (int i = 0; i < words.limit(); i++) {
+            currentWordIndex = i;
             decodeWord(words.get(i), sink);
         }
     }
 
     private void decodeWord(final short event, final SciDVSGaerSink sink) {
         if ((event & 0x8000) != 0) {
-            lastTimestamp = currentTimestamp;
-            currentTimestamp = wrapAdd + (event & 0x7FFF);
-            checkMonotonicTimestamp();
+            advanceTimestamp(event, wrapAdd + (event & 0x7FFF));
             return;
         }
 
@@ -145,9 +174,7 @@ final class SciDVSGaerDecoder {
 
             case 7:
                 wrapAdd += (0x8000L * data);
-                lastTimestamp = currentTimestamp;
-                currentTimestamp = wrapAdd;
-                checkMonotonicTimestamp();
+                advanceTimestamp(event, wrapAdd);
                 LOG.fine(String.format("Timestamp wrap event received with multiplier of %d.", data));
                 break;
 
@@ -171,6 +198,14 @@ final class SciDVSGaerDecoder {
                 wrapAdd = 0;
                 lastTimestamp = 0;
                 currentTimestamp = 0;
+                lastTimestampWord = 0x0001;
+                currentTimestampWord = 0x0001;
+                lastTimestampTransferSequence = transferSequence;
+                currentTimestampTransferSequence = transferSequence;
+                lastTimestampWordIndex = currentWordIndex;
+                currentTimestampWordIndex = currentWordIndex;
+                nonMonotonicTimestampCount = 0;
+                maxBackwardTimestampUs = 0;
                 sink.onTimestampReset();
                 break;
 
@@ -490,13 +525,47 @@ final class SciDVSGaerDecoder {
         }
     }
 
+    public long getNonMonotonicTimestampCount() {
+        return nonMonotonicTimestampCount;
+    }
+
+    public int getMaxBackwardTimestampUs() {
+        return maxBackwardTimestampUs;
+    }
+
+    private void advanceTimestamp(final short event,
+            final int expandedTimestamp) {
+        lastTimestamp = currentTimestamp;
+        lastTimestampWord = currentTimestampWord;
+        lastTimestampTransferSequence = currentTimestampTransferSequence;
+        lastTimestampWordIndex = currentTimestampWordIndex;
+        currentTimestamp = expandedTimestamp;
+        currentTimestampWord = event & 0xFFFF;
+        currentTimestampTransferSequence = transferSequence;
+        currentTimestampWordIndex = currentWordIndex;
+        checkMonotonicTimestamp();
+    }
+
     private void checkMonotonicTimestamp() {
-        if (currentTimestamp <= lastTimestamp) {
+        if (currentTimestamp < lastTimestamp) {
+            nonMonotonicTimestampCount++;
+            final long backwardTimestampUs = (long) lastTimestamp - currentTimestamp;
+            if (backwardTimestampUs > maxBackwardTimestampUs) {
+                maxBackwardTimestampUs = (int) Math.min(
+                        backwardTimestampUs, Integer.MAX_VALUE);
+            }
             if (throttle.shouldLog()) {
                 LOG.severe((logIdentity == null ? toString() : logIdentity)
-                        + ": non strictly-monotonic timestamp detected: lastTimestamp="
+                        + ": non-monotonic timestamp detected: lastTimestamp="
                         + lastTimestamp + ", currentTimestamp=" + currentTimestamp
-                        + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
+                        + ", difference=" + backwardTimestampUs
+                        + ", previousWireWord=" + String.format("0x%04X", lastTimestampWord)
+                        + ", currentWireWord=" + String.format("0x%04X", currentTimestampWord)
+                        + ", previousTransfer=" + lastTimestampTransferSequence
+                        + "[" + lastTimestampWordIndex + "]"
+                        + ", currentTransfer=" + currentTimestampTransferSequence
+                        + "[" + currentTimestampWordIndex + "]"
+                        + ", wrapAdd=" + wrapAdd + ".");
             }
         }
     }

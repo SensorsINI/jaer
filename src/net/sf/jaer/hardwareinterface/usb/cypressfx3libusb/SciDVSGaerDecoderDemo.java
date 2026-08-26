@@ -2,6 +2,7 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import eu.seebetter.ini.chips.davis.imu.IMUSampleType;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -20,15 +21,44 @@ public final class SciDVSGaerDecoderDemo {
     private SciDVSGaerDecoderDemo() {
     }
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws Exception {
+        testSourcePayloadClassification();
         testGroupExpansionAndPersistentY();
         testTimestampsResetWrapAndExternalInput();
+        testTimestampRegressionAccounting();
         testSpecialFrameAndExposureInformation();
         testApsSamplesAndGeometry();
         testImuAssemblyAcrossTransfersAndFlips();
         testMisc11AndOddBufferContract();
         System.out.println("SCIDVS GAER SEMANTIC ASSERTIONS=" + assertions);
         System.out.println("SCIDVS GAER SEMANTIC VECTORS PASS");
+    }
+
+    private static void testSourcePayloadClassification() {
+        final ByteBuffer metadata = words(0x8001, 0x7001, 0xFFFF);
+        metadata.order(ByteOrder.BIG_ENDIAN);
+        final int originalPosition = metadata.position();
+        final int originalLimit = metadata.limit();
+        final ByteOrder originalOrder = metadata.order();
+        require(!SciDVSGaerDecoder.containsSourcePayload(metadata),
+                "timestamp and wrap words are transport metadata, not source payload");
+        require(metadata.position() == originalPosition
+                && metadata.limit() == originalLimit
+                && metadata.order() == originalOrder,
+                "payload classification does not mutate caller buffer state");
+        require(SciDVSGaerDecoder.containsSourcePayload(words(0x100A)),
+                "a DVS row word is source payload");
+        require(SciDVSGaerDecoder.containsSourcePayload(words(0x2001)),
+                "a DVS group word is source payload");
+        require(SciDVSGaerDecoder.containsSourcePayload(words(0x0001)),
+                "a non-timestamp special word is conservatively source payload");
+        require(!SciDVSGaerDecoder.containsSourcePayload(ByteBuffer.allocate(0)),
+                "an empty transfer has no source payload");
+        final ByteBuffer odd = ByteBuffer.allocate(1).put((byte) 0x55).flip();
+        require(SciDVSGaerDecoder.containsSourcePayload(odd),
+                "an odd trailing byte is conservatively source payload");
+        require(odd.position() == 0 && odd.limit() == 1,
+                "odd-buffer classification leaves caller bounds unchanged");
     }
 
     private static void testGroupExpansionAndPersistentY() {
@@ -126,6 +156,33 @@ public final class SciDVSGaerDecoderDemo {
                 "external fixed packed addresses");
         require(ints(sink.external, e -> e.timestamp).equals(Arrays.asList(0, 0, 0)),
                 "external timestamps are zero after reset");
+    }
+
+    private static void testTimestampRegressionAccounting() throws Exception {
+        final RecordingSink sink = new RecordingSink();
+        final SciDVSGaerDecoder decoder = new SciDVSGaerDecoder(defaultConfig());
+        decoder.decode(words(0x0001, 0x87D0, 0x100A, 0x2001,
+                0x876C, 0x2002), sink);
+
+        require(ints(sink.polarity, p -> p.timestamp).equals(Arrays.asList(2000, 1900)),
+                "wire timestamps remain unmodified for forensic integrity");
+
+        final Method count = SciDVSGaerDecoder.class.getDeclaredMethod(
+                "getNonMonotonicTimestampCount");
+        final Method maximum = SciDVSGaerDecoder.class.getDeclaredMethod(
+                "getMaxBackwardTimestampUs");
+        count.setAccessible(true);
+        maximum.setAccessible(true);
+        require(((Number) count.invoke(decoder)).longValue() == 1L,
+                "one in-epoch backward timestamp is counted independently of logging");
+        require(((Number) maximum.invoke(decoder)).intValue() == 100,
+                "largest in-epoch backward timestamp magnitude is retained");
+
+        decoder.decode(words(0x0001), sink);
+        require(((Number) count.invoke(decoder)).longValue() == 0L,
+                "a positive hardware reset marker starts a fresh disorder count");
+        require(((Number) maximum.invoke(decoder)).intValue() == 0,
+                "a positive hardware reset marker clears the prior maximum");
     }
 
     private static void testSpecialFrameAndExposureInformation() {

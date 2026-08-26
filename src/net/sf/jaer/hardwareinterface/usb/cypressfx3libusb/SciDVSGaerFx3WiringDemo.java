@@ -43,6 +43,8 @@ public final class SciDVSGaerFx3WiringDemo {
         testEagerConstructionReusesExistingConfiguration(source);
         testSinkWiringAndLazyHarden(source);
         testStartupTimestampResetBarrier(source, cypressSource);
+        testStartupDvsRunGate(source);
+        testTimestampDisorderDiagnostics(source);
         testQuiescentDrainShutdownWiring(source, cypressSource);
         testLazyResolutionAndEarlyGaerBranch(source);
         testStandardDavisLoopHash(source);
@@ -262,8 +264,18 @@ public final class SciDVSGaerFx3WiringDemo {
         final String davisReaderHook = method(source,
                 "protected void noteCompletedTransfer(");
         require(davisReaderHook.replaceAll("\\s+", " ").contains(
-                ".noteCompletedTransfer(actualLength)"),
-                "DAViS reader forwards completed payload length to its barrier");
+                "completedTransferActualLength = actualLength"),
+                "DAViS reader retains the callback length for the same transfer");
+        final String davisTranslate = method(source,
+                "protected void translateEvents(final ByteBuffer b)");
+        final String translateCompact = davisTranslate.replaceAll("\\s+", " ");
+        final int classify = translateCompact.indexOf(
+                "SciDVSGaerDecoder.containsSourcePayload(b)");
+        final int noteClassified = translateCompact.indexOf(
+                "quiescentDrain.noteCompletedTransfer(");
+        final int decode = translateCompact.indexOf("gaerDecoder.decode(b,");
+        require(noteClassified >= 0 && classify > noteClassified && decode > classify,
+                "DAViS classifies and records each completed transfer before decoding it");
 
         Field drainField = null;
         int drainFieldCount = 0;
@@ -287,20 +299,45 @@ public final class SciDVSGaerFx3WiringDemo {
                 "public void startAEReader()",
                 "private void getRealClockValues()");
         final int startThread = start.indexOf("reader.startThread()");
+        final int sourceQuiescence = start.indexOf(
+                "awaitGaerStartupSourceQuiescence(reader)");
         final int resetCommand = start.indexOf("resetTimestamps()");
         final int waitForMarker = start.indexOf("reader.awaitStartupTimestampReset(");
         final int initialPoolAllocation = start.indexOf("allocateAEBuffers()");
         final int postMarkerPoolClear = start.indexOf("allocateAEBuffers()",
                 initialPoolAllocation + 1);
         require(startThread >= 0, "new reader starts before startup reset command");
-        require(resetCommand > startThread,
-                "hardware timestamp reset follows reader start");
+        require(sourceQuiescence > startThread,
+                "paused DVS source reaches quiescence after reader start");
+        require(resetCommand > sourceQuiescence,
+                "hardware timestamp reset follows paused-source quiescence");
         require(waitForMarker > resetCommand,
                 "startup waits for the decoded hardware reset marker");
         require(postMarkerPoolClear > waitForMarker,
                 "packet pools clear only after the reset marker is observed");
         require(start.contains("abortStartupTimestampReset(reader)"),
                 "timeout and interruption abort the startup reader");
+
+        final String startupDrain = method(source,
+                "private void awaitGaerStartupSourceQuiescence(")
+                .replaceAll("\\s+", " ");
+        final int beginDrain = startupDrain.indexOf(".beginDrain()");
+        final int awaitDrain = startupDrain.indexOf(".awaitQuiescence(");
+        final int endDrain = startupDrain.indexOf(".endDrain()");
+        require(beginDrain >= 0 && awaitDrain > beginDrain,
+                "startup drain begins before bounded quiescence wait");
+        require(startupDrain.contains("QUIESCENT_DRAIN_QUIET_MS")
+                && startupDrain.contains("STARTUP_SOURCE_DRAIN_TIMEOUT_MS"),
+                "startup drain uses finite quiet and diagnostic timeout bounds");
+        require(positiveMillisBound(source, "STARTUP_SOURCE_DRAIN_TIMEOUT_MS",
+                "startup source-drain timeout") == 3_000L,
+                "authorized startup source-drain diagnostic timeout is three seconds");
+        require(startupDrain.contains("logStartupSourceDrainTimeline(reader)"),
+                "startup drain records completed-transfer timing before reset");
+        require(startupDrain.contains("throw new HardwareInterfaceException"),
+                "startup drain timeout and interruption fail closed");
+        require(endDrain > awaitDrain,
+                "startup drain state always ends after the bounded wait");
 
         final String acquisition = between(cypressSource,
                 "public synchronized void setEventAcquisitionEnabled",
@@ -315,6 +352,60 @@ public final class SciDVSGaerFx3WiringDemo {
                 "private void checkMonotonicTimestamp()");
         require(handler.contains("startupTimestampReset.markResetObserved()"),
                 "GAER reset callback releases the exact reader barrier");
+    }
+
+    private static void testStartupDvsRunGate(final String source) {
+        final String acquisition = method(source,
+                "public synchronized void setEventAcquisitionEnabled(final boolean enable)");
+        final String compact = acquisition.replaceAll("\\s+", " ");
+        final int pause = compact.indexOf("pauseDvsForGaerStartup()");
+        final int start = compact.indexOf("super.setEventAcquisitionEnabled(true)");
+        final int failure = compact.indexOf("catch", start);
+        final int rethrow = compact.indexOf("throw", failure);
+        final int restore = compact.indexOf("restoreDvsAfterGaerStartup()", rethrow);
+        require(pause >= 0 && start > pause,
+                "SciDVS DVS generation pauses before endpoint and reader startup");
+        require(failure > start && rethrow > failure && restore > rethrow,
+                "failed startup leaves DVS paused and restoration follows success only");
+        require(!compact.substring(failure, rethrow).contains(
+                "restoreDvsAfterGaerStartup()"),
+                "startup failure path never restores DVS generation");
+
+        final String pauseMethod = method(source,
+                "private void pauseDvsForGaerStartup()").replaceAll("\\s+", " ");
+        final int readRun = pauseMethod.indexOf(
+                "spiConfigReceive(CypressFX3.FPGA_DVS, (short) 3)");
+        final int stopRun = pauseMethod.indexOf(
+                "spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0)");
+        require(readRun >= 0 && stopRun > readRun,
+                "startup gate records DVS.Run before disabling an active source");
+
+        final String restoreMethod = method(source,
+                "private void restoreDvsAfterGaerStartup()").replaceAll("\\s+", " ");
+        require(restoreMethod.contains(
+                "spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 1)"),
+                "successful startup restores the prior active DVS.Run state");
+    }
+
+    private static void testTimestampDisorderDiagnostics(final String source)
+            throws Exception {
+        final Method count = DAViSFX3HardwareInterface.class.getMethod(
+                "getGaerNonMonotonicTimestampCount");
+        final Method maximum = DAViSFX3HardwareInterface.class.getMethod(
+                "getGaerMaxBackwardTimestampUs");
+        require(count.getReturnType() == long.class,
+                "hardware interface exposes the current epoch disorder count");
+        require(maximum.getReturnType() == int.class,
+                "hardware interface exposes the largest current epoch decrease");
+
+        final String countBody = method(source,
+                "public long getGaerNonMonotonicTimestampCount()");
+        final String maximumBody = method(source,
+                "public int getGaerMaxBackwardTimestampUs()");
+        require(countBody.contains("getNonMonotonicTimestampCount()"),
+                "hardware count delegates to the active GAER decoder");
+        require(maximumBody.contains("getMaxBackwardTimestampUs()"),
+                "hardware maximum delegates to the active GAER decoder");
     }
 
     private static void testLazyResolutionAndEarlyGaerBranch(final String source) {

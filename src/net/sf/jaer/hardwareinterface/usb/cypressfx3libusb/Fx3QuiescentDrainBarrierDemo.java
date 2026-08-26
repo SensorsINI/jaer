@@ -19,9 +19,11 @@ public final class Fx3QuiescentDrainBarrierDemo {
         testContractShape();
         testNoActivityReachesQuietSuccess();
         testPayloadExtendsQuietDeadline();
+        testMetadataDoesNotExtendQuietDeadline();
         testContinuingPayloadTimesOut();
         testZeroLengthDoesNotExtendPayloadQuiet();
         testNegativeLengthRejected();
+        testCompletedTransferTimeline();
         testEndDrainIsolatesFreshDrain();
         System.out.println("FX3_QUIESCENT_DRAIN_BARRIER ASSERTIONS=" + assertions);
         System.out.println("FX3_QUIESCENT_DRAIN_BARRIER PASS");
@@ -50,7 +52,7 @@ public final class Fx3QuiescentDrainBarrierDemo {
                 "deterministic constructor is package-private");
 
         final Method begin = type.getDeclaredMethod("beginDrain");
-        final Method note = type.getDeclaredMethod("noteCompletedTransfer", int.class);
+        final Method note = type.getDeclaredMethod("noteCompletedTransfer", int.class, boolean.class);
         final Method await = type.getDeclaredMethod("awaitQuiescence",
                 long.class, long.class);
         final Method end = type.getDeclaredMethod("endDrain");
@@ -83,7 +85,7 @@ public final class Fx3QuiescentDrainBarrierDemo {
         final Fx3QuiescentDrainBarrier barrier = barrier(time);
         barrier.beginDrain();
         time.advanceMillis(4L);
-        barrier.noteCompletedTransfer(8);
+        barrier.noteCompletedTransfer(8, true);
         require(barrier.awaitQuiescence(QUIET_MILLIS, TIMEOUT_MILLIS),
                 "one nonempty transfer still reaches quiescence");
         require(time.elapsedMillis() == 9L,
@@ -91,10 +93,23 @@ public final class Fx3QuiescentDrainBarrierDemo {
         barrier.endDrain();
     }
 
+    private static void testMetadataDoesNotExtendQuietDeadline() throws Exception {
+        final FakeTime time = new FakeTime();
+        final Fx3QuiescentDrainBarrier barrier = barrier(time);
+        barrier.beginDrain();
+        time.advanceMillis(4L);
+        barrier.noteCompletedTransfer(2, false);
+        require(barrier.awaitQuiescence(QUIET_MILLIS, TIMEOUT_MILLIS),
+                "nonempty metadata-only transfer still reaches quiescence");
+        require(time.elapsedMillis() == QUIET_MILLIS,
+                "metadata-only transfer does not extend source-payload quiet");
+        barrier.endDrain();
+    }
+
     private static void testContinuingPayloadTimesOut() throws Exception {
         final FakeTime time = new FakeTime();
         final Fx3QuiescentDrainBarrier barrier = barrier(time);
-        time.afterSleep = () -> barrier.noteCompletedTransfer(1);
+        time.afterSleep = () -> barrier.noteCompletedTransfer(1, true);
         barrier.beginDrain();
         require(!barrier.awaitQuiescence(QUIET_MILLIS, 12L),
                 "continuing nonempty transfers force the bounded wait to time out");
@@ -108,7 +123,7 @@ public final class Fx3QuiescentDrainBarrierDemo {
         final Fx3QuiescentDrainBarrier barrier = barrier(time);
         barrier.beginDrain();
         time.advanceMillis(4L);
-        barrier.noteCompletedTransfer(0);
+        barrier.noteCompletedTransfer(0, false);
         require(barrier.awaitQuiescence(QUIET_MILLIS, TIMEOUT_MILLIS),
                 "zero-length completion does not prevent quiet success");
         require(time.elapsedMillis() == QUIET_MILLIS,
@@ -122,7 +137,7 @@ public final class Fx3QuiescentDrainBarrierDemo {
         barrier.beginDrain();
         boolean rejected = false;
         try {
-            barrier.noteCompletedTransfer(-1);
+            barrier.noteCompletedTransfer(-1, false);
         } catch (final IllegalArgumentException expected) {
             rejected = true;
         } finally {
@@ -131,16 +146,53 @@ public final class Fx3QuiescentDrainBarrierDemo {
         require(rejected, "negative completed-transfer lengths are rejected");
     }
 
+    private static void testCompletedTransferTimeline() throws Exception {
+        final FakeTime time = new FakeTime();
+        final Fx3QuiescentDrainBarrier barrier = barrier(time);
+        barrier.beginDrain();
+        time.advanceMillis(2L);
+        barrier.noteCompletedTransfer(8, false);
+        time.advanceMillis(3L);
+        barrier.noteCompletedTransfer(0, false);
+        barrier.endDrain();
+
+        final Class<?> type = Fx3QuiescentDrainBarrier.class;
+        final Method count = type.getDeclaredMethod("getCompletedTransferCount");
+        final Method length = type.getDeclaredMethod(
+                "getCompletedTransferLength", int.class);
+        final Method elapsed = type.getDeclaredMethod(
+                "getCompletedTransferElapsedNanos", int.class);
+        final Method payload = type.getDeclaredMethod(
+                "getCompletedTransferSourcePayload", int.class);
+        final Method truncated = type.getDeclaredMethod(
+                "isTransferTimelineTruncated");
+        require(((Number) count.invoke(barrier)).intValue() == 2,
+                "timeline records every completed transfer including zero length");
+        require(((Number) length.invoke(barrier, 0)).intValue() == 8
+                && ((Number) length.invoke(barrier, 1)).intValue() == 0,
+                "timeline retains exact transfer lengths in callback order");
+        require(!((Boolean) payload.invoke(barrier, 0))
+                && !((Boolean) payload.invoke(barrier, 1)),
+                "timeline retains metadata-only classification including zero length");
+        require(TimeUnit.NANOSECONDS.toMillis(
+                ((Number) elapsed.invoke(barrier, 0)).longValue()) == 2L
+                && TimeUnit.NANOSECONDS.toMillis(
+                        ((Number) elapsed.invoke(barrier, 1)).longValue()) == 5L,
+                "timeline retains completion times relative to drain start");
+        require(!((Boolean) truncated.invoke(barrier)),
+                "bounded two-transfer timeline is complete");
+    }
+
     private static void testEndDrainIsolatesFreshDrain() throws Exception {
         final FakeTime time = new FakeTime();
         final Fx3QuiescentDrainBarrier barrier = barrier(time);
         barrier.beginDrain();
         time.advanceMillis(2L);
-        barrier.noteCompletedTransfer(1);
+        barrier.noteCompletedTransfer(1, true);
         barrier.endDrain();
 
         time.advanceMillis(3L);
-        barrier.noteCompletedTransfer(1);
+        barrier.noteCompletedTransfer(1, true);
         time.advanceMillis(5L);
 
         barrier.beginDrain();
