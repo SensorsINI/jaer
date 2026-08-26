@@ -378,6 +378,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EventFilter2D filter1 = null, filter2 = null;
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
+    private long aemonOpenSession;
     private ViewLoop viewLoop = new ViewLoop();
     /**
      * Dedicated lock for ViewLoop pause wait/notify. Do not use {@link #viewLoop}
@@ -426,7 +427,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     Aedat4FileOutputStream aedat4RecordingOutputStream;
     AEDZOutputStream aedzRecordingOutputStream;
     AEDZDvsWriterAdapter aedzDvsWriterAdapter;
-    private boolean aedzLegacyRouteWarningLogged;
     private RecordingConfigurationSnapshot activeRecordingSnapshot;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
@@ -3311,6 +3311,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.info("openAEMonitor: playMode became PLAYBACK during aemon.open(); skipping LIVE");
                         return;
                     }
+                    aemonOpenSession = Math.incrementExact(aemonOpenSession);
                     if (aemon instanceof USBInterface) {
                         USBInterface usb = (USBInterface) aemon;
                         if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
@@ -3897,13 +3898,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private AEPacketRaw emptyRawPacket;
         private EventPacket emptyCookedPacket;
         private long lastViewLoopHeartbeatMs;
-        private LiveAcquisitionRoute selectedLiveAcquisitionRoute;
-        private AEMonitorInterface routedAemon;
-
-        private enum LiveAcquisitionRoute {
-            AUTHORITATIVE_TYPED,
-            LEGACY_RAW
-        }
+        private final AEViewerRouteState liveRouteState = new AEViewerRouteState();
 
         public ViewLoop() {
             super();
@@ -3995,15 +3990,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     // File open flipped mode while we were opening USB — fall through to grabInput.
                                     hwBundle = null;
                                 } else if ((aemon != null) && aemon.isOpen()) {
-                                    LiveAcquisitionRoute requestedRoute = classifyLiveAcquisitionRoute();
-                                    selectLiveAcquisitionRoute(requestedRoute);
-                                    if (requestedRoute == LiveAcquisitionRoute.AUTHORITATIVE_TYPED) {
+                                    final long routeSession = currentLiveRouteSession();
+                                    final AEViewerRouteState.LiveDecision routeDecision
+                                            = liveRouteState.selectLiveRoute(aemon,
+                                                    routeSession,
+                                                    isAuthoritativeTypedRouteEligible());
+                                    applyLiveAcquisitionDecision(routeDecision);
+                                    if (routeDecision.getRoute()
+                                            == AEViewerRouteState.LiveRoute.AUTHORITATIVE_TYPED) {
                                         hwBundle = aemon.acquireAvailablePacketBundle();
                                         if (hwBundle == null) {
-                                            // The DAVIS typed-demux preference or RGB compatibility gate
-                                            // can decline typed delivery. Stop first if a prior typed
-                                            // session was active, then start the legacy route once.
-                                            selectLiveAcquisitionRoute(LiveAcquisitionRoute.LEGACY_RAW);
+                                            // Cache the monitor/session decline. The next ViewLoop
+                                            // iteration remains legacy without another stop/restart.
+                                            applyLiveAcquisitionDecision(
+                                                    liveRouteState.typedDeliveryDeclined(
+                                                            aemon, routeSession));
                                         }
                                     }
                                 }
@@ -4016,6 +4017,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 paceViewLoopFrame();
                                 continue;
                             }
+                        } else {
+                            liveRouteState.clear();
                         }
                         if (hwBundle != null) {
                             acquisitionMetadata = requireAuthoritativeAcquisition(hwBundle);
@@ -4350,18 +4353,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return input;
         }
 
+        /** Distinguishes monitor-open and sequencing sessions for decline caching. */
+        private long currentLiveRouteSession() {
+            return (aemonOpenSession * 2)
+                    + (getPlayMode() == PlayMode.SEQUENCING ? 1 : 0);
+        }
+
         /**
          * Classifies the next live poll. Only the DAVIS FX3 implementation has
          * authoritative typed publication; all other interfaces remain explicit
          * compatibility consumers until their acquisition path is migrated.
          */
-        private LiveAcquisitionRoute classifyLiveAcquisitionRoute() {
-            if (getPlayMode() != PlayMode.LIVE
-                    || !(aemon instanceof DAViSFX3HardwareInterface)
-                    || hasActiveLegacyRawSink()) {
-                return LiveAcquisitionRoute.LEGACY_RAW;
-            }
-            return LiveAcquisitionRoute.AUTHORITATIVE_TYPED;
+        private boolean isAuthoritativeTypedRouteEligible() {
+            return getPlayMode() == PlayMode.LIVE
+                    && aemon instanceof DAViSFX3HardwareInterface
+                    && !hasActiveLegacyRawSink();
         }
 
         /** Raw-only boundaries retained during the typed-authority migration. */
@@ -4378,21 +4384,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * after acquisition has stopped so Cypress never has typed and raw pools
          * active for the same session.
          */
-        private void selectLiveAcquisitionRoute(final LiveAcquisitionRoute requested)
+        private void applyLiveAcquisitionDecision(
+                final AEViewerRouteState.LiveDecision decision)
                 throws HardwareInterfaceException {
-            if (routedAemon != aemon) {
-                if (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()) {
-                    aemon.setEventAcquisitionEnabled(false);
-                }
-                routedAemon = aemon;
-                selectedLiveAcquisitionRoute = null;
+            if (decision.requiresAcquisitionRestart()
+                    && aemon != null && aemon.isOpen()
+                    && aemon.isEventAcquisitionEnabled()) {
+                aemon.setEventAcquisitionEnabled(false);
             }
-            if (selectedLiveAcquisitionRoute != requested) {
-                if (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()) {
-                    aemon.setEventAcquisitionEnabled(false);
-                }
-                selectedLiveAcquisitionRoute = requested;
-                log.info("live acquisition route=" + requested);
+            if (decision.requiresAcquisitionRestart()) {
+                log.info("live acquisition route=" + decision.getRoute());
             }
         }
 
@@ -4421,8 +4422,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aemon.close();
             }
             nullifyHardware();
-            routedAemon = null;
-            selectedLiveAcquisitionRoute = null;
+            liveRouteState.clear();
         }
 
         /**
@@ -4650,17 +4650,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
                         aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut);
                     } else if (aedzRecordingOutputStream != null) {
-                        final PacketBundle aedzBundle = isRecordFilteredEventsEnabled()
-                                ? cookedBundle : authoritativeSourceBundle;
-                        if (aedzBundle != null && aedzBundle.isSealed()
-                                && aedzBundle.getAcquisitionMetadata() != null) {
-                            aedzDvsWriterAdapter.writeBundle(aedzBundle);
-                            aedzLegacyRouteWarningLogged = false;
-                        } else if (!aedzLegacyRouteWarningLogged) {
-                            log.warning("AEDZ live DVS projection skipped a bundle because an active "
-                                    + "legacy sink selected legacy acquisition");
-                            aedzLegacyRouteWarningLogged = true;
-                        }
+                        AEViewerRouteState.writeAedz(aedzRecordingOutputStream,
+                                aedzDvsWriterAdapter,
+                                isRecordFilteredEventsEnabled(), rawPacket,
+                                cookedPacket, cookedBundle,
+                                authoritativeSourceBundle,
+                                packet -> extractor.reconstructRawPacket(packet));
                     } else if (!isRecordFilteredEventsEnabled()) {
                         recordingOutputStream.writePacket(rawPacket); // record all events
                     } else {
@@ -7608,7 +7603,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aedat4RecordingOutputStream = null;
                 recordingOutputStream = null;
                 aedzDvsWriterAdapter = null;
-                aedzLegacyRouteWarningLogged = false;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 // Hand the owner-captured object explicitly to AEDZ; the writer must not
                 // rediscover it through mutable chip state or recapture live preferences.
@@ -7735,7 +7729,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aedat4RecordingOutputStream = null;
             aedzRecordingOutputStream = null;
             aedzDvsWriterAdapter = null;
-            aedzLegacyRouteWarningLogged = false;
             recordingEnabled = false;
             recordingPaused = false;
             recordingFile = null;
@@ -8152,7 +8145,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             log.info(skippedPayloads);
                             aedzRecordingOutputStream = null;
                             aedzDvsWriterAdapter = null;
-                            aedzLegacyRouteWarningLogged = false;
                         } else {
                             recordingOutputStream.close();
                             fileInfo = recordingOutputStream.toString();

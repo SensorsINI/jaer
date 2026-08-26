@@ -5,14 +5,21 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.eventio.export.SaveAsExporter;
 import net.sf.jaer.eventio.export.SaveAsOptions;
@@ -54,7 +61,8 @@ public class AEDZRoutingDemo {
         aedat2NotCapturedByAedzBranch();
         saveAsAedzRouting();
         System.out.println("AEDZ_ROUTING EXISTING_ASSERTIONS=" + assertions);
-        typedLiveRouteUsesAdapter();
+        runtimeRecordingRoutes();
+        supplementalAuthoritativeRouteDoesNotMaterializeRaw();
         System.out.println("AEDZ_ROUTING ASSERTIONS=" + assertions);
         System.out.println("ALL AEDZ ROUTING TESTS PASS");
     }
@@ -212,20 +220,233 @@ public class AEDZRoutingDemo {
         System.out.println("PASS File -> Save As AEDZ menu and real writer routing");
     }
 
-    private static void typedLiveRouteUsesAdapter() throws Exception {
-        final Path sourcePath = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
-        final String source = Files.readString(sourcePath, StandardCharsets.UTF_8);
-        assertTrue(source.contains("AEDZDvsWriterAdapter"),
-                "AEDZ live route writes through AEDZDvsWriterAdapter");
+    private static void runtimeRecordingRoutes() throws Exception {
+        authoritativeTypedRouteRoundTrips();
+        legacyRawRouteRoundTrips();
+        filteredOutIncludeSkipRoundTrips();
+        legacyFilteredRouteReconstructsRaw();
+        missingRouteInputFailsLoudly();
+        System.out.println("PASS runtime authoritative/legacy/filtered/missing-input routes");
+    }
 
-        final String branch = between(source,
-                "} else if (aedzRecordingOutputStream != null) {",
-                "} else if (!isRecordFilteredEventsEnabled()) {");
-        assertTrue(branch.contains("writeBundle(") && branch.contains("aedz"),
-                "AEDZ live branch writes the typed PacketBundle through its adapter");
-        assertTrue(!branch.contains("rawPacket") && !branch.contains("getRawPacket()")
-                && !branch.contains("reconstructRawPacket"),
-                "AEDZ live branch never reads or reconstructs a raw packet");
+    private static void authoritativeTypedRouteRoundTrips() throws Exception {
+        final EventPacket<PolarityEvent> polarity = polarityPacket(
+                new int[]{0x61000001, 0x61000002}, new int[]{2100, 2101}, 4L);
+        final PacketBundle authoritative = authoritativeBundle(41L, 1L, polarity);
+        final File file = tempFile(".aedz");
+        try {
+            writeProductionRoute(file, false, null, polarity,
+                    authoritative, authoritative, packet -> null);
+            final AEPacketRaw reopened = readAedz(file, 2);
+            assertTrue(reopened.getNumEvents() == 2,
+                    "authoritative typed AEDZ route reopens two events");
+            assertTrue(reopened.getAddresses()[0] == 0x61000001
+                    && reopened.getAddresses()[1] == 0x61000002,
+                    "authoritative typed route preserves DVS addresses");
+        } finally {
+            file.delete();
+        }
+    }
+
+    private static void legacyRawRouteRoundTrips() throws Exception {
+        final AEPacketRaw raw = makePacket(3, 17);
+        final File file = tempFile(".aedz");
+        try {
+            writeProductionRoute(file, false, raw, null, null, null, packet -> null);
+            final AEPacketRaw reopened = readAedz(file, 3);
+            assertTrue(reopened.getNumEvents() == 3,
+                    "legacy raw AEDZ route reopens three events");
+            for (int i = 0; i < 3; i++) {
+                assertTrue(reopened.getAddresses()[i] == raw.getAddresses()[i]
+                        && reopened.getTimestamps()[i] == raw.getTimestamps()[i],
+                        "legacy raw route preserves event " + i);
+            }
+        } finally {
+            file.delete();
+        }
+    }
+
+    private static void filteredOutIncludeSkipRoundTrips() throws Exception {
+        final int[] addresses = {0x62000001, 0x62000002, 0x62000003};
+        final EventPacket<PolarityEvent> polarity = polarityPacket(
+                addresses, new int[]{2200, 2201, 2202}, 5L);
+        polarity.getEvent(1).setFilteredOut(true);
+        final PacketBundle authoritative = authoritativeBundle(41L, 2L, polarity);
+        final File includeFile = tempFile(".aedz");
+        final File skipFile = tempFile(".aedz");
+        try {
+            writeProductionRoute(includeFile, false, null, polarity,
+                    authoritative, authoritative, packet -> null);
+            writeProductionRoute(skipFile, true, null, polarity,
+                    authoritative, authoritative, packet -> null);
+            final AEPacketRaw included = readAedz(includeFile, 3);
+            assertTrue(included.getNumEvents() == 3,
+                    "record-all authoritative route includes filteredOut events");
+            assertTrue(included.getAddresses()[1] == addresses[1],
+                    "record-all keeps the marked event in order");
+            final AEPacketRaw skipped = readAedz(skipFile, 2);
+            assertTrue(skipped.getNumEvents() == 2,
+                    "record-filtered authoritative route skips filteredOut events");
+            assertTrue(skipped.getAddresses()[0] == addresses[0]
+                    && skipped.getAddresses()[1] == addresses[2],
+                    "record-filtered keeps only unmarked events in order");
+        } finally {
+            includeFile.delete();
+            skipFile.delete();
+        }
+    }
+
+    private static void legacyFilteredRouteReconstructsRaw() throws Exception {
+        final EventPacket<PolarityEvent> cooked = polarityPacket(
+                new int[]{0x63000001, 0x63000002}, new int[]{2300, 2301}, 6L);
+        cooked.getEvent(0).setFilteredOut(true);
+        final int[] reconstructions = {0};
+        final Function<EventPacket, AEPacketRaw> reconstruct = packet -> {
+            reconstructions[0]++;
+            return rawPacket(new int[]{0x73000002}, new int[]{2301});
+        };
+        final File file = tempFile(".aedz");
+        try {
+            writeProductionRoute(file, true, rawPacket(
+                    new int[]{0x63000001, 0x63000002}, new int[]{2300, 2301}),
+                    cooked, null, null, reconstruct);
+            final AEPacketRaw reopened = readAedz(file, 1);
+            assertTrue(reconstructions[0] == 1,
+                    "legacy filtered route reconstructs raw exactly once");
+            assertTrue(reopened.getNumEvents() == 1
+                    && reopened.getAddresses()[0] == 0x73000002
+                    && reopened.getTimestamps()[0] == 2301,
+                    "legacy filtered route writes the reconstructed raw packet");
+        } finally {
+            file.delete();
+        }
+    }
+
+    private static void missingRouteInputFailsLoudly() throws Exception {
+        final File rawFile = tempFile(".aedz");
+        final File filteredFile = tempFile(".aedz");
+        try {
+            expectIllegalState(() -> writeProductionRoute(rawFile, false,
+                    null, null, null, null, packet -> null),
+                    "missing legacy raw packet fails loudly");
+            expectIllegalState(() -> writeProductionRoute(filteredFile, true,
+                    null, null, null, null, packet -> null),
+                    "missing legacy cooked packet fails loudly");
+        } finally {
+            rawFile.delete();
+            filteredFile.delete();
+        }
+    }
+
+    private static void writeProductionRoute(final File file,
+            final boolean recordFilteredEvents, final AEPacketRaw rawPacket,
+            final EventPacket cookedPacket, final PacketBundle cookedBundle,
+            final PacketBundle authoritativeSourceBundle,
+            final Function<EventPacket, AEPacketRaw> rawReconstructor) throws Exception {
+        try (AEDZOutputStream output = new AEDZOutputStream(new FileOutputStream(file), null)) {
+            final AEDZDvsWriterAdapter adapter = new AEDZDvsWriterAdapter(
+                    output, (ToIntFunction<PolarityEvent>) event -> event.address);
+            final Class<?> helper = Class.forName(
+                    "net.sf.jaer.graphics.AEViewerRouteState");
+            final Method write = helper.getDeclaredMethod("writeAedz",
+                    AEDZOutputStream.class, AEDZDvsWriterAdapter.class,
+                    boolean.class, AEPacketRaw.class, EventPacket.class,
+                    PacketBundle.class, PacketBundle.class, Function.class);
+            write.setAccessible(true);
+            invoke(write, null, output, adapter, recordFilteredEvents,
+                    rawPacket, cookedPacket, cookedBundle,
+                    authoritativeSourceBundle, rawReconstructor);
+        }
+    }
+
+    private static PacketBundle authoritativeBundle(final long session,
+            final long sequence, final EventPacket<PolarityEvent> polarity) {
+        final PacketBundle bundle = new PacketBundle();
+        bundle.beginAcquisition(session, sequence);
+        bundle.addAllowEmpty(polarity);
+        bundle.seal();
+        return bundle;
+    }
+
+    private static EventPacket<PolarityEvent> polarityPacket(
+            final int[] addresses, final int[] timestamps, final long epoch) {
+        assertTrue(addresses.length == timestamps.length,
+                "typed route fixture lengths match");
+        final EventPacket<PolarityEvent> packet = new EventPacket<>(PolarityEvent.class);
+        final OutputEventIterator<PolarityEvent> output = packet.outputIterator();
+        for (int i = 0; i < addresses.length; i++) {
+            final PolarityEvent event = output.nextOutput();
+            event.address = addresses[i];
+            event.timestamp = timestamps[i];
+            event.x = (short) (i + 2);
+            event.y = (short) (i + 3);
+            event.setPolarity((i & 1) == 0
+                    ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off);
+        }
+        packet.setTimestampEpoch(epoch);
+        return packet;
+    }
+
+    private static AEPacketRaw rawPacket(final int[] addresses, final int[] timestamps) {
+        assertTrue(addresses.length == timestamps.length,
+                "raw route fixture lengths match");
+        final AEPacketRaw packet = new AEPacketRaw(Math.max(1, addresses.length));
+        System.arraycopy(addresses, 0, packet.getAddresses(), 0, addresses.length);
+        System.arraycopy(timestamps, 0, packet.getTimestamps(), 0, timestamps.length);
+        packet.setNumEvents(addresses.length);
+        return packet;
+    }
+
+    private static AEPacketRaw readAedz(final File file, final int count) throws Exception {
+        try (AEDZInputStream input = new AEDZInputStream(file)) {
+            return input.readPacketByNumber(count);
+        }
+    }
+
+    private static void expectIllegalState(final ThrowingAction action,
+            final String description) throws Exception {
+        try {
+            action.run();
+            throw new AssertionError(description);
+        } catch (IllegalStateException expected) {
+            assertTrue(true, description);
+        }
+    }
+
+    private static Object invoke(final Method method, final Object target,
+            final Object... arguments) throws Exception {
+        try {
+            return method.invoke(target, arguments);
+        } catch (InvocationTargetException wrapped) {
+            final Throwable cause = wrapped.getCause();
+            if (cause instanceof Exception) {
+                throw (Exception) cause;
+            }
+            if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+            throw new RuntimeException(cause);
+        }
+    }
+
+    private static void supplementalAuthoritativeRouteDoesNotMaterializeRaw()
+            throws Exception {
+        final Path sourcePath = Paths.get("src", "net", "sf", "jaer",
+                "graphics", "AEViewerRouteState.java");
+        final String source = Files.readString(sourcePath, StandardCharsets.UTF_8);
+        final String authoritativeBranch = between(source,
+                "case AUTHORITATIVE_TYPED:", "case LEGACY_RAW:");
+        assertTrue(authoritativeBranch.contains("writeBundle("),
+                "authoritative AEDZ branch writes through the typed adapter");
+        assertTrue(!authoritativeBranch.contains("writePacket(")
+                && !authoritativeBranch.contains("reconstructRawPacket")
+                && !authoritativeBranch.contains("rawPacket"),
+                "authoritative AEDZ branch does not materialize raw input");
+    }
+
+    @FunctionalInterface
+    private interface ThrowingAction {
+        void run() throws Exception;
     }
 
     private static String between(String source, String first, String second) {

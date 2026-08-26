@@ -64,6 +64,8 @@ public final class AEDZDvsWriterAdapterDemo {
         final Constructor<?> constructor = requiredConstructor(adapterClass,
                 AEDZOutputStream.class, ToIntFunction.class);
         final Method writeBundle = requiredMethod(adapterClass, "writeBundle", PacketBundle.class);
+        final Method writeBundleWithSelection = requiredMethod(adapterClass,
+                "writeBundle", PacketBundle.class, boolean.class);
         final Method getSkippedCount = requiredMethod(adapterClass,
                 "getSkippedCount", PacketType.class);
         final Method setEpoch = requiredMethod(TypedDataPacket.class,
@@ -74,6 +76,8 @@ public final class AEDZDvsWriterAdapterDemo {
 
         equivalentRawAndTypedBytes(constructor, writeBundle, setEpoch, begin, seal);
         filteredAddressReconstruction(constructor, writeBundle, setEpoch, begin, seal);
+        filteredOutSelection(constructor, writeBundle, writeBundleWithSelection,
+                setEpoch, begin, seal);
         skippedNonDvsCounts(constructor, writeBundle, getSkippedCount,
                 setEpoch, begin, seal);
         epochChangeForcesChunkBoundary(constructor, writeBundle, setEpoch, begin, seal);
@@ -134,6 +138,47 @@ public final class AEDZDvsWriterAdapterDemo {
                     "filtered-address reconstruction preserves timestamp");
         } finally {
             file.delete();
+        }
+    }
+
+    private static void filteredOutSelection(final Constructor<?> constructor,
+            final Method compatibleWriteBundle, final Method selectedWriteBundle,
+            final Method setEpoch, final Method begin, final Method seal) throws Exception {
+        final int[] addresses = {0x51000001, 0x51000002, 0x51000003};
+        final int[] timestamps = {350, 351, 352};
+        final EventPacket<PolarityEvent> polarity = polarityPacket(addresses, timestamps);
+        polarity.getEvent(1).setFilteredOut(true);
+        invoke(setEpoch, polarity, 3L);
+        final PacketBundle bundle = authoritativeBundle(begin, seal, 11L, 21L, polarity);
+        final File compatibleFile = tempFile();
+        final File includeFile = tempFile();
+        final File skipFile = tempFile();
+        try {
+            writeTyped(compatibleFile, constructor, compatibleWriteBundle, bundle,
+                    event -> event.address);
+            writeTyped(includeFile, constructor, selectedWriteBundle, bundle,
+                    event -> event.address, false);
+            writeTyped(skipFile, constructor, selectedWriteBundle, bundle,
+                    event -> event.address, true);
+
+            final AEPacketRaw compatible = read(compatibleFile, 2);
+            require(compatible.getNumEvents() == 2,
+                    "compatible overload retains historical filteredOut skipping");
+            final AEPacketRaw included = read(includeFile, addresses.length);
+            require(included.getNumEvents() == 3,
+                    "skipFilteredOut=false includes events marked filteredOut");
+            require(included.getAddresses()[1] == addresses[1],
+                    "record-all preserves the marked event in order");
+            final AEPacketRaw skipped = read(skipFile, 2);
+            require(skipped.getNumEvents() == 2,
+                    "skipFilteredOut=true omits events marked filteredOut");
+            require(skipped.getAddresses()[0] == addresses[0]
+                    && skipped.getAddresses()[1] == addresses[2],
+                    "record-filtered preserves only unmarked events in order");
+        } finally {
+            compatibleFile.delete();
+            includeFile.delete();
+            skipFile.delete();
         }
     }
 
@@ -211,6 +256,16 @@ public final class AEDZDvsWriterAdapterDemo {
         try (AEDZOutputStream output = new AEDZOutputStream(new FileOutputStream(file), null)) {
             final Object adapter = constructor.newInstance(output, reconstructor);
             invoke(writeBundle, adapter, bundle);
+        }
+    }
+
+    private static void writeTyped(final File file, final Constructor<?> constructor,
+            final Method writeBundle, final PacketBundle bundle,
+            final ToIntFunction<PolarityEvent> reconstructor,
+            final boolean skipFilteredOut) throws Exception {
+        try (AEDZOutputStream output = new AEDZOutputStream(new FileOutputStream(file), null)) {
+            final Object adapter = constructor.newInstance(output, reconstructor);
+            invoke(writeBundle, adapter, bundle, skipFilteredOut);
         }
     }
 

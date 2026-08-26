@@ -39,18 +39,31 @@ public final class AEDZDvsWriterAdapter {
 
     /**
      * Writes every non-filtered polarity event in bundle packet/event order.
-     * The bundle must be a sealed authoritative typed acquisition, never a
-     * legacy raw bridge.
+     * This compatibility overload preserves the historical behavior of
+     * omitting events marked {@code filteredOut}.
      *
      * @param bundle sealed authoritative typed bundle
      * @throws IOException on AEDZ output failure
      */
     public synchronized void writeBundle(final PacketBundle bundle) throws IOException {
+        writeBundle(bundle, true);
+    }
+
+    /**
+     * Writes polarity events from a sealed authoritative typed bundle.
+     *
+     * @param bundle sealed authoritative typed bundle
+     * @param skipFilteredOut if true, omit events marked {@code filteredOut};
+     *        if false, include them for record-all behavior
+     * @throws IOException on AEDZ output failure
+     */
+    public synchronized void writeBundle(final PacketBundle bundle,
+            final boolean skipFilteredOut) throws IOException {
         requireAuthoritative(bundle);
         for (final TypedDataPacket packet : bundle) {
             output.beginTimestampEpoch(packet.getTimestampEpoch());
             if (packet.getPacketType() == PacketType.POLARITY) {
-                writePolarityPacket(packet);
+                writePolarityPacket(packet, skipFilteredOut);
             } else {
                 addSkipped(packet.getPacketType(), packet.getSize());
             }
@@ -76,7 +89,8 @@ public final class AEDZDvsWriterAdapter {
         }
     }
 
-    private void writePolarityPacket(final TypedDataPacket packet) throws IOException {
+    private void writePolarityPacket(final TypedDataPacket packet,
+            final boolean skipFilteredOut) throws IOException {
         if (!(packet instanceof EventPacket<?>)) {
             throw new IllegalStateException("POLARITY payload is not an EventPacket");
         }
@@ -88,7 +102,7 @@ public final class AEDZDvsWriterAdapter {
                         "POLARITY EventPacket contains a non-polarity event");
             }
             final PolarityEvent event = (PolarityEvent) basicEvent;
-            if (!event.isFilteredOut()) {
+            if (!skipFilteredOut || !event.isFilteredOut()) {
                 output.writeEvent(addressReconstructor.applyAsInt(event), event.timestamp);
             }
         }
