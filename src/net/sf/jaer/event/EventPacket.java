@@ -103,6 +103,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public transient E[] elementData;
     private AEPacketRaw rawPacket = null;
+    private long timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
     /**
      * This packet's input iterator.
      */
@@ -190,6 +191,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         elementData = (E[]) Array.newInstance(eventClass, DEFAULT_INITIAL_CAPACITY);
         fillWithDefaultEvents(0, DEFAULT_INITIAL_CAPACITY);
         size = 0;
+        clearTimestampEpoch();
         capacity = DEFAULT_INITIAL_CAPACITY;
     }
 
@@ -238,6 +240,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public void clear() {
         size = 0; // we don't clear list, because that nulls all the events
+        clearTimestampEpoch();
     }
 
     public void setSize(final int n) {
@@ -340,6 +343,10 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public EventPacket<E> constructNewPacket() {
         final EventPacket<E> packet = new EventPacket<>(getEventClass());
+        final long epoch = getTimestampEpoch();
+        if (epoch >= 0) {
+            packet.setTimestampEpoch(epoch);
+        }
         return packet;
     }
 
@@ -443,6 +450,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 
         OutItr() {
             size = 0; // reset size because we are starting off output packet
+            clearTimestampEpoch();
         }
 
         /**
@@ -474,6 +482,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
          */
         final public void reset() {
             size = 0;
+            clearTimestampEpoch();
         }
 
         @Override
@@ -992,6 +1001,24 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
             return PacketType.EAR;
         }
         return PacketType.POLARITY;
+    }
+
+    @Override
+    public long getTimestampEpoch() {
+        return timestampEpoch;
+    }
+
+    @Override
+    public void setTimestampEpoch(final long timestampEpoch) {
+        if (timestampEpoch < 0) {
+            throw new IllegalArgumentException("timestamp epoch must be non-negative");
+        }
+        this.timestampEpoch = timestampEpoch;
+    }
+
+    @Override
+    public void clearTimestampEpoch() {
+        timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
     }
 
     @Override

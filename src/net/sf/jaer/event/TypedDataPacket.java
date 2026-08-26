@@ -14,10 +14,32 @@ package net.sf.jaer.event;
  */
 public interface TypedDataPacket {
 
+    /** Timestamp epoch value used until acquisition assigns an epoch. */
+    long UNASSIGNED_TIMESTAMP_EPOCH = -1L;
+
     /**
      * @return the uniform data kind of every element in this packet
      */
     PacketType getPacketType();
+
+    /**
+     * Returns the hardware timestamp epoch containing this complete packet.
+     * Live authoritative packets must have a non-negative epoch before their
+     * bundle is sealed.
+     *
+     * @return a non-negative epoch, or {@link #UNASSIGNED_TIMESTAMP_EPOCH}
+     */
+    long getTimestampEpoch();
+
+    /**
+     * Assigns the hardware timestamp epoch containing this complete packet.
+     *
+     * @param timestampEpoch non-negative epoch ordinal
+     */
+    void setTimestampEpoch(long timestampEpoch);
+
+    /** Clears the assigned timestamp epoch when a packet is reused. */
+    void clearTimestampEpoch();
 
     /**
      * @return number of elements (events, IMU samples, or 1 for a frame)

@@ -241,7 +241,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         }
         PacketBundle out = new PacketBundle();
-        out.setRawPacket(in.getRawPacket());
+        out.copyAcquisitionContextFrom(in);
         for (TypedDataPacket p : in) {
             TypedDataPacket cur = p;
             for (EventFilter2D f : this) {
@@ -256,7 +256,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     if (measure) {
                         f.perf.start(cur.getSize());
                     }
+                    final long timestampEpoch = cur.getTimestampEpoch();
                     cur = f.processTyped(cur);
+                    if (cur != null) {
+                        if (timestampEpoch >= 0) {
+                            cur.setTimestampEpoch(timestampEpoch);
+                        } else {
+                            cur.clearTimestampEpoch();
+                        }
+                    }
                     if (measure) {
                         f.perf.stop();
                         f.perf.updateView();
@@ -272,6 +280,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             if (cur != null) {
                 out.addAllowEmpty(cur);
             }
+        }
+        if (in.isSealed()) {
+            out.seal();
         }
         return out;
     }

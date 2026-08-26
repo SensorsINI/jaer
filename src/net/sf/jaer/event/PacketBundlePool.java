@@ -26,6 +26,10 @@ public class PacketBundlePool {
         if (buffers == null) {
             allocate();
         }
+        final PacketBundle completedWrite = writeBuffer();
+        if (completedWrite.getAcquisitionMetadata() != null && !completedWrite.isSealed()) {
+            completedWrite.seal();
+        }
         if (readBuffer == 0) {
             readBuffer = 1;
             writeBuffer = 0;
