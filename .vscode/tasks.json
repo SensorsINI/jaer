@@ -1,4 +1,6 @@
 {
+    // Ctrl+F5 → this "jAER: ant run" task. Cursor/VS Code do not load workspace
+    // keybindings; once per computer:  ant install-jaer-run-shortcut
     "version": "2.0.0",
     "tasks": [
         {
@@ -6,30 +8,29 @@
             "type": "shell",
             "command": "ant compile",
             "options": {
-                "cwd": "${workspaceFolder}",
-                "shell": {
-                    "executable": "cmd.exe",
-                    "args": ["/d", "/c"]
-                }
+                "cwd": "${workspaceFolder}"
             },
-            "group": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "presentation": {
                 "reveal": "always",
                 "panel": "shared",
-                "focus": false
+                "focus": false,
+                "showReuseMessage": false
             },
             "problemMatcher": []
         },
         {
             "label": "jAER: ant run",
             "type": "shell",
-            "command": "scripts\\run-jaer.bat",
+            "command": "${workspaceFolder}/scripts/run-jaer.sh",
+            "windows": {
+                "command": "${workspaceFolder}\\scripts\\run-jaer.bat"
+            },
             "options": {
-                "cwd": "${workspaceFolder}",
-                "shell": {
-                    "executable": "cmd.exe",
-                    "args": ["/d", "/c"]
-                }
+                "cwd": "${workspaceFolder}"
             },
             "group": {
                 "kind": "test",
@@ -38,7 +39,9 @@
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",
-                "focus": false
+                "focus": false,
+                "showReuseMessage": false,
+                "clear": false
             },
             "problemMatcher": []
         }
