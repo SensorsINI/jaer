@@ -1,7 +1,6 @@
 /*
- * U1 decision-grade RED test for the SciDVS canonical-config TDD contract
- * (plan todo 6: "Import exactly SciDVS_sensitive_highVgMfb.xml ... set it as the
- * SciDVS default ... first-use load").
+ * RED test for the SciDVS family-default preference contract:
+ * deviceSettings/SciDVS/SciDVS.xml is the canonical first-use default.
  *
  * A real SciDVSConfig is constructed around an Objenesis-created SciDVS so the
  * test never initializes JOGL, mirroring the SciDVSChipConfigDemo fixture.
@@ -10,9 +9,8 @@
  * Biasgen.importPreferences (batch-edit, pot load) rather than the raw
  * Preferences.importPreferences fallback.
  *
- * The canonical asset biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml is
- * ABSENT on this base branch (SciDVS.java sets setDefaultPreferencesFile(null)),
- * so the explicit-path and fresh-first-use scenarios correctly fail RED against
+ * The canonical asset deviceSettings/SciDVS/SciDVS.xml is ABSENT on this base
+ * branch, so the explicit-path and fresh-first-use scenarios correctly fail RED against
  * the unchanged base. The remaining scenarios characterize base behaviour that
  * already holds and must keep holding.
  *
@@ -44,7 +42,7 @@ import org.objenesis.ObjenesisStd;
 public class SciDVSDefaultPreferencesDemo {
 
     private static final String PREFS_PATH = "jaer/chips/SciDVS";
-    private static final String DESIRED_PATH = "biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml";
+    private static final String DESIRED_PATH = "deviceSettings/SciDVS/SciDVS.xml";
     private static final String EXPOSURE_KEY = "APS.Exposure";
     private static final String DVS_RUN_KEY = "DVS.Run";
     private static final String EXPECTED_EXPOSURE = "5000";
@@ -283,7 +281,7 @@ public class SciDVSDefaultPreferencesDemo {
     /** A missing explicit file: returns false, no marker, no escaped exception. */
     private static int scenarioMissingFile(final Preferences node) {
         final SciDVS chip = freshChip(node);
-        chip.setDefaultPreferencesFile("biasgenSettings/SciDVS/does-not-exist-canary.xml");
+        chip.setDefaultPreferencesFile("deviceSettings/SciDVS/does-not-exist-canary.xml");
         int failures = 0;
 
         final boolean loaded = chip.maybeLoadDefaultPreferences();
