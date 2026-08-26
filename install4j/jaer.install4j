@@ -125,12 +125,34 @@
           <entry location="lib/tensorflow-core-native-1.0.0-rc.2-macosx-arm64.jar" />
           <entry location="lib/tensorflow-core-native-1.0.0-rc.2-macosx-x86_64.jar" />
           <entry location="lib/tensorflow-core-native-1.0.0-rc.2-windows-x86_64.jar" />
-          <!-- Safety net: Ivy test-scope leakage (commons-text→GraalJS, zstd-jni→scalatest). -->
+          <!-- Safety net: Ivy test-scope leakage (commons-text→GraalJS, zstd-jni→scalatest).
+               jAER uses WordUtils only. Excludes on ivy.xml commons-text 1.11.0 do not apply
+               once commons-lang3 evicts it to 1.14.0, which pulls GraalJS 24.2.2 (~64MB).
+               Keep every known Graal filename so a dirty lib/ cannot bloat media. -->
           <entry location="lib/js-22.0.0.2.jar" />
           <entry location="lib/js-scriptengine-22.0.0.2.jar" />
           <entry location="lib/truffle-api-22.0.0.2.jar" />
           <entry location="lib/regex-22.0.0.2.jar" />
           <entry location="lib/graal-sdk-22.0.0.2.jar" />
+          <entry location="lib/js-22.3.5.jar" />
+          <entry location="lib/js-scriptengine-22.3.5.jar" />
+          <entry location="lib/truffle-api-22.3.5.jar" />
+          <entry location="lib/regex-22.3.5.jar" />
+          <entry location="lib/graal-sdk-22.3.5.jar" />
+          <entry location="lib/icu4j-71.1.jar" />
+          <entry location="lib/js-language-24.2.2.jar" />
+          <entry location="lib/js-scriptengine-24.2.2.jar" />
+          <entry location="lib/truffle-api-24.2.2.jar" />
+          <entry location="lib/truffle-compiler-24.2.2.jar" />
+          <entry location="lib/truffle-runtime-24.2.2.jar" />
+          <entry location="lib/regex-24.2.2.jar" />
+          <entry location="lib/icu4j-24.2.2.jar" />
+          <entry location="lib/polyglot-24.2.2.jar" />
+          <entry location="lib/nativeimage-24.2.2.jar" />
+          <entry location="lib/jniutils-24.2.2.jar" />
+          <entry location="lib/collections-24.2.2.jar" />
+          <entry location="lib/word-24.2.2.jar" />
+          <entry location="lib/xz-24.2.2.jar" />
           <entry location="lib/scala-library-2.13.11.jar" />
           <entry location="lib/scala-reflect-2.13.10.jar" />
           <entry location="lib/scala-xml_2.13-2.1.0.jar" />
@@ -321,17 +343,25 @@ if (lib.isDirectory()) {
         "tensorflow-core-native-1.0.0-rc.2-linux-x86_64.jar",
         "tensorflow-core-native-1.0.0-rc.2-macosx-arm64.jar",
         "tensorflow-core-native-1.0.0-rc.2-macosx-x86_64.jar",
-        "tensorflow-core-native-1.0.0-rc.2-windows-x86_64.jar",
-        "js-22.0.0.2.jar",
-        "js-scriptengine-22.0.0.2.jar",
-        "truffle-api-22.0.0.2.jar",
-        "regex-22.0.0.2.jar",
-        "graal-sdk-22.0.0.2.jar"
+        "tensorflow-core-native-1.0.0-rc.2-windows-x86_64.jar"
     };
     for (String name : orphans) {
         File f = new File(lib, name);
         if (f.isFile() &amp;&amp; f.delete()) {
             com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+        }
+    }
+    // GraalJS/Truffle from commons-text test-scope (any version: 22.0.0.2, 22.3.5, 24.2.2, …).
+    File[] graalJunk = lib.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.startsWith("js-")
+        || n.startsWith("truffle-") || n.startsWith("graal-sdk") || n.startsWith("polyglot-")
+        || n.startsWith("nativeimage-") || n.startsWith("jniutils-") || n.startsWith("regex-")
+        || n.startsWith("icu4j-") || n.startsWith("word-") || n.startsWith("collections-")
+        || n.startsWith("xz-24.")));
+    if (graalJunk != null) {
+        for (File f : graalJunk) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
         }
     }
     File[] docJunk = lib.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.endsWith("-javadoc.jar") || n.endsWith("-sources.jar")));
