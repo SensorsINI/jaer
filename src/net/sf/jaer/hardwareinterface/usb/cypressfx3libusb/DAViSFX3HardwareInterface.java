@@ -590,9 +590,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             gaerRawSink = new SciDVSGaerRawSink(
                     DAViSFX3HardwareInterface.this::getAEBufferSize,
                     this::handleGaerTimestampReset,
-                    () -> !usbTypedDemuxActive || dualWriteApsImuAe);
+                    () -> true);
+            typedBuilder.setHostCapacitySupplier(
+                    DAViSFX3HardwareInterface.this::getAEBufferSize);
             gaerTypedSink = new SciDVSGaerTypedSink(
-                    typedBuilder, gaerRawSink,
+                    typedBuilder,
                     () -> getChip() != null ? getChip().getSizeX() : dvsSizeX,
                     this::handleGaerTimestampReset);
         }
@@ -659,59 +661,71 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         @Override
         protected void translateEvents(final ByteBuffer b) {
-            synchronized (aePacketRawPool) {
-                final boolean gaerModeUnresolved = gaerResolved == null;
-                if (gaerModeUnresolved && getChip() != null) {
-                    gaerResolved = SciDVSGaerMode.resolveFromSystemProperty(
-                            getChip() instanceof SciDVS, CypressFX3.log);
-                    CypressFX3.log.info("DAViSFX3 SciDVS GAER selected=" + gaerResolved
-                            + " rawProperty=" + System.getProperty(SciDVSGaerMode.PROPERTY)
-                            + " chipClass=" + (getChip() == null ? "null" : getChip().getClass().getName()));
-                    if (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY) {
-                        CypressFX3.log.warning("DAViSFX3 chip geometry " + getChip().getSizeX() + "x"
-                                + getChip().getSizeY() + " differs from FPGA DVS geometry "
-                                + dvsSizeX + "x" + dvsSizeY);
-                    }
+            final boolean gaerModeUnresolved = gaerResolved == null;
+            if (gaerModeUnresolved && getChip() != null) {
+                gaerResolved = SciDVSGaerMode.resolveFromSystemProperty(
+                        getChip() instanceof SciDVS, CypressFX3.log);
+                CypressFX3.log.info("DAViSFX3 SciDVS GAER selected=" + gaerResolved
+                        + " rawProperty=" + System.getProperty(SciDVSGaerMode.PROPERTY)
+                        + " chipClass=" + getChip().getClass().getName());
+                if (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY) {
+                    CypressFX3.log.warning("DAViSFX3 chip geometry " + getChip().getSizeX() + "x"
+                            + getChip().getSizeY() + " differs from FPGA DVS geometry "
+                            + dvsSizeX + "x" + dvsSizeY);
                 }
+            }
+
+            if (Boolean.TRUE.equals(gaerResolved)) {
+                if (gaerTimestampCallbackRecoveryPending
+                        && gaerTimestampCallbackFailure.get() != null) {
+                    decodeGaerTimestampResetOnly(b);
+                    return;
+                }
+                if (gaerTimestampCallbackFailure.get() != null) {
+                    return;
+                }
+                try {
+                    gaerTimestampOrderGuard.validate(b);
+                } catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
+                    retainGaerTimestampCallbackFailure(failure);
+                    gaerTimestampCallbackRecoveryPending = true;
+                    decodeGaerTimestampResetOnly(b);
+                    return;
+                }
+            }
+
+            if (quiescentDrain.isDraining()) {
+                quiescentDrain.noteCompletedTransfer(
+                        completedTransferActualLength,
+                        SciDVSGaerDecoder.containsSourcePayload(b));
+            }
+
+            if (isAuthoritativeTypedDelivery()) {
+                synchronized (packetBundlePool) {
+                    final PacketBundle typedOut = packetBundlePool.writeBuffer();
+                    prepareAuthoritativeTypedBundle(typedOut);
+                    typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY);
+
+                    if (Boolean.TRUE.equals(gaerResolved)) {
+                        gaerDecoder.decode(b, gaerTypedSink);
+                        typedBuilder.flushAll();
+                        return;
+                    }
+
+                    translateStandardTyped(b);
+                    typedBuilder.flushAll();
+                    return;
+                }
+            }
+
+            synchronized (aePacketRawPool) {
+                final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                final PacketBundle typedOut = null;
 
                 if (Boolean.TRUE.equals(gaerResolved)) {
-                    if (gaerTimestampCallbackRecoveryPending
-                            && gaerTimestampCallbackFailure.get() != null) {
-                        decodeGaerTimestampResetOnly(b);
-                        return;
-                    }
-                    if (gaerTimestampCallbackFailure.get() != null) {
-                        return;
-                    }
-                    try {
-                        gaerTimestampOrderGuard.validate(b);
-                    } catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
-                        retainGaerTimestampCallbackFailure(failure);
-                        gaerTimestampCallbackRecoveryPending = true;
-                        decodeGaerTimestampResetOnly(b);
-                        return;
-                    }
-                }
-
-                if (quiescentDrain.isDraining()) {
-                    quiescentDrain.noteCompletedTransfer(
-                            completedTransferActualLength,
-                            SciDVSGaerDecoder.containsSourcePayload(b));
-                }
-                final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
-                final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
-                if (typedOut != null) {
-                    typedBuilder.attach(typedOut, getChip(), apsSizeX, apsSizeY);
-                }
-
-                if (gaerResolved != null && gaerResolved) {
                     gaerRawSink.begin(buffer, eventCounter);
-                    gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink);
+                    gaerDecoder.decode(b, gaerRawSink);
                     eventCounter = gaerRawSink.end();
-                    if (typedOut != null) {
-                        typedBuilder.flushAll();
-                        typedOut.setRawPacket(buffer);
-                    }
                     return;
                 }
 
@@ -799,8 +813,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                             if (warningCount % WARNING_INTERVAL == 0) {
                                                 CypressFX3.log.info(
                                                         "IMU End: failed to validate IMU sample count (" + imuCount + "), discarding samples.");
-                                                warningCount++;
                                             }
+                                            warningCount++;
                                         }
                                         break;
 
@@ -950,8 +964,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                             case 4: // APS ADC sample
                                 // Let's check that apsCountY is not above the maximum. This could happen
                                 // if start/end of column events are discarded (no wait on transfer stall).
-                                if (((apsCountY[apsCurrentReadoutType] >= apsSizeY) || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) && warningCount % WARNING_INTERVAL == 0) {
-                                    CypressFX3.log.fine("APS ADC sample: row or column count is at maximum, discarding further samples.");
+                                if ((apsCountY[apsCurrentReadoutType] >= apsSizeY)
+                                        || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) {
+                                    if (warningCount % WARNING_INTERVAL == 0) {
+                                        CypressFX3.log.fine("APS ADC sample: row or column count is at maximum, discarding further samples.");
+                                    }
                                     warningCount++;
                                     break;
                                 }
@@ -1193,11 +1210,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     }
                 } // end loop over usb data buffer
 
-                if (typedOut != null) {
-                    typedBuilder.flushAll();
-                    typedOut.setRawPacket(buffer);
-                }
-
                 buffer.setNumEvents(eventCounter);
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
@@ -1216,6 +1228,383 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         @Override
         public void propertyChange(final PropertyChangeEvent arg0) {
             // Do nothing here, IMU comes directly via event-stream.
+        }
+
+        /** Standard DAVIS parser used only by authoritative typed delivery. */
+        private void translateStandardTyped(final ByteBuffer b) {
+            if ((b.limit() & 0x01) != 0) {
+                CypressFX3.log.severe(b.limit()
+                        + " bytes received via USB, which is not a multiple of two.");
+                b.limit(b.limit() & ~0x01);
+            }
+
+            final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+            for (int i = 0; i < sBuf.limit(); i++) {
+                final short event = sBuf.get(i);
+                if ((event & 0x8000) != 0) {
+                    typedBuilder.invalidatePolarityPatchEligibility();
+                    lastTimestamp = currentTimestamp;
+                    currentTimestamp = wrapAdd + (event & 0x7FFF);
+                    checkMonotonicTimestamp();
+                    continue;
+                }
+
+                final byte code = (byte) ((event & 0x7000) >>> 12);
+                final short data = (short) (event & 0x0FFF);
+                final boolean addressPatchWord = code == 6 && (data & 0x0800) != 0;
+                if (!addressPatchWord) {
+                    typedBuilder.invalidatePolarityPatchEligibility();
+                }
+                switch (code) {
+                    case 0:
+                        decodeStandardTypedSpecial(data);
+                        break;
+
+                    case 1:
+                        if (data >= dvsSizeY) {
+                            CypressFX3.log.severe("DVS: Y address out of range (0-"
+                                    + (dvsSizeY - 1) + "): " + data + ".");
+                            break;
+                        }
+                        dvsLastY = data;
+                        break;
+
+                    case 2:
+                    case 3:
+                        decodeStandardTypedPolarity(code, data);
+                        break;
+
+                    case 4:
+                        decodeStandardTypedAps(data);
+                        break;
+
+                    case 5:
+                        decodeStandardTypedMisc8(data);
+                        break;
+
+                    case 6:
+                        decodeStandardTypedMisc11(data);
+                        break;
+
+                    case 7:
+                        wrapAdd += (0x8000L * data);
+                        lastTimestamp = currentTimestamp;
+                        currentTimestamp = wrapAdd;
+                        checkMonotonicTimestamp();
+                        CypressFX3.log.finer(String.format(
+                                "Timestamp wrap event received on %s with multiplier of %d.",
+                                super.toString(), data));
+                        break;
+
+                    default:
+                        CypressFX3.log.severe("Caught event that can't be handled.");
+                        break;
+                }
+            }
+        }
+
+        private void decodeStandardTypedSpecial(final short data) {
+            switch (data) {
+                case 0:
+                    CypressFX3.log.severe("Caught special reserved event!");
+                    break;
+
+                case 1:
+                    typedBuilder.onTimestampReset(false);
+                    wrapAdd = 0;
+                    lastTimestamp = 0;
+                    currentTimestamp = 0;
+                    imuCount = 0;
+                    imuType = 0;
+                    initFrame();
+                    handleGaerTimestampReset();
+                    break;
+
+                case 2:
+                case 3:
+                case 4:
+                    CypressFX3.log.finer("External input event received.");
+                    typedBuilder.addExternal(data, currentTimestamp);
+                    break;
+
+                case 5:
+                    CypressFX3.log.finest("IMU6 Start event received.");
+                    imuCount = 0;
+                    imuType = 0;
+                    typedBuilder.onImuStart();
+                    break;
+
+                case 7:
+                    CypressFX3.log.finest("IMU End event received.");
+                    if (imuCount == (2 * RetinaAEReader.IMU_DATA_LENGTH)) {
+                        typedBuilder.addImu(new IMUSample(currentTimestamp, imuEvents));
+                    } else {
+                        typedBuilder.onIncompleteImuSample(
+                                "IMU end discarded one incomplete sample with byte count "
+                                + imuCount);
+                        if (warningCount % WARNING_INTERVAL == 0) {
+                            CypressFX3.log.info(
+                                    "IMU End: failed to validate IMU sample count ("
+                                    + imuCount + "), discarding samples.");
+                        }
+                        warningCount++;
+                    }
+                    break;
+
+                case 8:
+                    rollingShutterFrame = false;
+                    typedBuilder.onFrameStart(false, currentTimestamp);
+                    initFrame();
+                    break;
+
+                case 9:
+                    rollingShutterFrame = true;
+                    typedBuilder.onFrameStart(true, currentTimestamp);
+                    initFrame();
+                    break;
+
+                case 10:
+                    for (int i = 0; i < RetinaAEReader.APS_READOUT_TYPES_NUM; i++) {
+                        if (apsCountX[i] != apsSizeX
+                                && warningCount % WARNING_INTERVAL == 0) {
+                            CypressFX3.log.severe("APS Frame End: wrong column count ["
+                                    + i + " - " + apsCountX[i] + "] detected.");
+                        }
+                        warningCount++;
+                    }
+                    break;
+
+                case 11:
+                    apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
+                    apsCountY[apsCurrentReadoutType] = 0;
+                    apsRGBPixelOffsetDirection = false;
+                    apsRGBPixelOffset = 1;
+                    break;
+
+                case 12:
+                    apsCurrentReadoutType = RetinaAEReader.APS_READOUT_SIGNAL;
+                    apsCountY[apsCurrentReadoutType] = 0;
+                    apsRGBPixelOffsetDirection = false;
+                    apsRGBPixelOffset = 1;
+                    break;
+
+                case 13:
+                    if (apsCountY[apsCurrentReadoutType] != apsSizeY
+                            && warningCount % WARNING_INTERVAL == 0) {
+                        CypressFX3.log.severe("APS Column End: wrong row count ["
+                                + apsCurrentReadoutType + " - "
+                                + apsCountY[apsCurrentReadoutType] + "] detected.");
+                    }
+                    warningCount++;
+                    apsCountX[apsCurrentReadoutType]++;
+                    break;
+
+                case 14:
+                case 15:
+                case 16:
+                case 17:
+                    break;
+
+                default:
+                    CypressFX3.log.severe("Caught special event that can't be handled.");
+                    break;
+            }
+        }
+
+        private void decodeStandardTypedPolarity(final byte code, final short data) {
+            if (data >= dvsSizeX) {
+                if (warningCount % WARNING_INTERVAL == 0) {
+                    CypressFX3.log.severe("DVS: X address out of range (0-"
+                            + (dvsSizeX - 1) + "): " + data + ".");
+                }
+                warningCount++;
+                return;
+            }
+
+            final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208)
+                    && (data <= 16)) ? ((byte) (~code)) : code;
+            final boolean on = (polarity & 0x01) != 0;
+            final int packedAddr;
+            if (dvsInvertXY) {
+                packedAddr = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT)
+                        & DavisChip.YMASK)
+                        | (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT)
+                                & DavisChip.XMASK)
+                        | (((polarity & 0x01) << DavisChip.POLSHIFT)
+                                & DavisChip.POLMASK);
+            } else {
+                packedAddr = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT)
+                        & DavisChip.YMASK)
+                        | (((dvsSizeX - 1 - data) << DavisChip.XSHIFT)
+                                & DavisChip.XMASK)
+                        | (((polarity & 0x01) << DavisChip.POLSHIFT)
+                                & DavisChip.POLMASK);
+            }
+            final int sx1 = (getChip() != null ? getChip().getSizeX() : dvsSizeX) - 1;
+            final int addrX = sx1
+                    - ((packedAddr & DavisChip.XMASK) >>> DavisChip.XSHIFT);
+            final int addrY = (packedAddr & DavisChip.YMASK) >>> DavisChip.YSHIFT;
+            typedBuilder.addPolarity(addrX, addrY, on, currentTimestamp, packedAddr);
+        }
+
+        private void decodeStandardTypedAps(final short data) {
+            if ((apsCountY[apsCurrentReadoutType] >= apsSizeY)
+                    || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) {
+                if (warningCount % WARNING_INTERVAL == 0) {
+                    CypressFX3.log.fine(
+                            "APS ADC sample: row or column count is at maximum, discarding further samples.");
+                }
+                warningCount++;
+                return;
+            }
+
+            int xPos = apsFlipX
+                    ? apsSizeX - 1 - apsCountX[apsCurrentReadoutType]
+                    : apsCountX[apsCurrentReadoutType];
+            int yPos = apsFlipY
+                    ? apsSizeY - 1 - apsCountY[apsCurrentReadoutType]
+                    : apsCountY[apsCurrentReadoutType];
+            if (chipID == DAViSFX3HardwareInterface.CHIP_DAVISRGB) {
+                yPos += apsRGBPixelOffset;
+            }
+            if (apsInvertXY) {
+                final int temp = xPos;
+                xPos = yPos;
+                yPos = temp;
+            }
+            yPos = apsInvertXY ? apsSizeX - 1 - yPos : apsSizeY - 1 - yPos;
+
+            apsCountY[apsCurrentReadoutType]++;
+            if (!apsRGBPixelOffsetDirection) {
+                apsRGBPixelOffset++;
+                if (apsRGBPixelOffset == 321) {
+                    apsRGBPixelOffsetDirection = true;
+                    apsRGBPixelOffset = 318;
+                }
+            } else {
+                apsRGBPixelOffset -= 3;
+            }
+
+            final boolean pixFirst = apsCountX[apsCurrentReadoutType] == 0
+                    && apsCountY[apsCurrentReadoutType] == 1;
+            final boolean pixLast = apsCountX[apsCurrentReadoutType] == apsSizeX - 1
+                    && apsCountY[apsCurrentReadoutType] == apsSizeY;
+            typedBuilder.setRollingShutter(rollingShutterFrame);
+            typedBuilder.addApsSample(data & DavisChip.ADC_DATA_MASK,
+                    currentTimestamp, xPos, yPos,
+                    apsCurrentReadoutType == RetinaAEReader.APS_READOUT_RESET,
+                    pixFirst, pixLast);
+        }
+
+        private void decodeStandardTypedMisc8(final short data) {
+            final byte misc8Code = (byte) ((data & 0x0F00) >>> 8);
+            final byte misc8Data = (byte) (data & 0x00FF);
+            switch (misc8Code) {
+                case 0:
+                    switch (imuCount) {
+                        case 0:
+                        case 2:
+                        case 4:
+                        case 6:
+                        case 8:
+                        case 10:
+                        case 12:
+                            imuTmpData = misc8Data;
+                            break;
+                        case 1:
+                            imuEvents[0] = assembleStandardImuWord(misc8Data);
+                            if (imuFlipX) {
+                                imuEvents[0] = (short) -imuEvents[0];
+                            }
+                            break;
+                        case 3:
+                            imuEvents[1] = assembleStandardImuWord(misc8Data);
+                            if (imuFlipY) {
+                                imuEvents[1] = (short) -imuEvents[1];
+                            }
+                            break;
+                        case 5:
+                            imuEvents[2] = assembleStandardImuWord(misc8Data);
+                            if (imuFlipZ) {
+                                imuEvents[2] = (short) -imuEvents[2];
+                            }
+                            if ((imuType & RetinaAEReader.IMU_TYPE_TEMP) == 0) {
+                                imuCount += (imuType & RetinaAEReader.IMU_TYPE_GYRO) != 0
+                                        ? 2 : 8;
+                            }
+                            break;
+                        case 7:
+                            imuEvents[3] = assembleStandardImuWord(misc8Data);
+                            if ((imuType & RetinaAEReader.IMU_TYPE_GYRO) == 0) {
+                                imuCount += 6;
+                            }
+                            break;
+                        case 9:
+                            imuEvents[4] = assembleStandardImuWord(misc8Data);
+                            if (imuFlipX) {
+                                imuEvents[4] = (short) -imuEvents[4];
+                            }
+                            break;
+                        case 11:
+                            imuEvents[5] = assembleStandardImuWord(misc8Data);
+                            if (imuFlipY) {
+                                imuEvents[5] = (short) -imuEvents[5];
+                            }
+                            break;
+                        case 13:
+                            imuEvents[6] = assembleStandardImuWord(misc8Data);
+                            if (imuFlipZ) {
+                                imuEvents[6] = (short) -imuEvents[6];
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    imuCount++;
+                    break;
+
+                case 1:
+                case 2:
+                    break;
+
+                case 3:
+                    imuType = (data >> 5) & 0x07;
+                    if ((imuType & RetinaAEReader.IMU_TYPE_ACCEL) != 0) {
+                        imuCount = 0;
+                    } else if ((imuType & RetinaAEReader.IMU_TYPE_TEMP) != 0) {
+                        imuCount = 6;
+                    } else if ((imuType & RetinaAEReader.IMU_TYPE_GYRO) != 0) {
+                        imuCount = 8;
+                    } else {
+                        imuCount = 14;
+                    }
+                    break;
+
+                default:
+                    CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
+                    break;
+            }
+        }
+
+        private void decodeStandardTypedMisc11(final short data) {
+            final byte misc11Code = (byte) ((data & 0x0800) >> 11);
+            switch (misc11Code) {
+                case 0:
+                    // APS exposure information is intentionally ignored, as in the raw parser.
+                    break;
+                case 1:
+                    typedBuilder.patchLastPolarityAddress(data & 0x07ff);
+                    break;
+                default:
+                    // The one-bit selector makes this unreachable; retain raw-parser diagnostics.
+                    CypressFX3.log.severe("Caught Misc10 event that can't be handled.");
+                    break;
+            }
+        }
+
+        private short assembleStandardImuWord(final byte lowByte) {
+            return (short) (((imuTmpData & 0x00FF) << 8)
+                    | (lowByte & 0x00FF));
         }
     }
 }

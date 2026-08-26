@@ -137,14 +137,20 @@ import net.sf.jaer.biasgen.BiasgenFrame;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
+import net.sf.jaer.chip.TypedEventExtractor;
+import net.sf.jaer.event.AcquisitionMetadata;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketType;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEDZOutputStream;
+import net.sf.jaer.eventio.AEDZDvsWriterAdapter;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
@@ -374,6 +380,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EventFilter2D filter1 = null, filter2 = null;
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
+    private long aemonOpenSession;
     private ViewLoop viewLoop = new ViewLoop();
     /**
      * Dedicated lock for ViewLoop pause wait/notify. Do not use {@link #viewLoop}
@@ -428,6 +435,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     AEFileOutputStream recordingOutputStream;
     Aedat4FileOutputStream aedat4RecordingOutputStream;
     AEDZOutputStream aedzRecordingOutputStream;
+    AEDZDvsWriterAdapter aedzDvsWriterAdapter;
     private RecordingConfigurationSnapshot activeRecordingSnapshot;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
@@ -3352,6 +3360,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.info("openAEMonitor: playMode became PLAYBACK during aemon.open(); skipping LIVE");
                         return;
                     }
+                    aemonOpenSession = Math.incrementExact(aemonOpenSession);
                     if (aemon instanceof USBInterface) {
                         USBInterface usb = (USBInterface) aemon;
                         if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
@@ -3938,8 +3947,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private AEPacketRaw emptyRawPacket;
         private EventPacket emptyCookedPacket;
         private long lastViewLoopHeartbeatMs;
-        /** True when this iteration used HW USB typed PacketBundle (no extractBundle). */
-        private boolean viewLoopUsedHwTypedBundle;
+        private final AEViewerRouteState liveRouteState = new AEViewerRouteState();
 
         public ViewLoop() {
             super();
@@ -3966,7 +3974,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 getRenderer().clearPacketRenderSkipDecision();
                 boolean skipRendering = false;
-                viewLoopUsedHwTypedBundle = false;
+                PacketBundle authoritativeSourceBundle = null;
+                AcquisitionMetadata acquisitionMetadata = null;
                 setTitleAccordingToState();
                 pauseIdleWaitIfNeeded();
                 if (stop) {
@@ -4020,9 +4029,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                     } else {
-                        // jAER 3.0: prefer USB-level typed PacketBundle when the HW interface supplies it
+                        // Choose exactly one live acquisition route before polling. DAVIS/SciDVS
+                        // normally use authoritative typed delivery; explicit legacy sinks keep raw.
                         PacketBundle hwBundle = null;
-                        viewLoopUsedHwTypedBundle = false;
                         if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
                             try {
                                 openAEMonitor();
@@ -4030,23 +4039,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     // File open flipped mode while we were opening USB — fall through to grabInput.
                                     hwBundle = null;
                                 } else if ((aemon != null) && aemon.isOpen()) {
-                                    hwBundle = aemon.acquireAvailablePacketBundle();
+                                    final long routeSession = currentLiveRouteSession();
+                                    final AEViewerRouteState.LiveDecision routeDecision
+                                            = liveRouteState.selectLiveRoute(aemon,
+                                                    routeSession,
+                                                    isAuthoritativeTypedRouteEligible());
+                                    applyLiveAcquisitionDecision(routeDecision);
+                                    if (routeDecision.getRoute()
+                                            == AEViewerRouteState.LiveRoute.AUTHORITATIVE_TYPED) {
+                                        hwBundle = aemon.acquireAvailablePacketBundle();
+                                        if (hwBundle == null) {
+                                            // Cache the monitor/session decline. The next ViewLoop
+                                            // iteration remains legacy without another stop/restart.
+                                            applyLiveAcquisitionDecision(
+                                                    liveRouteState.typedDeliveryDeclined(
+                                                            aemon, routeSession));
+                                        }
+                                    }
                                 }
-                            } catch (Exception ex) {
-                                log.log(Level.WARNING, "acquireAvailablePacketBundle failed, falling back to raw extract", ex);
-                                hwBundle = null;
-                            }
-                        }
-                        if (hwBundle != null) {
-                            viewLoopUsedHwTypedBundle = true;
-                            rawPacket = hwBundle.getRawPacket();
-                            cookedBundle = hwBundle;
-                            if (cookedBundle.isEmpty()) {
-                                // Still finish FrameRater sample so close/pacing stay responsive
+                            } catch (HardwareInterfaceException | IllegalArgumentException | IllegalStateException ex) {
+                                if (stop) {
+                                    break;
+                                }
+                                handleLiveAcquisitionFailure(ex);
                                 getFrameRater().takeAfter();
                                 paceViewLoopFrame();
                                 continue;
                             }
+                        } else {
+                            liveRouteState.clear();
+                        }
+                        if (hwBundle != null) {
+                            acquisitionMetadata = requireAuthoritativeAcquisition(hwBundle);
+                            droppedDataInfo = DroppedDataInfo.none();
+                            rawPacket = null;
+                            authoritativeSourceBundle = hwBundle;
+                            cookedBundle = hwBundle;
                         } else {
                             rawPacket = grabInput();
                             if (rawPacket == null) {
@@ -4056,7 +4084,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         }
 
-                        numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
+                        numRawEvents = acquisitionMetadata != null
+                                ? sourceAcceptedCount(acquisitionMetadata)
+                                : (rawPacket != null ? rawPacket.getNumEvents() : 0);
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isRecordFilteredEventsEnabled();
                         // Never skip rendering while writing synchronized AVI frames — every packet must paint.
                         if (!isPaused() && !isJaerAviRecordingActive() && getRenderer().isPacketLevelRenderSkipping()) {
@@ -4075,7 +4105,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 chip.setLastData(cookedPacket);
                             }
                             if (isRecordingEnabled() & !isRecordingPaused()) {
-                                recordPacket(rawPacket, null, cookedBundle);
+                                recordPacket(rawPacket, null, cookedBundle, authoritativeSourceBundle);
                             }
                             boolean breakout = writeOutputStreams(rawPacket, null);
                             if (breakout) {
@@ -4099,7 +4129,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             ((Aedat4FileInputStream) getAePlayer().getAEInputStream()).appendTypedPackets(cookedBundle);
                         }
-                        if (cookedBundle == null || cookedBundle.isEmpty()) {
+                        if (cookedBundle == null
+                                || (cookedBundle.isEmpty() && acquisitionMetadata == null)) {
                             // Mid-USB APS-only slices can yield empty typed bundles; do not spam SEVERE.
                             log.fine("packet bundle empty after extract (raw may be mid-frame APS only)");
                             paceViewLoopFrame();
@@ -4125,10 +4156,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // if we are recording data to disk do it here
                     if (isRecordingEnabled() & !isRecordingPaused()) {
                         // AEDAT-2 needs raw AE; when USB demux drops APS dual-write, reconstruct polarity
-                        if (rawPacket == null && cookedPacket != null && aedat4RecordingOutputStream == null) {
+                        if (rawPacket == null && cookedPacket != null
+                                && aedat4RecordingOutputStream == null
+                                && aedzRecordingOutputStream == null) {
                             rawPacket = extractor.reconstructRawPacket(cookedPacket);
                         }
-                        recordPacket(rawPacket, cookedPacket, cookedBundle);
+                        recordPacket(rawPacket, cookedPacket, cookedBundle, authoritativeSourceBundle);
                     }
 
                     // Write the ouput to whatever streams need it
@@ -4177,8 +4210,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (LiveAcquisitionBench.isEnabled() && ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING))) {
                     final int polCount = cookedBundle != null ? cookedBundle.getNumPolarityEvents()
                             : (cookedPacket != null ? cookedPacket.getSize() : 0);
-                    final int rawCount = rawPacket != null ? rawPacket.getNumEvents() : 0;
-                    final boolean overrun = rawPacket != null && rawPacket.overrunOccuredFlag;
                     final String chipName = chip != null ? chip.getClass().getSimpleName() : "";
                     String driverName = "";
                     if (aemon != null) {
@@ -4189,8 +4220,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                     final long loopNs = Math.max(0L, getFrameRater().getLastDtNs());
-                    LiveAcquisitionBench.record(chipName, driverName, viewLoopUsedHwTypedBundle,
-                            polCount, rawCount, overrun, loopNs);
+                    if (acquisitionMetadata != null) {
+                        LiveAcquisitionBench.recordTyped(chipName, driverName,
+                                acquisitionMetadata, polCount, loopNs);
+                    } else {
+                        final int rawCount = rawPacket != null ? rawPacket.getNumEvents() : 0;
+                        LiveAcquisitionBench.recordLegacy(chipName, driverName,
+                                polCount, rawCount, droppedDataInfo, loopNs);
+                    }
                 }
                 getRenderer().adaptRenderSkipping();
                 renderCount++;
@@ -4365,6 +4402,78 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             return input;
+        }
+
+        /** Distinguishes monitor-open and sequencing sessions for decline caching. */
+        private long currentLiveRouteSession() {
+            return (aemonOpenSession * 2)
+                    + (getPlayMode() == PlayMode.SEQUENCING ? 1 : 0);
+        }
+
+        /**
+         * Classifies the next live poll. Only the DAVIS FX3 implementation has
+         * authoritative typed publication; all other interfaces remain explicit
+         * compatibility consumers until their acquisition path is migrated.
+         */
+        private boolean isAuthoritativeTypedRouteEligible() {
+            return getPlayMode() == PlayMode.LIVE
+                    && aemon instanceof DAViSFX3HardwareInterface
+                    && !hasActiveLegacyRawSink();
+        }
+
+        /** Raw-only boundaries retained during the typed-authority migration. */
+        private boolean hasActiveLegacyRawSink() {
+            return (isRecordingEnabled() && recordingOutputStream != null)
+                    || (blockingQueueOutputEnabled && blockingQueueOutput != null)
+                    || (unicastOutputEnabled && unicastOutput != null)
+                    || (filterChain != null
+                    && filterChain.getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION);
+        }
+
+        /**
+         * Records the route chosen for this monitor. A change is applied only
+         * after acquisition has stopped so Cypress never has typed and raw pools
+         * active for the same session.
+         */
+        private void applyLiveAcquisitionDecision(
+                final AEViewerRouteState.LiveDecision decision)
+                throws HardwareInterfaceException {
+            if (decision.requiresAcquisitionRestart()
+                    && aemon != null && aemon.isOpen()
+                    && aemon.isEventAcquisitionEnabled()) {
+                aemon.setEventAcquisitionEnabled(false);
+            }
+            if (decision.requiresAcquisitionRestart()) {
+                log.info("live acquisition route=" + decision.getRoute());
+            }
+        }
+
+        private AcquisitionMetadata requireAuthoritativeAcquisition(final PacketBundle bundle) {
+            final AcquisitionMetadata metadata = bundle.getAcquisitionMetadata();
+            if (!bundle.isSealed() || bundle.isLegacyRawBridge()
+                    || metadata == null || !metadata.isSealed()) {
+                throw new IllegalStateException(
+                        "authoritative live acquisition returned an unsealed or legacy bundle");
+            }
+            return metadata;
+        }
+
+        private int sourceAcceptedCount(final AcquisitionMetadata metadata) {
+            long count = 0;
+            for (final long accepted : metadata.getAcceptedCounts().values()) {
+                count = Math.addExact(count, accepted);
+            }
+            return count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count;
+        }
+
+        private void handleLiveAcquisitionFailure(final Exception exception) {
+            setPlayMode(PlayMode.WAITING);
+            log.log(Level.WARNING, "authoritative live acquisition failed", exception);
+            if (aemon != null) {
+                aemon.close();
+            }
+            nullifyHardware();
+            liveRouteState.clear();
         }
 
         /**
@@ -4570,10 +4679,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
-            recordPacket(rawPacket, cookedPacket, chip.getLastBundle());
+            recordPacket(rawPacket, cookedPacket, chip.getLastBundle(), chip.getLastBundle());
         }
 
         void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
+            recordPacket(rawPacket, cookedPacket, cookedBundle, cookedBundle);
+        }
+
+        void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket,
+                PacketBundle cookedBundle, PacketBundle authoritativeSourceBundle) {
             Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
                     : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
             synchronized (streamLock) {
@@ -4587,9 +4701,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
                         aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut);
                     } else if (aedzRecordingOutputStream != null) {
-                        aedzRecordingOutputStream.writePacket(isRecordFilteredEventsEnabled()
-                                ? extractor.reconstructRawPacket(cookedPacket)
-                                : rawPacket);
+                        AEViewerRouteState.writeAedz(aedzRecordingOutputStream,
+                                aedzDvsWriterAdapter,
+                                isRecordFilteredEventsEnabled(), rawPacket,
+                                cookedPacket, cookedBundle,
+                                authoritativeSourceBundle,
+                                packet -> extractor.reconstructRawPacket(packet));
                     } else if (!isRecordFilteredEventsEnabled()) {
                         recordingOutputStream.writePacket(rawPacket); // record all events
                     } else {
@@ -7870,6 +7987,48 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * AEDZ records a DVS-only typed projection. Unfiltered authoritative events
+     * retain the exact device address preserved by the USB decoder. For filtered
+     * recording, adapt the homogeneous {@link PolarityEvent} to the DAVIS event
+     * type expected by the extractor's verified per-event reconstruction API.
+     */
+    private int reconstructAedzDvsAddress(final PolarityEvent event) {
+        if (!isRecordFilteredEventsEnabled()) {
+            return event.getAddress();
+        }
+        if (!(extractor instanceof TypedEventExtractor<?>)) {
+            throw new IllegalStateException(
+                    "filtered AEDZ recording requires a TypedEventExtractor");
+        }
+        final ApsDvsEvent davisEvent = new ApsDvsEvent();
+        davisEvent.copyFrom(event);
+        return ((TypedEventExtractor<?>) extractor)
+                .reconstructRawAddressFromEvent(davisEvent);
+    }
+
+    private static String formatAedzSkippedPayloads(
+            final AEDZDvsWriterAdapter adapter) {
+        if (adapter == null) {
+            return "AEDZ typed DVS projection skipped payloads: unavailable";
+        }
+        final StringBuilder skipped = new StringBuilder();
+        for (final PacketType type : PacketType.values()) {
+            if (type == PacketType.POLARITY) {
+                continue;
+            }
+            final long count = adapter.getSkippedCount(type);
+            if (count > 0) {
+                if (skipped.length() > 0) {
+                    skipped.append(", ");
+                }
+                skipped.append(type).append('=').append(count);
+            }
+        }
+        return "AEDZ typed DVS projection skipped payloads: "
+                + (skipped.length() == 0 ? "none" : skipped.toString());
+    }
+
+    /**
      * Starts recording AE data to a file.
      *
      * @param filename the filename to record to, including all path information.
@@ -7914,6 +8073,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (aedat4) {
                 recordingOutputStream = null;
                 aedzRecordingOutputStream = null;
+                aedzDvsWriterAdapter = null;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 constructRecordingWriter(chip, opened, (stream, snapshot) -> {
                     aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
@@ -7926,16 +8086,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else if (aedz) {
                 aedat4RecordingOutputStream = null;
                 recordingOutputStream = null;
+                aedzDvsWriterAdapter = null;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 // Hand the owner-captured object explicitly to AEDZ; the writer must not
                 // rediscover it through mutable chip state or recapture live preferences.
                 constructRecordingWriter(chip, opened, (stream, snapshot) -> {
                     aedzRecordingOutputStream = new AEDZOutputStream(stream, chip, snapshot);
+                    aedzDvsWriterAdapter = new AEDZDvsWriterAdapter(
+                            aedzRecordingOutputStream, this::reconstructAedzDvsAddress);
                 });
                 writer = aedzRecordingOutputStream;
             } else {
                 aedat4RecordingOutputStream = null;
                 aedzRecordingOutputStream = null;
+                aedzDvsWriterAdapter = null;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 constructRecordingWriter(chip, opened, (stream, snapshot) -> {
                     recordingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
@@ -8048,6 +8212,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordingOutputStream = null;
             aedat4RecordingOutputStream = null;
             aedzRecordingOutputStream = null;
+            aedzDvsWriterAdapter = null;
             recordingEnabled = false;
             recordingPaused = false;
             recordingFile = null;
@@ -8455,10 +8620,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             fileInfo = aedat4RecordingOutputStream.toString();
                             aedat4RecordingOutputStream = null;
                         } else if (aedzRecordingOutputStream != null) {
+                            final String skippedPayloads = formatAedzSkippedPayloads(
+                                    aedzDvsWriterAdapter);
                             aedzRecordingOutputStream.close();
                             fileInfo = aedzRecordingOutputStream.toString() + "\n"
-                                    + aedzRecordingOutputStream.formatCompressionSummary();
+                                    + aedzRecordingOutputStream.formatCompressionSummary() + "\n"
+                                    + skippedPayloads;
+                            log.info(skippedPayloads);
                             aedzRecordingOutputStream = null;
+                            aedzDvsWriterAdapter = null;
                         } else {
                             recordingOutputStream.close();
                             fileInfo = recordingOutputStream.toString();

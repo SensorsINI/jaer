@@ -275,12 +275,12 @@ public final class SciDVSGaerTimestampOrderGuardDemo {
                 "GAER production path invokes timestamp-order validation");
 
         final String[] mutations = {
+            "prepareAuthoritativeTypedBundle(typedOut)",
             "typedBuilder.attach(",
             "gaerRawSink.begin(",
             "gaerDecoder.decode(",
             "eventCounter = gaerRawSink.end()",
-            "typedBuilder.flushAll()",
-            "typedOut.setRawPacket(buffer)"
+            "typedBuilder.flushAll()"
         };
         for (final String mutation : mutations) {
             final int at = translate.indexOf(mutation);

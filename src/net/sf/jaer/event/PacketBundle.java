@@ -28,15 +28,23 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     /** Optional raw AE slice that produced this bundle (legacy / debug). */
     private net.sf.jaer.aemonitor.AEPacketRaw rawPacket;
 
+    /** Source accounting for an authoritative typed acquisition bundle. */
+    private AcquisitionMetadata acquisitionMetadata;
+
+    private boolean sealed;
+
     public PacketBundle() {
     }
 
     public void clear() {
         packets.clear();
         rawPacket = null;
+        acquisitionMetadata = null;
+        sealed = false;
     }
 
     public void add(TypedDataPacket packet) {
+        ensureMutable();
         if (packet != null && !packet.isEmpty()) {
             packets.add(packet);
         }
@@ -46,6 +54,7 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
      * Adds a packet even if empty (rarely needed for placeholders).
      */
     public void addAllowEmpty(TypedDataPacket packet) {
+        ensureMutable();
         if (packet != null) {
             packets.add(packet);
         }
@@ -151,12 +160,105 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     }
 
     public void setRawPacket(net.sf.jaer.aemonitor.AEPacketRaw rawPacket) {
+        ensureMutable();
+        if (rawPacket != null && acquisitionMetadata != null) {
+            throw new IllegalStateException(
+                    "authoritative acquisition metadata and a raw sidecar are mutually exclusive");
+        }
         this.rawPacket = rawPacket;
+    }
+
+    /**
+     * Begins source accounting for an authoritative typed acquisition bundle.
+     *
+     * @return the new mutable metadata builder
+     */
+    public AcquisitionMetadata beginAcquisition(final long acquisitionSessionId,
+            final long sequenceId) {
+        ensureMutable();
+        if (rawPacket != null) {
+            throw new IllegalStateException(
+                    "a legacy raw bridge cannot begin authoritative acquisition metadata");
+        }
+        if (acquisitionMetadata != null) {
+            throw new IllegalStateException("authoritative acquisition metadata already begun");
+        }
+        acquisitionMetadata = new AcquisitionMetadata(acquisitionSessionId, sequenceId);
+        return acquisitionMetadata;
+    }
+
+    public AcquisitionMetadata getAcquisitionMetadata() {
+        return acquisitionMetadata;
+    }
+
+    public boolean isLegacyRawBridge() {
+        return rawPacket != null && acquisitionMetadata == null;
+    }
+
+    public boolean isSealed() {
+        return sealed;
+    }
+
+    /**
+     * Validates and freezes the current bundle for publication. Initial
+     * authoritative sealing derives source accepted counts from the payload.
+     */
+    public void seal() {
+        if (sealed) {
+            return;
+        }
+        if (acquisitionMetadata != null) {
+            if (rawPacket != null) {
+                throw new IllegalStateException(
+                        "authoritative acquisition metadata and a raw sidecar are mutually exclusive");
+            }
+            acquisitionMetadata.sealFromPackets(packets);
+        }
+        sealed = true;
+    }
+
+    /**
+     * Copies source acquisition context for filtering. Authoritative metadata
+     * is deep-copied with its original counts, epochs, and losses; a raw
+     * sidecar is copied only for a legacy bridge.
+     */
+    public void copyAcquisitionContextFrom(final PacketBundle source) {
+        ensureMutable();
+        if (source == null) {
+            throw new NullPointerException("source");
+        }
+        if (source == this) {
+            return;
+        }
+        if (source.acquisitionMetadata != null) {
+            if (rawPacket != null) {
+                throw new IllegalStateException(
+                        "a legacy raw bridge cannot copy authoritative acquisition metadata");
+            }
+            acquisitionMetadata = AcquisitionMetadata.copySourceContext(source.acquisitionMetadata);
+            rawPacket = null;
+        } else if (source.isLegacyRawBridge()) {
+            if (acquisitionMetadata != null) {
+                throw new IllegalStateException(
+                        "authoritative acquisition metadata cannot copy a raw sidecar");
+            }
+            rawPacket = source.rawPacket;
+            acquisitionMetadata = null;
+        } else {
+            rawPacket = null;
+            acquisitionMetadata = null;
+        }
+    }
+
+    private void ensureMutable() {
+        if (sealed) {
+            throw new IllegalStateException("packet bundle is sealed");
+        }
     }
 
     @Override
     public Iterator<TypedDataPacket> iterator() {
-        return packets.iterator();
+        return sealed ? Collections.unmodifiableList(packets).iterator() : packets.iterator();
     }
 
     @Override

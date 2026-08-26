@@ -3,7 +3,7 @@
 This document summarizes how live sensor data and recorded files move through
 **jAER 3** (`jaer3` / `master` after the PacketBundle refactor): from USB
 capture, through typed packets and `EventFilter`s, to OpenGL display and optional
-AEDAT-4 recording.
+AEDAT-4 or AEDZ recording.
 
 The central idea in jAER 3 is that one **timeslice** is a
 [`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java): an ordered list of
@@ -30,7 +30,7 @@ flowchart LR
     ACQ[acquireAvailablePacketBundle]
     EXT[extractBundle legacy fallback]
     FILT[FilterChain.filterBundle]
-    REC[recordPacket to AEDAT-4 / AEDAT-2]
+    REC[recordPacket to AEDAT-4 / typed AEDZ / AEDAT-2]
     REN[Renderer + ChipCanvas OpenGL]
   end
 
@@ -54,18 +54,22 @@ flowchart LR
 
 ## Overlapped USB I/O and double buffering
 
-**Target live path** (migrated chips): USB decode fills a typed
+**Authoritative live path** (DAVIS FX3, including SciDVS on the shared DAVIS
+interface): USB decode fills a typed
 [`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java) via
 [`PacketBundlePool`](../src/net/sf/jaer/event/PacketBundlePool.java);
 ViewLoop calls `acquireAvailablePacketBundle()` and **skips**
-`extractBundle`. Prefs kill-switches restore raw+extract for validation
+`extractBundle`. The published bundle is sealed, carries
+`AcquisitionMetadata`, and has no `AEPacketRaw` sidecar. Prefs kill-switches
+restore raw+extract for validation
 (see [usb-live-acquisition-bench.md](usb-live-acquisition-bench.md)).
 
 **Legacy live / file / network path:**
 [`AEPacketRawPool`](../src/net/sf/jaer/aemonitor/AEPacketRawPool.java) still
 holds packed address+timestamp AEs. [`AEPacketRaw`](../src/net/sf/jaer/aemonitor/AEPacketRaw.java)
-and chip `extractPacket` / `extractBundle` remain for AEDAT-2, network AE,
-sequencers, playback of AEDAT-2, and unmigrated chips — not deleted.
+and chip `extractPacket` / `extractBundle` remain for AEDAT-2, raw network or
+queue transport, acquisition-thread filtering, sequencers, playback, and
+unmigrated interfaces — not deleted.
 
 ```mermaid
 sequenceDiagram
@@ -76,7 +80,7 @@ sequenceDiagram
   Note over USB,Pool: Multiple libusb transfers in flight
   loop Overlapped bulk IN
     USB->>USB: transfer complete callback
-    USB->>Pool: writeBuffer demux typed PacketBundle and/or raw AE
+    USB->>Pool: writeBuffer demuxes the selected typed or raw route
   end
 
   VL->>Pool: synchronized swap()
@@ -86,20 +90,35 @@ sequenceDiagram
   Note over USB: Continues filling the other buffer
 ```
 
-| Family | USB typed demux | Pref (under `hardware/`) |
-|--------|-----------------|--------------------------|
-| Davis FX3 / SciDVS (same PID) | Polarity + Frame + IMU | `DAViSFX3/usbTypedDemux` (RGB color stays legacy) |
-| NRV | Polarity | `NRV/usbTypedDemux` |
-| Prophesee EVK4 | Polarity | `Prophesee/usbTypedDemux` |
-| DVS128 libusb FX2 | Polarity + sync special | `CypressFX2DVS128.usbTypedDemux` |
+| Family | AEViewer live route | Pref (under `hardware/`) |
+|--------|---------------------|--------------------------|
+| Davis FX3 / SciDVS (same PID) | **Authoritative typed:** Polarity + Frame + IMU, sealed metadata, no raw sidecar | `DAViSFX3/usbTypedDemux` (RGB color stays legacy) |
+| NRV | Legacy raw compatibility (its current typed helper still acquires raw) | `NRV/usbTypedDemux` |
+| Prophesee EVK4 | Legacy raw compatibility (its current typed helper still acquires raw) | `Prophesee/usbTypedDemux` |
+| DVS128 libusb FX2 | Legacy raw compatibility (its current typed helper still acquires raw) | `CypressFX2DVS128.usbTypedDemux` |
 
 When demux is active on Davis, APS/IMU synthetic AEs are **not** dual-written
 into `AEPacketRaw` by default (`DAViSFX3/dualWriteApsImuAe=false`) — the largest
 live memory win under APS+DVS.
 
-**Overrun:** if the USB thread fills the write buffer before ViewLoop swaps, the
-pool sets `overrunOccuredFlag` (lost events). Increase AE buffer size (Control →
-rendering AE buffer size) for high-rate sensors such as NRV.
+On the authoritative route, accepted counts by `PacketType`, timestamp epochs,
+and exact or unquantified losses come from sealed `AcquisitionMetadata`; an
+absent loss record is not replaced with an invented zero. Legacy raw interfaces
+continue to report `DroppedDataInfo` / `overrunOccuredFlag` as before.
+
+### Live route selection
+
+AEViewer chooses one route before each live poll and never calls both acquisition
+methods for one session:
+
+| Selected route | Conditions |
+|----------------|------------|
+| Authoritative typed | Normal DAVIS/SciDVS rendering and typed filtering; AEDAT-4; AEDZ when no legacy sink is active |
+| Legacy raw | AEDAT-2; sequencing; active raw unicast or blocking-queue output; acquisition-thread filtering; RGB/unmigrated interfaces |
+
+If one of these conditions changes while acquisition is enabled, ViewLoop first
+calls `setEventAcquisitionEnabled(false)`, then lets Cypress select and start the
+new route. There is no dual acquisition or typed-plus-raw publication.
 
 ---
 
@@ -109,9 +128,11 @@ rendering AE buffer size) for high-rate sensors such as NRV.
 flowchart TD
   START([ViewLoop iteration]) --> MODE{PlayMode?}
 
-  MODE -->|LIVE / SEQUENCING| HW{HW PacketBundle?}
-  HW -->|yes| BUNDLE[cookedBundle = hwBundle]
-  HW -->|no / null| RAW[grabInput to AEPacketRaw]
+  MODE -->|LIVE| ROUTE{Legacy sink or unmigrated interface?}
+  ROUTE -->|no, DAVIS/SciDVS| HW[Acquire sealed authoritative PacketBundle]
+  ROUTE -->|yes| RAW[Acquire AEPacketRaw]
+  MODE -->|SEQUENCING| RAW
+  HW --> BUNDLE[cookedBundle = hwBundle; rawPacket = null]
   RAW --> EXT[extractBundle]
 
   MODE -->|PLAYBACK| PLAY[AEPlayer.getNextPacket]
@@ -127,9 +148,11 @@ flowchart TD
   FILT[FilterChain.filterBundle] --> STORE[chip.setLastBundle / setLastData]
   STORE --> LOG{Logging?}
   LOG -->|AEDAT-4| W4[Aedat4FileOutputStream.writeBundle]
+  LOG -->|AEDZ| WZ[AEDZDvsWriterAdapter.writeBundle]
   LOG -->|AEDAT-2| W2[AEFileOutputStream.writePacket]
   LOG -->|off| REN
   W4 --> REN
+  WZ --> REN
   W2 --> REN
   REN[renderBundle DavisRenderer / ChipCanvas] --> PACE[FrameRater / sleep]
   PACE --> START
@@ -146,7 +169,9 @@ Relevant code: `AEViewer.ViewLoop.run()` in
 classDiagram
   class PacketBundle {
     +List~TypedDataPacket~ packets
-    +AEPacketRaw rawPacket
+    +AcquisitionMetadata sourceContext
+    +AEPacketRaw rawPacket (legacy bridge only)
+    +seal()
     +getNumPolarityEvents()
     +getFirstFramePacket()
   }
@@ -172,7 +197,10 @@ classDiagram
 
 One ViewLoop timeslice may contain several packets in time order, e.g.
 `POLARITY` → `IMU` → `POLARITY` → `FRAME`. Filters and renderers consume the
-bundle as a unit.
+bundle as a unit. `FilterChain.filterBundle` copies the acquisition session,
+sequence, source counts, timestamp epochs, and loss records; filtering does not
+rewrite source accounting. A reset-only sealed bundle is retained even if it
+contains no events, so its loss/epoch metadata remains reportable.
 
 ---
 
@@ -253,6 +281,27 @@ flowchart TD
 - AEDAT-2 path still writes reconstructed or raw `AEPacketRaw` via
   `AEFileOutputStream`.
 
+### Live AEDZ DVS projection
+
+Live `.aedz` recording stays on the authoritative typed route and writes the
+selected filtered or unfiltered `PacketBundle` through
+`AEDZDvsWriterAdapter.writeBundle`. It never obtains or reconstructs a whole
+`AEPacketRaw`:
+
+- unfiltered polarity events use the exact device address preserved in each
+  typed event;
+- filtered polarity events are adapted to `ApsDvsEvent` and passed to the
+  active `TypedEventExtractor.reconstructRawAddressFromEvent` API, matching the
+  existing filtered AEDAT-2 address reconstruction;
+- timestamp-epoch changes force AEDZ chunk boundaries;
+- frame, IMU, special, and other unsupported payload counts are reported when
+  recording closes instead of being silently converted or discarded.
+
+AEDZ is therefore a DVS projection, not a lossless full-sensor format. Use
+AEDAT-4 for completed frames and IMU samples. If a raw-only sink is active at
+the same time, the legacy route wins and AEViewer reports that AEDZ skipped the
+bundle rather than dual-acquiring or inventing a lossy conversion.
+
 **Playback** of AEDAT-4 uses a **sparse packet index** (file offsets + time
 bounds + event counts), not a full per-event RAM dump. Polarity is decoded
 on demand for the current timeslice; FRME/IMUS are injected via
@@ -264,7 +313,7 @@ on demand for the current timeslice; FRME/IMUS are injected via
 
 | Mode | Input path |
 |------|------------|
-| `LIVE` | USB `acquireAvailablePacketBundle` or raw acquire + extract |
+| `LIVE` | One classified route: authoritative DAVIS/SciDVS `acquireAvailablePacketBundle`, otherwise raw acquire + extract |
 | `PLAYBACK` | `AEPlayer` → `AEFileInputStream` / `Aedat4FileInputStream` |
 | `FILTER_INPUT` | Feedback from filters generating events |
 | `REMOTE` / sockets | Network AE streams |
@@ -282,9 +331,9 @@ ViewLoop does not fight the open dialog (`beginFilePlaybackOpen` /
   Sensor ──USB bulk──► [XFER][XFER][XFER]  (USBTransferThread)
                               │
                               ▼
-                     AEPacketRawPool write[]
+              PacketBundlePool or AEPacketRawPool write[]
                               │  swap()
-                     AEPacketRawPool read[]  ◄── ViewLoop
+              PacketBundlePool or AEPacketRawPool read[]  ◄── ViewLoop
                               │
                      PacketBundle (typed)
                               │
@@ -292,7 +341,7 @@ ViewLoop does not fight the open dialog (`beginFilePlaybackOpen` /
                               │
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
-           Renderer      AEDAT-4 log      Network/AVI/…
+      Renderer    AEDAT-4 / AEDZ log    Raw network/AVI/…
            OpenGL
 ```
 
@@ -377,12 +426,12 @@ update the active chip). The user can cancel or load anyway.
 | Loop | `AEViewer.ViewLoop`, `AEPlayer` |
 | USB | `CypressFX3`, `DAViSFX3HardwareInterface`, `NRVHardwareInterface`, `NRVAEReader`, `USBTransferThread` |
 | USB match | `UsbHardwareRegistry`, `LiveDeviceChipDetector`, `@UsbDevices` |
-| Buffers | `AEPacketRawPool`, `PacketBundlePool`, `AEPacketRaw` |
-| Typed data | `PacketBundle`, `PacketType`, `FramePacket`, `ImuPacket`, `EventPacket` |
+| Buffers | `PacketBundlePool`; `AEPacketRawPool` / `AEPacketRaw` at legacy boundaries |
+| Typed data | `PacketBundle`, `AcquisitionMetadata`, `PacketType`, `FramePacket`, `ImuPacket`, `EventPacket` |
 | Extract | `EventExtractor2D.extractBundle`, `DavisUsbPacketBundleBuilder` |
 | Filters | `FilterChain`, `EventFilter2D` |
 | Render | `AEChipRenderer`, `DavisRenderer`, `ChipCanvas` |
-| Files | `Aedat4FileOutputStream`, `Aedat4FileInputStream`, `AEFileOutputStream` |
+| Files | `Aedat4FileOutputStream`, `Aedat4FileInputStream`, `AEDZDvsWriterAdapter`, `AEDZOutputStream`, `AEFileOutputStream` |
 
 ---
 

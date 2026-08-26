@@ -6,30 +6,28 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.function.IntSupplier;
 
 /**
- * Package-local typed-first GAER sink. For each semantic action it dispatches
- * to the {@link DavisUsbPacketBundleBuilder} (typed output) first and then to
- * the {@link SciDVSGaerRawSink} (raw output), so the typed path is populated
- * even when the raw path overruns its capacity.
+ * Package-local authoritative typed GAER sink. It has no legacy raw packet or
+ * raw sink dependency.
  */
 final class SciDVSGaerTypedSink implements SciDVSGaerSink {
 
     private final DavisUsbPacketBundleBuilder builder;
-    private final SciDVSGaerRawSink rawSink;
     private final IntSupplier typedUnflipSizeX;
     private final Runnable timestampResetHandler;
     private boolean rollingShutter;
 
     SciDVSGaerTypedSink(final DavisUsbPacketBundleBuilder builder,
-            final SciDVSGaerRawSink rawSink, final IntSupplier typedUnflipSizeX,
+            final IntSupplier typedUnflipSizeX,
             final Runnable timestampResetHandler) {
         this.builder = builder;
-        this.rawSink = rawSink;
         this.typedUnflipSizeX = typedUnflipSizeX;
         this.timestampResetHandler = timestampResetHandler;
     }
 
     @Override
     public void onTimestampReset() {
+        // SciDVS has no IMU stream, so reset cannot discard hidden IMU state.
+        builder.onTimestampReset(false);
         timestampResetHandler.run();
     }
 
@@ -37,7 +35,6 @@ final class SciDVSGaerTypedSink implements SciDVSGaerSink {
     public void onExternalInput(final int code, final int packedAddress,
             final int timestamp) {
         builder.addExternal(code, timestamp);
-        rawSink.onExternalInput(code, packedAddress, timestamp);
     }
 
     @Override
@@ -53,7 +50,6 @@ final class SciDVSGaerTypedSink implements SciDVSGaerSink {
                 - ((packedAddress & DavisChip.XMASK) >>> DavisChip.XSHIFT);
         final int typedY = (packedAddress & DavisChip.YMASK) >>> DavisChip.YSHIFT;
         builder.addPolarity(typedX, typedY, on, timestamp, packedAddress);
-        rawSink.onPolarity(packedAddress, x, y, on, timestamp);
     }
 
     @Override
@@ -63,18 +59,15 @@ final class SciDVSGaerTypedSink implements SciDVSGaerSink {
         builder.setRollingShutter(rollingShutter);
         builder.addApsSample(adcData, timestamp, x, y, resetRead,
                 pixelFirst, pixelLast);
-        rawSink.onApsSample(packedAddress, adcData, x, y, resetRead,
-                pixelFirst, pixelLast, timestamp);
     }
 
     @Override
     public void onImuSample(final IMUSample sample, final int timestamp) {
         builder.addImu(sample);
-        rawSink.onImuSample(sample, timestamp);
     }
 
     @Override
     public void onAddressPatch(final int orMask) {
-        rawSink.onAddressPatch(orMask);
+        builder.patchLastPolarityAddress(orMask);
     }
 }

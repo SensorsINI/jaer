@@ -17,6 +17,7 @@ import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -38,6 +39,7 @@ import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.event.AcquisitionMetadata;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.chip.AEChip;
@@ -221,13 +223,27 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * {@link #aePacketRawPool} on acquire.
      */
     protected PacketBundlePool packetBundlePool = new PacketBundlePool();
-    /** Last typed bundle from {@link #acquireAvailableEventsFromDriver()}. */
+    /** Last bundle published by authoritative typed acquisition. */
     protected PacketBundle lastPacketBundle = new PacketBundle();
     /**
      * When true, {@link #acquireAvailablePacketBundle()} returns the USB-demuxed
      * bundle (DAViSFX3). When false, returns null so ViewLoop uses extractBundle.
      */
     protected volatile boolean usbTypedDemuxActive = false;
+
+    /** Mutually exclusive publication path selected before acquisition starts. */
+    protected enum DeliveryMode {
+        LEGACY_RAW,
+        AUTHORITATIVE_TYPED
+    }
+
+    private static final AtomicLong NEXT_TYPED_ACQUISITION_SESSION_ID
+            = new AtomicLong(1);
+    private volatile DeliveryMode deliveryMode = DeliveryMode.LEGACY_RAW;
+    private long typedAcquisitionSessionId = -1;
+    private long typedSequenceId;
+    private int lastTypedEventCount;
+    private int typedEstimatedEventRate;
     private String stringDescription = "CypressFX3"; // default which is
     private USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
@@ -478,6 +494,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+        selectDeliveryMode(DeliveryMode.LEGACY_RAW);
         if (!isOpen()) {
             open();
         }
@@ -502,9 +519,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // same time
         synchronized (aePacketRawPool) {
             aePacketRawPool.swap();
-            packetBundlePool.swap();
             lastEventsAcquired = aePacketRawPool.readBuffer();
-            lastPacketBundle = packetBundlePool.readBuffer();
             eventCounter = 0;
             realTimeEventCounterStart = 0;
         }
@@ -519,17 +534,98 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
-     * jAER 3.0: returns USB-demuxed {@link PacketBundle} when
-     * {@link #usbTypedDemuxActive} (DAVIS). Performs the same buffer swap as
-     * {@link #acquireAvailableEventsFromDriver()}.
+     * Returns the authoritative USB-demuxed {@link PacketBundle}. This method
+     * selects typed delivery before enabling acquisition and never acquires or
+     * swaps a raw packet.
      */
     @Override
     public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
         if (!usbTypedDemuxActive) {
             return null;
         }
-        acquireAvailableEventsFromDriver();
+        selectDeliveryMode(DeliveryMode.AUTHORITATIVE_TYPED);
+        if (!isOpen()) {
+            open();
+        }
+        if (!inEndpointEnabled) {
+            setEventAcquisitionEnabled(true);
+        }
+
+        synchronized (packetBundlePool) {
+            prepareAuthoritativeTypedBundle(packetBundlePool.writeBuffer());
+            packetBundlePool.swap();
+            lastPacketBundle = packetBundlePool.readBuffer();
+        }
+        lastTypedEventCount = countTypedElements(lastPacketBundle);
+        computeEstimatedEventRate(lastPacketBundle);
+        if (lastTypedEventCount != 0) {
+            support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_NEW_EVENTS,
+                    null, lastPacketBundle);
+        }
         return lastPacketBundle;
+    }
+
+    /** Begins metadata once for the current typed write slot. Caller owns the typed-pool lock. */
+    protected final AcquisitionMetadata prepareAuthoritativeTypedBundle(
+            final PacketBundle writeBundle) {
+        if (deliveryMode != DeliveryMode.AUTHORITATIVE_TYPED) {
+            throw new IllegalStateException("authoritative metadata requested outside typed delivery mode");
+        }
+        if (typedAcquisitionSessionId < 0) {
+            throw new IllegalStateException("typed acquisition session has not started");
+        }
+        AcquisitionMetadata metadata = writeBundle.getAcquisitionMetadata();
+        if (metadata == null) {
+            metadata = writeBundle.beginAcquisition(
+                    typedAcquisitionSessionId, typedSequenceId++);
+        }
+        return metadata;
+    }
+
+    protected final boolean isAuthoritativeTypedDelivery() {
+        return deliveryMode == DeliveryMode.AUTHORITATIVE_TYPED;
+    }
+
+    protected final DeliveryMode getDeliveryMode() {
+        return deliveryMode;
+    }
+
+    private synchronized void selectDeliveryMode(final DeliveryMode requested) {
+        if (requested == null) {
+            throw new NullPointerException("requested");
+        }
+        if (requested == deliveryMode) {
+            return;
+        }
+        if (isEventAcquisitionEnabled()) {
+            throw new IllegalStateException(
+                    "event acquisition must be disabled before changing delivery mode from "
+                    + deliveryMode + " to " + requested);
+        }
+        deliveryMode = requested;
+    }
+
+    private void beginTypedAcquisitionSession() {
+        synchronized (packetBundlePool) {
+            final long sessionId = NEXT_TYPED_ACQUISITION_SESSION_ID.getAndIncrement();
+            if (sessionId < 0) {
+                throw new IllegalStateException("typed acquisition session identifier exhausted");
+            }
+            typedAcquisitionSessionId = sessionId;
+            typedSequenceId = 0;
+            lastTypedEventCount = 0;
+            typedEstimatedEventRate = 0;
+            packetBundlePool.reset();
+            lastPacketBundle = packetBundlePool.readBuffer();
+        }
+    }
+
+    private static int countTypedElements(final PacketBundle bundle) {
+        long count = 0;
+        for (final var packet : bundle) {
+            count += packet.getSize();
+        }
+        return count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count;
     }
 
     /**
@@ -555,7 +651,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public int getEstimatedEventRate() {
-        return estimatedEventRate;
+        return isAuthoritativeTypedDelivery()
+                ? typedEstimatedEventRate : estimatedEventRate;
     }
 
     /**
@@ -572,6 +669,17 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
     }
 
+    private void computeEstimatedEventRate(final PacketBundle bundle) {
+        final int n = countTypedElements(bundle);
+        if (n < 2) {
+            typedEstimatedEventRate = 0;
+            return;
+        }
+        final long dt = bundle.getLastTimestampUs() - bundle.getFirstTimestampUs();
+        typedEstimatedEventRate = dt <= 0 ? 0
+                : (int) Math.min(Integer.MAX_VALUE, (1_000_000L * n) / dt);
+    }
+
     /**
      * Returns the number of events acquired by the last call to {@link #acquireAvailableEventsFromDriver
      * }
@@ -580,7 +688,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public int getNumEventsAcquired() {
-        return lastEventsAcquired.getNumEvents();
+        return isAuthoritativeTypedDelivery()
+                ? lastTypedEventCount : lastEventsAcquired.getNumEvents();
     }
 
     /**
@@ -681,6 +790,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public boolean overrunOccurred() {
+        if (isAuthoritativeTypedDelivery()) {
+            final AcquisitionMetadata metadata = lastPacketBundle.getAcquisitionMetadata();
+            if (metadata == null) {
+                return false;
+            }
+            for (final AcquisitionMetadata.LossRecord loss : metadata.getLossRecords()) {
+                if (loss.getKind() == AcquisitionMetadata.LossKind.HOST_CAPACITY) {
+                    return true;
+                }
+            }
+            return false;
+        }
         return lastEventsAcquired.overrunOccuredFlag;
     }
 
@@ -1389,20 +1510,32 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 if (!readerActive || !bufferLifecycle.isCurrent(generation)) {
                     return;
                 }
-                synchronized (aePacketRawPool) {
-                    if (!bufferLifecycle.isCurrent(generation)) {
-                        return;
+                if (monitor.isAuthoritativeTypedDelivery()) {
+                    synchronized (packetBundlePool) {
+                        processTransferLocked(transfer);
                     }
-                    if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-                        noteCompletedTransfer(transfer.actualLength());
-                        if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
-                            dvx.noteUsbTransfer(LibUsb.TRANSFER_COMPLETED, transfer.actualLength());
-                        }
-                        usbPacketStatistics.addSample(transfer);
-                        translateEvents(transfer.buffer());
+                } else {
+                    synchronized (aePacketRawPool) {
+                        processTransferLocked(transfer);
+                    }
+                }
+            }
 
-                        if ((chip != null) && (chip.getFilterChain() != null)
-                                && (chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
+            private void processTransferLocked(final RestrictedTransfer transfer) {
+                if (!bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
+                if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                    noteCompletedTransfer(transfer.actualLength());
+                    if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
+                        dvx.noteUsbTransfer(LibUsb.TRANSFER_COMPLETED, transfer.actualLength());
+                    }
+                    usbPacketStatistics.addSample(transfer);
+                    translateEvents(transfer.buffer());
+
+                    if (!monitor.isAuthoritativeTypedDelivery()
+                            && (chip != null) && (chip.getFilterChain() != null)
+                            && (chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
                             // here we do the realTimeFiltering. We finished
                             // capturing this buffer's worth of events,
                             // now process them apply realtime filters and
@@ -1413,17 +1546,16 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                             // we process these events
                             // aePacketRawPool.writeBuffer is also synchronized
                             // so we the same lock twice which is ok
-                            final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
-                            final int[] addresses = buffer.getAddresses();
-                            final int[] timestamps = buffer.getTimestamps();
-                            realTimeFilter(addresses, timestamps);
-                        }
-                    } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-                        CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
-                                + LibUsb.errorName(transfer.status()));
-                        if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
-                            dvx.noteUsbTransfer(transfer.status(), transfer.actualLength());
-                        }
+                        final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                        final int[] addresses = buffer.getAddresses();
+                        final int[] timestamps = buffer.getTimestamps();
+                        realTimeFilter(addresses, timestamps);
+                    }
+                } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                    CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
+                            + LibUsb.errorName(transfer.status()));
+                    if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
+                        dvx.noteUsbTransfer(transfer.status(), transfer.actualLength());
                     }
                 }
             }
@@ -1668,11 +1800,16 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * e.g. rendering.
      */
     protected void allocateAEBuffers() {
-        synchronized (aePacketRawPool) {
-            aePacketRawPool.allocateMemory();
-            packetBundlePool.reset();
-            eventCounter = 0;
-            realTimeEventCounterStart = 0;
+        if (isAuthoritativeTypedDelivery()) {
+            synchronized (packetBundlePool) {
+                packetBundlePool.reset();
+            }
+        } else {
+            synchronized (aePacketRawPool) {
+                aePacketRawPool.allocateMemory();
+                eventCounter = 0;
+                realTimeEventCounterStart = 0;
+            }
         }
     }
 
@@ -1718,6 +1855,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             return;
         }
         log.info(String.format("Setting event acquisition = %s",enable));
+        if (enable && !inEndpointEnabled
+                && deliveryMode == DeliveryMode.AUTHORITATIVE_TYPED) {
+            beginTypedAcquisitionSession();
+        }
         // Configure the endpoint before starting or stopping its reader.
         setInEndpointEnabled(enable);
         if (enable) {

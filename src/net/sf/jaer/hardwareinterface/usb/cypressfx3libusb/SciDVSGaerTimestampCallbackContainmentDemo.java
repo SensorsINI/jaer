@@ -185,12 +185,13 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
         final String[] mutations = {
             "aePacketRawPool.writeBuffer()",
             "packetBundlePool.writeBuffer()",
+            "prepareAuthoritativeTypedBundle(typedOut)",
             "typedBuilder.attach(",
             "gaerRawSink.begin(",
-            "gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink)",
+            "gaerDecoder.decode(b, gaerTypedSink)",
+            "gaerDecoder.decode(b, gaerRawSink)",
             "eventCounter = gaerRawSink.end()",
-            "typedBuilder.flushAll()",
-            "typedOut.setRawPacket(buffer)"
+            "typedBuilder.flushAll()"
         };
         for (final String mutation : mutations) {
             final int at = translate.indexOf(mutation);

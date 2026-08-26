@@ -93,6 +93,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public int size = 0;
     private Class<E> eventClass = null;
+    private PacketType packetType = PacketType.POLARITY;
     /**
      * Constructs new events for this packet.
      */
@@ -103,6 +104,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public transient E[] elementData;
     private AEPacketRaw rawPacket = null;
+    private long timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
     /**
      * This packet's input iterator.
      */
@@ -190,6 +192,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         elementData = (E[]) Array.newInstance(eventClass, DEFAULT_INITIAL_CAPACITY);
         fillWithDefaultEvents(0, DEFAULT_INITIAL_CAPACITY);
         size = 0;
+        clearTimestampEpoch();
         capacity = DEFAULT_INITIAL_CAPACITY;
     }
 
@@ -238,6 +241,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public void clear() {
         size = 0; // we don't clear list, because that nulls all the events
+        clearTimestampEpoch();
     }
 
     public void setSize(final int n) {
@@ -340,6 +344,10 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public EventPacket<E> constructNewPacket() {
         final EventPacket<E> packet = new EventPacket<>(getEventClass());
+        final long epoch = getTimestampEpoch();
+        if (epoch >= 0) {
+            packet.setTimestampEpoch(epoch);
+        }
         return packet;
     }
 
@@ -443,6 +451,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 
         OutItr() {
             size = 0; // reset size because we are starting off output packet
+            clearTimestampEpoch();
         }
 
         /**
@@ -474,6 +483,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
          */
         final public void reset() {
             size = 0;
+            clearTimestampEpoch();
         }
 
         @Override
@@ -973,25 +983,49 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * jAER 3.0: uniform packet kind for this EventPacket. Inferred from
-     * {@link #eventClass} (e.g. {@link PolarityEvent} → {@link PacketType#POLARITY}).
+     * jAER 3.0: uniform packet kind for this EventPacket. Classified once from
+     * the declared {@link #eventClass}, without inspecting packet contents.
      */
     @Override
     public PacketType getPacketType() {
-        if (eventClass == null) {
+        return packetType;
+    }
+
+    private static PacketType classifyPacketType(
+            final Class<? extends BasicEvent> declaredEventClass) {
+        if (declaredEventClass == null) {
             return PacketType.POLARITY;
         }
-        if (ExternalEvent.class.isAssignableFrom(eventClass)) {
+        if (ExternalEvent.class.isAssignableFrom(declaredEventClass)) {
             return PacketType.SPECIAL;
         }
-        if (PolarityEvent.class.isAssignableFrom(eventClass)) {
+        if (PolarityEvent.class.isAssignableFrom(declaredEventClass)) {
             // ApsDvsEvent extends PolarityEvent — treat as polarity until purged
             return PacketType.POLARITY;
         }
-        if (eventClass.getName().contains("Ear") || eventClass.getName().contains("Cochlea")) {
+        if (declaredEventClass.getName().contains("Ear")
+                || declaredEventClass.getName().contains("Cochlea")) {
             return PacketType.EAR;
         }
         return PacketType.POLARITY;
+    }
+
+    @Override
+    public long getTimestampEpoch() {
+        return timestampEpoch;
+    }
+
+    @Override
+    public void setTimestampEpoch(final long timestampEpoch) {
+        if (timestampEpoch < 0) {
+            throw new IllegalArgumentException("timestamp epoch must be non-negative");
+        }
+        this.timestampEpoch = timestampEpoch;
+    }
+
+    @Override
+    public void clearTimestampEpoch() {
+        timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
     }
 
     @Override
@@ -1018,6 +1052,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     public final void setEventClass(final Constructor<? extends BasicEvent> constructor) {
         this.eventConstructor = (Constructor<E>) constructor;
         this.eventClass = eventConstructor.getDeclaringClass();
+        this.packetType = classifyPacketType(this.eventClass);
         initializeEvents();
     }
 
@@ -1029,6 +1064,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public final void setEventClass(final Class<? extends BasicEvent> eventClass) {
         this.eventClass = (Class<E>) eventClass;
+        this.packetType = classifyPacketType(eventClass);
         try {
             eventConstructor = (Constructor<E>) eventClass.getConstructor();
         } catch (final NoSuchMethodException e) {

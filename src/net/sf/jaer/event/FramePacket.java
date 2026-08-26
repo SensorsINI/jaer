@@ -39,6 +39,7 @@ public class FramePacket implements TypedDataPacket {
     private short[] pixels;
     private int streamId;
     private byte source;
+    private long timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
 
     public FramePacket() {
     }
@@ -51,6 +52,7 @@ public class FramePacket implements TypedDataPacket {
      * Allocates or reallocates the pixel buffer for the given geometry.
      */
     public final void allocate(int width, int height, ColorMode colorMode) {
+        clearTimestampEpoch();
         if (width < 0 || height < 0) {
             throw new IllegalArgumentException("negative frame geometry " + width + "x" + height);
         }
@@ -108,6 +110,24 @@ public class FramePacket implements TypedDataPacket {
         return PacketType.FRAME;
     }
 
+    @Override
+    public long getTimestampEpoch() {
+        return timestampEpoch;
+    }
+
+    @Override
+    public void setTimestampEpoch(final long timestampEpoch) {
+        if (timestampEpoch < 0) {
+            throw new IllegalArgumentException("timestamp epoch must be non-negative");
+        }
+        this.timestampEpoch = timestampEpoch;
+    }
+
+    @Override
+    public void clearTimestampEpoch() {
+        timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
+    }
+
     /**
      * A frame packet always represents one frame when non-empty (pixels
      * allocated and size &gt; 0).
@@ -119,6 +139,7 @@ public class FramePacket implements TypedDataPacket {
 
     @Override
     public void clear() {
+        clearTimestampEpoch();
         timestampStartUs = 0;
         timestampEndUs = 0;
         exposureUs = 0;

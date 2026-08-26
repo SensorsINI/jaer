@@ -28,6 +28,7 @@ public class ImuPacket implements TypedDataPacket {
     private PacketType packetType = PacketType.IMU6;
     private int streamId;
     private byte source;
+    private long timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
 
     public ImuPacket() {
         this(DEFAULT_CAPACITY);
@@ -63,6 +64,24 @@ public class ImuPacket implements TypedDataPacket {
         return packetType;
     }
 
+    @Override
+    public long getTimestampEpoch() {
+        return timestampEpoch;
+    }
+
+    @Override
+    public void setTimestampEpoch(final long timestampEpoch) {
+        if (timestampEpoch < 0) {
+            throw new IllegalArgumentException("timestamp epoch must be non-negative");
+        }
+        this.timestampEpoch = timestampEpoch;
+    }
+
+    @Override
+    public void clearTimestampEpoch() {
+        timestampEpoch = UNASSIGNED_TIMESTAMP_EPOCH;
+    }
+
     public void setPacketType(PacketType packetType) {
         if (packetType != null && !packetType.isImu()) {
             throw new IllegalArgumentException("ImuPacket type must be IMU6 or IMU9, got " + packetType);
@@ -82,6 +101,7 @@ public class ImuPacket implements TypedDataPacket {
     @Override
     public void clear() {
         size = 0;
+        clearTimestampEpoch();
     }
 
     @Override
