@@ -4,18 +4,25 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.swing.SwingUtilities;
+import eu.seebetter.ini.chips.davis.Davis346blue;
+import eu.seebetter.ini.chips.davis.SciDVS;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.SciDVSReplugDecision;
 
 /**
  * Headless checks: Interface menu must not {@code LibUsb.open} an already-open
  * FX3 (EDT hang / CypressFX3 ghost), chip selection stays on the EDT, and
- * Davis → None → Davis close/reopen order is preserved. Cannot drive the
- * Swing EDT; those contracts are source order.
+ * Davis → None → Davis close/reopen order is preserved. The shared-PID gate
+ * runs on the real Swing EDT; remaining lifecycle contracts are source order.
  * Run after {@code ant compile}:
  * {@code java -cp build/classes;jars/* net.sf.jaer.hardwareinterface.usb.UsbEnumerationSafetyDemo}
  */
 public final class UsbEnumerationSafetyDemo {
 
     private static int assertions;
+    private static int behavioralAssertions;
 
     private UsbEnumerationSafetyDemo() {
     }
@@ -28,6 +35,8 @@ public final class UsbEnumerationSafetyDemo {
         testViewerSelectsOnEdtWithFriendlyLabels();
         testDavisNoneDavisReopenSequence();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
+        System.out.println("USB_ENUMERATION_SAFETY BEHAVIORAL_ASSERTIONS="
+                + behavioralAssertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
 
@@ -106,12 +115,45 @@ public final class UsbEnumerationSafetyDemo {
                 "Interface switch aborts an in-progress Prophesee open (not only isOpen)");
         String ensure = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
                 "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
-                "private Class<? extends AEChip> loadRememberedLiveChip");
-        require(ensure.contains("!SwingUtilities.isEventDispatchThread()"),
-                "SciDVS FPGA LibUsb probe must not run on the EDT");
-        require(ensure.indexOf("loadRememberedLiveChip(")
-                < ensure.indexOf("probeSciDVSByFpgaGeometry()"),
-                "remembered AEChip wins before any USB probe");
+                "private SciDVSReplugDecision.PreferenceStore liveChipPreferenceStore()");
+        require(ensure.contains("SciDVSReplugDecision.resolve("),
+                "AEViewer uses the behaviorally executable shared-PID production gate");
+        AtomicInteger forbiddenIoCalls = new AtomicInteger();
+        AtomicReference<SciDVSReplugDecision.Result> edtResult = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> edtResult.set(SciDVSReplugDecision.resolve(
+                true,
+                SwingUtilities.isEventDispatchThread(),
+                java.util.List.of(SciDVS.class, Davis346blue.class),
+                SciDVS.class,
+                () -> {
+                    forbiddenIoCalls.incrementAndGet();
+                    return true;
+                },
+                () -> {
+                    forbiddenIoCalls.incrementAndGet();
+                    return "152a:841a#EDT";
+                },
+                "152a:841a",
+                "152a:841a",
+                new SciDVSReplugDecision.PreferenceStore() {
+                    @Override
+                    public String get(String key) {
+                        return null;
+                    }
+
+                    @Override
+                    public void remove(String key) {
+                        forbiddenIoCalls.incrementAndGet();
+                    }
+                },
+                "remembered.",
+                "default.")));
+        behavioralRequire(forbiddenIoCalls.get() == 0,
+                "real EDT execution performs no probe, post-open identity refresh, or preference deletion");
+        behavioralRequire(!edtResult.get().probeAttempted()
+                && edtResult.get().ordinaryFallbackRan()
+                && !edtResult.get().chooserSuppressed(),
+                "EDT gate preserves immediate ordinary fallback without pretending to identify the camera");
         require(src.contains("jaer-aemon-open"),
                 "aemon.open runs on a worker so ViewLoop can abandon a stuck open");
         require(src.contains("unbindAbandonedHardware("),
@@ -302,6 +344,11 @@ public final class UsbEnumerationSafetyDemo {
         int to = source.indexOf(end, from + start.length());
         require(to > from, "source contains " + end + " in " + path);
         return source.substring(from, to);
+    }
+
+    private static void behavioralRequire(boolean cond, String msg) {
+        behavioralAssertions++;
+        require(cond, msg);
     }
 
     private static void require(boolean cond, String msg) {

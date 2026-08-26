@@ -31,6 +31,7 @@ import java.util.logging.Level;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -746,12 +747,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (stream == null || viewer.getPlayerControls() == null) {
             return;
         }
-        Marks restored = null;
-        if (stream instanceof AEFileInputStream a2) {
-            restored = a2.getMarks();
-        } else if (stream instanceof Aedat4FileInputStream a4) {
-            restored = a4.getPlaybackMarks();
-        }
+        Marks restored = playbackMarksFor(stream);
         boolean hasOther = restored != null && restored.otherMarks != null && !restored.otherMarks.isEmpty();
         if (stream.isMarkInSet() || stream.isMarkOutSet() || hasOther) {
             if (restored == null) {
@@ -769,6 +765,20 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         } else {
             getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, false, true);
         }
+    }
+
+    /** Shared slider-mark extraction for all preference-backed input streams. */
+    static Marks playbackMarksFor(AEFileInputStreamInterface stream) {
+        if (stream instanceof AEFileInputStream a2) {
+            return a2.getMarks();
+        }
+        if (stream instanceof Aedat4FileInputStream a4) {
+            return a4.getPlaybackMarks();
+        }
+        if (stream instanceof AEDZInputStream aedz) {
+            return aedz.getPlaybackMarks();
+        }
+        return null;
     }
 
     /**

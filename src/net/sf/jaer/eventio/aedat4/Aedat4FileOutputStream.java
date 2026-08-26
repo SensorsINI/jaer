@@ -450,19 +450,12 @@ public class Aedat4FileOutputStream implements Closeable {
      * (headers/FileDataTable excluded). Relative measure of LZ4/ZSTD gain.
      */
     public String formatCompressionSummary() {
-        EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
         if (uncompressedPayloadBytes <= 0) {
             return String.format("AEDAT-4 %s: no packet payloads written",
                     Aedat4Compression.nameOf(compression));
         }
-        double pct = 100.0 * compressedPayloadBytes / (double) uncompressedPayloadBytes;
-        return String.format(
-                "AEDAT-4 %s: compressed to %.0f%% of raw (payload %sB -> %sB)",
-                Aedat4Compression.nameOf(compression),
-                pct,
-                eng.format((double) uncompressedPayloadBytes).trim(),
-                eng.format((double) compressedPayloadBytes).trim());
+        return "AEDAT-4 " + Aedat4Compression.formatPayloadCompression(
+                compression, uncompressedPayloadBytes, compressedPayloadBytes);
     }
 
     /** {@code compressed / uncompressed} payload ratio, or 1 if nothing written. */
@@ -509,11 +502,8 @@ public class Aedat4FileOutputStream implements Closeable {
             sb.append(", duration=").append(eng.format((tMax - tMin) * 1e-6).trim()).append("s");
         }
         if (uncompressedPayloadBytes > 0) {
-            double pct = 100.0 * compressedPayloadBytes / (double) uncompressedPayloadBytes;
-            sb.append(String.format("; compressed to %.0f%% of raw (%sB -> %sB)",
-                    pct,
-                    eng.format((double) uncompressedPayloadBytes).trim(),
-                    eng.format((double) compressedPayloadBytes).trim()));
+            sb.append("; ").append(Aedat4Compression.formatPayloadCompression(
+                    compression, uncompressedPayloadBytes, compressedPayloadBytes));
         }
         return sb.toString();
     }

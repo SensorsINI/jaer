@@ -1,7 +1,7 @@
 package net.sf.jaer.eventio.export;
 
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -31,6 +31,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
@@ -42,21 +43,27 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
+import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.textio.DavisTextEventFormatter;
 
 /**
  * File → Save As window: AEDAT-4, CSV/text, or DSEC HDF5 offline export of the
  * open recording (IN/OUT clip; preferred alternative to re-recording).
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
+ * {@link WindowSaver.DontResize} keeps {@link #packDialog()} size; last position may still restore.
  */
-public final class SaveAsExportDialog extends JFrame implements PropertyChangeListener {
+public final class SaveAsExportDialog extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(SaveAsExportDialog.class);
+    /** Packed width cap so the path field and HTML help do not stretch the window. */
+    private static final int DIALOG_MAX_WIDTH = 600;
+    /** Swing HTML body width so help text wraps across the panel instead of a narrow column. */
+    private static final int HTML_BODY_WIDTH = 520;
 
     private final AEViewer viewer;
     private SaveAsExporter exporter;
 
-    private final JTextField pathField = new JTextField(36);
+    private final JTextField pathField = new JTextField(18);
     private final JComboBox<SaveAsOptions.Format> formatCombo = new JComboBox<>(SaveAsOptions.Format.values());
     private final JCheckBox useMarkersCb = new JCheckBox("Use IN and OUT markers", true);
     private final JCheckBox applyFiltersCb = new JCheckBox("Apply EventFilters", true);
@@ -81,7 +88,10 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     private final JCheckBox csvFlipCb = new JCheckBox("Flip polarity", false);
     private final JLabel csvFormatHint = new JLabel(" ");
 
-    private final JPanel optionCards = new JPanel(new CardLayout());
+    private final JPanel optionsHost = new JPanel(new BorderLayout());
+    private JPanel aedat4Panel;
+    private JPanel csvPanel;
+    private JPanel dsecPanel;
     private final JPanel hvsPanel = new JPanel(new GridBagLayout());
     private final JProgressBar progressBar = new JProgressBar(0, 100);
     private final JLabel statusLabel = new JLabel(" ");
@@ -95,6 +105,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     public SaveAsExportDialog(AEViewer viewer) {
         super("Save As");
         this.viewer = viewer;
+        setName("SaveAsExport");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         if (viewer != null) {
             setIconImage(viewer.getIconImage());
@@ -105,7 +116,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         updateHvsUi();
         updateRecordingUi(false);
         bindFilterEnabledListeners();
-        pack();
+        packDialog();
         setLocationRelativeTo(viewer);
     }
 
@@ -204,23 +215,27 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         c.gridx = 0;
         c.gridy = row;
         c.gridwidth = 3;
+        c.weightx = 1;
         useMarkersCb.setToolTipText("<html>Checked: export only the IN–OUT interval "
                 + "(unset IN = file start, unset OUT = EOF).<br>"
                 + "Unchecked: export the entire recording, ignoring markers.</html>");
-        form.add(useMarkersCb, c);
-
-        row++;
-        c.gridy = row;
         applyFiltersCb.setToolTipText("<html>Checked: run the current EventFilter chain before writing "
                 + "(same as filtered re-recording).<br>"
                 + "Unchecked: write extracted events with no filtering.<br>"
                 + "AEDAT-4 Save As is the preferred way to clip or filter a recording; "
                 + "the recording button still re-records at playback pace.</html>");
         applyFiltersCb.addItemListener(e -> updateFilterSummary());
-        form.add(applyFiltersCb, c);
+        JPanel markerRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        markerRow.setOpaque(false);
+        markerRow.add(useMarkersCb);
+        markerRow.add(applyFiltersCb);
+        form.add(markerRow, c);
+        c.gridwidth = 1;
 
         row++;
         c.gridy = row;
+        c.gridwidth = 3;
+        c.weightx = 1;
         filterSummaryLabel.setVerticalAlignment(JLabel.TOP);
         openFiltersButton.setToolTipText("Open the Filters window to enable, disable, or reorder EventFilters before saving");
         openFiltersButton.addActionListener(e -> {
@@ -231,7 +246,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         filterSummaryPanel.add(openFiltersButton, BorderLayout.EAST);
         form.add(filterSummaryPanel, c);
 
-        JPanel csvPanel = new JPanel(new GridBagLayout());
+        csvPanel = new JPanel(new GridBagLayout());
         csvPanel.setBorder(BorderFactory.createTitledBorder("CSV / text options"));
         GridBagConstraints cc = new GridBagConstraints();
         cc.anchor = GridBagConstraints.WEST;
@@ -275,43 +290,51 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         csvSpecialCb.addItemListener(hint);
         csvFlipCb.addItemListener(hint);
 
-        JPanel dsecPanel = new JPanel(new GridBagLayout());
+        dsecPanel = new JPanel(new GridBagLayout());
         dsecPanel.setBorder(BorderFactory.createTitledBorder("DSEC HDF5"));
         GridBagConstraints dc = new GridBagConstraints();
-        dc.anchor = GridBagConstraints.WEST;
-        dc.insets = new Insets(2, 2, 2, 2);
+        dc.anchor = GridBagConstraints.NORTHWEST;
+        dc.fill = GridBagConstraints.HORIZONTAL;
+        dc.weightx = 1;
+        dc.insets = new Insets(2, 4, 2, 4);
         dc.gridx = 0;
         dc.gridy = 0;
-        dsecPanel.add(new JLabel("<html>Cooked <code>/events/{p,t,x,y}</code>, <code>/ms_to_idx</code>, <code>/t_offset</code>.<br>"
-                + "Uncompressed (jHDF 0.12 has no gzip write). Width/height attributes are stored."), dc);
+        dsecPanel.add(htmlWrap("Cooked <code>/events/{p,t,x,y}</code>, <code>/ms_to_idx</code>, "
+                + "<code>/t_offset</code>. Uncompressed (jHDF 0.12 has no gzip write). "
+                + "Width/height attributes are stored."), dc);
 
-        JPanel aedat4Panel = new JPanel(new GridBagLayout());
+        aedat4Panel = new JPanel(new GridBagLayout());
         aedat4Panel.setBorder(BorderFactory.createTitledBorder("AEDAT-4"));
         GridBagConstraints ac = new GridBagConstraints();
-        ac.anchor = GridBagConstraints.WEST;
-        ac.insets = new Insets(2, 2, 2, 2);
+        ac.anchor = GridBagConstraints.NORTHWEST;
+        ac.insets = new Insets(2, 4, 2, 4);
         ac.gridx = 0;
         ac.gridy = 0;
         ac.gridwidth = 2;
-        aedat4Panel.add(new JLabel("<html>Native DV-compatible AEDAT-4 (events, frames, IMU in one file).<br>"
+        ac.weightx = 1;
+        ac.fill = GridBagConstraints.HORIZONTAL;
+        aedat4Panel.add(htmlWrap("Native DV-compatible AEDAT-4 (events, frames, IMU in one file). "
                 + "Pauses playback and scans as fast as possible — preferred over re-recording "
-                + "to clip with IN/OUT or apply EventFilters.</html>"), ac);
+                + "to clip with IN/OUT or apply EventFilters."), ac);
         ac.gridy++;
         ac.gridwidth = 1;
+        ac.weightx = 0;
+        ac.fill = GridBagConstraints.NONE;
+        ac.anchor = GridBagConstraints.WEST;
         aedat4Panel.add(new JLabel("Compression:"), ac);
         ac.gridx = 1;
+        ac.weightx = 1;
         aedat4CompressionCombo.setToolTipText("<html>DV-compatible per-packet compression.<br>"
                 + "LZ4 is best for large files. HIGH modes shrink more but take longer.</html>");
         aedat4Panel.add(aedat4CompressionCombo, ac);
 
-        optionCards.add(aedat4Panel, SaveAsOptions.Format.AEDAT4.name());
-        optionCards.add(csvPanel, SaveAsOptions.Format.CSV.name());
-        optionCards.add(dsecPanel, SaveAsOptions.Format.DSEC_H5.name());
-
         row++;
         c.gridy = row;
+        c.gridx = 0;
         c.gridwidth = 3;
-        form.add(optionCards, c);
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        form.add(optionsHost, c);
 
         hvsPanel.setBorder(BorderFactory.createTitledBorder("HVS sidecars (DAVIS / CDAVIS)"));
         GridBagConstraints hc = new GridBagConstraints();
@@ -453,10 +476,20 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     private void updateFormatUi() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
-        CardLayout cl = (CardLayout) optionCards.getLayout();
-        cl.show(optionCards, f != null ? f.name() : SaveAsOptions.Format.AEDAT4.name());
+        JPanel card = f == SaveAsOptions.Format.AEDAT4 ? aedat4Panel : null;
+        if (f == SaveAsOptions.Format.CSV) {
+            card = csvPanel;
+        } else if (f == SaveAsOptions.Format.DSEC_H5) {
+            card = dsecPanel;
+        }
+        optionsHost.removeAll();
+        if (card != null) {
+            optionsHost.add(card, BorderLayout.CENTER);
+        }
+        optionsHost.revalidate();
+        optionsHost.repaint();
         updateHvsUi();
-        pack();
+        packDialog();
     }
 
     private void updateHvsUi() {
@@ -491,7 +524,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             }
         }
         if ((wasVisible != apply || textChanged) && isDisplayable()) {
-            pack();
+            packDialog();
         }
     }
 
@@ -549,6 +582,25 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         return sb.toString();
     }
 
+    private static JLabel htmlWrap(String htmlInner) {
+        JLabel l = new JLabel(htmlWrapText(htmlInner));
+        l.setVerticalAlignment(SwingConstants.TOP);
+        return l;
+    }
+
+    private static String htmlWrapText(String htmlInner) {
+        return "<html><body width='" + HTML_BODY_WIDTH + "'>" + htmlInner + "</body></html>";
+    }
+
+    /** Pack to content, then cap width so the dialog does not grow with long paths. */
+    private void packDialog() {
+        pack();
+        Dimension s = getSize();
+        if (s.width > DIALOG_MAX_WIDTH) {
+            setSize(DIALOG_MAX_WIDTH, s.height);
+        }
+    }
+
     private void updatePathExtension() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
         if (f == null) {
@@ -575,6 +627,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         JFileChooser chooser = new JFileChooser(pathField.getText());
         if (f == SaveAsOptions.Format.AEDAT4) {
             chooser.setFileFilter(new FileNameExtensionFilter("AEDAT-4 (*.aedat4)", "aedat4"));
+        } else if (f == SaveAsOptions.Format.AEDZ) {
+            chooser.setFileFilter(new FileNameExtensionFilter("AEDZ compressed AEDAT-2 (*.aedz)", "aedz"));
         } else if (f == SaveAsOptions.Format.DSEC_H5) {
             chooser.setFileFilter(new FileNameExtensionFilter("DSEC HDF5 (*.h5, *.hdf5)", "h5", "hdf5"));
         } else {
@@ -685,6 +739,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                             + String.format("Skipped %,d bad events", r.badEvents);
                 }
                 String msg = ShowFolderSaveConfirmation.htmlSaveAsMessage(exported, after, r.sourceFileInfo);
+                viewer.rememberLastSaveAs(exported, r.sourceFileInfo);
                 dispose();
                 viewer.showSavedFileConfirmation(exported, msg);
             } catch (CancellationException | InterruptedException cancel) {

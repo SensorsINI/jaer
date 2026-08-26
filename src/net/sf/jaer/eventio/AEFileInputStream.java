@@ -152,8 +152,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /**
      * Serializable IN/OUT/other marks cached in preferences by absolute path.
-     * Shared with {@link net.sf.jaer.eventio.aedat4.Aedat4FileInputStream}.
-     * Positions are event indices for both AEDAT-2 and AEDAT-4 streams.
+     * Shared with {@link net.sf.jaer.eventio.aedat4.Aedat4FileInputStream} and
+     * {@link AEDZInputStream}. Positions are event indices for AEDAT-2,
+     * AEDAT-4, and AEDZ streams.
      */
     public static class Marks implements Serializable {
 
@@ -424,13 +425,39 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // AEPlayer.done() applies marks on the EDT after the stream is live.
     }
 
-    /** Current IN/OUT/other marks (for player UI after open). */
+    /** Current mutable IN/OUT/other marks used by legacy callers. */
     public Marks getMarks() {
         return marks;
     }
 
     private static long clamp(long value, long min, long max) {
         return Math.max(min, Math.min(value, max));
+    }
+
+    /** Defensive complete marker snapshot for temporary Save As marker bypass. */
+    @Override
+    public synchronized Marks getPlaybackMarks() {
+        Marks snapshot = new Marks();
+        snapshot.markIn = marks.markIn;
+        snapshot.markOut = marks.markOut;
+        snapshot.otherMarks.addAll(marks.otherMarks);
+        return snapshot;
+    }
+
+    /** Direct restore avoids the legacy ordinary-marker proximity toggle. */
+    @Override
+    public synchronized void restorePlaybackMarks(Marks snapshot,
+            boolean markInSet, boolean markOutSet) {
+        if (snapshot == null) {
+            return;
+        }
+        marks.markIn = snapshot.markIn;
+        marks.markOut = snapshot.markOut;
+        marks.otherMarks.clear();
+        if (snapshot.otherMarks != null) {
+            marks.otherMarks.addAll(snapshot.otherMarks);
+        }
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, getPlaybackMarks());
     }
 
     /**
