@@ -685,6 +685,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                             + String.format("Skipped %,d bad events", r.badEvents);
                 }
                 String msg = ShowFolderSaveConfirmation.htmlSaveAsMessage(exported, after, r.sourceFileInfo);
+                viewer.rememberLastSaveAs(exported, r.sourceFileInfo);
                 dispose();
                 viewer.showSavedFileConfirmation(exported, msg);
             } catch (CancellationException | InterruptedException cancel) {

@@ -474,6 +474,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Nonmodal File/Show file info window; reused while this viewer is open. */
     private JFrame fileInfoDialog;
     private JTextArea fileInfoTextArea;
+    /** Last File → Save As output, for File info input/output compression summary. */
+    private File lastSaveAsOutputFile;
+    private String lastSaveAsSourceFileInfo;
     /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
     private AEViewerPreferencesDialog preferencesDialog;
 
@@ -8242,6 +8245,52 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Remember File → Save As original vs output so File/Show file info can
+     * show both compression summaries while this export is the playing file.
+     */
+    public void rememberLastSaveAs(File outputFile, String sourceFileInfo) {
+        lastSaveAsOutputFile = outputFile != null ? outputFile.getAbsoluteFile() : null;
+        lastSaveAsSourceFileInfo = sourceFileInfo != null ? sourceFileInfo : "";
+        if (lastSaveAsOutputFile != null) {
+            try {
+                prefs.put("AEViewer.lastSaveAsOutput", lastSaveAsOutputFile.getAbsolutePath());
+                String src = lastSaveAsSourceFileInfo;
+                if (src.length() > Preferences.MAX_VALUE_LENGTH) {
+                    src = src.substring(0, Preferences.MAX_VALUE_LENGTH);
+                }
+                prefs.put("AEViewer.lastSaveAsSourceInfo", src);
+            } catch (IllegalArgumentException e) {
+                log.fine("Could not persist last Save As file info: " + e);
+            }
+        }
+    }
+
+    private String lastSaveAsSourceInfoFor(File playing) {
+        if (playing == null) {
+            return "";
+        }
+        File out = lastSaveAsOutputFile;
+        String src = lastSaveAsSourceFileInfo;
+        if (out == null) {
+            String path = prefs.get("AEViewer.lastSaveAsOutput", "");
+            if (path.isEmpty()) {
+                return "";
+            }
+            out = new File(path);
+            src = prefs.get("AEViewer.lastSaveAsSourceInfo", "");
+        }
+        if (src == null || src.isEmpty() || out == null) {
+            return "";
+        }
+        File a = playing.getAbsoluteFile();
+        File b = out.getAbsoluteFile();
+        if (!a.equals(b) && !a.getPath().equalsIgnoreCase(b.getPath())) {
+            return "";
+        }
+        return src;
+    }
+
+    /**
      * Shows the post-save confirmation dialog with Show folder / Playback / OK.
      */
     private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
@@ -9409,10 +9458,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         private void showFileInfoDialog() {
             AEFileInputStreamInterface stream = getAePlayer() == null ? null : getAePlayer().getAEInputStream();
-            String info = stream == null ? "" : stream.getFileInfo();
-            if (info == null || info.isEmpty()) {
-                info = "File info is not available for this recording format.";
-            }
+            String info = composeFileInfoText(stream);
             File f = stream == null ? null : stream.getFile();
             boolean firstShow = fileInfoDialog == null;
             if (firstShow) {
@@ -9432,6 +9478,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fileInfoDialog.getRootPane().setDefaultButton(close);
                 fileInfoDialog.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             }
+            fileInfoTextArea.setForeground(Color.BLACK);
+            fileInfoTextArea.setDisabledTextColor(Color.BLACK);
+            fileInfoTextArea.setBackground(Color.WHITE);
+            fileInfoTextArea.setOpaque(true);
+            fileInfoTextArea.setCaretColor(Color.BLACK);
             fileInfoDialog.setTitle(f != null ? "File info — " + f.getName() : "Recording file info");
             fileInfoTextArea.setText(info);
             fileInfoTextArea.setCaretPosition(0);
@@ -9458,6 +9509,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else {
                 fileInfoDialog.toFront();
             }
+        }
+
+        /**
+         * File info body: current recording, plus original vs exported compression
+         * when this file is the last File → Save As output.
+         */
+        private String composeFileInfoText(AEFileInputStreamInterface stream) {
+            String info = stream == null ? "" : stream.getFileInfo();
+            if (info == null || info.isEmpty()) {
+                info = "File info is not available for this recording format.";
+            }
+            File f = stream == null ? null : stream.getFile();
+            String source = lastSaveAsSourceInfoFor(f);
+            if (source == null || source.isEmpty()) {
+                return info;
+            }
+            return "Original (input)\n" + source + "\n\nExported (output)\n" + info;
         }
 
     /**

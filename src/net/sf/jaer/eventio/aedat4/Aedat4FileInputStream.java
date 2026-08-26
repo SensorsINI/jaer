@@ -116,6 +116,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private long eventCount;
     private long frameCount;
     private long imuSampleCount;
+    /**
+     * Sum of on-disk packet payload sizes. {@code -1} until {@link #ensurePayloadCompressionStats()}.
+     */
+    private long cachedCompressedPayloadBytes = -1;
+    /**
+     * Uncompressed FlatBuffer payload bytes from codec headers.
+     * {@code -1} not computed; {@code -2} headers do not store the size.
+     */
+    private long cachedUncompressedPayloadBytes = -1;
 
     /**
      * Synthetic clock when the file has frames/IMU but no polarity events.
@@ -227,10 +236,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     /**
      * Summary of this AEDAT-4 recording: event/frame/IMU counts, duration,
-     * on-disk size, and packet-payload compression when it can be computed
-     * without decoding the file. Uncompressed FlatBuffer totals are not stored
-     * in AEDAT-4, so the percentage vs raw is omitted unless the file is
-     * uncompressed ({@code NONE}).
+     * on-disk size, and packet-payload compression vs uncompressed FlatBuffers
+     * when codec headers store the original size (ZSTD; LZ4 written by current jAER).
      */
     @Override
     public String getFileInfo() {
@@ -252,19 +259,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
                 durationStr));
-        long payloads = sumPayloadBytes(eventRefs) + sumPayloadBytes(frameRefs) + sumPayloadBytes(imuRefs);
         if (file != null) {
-            sb.append(String.format("\nSize: %sB", eng.format((double) file.length()).trim()));
+            sb.append(String.format("\nSize: %sB on disk", eng.format((double) file.length()).trim()));
         }
-        if (payloads > 0) {
-            if (compression == CompressionType.NONE) {
-                sb.append(String.format("; uncompressed packet payloads %sB",
-                        eng.format((double) payloads).trim()));
-            } else {
-                sb.append(String.format("; packet payloads %sB (%s)",
-                        eng.format((double) payloads).trim(),
-                        Aedat4Compression.nameOf(compression)));
-            }
+        ensurePayloadCompressionStats();
+        String compressionLine = Aedat4Compression.formatPayloadCompression(
+                compression, cachedUncompressedPayloadBytes > 0 ? cachedUncompressedPayloadBytes : -1,
+                cachedCompressedPayloadBytes);
+        if (!compressionLine.isEmpty()) {
+            sb.append('\n').append(compressionLine);
         }
         sb.append(String.format("\nStream %d%s, %d EVTS packets indexed",
                 eventStreamId,
@@ -274,6 +277,77 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             sb.append("\nChip: ").append(chip.getClass().getSimpleName());
         }
         return sb.toString();
+    }
+
+    /**
+     * Sum compressed payload sizes; peek ZSTD/LZ4 frame headers for uncompressed size.
+     * Positional {@link FileChannel} reads do not move the playback cursor.
+     */
+    private void ensurePayloadCompressionStats() {
+        if (cachedCompressedPayloadBytes >= 0) {
+            return;
+        }
+        cachedCompressedPayloadBytes = sumPayloadBytes(eventRefs)
+                + sumPayloadBytes(frameRefs) + sumPayloadBytes(imuRefs);
+        if (compression == CompressionType.NONE) {
+            cachedUncompressedPayloadBytes = cachedCompressedPayloadBytes;
+            return;
+        }
+        if (channel == null || !channel.isOpen()) {
+            cachedUncompressedPayloadBytes = -2;
+            return;
+        }
+        ByteBuffer peek = ByteBuffer.allocate(Aedat4Compression.UNCOMPRESSED_SIZE_HEADER_BYTES);
+        long uncompressed = 0;
+        long fromEvents = uncompressedFromRefs(eventRefs, peek);
+        if (fromEvents < 0) {
+            cachedUncompressedPayloadBytes = -2;
+            return;
+        }
+        uncompressed += fromEvents;
+        long fromFrames = uncompressedFromRefs(frameRefs, peek);
+        if (fromFrames < 0) {
+            cachedUncompressedPayloadBytes = -2;
+            return;
+        }
+        uncompressed += fromFrames;
+        long fromImu = uncompressedFromRefs(imuRefs, peek);
+        if (fromImu < 0) {
+            cachedUncompressedPayloadBytes = -2;
+            return;
+        }
+        cachedUncompressedPayloadBytes = uncompressed + fromImu;
+    }
+
+    /** Sum of uncompressed payload sizes, or {@code -1} if any packet header omits it. */
+    private long uncompressedFromRefs(PacketRef[] refs, ByteBuffer peek) {
+        if (refs == null || refs.length == 0) {
+            return 0;
+        }
+        long n = 0;
+        for (PacketRef r : refs) {
+            if (r.payloadSize <= 0) {
+                continue;
+            }
+            peek.clear();
+            peek.limit(Math.min(peek.capacity(), r.payloadSize));
+            int read;
+            try {
+                read = channel.read(peek, r.payloadOffset);
+            } catch (IOException e) {
+                log.log(Level.FINE, "Could not peek AEDAT-4 payload header at " + r.payloadOffset, e);
+                return -1;
+            }
+            if (read <= 0) {
+                return -1;
+            }
+            long u = Aedat4Compression.uncompressedSize(peek.array(), 0, read, compression, r.payloadSize);
+            if (u < 0) {
+                return -1;
+            }
+            n += u;
+        }
+        return n;
     }
 
     private static long sumPayloadBytes(PacketRef[] refs) {
