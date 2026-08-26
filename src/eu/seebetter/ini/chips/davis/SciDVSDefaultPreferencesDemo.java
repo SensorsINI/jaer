@@ -1,6 +1,6 @@
 /*
  * U1 decision-grade RED test for the SciDVS canonical-config TDD contract
- * (plan todo 6: "Import exactly SciDVS_sensitive_highVgMfb.xml ... set it as the
+ * (plan todo 6: "Import exactly SciDVS.xml ... set it as the
  * SciDVS default ... first-use load").
  *
  * A real SciDVSConfig is constructed around an Objenesis-created SciDVS so the
@@ -10,11 +10,8 @@
  * Biasgen.importPreferences (batch-edit, pot load) rather than the raw
  * Preferences.importPreferences fallback.
  *
- * The canonical asset biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml is
- * ABSENT on this base branch (SciDVS.java sets setDefaultPreferencesFile(null)),
- * so the explicit-path and fresh-first-use scenarios correctly fail RED against
- * the unchanged base. The remaining scenarios characterize base behaviour that
- * already holds and must keep holding.
+ * The canonical asset is biasgenSettings/SciDVS/SciDVS.xml
+ * (SciDVS_mirrAmp_very_sensitive2 from origin/scidvs), remounted under jaer/chips/SciDVS.
  *
  * Usage: SciDVSDefaultPreferencesDemo <scenario> [<scenario> ...]
  *   explicit-path | fresh-first-use | no-overwrite | second-call-idempotent
@@ -44,7 +41,7 @@ import org.objenesis.ObjenesisStd;
 public class SciDVSDefaultPreferencesDemo {
 
     private static final String PREFS_PATH = "jaer/chips/SciDVS";
-    private static final String DESIRED_PATH = "biasgenSettings/SciDVS/SciDVS_sensitive_highVgMfb.xml";
+    private static final String DESIRED_PATH = "biasgenSettings/SciDVS/SciDVS.xml";
     private static final String EXPOSURE_KEY = "APS.Exposure";
     private static final String DVS_RUN_KEY = "DVS.Run";
     private static final String EXPECTED_EXPOSURE = "5000";
