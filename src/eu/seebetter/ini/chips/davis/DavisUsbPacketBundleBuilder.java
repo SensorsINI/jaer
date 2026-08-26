@@ -297,9 +297,11 @@ public class DavisUsbPacketBundleBuilder {
     /** Records an incomplete IMU sample exactly only when its start was observed. */
     public void onIncompleteImuSample(final String reason) {
         if (imuAssemblyInProgress) {
-            recordExactLoss(PacketType.IMU6, 1, reason);
+            recordExactLoss(PacketType.IMU6,
+                    AcquisitionMetadata.LossKind.PARTIAL_IMU, 1, reason);
         } else {
             recordUnquantifiedLoss(PacketType.IMU6,
+                    AcquisitionMetadata.LossKind.PARTIAL_IMU,
                     reason + "; no tracked IMU start, count unavailable");
         }
         imuAssemblyInProgress = false;
@@ -324,15 +326,18 @@ public class DavisUsbPacketBundleBuilder {
     public void onTimestampReset(final boolean imuStateUnknown) {
         flushAll();
         if (frameAssembler != null && frameAssembler.isInFrame()) {
-            recordExactLoss(PacketType.FRAME, 1,
+            recordExactLoss(PacketType.FRAME,
+                    AcquisitionMetadata.LossKind.PARTIAL_FRAME, 1,
                     "timestamp reset discarded one incomplete frame");
             frameAssembler.reset();
         }
         if (imuAssemblyInProgress) {
-            recordExactLoss(PacketType.IMU6, 1,
+            recordExactLoss(PacketType.IMU6,
+                    AcquisitionMetadata.LossKind.PARTIAL_IMU, 1,
                     "timestamp reset discarded one incomplete IMU sample");
         } else if (imuStateUnknown) {
             recordUnquantifiedLoss(PacketType.IMU6,
+                    AcquisitionMetadata.LossKind.PARTIAL_IMU,
                     "timestamp reset may have discarded decoder IMU assembly state; count unavailable");
         }
         imuAssemblyInProgress = false;
@@ -376,25 +381,27 @@ public class DavisUsbPacketBundleBuilder {
             return;
         }
         for (final var loss : pendingHostCapacityLoss.entrySet()) {
-            metadata.recordExactLoss(loss.getKey(), loss.getValue(),
+            metadata.recordExactLoss(loss.getKey(),
+                    AcquisitionMetadata.LossKind.HOST_CAPACITY, loss.getValue(),
                     "authoritative typed host capacity exhausted");
         }
         pendingHostCapacityLoss.clear();
     }
 
-    private void recordExactLoss(final PacketType packetType, final long count,
+    private void recordExactLoss(final PacketType packetType,
+            final AcquisitionMetadata.LossKind kind, final long count,
             final String reason) {
         final AcquisitionMetadata metadata = out == null ? null : out.getAcquisitionMetadata();
         if (metadata != null) {
-            metadata.recordExactLoss(packetType, count, reason);
+            metadata.recordExactLoss(packetType, kind, count, reason);
         }
     }
 
     private void recordUnquantifiedLoss(final PacketType packetType,
-            final String reason) {
+            final AcquisitionMetadata.LossKind kind, final String reason) {
         final AcquisitionMetadata metadata = out == null ? null : out.getAcquisitionMetadata();
         if (metadata != null) {
-            metadata.recordUnquantifiedLoss(packetType, reason);
+            metadata.recordUnquantifiedLoss(packetType, kind, reason);
         }
     }
 
