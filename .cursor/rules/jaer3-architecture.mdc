@@ -1,0 +1,13 @@
+---
+description: jAER 3 pipeline architecture (PacketBundle, ViewLoop, FilterChain, USB live path, chips, rendering). Attach when those areas change.
+globs: src/**/*.java
+alwaysApply: false
+---
+
+# jAER 3 architecture
+
+Canonical pipeline (do not duplicate it here): @docs/README-jaer3.md
+
+USB enumeration, Interface menu, and EDT rules: `docs/README-usb.md` — read that file when touching `hardwareinterface` or live USB.
+
+Do not copy this architecture into Cursor **User Rules** (those apply to every project on this machine).

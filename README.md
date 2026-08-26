@@ -152,6 +152,8 @@ jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works 
 
 Ask the agent for Ant targets, chip/filter code under `src/`, and device USB notes rather than inventing a Maven layout.
 
+Agent chats load a short pipeline map from [`AGENTS.md`](AGENTS.md) and attach [`docs/README-jaer3.md`](docs/README-jaer3.md) when Java under `src/` is in context. How that is wired, and how to confirm it on another computer: [`docs/README-cursor-jaer-rules-setup.md`](docs/README-cursor-jaer-rules-setup.md).
+
 ## Code signing policy
 
 Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org/).

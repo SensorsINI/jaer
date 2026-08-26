@@ -392,3 +392,4 @@ update the active chip). The user can cancel or load anyway.
 
 - [README-usb.md](README-usb.md) — USB enumeration, Interface menu, EDT rules, per-camera libusb quirks.
 - [CDAVIS_GPU_DEMOSAIC.md](CDAVIS_GPU_DEMOSAIC.md) — GPU demosaic / color display path (orthogonal to PacketBundle).
+- [README-cursor-jaer-rules-setup.md](README-cursor-jaer-rules-setup.md) — Cursor Agent loads this file via `AGENTS.md` and `.cursor/rules/jaer3-architecture.mdc`.
