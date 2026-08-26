@@ -81,6 +81,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
     private int[] tsBuf = new int[CHUNK_EVENTS];
     private int bufCount = 0;
     private boolean closed = false;
+    private long timestampEpoch = -1L;
 
     // Tracking
     private long totalEvents = 0;
@@ -273,9 +274,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      * @throws IOException on write error
      */
     public synchronized void writePacket(AEPacketRaw ae) throws IOException {
-        if (closed) {
-            throw new IOException("AEDZOutputStream is closed");
-        }
+        ensureOpen();
         if (ae == null) {
             return;
         }
@@ -288,16 +287,52 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         int[] ts = ae.getTimestamps();
 
         for (int i = 0; i < n; i++) {
-            addrBuf[bufCount] = addr[i];
-            tsBuf[bufCount] = ts[i];
-            bufCount++;
+            appendEvent(addr[i], ts[i]);
+        }
+    }
 
-            // Update CRC32 as if writing AEDAT-2 (little-endian addr+ts pairs).
-            updateCRC(addr[i], ts[i]);
+    /**
+     * Starts or continues a typed timestamp epoch. Changing from one assigned
+     * epoch to another flushes the current partial chunk so timestamp deltas do
+     * not cross the reset boundary. Package-private for typed writer adapters;
+     * it does not add any field to the AEDZ format.
+     */
+    synchronized void beginTimestampEpoch(final long newTimestampEpoch) throws IOException {
+        ensureOpen();
+        if (newTimestampEpoch < 0) {
+            throw new IllegalArgumentException("timestamp epoch must be non-negative");
+        }
+        if (timestampEpoch >= 0 && timestampEpoch != newTimestampEpoch) {
+            flushChunk();
+        }
+        timestampEpoch = newTimestampEpoch;
+    }
 
-            if (bufCount >= CHUNK_EVENTS) {
-                flushChunk();
-            }
+    /**
+     * Writes one address/timestamp pair through the same buffering, checksum,
+     * and chunking path as {@link #writePacket(AEPacketRaw)}. Package-private so
+     * typed adapters can stream events without constructing a raw packet.
+     */
+    synchronized void writeEvent(final int address, final int timestamp) throws IOException {
+        ensureOpen();
+        appendEvent(address, timestamp);
+    }
+
+    private void appendEvent(final int address, final int timestamp) throws IOException {
+        addrBuf[bufCount] = address;
+        tsBuf[bufCount] = timestamp;
+        bufCount++;
+
+        updateCRC(address, timestamp);
+
+        if (bufCount >= CHUNK_EVENTS) {
+            flushChunk();
+        }
+    }
+
+    private void ensureOpen() throws IOException {
+        if (closed) {
+            throw new IOException("AEDZOutputStream is closed");
         }
     }
 
