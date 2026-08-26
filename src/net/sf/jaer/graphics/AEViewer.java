@@ -141,6 +141,7 @@ import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -189,6 +190,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.SciDVSReplugDecision;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
@@ -1439,12 +1441,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
 
-        // Prefer remembered AEChip before any USB I/O. Interface→select runs on the
-        // EDT; probeSciDVS opens LibUsb with infinite control-transfer timeout and
-        // freezes the UI if another camera is mid-open (see jAER-0.log hang).
-        String deviceKey = liveDevicePromptKey(hw, ids);
-        Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, found);
-        if (remembered != null) {
+        boolean sharedPidAmbiguity = SciDVSReplugDecision.isSharedPidAmbiguity(
+                hw instanceof DAViSFX3HardwareInterface, found, SciDVS.class);
+        SciDVSReplugDecision.PreferenceStore liveChipPreferences
+                = liveChipPreferenceStore();
+        SciDVSReplugDecision.Result decision = SciDVSReplugDecision.resolve(
+                hw instanceof DAViSFX3HardwareInterface,
+                SwingUtilities.isEventDispatchThread(),
+                found,
+                SciDVS.class,
+                () -> ((DAViSFX3HardwareInterface) hw).probeSciDVSByFpgaGeometry(),
+                () -> liveDevicePromptKey(hw, ids),
+                ids.key(),
+                liveDevicePromptKey(hw, ids),
+                liveChipPreferences,
+                LIVE_CHIP_REMEMBERED_PREF_PREFIX,
+                LIVE_CHIP_DEFAULT_PREF_PREFIX);
+        String deviceKey = decision.deviceKey();
+        found = new java.util.ArrayList<>(decision.candidates());
+
+        if (decision.probeFailure() != null) {
+            log.info("Could not read FPGA DVS geometry for USB device " + ids.key()
+                    + "; retaining normal AEChip selection: "
+                    + decision.probeFailure().getMessage());
+        } else if (sharedPidAmbiguity && SwingUtilities.isEventDispatchThread()) {
+            log.info("Skipping SciDVS FPGA probe on EDT for USB " + ids.key()
+                    + " (using immediate remembered/current/chooser fallback; avoids LibUsb hang)");
+        }
+
+        if (decision.selectionReason()
+                == SciDVSReplugDecision.SelectionReason.DEFINITIVE_SCIDVS) {
+            liveChipOfferPromptedKeys.add(deviceKey);
+            addChipClassesToMenu(java.util.Collections.singletonList(SciDVS.class));
+            if (!SciDVS.class.equals(getAeChipClass())) {
+                log.info("FPGA DVS geometry identifies SciDVS for USB device " + deviceKey);
+                setAeChipClass(SciDVS.class);
+            }
+            return;
+        }
+        if (decision.selectionReason()
+                == SciDVSReplugDecision.SelectionReason.REMEMBERED) {
+            Class<? extends AEChip> remembered = decision.selectedChip();
             liveChipOfferPromptedKeys.add(deviceKey);
             if (!remembered.equals(getAeChipClass())) {
                 log.info("Using remembered AEChip " + remembered.getSimpleName()
@@ -1452,35 +1489,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setAeChipClass(remembered);
             }
             return;
-        }
-
-        // DAVIS and SciDVS share VID/PID. Probe FPGA geometry only off the EDT
-        // (ViewLoop auto-open). On the EDT, fall through to the chooser.
-        if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface
-                && !SwingUtilities.isEventDispatchThread()) {
-            try {
-                if (((DAViSFX3HardwareInterface) hw).probeSciDVSByFpgaGeometry()) {
-                    // Probe opens the interface so serial is available for prefs.
-                    deviceKey = liveDevicePromptKey(hw, ids);
-                    liveChipOfferPromptedKeys.add(deviceKey);
-                    addChipClassesToMenu(java.util.Collections.singletonList(SciDVS.class));
-                    if (!SciDVS.class.equals(getAeChipClass())) {
-                        log.info("FPGA DVS geometry identifies SciDVS for USB device " + deviceKey);
-                        setAeChipClass(SciDVS.class);
-                    }
-                    return;
-                }
-                found = new java.util.ArrayList<>(found);
-                found.remove(SciDVS.class);
-                deviceKey = liveDevicePromptKey(hw, ids);
-            } catch (HardwareInterfaceException | RuntimeException e) {
-                log.info("Could not read FPGA DVS geometry for USB device " + ids.key()
-                        + "; retaining normal AEChip selection: " + e.getMessage());
-            }
-        } else if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface
-                && SwingUtilities.isEventDispatchThread()) {
-            log.info("Skipping SciDVS FPGA probe on EDT for USB " + ids.key()
-                    + " (use remembered AEChip or chooser; avoids LibUsb hang)");
         }
 
         final java.util.List<Class<? extends AEChip>> matches = found;
@@ -1605,13 +1613,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    /**
-     * Loads a previously remembered AEChip for {@code deviceKey} if it is still
-     * among the VID/PID matches (silent auto-apply).
-     */
-    private Class<? extends AEChip> loadRememberedLiveChip(String deviceKey,
-            java.util.List<Class<? extends AEChip>> matches) {
-        return loadLiveChipPref(LIVE_CHIP_REMEMBERED_PREF_PREFIX, deviceKey, matches, true);
+    private SciDVSReplugDecision.PreferenceStore liveChipPreferenceStore() {
+        return new SciDVSReplugDecision.PreferenceStore() {
+            @Override
+            public String get(String key) {
+                return prefs.get(key, null);
+            }
+
+            @Override
+            public void remove(String key) {
+                prefs.remove(key);
+            }
+        };
     }
 
     /**
@@ -2378,7 +2391,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             String deviceKey = liveDevicePromptKey(hw, ids);
-            Class<? extends AEChip> chosen = loadRememberedLiveChip(deviceKey, matches);
+            SciDVSReplugDecision.StartupResult startupDecision
+                    = SciDVSReplugDecision.resolveStartup(
+                            hw instanceof DAViSFX3HardwareInterface,
+                            matches,
+                            SciDVS.class,
+                            liveChipPreferenceStore(),
+                            LIVE_CHIP_REMEMBERED_PREF_PREFIX,
+                            deviceKey);
+            if (startupDecision.skippedSharedPidAmbiguity()) {
+                log.info("Startup: deferring shared DAVIS/SciDVS USB " + ids.key()
+                        + " to the normal off-EDT geometry fingerprint");
+                return;
+            }
+            Class<? extends AEChip> chosen = startupDecision.selectedChip();
             if (chosen == null && matches.size() == 1
                     && (aeChipClass == null || !matches.get(0).equals(aeChipClass))) {
                 chosen = matches.get(0);
@@ -2575,9 +2601,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     closeHardwareInterfaceWithTimeout(previous, closeWait, "Switch interface");
                                 }
                             }
-                            // Chip chooser / SciDVS probe / bind must stay on the EDT.
-                            // Off-EDT open with a timeout abandoned mid-dialog and left the
-                            // wrong AEChip bound (see jAER log: Not binding … to Prophesee…).
+                            // Chip chooser and bind stay on the EDT. Compatibility keeps
+                            // the immediate fallback here but skips the SciDVS USB probe;
+                            // normal ViewLoop/hotplug discovery fingerprints off the EDT.
                             ensureChipCompatibleWithLiveDevice(hw);
                             if (chip.getHardwareInterface() == null) {
                                 HardwareInterface bind = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
@@ -5565,7 +5591,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         showFileInfoMenuItem.setMnemonic('I');
         showFileInfoMenuItem.setText("Show file info...");
-        showFileInfoMenuItem.setToolTipText("Show summary information about the recording being played (AEDAT-4)");
+        showFileInfoMenuItem.setToolTipText("Show summary information about the recording being played (AEDAT-4 or AEDZ)");
         showFileInfoMenuItem.setEnabled(false);
         showFileInfoMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -5589,7 +5615,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 java.awt.event.InputEvent.CTRL_DOWN_MASK | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         saveAsMenuItem.setMnemonic('A');
         saveAsMenuItem.setText("Save As...");
-        saveAsMenuItem.setToolTipText("Export the open recording to AEDAT-4, CSV/text, or DSEC HDF5 (playback only)");
+        saveAsMenuItem.setToolTipText("Export the open recording to AEDAT-4, AEDZ, CSV/text, or DSEC HDF5 (playback only)");
         saveAsMenuItem.setEnabled(false);
         saveAsMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -7946,7 +7972,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             aedat4RecordingOutputStream = null;
                         } else if (aedzRecordingOutputStream != null) {
                             aedzRecordingOutputStream.close();
-                            fileInfo = aedzRecordingOutputStream.toString();
+                            fileInfo = aedzRecordingOutputStream.toString() + "\n"
+                                    + aedzRecordingOutputStream.formatCompressionSummary();
                             aedzRecordingOutputStream = null;
                         } else {
                             recordingOutputStream.close();
@@ -9447,13 +9474,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showFileInfoMenuItem.setEnabled(isShowFileInfoAvailable());
         }
 
-        /** AEDAT-4 playback only; other formats return an empty {@code getFileInfo()}. */
+        /** AEDAT-4 and AEDZ expose detailed recording statistics. */
         private boolean isShowFileInfoAvailable() {
             if (getPlayMode() != PlayMode.PLAYBACK || getAePlayer() == null) {
                 return false;
             }
-            AEFileInputStreamInterface stream = getAePlayer().getAEInputStream();
-            return stream instanceof Aedat4FileInputStream;
+            return supportsFileInfo(getAePlayer().getAEInputStream());
+        }
+
+        static boolean supportsFileInfo(AEFileInputStreamInterface stream) {
+            return stream instanceof Aedat4FileInputStream || stream instanceof AEDZInputStream;
         }
 
         private void showFileInfoDialog() {

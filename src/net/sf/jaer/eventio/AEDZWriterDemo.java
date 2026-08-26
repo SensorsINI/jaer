@@ -51,6 +51,8 @@ public class AEDZWriterDemo {
         normalCloseClosesTrackingStreamOnce();
         closeIdempotenceAndWriteAfterClose();
         explicitSnapshotMetadata();
+        compressionStatisticsContract();
+        emptyCompressionStatisticsContract();
         System.out.println("ALL AEDZ WRITER TESTS PASS");
     }
 
@@ -425,6 +427,110 @@ public class AEDZWriterDemo {
         @Override protected AbstractPreferences childSpi(String name) { return new MapBackedPreferences(this, name); }
         @Override protected void syncSpi() throws BackingStoreException { }
         @Override protected void flushSpi() throws BackingStoreException { }
+    }
+
+    /** Writer statistics count only event bytes and compressed planes, never AEDZ framing. */
+    private static void compressionStatisticsContract() throws Exception {
+        final int n = 257;
+        AEPacketRaw packet = makePacket(n, 23);
+        File file = tempFile();
+        AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null);
+        try {
+            out.writePacket(packet);
+        } finally {
+            out.close();
+        }
+        byte[] bytes = readAll(file);
+        long compressedPlanes = 0;
+        int chunks = leInt(bytes, 16);
+        int pos = firstChunkOffset(bytes);
+        for (int c = 0; c < chunks; c++) {
+            int chunkDataSize = leInt(bytes, pos + 4);
+            for (int plane = 0; plane < 8; plane++) {
+                compressedPlanes += Integer.toUnsignedLong(leInt(bytes, pos + 8 + 4 * plane));
+            }
+            pos += 8 + chunkDataSize;
+        }
+        long onDisk = requiredLong(out, "getOnDiskFileSizeBytes");
+        long uncompressed = requiredLong(out, "getUncompressedPayloadBytes");
+        long compressed = requiredLong(out, "getCompressedPlanePayloadBytes");
+        double percentage = requiredDouble(out, "getCompressedPayloadPercentage");
+        double ratio = requiredDouble(out, "getUncompressedToCompressedRatio");
+        String summary = String.valueOf(requiredInvoke(out, "formatCompressionSummary"));
+        assertTrue(onDisk == bytes.length, "full on-disk size is reported separately");
+        assertTrue(uncompressed == 8L * n, "uncompressed event payload is exactly 8 bytes/event");
+        assertTrue(compressed == compressedPlanes, "compressed payload is exactly the eight plane-size sum");
+        assertTrue(Math.abs(percentage - (100.0 * compressed / uncompressed)) < 1e-9,
+                "compressed percentage matches compressed/uncompressed payload bytes");
+        assertTrue(Math.abs(ratio - (uncompressed / (double) compressed)) < 1e-9,
+                "uncompressed:compressed ratio matches payload bytes");
+        assertTrue(summary.contains("File size:") && summary.contains("Plane payloads:")
+                && summary.contains("% of uncompressed") && summary.contains(":1"),
+                "writer summary exposes file size, payload bytes, percentage, and ratio");
+        assertTrue(summary.contains(String.format("%.3f%% of uncompressed", percentage)),
+                "writer summary formats payload percentage to three decimals");
+        assertTrue(summary.contains(String.format("%.3f:1", ratio)),
+                "writer summary formats uncompressed:compressed ratio to three decimals");
+        assertReaderStatisticsMatch(file, out, n, compressedPlanes, summary);
+        System.out.println("PASS compressionStatisticsContract writer/reader file=" + onDisk
+                + " raw=" + uncompressed + " compressedPlanes=" + compressed);
+        file.delete();
+    }
+
+    /** Empty AEDZ statistics use zero payload bytes, 0%, and the documented neutral 1:1 ratio. */
+    private static void emptyCompressionStatisticsContract() throws Exception {
+        File file = tempFile();
+        AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null);
+        out.close();
+        String summary = out.formatCompressionSummary();
+        assertTrue(out.getOnDiskFileSizeBytes() == file.length(), "empty writer reports complete file size");
+        assertTrue(out.getUncompressedPayloadBytes() == 0, "empty writer reports zero uncompressed bytes");
+        assertTrue(out.getCompressedPlanePayloadBytes() == 0, "empty writer reports zero plane bytes");
+        assertTrue(out.getCompressedPayloadPercentage() == 0, "empty writer reports 0% payload");
+        assertTrue(out.getUncompressedToCompressedRatio() == 1.0, "empty writer reports neutral 1:1 ratio");
+        assertTrue(summary.contains("0.000% of uncompressed") && summary.contains("1.000:1"),
+                "empty writer summary formats 0% and 1:1 explicitly");
+        assertReaderStatisticsMatch(file, out, 0, 0, summary);
+        System.out.println("PASS emptyCompressionStatisticsContract writer/reader zero-event parity");
+        file.delete();
+    }
+
+    private static void assertReaderStatisticsMatch(File file, AEDZOutputStream writer, long events,
+            long compressedPlanes, String writerSummary) throws Exception {
+        try (AEDZInputStream reader = new AEDZInputStream(file)) {
+            assertTrue(reader.getOnDiskFileSizeBytes() == writer.getOnDiskFileSizeBytes(),
+                    "reader/writer full on-disk byte counts match");
+            assertTrue(reader.getUncompressedPayloadBytes() == writer.getUncompressedPayloadBytes()
+                    && reader.getUncompressedPayloadBytes() == 8L * events,
+                    "reader/writer uncompressed byte counts match exactly");
+            assertTrue(reader.getCompressedPlanePayloadBytes() == writer.getCompressedPlanePayloadBytes()
+                    && reader.getCompressedPlanePayloadBytes() == compressedPlanes,
+                    "reader/writer compressed plane byte counts match exactly");
+            assertTrue(Double.compare(reader.getCompressedPayloadPercentage(),
+                    writer.getCompressedPayloadPercentage()) == 0,
+                    "reader/writer payload percentages match exactly");
+            assertTrue(Double.compare(reader.getUncompressedToCompressedRatio(),
+                    writer.getUncompressedToCompressedRatio()) == 0,
+                    "reader/writer payload ratios match exactly");
+            assertTrue(writerSummary.equals(reader.formatCompressionSummary()),
+                    "reader/writer formatted percentage and ratio summaries match exactly");
+        }
+    }
+
+    private static Object requiredInvoke(Object target, String method) throws Exception {
+        try {
+            return target.getClass().getMethod(method).invoke(target);
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError("missing required AEDZ statistics method " + method, e);
+        }
+    }
+
+    private static long requiredLong(Object target, String method) throws Exception {
+        return ((Number) requiredInvoke(target, method)).longValue();
+    }
+
+    private static double requiredDouble(Object target, String method) throws Exception {
+        return ((Number) requiredInvoke(target, method)).doubleValue();
     }
 
     private static byte[] readAll(File f) throws IOException {

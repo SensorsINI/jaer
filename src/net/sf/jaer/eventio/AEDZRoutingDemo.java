@@ -10,6 +10,8 @@ import java.lang.reflect.Method;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.DATFileFilter;
+import net.sf.jaer.eventio.export.SaveAsExporter;
+import net.sf.jaer.eventio.export.SaveAsOptions;
 
 /**
  * Headless production-path test for wiring the AEDZ compressed recording
@@ -44,6 +46,7 @@ public class AEDZRoutingDemo {
         aedzOpenRouting();
         rejectUnknownExtension();
         aedat2NotCapturedByAedzBranch();
+        saveAsAedzRouting();
         System.out.println("ALL AEDZ ROUTING TESTS PASS");
     }
 
@@ -160,6 +163,44 @@ public class AEDZRoutingDemo {
                         && !AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals("4.0"),
                 "aedz sentinel != 2.0/4.0, so legacy version routing is unaffected");
         System.out.println("PASS legacy formats not captured by AEDZ routing branch");
+    }
+
+    /** File -> Save As exposes AEDZ and opens the real AEDZ writer used by the export loop. */
+    private static void saveAsAedzRouting() throws Exception {
+        SaveAsOptions.Format format;
+        try {
+            format = SaveAsOptions.Format.valueOf("AEDZ");
+        } catch (IllegalArgumentException e) {
+            throw new AssertionError("File -> Save As is missing the AEDZ output format", e);
+        }
+        assertTrue("aedz".equals(format.extension) && format.label.contains("AEDZ"),
+                "Save As AEDZ choice has the user-facing label and extension");
+        Method factory;
+        try {
+            factory = SaveAsExporter.class.getDeclaredMethod("openAedzOutputStream", File.class, AEChip.class);
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError("Save As lacks a real AEDZ output-stream path", e);
+        }
+        factory.setAccessible(true);
+        File file = tempFile(".aedz");
+        file.delete();
+        AEPacketRaw source = makePacket(11, 5);
+        AEDZOutputStream out = (AEDZOutputStream) factory.invoke(null, file, null);
+        try (out) {
+            out.writePacket(source);
+        }
+        try (AEDZInputStream in = new AEDZInputStream(file)) {
+            AEPacketRaw got = in.readPacketByNumber(11);
+            assertTrue(got.getNumEvents() == 11, "Save As AEDZ writer emits a readable recording");
+            for (int i = 0; i < 11; i++) {
+                assertTrue(got.getAddresses()[i] == source.getAddresses()[i]
+                        && got.getTimestamps()[i] == source.getTimestamps()[i],
+                        "Save As AEDZ preserves address/timestamp at " + i);
+            }
+        } finally {
+            file.delete();
+        }
+        System.out.println("PASS File -> Save As AEDZ menu and real writer routing");
     }
 
     private static AEPacketRaw makePacket(int n, int seed) throws IOException {

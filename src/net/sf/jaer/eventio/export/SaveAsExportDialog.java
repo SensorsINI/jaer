@@ -476,7 +476,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     private void updateFormatUi() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
-        JPanel card = aedat4Panel;
+        JPanel card = f == SaveAsOptions.Format.AEDAT4 ? aedat4Panel : null;
         if (f == SaveAsOptions.Format.CSV) {
             card = csvPanel;
         } else if (f == SaveAsOptions.Format.DSEC_H5) {
@@ -627,6 +627,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         JFileChooser chooser = new JFileChooser(pathField.getText());
         if (f == SaveAsOptions.Format.AEDAT4) {
             chooser.setFileFilter(new FileNameExtensionFilter("AEDAT-4 (*.aedat4)", "aedat4"));
+        } else if (f == SaveAsOptions.Format.AEDZ) {
+            chooser.setFileFilter(new FileNameExtensionFilter("AEDZ compressed AEDAT-2 (*.aedz)", "aedz"));
         } else if (f == SaveAsOptions.Format.DSEC_H5) {
             chooser.setFileFilter(new FileNameExtensionFilter("DSEC HDF5 (*.h5, *.hdf5)", "h5", "hdf5"));
         } else {

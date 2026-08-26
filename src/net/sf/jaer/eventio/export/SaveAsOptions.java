@@ -10,6 +10,7 @@ public final class SaveAsOptions {
 
     public enum Format {
         AEDAT4("AEDAT-4", "aedat4"),
+        AEDZ("AEDZ compressed AEDAT-2", "aedz"),
         CSV("CSV / text", "csv"),
         DSEC_H5("DSEC HDF5", "h5");
 
