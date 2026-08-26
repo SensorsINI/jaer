@@ -789,7 +789,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 return false;
             }
             for (final AcquisitionMetadata.LossRecord loss : metadata.getLossRecords()) {
-                if (loss.getReason().contains("host capacity")) {
+                if (loss.getKind() == AcquisitionMetadata.LossKind.HOST_CAPACITY) {
                     return true;
                 }
             }

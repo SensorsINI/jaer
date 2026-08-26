@@ -28,29 +28,46 @@ public final class AcquisitionMetadata {
         UNQUANTIFIED
     }
 
+    /** Machine-readable cause of source-side data loss. */
+    public enum LossKind {
+        HOST_CAPACITY,
+        DEVICE_REPORTED,
+        PARTIAL_FRAME,
+        PARTIAL_IMU,
+        MALFORMED_INPUT,
+        UNKNOWN
+    }
+
     /** Immutable description of source-side data loss. */
     public static final class LossRecord {
 
         private final PacketType packetType;
+        private final LossKind kind;
         private final LossQuantification quantification;
         private final long exactCount;
         private final String reason;
 
-        private LossRecord(final PacketType packetType,
+        private LossRecord(final PacketType packetType, final LossKind kind,
                 final LossQuantification quantification, final long exactCount,
                 final String reason) {
             this.packetType = packetType;
+            this.kind = kind;
             this.quantification = quantification;
             this.exactCount = exactCount;
             this.reason = reason;
         }
 
         private LossRecord(final LossRecord source) {
-            this(source.packetType, source.quantification, source.exactCount, source.reason);
+            this(source.packetType, source.kind, source.quantification,
+                    source.exactCount, source.reason);
         }
 
         public PacketType getPacketType() {
             return packetType;
+        }
+
+        public LossKind getKind() {
+            return kind;
         }
 
         public LossQuantification getQuantification() {
@@ -150,22 +167,44 @@ public final class AcquisitionMetadata {
         return sealed;
     }
 
+    /**
+     * Compatibility overload for callers that do not yet provide a structured
+     * loss kind.
+     */
     public void recordExactLoss(final PacketType packetType, final long count,
             final String reason) {
+        recordExactLoss(packetType, LossKind.UNKNOWN, count, reason);
+    }
+
+    public void recordExactLoss(final PacketType packetType, final LossKind kind,
+            final long count, final String reason) {
         ensureMutable();
         Objects.requireNonNull(packetType, "packetType");
+        Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(reason, "reason");
         if (count < 0) {
             throw new IllegalArgumentException("exact loss count must be non-negative");
         }
-        lossRecords.add(new LossRecord(packetType, LossQuantification.EXACT, count, reason));
+        lossRecords.add(new LossRecord(packetType, kind,
+                LossQuantification.EXACT, count, reason));
     }
 
+    /**
+     * Compatibility overload for callers that do not yet provide a structured
+     * loss kind.
+     */
     public void recordUnquantifiedLoss(final PacketType packetType, final String reason) {
+        recordUnquantifiedLoss(packetType, LossKind.UNKNOWN, reason);
+    }
+
+    public void recordUnquantifiedLoss(final PacketType packetType,
+            final LossKind kind, final String reason) {
         ensureMutable();
         Objects.requireNonNull(packetType, "packetType");
+        Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(reason, "reason");
-        lossRecords.add(new LossRecord(packetType, LossQuantification.UNQUANTIFIED, 0, reason));
+        lossRecords.add(new LossRecord(packetType, kind,
+                LossQuantification.UNQUANTIFIED, 0, reason));
     }
 
     public long getExactLossCount(final PacketType packetType) {
