@@ -30,6 +30,9 @@ public final class SciDVSGaerTimestampOrderGuardDemo {
     private static final Path DAVIS_SOURCE = Paths.get("src", "net", "sf",
             "jaer", "hardwareinterface", "usb", "cypressfx3libusb",
             "DAViSFX3HardwareInterface.java");
+    private static final Path PHASE_COORDINATOR_SOURCE = Paths.get("src", "net",
+            "sf", "jaer", "hardwareinterface", "usb", "cypressfx3libusb",
+            "SciDVSPhaseResetCoordinator.java");
     private static final int EARLIER_TIMESTAMP_WORD_INDEX = 2043;
     private static final int DECREASE_WORD_INDEX = 2048;
     private static final int DECREASE_BYTE_OFFSET
@@ -289,12 +292,21 @@ public final class SciDVSGaerTimestampOrderGuardDemo {
                     + mutation);
         }
 
-        final String start = method(source, "public void startAEReader()");
-        final int await = start.indexOf("reader.awaitStartupTimestampReset(");
-        final int clear = start.indexOf(
-                "reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset()");
-        require(await >= 0 && clear > await,
-                "only the positively owned startup reset barrier clears the guard");
+        final String phaseHostClear = method(source,
+                "public void clearTimestampGuardForQualification()");
+        final int clear = phaseHostClear.indexOf(
+                ".clearAfterOwnedRestartAndReset()");
+        require(clear >= 0,
+                "phase host owns the explicit timestamp-order guard reset");
+        final String coordinatorSource = Files.readString(
+                PHASE_COORDINATOR_SOURCE, StandardCharsets.UTF_8);
+        final String execute = method(coordinatorSource,
+                "void execute(final Host host)");
+        final int await = execute.indexOf("host.awaitTimestampReset()");
+        final int clearAfterOwned = execute.indexOf(
+                "host.clearTimestampGuardForQualification()");
+        require(await >= 0 && clearAfterOwned > await,
+                "only the positively owned timestamp-reset barrier precedes guard clear");
 
         final String handler = method(source,
                 "private void handleGaerTimestampReset()");

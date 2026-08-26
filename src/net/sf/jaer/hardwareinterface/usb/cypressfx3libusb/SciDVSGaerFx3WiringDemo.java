@@ -47,6 +47,7 @@ public final class SciDVSGaerFx3WiringDemo {
         testSinkWiringAndLazyHarden(source);
         testStartupTimestampResetBarrier(source, cypressSource);
         testStartupDvsRunGate(source);
+        testPhaseQualificationWiring(source, cypressSource);
         testTimestampDisorderDiagnostics(source);
         testQuiescentDrainShutdownWiring(source, cypressSource);
         testLazyResolutionAndEarlyGaerBranch(source);
@@ -321,28 +322,18 @@ public final class SciDVSGaerFx3WiringDemo {
 
     private static void testStartupTimestampResetBarrier(final String source,
             final String cypressSource) {
-        final String start = between(source,
-                "public void startAEReader()",
-                "private void getRealClockValues()");
+        final String start = method(source, "public void startAEReader()");
+        final int phaseGate = start.indexOf(
+                "gaerActive && !gaerPhaseCoordinatorStartingReader");
+        final int rejectBypass = start.indexOf(
+                "throw new HardwareInterfaceException", phaseGate);
         final int startThread = start.indexOf("reader.startThread()");
-        final int sourceQuiescence = start.indexOf(
-                "awaitGaerStartupSourceQuiescence(reader)");
-        final int resetCommand = start.indexOf("resetTimestamps()");
-        final int waitForMarker = start.indexOf("reader.awaitStartupTimestampReset(");
-        final int initialPoolAllocation = start.indexOf("allocateAEBuffers()");
-        final int postMarkerPoolClear = start.indexOf("allocateAEBuffers()",
-                initialPoolAllocation + 1);
-        require(startThread >= 0, "new reader starts before startup reset command");
-        require(sourceQuiescence > startThread,
-                "paused DVS source reaches quiescence after reader start");
-        require(resetCommand > sourceQuiescence,
-                "hardware timestamp reset follows paused-source quiescence");
-        require(waitForMarker > resetCommand,
-                "startup waits for the decoded hardware reset marker");
-        require(postMarkerPoolClear > waitForMarker,
-                "packet pools clear only after the reset marker is observed");
-        require(start.contains("abortStartupTimestampReset(reader)"),
-                "timeout and interruption abort the startup reader");
+        require(phaseGate >= 0 && rejectBypass > phaseGate,
+                "direct SciDVS reader startup cannot bypass host phase correction");
+        require(startThread > rejectBypass,
+                "coordinator-authorized reader starts only after the bypass gate");
+        require(!start.contains("resetTimestamps()"),
+                "reader startup cannot issue the legacy unchecked timestamp reset");
 
         final String startupDrain = method(source,
                 "private void awaitGaerStartupSourceQuiescence(")
@@ -365,13 +356,30 @@ public final class SciDVSGaerFx3WiringDemo {
         require(endDrain > awaitDrain,
                 "startup drain state always ends after the bounded wait");
 
-        final String acquisition = between(cypressSource,
-                "public synchronized void setEventAcquisitionEnabled",
-                "public boolean isEventAcquisitionEnabled()");
-        final int endpointEnable = acquisition.indexOf("setInEndpointEnabled(enable)");
-        final int readerStart = acquisition.indexOf("startAEReader()");
-        require(endpointEnable >= 0 && readerStart > endpointEnable,
-                "input endpoint is configured before the reader reset barrier runs");
+        final String acquisition = method(source,
+                "public synchronized void setEventAcquisitionEnabled(final boolean enable)");
+        require(acquisition.contains(
+                "gaerPhaseResetCoordinator.execute(new GaerPhaseResetHost())"),
+                "SciDVS acquisition delegates startup to the frozen phase-reset coordinator");
+
+        final String clearEndpoint = method(cypressSource,
+                "protected final void clearEventEndpointHaltChecked()");
+        require(clearEndpoint.contains("aeReader != null")
+                && clearEndpoint.contains("LibUsb.clearHalt(handle, AE_MONITOR_ENDPOINT_ADDRESS)"),
+                "checked endpoint reset requires reader terminality and targets the event endpoint");
+        require(clearEndpoint.contains("status != LibUsb.SUCCESS"),
+                "endpoint reset status is checked");
+
+        final String infrastructure = method(cypressSource,
+                "protected synchronized void configureINEndpointWithUsbStopped()");
+        require(!infrastructure.contains(
+                "spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1)"),
+                "fresh-reader infrastructure never releases FPGA USB output");
+        require(infrastructure.contains(
+                "spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1)")
+                && infrastructure.contains(
+                        "spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1)"),
+                "fresh-reader infrastructure enables timestamps and event mux while USB stays stopped");
 
         final String handler = between(source,
                 "private void handleGaerTimestampReset()",
@@ -384,33 +392,33 @@ public final class SciDVSGaerFx3WiringDemo {
         final String acquisition = method(source,
                 "public synchronized void setEventAcquisitionEnabled(final boolean enable)");
         final String compact = acquisition.replaceAll("\\s+", " ");
-        final int pause = compact.indexOf("pauseDvsForGaerStartup()");
-        final int start = compact.indexOf("super.setEventAcquisitionEnabled(true)");
-        final int failure = compact.indexOf("catch", start);
-        final int rethrow = compact.indexOf("throw", failure);
-        final int restore = compact.indexOf("restoreDvsAfterGaerStartup()", rethrow);
-        require(pause >= 0 && start > pause,
-                "SciDVS DVS generation pauses before endpoint and reader startup");
-        require(failure > start && rethrow > failure && restore > rethrow,
-                "failed startup leaves DVS paused and restoration follows success only");
-        require(!compact.substring(failure, rethrow).contains(
-                "restoreDvsAfterGaerStartup()"),
-                "startup failure path never restores DVS generation");
+        require(compact.contains(
+                "gaerPhaseResetCoordinator.execute(new GaerPhaseResetHost())"),
+                "SciDVS acquisition runs the fail-closed phase coordinator");
+        require(!compact.contains("super.setEventAcquisitionEnabled(true)"),
+                "SciDVS phase correction cannot use endpoint-before-reader base startup");
 
-        final String pauseMethod = method(source,
-                "private void pauseDvsForGaerStartup()").replaceAll("\\s+", " ");
-        final int readRun = pauseMethod.indexOf(
-                "spiConfigReceive(CypressFX3.FPGA_DVS, (short) 3)");
-        final int stopRun = pauseMethod.indexOf(
-                "spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0)");
-        require(readRun >= 0 && stopRun > readRun,
-                "startup gate records DVS.Run before disabling an active source");
-
-        final String restoreMethod = method(source,
-                "private void restoreDvsAfterGaerStartup()").replaceAll("\\s+", " ");
-        require(restoreMethod.contains(
-                "spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 1)"),
-                "successful startup restores the prior active DVS.Run state");
+        final String readRun = method(source,
+                "public boolean readDvsRun()").replaceAll("\\s+", " ");
+        require(readRun.contains(
+                "readConfig(CypressFX3.FPGA_DVS, (short) 3, \"DVS.Run\")"),
+                "phase host reads and preserves DVS.Run");
+        final String writeRun = method(source,
+                "public void writeDvsRun(final boolean run)").replaceAll("\\s+", " ");
+        require(writeRun.contains(
+                "writeAndVerifyConfig(CypressFX3.FPGA_DVS, (short) 3"),
+                "phase host writes DVS.Run through checked readback");
+        final String writeUsb = method(source,
+                "public void writeUsbRun(final boolean run)").replaceAll("\\s+", " ");
+        require(writeUsb.contains(
+                "writeAndVerifyConfig(CypressFX3.FPGA_USB, (short) 0"),
+                "phase host writes FPGA USB.Run through checked readback");
+        final String producers = method(source,
+                "public void verifyOtherProducersStopped()");
+        require(producers.contains("FPGA_EXTINPUT")
+                && producers.contains("FPGA_IMU")
+                && producers.contains("FPGA_APS"),
+                "phase host verifies every non-DVS producer stopped");
     }
 
     private static void testTimestampDisorderDiagnostics(final String source)
@@ -432,6 +440,86 @@ public final class SciDVSGaerFx3WiringDemo {
                 "hardware count delegates to the active GAER decoder");
         require(maximumBody.contains("getMaxBackwardTimestampUs()"),
                 "hardware maximum delegates to the active GAER decoder");
+    }
+
+    private static void testPhaseQualificationWiring(final String source,
+            final String cypressSource) throws Exception {
+        final Field qualification = DAViSFX3HardwareInterface.RetinaAEReader.class
+                .getDeclaredField("gaerPhaseQualification");
+        require(qualification.getType() == SciDVSPhaseQualification.class
+                && Modifier.isFinal(qualification.getModifiers()),
+                "fresh reader owns the exact final phase-qualification generation");
+
+        final String translate = method(source,
+                "protected void translateEvents(final ByteBuffer b)");
+        final int quarantine = translate.indexOf(
+                "gaerPhaseQualification.isQuarantining()");
+        final int discardDecode = translate.indexOf(
+                "gaerDecoder.decode(b, gaerTimestampResetOnlySink)", quarantine);
+        final int completed = translate.indexOf(
+                "gaerPhaseQualification.noteCompletedTransfer(", discardDecode);
+        final int typedPublication = translate.indexOf(
+                "if (isAuthoritativeTypedDelivery())", completed);
+        require(quarantine >= 0 && discardDecode > quarantine
+                && completed > discardDecode && typedPublication > completed,
+                "quarantined callbacks decode into the discard sink and count only after decode before either publication branch");
+        final String quarantinePath = translate.substring(quarantine,
+                typedPublication);
+        require(!quarantinePath.contains("gaerRawSink")
+                && !quarantinePath.contains("gaerTypedSink")
+                && !quarantinePath.contains("typedBuilder.attach")
+                && !quarantinePath.contains("writeBuffer()"),
+                "qualification mutates neither raw nor typed publication sinks");
+
+        final String transferFailure = method(source,
+                "protected void noteTransferFailure(final int status");
+        require(transferFailure.contains(
+                "gaerPhaseQualification.noteFailure("),
+                "USB transfer errors permanently fail an active qualification");
+        final String callback = method(cypressSource,
+                "private void processTransferLocked(final RestrictedTransfer transfer)");
+        require(callback.contains(
+                "noteTransferFailure(transfer.status(), transfer.actualLength())"),
+                "base USB callback forwards non-cancelled transfer errors to qualification");
+
+        final String resetHandler = method(source,
+                "private void handleGaerTimestampReset()");
+        require(resetHandler.contains("gaerPhaseQualification.isActive()")
+                && resetHandler.contains(
+                        "additional timestamp reset during stream qualification"),
+                "an additional reset marker permanently fails stream qualification");
+
+        final String rawAcquire = method(source,
+                "public AEPacketRaw acquireAvailableEventsFromDriver()");
+        final String typedAcquire = method(source,
+                "public PacketBundle acquireAvailablePacketBundle()");
+        require(count(rawAcquire,
+                "throwIfGaerPhaseQualificationPending()") == 2
+                && count(typedAcquire,
+                        "throwIfGaerPhaseQualificationPending()") == 2,
+                "raw and typed acquisition check quarantine before and after publication");
+
+        final String failClosed = method(source, "public void failClosed()");
+        require(failClosed.contains("FPGA_DVS")
+                && failClosed.contains("FPGA_USB")
+                && failClosed.contains("stopAEReader()")
+                && failClosed.contains(
+                        "abandonNativeHandleAfterNonterminalReader()"),
+                "phase failure stops both run controls and abandons an unproven reader handle");
+        final String abandon = method(cypressSource,
+                "protected final void abandonNativeHandleAfterNonterminalReader()");
+        require(abandon.contains("nativeHandleAbandoned = true")
+                && abandon.contains("deviceHandle = null")
+                && !abandon.contains("LibUsb."),
+                "nonterminal-reader abandonment drops host access without another native USB operation");
+
+        require(source.contains(
+                "private static final int PHASE_QUALIFICATION_BYTES = 32_768;")
+                && source.contains(
+                        "private static final int PHASE_QUALIFICATION_CALLBACKS = 3;")
+                && source.contains(
+                        "private static final long PHASE_QUALIFICATION_TIMEOUT_MS = 3_000L;"),
+                "qualification uses the authorized byte, callback, and timeout bounds");
     }
 
     private static void testLazyResolutionAndEarlyGaerBranch(final String source) {

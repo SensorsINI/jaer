@@ -141,14 +141,15 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
                 "reset-only recovery performs no callback-thread cleanup");
 
         final int retainedFault = translate.indexOf(
-                "if (gaerTimestampCallbackFailure.get() != null)",
+                "if (gaerTimestampCallbackFailure.get() != null",
                 recoveryPending);
         require(retainedFault > recoveryPending,
                 "callback translation has a separate retained-failure gate");
         final String retainedDiscard = block(translate, retainedFault);
         require(compact(retainedDiscard).equals(
-                "if(gaerTimestampCallbackFailure.get()!=null){return;}"),
-                "retained failure without recovery returns immediately");
+                "if(gaerTimestampCallbackFailure.get()!=null"
+                + "&&!phaseQuarantining){return;}"),
+                "retained failure without active qualification returns immediately");
 
         final String resetOnlyDecoder = method(source,
                 "private void decodeGaerTimestampResetOnly(final ByteBuffer b)");
@@ -241,35 +242,40 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
                 && typedPostcheck > typedSuper,
                 "typed polling checks the callback fault before and after acquisition");
 
-        final String start = method(source, "public void startAEReader()");
-        final int resetSequence = start.indexOf("final boolean resetObserved;");
-        final int resetTry = start.indexOf("try {", resetSequence);
-        final int arm = start.indexOf("reader.armStartupTimestampReset()");
-        final int reset = start.indexOf("resetTimestamps()", arm);
-        final int await = start.indexOf("reader.awaitStartupTimestampReset(");
-        final int resetFinally = start.indexOf("finally", await);
-        require(resetSequence >= 0 && resetTry > resetSequence
-                && arm > resetTry && reset > arm && await > reset
-                && resetFinally > await,
-                "startup arm, reset, and await are enclosed by one try/finally");
-        final String resetCleanup = block(start, resetFinally);
-        require(compact(resetCleanup).equals(
-                "finally{reader.disarmStartupTimestampReset();}"),
-                "startup reset arming is always disarmed in finally");
-        final int safeLock = start.indexOf("synchronized (aePacketRawPool)", await);
-        require(safeLock > await,
-                "post-barrier state transition uses the callback's packet-pool lock");
-        final String barrierSuccess = block(start, safeLock);
+        final String sendReset = method(source,
+                "public void sendTimestampReset()");
+        final int resetAssert = sendReset.indexOf(
+                "writeAndVerifyConfig(CypressFX3.FPGA_MUX, (short) 2, 1");
+        final int resetDeassert = sendReset.indexOf(
+                "writeAndVerifyConfig(CypressFX3.FPGA_MUX, (short) 2, 0");
+        require(resetAssert >= 0 && resetDeassert > resetAssert,
+                "coordinator emits a checked timestamp-reset assertion and deassertion");
+
+        final String barrierSuccess = method(source,
+                "public void clearTimestampGuardForQualification()");
+        final int safeTypedLock = barrierSuccess.indexOf("packetBundlePool");
+        final int safeRawLock = barrierSuccess.indexOf("aePacketRawPool");
         final int postBarrierAllocation = barrierSuccess.indexOf("allocateAEBuffers()");
         final int guardClear = barrierSuccess.indexOf(
-                "reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset()");
+                "reader.gaerTimestampOrderGuard");
         final int recoveryClear = barrierSuccess.indexOf(
                 "reader.gaerTimestampCallbackRecoveryPending = false;");
-        final int callbackClear = barrierSuccess.indexOf(
+        require(safeTypedLock >= 0 && safeRawLock > safeTypedLock
+                && postBarrierAllocation > safeRawLock
+                && guardClear > postBarrierAllocation
+                && recoveryClear > guardClear,
+                "post-marker transition uses the active callback pool lock and clears buffers, guard, then recovery state");
+        require(!barrierSuccess.contains(
+                "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()"),
+                "marker observation alone cannot clear a retained callback fault");
+
+        final String qualificationCommit = method(source,
+                "public void commitQualification()");
+        final int qualification = qualificationCommit.indexOf("qualification.commit()");
+        final int callbackClear = qualificationCommit.indexOf(
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()");
-        require(postBarrierAllocation >= 0 && guardClear > postBarrierAllocation
-                && recoveryClear > guardClear && callbackClear > recoveryClear,
-                "barrier success clears buffers, guard, recovery, then retained fault under one lock");
+        require(qualification >= 0 && callbackClear > qualification,
+                "only successful stream qualification clears the retained callback fault");
         require(count(source,
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()") == 2,
                 "callback fault clear has exactly one production call site");

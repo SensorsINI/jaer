@@ -7,6 +7,7 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
 
 import org.usb4java.Device;
+import org.usb4java.LibUsb;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
@@ -42,6 +44,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     private static final long QUIESCENT_DRAIN_QUIET_MS = 100L;
     private static final long STARTUP_SOURCE_DRAIN_TIMEOUT_MS = 3_000L;
     private static final long QUIESCENT_DRAIN_TIMEOUT_MS = 500L;
+    private static final long PHASE_QUALIFICATION_TIMEOUT_MS = 3_000L;
+    private static final int PHASE_QUALIFICATION_BYTES = 32_768;
+    private static final int PHASE_QUALIFICATION_CALLBACKS = 3;
+    private static final long FPGA_WRITER_THREAD_ZERO_SETTLE_MS = 1L;
     private static final int WARNING_INTERVAL = 100000;
 
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("DAViSFX3");
@@ -89,11 +95,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
     /** Cached exact FPGA-geometry fingerprint for the shared DAVIS/SciDVS PID. */
     private Boolean sciDVSFpgaGeometryMatch;
-    /** Prior active DVS.Run state retained until a gated GAER startup succeeds. */
-    private boolean gaerStartupDvsRunRestorePending;
     /** First timestamp-order failure caught at the native USB callback boundary. */
     private final AtomicReference<SciDVSGaerTimestampOrderGuard.ValidationException>
             gaerTimestampCallbackFailure = new AtomicReference<>();
+    /** Pure ordering state machine for host-only FPGA/FX3 phase correction. */
+    private final SciDVSPhaseResetCoordinator gaerPhaseResetCoordinator
+            = new SciDVSPhaseResetCoordinator();
+    /** Gate shared with the fresh reader for the current correction attempt. */
+    private volatile SciDVSPhaseQualification gaerPhaseQualification;
+    /** Suppresses the obsolete reader-local reset barrier during coordinated startup. */
+    private boolean gaerPhaseCoordinatorStartingReader;
 
     /**
      * Probes the two read-only FPGA DVS geometry registers and caches whether
@@ -135,66 +146,295 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             super.setEventAcquisitionEnabled(enable);
             return;
         }
-
-        try {
-            pauseDvsForGaerStartup();
-        } catch (final HardwareInterfaceException | RuntimeException pauseFailure) {
-            failClosedAfterGaerStartup(pauseFailure);
-            throw pauseFailure;
+        if (!isOpen()) {
+            return;
         }
-
         try {
-            super.setEventAcquisitionEnabled(true);
-        } catch (final HardwareInterfaceException | RuntimeException startupFailure) {
-            failClosedAfterGaerStartup(startupFailure);
-            throw startupFailure;
-        }
-
-        try {
-            restoreDvsAfterGaerStartup();
-        } catch (final HardwareInterfaceException | RuntimeException restoreFailure) {
-            failClosedAfterGaerStartup(restoreFailure);
-            throw restoreFailure;
+            gaerPhaseResetCoordinator.execute(new GaerPhaseResetHost());
+        } catch (final IOException failure) {
+            throw new HardwareInterfaceException(
+                    "SciDVS host-only FPGA/FX3 phase correction failed", failure);
         }
     }
 
-    private void pauseDvsForGaerStartup() throws HardwareInterfaceException {
-        final int dvsRun = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 3);
-        if (dvsRun != 0) {
-            gaerStartupDvsRunRestorePending = true;
-        }
-        if (gaerStartupDvsRunRestorePending) {
-            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0);
-        }
-    }
+    private final class GaerPhaseResetHost
+            implements SciDVSPhaseResetCoordinator.Host {
 
-    private void restoreDvsAfterGaerStartup() throws HardwareInterfaceException {
-        if (gaerStartupDvsRunRestorePending) {
-            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 1);
-            gaerStartupDvsRunRestorePending = false;
-        }
-    }
+        private final SciDVSPhaseQualification qualification
+                = new SciDVSPhaseQualification(PHASE_QUALIFICATION_BYTES,
+                        PHASE_QUALIFICATION_CALLBACKS);
+        private boolean readerTerminalityUnknown;
 
-    private void failClosedAfterGaerStartup(final Throwable originalFailure) {
-        try {
-            spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0);
-        } catch (final HardwareInterfaceException | RuntimeException cleanupFailure) {
-            originalFailure.addSuppressed(cleanupFailure);
+        GaerPhaseResetHost() {
+            gaerPhaseQualification = qualification;
         }
 
-        boolean delegatedStop = false;
-        try {
-            super.setEventAcquisitionEnabled(false);
-            delegatedStop = true;
-        } catch (final HardwareInterfaceException | RuntimeException cleanupFailure) {
-            originalFailure.addSuppressed(cleanupFailure);
+        @Override
+        public boolean readDvsRun() throws IOException {
+            return readConfig(CypressFX3.FPGA_DVS, (short) 3,
+                    "DVS.Run") != 0;
         }
-        if (!delegatedStop) {
-            try {
-                stopAEReader();
-            } catch (final RuntimeException cleanupFailure) {
-                originalFailure.addSuppressed(cleanupFailure);
+
+        @Override
+        public void verifyOtherProducersStopped() throws IOException {
+            verifyStopped(CypressFX3.FPGA_EXTINPUT, (short) 0,
+                    "external input detector");
+            verifyStopped(CypressFX3.FPGA_IMU, (short) 2,
+                    "IMU accelerometer");
+            verifyStopped(CypressFX3.FPGA_IMU, (short) 3,
+                    "IMU gyroscope");
+            verifyStopped(CypressFX3.FPGA_IMU, (short) 4,
+                    "IMU temperature sensor");
+            verifyStopped(CypressFX3.FPGA_APS, (short) 4,
+                    "APS frame source");
+        }
+
+        @Override
+        public void writeDvsRun(final boolean run) throws IOException {
+            writeAndVerifyConfig(CypressFX3.FPGA_DVS, (short) 3,
+                    run ? 1 : 0, "DVS.Run");
+        }
+
+        @Override
+        public boolean hasActiveReader() {
+            return getAeReader() != null;
+        }
+
+        @Override
+        public void awaitSourceQuiescence() throws IOException {
+            final AEReader current = getAeReader();
+            if (!(current instanceof RetinaAEReader reader)) {
+                throw new IOException(
+                        "source drain requires the active SciDVS reader generation");
             }
+            try {
+                awaitGaerStartupSourceQuiescence(reader);
+            } catch (final HardwareInterfaceException failure) {
+                throw new IOException("could not drain the stopped DVS source", failure);
+            }
+        }
+
+        @Override
+        public void writeUsbRun(final boolean run) throws IOException {
+            writeAndVerifyConfig(CypressFX3.FPGA_USB, (short) 0,
+                    run ? 1 : 0, "FPGA USB.Run");
+        }
+
+        @Override
+        public void awaitWriterThreadZero() throws IOException {
+            try {
+                Thread.sleep(FPGA_WRITER_THREAD_ZERO_SETTLE_MS);
+            } catch (final InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IOException(
+                        "interrupted while waiting for FPGA writer thread-0 idle",
+                        interrupted);
+            }
+        }
+
+        @Override
+        public boolean stopReader() {
+            try {
+                final boolean terminal = stopAEReader();
+                readerTerminalityUnknown = !terminal;
+                return terminal;
+            } catch (final RuntimeException failure) {
+                readerTerminalityUnknown = true;
+                throw failure;
+            }
+        }
+
+        @Override
+        public void clearEventEndpoint() throws IOException {
+            try {
+                clearEventEndpointHaltChecked();
+            } catch (final HardwareInterfaceException failure) {
+                throw new IOException("event endpoint reset failed", failure);
+            }
+        }
+
+        @Override
+        public void configureAcquisitionInfrastructure() throws IOException {
+            try {
+                configureINEndpointWithUsbStopped();
+            } catch (final HardwareInterfaceException failure) {
+                throw new IOException(
+                        "could not configure acquisition with FPGA USB stopped",
+                        failure);
+            }
+        }
+
+        @Override
+        public void startFreshReader() throws IOException {
+            gaerPhaseCoordinatorStartingReader = true;
+            try {
+                startAEReader();
+            } catch (final HardwareInterfaceException failure) {
+                throw new IOException("could not start fresh SciDVS reader", failure);
+            } finally {
+                gaerPhaseCoordinatorStartingReader = false;
+            }
+        }
+
+        @Override
+        public void armTimestampReset() throws IOException {
+            currentPhaseReader("timestamp reset arm").armStartupTimestampReset();
+        }
+
+        @Override
+        public void sendTimestampReset() throws IOException {
+            writeAndVerifyConfig(CypressFX3.FPGA_MUX, (short) 2, 1,
+                    "timestamp reset assertion");
+            writeAndVerifyConfig(CypressFX3.FPGA_MUX, (short) 2, 0,
+                    "timestamp reset deassertion");
+        }
+
+        @Override
+        public boolean awaitTimestampReset() throws IOException {
+            try {
+                return currentPhaseReader("timestamp reset wait")
+                        .awaitStartupTimestampReset(
+                                STARTUP_TIMESTAMP_RESET_TIMEOUT_MS);
+            } catch (final InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IOException(
+                        "interrupted while waiting for owned timestamp reset",
+                        interrupted);
+            }
+        }
+
+        @Override
+        public void disarmTimestampReset() throws IOException {
+            currentPhaseReader("timestamp reset disarm")
+                    .disarmStartupTimestampReset();
+        }
+
+        @Override
+        public void clearTimestampGuardForQualification() throws IOException {
+            final RetinaAEReader reader = currentPhaseReader(
+                    "qualification epoch reset");
+            final Object poolLock = isAuthoritativeTypedDelivery()
+                    ? packetBundlePool : aePacketRawPool;
+            synchronized (poolLock) {
+                allocateAEBuffers();
+                reader.gaerTimestampOrderGuard
+                        .clearAfterOwnedRestartAndReset();
+                reader.gaerTimestampCallbackRecoveryPending = false;
+            }
+        }
+
+        @Override
+        public void beginQualification() {
+            qualification.begin();
+        }
+
+        @Override
+        public boolean awaitQualification() {
+            return qualification.awaitSuccess(PHASE_QUALIFICATION_TIMEOUT_MS);
+        }
+
+        @Override
+        public void commitQualification() throws IOException {
+            final Object poolLock = isAuthoritativeTypedDelivery()
+                    ? packetBundlePool : aePacketRawPool;
+            synchronized (poolLock) {
+                qualification.commit();
+                clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset();
+            }
+            CypressFX3.log.info(
+                    "SciDVS FPGA/FX3 phase correction qualified; publication opened");
+        }
+
+        @Override
+        public void failClosed() {
+            qualification.noteFailure("phase correction failed");
+            if (readerTerminalityUnknown) {
+                inEndpointEnabled = false;
+                abandonNativeHandleAfterNonterminalReader();
+                CypressFX3.log.severe(
+                        "SciDVS reader terminality is unknown; native handle is quarantined and unplug/replug is required");
+                return;
+            }
+            bestEffortStopConfig(CypressFX3.FPGA_DVS, (short) 3,
+                    "DVS.Run");
+            bestEffortStopConfig(CypressFX3.FPGA_USB, (short) 0,
+                    "FPGA USB.Run");
+            final boolean readerTerminal;
+            try {
+                readerTerminal = stopAEReader();
+            } catch (final RuntimeException cleanupFailure) {
+                CypressFX3.log.log(java.util.logging.Level.SEVERE,
+                        "Could not stop SciDVS reader after failed phase correction",
+                        cleanupFailure);
+                inEndpointEnabled = false;
+                abandonNativeHandleAfterNonterminalReader();
+                return;
+            }
+            inEndpointEnabled = false;
+            if (!readerTerminal) {
+                abandonNativeHandleAfterNonterminalReader();
+                CypressFX3.log.severe(
+                        "SciDVS reader terminality is unknown; native handle is quarantined and unplug/replug is required");
+                return;
+            }
+            disableINEndpoint();
+        }
+
+        private void verifyStopped(final short module, final short parameter,
+                final String description) throws IOException {
+            final int value = readConfig(module, parameter, description);
+            if (value != 0) {
+                throw new IOException(description
+                        + " must be stopped before SciDVS phase correction; observed "
+                        + value);
+            }
+        }
+
+        private int readConfig(final short module, final short parameter,
+                final String description) throws IOException {
+            try {
+                return spiConfigReceive(module, parameter);
+            } catch (final HardwareInterfaceException failure) {
+                throw new IOException("could not read " + description, failure);
+            }
+        }
+
+        private void writeAndVerifyConfig(final short module,
+                final short parameter, final int value,
+                final String description) throws IOException {
+            try {
+                spiConfigSend(module, parameter, value);
+                final int observed = spiConfigReceive(module, parameter);
+                if (observed != value) {
+                    throw new IOException(description + " readback mismatch: wrote "
+                            + value + ", observed " + observed);
+                }
+            } catch (final HardwareInterfaceException failure) {
+                throw new IOException("could not write/read back " + description,
+                        failure);
+            }
+        }
+
+        private void bestEffortStopConfig(final short module,
+                final short parameter, final String description) {
+            try {
+                writeAndVerifyConfig(module, parameter, 0, description);
+            } catch (final IOException | RuntimeException cleanupFailure) {
+                CypressFX3.log.log(java.util.logging.Level.SEVERE,
+                        "Could not stop " + description
+                        + " during fail-closed cleanup", cleanupFailure);
+            }
+        }
+
+        private RetinaAEReader currentPhaseReader(final String operation)
+                throws IOException {
+            final AEReader current = getAeReader();
+            if (!(current instanceof RetinaAEReader reader)
+                    || reader.gaerPhaseQualification != qualification) {
+                throw new IOException(operation
+                        + " requires the fresh SciDVS reader generation");
+            }
+            return reader;
         }
     }
 
@@ -237,11 +477,23 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         }
     }
 
+    private void throwIfGaerPhaseQualificationPending()
+            throws HardwareInterfaceException {
+        final SciDVSPhaseQualification qualification
+                = gaerPhaseQualification;
+        if (qualification != null && qualification.isQuarantining()) {
+            throw new HardwareInterfaceException(
+                    "SciDVS publication is quarantined pending post-reset stream qualification");
+        }
+    }
+
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver()
             throws HardwareInterfaceException {
+        throwIfGaerPhaseQualificationPending();
         throwIfGaerTimestampCallbackFailure();
         final AEPacketRaw events = super.acquireAvailableEventsFromDriver();
+        throwIfGaerPhaseQualificationPending();
         throwIfGaerTimestampCallbackFailure();
         return events;
     }
@@ -249,8 +501,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     @Override
     public PacketBundle acquireAvailablePacketBundle()
             throws HardwareInterfaceException {
+        throwIfGaerPhaseQualificationPending();
         throwIfGaerTimestampCallbackFailure();
         final PacketBundle bundle = super.acquireAvailablePacketBundle();
+        throwIfGaerPhaseQualificationPending();
         throwIfGaerTimestampCallbackFailure();
         return bundle;
     }
@@ -268,58 +522,19 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     @Override
     public void startAEReader() throws HardwareInterfaceException {
         log.info("starting AE reader thread");
-        final RetinaAEReader reader = new RetinaAEReader(this);
         final boolean gaerActive = SciDVSGaerMode.resolveFromSystemProperty(
                 getChip() instanceof SciDVS, CypressFX3.log);
+        if (gaerActive && !gaerPhaseCoordinatorStartingReader) {
+            throw new HardwareInterfaceException(
+                    "SciDVS GAER reader startup requires host phase correction");
+        }
+        final RetinaAEReader reader = new RetinaAEReader(this);
         reader.gaerTimestampCallbackRecoveryPending = gaerActive
                 && gaerTimestampCallbackFailure.get() != null;
         setAeReader(reader);
         allocateAEBuffers();
 
         reader.startThread(); // arg is number of errors before giving up
-        if (gaerActive) {
-            if (getChip() instanceof SciDVS) {
-                try {
-                    awaitGaerStartupSourceQuiescence(reader);
-                } catch (final HardwareInterfaceException e) {
-                    abortStartupTimestampReset(reader);
-                    throw e;
-                }
-            }
-            // A new decoder starts with no wrap state while the device endpoint can
-            // still contain pre-stop words. Put a positive reset marker behind that
-            // backlog, wait until this exact reader decodes it, then discard every
-            // packet accumulated through the marker. Acquisition is exposed only
-            // from the next transfer, which belongs wholly to the new epoch.
-            final boolean resetObserved;
-            try {
-                reader.armStartupTimestampReset();
-                resetTimestamps();
-                resetObserved = reader.awaitStartupTimestampReset(
-                        STARTUP_TIMESTAMP_RESET_TIMEOUT_MS);
-            } catch (final InterruptedException e) {
-                Thread.currentThread().interrupt();
-                abortStartupTimestampReset(reader);
-                throw new HardwareInterfaceException(
-                        "Interrupted waiting for SciDVS startup timestamp reset", e);
-            } finally {
-                reader.disarmStartupTimestampReset();
-            }
-            if (!resetObserved) {
-                abortStartupTimestampReset(reader);
-                throw new HardwareInterfaceException(
-                        "Timed out waiting for SciDVS startup timestamp reset marker");
-            }
-            // The marker callback and this state transition use the same
-            // packet-pool lock, so they cannot interleave with another callback.
-            synchronized (aePacketRawPool) {
-                allocateAEBuffers();
-                reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset();
-                reader.gaerTimestampCallbackRecoveryPending = false;
-                clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset();
-            }
-            log.info("SciDVS startup timestamp reset observed; discarded pre-boundary packets");
-        }
         HardwareInterfaceException.clearException();
     }
 
@@ -362,17 +577,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             log.info(String.format(
                     "SciDVS startup source-drain transfer: index=%d elapsedUs=%d actualLength=%d sourcePayload=%s",
                     index, elapsedMicros, actualLength, sourcePayload));
-        }
-    }
-
-    private void abortStartupTimestampReset(final RetinaAEReader reader) {
-        try {
-            setInEndpointEnabled(false);
-        } catch (final HardwareInterfaceException e) {
-            log.warning("Could not disable endpoint after startup timestamp-reset failure: " + e);
-        }
-        if (getAeReader() == reader) {
-            stopAEReader();
         }
     }
 
@@ -532,6 +736,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 = new Fx3StartupTimestampResetBarrier();
         private final Fx3QuiescentDrainBarrier quiescentDrain
                 = new Fx3QuiescentDrainBarrier();
+        private final SciDVSPhaseQualification gaerPhaseQualification;
         private int completedTransferActualLength;
         private Boolean gaerResolved;
         private boolean gaerTimestampCallbackRecoveryPending;
@@ -539,6 +744,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
+            gaerPhaseQualification
+                    = DAViSFX3HardwareInterface.this.gaerPhaseQualification;
 
             if (getPID() == DAViSFX3HardwareInterface.PID_FX2) {
                 // FX2 firmware now emulates the same interface as FX3 firmware, so we support it here too.
@@ -607,6 +814,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             if (gaerStartupTimestampResetArmed) {
                 gaerStartupTimestampResetArmed = false;
                 startupTimestampReset.markResetObserved();
+            } else if (gaerPhaseQualification != null
+                    && gaerPhaseQualification.isActive()) {
+                gaerPhaseQualification.noteFailure(
+                        "additional timestamp reset during stream qualification");
             }
             updateTimestampMasterStatus();
             CypressFX3.log.info("Timestamp reset event received on " + super.toString()
@@ -629,6 +840,17 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         @Override
         protected void noteCompletedTransfer(final int actualLength) {
             completedTransferActualLength = actualLength;
+        }
+
+        @Override
+        protected void noteTransferFailure(final int status,
+                final int actualLength) {
+            if (gaerPhaseQualification != null
+                    && gaerPhaseQualification.isActive()) {
+                gaerPhaseQualification.noteFailure(
+                        "USB transfer failed during stream qualification: status="
+                        + LibUsb.errorName(status) + " bytes=" + actualLength);
+            }
         }
 
         private void checkMonotonicTimestamp() {
@@ -676,17 +898,25 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             }
 
             if (Boolean.TRUE.equals(gaerResolved)) {
+                final boolean phaseQuarantining
+                        = gaerPhaseQualification != null
+                        && gaerPhaseQualification.isQuarantining();
                 if (gaerTimestampCallbackRecoveryPending
                         && gaerTimestampCallbackFailure.get() != null) {
                     decodeGaerTimestampResetOnly(b);
                     return;
                 }
-                if (gaerTimestampCallbackFailure.get() != null) {
+                if (gaerTimestampCallbackFailure.get() != null
+                        && !phaseQuarantining) {
                     return;
                 }
                 try {
                     gaerTimestampOrderGuard.validate(b);
                 } catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
+                    if (gaerPhaseQualification != null
+                            && gaerPhaseQualification.isActive()) {
+                        gaerPhaseQualification.noteFailure(failure.getMessage());
+                    }
                     retainGaerTimestampCallbackFailure(failure);
                     gaerTimestampCallbackRecoveryPending = true;
                     decodeGaerTimestampResetOnly(b);
@@ -698,6 +928,24 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 quiescentDrain.noteCompletedTransfer(
                         completedTransferActualLength,
                         SciDVSGaerDecoder.containsSourcePayload(b));
+            }
+
+            if (Boolean.TRUE.equals(gaerResolved)
+                    && gaerPhaseQualification != null
+                    && gaerPhaseQualification.isQuarantining()) {
+                try {
+                    gaerDecoder.decode(b, gaerTimestampResetOnlySink);
+                    if (gaerPhaseQualification.isActive()) {
+                        gaerPhaseQualification.noteCompletedTransfer(
+                                completedTransferActualLength);
+                    }
+                } catch (final RuntimeException failure) {
+                    gaerPhaseQualification.noteFailure(
+                            "decoder failure during stream qualification: "
+                            + failure);
+                    throw failure;
+                }
+                return;
             }
 
             if (isAuthoritativeTypedDelivery()) {

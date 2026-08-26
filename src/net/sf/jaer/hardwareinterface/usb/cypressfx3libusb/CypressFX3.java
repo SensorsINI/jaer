@@ -319,6 +319,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     private AEReader nonterminalReaderGeneration = null;
     /** Transfer thread used to prove a retained generation terminal when it is observable. */
     private Thread nonterminalReaderThread = null;
+    /** Permanently quarantines this interface after native reader ownership is lost. */
+    private boolean nativeHandleAbandoned;
     /**
      * the device number, out of all potential compatible devices that could be
      * opened
@@ -949,6 +951,50 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         return stopAEReader(reader);
     }
 
+    /**
+     * Clears the event endpoint only after the current reader generation has
+     * been proven terminal. FX3 firmware uses this standard request to reset
+     * and restart the endpoint DMA channel.
+     */
+    protected final void clearEventEndpointHaltChecked()
+            throws HardwareInterfaceException {
+        final DeviceHandle handle;
+        synchronized (lifecycleLock) {
+            guardNativeOpenLocked("event endpoint reset");
+            if (aeReader != null) {
+                throw new HardwareInterfaceException(
+                        "event endpoint reset requires a terminal AEReader");
+            }
+            handle = deviceHandle;
+            if (handle == null) {
+                throw new HardwareInterfaceException(
+                        "event endpoint reset requires an open device handle");
+            }
+        }
+        final int status = LibUsb.clearHalt(handle, AE_MONITOR_ENDPOINT_ADDRESS);
+        if (status != LibUsb.SUCCESS) {
+            throw new HardwareInterfaceException(
+                    "Could not reset event endpoint "
+                    + String.format("0x%02x", AE_MONITOR_ENDPOINT_ADDRESS & 0xff)
+                    + ": " + LibUsb.errorName(status));
+        }
+    }
+
+    /**
+     * Drops every host-side route to a native handle that may still be owned by
+     * a nonterminal transfer thread. No USB operation is issued; recovery
+     * requires unplug/replug and a new hardware-interface instance.
+     */
+    protected final void abandonNativeHandleAfterNonterminalReader() {
+        synchronized (lifecycleLock) {
+            nativeHandleAbandoned = true;
+            isOpened = false;
+            inEndpointEnabled = false;
+            deviceHandle = null;
+            deviceDescriptor = null;
+        }
+    }
+
     private boolean stopAEReader(final AEReader reader) {
         if (reader != null) {
             log.info("Stopping thread " + reader);
@@ -1011,6 +1057,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     private void guardNativeOpenLocked(final String operation) throws HardwareInterfaceException {
+        if (nativeHandleAbandoned) {
+            throw new HardwareInterfaceException(operation
+                    + ": native handle was abandoned after a nonterminal AEReader; unplug/replug is required");
+        }
         if (closeInProgress) {
             throw new HardwareInterfaceException(operation + ": device close is still in progress");
         }
@@ -1213,6 +1263,26 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 //
 //		configSequence.sendConfigSequence();
 
+        inEndpointEnabled = true;
+    }
+
+    /**
+     * Prepares mux/timestamp infrastructure for a fresh reader while keeping
+     * FPGA USB output stopped. Used only by startup protocols that release USB
+     * after the reader is active.
+     */
+    protected synchronized void configureINEndpointWithUsbStopped()
+            throws HardwareInterfaceException {
+        if (deviceHandle == null) {
+            throw new HardwareInterfaceException(
+                    "Cannot configure event infrastructure without an open device");
+        }
+        if (deliveryMode == DeliveryMode.AUTHORITATIVE_TYPED) {
+            beginTypedAcquisitionSession();
+        }
+        spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, 1);
+        spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1);
+        spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1);
         inEndpointEnabled = true;
     }
 
@@ -1486,6 +1556,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         protected void noteCompletedTransfer(final int actualLength) {
         }
 
+        protected void noteTransferFailure(final int status,
+                final int actualLength) {
+        }
+
         class ProcessAEData implements RestrictedTransferCallback {
 
             private final long generation;
@@ -1552,6 +1626,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         realTimeFilter(addresses, timestamps);
                     }
                 } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                    noteTransferFailure(transfer.status(), transfer.actualLength());
                     CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
                             + LibUsb.errorName(transfer.status()));
                     if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
