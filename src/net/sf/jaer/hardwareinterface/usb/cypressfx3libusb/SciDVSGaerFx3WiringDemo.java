@@ -28,8 +28,9 @@ public final class SciDVSGaerFx3WiringDemo {
             "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
     private static final Path PACKET_BUNDLE_POOL_SOURCE = Paths.get("src", "net", "sf", "jaer",
             "event", "PacketBundlePool.java");
+    /** Secondary structure guard; StandardDavisTypedParserDemo is the semantic oracle. */
     private static final String STANDARD_LOOP_SHA256
-            = "350e0256b375ec2bedb793ee6522ea62ed1b1e1344d54caac409437892583be4";
+            = "01670958696bdda9f4073afc2fb6f2b26df93a8e855438febad42e91053d8f97";
     private static int assertions;
 
     private SciDVSGaerFx3WiringDemo() {

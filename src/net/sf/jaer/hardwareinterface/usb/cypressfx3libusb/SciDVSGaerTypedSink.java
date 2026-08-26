@@ -26,7 +26,8 @@ final class SciDVSGaerTypedSink implements SciDVSGaerSink {
 
     @Override
     public void onTimestampReset() {
-        builder.onTimestampReset(true);
+        // SciDVS has no IMU stream, so reset cannot discard hidden IMU state.
+        builder.onTimestampReset(false);
         timestampResetHandler.run();
     }
 

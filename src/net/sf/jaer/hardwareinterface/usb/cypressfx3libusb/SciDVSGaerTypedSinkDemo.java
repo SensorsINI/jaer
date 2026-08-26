@@ -234,6 +234,8 @@ public final class SciDVSGaerTypedSinkDemo {
 
         final Method getEpoch = TypedDataPacket.class.getMethod("getTimestampEpoch");
         final Harness harness = new Harness(defaultConfig(), 112, false, 4096, 16);
+        harness.bundle.beginAcquisition(37, 0);
+        harness.builder.attach(harness.bundle, null, APS_WIDTH, APS_HEIGHT);
         harness.decode(0x8064, 0x100A, 0x2001,
                 0x0001,
                 0x8005, 0x100B, 0x2002);
@@ -250,6 +252,12 @@ public final class SciDVSGaerTypedSinkDemo {
                 "both reset-split typed packets carry non-negative epochs");
         require(epochs.get(1) == epochs.get(0) + 1,
                 "timestamp reset advances the typed epoch exactly once");
+        require(!harness.bundle.getAcquisitionMetadata().hasUnquantifiedLoss(
+                net.sf.jaer.event.PacketType.IMU6),
+                "SciDVS reset does not invent unquantified IMU loss without an IMU stream");
+        require(harness.bundle.getAcquisitionMetadata().getExactLossCount(
+                net.sf.jaer.event.PacketType.IMU6) == 0,
+                "SciDVS reset records no exact IMU loss without an IMU stream");
     }
 
     private static boolean declares(final String name, final Class<?>... parameters) {

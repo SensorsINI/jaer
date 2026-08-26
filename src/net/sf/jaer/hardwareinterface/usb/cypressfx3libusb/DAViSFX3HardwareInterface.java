@@ -489,8 +489,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                             if (warningCount % WARNING_INTERVAL == 0) {
                                                 CypressFX3.log.info(
                                                         "IMU End: failed to validate IMU sample count (" + imuCount + "), discarding samples.");
-                                                warningCount++;
                                             }
+                                            warningCount++;
                                         }
                                         break;
 
@@ -640,8 +640,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                             case 4: // APS ADC sample
                                 // Let's check that apsCountY is not above the maximum. This could happen
                                 // if start/end of column events are discarded (no wait on transfer stall).
-                                if (((apsCountY[apsCurrentReadoutType] >= apsSizeY) || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) && warningCount % WARNING_INTERVAL == 0) {
-                                    CypressFX3.log.fine("APS ADC sample: row or column count is at maximum, discarding further samples.");
+                                if ((apsCountY[apsCurrentReadoutType] >= apsSizeY)
+                                        || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) {
+                                    if (warningCount % WARNING_INTERVAL == 0) {
+                                        CypressFX3.log.fine("APS ADC sample: row or column count is at maximum, discarding further samples.");
+                                    }
                                     warningCount++;
                                     break;
                                 }
@@ -906,6 +909,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             for (int i = 0; i < sBuf.limit(); i++) {
                 final short event = sBuf.get(i);
                 if ((event & 0x8000) != 0) {
+                    typedBuilder.invalidatePolarityPatchEligibility();
                     lastTimestamp = currentTimestamp;
                     currentTimestamp = wrapAdd + (event & 0x7FFF);
                     checkMonotonicTimestamp();
@@ -914,6 +918,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
                 final byte code = (byte) ((event & 0x7000) >>> 12);
                 final short data = (short) (event & 0x0FFF);
+                final boolean addressPatchWord = code == 6 && (data & 0x0800) != 0;
+                if (!addressPatchWord) {
+                    typedBuilder.invalidatePolarityPatchEligibility();
+                }
                 switch (code) {
                     case 0:
                         decodeStandardTypedSpecial(data);
@@ -942,9 +950,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                         break;
 
                     case 6:
-                        if ((data & 0x0800) != 0) {
-                            typedBuilder.patchLastPolarityAddress(data & 0x07ff);
-                        }
+                        decodeStandardTypedMisc11(data);
                         break;
 
                     case 7:
@@ -1243,6 +1249,22 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
                 default:
                     CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
+                    break;
+            }
+        }
+
+        private void decodeStandardTypedMisc11(final short data) {
+            final byte misc11Code = (byte) ((data & 0x0800) >> 11);
+            switch (misc11Code) {
+                case 0:
+                    // APS exposure information is intentionally ignored, as in the raw parser.
+                    break;
+                case 1:
+                    typedBuilder.patchLastPolarityAddress(data & 0x07ff);
+                    break;
+                default:
+                    // The one-bit selector makes this unreachable; retain raw-parser diagnostics.
+                    CypressFX3.log.severe("Caught Misc10 event that can't be handled.");
                     break;
             }
         }

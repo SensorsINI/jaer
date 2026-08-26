@@ -5,6 +5,7 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.EnumMap;
 import java.util.function.IntSupplier;
@@ -60,6 +61,7 @@ public class DavisUsbPacketBundleBuilder {
     private long acquisitionSessionId = -1;
     private long acceptedElements;
     private boolean imuAssemblyInProgress;
+    private boolean polarityPatchEligible;
     private IntSupplier hostCapacitySupplier = () -> Integer.MAX_VALUE;
     private final EnumMap<PacketType, Long> pendingHostCapacityLoss
             = new EnumMap<>(PacketType.class);
@@ -94,6 +96,7 @@ public class DavisUsbPacketBundleBuilder {
                 }
             }
             acceptedElements = 0;
+            polarityPatchEligible = false;
             bindSlot(writeBundle);
             polarityOut = polarity.outputIterator();
             polarityInBundle = false;
@@ -192,7 +195,8 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addPolarity(final int x, final int y, final boolean on, final int timestamp, final int address) {
-        if (!accept(PacketType.POLARITY)) {
+        polarityPatchEligible = accept(PacketType.POLARITY);
+        if (!polarityPatchEligible) {
             return;
         }
         if (polarity == null) {
@@ -307,13 +311,31 @@ public class DavisUsbPacketBundleBuilder {
         imuAssemblyInProgress = false;
     }
 
-    /** Applies the standard DAVIS address patch to the most recent typed polarity event. */
+    /** Prevents a later address-patch word from reaching an older polarity event. */
+    public void invalidatePolarityPatchEligibility() {
+        polarityPatchEligible = false;
+    }
+
+    /**
+     * Applies the standard DAVIS address patch only when the immediately
+     * preceding polarity word was accepted. All typed fields derived from the
+     * packed address are refreshed together.
+     */
     public void patchLastPolarityAddress(final int orMask) {
-        if (polarity == null || polarity.isEmpty()) {
+        final boolean eligible = polarityPatchEligible;
+        polarityPatchEligible = false;
+        if (!eligible || polarity == null || polarity.isEmpty()) {
             return;
         }
         final PolarityEvent event = polarity.getEvent(polarity.getSize() - 1);
+        final int previousAddressX = (event.address & DavisChip.XMASK) >>> DavisChip.XSHIFT;
+        final int unflipMaxX = event.getX() + previousAddressX;
         event.address |= orMask;
+        event.x = (short) (unflipMaxX
+                - ((event.address & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+        event.y = (short) ((event.address & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+        event.setPolarity((event.address & DavisChip.POLMASK) != 0
+                ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off);
     }
 
     /**
@@ -341,6 +363,7 @@ public class DavisUsbPacketBundleBuilder {
                     "timestamp reset may have discarded decoder IMU assembly state; count unavailable");
         }
         imuAssemblyInProgress = false;
+        polarityPatchEligible = false;
         timestampEpoch = Math.addExact(timestampEpoch, 1);
         startEpochPackets();
     }
