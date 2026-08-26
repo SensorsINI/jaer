@@ -9,6 +9,50 @@ Official docs:
 
 Applies to **Dropbox Personal** (Basic/Plus/Professional/Family). Not available on Dropbox **team** accounts (e.g. `Dropbox (iniLabs)`).
 
+## Handy commands to ignore things
+
+For Bash, add this function to `~/.bash_aliases`:
+
+```bash
+echo 'dbignore() { if [ $# -eq 0 ]; then for f in .* *; do [ -e "$f" ] && [ "$f" != "." ] && [ "$f" != ".." ] && (getfattr -n user.com.dropbox.ignored "$f" 2>/dev/null | grep -q "1" || attr -g com.dropbox.ignored "$f" 2>/dev/null | grep -q "1") && echo "$f"; done; else for p in "$@"; do attr -s com.dropbox.ignored -V 1 "$p" 2>/dev/null || setfattr -n user.com.dropbox.ignored -v 1 "$p"; done; fi; }' >> ~/.bash_aliases
+source ~/.bash_aliases
+```
+
+With no arguments, it lists ignored names in the current directory; with
+arguments, it sets the ignore attribute on those paths.
+
+For Windows PowerShell, do not use `Get-Item -Stream` on folders: in Windows
+PowerShell 5.1 that returns nothing for directories. Use
+`Get-Content -LiteralPath … -Stream` only. This lists **NTFS ignore-attribute**
+items only; folders ignored solely by `rules.dropboxignore` have no stream and
+will not appear (Explorer still shows a gray minus). `dbignore .` ignores the
+**current directory** (for example, the whole `jaer` repo), so check the printed
+path.
+
+Paste into `$PROFILE` (replace any previous `dbignore`; do not `Add-Content` a second copy), then `. $PROFILE`.
+
+```powershell
+function dbignore {
+  if ($args.Count -eq 0) {
+    $names = @(Get-ChildItem -Force | Where-Object {
+      (Get-Content -LiteralPath $_.FullName -Stream com.dropbox.ignored -ErrorAction SilentlyContinue) -eq '1'
+    } | ForEach-Object { $_.Name })
+    if ($names.Count -eq 0) {
+      Write-Output 'ignored: (none with com.dropbox.ignored ADS in this directory)'
+    } else {
+      Write-Output ("ignored: " + ($names -join ' '))
+    }
+  } else {
+    $done = New-Object System.Collections.Generic.List[string]
+    foreach ($p in $args) {
+      Set-Content -LiteralPath $p -Stream com.dropbox.ignored -Value 1
+      $done.Add((Resolve-Path -LiteralPath $p).Path)
+    }
+    Write-Output ("ignored: " + ($done -join ' '))
+  }
+}
+```
+
 ---
 
 ## What must stay local (do not sync)

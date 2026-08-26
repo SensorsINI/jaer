@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileFilter;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.DATFileFilter;
@@ -41,6 +44,7 @@ public class AEDZRoutingDemo {
     public static void main(String[] args) throws Exception {
         extensionAndConstantMappings();
         fileFilterRouting();
+        openDialogFilterInstallation();
         aedzOpenRouting();
         rejectUnknownExtension();
         aedat2NotCapturedByAedzBranch();
@@ -79,7 +83,113 @@ public class AEDZRoutingDemo {
                 "DATFileFilter.accept(recording.aedat4)");
         assertTrue(!filter.accept(new File("recording.foo")),
                 "DATFileFilter rejects .foo");
+        DATFileFilter aedat4 = new DATFileFilter(DATFileFilter.Category.AEDAT4);
+        assertTrue(aedat4.accept(new File("recording.aedat4")),
+                "AEDAT4 filter accepts .aedat4");
+        assertTrue(!aedat4.accept(new File("recording.aedat2")),
+                "AEDAT4 filter rejects .aedat2");
+        DATFileFilter other = new DATFileFilter(DATFileFilter.Category.OTHER);
+        assertTrue(other.accept(new File("recording.aedz")),
+                "OTHER filter accepts .aedz");
+        assertTrue(!other.accept(new File("recording.aedat4")),
+                "OTHER filter rejects .aedat4");
+        DATFileFilter allFiles = new DATFileFilter(DATFileFilter.Category.ALL_FILES);
+        assertTrue(allFiles.accept(new File("recording.foo")),
+                "ALL_FILES accepts any file");
+        File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+        assertTrue(aedat4.accept(tmpDir) && other.accept(tmpDir) && allFiles.accept(tmpDir),
+                "every filter shows directories");
         System.out.println("PASS DATFileFilter routing");
+    }
+
+    /** Production chooser installation, ordering, restoration, and extension matrix. */
+    private static void openDialogFilterInstallation() {
+        JFileChooser chooser = new JFileChooser();
+        DATFileFilter.installOpenDialogFilters(chooser, null);
+        assertTrue(!chooser.isAcceptAllFileFilterUsed(),
+                "built-in All Files filter disabled");
+
+        DATFileFilter.Category[] expected = {
+            DATFileFilter.Category.ALL_RECOGNIZED,
+            DATFileFilter.Category.AEDAT,
+            DATFileFilter.Category.AEDAT2,
+            DATFileFilter.Category.AEDAT4,
+            DATFileFilter.Category.OTHER,
+            DATFileFilter.Category.ALL_FILES
+        };
+        FileFilter[] installed = chooser.getChoosableFileFilters();
+        assertTrue(installed.length == expected.length,
+                "open dialog installs exactly six filters");
+        for (int i = 0; i < expected.length; i++) {
+            assertTrue(installed[i] instanceof DATFileFilter,
+                    "open dialog filter " + i + " is DATFileFilter");
+            assertTrue(((DATFileFilter) installed[i]).getCategory() == expected[i],
+                    "open dialog filter order at " + i + " is " + expected[i]);
+        }
+        assertTrue(((DATFileFilter) chooser.getFileFilter()).getCategory()
+                == DATFileFilter.Category.ALL_RECOGNIZED,
+                "all recognized selected by default");
+
+        DATFileFilter previous = (DATFileFilter) installed[3];
+        DATFileFilter.installOpenDialogFilters(chooser, previous);
+        assertTrue(((DATFileFilter) chooser.getFileFilter()).getCategory()
+                == DATFileFilter.Category.AEDAT4,
+                "previous AEDAT-4 filter restored");
+
+        DATFileFilter allRecognized = new DATFileFilter(DATFileFilter.Category.ALL_RECOGNIZED);
+        String[] dataExtensions = {
+            "aedat", "aedat2", "aedat4", "aedz", "dat", "raw", "h5",
+            "hdf5", "bag", "csv", "txt"
+        };
+        String[] indexExtensions = {"aeidx", "index"};
+        for (String extension : dataExtensions) {
+            assertTrue(allRecognized.accept(new File("recording." + extension)),
+                    "all recognized accepts ." + extension);
+            assertTrue(allRecognized.accept(new File("recording." + extension.toUpperCase())),
+                    "all recognized accepts uppercase ." + extension);
+        }
+        for (String extension : indexExtensions) {
+            assertTrue(allRecognized.accept(new File("recording." + extension)),
+                    "all recognized accepts index ." + extension);
+        }
+        assertTrue(!allRecognized.accept(null), "all recognized rejects null");
+        assertTrue(!allRecognized.accept(new File("recording")),
+                "all recognized rejects extensionless file");
+        assertTrue(!allRecognized.accept(new File("recording.foo")),
+                "all recognized rejects unknown extension");
+        assertTrue(allRecognized.getDescription().contains("*.hdf5")
+                && allRecognized.getDescription().contains("*.index"),
+                "all recognized description lists accepted HDF5 and legacy index formats");
+        DATFileFilter otherRecognized = new DATFileFilter(DATFileFilter.Category.OTHER);
+        assertTrue(otherRecognized.getDescription().contains("*.hdf5")
+                && otherRecognized.getDescription().contains("*.index"),
+                "other description lists accepted HDF5 and legacy index formats");
+
+        DATFileFilter.installSequencingDialogFilters(chooser);
+        installed = chooser.getChoosableFileFilters();
+        assertTrue(installed.length == 2,
+                "sequencing dialog installs data and all-files filters only");
+        DATFileFilter sequencing = (DATFileFilter) installed[0];
+        assertTrue(sequencing.getCategory() == DATFileFilter.Category.SEQUENCING_DATA,
+                "sequencing data filter is first and selected");
+        assertTrue(chooser.getFileFilter() == sequencing,
+                "sequencing data selected by default");
+        for (String extension : dataExtensions) {
+            assertTrue(sequencing.accept(new File("recording." + extension)),
+                    "sequencing accepts data ." + extension);
+        }
+        for (String extension : indexExtensions) {
+            assertTrue(!sequencing.accept(new File("recording." + extension)),
+                    "sequencing rejects index ." + extension);
+        }
+        File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+        for (FileFilter installedFilter : installed) {
+            assertTrue(installedFilter.accept(tmpDir),
+                    "sequencing filter shows directories: " + installedFilter.getDescription());
+            assertTrue(!installedFilter.accept(null),
+                    "sequencing filter rejects null: " + installedFilter.getDescription());
+        }
+        System.out.println("PASS open-dialog filter installation and restoration");
     }
 
     /** A real .aedz file opened through chip.constuctFileInputStream routes to AEDZInputStream. */

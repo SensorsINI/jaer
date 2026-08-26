@@ -65,6 +65,7 @@ import net.sf.jaer.util.IndexFileFilter;
 public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInterface {
 
     JFileChooser fileChooser;
+    private FileFilter lastFilter;
     private final Object openStateLock = new Object();
     private final Map<Long, SwingWorker<AEFileInputStreamInterface, Void>> pendingOpenWorkers = new HashMap<>();
     private long openGeneration;
@@ -89,7 +90,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public boolean isChoosingFile() {
         return (fileChooser != null) && fileChooser.isVisible();
     }
-    FileFilter lastFilter = null;
 
     /**
      * Called when user asks to open data file file dialog.
@@ -106,16 +106,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         String lastFilePath = this.viewer.prefs.get("AEViewer.lastFile", "");
         // get the last folder
         viewer.lastFile = new File(lastFilePath);
-//            fileChooser.setFileFilter(datFileFilter);
-        IndexFileFilter indexFileFilter = new IndexFileFilter();
-        fileChooser.addChoosableFileFilter(indexFileFilter);
-        DATFileFilter datFileFilter = new DATFileFilter();
-        fileChooser.addChoosableFileFilter(datFileFilter);
-        if (lastFilter == null) {
-            fileChooser.setFileFilter(datFileFilter);
-        } else {
-            fileChooser.setFileFilter(lastFilter);
-        }
+        DATFileFilter.installOpenDialogFilters(fileChooser, lastFilter);
         fileChooser.setCurrentDirectory(viewer.lastFile);
         // sets the working directory of the chooser
 //            boolean wasPaused=isPaused();
