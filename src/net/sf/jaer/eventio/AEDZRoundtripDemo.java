@@ -4,15 +4,19 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.eventio.export.SaveAsExporter;
 
 /**
  * Headless production-path self-test for the streaming AEDZ compressed
@@ -66,6 +70,8 @@ public class AEDZRoundtripDemo {
         malformedResourceBoundaryTests();
         descriptorStabilityTests();
         corruptionTests();
+        markerPersistenceAndFileInformation();
+        saveAsFullFileMarkerBypassPreservesCompleteMarks();
         System.out.println("ALL AEDZ ROUNDTRIP TESTS PASS");
     }
 
@@ -470,8 +476,11 @@ public class AEDZRoundtripDemo {
             fixtures.add(indexOverCap);
             expectRejectContaining(indexOverCap, "index byte cap + one entry", "index", "maximum");
 
+            int[] maximalPlaneSizes = new int[8];
+            Arrays.fill(maximalPlaneSizes, TEST_MAX_COMPRESSED_PLANE_BYTES);
+            maximalPlaneSizes[0]++;
             File chunkOverCap = sparseSingleChunkFixture(
-                    "aedzchunkinputcap", TEST_MAX_COMPRESSED_CHUNK_BYTES + 1, null);
+                    "aedzchunkinputcap", TEST_MAX_COMPRESSED_CHUNK_BYTES + 1, maximalPlaneSizes);
             fixtures.add(chunkOverCap);
             expectRejectContaining(chunkOverCap, "compressed chunk cap + 1", "compressed_size", "maximum");
 
@@ -871,6 +880,180 @@ public class AEDZRoundtripDemo {
         int headerLen = leInt(b, 8 + 8 + 4 + 1);
         int trailingLen = leInt(b, 8 + 8 + 4 + 1 + 4 + headerLen);
         return 8 + 8 + 4 + 1 + 4 + headerLen + 4 + trailingLen;
+    }
+
+    /** Marks live in shared preferences as event indices and never mutate recording bytes. */
+    private static void markerPersistenceAndFileInformation() throws Exception {
+        final int[] addresses = {0x7fffffff, 0x80000000, 3, -7, 0x12345678, 99, 100, 101, 102};
+        final int[] timestamps = {100, 90, 110, -5, Integer.MAX_VALUE, Integer.MIN_VALUE, 17, 16, 200};
+        AEPacketRaw packet = new AEPacketRaw(addresses.length);
+        System.arraycopy(addresses, 0, packet.getAddresses(), 0, addresses.length);
+        System.arraycopy(timestamps, 0, packet.getTimestamps(), 0, timestamps.length);
+        packet.setNumEvents(addresses.length);
+        File file = tempFile(".aedz");
+        try (AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null)) {
+            out.writePacket(packet);
+        }
+        byte[] frozenBytes = java.nio.file.Files.readAllBytes(file.toPath());
+        AEFileInputStream.Marks seeded = new AEFileInputStream.Marks();
+        seeded.markIn = 2;
+        seeded.markOut = 7;
+        seeded.otherMarks.add(4L);
+        AEFileInputStream.marksPutForFile(file, seeded);
+        try {
+            // File-preview streams never initialize marks; closing one must not erase saved state.
+            try (AEDZInputStream preview = new AEDZInputStream(file)) {
+                assertTrue(preview.size() == addresses.length, "preview opens AEDZ without marksInitialize");
+            }
+            AEFileInputStream.Marks afterPreview = AEFileInputStream.marksGetForFile(file);
+            assertMarks(afterPreview, 2, 7, new long[]{4}, "preview close preserves stored marks");
+
+            List<String> events = new ArrayList<>();
+            try (AEDZInputStream active = new AEDZInputStream(file)) {
+                active.marksInitialize();
+                assertTrue(active.isMarkInSet() && active.isMarkOutSet(), "marksInitialize restores IN and OUT");
+                assertTrue(active.getMarkInPosition() == 2 && active.getMarkOutPosition() == 7,
+                        "restored IN/OUT are logical event indices");
+                assertMarks(requiredMarks(active), 2, 7, new long[]{4}, "ordinary marker restored");
+                active.getSupport().addPropertyChangeListener(evt -> events.add(evt.getPropertyName()));
+                active.position(3);
+                active.setMarkIn();
+                active.position(5);
+                assertTrue(active.toggleMarker(), "ordinary marker add returns true");
+                assertTrue(!active.toggleMarker(), "ordinary marker removal returns false");
+                active.clearMarks();
+                active.position(1);
+                active.setMarkIn();
+                active.position(8);
+                active.setMarkOut();
+                active.position(5);
+                active.toggleMarker();
+            }
+            assertTrue(events.contains(AEInputStream.EVENT_POSITION), "position emits EVENT_POSITION");
+            assertTrue(events.contains(AEInputStream.EVENT_MARK_IN_SET), "set IN emits EVENT_MARK_IN_SET");
+            assertTrue(events.contains(AEInputStream.EVENT_MARK_OUT_SET), "set OUT emits EVENT_MARK_OUT_SET");
+            assertTrue(count(events, AEInputStream.EVENT_MARK_TOGGLED) == 3,
+                    "each ordinary marker toggle emits EVENT_MARK_TOGGLED");
+            assertTrue(count(events, AEInputStream.EVENT_MARKS_CLEARED) == 1,
+                    "clear emits EVENT_MARKS_CLEARED");
+
+            try (AEDZInputStream reopened = new AEDZInputStream(file)) {
+                reopened.marksInitialize();
+                assertMarks(requiredMarks(reopened), 1, 8, new long[]{5},
+                        "close/reopen persists logical marker indices");
+            }
+            assertTrue(Arrays.equals(frozenBytes, java.nio.file.Files.readAllBytes(file.toPath())),
+                    "marker operations leave the AEDZ file hash unchanged");
+
+            try (AEDZInputStream data = new AEDZInputStream(file)) {
+                data.setRepeat(false);
+                AEPacketRaw got = data.readPacketByNumber(addresses.length);
+                assertTrue(got.getNumEvents() == addresses.length, "all events remain readable after marker operations");
+                for (int i = 0; i < addresses.length; i++) {
+                    assertTrue(got.getAddresses()[i] == addresses[i], "address preserved exactly at " + i);
+                    assertTrue(got.getTimestamps()[i] == timestamps[i], "timestamp preserved exactly at " + i);
+                }
+                String info = data.getFileInfo();
+                assertTrue(info != null && info.contains("File size:") && info.contains("Plane payloads:")
+                        && info.contains("% of uncompressed") && info.contains(":1"),
+                        "AEDZ reader file info exposes size and payload compression statistics");
+            }
+            System.out.println("PASS markerPersistenceAndFileInformation markers/hash/events/timestamps/file-info");
+        } finally {
+            AEFileInputStream.marksPutForFile(file, null);
+            file.delete();
+        }
+    }
+
+    /** Full-file Save As bypass restores IN/OUT/ordinary marks without touching recording bytes. */
+    private static void saveAsFullFileMarkerBypassPreservesCompleteMarks() throws Exception {
+        final int n = 12;
+        AEPacketRaw packet = makePacket(n, 81);
+        File file = tempFile(".aedz");
+        try (AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null)) {
+            out.writePacket(packet);
+        }
+        byte[] sourceBytes = java.nio.file.Files.readAllBytes(file.toPath());
+        AEFileInputStream.Marks seeded = new AEFileInputStream.Marks();
+        seeded.markIn = 2;
+        seeded.markOut = 10;
+        seeded.otherMarks.add(4L);
+        seeded.otherMarks.add(7L);
+        AEFileInputStream.marksPutForFile(file, seeded);
+        try {
+            long savedPosition = 6;
+            try (AEDZInputStream active = new AEDZInputStream(file)) {
+                active.marksInitialize();
+                active.position(savedPosition);
+                Method bypass = SaveAsExporter.class.getDeclaredMethod(
+                        "bypassMarksForFullFileExport", AEFileInputStreamInterface.class);
+                bypass.setAccessible(true);
+                AEFileInputStream.Marks saved = (AEFileInputStream.Marks) bypass.invoke(null, active);
+                assertMarks(saved, 2, 10, new long[]{4, 7},
+                        "Save As snapshots complete live marker state");
+                assertTrue(!active.isMarkInSet() && !active.isMarkOutSet(),
+                        "Save As bypass removes IN/OUT read bounds temporarily");
+                assertMarks(requiredMarks(active), 0, Long.MAX_VALUE, new long[]{},
+                        "Save As bypass temporarily clears ordinary markers");
+                active.position(0);
+                active.setRepeat(false);
+                AEPacketRaw exported = active.readPacketByNumber(n);
+                assertTrue(exported.getNumEvents() == n, "full-file Save As bypass reads every source event");
+                for (int i = 0; i < n; i++) {
+                    assertTrue(exported.getAddresses()[i] == packet.getAddresses()[i],
+                            "full-file bypass preserves source address at " + i);
+                    assertTrue(exported.getTimestamps()[i] == packet.getTimestamps()[i],
+                            "full-file bypass preserves source timestamp at " + i);
+                }
+                Method restore = SaveAsExporter.class.getDeclaredMethod(
+                        "restoreMarksAfterFullFileExport", AEFileInputStreamInterface.class,
+                        AEFileInputStream.Marks.class, boolean.class, boolean.class);
+                restore.setAccessible(true);
+                restore.invoke(null, active, saved, true, true);
+                active.position(savedPosition);
+                assertMarks(requiredMarks(active), 2, 10, new long[]{4, 7},
+                        "Save As restores complete marker state before stream close");
+            }
+            try (AEDZInputStream reopened = new AEDZInputStream(file)) {
+                reopened.marksInitialize();
+                assertMarks(requiredMarks(reopened), 2, 10, new long[]{4, 7},
+                        "Save As marker state survives close/reopen");
+            }
+            assertTrue(Arrays.equals(sourceBytes, java.nio.file.Files.readAllBytes(file.toPath())),
+                    "Save As marker bypass and restore leave source file bytes unchanged");
+            System.out.println("PASS saveAsFullFileMarkerBypassPreservesCompleteMarks");
+        } finally {
+            AEFileInputStream.marksPutForFile(file, null);
+            file.delete();
+        }
+    }
+
+    private static AEFileInputStream.Marks requiredMarks(AEDZInputStream in) throws Exception {
+        try {
+            return (AEFileInputStream.Marks) in.getClass().getMethod("getPlaybackMarks").invoke(in);
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError("AEDZ input lacks shared playback marks", e);
+        }
+    }
+
+    private static int count(List<String> values, String value) {
+        int n = 0;
+        for (String v : values) {
+            if (value.equals(v)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static void assertMarks(AEFileInputStream.Marks marks, long in, long out, long[] ordinary, String tag) {
+        assertTrue(marks != null, tag + " (marks exist)");
+        assertTrue(marks.markIn == in && marks.markOut == out, tag + " (IN/OUT)");
+        TreeSet<Long> expected = new TreeSet<>();
+        for (long m : ordinary) {
+            expected.add(m);
+        }
+        assertTrue(expected.equals(marks.otherMarks), tag + " (ordinary markers)");
     }
 
     static final class CorruptCase {

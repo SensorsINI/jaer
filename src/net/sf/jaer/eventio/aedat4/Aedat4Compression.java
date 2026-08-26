@@ -20,6 +20,7 @@ import net.jpountz.xxhash.XXHashFactory;
 import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorInputStream;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * AEDAT-4 / DV packet payload compression (LZ4 or ZSTD frame per packet).
@@ -54,6 +55,10 @@ public final class Aedat4Compression {
     private static final int LZ4_FLG_BLOCK_INDEPENDENCE = 0x20;
     /** Version 1 + BLOCK_INDEPENDENCE (lz4-java {@code LZ4FrameOutputStream} default). */
     private static final byte LZ4_FLG_INDEPENDENT_V1 = (byte) 0x60;
+    /** FLG bit 3: 8-byte little-endian uncompressed content size follows BD. */
+    private static final int LZ4_FLG_CONTENT_SIZE = 0x08;
+    /** Bytes of a compressed packet to peek for ZSTD/LZ4 uncompressed size. */
+    public static final int UNCOMPRESSED_SIZE_HEADER_BYTES = 32;
     /** Uncompressed block flag in the 32-bit block-size field. */
     private static final int LZ4_FRAME_INCOMPRESSIBLE_MASK = 0x80000000;
     /** BD byte: 64 KiB blocks ({@code indicator==4}). */
@@ -261,6 +266,92 @@ public final class Aedat4Compression {
         }
     }
 
+    /**
+     * Uncompressed FlatBuffer size from a codec frame header, without decompressing.
+     * {@code compressedLength} is used when {@code compression == NONE}.
+     *
+     * @return uncompressed byte count, or {@code -1} if the header does not store it
+     *         (older LZ4 frames without Content Size, truncated peek, etc.)
+     */
+    public static long uncompressedSize(byte[] prefix, int compression, int compressedLength) {
+        return uncompressedSize(prefix, 0, prefix == null ? 0 : prefix.length, compression, compressedLength);
+    }
+
+    public static long uncompressedSize(byte[] prefix, int off, int len, int compression, int compressedLength) {
+        compression = clamp(compression);
+        if (compression == CompressionType.NONE) {
+            return compressedLength >= 0 ? compressedLength : Math.max(0, len);
+        }
+        if (prefix == null || len <= 0 || off < 0 || off + len > prefix.length) {
+            return -1;
+        }
+        switch (compression) {
+            case CompressionType.ZSTD:
+            case CompressionType.ZSTD_HIGH:
+                return zstdContentSize(prefix, off, len);
+            case CompressionType.LZ4:
+            case CompressionType.LZ4_HIGH:
+                return lz4ContentSize(prefix, off, len);
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * One-line input (uncompressed FlatBuffers) vs output (on-disk payloads) summary.
+     * Empty if both sizes are missing.
+     */
+    public static String formatPayloadCompression(int compression, long uncompressedBytes, long compressedBytes) {
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(3);
+        String name = nameOf(compression);
+        if (uncompressedBytes <= 0 && compressedBytes <= 0) {
+            return "";
+        }
+        if (uncompressedBytes <= 0) {
+            return String.format("Payloads: %sB compressed (%s); uncompressed size not in packet headers",
+                    eng.format((double) compressedBytes).trim(), name);
+        }
+        String raw = eng.format((double) uncompressedBytes).trim();
+        String packed = eng.format((double) compressedBytes).trim();
+        if (compression == CompressionType.NONE || uncompressedBytes == compressedBytes) {
+            return String.format("Payloads: %sB uncompressed (%s)", raw, name);
+        }
+        double pct = 100.0 * compressedBytes / (double) uncompressedBytes;
+        double ratio = compressedBytes > 0 ? uncompressedBytes / (double) compressedBytes : 0;
+        return String.format(
+                "Payloads: %sB uncompressed -> %sB compressed (%s, %.0f%% of uncompressed, %.1f:1)",
+                raw, packed, name, pct, ratio);
+    }
+
+    private static long zstdContentSize(byte[] prefix, int off, int len) {
+        byte[] slice = (off == 0 && len == prefix.length) ? prefix : Arrays.copyOfRange(prefix, off, off + len);
+        long size = Zstd.decompressedSize(slice);
+        if (size <= 0 || size > Integer.MAX_VALUE) {
+            return -1;
+        }
+        return size;
+    }
+
+    private static long lz4ContentSize(byte[] prefix, int off, int len) {
+        if (len < 14) {
+            return -1;
+        }
+        if ((prefix[off] & 0xff) != LZ4_MAGIC_0 || (prefix[off + 1] & 0xff) != LZ4_MAGIC_1
+                || (prefix[off + 2] & 0xff) != LZ4_MAGIC_2 || (prefix[off + 3] & 0xff) != LZ4_MAGIC_3) {
+            return -1;
+        }
+        int flg = prefix[off + 4] & 0xff;
+        if ((flg & LZ4_FLG_CONTENT_SIZE) == 0) {
+            return -1;
+        }
+        long size = getLongLE(prefix, off + 6);
+        if (size < 0 || size > Integer.MAX_VALUE) {
+            return -1;
+        }
+        return size;
+    }
+
     private static final ThreadLocal<Lz4Scratch> LZ4_FAST = ThreadLocal.withInitial(() -> new Lz4Scratch(false));
     private static final ThreadLocal<Lz4Scratch> LZ4_HIGH = ThreadLocal.withInitial(() -> new Lz4Scratch(true));
 
@@ -275,11 +366,12 @@ public final class Aedat4Compression {
         s.header[1] = (byte) LZ4_MAGIC_1;
         s.header[2] = (byte) LZ4_MAGIC_2;
         s.header[3] = (byte) LZ4_MAGIC_3;
-        s.header[4] = LZ4_FLG_INDEPENDENT_V1;
+        s.header[4] = (byte) (LZ4_FLG_INDEPENDENT_V1 | LZ4_FLG_CONTENT_SIZE);
         s.header[5] = high ? LZ4_BD_1MB : LZ4_BD_64KB;
-        int hc = (s.checksum.hash(s.header, 4, 2, 0) >> 8) & 0xFF;
-        s.header[6] = (byte) hc;
-        s.out.write(s.header, 0, 7);
+        putLongLE(s.header, 6, data.length);
+        int hc = (s.checksum.hash(s.header, 4, 10, 0) >> 8) & 0xFF;
+        s.header[14] = (byte) hc;
+        s.out.write(s.header, 0, 15);
 
         int off = 0;
         while (off < data.length) {
@@ -312,6 +404,28 @@ public final class Aedat4Compression {
         dest[3] = (byte) (value >>> 24);
     }
 
+    private static void putLongLE(byte[] dest, int off, long value) {
+        dest[off] = (byte) value;
+        dest[off + 1] = (byte) (value >>> 8);
+        dest[off + 2] = (byte) (value >>> 16);
+        dest[off + 3] = (byte) (value >>> 24);
+        dest[off + 4] = (byte) (value >>> 32);
+        dest[off + 5] = (byte) (value >>> 40);
+        dest[off + 6] = (byte) (value >>> 48);
+        dest[off + 7] = (byte) (value >>> 56);
+    }
+
+    private static long getLongLE(byte[] src, int off) {
+        return (src[off] & 0xffL)
+                | ((src[off + 1] & 0xffL) << 8)
+                | ((src[off + 2] & 0xffL) << 16)
+                | ((src[off + 3] & 0xffL) << 24)
+                | ((src[off + 4] & 0xffL) << 32)
+                | ((src[off + 5] & 0xffL) << 40)
+                | ((src[off + 6] & 0xffL) << 48)
+                | ((src[off + 7] & 0xffL) << 56);
+    }
+
     private static final class GrowableBytes extends ByteArrayOutputStream {
         GrowableBytes(int cap) {
             super(cap);
@@ -327,7 +441,7 @@ public final class Aedat4Compression {
         final XXHash32 checksum;
         final int blockSize;
         final GrowableBytes out;
-        final byte[] header = new byte[7];
+        final byte[] header = new byte[15];
         final byte[] sizeLE = new byte[4];
         byte[] compressed;
 

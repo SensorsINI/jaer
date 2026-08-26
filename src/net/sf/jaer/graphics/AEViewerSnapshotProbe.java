@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +15,10 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.eventio.export.SaveAsExporter;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 
 /**
@@ -73,6 +78,7 @@ public class AEViewerSnapshotProbe {
         testPreferenceIndexRoundTrip();
         testAedzWriterPathConstructsWriter();
         testAedzWriterFailureCleanup();
+        testAedzFileInformationAndPlaybackMarks();
         System.out.println("ALL PASS");
     }
 
@@ -707,6 +713,75 @@ public class AEViewerSnapshotProbe {
         setField(viewer, "recordingFile", null);
         viewer.releaseActiveRecordingSnapshot(
                 (RecordingConfigurationSnapshot) getField(viewer, "activeRecordingSnapshot"));
+    }
+
+    /** AEDZ participates in file-info, preview, Save As source-info, and slider-mark pathways. */
+    private static void testAedzFileInformationAndPlaybackMarks() throws Exception {
+        File file = File.createTempFile("jaer-aedz-ui-parity", ".aedz");
+        AEPacketRaw packet = new AEPacketRaw(6);
+        for (int i = 0; i < 6; i++) {
+            packet.getAddresses()[i] = 100 + i;
+            packet.getTimestamps()[i] = 1000 + i;
+        }
+        packet.setNumEvents(6);
+        try (AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null)) {
+            out.writePacket(packet);
+        }
+        try (AEDZInputStream in = new AEDZInputStream(file)) {
+            Method supports;
+            try {
+                supports = AEViewer.class.getDeclaredMethod("supportsFileInfo", AEFileInputStreamInterface.class);
+            } catch (NoSuchMethodException e) {
+                throw new AssertionError("AEViewer file-info pathway does not recognize AEDZ", e);
+            }
+            supports.setAccessible(true);
+            assertTrue(Boolean.TRUE.equals(supports.invoke(null, in)), "AEViewer enables Show file info for AEDZ");
+
+            Method previewFactory;
+            try {
+                previewFactory = ChipDataFilePreview.class.getDeclaredMethod(
+                        "constructPreviewStream", File.class, AEChip.class);
+            } catch (NoSuchMethodException e) {
+                throw new AssertionError("file preview lacks AEDZ stream routing", e);
+            }
+            previewFactory.setAccessible(true);
+            AEFileInputStreamInterface preview = (AEFileInputStreamInterface) previewFactory.invoke(null, file, null);
+            try {
+                assertTrue(preview instanceof AEDZInputStream, "file preview opens .aedz as AEDZInputStream");
+                assertTrue(preview.getFileInfo().contains("Plane payloads:"), "file preview can display AEDZ statistics");
+            } finally {
+                preview.close();
+            }
+
+            Method sourceInfo = SaveAsExporter.class.getDeclaredMethod(
+                    "snapshotSourceFileInfo", AEFileInputStreamInterface.class);
+            sourceInfo.setAccessible(true);
+            String source = String.valueOf(sourceInfo.invoke(null, in));
+            assertTrue(source.contains("File size:") && source.contains("Plane payloads:"),
+                    "Save As source information includes AEDZ file statistics");
+
+            in.position(1);
+            in.setMarkIn();
+            in.position(5);
+            in.setMarkOut();
+            in.position(3);
+            in.toggleMarker();
+            Method playbackMarks;
+            try {
+                playbackMarks = AEPlayer.class.getDeclaredMethod(
+                        "playbackMarksFor", AEFileInputStreamInterface.class);
+            } catch (NoSuchMethodException e) {
+                throw new AssertionError("AEPlayer cannot restore AEDZ marks to slider controls", e);
+            }
+            playbackMarks.setAccessible(true);
+            AEFileInputStream.Marks marks = (AEFileInputStream.Marks) playbackMarks.invoke(null, in);
+            assertTrue(marks != null && marks.markIn == 1 && marks.markOut == 5
+                    && marks.otherMarks.contains(3L),
+                    "AEPlayer receives AEDZ IN/OUT/ordinary marks for slider restoration");
+        } finally {
+            file.delete();
+        }
+        System.out.println("PASS testAedzFileInformationAndPlaybackMarks");
     }
 
     private static void setField(Object target, String name, Object value) throws Exception {

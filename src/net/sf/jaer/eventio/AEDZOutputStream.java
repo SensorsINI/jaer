@@ -85,6 +85,12 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
     // Tracking
     private long totalEvents = 0;
     private int nChunks = 0;
+    /** Event bytes before compression: exactly two 32-bit words per event. */
+    private long uncompressedPayloadBytes = 0;
+    /** Sum of the eight zstd-compressed plane lengths; excludes all AEDZ framing. */
+    private long compressedPlanePayloadBytes = 0;
+    /** Final complete file length, captured after the footer is written. */
+    private long onDiskFileSizeBytes = 0;
     private long firstTs = 0;
     private long lastTs = 0;
     private final ArrayList<long[]> chunkIndex = new ArrayList<>(); // [offset, n_events, first_ts, last_ts]
@@ -376,6 +382,9 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
             totalCompressed += compressed[p].length;
         }
 
+        uncompressedPayloadBytes += 8L * n;
+        compressedPlanePayloadBytes += totalCompressed;
+
         // Build chunk data: [8 x uint32 plane sizes] + [8 compressed planes]
         int chunkDataSize = 8 * 4 + totalCompressed;
 
@@ -471,6 +480,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
             footerBuf.put(FOOTER_MAGIC);
             footerBuf.flip();
             writeFully(footerBuf);
+            onDiskFileSizeBytes = channel.position();
         } catch (IOException | RuntimeException e) {
             failure = e;
         } finally {
@@ -496,7 +506,7 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
 
         endDate = new Date();
         endTimeMs = System.currentTimeMillis();
-        log.info(String.format("wrote %s", toString()));
+        log.info(String.format("wrote %s%n%s", toString(), formatCompressionSummary()));
     }
 
     private static Throwable appendFailure(Throwable primary, Throwable next) {
@@ -539,6 +549,42 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      */
     public long getNumEvents() {
         return totalEvents;
+    }
+
+    /** @return complete AEDZ file size including header, chunk framing, index, summary, and footer */
+    public long getOnDiskFileSizeBytes() {
+        return onDiskFileSizeBytes;
+    }
+
+    /** @return uncompressed event payload bytes, exactly {@code 8 * event count} */
+    public long getUncompressedPayloadBytes() {
+        return uncompressedPayloadBytes;
+    }
+
+    /** @return compressed plane bytes, excluding chunk headers and plane-size fields */
+    public long getCompressedPlanePayloadBytes() {
+        return compressedPlanePayloadBytes;
+    }
+
+    /** @return compressed plane bytes as a percentage of uncompressed event payload bytes */
+    public double getCompressedPayloadPercentage() {
+        return uncompressedPayloadBytes == 0 ? 0
+                : 100.0 * compressedPlanePayloadBytes / uncompressedPayloadBytes;
+    }
+
+    /** @return uncompressed-to-compressed plane-payload ratio, or 1 for an empty payload */
+    public double getUncompressedToCompressedRatio() {
+        return compressedPlanePayloadBytes == 0 ? 1.0
+                : uncompressedPayloadBytes / (double) compressedPlanePayloadBytes;
+    }
+
+    /** Detailed compression summary with file framing kept separate from payload statistics. */
+    public String formatCompressionSummary() {
+        return String.format(
+                "File size: %,d bytes%nPlane payloads: %,d compressed / %,d uncompressed bytes "
+                + "(%.3f%% of uncompressed, %.3f:1 uncompressed:compressed)",
+                onDiskFileSizeBytes, compressedPlanePayloadBytes, uncompressedPayloadBytes,
+                getCompressedPayloadPercentage(), getUncompressedToCompressedRatio());
     }
 
     /**

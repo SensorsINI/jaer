@@ -195,4 +195,46 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
     default void marksInitialize() {
     }
 
+    /**
+     * Returns a defensive snapshot of the stream's complete live marker state.
+     * Implementations that support ordinary markers override this method to
+     * include them; the default captures the common IN/OUT state.
+     */
+    default AEFileInputStream.Marks getPlaybackMarks() {
+        AEFileInputStream.Marks snapshot = new AEFileInputStream.Marks();
+        snapshot.markIn = getMarkInPosition();
+        snapshot.markOut = getMarkOutPosition();
+        return snapshot;
+    }
+
+    /**
+     * Restores a complete marker snapshot after temporary read-bound bypass.
+     * Ordinary markers are restored before IN/OUT so bounds cannot clamp them.
+     */
+    default void restorePlaybackMarks(AEFileInputStream.Marks snapshot,
+            boolean markInSet, boolean markOutSet) {
+        if (snapshot == null) {
+            return;
+        }
+        long here = position();
+        clearMarks();
+        if (snapshot.otherMarks != null) {
+            for (Long marker : snapshot.otherMarks) {
+                if (marker != null) {
+                    position(marker);
+                    toggleMarker();
+                }
+            }
+        }
+        if (markInSet) {
+            position(snapshot.markIn);
+            setMarkIn();
+        }
+        if (markOutSet) {
+            position(snapshot.markOut);
+            setMarkOut();
+        }
+        position(here);
+    }
+
 }

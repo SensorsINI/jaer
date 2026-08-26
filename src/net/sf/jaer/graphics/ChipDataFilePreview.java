@@ -33,6 +33,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.TextFileInputStream;
@@ -186,13 +187,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
                             && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
                         fileSizeString = summaryFromOpen(new DsecHdf5AEInputStream(file, chip, null));
-                    } else if (lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)) {
-                        ais = new Aedat4FileInputStream(file, chip);
-                        ais.rewind();
-                        fileSizeString = overlayText(ais);
-                        videoPreview = true;
                     } else {
-                        ais = new AEFileInputStream(file, chip);
+                        ais = constructPreviewStream(file, chip);
                         ais.rewind();
                         fileSizeString = overlayText(ais);
                         videoPreview = true;
@@ -442,6 +438,18 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             b = 255;
         }
         return (r << 16) | (g << 8) | b;
+    }
+
+    /** Opens the production preview stream for AEDAT-4, AEDZ, and legacy AEDAT. */
+    static AEFileInputStreamInterface constructPreviewStream(File file, AEChip chip) throws IOException {
+        String lower = file.getName().toLowerCase();
+        if (lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)) {
+            return new Aedat4FileInputStream(file, chip);
+        }
+        if (lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ)) {
+            return new AEDZInputStream(file);
+        }
+        return new AEFileInputStream(file, chip);
     }
 
     private String overlayText(AEFileInputStreamInterface stream) {

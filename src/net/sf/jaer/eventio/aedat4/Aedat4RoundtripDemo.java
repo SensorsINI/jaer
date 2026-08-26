@@ -40,6 +40,7 @@ public class Aedat4RoundtripDemo {
             }
             output.writeBundle(bundle);
         }
+        verifyUncompressedSizeFromHeaders();
         verifyOwnedConstructorClosesOnInitializationFailure();
 
         verifyDvFileDataTable(file);
@@ -68,6 +69,30 @@ public class Aedat4RoundtripDemo {
                 + " rerecordedFile=" + rerecorded.getAbsolutePath());
         if (!pass) {
             System.exit(1);
+        }
+    }
+
+    /** Codec headers must expose uncompressed size from a 32-byte peek (File info). */
+    private static void verifyUncompressedSizeFromHeaders() throws IOException {
+        byte[] raw = new byte[4096];
+        for (int i = 0; i < raw.length; i++) {
+            raw[i] = (byte) (i * 31);
+        }
+        int[] codecs = {
+            net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4,
+            net.sf.jaer.eventio.aedat4.dv.CompressionType.ZSTD,
+            net.sf.jaer.eventio.aedat4.dv.CompressionType.ZSTD_HIGH
+        };
+        for (int codec : codecs) {
+            byte[] packed = Aedat4Compression.compress(raw, codec);
+            int peekLen = Math.min(Aedat4Compression.UNCOMPRESSED_SIZE_HEADER_BYTES, packed.length);
+            byte[] prefix = java.util.Arrays.copyOf(packed, peekLen);
+            long size = Aedat4Compression.uncompressedSize(prefix, codec, packed.length);
+            if (size != raw.length) {
+                throw new IllegalStateException("uncompressedSize peek failed for "
+                        + Aedat4Compression.nameOf(codec) + ": got " + size + " expected " + raw.length
+                        + " compressed=" + packed.length + " peek=" + peekLen);
+            }
         }
     }
 

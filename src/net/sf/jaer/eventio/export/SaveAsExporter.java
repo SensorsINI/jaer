@@ -2,6 +2,7 @@ package net.sf.jaer.eventio.export;
 
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.CancellationException;
@@ -28,6 +29,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEOutputStream;
@@ -37,7 +39,7 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Offline File → Save As scan: park ViewLoop (no grab/paint), iterate the input
- * stream, write AEDAT-4, CSV, or DSEC HDF5 (plus optional HVS sidecars), restore
+ * stream, write AEDAT-4, AEDZ, CSV, or DSEC HDF5 (plus optional HVS sidecars), restore
  * position.
  */
 public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, String> {
@@ -72,17 +74,15 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         boolean wasRepeat = stream.isRepeat();
         boolean wasMono = stream.isNonMonotonicTimeExceptionsChecked();
         long savedPos = stream.position();
-        long savedMarkIn = stream.getMarkInPosition();
-        long savedMarkOut = stream.getMarkOutPosition();
         boolean savedInSet = stream.isMarkInSet();
         boolean savedOutSet = stream.isMarkOutSet();
-        boolean restoreAedat2Marks = false;
-        boolean restoreAedat4Marks = false;
+        AEFileInputStream.Marks bypassedMarks = null;
         boolean subSaved = chip.getEventExtractor() != null && chip.getEventExtractor().isSubsamplingEnabled();
         final String sourceFileInfo = snapshotSourceFileInfo(stream);
         CsvEventSink csv = null;
         DsecHdf5AEOutputStream h5 = null;
         Aedat4FileOutputStream aedat4 = null;
+        AEDZOutputStream aedz = null;
         ImuCsvSink imu = null;
         FramePngSink frames = null;
         DavisFrameAssembler assembler = null;
@@ -111,16 +111,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     end = stream.getMarkOutPosition();
                 }
             } else if (savedInSet || savedOutSet) {
-                // Stream readPacketByNumber still stops at OUT even when the checkbox is off.
-                if (stream instanceof AEFileInputStream) {
-                    AEFileInputStream.Marks m = ((AEFileInputStream) stream).getMarks();
-                    m.markIn = 0;
-                    m.markOut = Long.MAX_VALUE;
-                    restoreAedat2Marks = true;
-                } else {
-                    stream.clearMarks();
-                    restoreAedat4Marks = true;
-                }
+                // readPacketByNumber still obeys IN/OUT when full-file export is selected.
+                // Snapshot every marker before bypass so ordinary markers survive close().
+                bypassedMarks = bypassMarksForFullFileExport(stream);
                 start = 0;
                 end = stream.size();
             }
@@ -147,6 +140,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 csv = new CsvEventSink(options.outputFile, options.csvFormatter, source);
             } else if (options.format == SaveAsOptions.Format.DSEC_H5) {
                 h5 = new DsecHdf5AEOutputStream(options.outputFile, options.sensorWidth, options.sensorHeight);
+            } else if (options.format == SaveAsOptions.Format.AEDZ) {
+                aedz = openAedzOutputStream(options.outputFile, chip);
             } else {
                 long baseUs = 0;
                 try {
@@ -211,6 +206,11 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     continue;
                 }
                 try {
+                    // The no-filter AEDZ path writes the input packet itself so every
+                    // address and timestamp bit is preserved exactly.
+                    if (aedz != null && !options.applyEventFilters) {
+                        aedz.writePacket(raw);
+                    }
                     PacketBundle bundle = chip.getEventExtractor().extractBundle(raw);
                     if (stream instanceof Aedat4FileInputStream) {
                         if (bundle == null) {
@@ -231,6 +231,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     if (aedat4 != null) {
                         aedat4.writeBundle(toTypedBundle(bundle, assembler, chip, true), true);
                     } else {
+                        if (aedz != null && options.applyEventFilters) {
+                            writeAedzBundle(aedz, bundle, chip);
+                        }
                         for (TypedDataPacket p : bundle) {
                             consume(p, csv, h5, imu, frames, assembler, chip);
                         }
@@ -250,7 +253,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 stuckSlices = 0;
                 int pct = (int) Math.min(99, (100L * Math.max(0, stream.position() - start)) / range);
                 setProgress(pct);
-                long nEv = eventsWritten(csv, h5, aedat4);
+                long nEv = eventsWritten(csv, h5, aedat4, aedz);
                 if (badEvents > 0) {
                     publish(String.format("Exported %,d events, skipped %,d bad (%.0f%%)", nEv, badEvents, (double) pct));
                 } else {
@@ -262,7 +265,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             }
             Result result = new Result();
             result.outputFile = options.outputFile;
-            result.events = eventsWritten(csv, h5, aedat4);
+            result.events = eventsWritten(csv, h5, aedat4, aedz);
             result.imuSamples = aedat4 != null ? aedat4.getImuSamplesWritten()
                     : (imu != null ? imu.getSamplesWritten() : 0);
             result.frames = aedat4 != null ? aedat4.getFramesWritten()
@@ -270,24 +273,36 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             result.badEvents = badEvents;
             result.cancelled = false;
             result.sourceFileInfo = sourceFileInfo;
-            result.outputFileInfo = snapshotOutputFileInfo(aedat4, csv, h5,
-                    result.events, result.frames, result.imuSamples);
             if (badEvents > 0) {
                 log.warning(String.format("Save As skipped %,d bad events while writing %s",
                         badEvents, options.outputFile.getName()));
             }
-            // Flush sinks before returning so HDF5 close failures are not reported as success.
+            // Capture non-AEDZ counters before close; AEDZ needs close to flush its final
+            // chunk and footer before its payload/file statistics are complete.
+            if (aedz == null) {
+                result.outputFileInfo = snapshotOutputFileInfo(aedat4, null, csv, h5,
+                        result.events, result.frames, result.imuSamples);
+            }
+            // Flush sinks before returning so close failures are not reported as success.
             closeSink(csv);
             csv = null;
             closeSink(h5);
             h5 = null;
             closeSink(aedat4);
             aedat4 = null;
+            closeSink(aedz);
+            if (aedz != null) {
+                result.outputFileInfo = snapshotOutputFileInfo(null, aedz, null, null,
+                        result.events, result.frames, result.imuSamples);
+            }
+            aedz = null;
             closeSink(imu);
             imu = null;
             closeSink(frames);
             frames = null;
-            result.outputFileInfo = appendFileSize(result.outputFileInfo, options.outputFile);
+            if (options.format != SaveAsOptions.Format.AEDZ) {
+                result.outputFileInfo = appendFileSize(result.outputFileInfo, options.outputFile);
+            }
             return result;
         } catch (CancellationException cancel) {
             if (h5 != null) {
@@ -301,15 +316,12 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             closeQuietly(csv);
             closeQuietly(h5);
             closeQuietly(aedat4);
+            closeQuietly(aedz);
             closeQuietly(imu);
             closeQuietly(frames);
             try {
-                if (restoreAedat2Marks && stream instanceof AEFileInputStream) {
-                    AEFileInputStream.Marks m = ((AEFileInputStream) stream).getMarks();
-                    m.markIn = savedMarkIn;
-                    m.markOut = savedMarkOut;
-                } else if (restoreAedat4Marks) {
-                    restoreMarks(stream, savedMarkIn, savedMarkOut, savedInSet, savedOutSet);
+                if (bypassedMarks != null) {
+                    restoreMarksAfterFullFileExport(stream, bypassedMarks, savedInSet, savedOutSet);
                 }
                 stream.position(savedPos);
             } catch (Exception e) {
@@ -324,18 +336,14 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         }
     }
 
-    /**
-     * Original recording summary captured before the export scan. AEDAT-4 uses
-     * {@link Aedat4FileInputStream#getFileInfo()}; other formats get path +
-     * {@link Object#toString()}.
-     */
+    /** Original recording summary captured before the export scan. */
     private static String snapshotSourceFileInfo(AEFileInputStreamInterface stream) {
         if (stream == null) {
             return "";
         }
-        if (stream instanceof Aedat4FileInputStream) {
-            String info = stream.getFileInfo();
-            return info != null ? info : "";
+        String info = stream.getFileInfo();
+        if (info != null && !info.isBlank()) {
+            return info;
         }
         StringBuilder sb = new StringBuilder();
         File f = stream.getFile();
@@ -346,11 +354,14 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         return sb.toString();
     }
 
-    /** Saved-file summary, matching the recording-finished confirmation when AEDAT-4. */
-    private static String snapshotOutputFileInfo(Aedat4FileOutputStream aedat4,
+    /** Saved-file summary, matching the recording-finished confirmation for binary formats. */
+    private static String snapshotOutputFileInfo(Aedat4FileOutputStream aedat4, AEDZOutputStream aedz,
             CsvEventSink csv, DsecHdf5AEOutputStream h5, long events, long frames, long imuSamples) {
         if (aedat4 != null) {
             return aedat4.toString();
+        }
+        if (aedz != null) {
+            return aedz.toString() + "\n" + aedz.formatCompressionSummary();
         }
         StringBuilder sb = new StringBuilder();
         if (csv != null) {
@@ -443,9 +454,12 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     private static long eventsWritten(CsvEventSink csv, DsecHdf5AEOutputStream h5,
-            Aedat4FileOutputStream aedat4) {
+            Aedat4FileOutputStream aedat4, AEDZOutputStream aedz) {
         if (aedat4 != null) {
             return aedat4.getEventsWritten();
+        }
+        if (aedz != null) {
+            return aedz.getNumEvents();
         }
         if (csv != null) {
             return csv.getEventsWritten();
@@ -527,6 +541,27 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             out.add(imuPkt);
         }
         return out;
+    }
+
+    /** Reconstructs filtered typed events to raw words for AEDZ output. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void writeAedzBundle(AEDZOutputStream aedz, PacketBundle bundle, AEChip chip) throws IOException {
+        if (aedz == null || bundle == null || chip == null || chip.getEventExtractor() == null) {
+            return;
+        }
+        for (TypedDataPacket packet : bundle) {
+            if (packet instanceof EventPacket) {
+                AEPacketRaw raw = chip.getEventExtractor().reconstructRawPacket((EventPacket) packet);
+                if (raw != null && raw.getNumEvents() > 0) {
+                    aedz.writePacket(raw);
+                }
+            }
+        }
+    }
+
+    /** Production seam used by File -> Save As and the headless routing probe. */
+    static AEDZOutputStream openAedzOutputStream(File file, AEChip chip) throws IOException {
+        return new AEDZOutputStream(new FileOutputStream(file), chip);
     }
 
     private void consume(TypedDataPacket p, CsvEventSink csv, DsecHdf5AEOutputStream h5,
@@ -631,21 +666,19 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         // listeners on the worker itself (progress) already fire
     }
 
-    private static void restoreMarks(AEFileInputStreamInterface stream, long in, long out,
-            boolean inSet, boolean outSet) {
-        if (!inSet && !outSet) {
-            return;
+    /** Snapshot all markers, then remove read bounds for a full-file export scan. */
+    static AEFileInputStream.Marks bypassMarksForFullFileExport(AEFileInputStreamInterface stream) {
+        AEFileInputStream.Marks snapshot = stream.getPlaybackMarks();
+        stream.clearMarks();
+        return snapshot;
+    }
+
+    /** Restore IN, OUT, and every ordinary marker after a full-file export scan. */
+    static void restoreMarksAfterFullFileExport(AEFileInputStreamInterface stream,
+            AEFileInputStream.Marks snapshot, boolean inSet, boolean outSet) {
+        if (stream != null) {
+            stream.restorePlaybackMarks(snapshot, inSet, outSet);
         }
-        long here = stream.position();
-        if (inSet) {
-            stream.position(in);
-            stream.setMarkIn();
-        }
-        if (outSet) {
-            stream.position(out);
-            stream.setMarkOut();
-        }
-        stream.position(here);
     }
 
     private static void closeSink(AutoCloseable c) throws Exception {

@@ -93,6 +93,10 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     private long dataOffset;
     private int crc32Value;
 
+    // Payload/file statistics. Compressed bytes are only the eight plane payloads.
+    private long onDiskFileSizeBytes;
+    private long compressedPlanePayloadBytes;
+
     // Decoded chunk cache
     private int cachedChunkIndex = -1;
     private int[] cachedAddr;
@@ -117,6 +121,8 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     private boolean markInSet = false;
     private boolean markOutSet = false;
     private TreeSet<Long> otherMarks = new TreeSet<>();
+    /** Set only by marksInitialize(); preview streams close without touching preferences. */
+    private boolean marksInitialized = false;
 
     // Packet buffer
     private static final int MAX_BUFFER_SIZE_EVENTS = 1 << 20;
@@ -172,6 +178,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
      */
     private void readFile() throws IOException {
         long fileLen = raf.length();
+        onDiskFileSizeBytes = fileLen;
 
         // ---- Minimum structural length: fixed header and trailing length (29),
         // ---- summary length (4), and footer (24) = 57 bytes.
@@ -327,6 +334,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             throw new IOException("AEDZ totalEvents=" + totalEvents
                     + " inconsistent with chunk event sum=" + indexedEvents);
         }
+        compressedPlanePayloadBytes = calculateCompressedPlanePayloadBytes();
 
         // ---- First and last timestamps by decoding the relevant chunks.
         if (totalEvents > 0) {
@@ -417,6 +425,46 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
             s += chunkEventCounts[i];
         }
         return s;
+    }
+
+    /**
+     * Reads only fixed chunk metadata to sum the eight compressed plane lengths.
+     * The 8-byte chunk header and 32-byte plane-size table are deliberately not
+     * counted as compressed payload.
+     */
+    private long calculateCompressedPlanePayloadBytes() throws IOException {
+        long total = 0;
+        byte[] header = new byte[8];
+        byte[] sizes = new byte[PLANE_SIZES_LEN];
+        for (int chunk = 0; chunk < nChunks; chunk++) {
+            long offset = chunkOffsets[chunk];
+            raf.seek(offset);
+            raf.readFully(header);
+            int events = getIntLE(header, 0);
+            int compressedSize = getIntLE(header, 4);
+            if (events != chunkEventCounts[chunk]) {
+                throw new IOException("Chunk " + chunk + " header n_events " + events
+                        + " disagrees with index " + chunkEventCounts[chunk]);
+            }
+            if (compressedSize < PLANE_SIZES_LEN || offset + 8L + compressedSize > indexOffset) {
+                throw new IOException("Chunk " + chunk + " has invalid compressed_size " + compressedSize);
+            }
+            raf.readFully(sizes);
+            long planeSum = 0;
+            for (int plane = 0; plane < N_PLANES; plane++) {
+                int length = getIntLE(sizes, plane * 4);
+                if (length < 0) {
+                    throw new IOException("Chunk " + chunk + " plane " + plane + " negative size " + length);
+                }
+                planeSum += length;
+            }
+            if (planeSum != compressedSize - PLANE_SIZES_LEN) {
+                throw new IOException("Chunk " + chunk + " plane sizes sum " + planeSum
+                        + " != compressed payload " + (compressedSize - PLANE_SIZES_LEN));
+            }
+            total += planeSum;
+        }
+        return total;
     }
 
     /**
@@ -908,7 +956,14 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     }
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
+        if (marksInitialized) {
+            try {
+                persistMarks();
+            } catch (RuntimeException e) {
+                log.warning("Could not persist AEDZ marks: " + e);
+            }
+        }
         if (raf != null) {
             raf.close();
             raf = null;
@@ -926,15 +981,15 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     }
 
     @Override
-    public boolean toggleMarker() {
+    public synchronized boolean toggleMarker() {
         Long pos = Long.valueOf(position);
-        if (otherMarks.contains(pos)) {
-            otherMarks.remove(pos);
+        if (otherMarks.remove(pos)) {
+            support.firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, pos, null);
             return false;
-        } else {
-            otherMarks.add(pos);
-            return true;
         }
+        otherMarks.add(pos);
+        support.firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, null, pos);
+        return true;
     }
 
     @Override
@@ -974,6 +1029,7 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
 
     @Override
     public synchronized void position(long n) {
+        long oldPosition = position;
         if (n < 0) {
             n = 0;
         }
@@ -996,6 +1052,10 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         } else if (totalEvents > 0) {
             mostRecentTimestamp = firstTimestamp;
             currentStartTimestamp = firstTimestamp;
+        }
+        support.firePropertyChange(AEInputStream.EVENT_REPOSITIONED, oldPosition, position);
+        if (oldPosition != position) {
+            support.firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position);
         }
     }
 
@@ -1026,13 +1086,76 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
         return totalEvents;
     }
 
+    /** Restores event-index markers from the shared AEDAT preference cache. */
+    @Override
+    public synchronized void marksInitialize() {
+        marksInitialized = true;
+        AEFileInputStream.Marks saved = AEFileInputStream.marksGetForFile(file);
+        if (saved == null || totalEvents <= 0) {
+            clearMarks();
+            return;
+        }
+        markIn = clampMark(saved.markIn, 0, totalEvents);
+        markInSet = markIn > 0;
+        long savedOut = saved.markOut;
+        if (savedOut == Long.MAX_VALUE || savedOut < 0 || savedOut >= totalEvents) {
+            markOut = Long.MAX_VALUE;
+            markOutSet = false;
+        } else {
+            markOut = clampMark(savedOut, markIn, totalEvents);
+            markOutSet = markOut > markIn;
+        }
+        otherMarks.clear();
+        if (saved.otherMarks != null) {
+            for (Long marker : saved.otherMarks) {
+                if (marker != null && marker >= 0 && marker < totalEvents) {
+                    otherMarks.add(marker);
+                }
+            }
+        }
+        position = markIn;
+        AEFileInputStream.Marks applied = snapshotMarks();
+        support.firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, applied);
+        log.info(String.format("Restored AEDZ marks for %s: %s", file.getName(), applied));
+    }
+
+    /** Current IN/OUT/ordinary markers for AEPlayer slider restoration. */
+    public synchronized AEFileInputStream.Marks getPlaybackMarks() {
+        return snapshotMarks();
+    }
+
+    private void persistMarks() {
+        if (file == null) {
+            return;
+        }
+        if (isMarkInSet() || isMarkOutSet() || !otherMarks.isEmpty()) {
+            AEFileInputStream.marksPutForFile(file, snapshotMarks());
+        } else {
+            AEFileInputStream.marksPutForFile(file, null);
+        }
+    }
+
+    private AEFileInputStream.Marks snapshotMarks() {
+        AEFileInputStream.Marks result = new AEFileInputStream.Marks();
+        result.markIn = markIn;
+        result.markOut = markOut;
+        result.otherMarks.addAll(otherMarks);
+        return result;
+    }
+
+    private static long clampMark(long value, long min, long max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
     @Override
     public synchronized void clearMarks() {
+        AEFileInputStream.Marks oldMarks = snapshotMarks();
         markIn = 0;
         markOut = Long.MAX_VALUE;
         markInSet = false;
         markOutSet = false;
         otherMarks.clear();
+        support.firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, oldMarks, snapshotMarks());
     }
 
     @Override
@@ -1198,6 +1321,44 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
     /** @return the number of compressed chunks in this file */
     public int getNumChunksRead() {
         return nChunks;
+    }
+
+    public long getOnDiskFileSizeBytes() {
+        return onDiskFileSizeBytes;
+    }
+
+    public long getUncompressedPayloadBytes() {
+        return 8L * totalEvents;
+    }
+
+    public long getCompressedPlanePayloadBytes() {
+        return compressedPlanePayloadBytes;
+    }
+
+    public double getCompressedPayloadPercentage() {
+        long uncompressed = getUncompressedPayloadBytes();
+        return uncompressed == 0 ? 0 : 100.0 * compressedPlanePayloadBytes / uncompressed;
+    }
+
+    public double getUncompressedToCompressedRatio() {
+        return compressedPlanePayloadBytes == 0 ? 1.0
+                : getUncompressedPayloadBytes() / (double) compressedPlanePayloadBytes;
+    }
+
+    public String formatCompressionSummary() {
+        return String.format(
+                "File size: %,d bytes%nPlane payloads: %,d compressed / %,d uncompressed bytes "
+                + "(%.3f%% of uncompressed, %.3f:1 uncompressed:compressed)",
+                onDiskFileSizeBytes, compressedPlanePayloadBytes, getUncompressedPayloadBytes(),
+                getCompressedPayloadPercentage(), getUncompressedToCompressedRatio());
+    }
+
+    @Override
+    public String getFileInfo() {
+        String path = file != null ? file.getAbsolutePath() : "";
+        return String.format("%s%nAEDZ zstd level %d: %,d events in %,d chunks, duration=%,d us%n%s",
+                path, AEDZOutputStream.ZSTD_LEVEL, totalEvents, nChunks, getDurationUs(),
+                formatCompressionSummary());
     }
 
     @Override
