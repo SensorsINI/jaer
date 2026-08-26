@@ -20,7 +20,8 @@ jAER efficiently
 
 It can record your datasets and serve recorded or live event sensor output to 
  * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
- * or robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → ROS2 / Foxglove frame output…; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
+ * [OpenCV](https://opencv.org/) as a camera (File → Remote → **OpenCV camera output…**, filter [`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java); `cv2.VideoCapture("http://127.0.0.1:8090/video.mjpg")`)
+ * or a robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → ROS2 / Foxglove frame output…; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
 
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
