@@ -183,7 +183,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** USB link overlay after a live camera open (cleared after {@link #USB_LINK_OVERLAY_MS}). */
     private volatile String usbLinkOverlayText;
     private volatile long usbLinkOverlayUntilMs;
-    public static final long USB_LINK_OVERLAY_MS = 10_000L;
+    public static final long USB_LINK_OVERLAY_MS = 3_000L;
 
     private Point mdStPt = null; // start point of drag in screen coordinates
     private Vec drStPx = null; // start point of drag in px, arb origin
@@ -940,7 +940,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             drawable.getGL().getGL2();
             String[] lines = text.split("\n", -1);
             float chipW = Math.max(1, chip.getSizeX());
-            int fontsize = Math.max(6, Math.round(12 * (chipW / 346f)));
+            int fontsize = Math.max(3, Math.round(6 * (chipW / 346f)));
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.0f;
             float blockH = lineSpace * lines.length;
