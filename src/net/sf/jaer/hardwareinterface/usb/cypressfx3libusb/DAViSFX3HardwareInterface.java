@@ -291,9 +291,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             // backlog, wait until this exact reader decodes it, then discard every
             // packet accumulated through the marker. Acquisition is exposed only
             // from the next transfer, which belongs wholly to the new epoch.
-            resetTimestamps();
             final boolean resetObserved;
             try {
+                reader.armStartupTimestampReset();
+                resetTimestamps();
                 resetObserved = reader.awaitStartupTimestampReset(
                         STARTUP_TIMESTAMP_RESET_TIMEOUT_MS);
             } catch (final InterruptedException e) {
@@ -301,18 +302,22 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 abortStartupTimestampReset(reader);
                 throw new HardwareInterfaceException(
                         "Interrupted waiting for SciDVS startup timestamp reset", e);
+            } finally {
+                reader.disarmStartupTimestampReset();
             }
             if (!resetObserved) {
                 abortStartupTimestampReset(reader);
                 throw new HardwareInterfaceException(
                         "Timed out waiting for SciDVS startup timestamp reset marker");
             }
-            // The marker callback and this clear use the same packet-pool lock, so
-            // this runs only after the complete marker-containing transfer returns.
-            allocateAEBuffers();
-            reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset();
-            clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset();
-            reader.gaerTimestampCallbackRecoveryPending = false;
+            // The marker callback and this state transition use the same
+            // packet-pool lock, so they cannot interleave with another callback.
+            synchronized (aePacketRawPool) {
+                allocateAEBuffers();
+                reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset();
+                reader.gaerTimestampCallbackRecoveryPending = false;
+                clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset();
+            }
             log.info("SciDVS startup timestamp reset observed; discarded pre-boundary packets");
         }
         HardwareInterfaceException.clearException();
@@ -530,6 +535,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         private int completedTransferActualLength;
         private Boolean gaerResolved;
         private boolean gaerTimestampCallbackRecoveryPending;
+        private volatile boolean gaerStartupTimestampResetArmed;
 
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
@@ -596,10 +602,21 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         }
 
         private void handleGaerTimestampReset() {
-            startupTimestampReset.markResetObserved();
+            if (gaerStartupTimestampResetArmed) {
+                gaerStartupTimestampResetArmed = false;
+                startupTimestampReset.markResetObserved();
+            }
             updateTimestampMasterStatus();
             CypressFX3.log.info("Timestamp reset event received on " + super.toString()
                     + " at System.currentTimeMillis()=" + System.currentTimeMillis());
+        }
+
+        private void armStartupTimestampReset() {
+            gaerStartupTimestampResetArmed = true;
+        }
+
+        private void disarmStartupTimestampReset() {
+            gaerStartupTimestampResetArmed = false;
         }
 
         private boolean awaitStartupTimestampReset(final long timeoutMs)
@@ -657,19 +674,21 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     }
                 }
 
-                boolean callbackRecovery = false;
                 if (Boolean.TRUE.equals(gaerResolved)) {
-                    callbackRecovery
-                            = gaerTimestampCallbackRecoveryPending
-                            && gaerTimestampCallbackFailure.get() != null;
-                    if (gaerTimestampCallbackFailure.get() != null
-                            && !callbackRecovery) {
+                    if (gaerTimestampCallbackRecoveryPending
+                            && gaerTimestampCallbackFailure.get() != null) {
+                        decodeGaerTimestampResetOnly(b);
+                        return;
+                    }
+                    if (gaerTimestampCallbackFailure.get() != null) {
                         return;
                     }
                     try {
                         gaerTimestampOrderGuard.validate(b);
                     } catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure) {
                         retainGaerTimestampCallbackFailure(failure);
+                        gaerTimestampCallbackRecoveryPending = true;
+                        decodeGaerTimestampResetOnly(b);
                         return;
                     }
                 }
@@ -678,10 +697,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     quiescentDrain.noteCompletedTransfer(
                             completedTransferActualLength,
                             SciDVSGaerDecoder.containsSourcePayload(b));
-                }
-                if (callbackRecovery) {
-                    gaerDecoder.decode(b, gaerTimestampResetOnlySink);
-                    return;
                 }
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
                 final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
@@ -1187,6 +1202,15 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
             } // sync on aePacketRawPool
+        }
+
+        private void decodeGaerTimestampResetOnly(final ByteBuffer b) {
+            if (quiescentDrain.isDraining()) {
+                quiescentDrain.noteCompletedTransfer(
+                        completedTransferActualLength,
+                        SciDVSGaerDecoder.containsSourcePayload(b));
+            }
+            gaerDecoder.decode(b, gaerTimestampResetOnlySink);
         }
 
         @Override

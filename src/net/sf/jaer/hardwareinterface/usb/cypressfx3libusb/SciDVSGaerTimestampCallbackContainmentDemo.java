@@ -114,29 +114,80 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
                 StandardCharsets.UTF_8);
         final String translate = method(source,
                 "protected void translateEvents(final ByteBuffer b)");
-        final int latchedDiscard = translate.indexOf(
-                "gaerTimestampCallbackFailure.get() != null");
+        final int recoveryPending = translate.indexOf(
+                "if (gaerTimestampCallbackRecoveryPending");
+        require(recoveryPending >= 0,
+                "callback translation has an explicit recovery-pending gate");
+        final String recovery = block(translate, recoveryPending);
+        require(compact(recovery).equals(
+                "if(gaerTimestampCallbackRecoveryPending"
+                + "&&gaerTimestampCallbackFailure.get()!=null){"
+                + "decodeGaerTimestampResetOnly(b);return;}"),
+                "recovery plus retained failure invokes the reset-only helper and returns");
+        require(!recovery.contains("gaerTimestampOrderGuard.validate("),
+                "recovery callbacks bypass timestamp-order validation");
+        require(!recovery.contains("aePacketRawPool.writeBuffer()")
+                && !recovery.contains("packetBundlePool.writeBuffer()")
+                && !recovery.contains("typedBuilder.attach(")
+                && !recovery.contains("gaerRawSink.begin(")
+                && !recovery.contains("gaerTypedSink")
+                && !recovery.contains("typedBuilder.flushAll()")
+                && !recovery.contains("typedOut.setRawPacket("),
+                "reset-only recovery performs no raw or typed publication calls");
+        require(!recovery.contains("stopAEReader(")
+                && !recovery.contains("stopThread(")
+                && !recovery.contains(".join(")
+                && !recovery.contains("close("),
+                "reset-only recovery performs no callback-thread cleanup");
+
+        final int retainedFault = translate.indexOf(
+                "if (gaerTimestampCallbackFailure.get() != null)",
+                recoveryPending);
+        require(retainedFault > recoveryPending,
+                "callback translation has a separate retained-failure gate");
+        final String retainedDiscard = block(translate, retainedFault);
+        require(compact(retainedDiscard).equals(
+                "if(gaerTimestampCallbackFailure.get()!=null){return;}"),
+                "retained failure without recovery returns immediately");
+
+        final String resetOnlyDecoder = method(source,
+                "private void decodeGaerTimestampResetOnly(final ByteBuffer b)");
+        require(compact(resetOnlyDecoder).equals(
+                "privatevoiddecodeGaerTimestampResetOnly(finalByteBufferb){"
+                + "if(quiescentDrain.isDraining()){"
+                + "quiescentDrain.noteCompletedTransfer("
+                + "completedTransferActualLength,"
+                + "SciDVSGaerDecoder.containsSourcePayload(b));}"
+                + "gaerDecoder.decode(b,gaerTimestampResetOnlySink);}"),
+                "shared reset-only helper performs only conditional drain accounting and reset decoding");
+
         final int validate = translate.indexOf(
                 "gaerTimestampOrderGuard.validate(b)");
         final int exactCatch = translate.indexOf(
                 "catch (final SciDVSGaerTimestampOrderGuard.ValidationException failure)");
         final int retain = translate.indexOf(
                 "retainGaerTimestampCallbackFailure(failure)", exactCatch);
-        final int callbackReturn = translate.indexOf("return;", retain);
-        require(latchedDiscard >= 0 && latchedDiscard < validate,
-                "later callbacks are discarded before guard or output mutation");
-        require(validate >= 0 && exactCatch > validate,
+        final int enableRecovery = translate.indexOf(
+                "gaerTimestampCallbackRecoveryPending = true;", exactCatch);
+        final int rejectedResetOnly = translate.indexOf(
+                "decodeGaerTimestampResetOnly(b)", exactCatch);
+        final int callbackReturn = translate.indexOf("return;", rejectedResetOnly);
+        require(recoveryPending < retainedFault && retainedFault < validate
+                && exactCatch > validate,
                 "callback catches the exact timestamp validation exception");
-        require(retain > exactCatch && callbackReturn > retain,
-                "failing callback retains the fault and returns normally");
+        require(retain > exactCatch && enableRecovery > retain
+                && rejectedResetOnly > enableRecovery
+                && callbackReturn > rejectedResetOnly,
+                "guard failure retains the fault, enables recovery, reset-decodes the rejected transfer, and returns");
+        require(count(translate, "decodeGaerTimestampResetOnly(b)") == 2,
+                "translation invokes one shared reset-only helper from recovery and rejection paths");
 
         final String[] mutations = {
-            "quiescentDrain.noteCompletedTransfer(",
             "aePacketRawPool.writeBuffer()",
             "packetBundlePool.writeBuffer()",
             "typedBuilder.attach(",
             "gaerRawSink.begin(",
-            "gaerDecoder.decode(",
+            "gaerDecoder.decode(b, typedOut != null ? gaerTypedSink : gaerRawSink)",
             "eventCounter = gaerRawSink.end()",
             "typedBuilder.flushAll()",
             "typedOut.setRawPacket(buffer)"
@@ -190,24 +241,63 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
                 "typed polling checks the callback fault before and after acquisition");
 
         final String start = method(source, "public void startAEReader()");
+        final int resetSequence = start.indexOf("final boolean resetObserved;");
+        final int resetTry = start.indexOf("try {", resetSequence);
+        final int arm = start.indexOf("reader.armStartupTimestampReset()");
+        final int reset = start.indexOf("resetTimestamps()", arm);
         final int await = start.indexOf("reader.awaitStartupTimestampReset(");
-        final int postBarrierAllocation = start.indexOf(
-                "allocateAEBuffers()", await);
-        final int guardClear = start.indexOf(
-                "reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset()",
-                postBarrierAllocation);
-        final int callbackClear = start.indexOf(
-                "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()",
-                guardClear);
-        require(await >= 0 && postBarrierAllocation > await
-                && guardClear > postBarrierAllocation
-                && callbackClear > guardClear,
-                "callback fault clears only beside the guard after the owned reset barrier");
+        final int resetFinally = start.indexOf("finally", await);
+        require(resetSequence >= 0 && resetTry > resetSequence
+                && arm > resetTry && reset > arm && await > reset
+                && resetFinally > await,
+                "startup arm, reset, and await are enclosed by one try/finally");
+        final String resetCleanup = block(start, resetFinally);
+        require(compact(resetCleanup).equals(
+                "finally{reader.disarmStartupTimestampReset();}"),
+                "startup reset arming is always disarmed in finally");
+        final int safeLock = start.indexOf("synchronized (aePacketRawPool)", await);
+        require(safeLock > await,
+                "post-barrier state transition uses the callback's packet-pool lock");
+        final String barrierSuccess = block(start, safeLock);
+        final int postBarrierAllocation = barrierSuccess.indexOf("allocateAEBuffers()");
+        final int guardClear = barrierSuccess.indexOf(
+                "reader.gaerTimestampOrderGuard.clearAfterOwnedRestartAndReset()");
+        final int recoveryClear = barrierSuccess.indexOf(
+                "reader.gaerTimestampCallbackRecoveryPending = false;");
+        final int callbackClear = barrierSuccess.indexOf(
+                "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()");
+        require(postBarrierAllocation >= 0 && guardClear > postBarrierAllocation
+                && recoveryClear > guardClear && callbackClear > recoveryClear,
+                "barrier success clears buffers, guard, recovery, then retained fault under one lock");
         require(count(source,
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset()") == 2,
                 "callback fault clear has exactly one production call site");
+        require(source.contains(
+                "private volatile boolean gaerStartupTimestampResetArmed;"),
+                "startup reset arming is reader-local and callback-visible");
+        final String armMethod = method(source,
+                "private void armStartupTimestampReset()");
+        require(compact(armMethod).equals(
+                "privatevoidarmStartupTimestampReset(){"
+                + "gaerStartupTimestampResetArmed=true;}"),
+                "startup reset arming is explicit");
+        final String disarmMethod = method(source,
+                "private void disarmStartupTimestampReset()");
+        require(compact(disarmMethod).equals(
+                "privatevoiddisarmStartupTimestampReset(){"
+                + "gaerStartupTimestampResetArmed=false;}"),
+                "startup reset disarming only clears the reader-local arm");
         final String resetHandler = method(source,
                 "private void handleGaerTimestampReset()");
+        final int armedCheck = resetHandler.indexOf(
+                "if (gaerStartupTimestampResetArmed)");
+        final int consumeArm = resetHandler.indexOf(
+                "gaerStartupTimestampResetArmed = false;", armedCheck);
+        final int satisfyBarrier = resetHandler.indexOf(
+                "startupTimestampReset.markResetObserved()", armedCheck);
+        require(armedCheck >= 0 && consumeArm > armedCheck
+                && satisfyBarrier > consumeArm,
+                "only an armed reset word consumes the arm and satisfies the barrier");
         require(!resetHandler.contains(
                 "clearGaerTimestampCallbackFailureAfterOwnedRestartAndReset"),
                 "a reset-like callback word cannot clear the retained failure");
@@ -270,6 +360,27 @@ public final class SciDVSGaerTimestampCallbackContainmentDemo {
             }
         }
         throw new AssertionError("unterminated source method: " + signature);
+    }
+
+    private static String block(final String source, final int statementStart) {
+        final int openingBrace = source.indexOf("{", statementStart);
+        if (statementStart < 0 || openingBrace < statementStart) {
+            throw new AssertionError("missing source block at " + statementStart);
+        }
+        int depth = 0;
+        for (int i = openingBrace; i < source.length(); i++) {
+            final char item = source.charAt(i);
+            if (item == '{') {
+                depth++;
+            } else if (item == '}' && --depth == 0) {
+                return source.substring(statementStart, i + 1);
+            }
+        }
+        throw new AssertionError("unterminated source block at " + statementStart);
+    }
+
+    private static String compact(final String value) {
+        return value.replaceAll("\\s+", "");
     }
 
     private static int count(final String value, final String needle) {
