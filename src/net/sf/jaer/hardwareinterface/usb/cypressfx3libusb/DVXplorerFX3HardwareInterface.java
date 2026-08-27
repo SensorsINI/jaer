@@ -1443,8 +1443,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                     // Check monotonicity of timestamps.
                                     checkMonotonicTimestamp();
 
-                                    CypressFX3.log.fine(
-                                        String.format("Timestamp wrap event received on %s with multiplier of %d.", super.toString(), data));
+                                    // Wrap is ~32 ms; String.format runs even when FINE is off. Do not log here.
+                                    // CypressFX3.log.fine(String.format(
+                                    //         "Timestamp wrap event received on %s with multiplier of %d.",
+                                    //         super.toString(), data));
                                 }
 
                                 break;

@@ -314,7 +314,6 @@ public class DavisRenderer extends AEChipRenderer {
         }
 
         final boolean displayFrames = isDisplayFrames();
-        int framePacketsInBundle = 0;
         // If mixed path already painted APS from address-events, keep that flag;
         // FramePackets (AEDAT-4) overwrite the pixmap when present.
         if (!renderedMixedApsDvs) {
@@ -322,19 +321,19 @@ public class DavisRenderer extends AEChipRenderer {
         }
         for (TypedDataPacket p : bundle) {
             if (p instanceof FramePacket) {
-                framePacketsInBundle++;
                 if (displayFrames) {
                     applyFramePacket((FramePacket) p);
                 }
             }
         }
-        Level bundleLogLevel = framePacketsInBundle > 0 ? Level.FINE : Level.FINER;
-        if (log.isLoggable(bundleLogLevel)) {
-            log.log(bundleLogLevel,
-                    "render(PacketBundle) mixedApsDvs={0} displayFrames={1} framePackets={2} applied={3} polarityEvents={4}",
-                    new Object[]{renderedMixedApsDvs, displayFrames, framePacketsInBundle, renderedApsFrame,
-                        bundle.getNumPolarityEvents()});
-        }
+        // Per-frame render chatter (FINER every ViewLoop). Do not log here.
+        // Level bundleLogLevel = framePacketsInBundle > 0 ? Level.FINE : Level.FINER;
+        // if (log.isLoggable(bundleLogLevel)) {
+        //     log.log(bundleLogLevel,
+        //             "render(PacketBundle) mixedApsDvs={0} displayFrames={1} framePackets={2} applied={3} polarityEvents={4}",
+        //             new Object[]{renderedMixedApsDvs, displayFrames, framePacketsInBundle, renderedApsFrame,
+        //                 bundle.getNumPolarityEvents()});
+        // }
 
         // USB demux / extractBundle / AEDAT-4: keep chip.imuSample current for overlay
         if (chip instanceof DavisBaseCamera) {
