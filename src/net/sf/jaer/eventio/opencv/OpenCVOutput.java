@@ -84,7 +84,8 @@ does <b>not</b> mean Cheese/Zoom see a camera. Activate V4L2:</p>
 <ol>
 <li>Set <b>outputSize</b> to a standard size, typically <b>VGA (640x480)</b>
 (not Native / Davis 346×260).</li>
-<li>Leave <b>v4l2Mjpeg</b> checked (default). Uncheck only for raw YUYV.</li>
+<li>Leave <b>v4l2Mjpeg</b> checked (default). Cheese/Zoom/Meet expect MJPEG.
+Uncheck only if a consumer cannot decode JPEG.</li>
 <li>Check <b>publishV4l2</b>; leave <code>v4l2Device</code> as
 <code>/dev/video10</code>.</li>
 <li>Start streaming. Overlay must show
@@ -109,10 +110,13 @@ so a later jAER restart should not need another <code>modprobe</code>.
 If you still see <code>S_FMT</code> errno 22, reload the module, then
 start streaming before gst/Cheese/<code>v4l2-ctl</code>.
 <code>exclusive_caps=1</code> is required for Chrome/Zoom.</p>
-<p>Direct preview (MJPEG):</p>
+<p>Basic test (overlay must show <code>open MJPEG</code>):</p>
 <pre>
 gst-launch-1.0 v4l2src device=/dev/video10 ! jpegdec ! videoconvert ! autovideosink
 </pre>
+<p><code>v4l2src ! videoconvert ! autovideosink</code> (no <code>jpegdec</code>)
+is YUYV-only. On default MJPEG it fails immediately with
+<code>not-negotiated (-4)</code>.</p>
 <p>Ubuntu Cheese always uses <code>pipewiresrc</code> and fails with
 <code>not-negotiated</code>. Keep jAER streaming and run:</p>
 <pre>
@@ -249,7 +253,7 @@ public class OpenCVOutput extends EventFilter2D {
         setPropertyTooltip(GROUP_V4L2, "publishV4l2",
                 "Linux: write frames to /dev/video10 so Cheese/Zoom/Meet see camera jAER (needs a standard outputSize)");
         setPropertyTooltip(GROUP_V4L2, "v4l2Mjpeg",
-                "MJPEG (default): Cheese/Zoom. Uncheck for raw YUYV (gst-launch without jpegdec)");
+                "MJPEG (default) for Cheese/Zoom. Leave on. Uncheck only if a sink cannot decode JPEG");
         setPropertyTooltip(GROUP_V4L2, "v4l2Device", "v4l2loopback node, e.g. /dev/video10");
         setPropertyTooltip(GROUP_V4L2, "v4l2OutputWidth",
                 "v4l2 width; 0 = native. Cheese/PipeWire often fail on Davis 346x260 — use 640");
