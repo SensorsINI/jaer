@@ -423,10 +423,134 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         }
     }
 
+    /**
+     * After claim, Mini/Micro bulk IN {@code 0x82} (and IMU interrupt {@code 0x81})
+     * can be missing until WinUSB SuperSpeed finishes, or they live on another
+     * alt-setting. Starting AEReader then throws uncaught {@code LIBUSB_ERROR_NOT_FOUND}.
+     */
+    private void waitForDataEndpoints() throws HardwareInterfaceException {
+        if (!isMipiCX3Device()) {
+            return;
+        }
+        final long deadline = System.currentTimeMillis() + 2000L;
+        boolean haveBulk = false;
+        boolean haveImu = false;
+        int lastAlt = -1;
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            final EndpointScan scan = scanDataEndpoints();
+            haveBulk = scan.bulk82Alt >= 0;
+            haveImu = scan.interrupt81Alt >= 0;
+            if (attempt == 1 || !haveBulk || !haveImu) {
+                CypressFX3.log.info("Mini/Micro USB endpoints (attempt " + attempt + "): " + scan.summary);
+            }
+            if (haveBulk) {
+                final int iface = (haveImu && scan.bothIface >= 0) ? scan.bothIface : scan.bulk82Iface;
+                final int alt = (haveImu && scan.bothAlt >= 0) ? scan.bothAlt : scan.bulk82Alt;
+                if (alt != lastAlt) {
+                    final int status = LibUsb.setInterfaceAltSetting(deviceHandle, iface, alt);
+                    CypressFX3.log.info(String.format(
+                            "Mini/Micro setInterfaceAltSetting iface=%d alt=%d for bulk 0x82: %s",
+                            iface, alt, LibUsb.errorName(status)));
+                    if (status == LibUsb.SUCCESS) {
+                        lastAlt = alt;
+                    }
+                }
+                if (lastAlt >= 0 && (haveImu || System.currentTimeMillis() >= deadline)) {
+                    if (!haveImu) {
+                        CypressFX3.log.warning(
+                                "Mini/Micro interrupt EP 0x81 not present; IMU capture skipped until replug");
+                    }
+                    return;
+                }
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                break;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new HardwareInterfaceException("interrupted waiting for Mini/Micro USB data endpoints");
+            }
+        }
+        if (haveBulk && lastAlt >= 0) {
+            CypressFX3.log.warning("Mini/Micro interrupt EP 0x81 not present; IMU capture skipped until replug");
+            return;
+        }
+        throw new HardwareInterfaceException(
+                "Mini/Micro bulk IN 0x82 not present after USB claim (AEReader would get LIBUSB_ERROR_NOT_FOUND)");
+    }
+
+    private EndpointScan scanDataEndpoints() {
+        final EndpointScan scan = new EndpointScan();
+        final ConfigDescriptor config = new ConfigDescriptor();
+        final int status = LibUsb.getActiveConfigDescriptor(device, config);
+        if (status != LibUsb.SUCCESS) {
+            scan.summary = "no config descriptor: " + LibUsb.errorName(status);
+            return scan;
+        }
+        try {
+            final StringBuilder sb = new StringBuilder();
+            for (final Interface iface : config.iface()) {
+                for (final InterfaceDescriptor alt : iface.altsetting()) {
+                    final int ifaceNum = alt.bInterfaceNumber() & 0xFF;
+                    final int altNum = alt.bAlternateSetting() & 0xFF;
+                    boolean has82 = false;
+                    boolean has81 = false;
+                    sb.append(String.format(" iface=%d alt=%d eps=%d",
+                            ifaceNum, altNum, alt.bNumEndpoints() & 0xFF));
+                    for (final EndpointDescriptor ep : alt.endpoint()) {
+                        final int addr = ep.bEndpointAddress() & 0xFF;
+                        final int type = ep.bmAttributes() & 0x03;
+                        sb.append(String.format(" [ep=0x%02x attr=0x%02x max=%d]",
+                                addr, ep.bmAttributes() & 0xFF, ep.wMaxPacketSize() & 0xFFFF));
+                        if (addr == (CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS & 0xFF)
+                                && type == LibUsb.TRANSFER_TYPE_BULK) {
+                            has82 = true;
+                            if (scan.bulk82Alt < 0) {
+                                scan.bulk82Iface = ifaceNum;
+                                scan.bulk82Alt = altNum;
+                            }
+                        }
+                        if (addr == (CX3_DEBUG_ENDPOINT & 0xFF)
+                                && type == LibUsb.TRANSFER_TYPE_INTERRUPT) {
+                            has81 = true;
+                            if (scan.interrupt81Alt < 0) {
+                                scan.interrupt81Iface = ifaceNum;
+                                scan.interrupt81Alt = altNum;
+                            }
+                        }
+                    }
+                    if (has82 && has81 && scan.bothAlt < 0) {
+                        scan.bothIface = ifaceNum;
+                        scan.bothAlt = altNum;
+                    }
+                }
+            }
+            scan.summary = sb.length() == 0 ? "(empty config)" : sb.toString().trim();
+            return scan;
+        } finally {
+            LibUsb.freeConfigDescriptor(config);
+        }
+    }
+
+    private static final class EndpointScan {
+        int bulk82Iface = -1;
+        int bulk82Alt = -1;
+        int interrupt81Iface = -1;
+        int interrupt81Alt = -1;
+        int bothIface = -1;
+        int bothAlt = -1;
+        String summary = "";
+    }
+
     @Override
 	synchronized public void open() throws HardwareInterfaceException {
 		super.open();
         log.fine("DVXplorerFX3 super.open() returned " + UsbLog.t());
+        waitForDataEndpoints();
         final int did = getDID() & 0xFFFF;
         final int type = getUsbDeviceType();
         final boolean cx3 = isMipiCX3Device();
@@ -443,12 +567,18 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     /**
      * Firmware 10 rejects 4-byte {@code VR_FPGA_CONFIG} ({@code LIBUSB_ERROR_PIPE},
      * jAER 8:58:38). 8-byte is required. {@code DVS_FLATTEN} and SPI IN still hang
-     * on WinUSB. Allowed 8-byte OUT: {@code DVS_RUN}, {@code IMU_RUN_*}, and BMI160
-     * ODR/range/filter (without those, factory gyro ODR 5 freezes ~0 dps).
+     * on WinUSB. Allowed 8-byte OUT: {@code DVS_RUN}, Hardware Configuration DVS
+     * params ({@code DVS_EFPS_S5K231Y}, contrast, global hold/reset), {@code IMU_RUN_*},
+     * and BMI160 ODR/range/filter (without those, factory gyro ODR 5 freezes ~0 dps).
      */
     public static boolean isNextGenStreamingParam(final short moduleAddr, final short paramAddr) {
-        if (moduleAddr == CypressFX3.FPGA_DVS && paramAddr == DVXplorer.DVX_DVS_RUN) {
-            return true;
+        if (moduleAddr == CypressFX3.FPGA_DVS) {
+            return paramAddr == DVXplorer.DVX_DVS_RUN
+                    || paramAddr == DVXplorer.DVS_GLOBAL_HOLD
+                    || paramAddr == DVXplorer.DVS_GLOBAL_RESET
+                    || paramAddr == DVXplorer.DVS_EFPS_S5K231Y
+                    || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_ON
+                    || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_OFF;
         }
         if (moduleAddr == CypressFX3.FPGA_IMU) {
             return paramAddr == DVXplorer.DVX_IMU_RUN_ACCELEROMETER
@@ -462,6 +592,18 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     || paramAddr == DVXplorer.DVX_IMU_GYRO_RANGE;
         }
         return false;
+    }
+
+    /** Hardware Configuration DVS writes: log.info after USB confirms (not DVS_RUN). */
+    public static boolean isNextGenDvsBiasParam(final short moduleAddr, final short paramAddr) {
+        if (moduleAddr != CypressFX3.FPGA_DVS) {
+            return false;
+        }
+        return paramAddr == DVXplorer.DVS_GLOBAL_HOLD
+                || paramAddr == DVXplorer.DVS_GLOBAL_RESET
+                || paramAddr == DVXplorer.DVS_EFPS_S5K231Y
+                || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_ON
+                || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_OFF;
     }
 
     @Override
@@ -478,9 +620,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         // Firmware 10 CX3: 8-byte SPI OUT hangs in LibUsb.controlTransfer the
         // same way SPI IN does (jAER 7:42:25 open, timeout 8 s on DVS_FLATTEN
         // in sendNextGenDefaultConfig). Leave those device firmware defaults.
-        log.fine(String.format(
-                "skipping SPI OUT on Mini/Micro firmware %d module=0x%x param=0x%x %s",
-                getFirmwareVersion(), moduleAddr, paramAddr, UsbLog.t()));
+        log.info(String.format(
+                "skipping SPI OUT on Mini/Micro firmware %d module=0x%x param=0x%x (%s) %s",
+                getFirmwareVersion(), moduleAddr, paramAddr, nextGenParamName(moduleAddr, paramAddr), UsbLog.t()));
     }
 
     /** Big-endian uint64 payload; firmware 10 stalls 4-byte wLength. */
@@ -501,8 +643,48 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             if (deviceHandle != null) {
                 LibUsb.clearHalt(deviceHandle, (byte) 0);
             }
+            log.warning(String.format(
+                    "Mini/Micro 8-byte SPI OUT failed firmware %d module=0x%x param=0x%x (%s) value=%d: %s %s",
+                    getFirmwareVersion(), moduleAddr, paramAddr, nextGenParamName(moduleAddr, paramAddr),
+                    param, e.getMessage(), UsbLog.t()));
             throw e;
         }
+        if (isNextGenDvsBiasParam(moduleAddr, paramAddr)) {
+            log.info(String.format(
+                    "Mini/Micro SPI OUT confirmed firmware %d VR_FPGA_CONFIG module=%d param=%d (%s) value=%d %s",
+                    getFirmwareVersion(), moduleAddr, paramAddr, nextGenParamName(moduleAddr, paramAddr),
+                    param, UsbLog.t()));
+        }
+    }
+
+    static String nextGenParamName(final short moduleAddr, final short paramAddr) {
+        if (moduleAddr == CypressFX3.FPGA_DVS) {
+            if (paramAddr == DVXplorer.DVX_DVS_RUN) {
+                return "DVS_RUN";
+            }
+            if (paramAddr == DVXplorer.DVS_FLATTEN) {
+                return "DVS_FLATTEN";
+            }
+            if (paramAddr == DVXplorer.DVS_GLOBAL_HOLD) {
+                return "DVS_GLOBAL_HOLD";
+            }
+            if (paramAddr == DVXplorer.DVS_GLOBAL_RESET) {
+                return "DVS_GLOBAL_RESET";
+            }
+            if (paramAddr == DVXplorer.DVS_EFPS_S5K231Y) {
+                return "DVS_EFPS_S5K231Y";
+            }
+            if (paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_ON) {
+                return "DVS_CONTRAST_THRESHOLD_ON";
+            }
+            if (paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_OFF) {
+                return "DVS_CONTRAST_THRESHOLD_OFF";
+            }
+        }
+        if (moduleAddr == CypressFX3.FPGA_IMU) {
+            return "IMU param " + paramAddr;
+        }
+        return "unknown";
     }
 
     @Override
@@ -609,6 +791,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             if (chip.isImuCaptureEnabled()) {
                 startCx3ImuTransfers();
             }
+            // startThread already joined until bulk IN 0x82 URBs queued (or threw).
             // Do not spawn+join here: setEventAcquisitionEnabled holds this
             // monitor, so the worker cannot enter spiConfigSend (jAER 8:58:36
             // 2 s "native USB" wait was that deadlock; 4-byte then PIPE).

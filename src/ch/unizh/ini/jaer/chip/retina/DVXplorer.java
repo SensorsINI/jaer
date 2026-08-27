@@ -616,7 +616,8 @@ public class DVXplorer extends AETemporalConstastRetina {
         // c6ec5a073 skipped every firmware-10 SPI OUT because DVS_FLATTEN hung
         // WinUSB. That also dropped BMI160 ODR/range; factory gyro ODR 5 is
         // reserved and freezes ~0 dps (Steadicam dead, overlay gyros stuck).
-        // Restore IMU 8-byte SPI only. Keep DVS_FLATTEN / contrast / size IN skipped.
+        // Restore IMU 8-byte SPI. Keep DVS_FLATTEN / size IN skipped.
+        // Contrast / ReadoutFPS / global hold are 8-byte MODULE_DVS OUT via DVXplorerConfig.
         // Firmware ≥10 SPI uses BMI160 ODR register values (dv-processing
         // BoschBMI160* enums). Gyro ODR 5 is reserved and yields frozen ~0 dps.
         spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 11); // 800 Hz

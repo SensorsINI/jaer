@@ -17,6 +17,7 @@ import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -57,6 +58,7 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
+import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.MessageWithLink;
 import eu.seebetter.ini.chips.davis.Davis346BaseCamera;
@@ -1129,7 +1131,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             bufferLifecycle = new UsbAsyncBulkReaderLifecycle(new BufferHost());
         }
 
-        public void startThread() {
+        public void startThread() throws HardwareInterfaceException {
             if (usbTransfer != null && usbTransfer.isAlive()) {
                 return;
             }
@@ -1140,29 +1142,60 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     log.warning(e.toString());
                 }
             }
+            if (!isOpen()) {
+                throw new HardwareInterfaceException("cannot start AEReader: device is not open");
+            }
 
             CypressFX3.log.info("Starting AEReader");
             final long gen = bufferLifecycle.adoptExternalStart(new Config(fifoSize, numBuffers));
             readerActive = true;
-            usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS, LibUsb.TRANSFER_TYPE_BULK,
-                    new ProcessAEData(gen), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
-                @Override
-                public void run() {
-                    final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
-                        @Override
-                        public Void doInBackground() {
-                            monitor.close();
-
-                            return (null);
-                        }
-                    };
-                    shutdownWorker.execute();
-                }
-            });
-            usbTransfer.setName("AEReaderThread");
-            usbTransfer.start();
+            try {
+                startBulkTransferThread(gen);
+            } catch (final HardwareInterfaceException e) {
+                readerActive = false;
+                bufferLifecycle.markFailed();
+                throw e;
+            }
 
             getSupport().firePropertyChange("readerStarted", false, true);
+        }
+
+        /**
+         * USBTransferThread.allocateTransfers throws on missing bulk IN 0x82
+         * ({@code LIBUSB_ERROR_NOT_FOUND}) and never reaches the shutdown
+         * callback. Join until URBs are queued, or throw so LIVE does not start
+         * with a dead reader.
+         */
+        private void startBulkTransferThread(long generation) throws HardwareInterfaceException {
+            usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
+                    LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(generation), getNumBuffers(), getFifoSize(),
+                    null, null, () -> {
+                        final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
+                            @Override
+                            public Void doInBackground() {
+                                monitor.close();
+                                return null;
+                            }
+                        };
+                        shutdownWorker.execute();
+                    });
+            usbTransfer.setName("AEReaderThread");
+            final AtomicReference<Throwable> startError = new AtomicReference<>();
+            final AtomicBoolean running = new AtomicBoolean(false);
+            UsbTransferSubmit.installFailureHandler(usbTransfer, CypressFX3.log, "CypressFX3 AEReader",
+                    startError, running, () -> {
+                        readerActive = false;
+                        monitor.recoverFailedBufferReconfig(
+                                UsbTransferSubmit.startFailed("CypressFX3 AEReader", startError.get()));
+                    });
+            usbTransfer.start();
+            if (!UsbTransferSubmit.awaitQueued(usbTransfer, CypressFX3.log, "CypressFX3 AEReader")) {
+                readerActive = false;
+                final Throwable err = startError.get();
+                usbTransfer = null;
+                throw UsbTransferSubmit.startFailed("CypressFX3 AEReader", err);
+            }
+            running.set(true);
         }
 
         /**
@@ -1495,24 +1528,16 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             }
 
             @Override
-            public Config startSession(Config requested, long generation) {
+            public Config startSession(Config requested, long generation) throws HardwareInterfaceException {
                 fifoSize = requested.fifoSize;
                 numBuffers = requested.numBuffers;
                 readerActive = true;
-                usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
-                        LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(generation), getNumBuffers(), getFifoSize(),
-                        null, null, () -> {
-                            final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
-                                @Override
-                                public Void doInBackground() {
-                                    monitor.close();
-                                    return null;
-                                }
-                            };
-                            shutdownWorker.execute();
-                        });
-                usbTransfer.setName("AEReaderThread");
-                usbTransfer.start();
+                try {
+                    startBulkTransferThread(generation);
+                } catch (final HardwareInterfaceException e) {
+                    readerActive = false;
+                    throw e;
+                }
                 monitor.resumeStreamingAfterUsbRestart();
                 getSupport().firePropertyChange("readerStarted", false, true);
                 return requested;
