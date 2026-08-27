@@ -8,12 +8,16 @@
  */
 package net.sf.jaer.eventio.opencv;
 
+import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
+
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -32,6 +36,7 @@ import net.sf.jaer.eventio.ros2.Ros2FrameAssembler.TimeSliceMethod;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.Chip2DRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 
 /**
  * Publishes DVS / Davis frames as HTTP MJPEG for stock OpenCV
@@ -63,39 +68,64 @@ Exposure and biases stay in the OpenCV camera output dialog. Browser preview:
 Start/Stop is the green/red button; closing the dialog does not stop publishing.</p>
 <h3>frameSource</h3>
 <ul>
-<li><b>Auto</b> — Davis / HVS <code>FramePacket</code> when present, else DVS event-count.</li>
-<li><b>ApsFrames</b> — intensity only.</li>
-<li><b>DvsEventCount</b> — assembled histogram (mid-gray = zero).</li>
-<li><b>RenderedPixmap</b> — AEViewer pixmap (what you see).</li>
+<li><b>Auto</b> / <b>RenderedPixmap</b> — AEViewer pixmap (Davis frames + events in the
+current color scheme; DVS-only chips show events). Updates from event slices
+even if APS frames are off.</li>
+<li><b>ApsFrames</b> — Davis intensity only (no events; freezes if APS is off).</li>
+<li><b>DvsEventCount</b> — assembled event histogram (mid-gray = zero), ignore APS.</li>
 </ul>
 <p>DVS is Mono8; Davis gray is Mono8; Davis RGB is BGR8 (OpenCV color).
-<code>flipY</code> default on (OpenCV row 0 = top).</p>
-<h3>Linux v4l2loopback (Cheese, Zoom, Google Meet) — experimental</h3>
-<p>HTTP MJPEG is not a webcam. Cheese / Zoom / Meet only list a camera named
-<b>jAER</b> after this filter writes to <code>/dev/video10</code>.
-This path is <b>work in progress</b>: Zoom may still not list the camera.
-Prefer the MJPEG URL for OpenCV. Enable the <b>publishV4l2</b> checkbox
-(V4L2 group) and Start streaming.
-<code>modprobe</code> needs <b>sudo</b>; no printed output means success.
-If the module is already loaded with the wrong device number, unload first.
-jAER does not load the module:</p>
+<code>flipY</code> default on (OpenCV row 0 = top).
+<b>outputSize</b>: Native (sensor), QVGA (320x240), VGA (640x480),
+SD (720x480), XGA (1024x768), HD (1280x720). V4L2 requires a standard size.</p>
+<h3>Linux v4l2loopback (Cheese, Zoom, Google Meet)</h3>
+<p>HTTP MJPEG is not a webcam. The overlay <code>MJPEG …/video.mjpg</code>
+does <b>not</b> mean Cheese/Zoom see a camera. Activate V4L2:</p>
+<ol>
+<li>Set <b>outputSize</b> to a standard size, typically <b>VGA (640x480)</b>
+(not Native / Davis 346×260).</li>
+<li>Leave <b>v4l2Mjpeg</b> checked (default). Uncheck only for raw YUYV.</li>
+<li>Check <b>publishV4l2</b>; leave <code>v4l2Device</code> as
+<code>/dev/video10</code>.</li>
+<li>Start streaming. Overlay must show
+<code>/dev/video10 open MJPEG</code>.
+HTTP MJPEG stops unless you also check <b>nonExclusive</b>.</li>
+</ol>
+<p>jAER does not load the kernel module. <code>modprobe</code> needs
+<b>sudo</b> (no printed output means success). Unload first if the module
+is already loaded with the wrong device number:</p>
 <pre>
 sudo apt install v4l2loopback-dkms v4l-utils
 sudo modprobe -r v4l2loopback
 sudo modprobe v4l2loopback devices=1 video_nr=10 card_label=jAER exclusive_caps=1
-v4l2-ctl --list-devices
+ls -l /dev/video10
 </pre>
-<p>You should see <b>jAER</b> on <code>/dev/video10</code>. Then enable
-<b>publishV4l2</b> and Start. Ubuntu PipeWire only advertises the camera after
-a rescan, and Zoom caches the list:</p>
+<p>Do <b>not</b> run <code>v4l2-ctl --all</code>, <code>--list-devices</code>,
+gst, or Cheese until the overlay shows <code>open</code>. Those QUERYCAP
+calls on an idle <code>exclusive_caps=1</code> node make the next
+<code>S_FMT</code> fail with EINVAL until you reload the module.
+<code>exclusive_caps=1</code> is required for Chrome/Zoom.</p>
+<p>Direct preview (MJPEG):</p>
+<pre>
+gst-launch-1.0 v4l2src device=/dev/video10 ! jpegdec ! videoconvert ! autovideosink
+</pre>
+<p>Ubuntu Cheese always uses <code>pipewiresrc</code> and fails with
+<code>not-negotiated</code>. Keep jAER streaming and run:</p>
+<pre>
+bash scripts/cheese-jaer.sh
+</pre>
+<p>That script omits the PipeWire GStreamer plugin, selects camera
+<b>jAER</b> (not the Logitech), and uses <code>v4l2src</code>.
+Plain <code>cheese</code> or <code>cheese --device=/dev/video10</code>
+will not work. Quit Cheese before trying Zoom.</p>
+<p>Zoom / Chrome: after overlay shows <code>open</code>, rescan PipeWire
+(Zoom caches the list; quit and reopen Zoom, then pick <b>jAER</b>):</p>
 <pre>
 systemctl --user restart pipewire-media-session
 </pre>
-<p>Quit and reopen Zoom, then pick <b>jAER</b> (Cheese, Zoom Settings → Video,
-or Google Meet). OpenCV: <code>cv2.VideoCapture(10, cv2.CAP_V4L2)</code>.
-<code>exclusive_caps=1</code> is required for Chrome/Zoom.
-Preview: <code>ffplay -f v4l2 /dev/video10</code>.</p>
-<p><b>skipChipRendering</b> skips OpenGL pixmap updates while still publishing.</p>
+<p>OpenCV can also use <code>cv2.VideoCapture(10, cv2.CAP_V4L2)</code>.</p>
+<p><b>skipChipRendering</b> skips OpenGL pixmap updates. Leave it off for
+Auto/RenderedPixmap so the published image matches the chip view.</p>
 </body>
 </html>
 """)
@@ -115,6 +145,52 @@ public class OpenCVOutput extends EventFilter2D {
         RenderedPixmap
     }
 
+    /** Published frame size. Native is the chip; the rest are webcam-standard. */
+    public enum OutputSize {
+        Native(0, 0),
+        QVGA(320, 240),
+        VGA(640, 480),
+        SD(720, 480),
+        XGA(1024, 768),
+        HD(1280, 720);
+
+        public final int width;
+        public final int height;
+
+        OutputSize(int width, int height) {
+            this.width = width;
+            this.height = height;
+        }
+
+        public boolean isNative() {
+            return width <= 0 || height <= 0;
+        }
+
+        public boolean isStandard() {
+            return !isNative();
+        }
+
+        public static OutputSize fromPixels(int width, int height) {
+            if (width <= 0 || height <= 0) {
+                return Native;
+            }
+            for (OutputSize s : values()) {
+                if (s.width == width && s.height == height) {
+                    return s;
+                }
+            }
+            return Native;
+        }
+
+        @Override
+        public String toString() {
+            if (isNative()) {
+                return "Native (sensor)";
+            }
+            return name() + " (" + width + "x" + height + ")";
+        }
+    }
+
     private final Ros2FrameAssembler assembler = new Ros2FrameAssembler();
     private final ArrayBlockingQueue<OpenCvRawFrame> publishQueue = new ArrayBlockingQueue<>(2);
     private final AtomicReference<OpenCvRawFrame> latestRaw = new AtomicReference<>();
@@ -123,12 +199,11 @@ public class OpenCVOutput extends EventFilter2D {
     private Thread publishThread;
     private volatile boolean publishThreadStop;
 
-    private FrameSource frameSource = FrameSource.valueOf(getString("frameSource", FrameSource.Auto.name()));
+    private FrameSource frameSource = FrameSource.valueOf(getString("frameSource", FrameSource.RenderedPixmap.name()));
+    private OutputSize outputSize = loadOutputSize();
     private String bindAddress = getString("bindAddress", "127.0.0.1");
     private int httpPort = getInt("httpPort", 8090);
     private float jpegQuality = getFloat("jpegQuality", 0.8f);
-    private int outputImageWidth = getInt("outputImageWidth", 0);
-    private int outputImageHeight = getInt("outputImageHeight", 0);
     private int grayScale = getInt("grayScale", 2);
     private boolean flipY = getBoolean("flipY", true);
     private TimeSliceMethod timeSliceMethod = TimeSliceMethod.valueOf(
@@ -136,12 +211,11 @@ public class OpenCVOutput extends EventFilter2D {
     private int eventsPerFrame = getInt("eventsPerFrame", 10000);
     private int timeDurationUs = getInt("timeDurationUs", 10000);
     private boolean skipChipRendering = getBoolean("skipChipRendering", false);
+    private boolean nonExclusive = getBoolean("nonExclusive", false);
     private boolean publishV4l2 = getBoolean("publishV4l2", false);
+    private boolean v4l2Mjpeg = getBoolean("v4l2Mjpeg", true);
     private String v4l2Device = getString("v4l2Device", "/dev/video10");
-    private int v4l2OutputWidth = getInt("v4l2OutputWidth", 0);
-    private int v4l2OutputHeight = getInt("v4l2OutputHeight", 0);
 
-    private volatile boolean seenApsFrame;
     private volatile double publishHz;
     private volatile String lastError;
     private volatile long publishedFrameCount;
@@ -150,11 +224,17 @@ public class OpenCVOutput extends EventFilter2D {
 
     public OpenCVOutput(AEChip chip) {
         super(chip);
-        setPropertyTooltip(GROUP_SINKS, "skipChipRendering", "Skip AEViewer OpenGL pixmap while still publishing frames");
+        setPropertyTooltip(GROUP_SINKS, "skipChipRendering",
+                "Skip AEViewer OpenGL; leave off so Auto/RenderedPixmap can copy frames+events");
+        setPropertyTooltip(GROUP_SINKS, "nonExclusive",
+                "Keep HTTP MJPEG while publishV4l2 is on (default off: V4L2 replaces MJPEG)");
         setPropertyTooltip(GROUP_HTTP, "bindAddress", "Bind address; 127.0.0.1 local, 0.0.0.0 LAN");
         setPropertyTooltip(GROUP_HTTP, "httpPort", "HTTP port for /video.mjpg (default 8090)");
         setPropertyTooltip(GROUP_HTTP, "jpegQuality", "JPEG quality 0.05–1.0");
-        setPropertyTooltip(GROUP_FRAME, "frameSource", "Auto: APS FramePacket when present, else DVS histogram");
+        setPropertyTooltip(GROUP_FRAME, "frameSource",
+                "Auto/RenderedPixmap: chip view (frames+events). ApsFrames: APS only. DvsEventCount: event histogram");
+        setPropertyTooltip(GROUP_FRAME, "outputSize",
+                "Native = sensor size. V4L2 (Cheese/Zoom) needs a standard size such as VGA (640x480)");
         setPropertyTooltip(GROUP_FRAME, "outputImageWidth", "Output width; 0 = chip / frame size");
         setPropertyTooltip(GROUP_FRAME, "outputImageHeight", "Output height; 0 = chip / frame size");
         setPropertyTooltip(GROUP_FRAME, "grayScale", "Full-scale signed DVS event count (mid-gray = 0)");
@@ -163,12 +243,22 @@ public class OpenCVOutput extends EventFilter2D {
         setPropertyTooltip(GROUP_SLICE, "eventsPerFrame", "Events per frame when timeSliceMethod is EventCount");
         setPropertyTooltip(GROUP_SLICE, "timeDurationUs", "Slice duration in microseconds when TimeIntervalUs");
         setPropertyTooltip(GROUP_V4L2, "publishV4l2",
-                "Linux: write frames to /dev/video10 so Cheese/Zoom/Meet see camera jAER (MJPEG URL is not enough)");
+                "Linux: write frames to /dev/video10 so Cheese/Zoom/Meet see camera jAER (needs a standard outputSize)");
+        setPropertyTooltip(GROUP_V4L2, "v4l2Mjpeg",
+                "MJPEG (default): Cheese/Zoom. Uncheck for raw YUYV (gst-launch without jpegdec)");
         setPropertyTooltip(GROUP_V4L2, "v4l2Device", "v4l2loopback node, e.g. /dev/video10");
-        setPropertyTooltip(GROUP_V4L2, "v4l2OutputWidth", "v4l2 width; 0 = raw frame width (even)");
-        setPropertyTooltip(GROUP_V4L2, "v4l2OutputHeight", "v4l2 height; 0 = raw frame height");
+        setPropertyTooltip(GROUP_V4L2, "v4l2OutputWidth",
+                "v4l2 width; 0 = native. Cheese/PipeWire often fail on Davis 346x260 — use 640");
+        setPropertyTooltip(GROUP_V4L2, "v4l2OutputHeight",
+                "v4l2 height; 0 = native. Cheese/PipeWire: use 480 with width 640");
+        hideProperty("outputImageWidth");
+        hideProperty("outputImageHeight");
+        hideProperty("v4l2OutputWidth");
+        hideProperty("v4l2OutputHeight");
         if (!V4l2LoopbackSink.isLinux()) {
+            hideProperty("nonExclusive");
             hideProperty("publishV4l2");
+            hideProperty("v4l2Mjpeg");
             hideProperty("v4l2Device");
             hideProperty("v4l2OutputWidth");
             hideProperty("v4l2OutputHeight");
@@ -207,15 +297,38 @@ public class OpenCVOutput extends EventFilter2D {
         }
     }
 
+    private int resolvedOutputWidth() {
+        return outputSize.isNative() ? Math.max(1, chip.getSizeX()) : outputSize.width;
+    }
+
+    private int resolvedOutputHeight() {
+        return outputSize.isNative() ? Math.max(1, chip.getSizeY()) : outputSize.height;
+    }
+
+    private OutputSize loadOutputSize() {
+        String stored = getString("outputSize", "");
+        if (stored != null && !stored.isEmpty()) {
+            try {
+                return OutputSize.valueOf(stored);
+            } catch (IllegalArgumentException ignore) {
+            }
+        }
+        int w = getInt("v4l2OutputWidth", 0);
+        int h = getInt("v4l2OutputHeight", 0);
+        if (w <= 0 || h <= 0) {
+            w = getInt("outputImageWidth", 0);
+            h = getInt("outputImageHeight", 0);
+        }
+        return OutputSize.fromPixels(w, h);
+    }
+
     private void applyAssemblerSettings() {
         assembler.setTimeSliceMethod(timeSliceMethod);
         assembler.setGrayScale(grayScale);
         assembler.setEventsPerFrame(eventsPerFrame);
         assembler.setTimeDurationUs(timeDurationUs);
         assembler.setFlipY(flipY);
-        int w = outputImageWidth > 0 ? outputImageWidth : Math.max(1, chip.getSizeX());
-        int h = outputImageHeight > 0 ? outputImageHeight : Math.max(1, chip.getSizeY());
-        assembler.setSize(w, h);
+        assembler.setSize(resolvedOutputWidth(), resolvedOutputHeight());
     }
 
     @Override
@@ -244,7 +357,6 @@ public class OpenCVOutput extends EventFilter2D {
     @Override
     public void resetFilter() {
         assembler.clear();
-        seenApsFrame = false;
         publishedFrameCount = 0;
         hzCount = 0;
         hzWindowStartNs = 0;
@@ -296,9 +408,7 @@ public class OpenCVOutput extends EventFilter2D {
             }
             boolean on = pe.polarity == PolarityEvent.Polarity.On;
             if (assembler.addEvent(x, y, on, pe.timestamp)) {
-                OpenCvRawFrame raw = frameSource == FrameSource.RenderedPixmap
-                        ? copyRenderedPixmap()
-                        : encodeDvsMono8();
+                OpenCvRawFrame raw = encodeDvsMono8();
                 if (raw != null) {
                     enqueue(raw);
                 }
@@ -313,19 +423,11 @@ public class OpenCVOutput extends EventFilter2D {
         if (!isFilterEnabled() || in == null || in.isEmpty()) {
             return in;
         }
-        if (frameSource == FrameSource.DvsEventCount) {
-            return in;
-        }
-        if (frameSource == FrameSource.RenderedPixmap) {
-            OpenCvRawFrame raw = copyRenderedPixmap();
-            if (raw != null) {
-                enqueue(raw);
-            }
+        if (frameSource != FrameSource.ApsFrames) {
             return in;
         }
         OpenCvRawFrame raw = copyFramePacket(in);
         if (raw != null) {
-            seenApsFrame = true;
             enqueue(raw);
         }
         return in;
@@ -335,10 +437,28 @@ public class OpenCVOutput extends EventFilter2D {
         if (frameSource == FrameSource.ApsFrames) {
             return false;
         }
-        if (frameSource == FrameSource.DvsEventCount || frameSource == FrameSource.RenderedPixmap) {
+        if (frameSource == FrameSource.DvsEventCount) {
             return true;
         }
-        return !seenApsFrame;
+        // Auto/RenderedPixmap: chip view is copied after AEViewer render(); histogram only if rendering is skipped.
+        return skipChipRendering;
+    }
+
+    /**
+     * Copy APS+events (current color scheme) after {@code renderBundle}.
+     * No-op for ApsFrames / DvsEventCount.
+     */
+    public void publishChipViewAfterRender() {
+        if (!isFilterEnabled()) {
+            return;
+        }
+        if (frameSource == FrameSource.ApsFrames || frameSource == FrameSource.DvsEventCount) {
+            return;
+        }
+        OpenCvRawFrame raw = copyRenderedPixmap();
+        if (raw != null) {
+            enqueue(raw);
+        }
     }
 
     private OpenCvRawFrame encodeDvsMono8() {
@@ -391,6 +511,11 @@ public class OpenCVOutput extends EventFilter2D {
         return applyOutputSize(raw);
     }
 
+    /**
+     * Chip view: APS pixmap plus DVS overlay (same alpha test as
+     * {@code ChipRendererDisplayMethodRGBA}), using the current color scheme.
+     * Pure DVS chips have events in the pixmap already.
+     */
     private OpenCvRawFrame copyRenderedPixmap() {
         Chip2DRenderer renderer = chip.getRenderer();
         if (renderer == null) {
@@ -404,22 +529,47 @@ public class OpenCVOutput extends EventFilter2D {
         byte[] bgr;
         synchronized (renderer) {
             float[] pixmap = renderer.getPixmapArray();
-            if (pixmap == null) {
+            float[] dvs = null;
+            boolean displayFrames = true;
+            boolean displayEvents = true;
+            if (renderer instanceof DavisRenderer) {
+                DavisRenderer davis = (DavisRenderer) renderer;
+                displayFrames = davis.isDisplayFrames();
+                displayEvents = davis.isDisplayEvents();
+                java.nio.FloatBuffer em = davis.getDvsEventsMap();
+                dvs = em != null ? em.array() : null;
+            }
+            if (pixmap == null && dvs == null) {
                 return null;
             }
+            float bg = renderer.getGrayValue();
             bgr = new byte[w * h * 3];
             int p = 0;
             for (int y = 0; y < h; y++) {
                 int srcY = flipY ? (h - 1 - y) : y;
                 for (int x = 0; x < w; x++) {
                     int pi = renderer.getPixMapIndex(x, srcY);
-                    if (pi < 0 || (pi + 2) >= pixmap.length) {
-                        p += 3;
-                        continue;
+                    float r = bg;
+                    float g = bg;
+                    float b = bg;
+                    if (displayFrames && pixmap != null && pi >= 0 && (pi + 2) < pixmap.length) {
+                        r = pixmap[pi];
+                        g = pixmap[pi + 1];
+                        b = pixmap[pi + 2];
                     }
-                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * pixmap[pi + 2]));
-                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * pixmap[pi + 1]));
-                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * pixmap[pi]));
+                    // GL_ALPHA_TEST GL_GREATER 0: event pixels replace the APS (or gray) background.
+                    if (displayEvents && dvs != null && pi >= 0 && (pi + 3) < dvs.length && dvs[pi + 3] > 0f) {
+                        r = dvs[pi];
+                        g = dvs[pi + 1];
+                        b = dvs[pi + 2];
+                    } else if (dvs == null && pixmap != null && pi >= 0 && (pi + 2) < pixmap.length) {
+                        r = pixmap[pi];
+                        g = pixmap[pi + 1];
+                        b = pixmap[pi + 2];
+                    }
+                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * b));
+                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * g));
+                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * r));
                 }
             }
         }
@@ -427,9 +577,10 @@ public class OpenCVOutput extends EventFilter2D {
     }
 
     private OpenCvRawFrame applyOutputSize(OpenCvRawFrame raw) {
-        int dw = outputImageWidth > 0 ? outputImageWidth : raw.width;
-        int dh = outputImageHeight > 0 ? outputImageHeight : raw.height;
-        return raw.scaled(dw, dh);
+        if (outputSize.isNative()) {
+            return raw;
+        }
+        return raw.scaled(outputSize.width, outputSize.height);
     }
 
     private void enqueue(OpenCvRawFrame raw) {
@@ -440,13 +591,32 @@ public class OpenCVOutput extends EventFilter2D {
         }
     }
 
+    private boolean wantHttp() {
+        return !publishV4l2 || nonExclusive;
+    }
+
     private synchronized void startSinks() {
-        startHttp();
+        if (publishV4l2 && outputSize.isNative() && SwingUtilities.isEventDispatchThread()) {
+            if (!offerStandardSizeForV4l2()) {
+                publishV4l2 = false;
+                putBoolean("publishV4l2", false);
+                getSupport().firePropertyChange("publishV4l2", true, false);
+            }
+        }
+        if (wantHttp()) {
+            startHttp();
+        } else {
+            stopHttp();
+        }
         startV4l2();
         startPublishThread();
     }
 
     private void startHttp() {
+        if (!wantHttp()) {
+            stopHttp();
+            return;
+        }
         try {
             if (httpServer != null) {
                 return;
@@ -470,6 +640,11 @@ public class OpenCVOutput extends EventFilter2D {
 
     private void startV4l2() {
         if (!publishV4l2) {
+            stopV4l2();
+            return;
+        }
+        if (outputSize.isNative()) {
+            lastError = "V4L2 needs a standard outputSize (e.g. VGA)";
             stopV4l2();
             return;
         }
@@ -524,17 +699,14 @@ public class OpenCVOutput extends EventFilter2D {
                 if (raw == null) {
                     continue;
                 }
-                byte[] jpeg = raw.toJpeg(jpegQuality);
                 MjpegHttpServer http = httpServer;
                 if (http != null) {
-                    http.setLatestJpeg(jpeg);
+                    http.setLatestJpeg(raw.toJpeg(jpegQuality));
                 }
                 V4l2LoopbackSink v4l = v4l2Sink;
-                if (publishV4l2 && v4l != null) {
-                    v4l.write(raw, v4l2OutputWidth, v4l2OutputHeight);
-                    if (v4l.getLastError() != null) {
-                        lastError = v4l.getLastError();
-                    }
+                if (publishV4l2 && v4l != null && outputSize.isStandard()) {
+                    v4l.write(raw, outputSize.width, outputSize.height, v4l2Mjpeg, jpegQuality);
+                    lastError = v4l.getLastError();
                 }
                 notePublished();
             } catch (InterruptedException e) {
@@ -567,14 +739,21 @@ public class OpenCVOutput extends EventFilter2D {
             return "";
         }
         StringBuilder sb = new StringBuilder(96);
-        sb.append("OpenCV MJPEG  ");
+        sb.append("OpenCV  ");
         sb.append(String.format("%.1f Hz", publishHz));
-        sb.append('\n').append(getOpenCvClientUrl());
+        sb.append("  ").append(outputSize);
+        if (outputSize.isNative() && chip != null) {
+            sb.append(' ').append(chip.getSizeX()).append('x').append(chip.getSizeY());
+        }
+        if (httpServer != null) {
+            sb.append("\nMJPEG  ").append(getOpenCvClientUrl());
+        }
         if (publishV4l2) {
             sb.append('\n').append(v4l2Device);
             if (v4l2Sink != null && v4l2Sink.isOpen()) {
                 sb.append(" open");
             }
+            sb.append(v4l2Mjpeg ? " MJPEG" : " YUYV");
         }
         if (lastError != null && !lastError.isEmpty()) {
             sb.append("\nerr: ").append(lastError);
@@ -607,10 +786,67 @@ public class OpenCVOutput extends EventFilter2D {
         FrameSource old = this.frameSource;
         this.frameSource = frameSource;
         putString("frameSource", frameSource.name());
-        if (frameSource != FrameSource.Auto) {
-            seenApsFrame = false;
-        }
         getSupport().firePropertyChange("frameSource", old, frameSource);
+    }
+
+    public OutputSize getOutputSize() {
+        return outputSize;
+    }
+
+    public synchronized void setOutputSize(OutputSize outputSize) {
+        if (outputSize == null) {
+            outputSize = OutputSize.Native;
+        }
+        if (outputSize.isNative() && publishV4l2) {
+            if (!confirmDisableV4l2ForNative()) {
+                getSupport().firePropertyChange("outputSize", OutputSize.Native, this.outputSize);
+                return;
+            }
+            setPublishV4l2(false);
+        }
+        OutputSize old = this.outputSize;
+        this.outputSize = outputSize;
+        putString("outputSize", outputSize.name());
+        applyAssemblerSettings();
+        getSupport().firePropertyChange("outputSize", old, this.outputSize);
+    }
+
+    private Component dialogParent() {
+        return chip != null ? chip.getAeViewer() : null;
+    }
+
+    /** Cheese/Zoom/Meet reject odd sensor sizes; offer VGA or cancel. */
+    private boolean offerStandardSizeForV4l2() {
+        String vga = OutputSize.VGA.toString();
+        int n = JOptionPane.showOptionDialog(dialogParent(),
+                "Cheese, Zoom, and Google Meet need a standard camera size.\n"
+                        + "Native sensor size (e.g. Davis 346x260) is not accepted.\n\n"
+                        + "Use " + vga + "?",
+                "V4L2 needs a standard size",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                new Object[] { vga, "Cancel" },
+                vga);
+        if (n != 0) {
+            return false;
+        }
+        OutputSize old = this.outputSize;
+        this.outputSize = OutputSize.VGA;
+        putString("outputSize", this.outputSize.name());
+        applyAssemblerSettings();
+        getSupport().firePropertyChange("outputSize", old, this.outputSize);
+        return true;
+    }
+
+    private boolean confirmDisableV4l2ForNative() {
+        int n = JOptionPane.showConfirmDialog(dialogParent(),
+                "V4L2 webcam output needs a standard size.\n"
+                        + "Disable V4L2 to use native sensor size?",
+                "Native size and V4L2",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        return n == JOptionPane.YES_OPTION;
     }
 
     public String getBindAddress() {
@@ -621,7 +857,7 @@ public class OpenCVOutput extends EventFilter2D {
         String old = this.bindAddress;
         this.bindAddress = bindAddress;
         putString("bindAddress", bindAddress);
-        if (isFilterEnabled() && !old.equals(bindAddress)) {
+        if (isFilterEnabled() && !old.equals(bindAddress) && wantHttp()) {
             stopHttp();
             startHttp();
         }
@@ -636,7 +872,7 @@ public class OpenCVOutput extends EventFilter2D {
         int old = this.httpPort;
         this.httpPort = Math.max(1, httpPort);
         putInt("httpPort", this.httpPort);
-        if (isFilterEnabled() && old != this.httpPort) {
+        if (isFilterEnabled() && old != this.httpPort && wantHttp()) {
             stopHttp();
             startHttp();
         }
@@ -655,27 +891,19 @@ public class OpenCVOutput extends EventFilter2D {
     }
 
     public int getOutputImageWidth() {
-        return outputImageWidth;
+        return outputSize.isNative() ? 0 : outputSize.width;
     }
 
     public void setOutputImageWidth(int outputImageWidth) {
-        int old = this.outputImageWidth;
-        this.outputImageWidth = Math.max(0, outputImageWidth);
-        putInt("outputImageWidth", this.outputImageWidth);
-        applyAssemblerSettings();
-        getSupport().firePropertyChange("outputImageWidth", old, this.outputImageWidth);
+        setOutputSize(OutputSize.fromPixels(outputImageWidth, getOutputImageHeight()));
     }
 
     public int getOutputImageHeight() {
-        return outputImageHeight;
+        return outputSize.isNative() ? 0 : outputSize.height;
     }
 
     public void setOutputImageHeight(int outputImageHeight) {
-        int old = this.outputImageHeight;
-        this.outputImageHeight = Math.max(0, outputImageHeight);
-        putInt("outputImageHeight", this.outputImageHeight);
-        applyAssemblerSettings();
-        getSupport().firePropertyChange("outputImageHeight", old, this.outputImageHeight);
+        setOutputSize(OutputSize.fromPixels(getOutputImageWidth(), outputImageHeight));
     }
 
     public int getGrayScale() {
@@ -753,14 +981,49 @@ public class OpenCVOutput extends EventFilter2D {
         return publishV4l2;
     }
 
+    public boolean isNonExclusive() {
+        return nonExclusive;
+    }
+
+    public synchronized void setNonExclusive(boolean nonExclusive) {
+        boolean old = this.nonExclusive;
+        this.nonExclusive = nonExclusive;
+        putBoolean("nonExclusive", nonExclusive);
+        if (isFilterEnabled() && old != nonExclusive) {
+            startSinks();
+        }
+        getSupport().firePropertyChange("nonExclusive", old, nonExclusive);
+    }
+
     public synchronized void setPublishV4l2(boolean publishV4l2) {
+        if (publishV4l2 && outputSize.isNative()) {
+            if (!offerStandardSizeForV4l2()) {
+                getSupport().firePropertyChange("publishV4l2", true, false);
+                return;
+            }
+        }
         boolean old = this.publishV4l2;
         this.publishV4l2 = publishV4l2;
         putBoolean("publishV4l2", publishV4l2);
         if (isFilterEnabled() && old != publishV4l2) {
+            startSinks();
+        }
+        getSupport().firePropertyChange("publishV4l2", old, this.publishV4l2);
+    }
+
+    public boolean isV4l2Mjpeg() {
+        return v4l2Mjpeg;
+    }
+
+    public synchronized void setV4l2Mjpeg(boolean v4l2Mjpeg) {
+        boolean old = this.v4l2Mjpeg;
+        this.v4l2Mjpeg = v4l2Mjpeg;
+        putBoolean("v4l2Mjpeg", v4l2Mjpeg);
+        if (isFilterEnabled() && publishV4l2 && old != v4l2Mjpeg) {
+            stopV4l2();
             startV4l2();
         }
-        getSupport().firePropertyChange("publishV4l2", old, publishV4l2);
+        getSupport().firePropertyChange("v4l2Mjpeg", old, this.v4l2Mjpeg);
     }
 
     public String getV4l2Device() {
@@ -779,24 +1042,18 @@ public class OpenCVOutput extends EventFilter2D {
     }
 
     public int getV4l2OutputWidth() {
-        return v4l2OutputWidth;
+        return getOutputImageWidth();
     }
 
     public void setV4l2OutputWidth(int v4l2OutputWidth) {
-        int old = this.v4l2OutputWidth;
-        this.v4l2OutputWidth = Math.max(0, v4l2OutputWidth);
-        putInt("v4l2OutputWidth", this.v4l2OutputWidth);
-        getSupport().firePropertyChange("v4l2OutputWidth", old, this.v4l2OutputWidth);
+        setOutputImageWidth(v4l2OutputWidth);
     }
 
     public int getV4l2OutputHeight() {
-        return v4l2OutputHeight;
+        return getOutputImageHeight();
     }
 
     public void setV4l2OutputHeight(int v4l2OutputHeight) {
-        int old = this.v4l2OutputHeight;
-        this.v4l2OutputHeight = Math.max(0, v4l2OutputHeight);
-        putInt("v4l2OutputHeight", this.v4l2OutputHeight);
-        getSupport().firePropertyChange("v4l2OutputHeight", old, this.v4l2OutputHeight);
+        setOutputImageHeight(v4l2OutputHeight);
     }
 }

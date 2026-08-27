@@ -4155,6 +4155,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 || isOpenCvOutputSkipChipRendering() || skipRequested;
                         if (!skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
+                            OpenCVOutput opencvOut = findOpenCvOutput();
+                            if (opencvOut != null) {
+                                opencvOut.publishChipViewAfterRender();
+                            }
                         } else if (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested) {
                             // Skip pixmap render(); paint a blank canvas + overlay (no APS/IMU/markers).
                             chipCanvas.paintFrame();

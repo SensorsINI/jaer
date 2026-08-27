@@ -9,7 +9,6 @@
 package net.sf.jaer.eventio.opencv;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,27 +20,32 @@ import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
 /**
- * Linux v4l2loopback writer: {@code VIDIOC_S_FMT} then {@code write()} of YUYV.
- * No-op on other OSes. Falls back to {@code v4l2-ctl} + FileOutputStream if JNA
- * ioctl fails.
+ * Linux v4l2loopback writer: {@code VIDIOC_S_FMT} then {@code write()} of
+ * YUYV or MJPEG.
+ * No-op on other OSes.
+ * <p>
+ * Do not {@code VIDIOC_QUERYCAP} (or {@code v4l2-ctl --all} / {@code --list-devices})
+ * before the first {@code S_FMT}. With {@code exclusive_caps=1} those calls strip
+ * Output/Capture from {@code device_caps}, and the V4L2 core then rejects
+ * {@code S_FMT} with {@code EINVAL} until the module is reloaded.
  */
 public class V4l2LoopbackSink {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final int O_RDWR = 2;
     private static final int V4L2_BUF_TYPE_VIDEO_OUTPUT = 2;
-    private static final int V4L2_BUF_TYPE_VIDEO_CAPTURE = 1;
     private static final int V4L2_FIELD_NONE = 1;
     private static final int V4L2_PIX_FMT_YUYV = fourcc('Y', 'U', 'Y', 'V');
+    private static final int V4L2_PIX_FMT_MJPEG = fourcc('M', 'J', 'P', 'G');
     /** Linux x86_64 / aarch64 {@code sizeof(v4l2_format)==208}. */
     private static final int VIDIOC_S_FMT = 0xc0d05605;
-    private static final int VIDIOC_QUERYCAP = 0x80685600;
 
     private final String device;
     private int fd = -1;
-    private FileOutputStream fos;
     private int fmtW;
     private int fmtH;
+    private boolean fmtMjpeg;
+    private int fmtSizeimage;
     private volatile String lastError;
     private boolean openFailedLogged;
 
@@ -63,7 +67,7 @@ public class V4l2LoopbackSink {
     }
 
     public boolean isOpen() {
-        return fd >= 0 || fos != null;
+        return fd >= 0;
     }
 
     public synchronized void close() {
@@ -74,18 +78,14 @@ public class V4l2LoopbackSink {
             }
             fd = -1;
         }
-        if (fos != null) {
-            try {
-                fos.close();
-            } catch (IOException ignore) {
-            }
-            fos = null;
-        }
         fmtW = 0;
         fmtH = 0;
+        fmtMjpeg = false;
+        fmtSizeimage = 0;
     }
 
-    public synchronized void write(OpenCvRawFrame frame, int outW, int outH) {
+    public synchronized void write(OpenCvRawFrame frame, int outW, int outH, boolean mjpeg,
+            float jpegQuality) {
         if (!isLinux()) {
             lastError = "v4l2loopback is Linux-only";
             return;
@@ -94,25 +94,25 @@ public class V4l2LoopbackSink {
             return;
         }
         OpenCvRawFrame scaled = (outW > 0 && outH > 0) ? frame.scaled(outW, outH) : frame;
-        int w = scaled.yuyvWidth();
+        int w = mjpeg ? scaled.width : scaled.yuyvWidth();
         int h = scaled.height;
-        byte[] yuyv = scaled.toYuyv();
         try {
-            ensureOpen(w, h);
+            byte[] payload = mjpeg ? scaled.toJpeg(jpegQuality) : scaled.toYuyv();
+            int sizeimage = mjpeg ? Math.max(Math.max(65536, w * h), payload.length) : w * h * 2;
+            ensureOpen(w, h, mjpeg, sizeimage);
             if (fd >= 0) {
+                if (mjpeg && payload.length > fmtSizeimage) {
+                    close();
+                    ensureOpen(w, h, true, payload.length);
+                }
                 LibC libc = libc();
-                NativeLong n = libc.write(fd, yuyv, new NativeLong(yuyv.length));
+                NativeLong n = libc.write(fd, payload, new NativeLong(payload.length));
                 if (n.longValue() < 0) {
                     lastError = "write errno=" + Native.getLastError();
                 } else {
                     lastError = null;
+                    openFailedLogged = false;
                 }
-                return;
-            }
-            if (fos != null) {
-                fos.write(yuyv);
-                fos.flush();
-                lastError = null;
             }
         } catch (Throwable e) {
             lastError = e.toString();
@@ -124,8 +124,8 @@ public class V4l2LoopbackSink {
         }
     }
 
-    private void ensureOpen(int w, int h) throws IOException {
-        if ((fd >= 0 || fos != null) && fmtW == w && fmtH == h) {
+    private void ensureOpen(int w, int h, boolean mjpeg, int sizeimage) throws IOException {
+        if (fd >= 0 && fmtW == w && fmtH == h && fmtMjpeg == mjpeg && fmtSizeimage >= sizeimage) {
             return;
         }
         close();
@@ -134,21 +134,18 @@ public class V4l2LoopbackSink {
             lastError = device + " missing (modprobe v4l2loopback …)";
             throw new IOException(lastError);
         }
-        if (tryJnaOpen(w, h)) {
-            fmtW = w;
-            fmtH = h;
-            lastError = null;
-            return;
+        if (!tryJnaOpen(w, h, mjpeg, sizeimage)) {
+            throw new IOException(lastError != null ? lastError
+                    : "VIDIOC_S_FMT failed on " + device);
         }
-        setFmtWithV4l2Ctl(w, h);
-        fos = new FileOutputStream(device);
         fmtW = w;
         fmtH = h;
+        fmtMjpeg = mjpeg;
+        fmtSizeimage = sizeimage;
         lastError = null;
-        log.info("v4l2loopback via v4l2-ctl + write: " + device + " " + w + "x" + h + " YUYV");
     }
 
-    private boolean tryJnaOpen(int w, int h) {
+    private boolean tryJnaOpen(int w, int h, boolean mjpeg, int sizeimage) {
         try {
             LibC libc = libc();
             int opened = libc.open(device, O_RDWR);
@@ -157,13 +154,16 @@ public class V4l2LoopbackSink {
                 return false;
             }
             fd = opened;
-            Memory cap = new Memory(128);
-            libc.ioctl(fd, nativeIoctl(VIDIOC_QUERYCAP), cap);
-            if (setFmtIoctl(libc, w, h, V4L2_BUF_TYPE_VIDEO_OUTPUT)
-                    || setFmtIoctl(libc, w, h, V4L2_BUF_TYPE_VIDEO_CAPTURE)) {
-                log.info("v4l2loopback JNA ioctl: " + device + " " + w + "x" + h + " YUYV");
+            // QUERYCAP first would clear Output on exclusive_caps=1 idle nodes.
+            if (setFmtIoctl(libc, w, h, mjpeg, sizeimage, V4L2_BUF_TYPE_VIDEO_OUTPUT)) {
+                log.info("v4l2loopback JNA ioctl: " + device + " " + w + "x" + h
+                        + (mjpeg ? " MJPG" : " YUYV"));
                 return true;
             }
+            int err = Native.getLastError();
+            lastError = "S_FMT failed on " + device
+                    + (err != 0 ? " errno=" + err : "")
+                    + " — reload v4l2loopback; do not run v4l2-ctl/gst until overlay shows open";
             libc.close(fd);
             fd = -1;
             return false;
@@ -184,16 +184,16 @@ public class V4l2LoopbackSink {
         }
     }
 
-    private boolean setFmtIoctl(LibC libc, int w, int h, int bufType) {
+    private boolean setFmtIoctl(LibC libc, int w, int h, boolean mjpeg, int sizeimage, int bufType) {
         Memory fmt = new Memory(208);
         fmt.clear();
         fmt.setInt(0, bufType);
         fmt.setInt(8, w);
         fmt.setInt(12, h);
-        fmt.setInt(16, V4L2_PIX_FMT_YUYV);
+        fmt.setInt(16, mjpeg ? V4L2_PIX_FMT_MJPEG : V4L2_PIX_FMT_YUYV);
         fmt.setInt(20, V4L2_FIELD_NONE);
-        fmt.setInt(24, w * 2);
-        fmt.setInt(28, w * h * 2);
+        fmt.setInt(24, mjpeg ? 0 : w * 2);
+        fmt.setInt(28, sizeimage);
         return libc.ioctl(fd, nativeIoctl(VIDIOC_S_FMT), fmt) == 0;
     }
 
@@ -208,22 +208,6 @@ public class V4l2LoopbackSink {
                     .invoke(null, "c", LibC.class);
         } catch (ReflectiveOperationException e) {
             return (LibC) Native.loadLibrary("c", LibC.class);
-        }
-    }
-
-    private void setFmtWithV4l2Ctl(int w, int h) throws IOException {
-        ProcessBuilder pb = new ProcessBuilder("v4l2-ctl", "-d", device,
-                "--set-fmt-video=width=" + w + ",height=" + h + ",pixelformat=YUYV");
-        pb.redirectErrorStream(true);
-        try {
-            Process p = pb.start();
-            int rc = p.waitFor();
-            if (rc != 0) {
-                throw new IOException("v4l2-ctl exited " + rc + " (install v4l2-utils or use JNA)");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("v4l2-ctl interrupted", e);
         }
     }
 

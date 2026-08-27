@@ -137,7 +137,7 @@ public class OpenCVOutputDialog extends JFrame implements WindowSaver.DontResize
                 "Publishes DVS or Davis frames as HTTP Motion JPEG<br>"
                 + "so stock OpenCV <code>VideoCapture</code> can open the sensor like a camera.");
         JPanel helpRow = showHelpRow(filter,
-                "Python/C++ VideoCapture, HTML preview, and Linux v4l2loopback (Cheese/Zoom — experimental)");
+                "Python/C++ VideoCapture, HTML preview, Linux v4l2loopback (publishV4l2; Cheese: scripts/cheese-jaer.sh)");
 
         JPanel north = new JPanel();
         north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
