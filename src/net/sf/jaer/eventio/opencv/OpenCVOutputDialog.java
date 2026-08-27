@@ -43,6 +43,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
 import net.sf.jaer.util.WindowSaver;
@@ -132,55 +133,30 @@ public class OpenCVOutputDialog extends JFrame implements WindowSaver.DontResize
         urlRow.add(copy);
         urlRow.add(open);
 
-        final String pre = "font-family:Monospaced,monospace;font-size:11pt;margin:4px 0;padding:6px;"
-                + "background-color:#f0f0f0;white-space:pre";
         MessageWithLink intro = new MessageWithLink(
-                "Publishes DVS or Davis frames as HTTP Motion JPEG so stock OpenCV "
-                + "<code>VideoCapture</code> can open the sensor like a camera.");
-        MessageWithLink howTo = new MessageWithLink(
-                "<p style=\"margin:4px 0 0 0;\"><b>Python / OpenCV</b> (any OS) after Start above:</p>"
-                + "<pre style=\"" + pre + "\">cap = cv2.VideoCapture(\""
-                + filter.getOpenCvClientUrl() + "\", cv2.CAP_FFMPEG)</pre>"
-                + "<p style=\"margin:6px 0 0 0;\">Or <a href=\"" + filter.getOpenCvPageUrl()
-                + "\">open the HTML preview</a> at <code>" + filter.getOpenCvPageUrl()
-                + "</code> (not the raw <code>/video.mjpg</code> URL).</p>"
-                + "<p style=\"margin:8px 0 0 0;\"><b>Linux webcam</b> (Cheese, Zoom, Google Meet). "
-                + "These apps need a kernel loopback device. Commands require <code>sudo</code>. "
-                + "No output from <code>modprobe</code> means success.</p>"
-                + "<p style=\"margin:4px 0 0 0;\">Install once:</p>"
-                + "<pre style=\"" + pre + "\">sudo apt install v4l2loopback-dkms v4l-utils</pre>"
-                + "<p style=\"margin:4px 0 0 0;\">Load the module (unload first if it is already loaded):</p>"
-                + "<pre style=\"" + pre + "\">sudo modprobe -r v4l2loopback\n"
-                + "sudo modprobe v4l2loopback devices=1 video_nr=10 card_label=jAER exclusive_caps=1\n"
-                + "v4l2-ctl --list-devices</pre>"
-                + "<p style=\"margin:4px 0 0 0;\">That list should include <b>jAER</b> on "
-                + "<code>/dev/video10</code>. Cheese and Zoom still hide it until jAER writes frames: "
-                + "in the <b>V4L2</b> controls below, enable the <b>publishV4l2</b> checkbox, then Start above. "
-                + "On Ubuntu, rescan cameras:</p>"
-                + "<pre style=\"" + pre + "\">systemctl --user restart pipewire-media-session</pre>"
-                + "<p style=\"margin:4px 0 0 0;\">Quit and reopen Zoom (it caches the camera list). "
-                + "Pick camera <b>jAER</b> in Cheese, Zoom Settings → Video, or Google Meet.</p>"
-                + "<p style=\"margin:6px 0 0 0;\">Use the Start/Stop button above to start or stop. "
-                + "Closing this window does not stop publishing.</p>");
+                "Publishes DVS or Davis frames as HTTP Motion JPEG<br>"
+                + "so stock OpenCV <code>VideoCapture</code> can open the sensor like a camera.");
+        JPanel helpRow = showHelpRow(filter,
+                "Python/C++ VideoCapture, HTML preview, and Linux v4l2loopback (Cheese/Zoom — experimental)");
 
         JPanel north = new JPanel();
         north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
         north.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
         intro.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         urlRow.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        howTo.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         north.add(enableButton);
         north.add(Box.createVerticalStrut(8));
         north.add(intro);
+        north.add(Box.createVerticalStrut(4));
+        north.add(helpRow);
         north.add(Box.createVerticalStrut(6));
         north.add(urlRow);
-        north.add(howTo);
 
         filterPanel = new FilterPanel(filter);
         filterPanel.setEnabledCheckBoxVisible(false);
         expandFilterControls();
         JScrollPane scroll = new JScrollPane(filterPanel);
-        scroll.setPreferredSize(new Dimension(640, 480));
+        scroll.setPreferredSize(filterPanelScrollSize(filterPanel, 480));
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton close = new JButton("Close");
         close.setToolTipText("Hide this window; publishing stays in its current state");
@@ -211,6 +187,24 @@ public class OpenCVOutputDialog extends JFrame implements WindowSaver.DontResize
     public void expandFilterControls() {
         filter.setControlsVisible(true);
         filterPanel.setControlsVisible(true);
+    }
+
+    private static JPanel showHelpRow(EventFilter filter, String tip) {
+        JButton showHelp = new JButton("Show Help");
+        showHelp.setMnemonic(KeyEvent.VK_H);
+        showHelp.setToolTipText(tip);
+        showHelp.setEnabled(filter.hasHelp());
+        showHelp.addActionListener(e -> filter.showHelpDialog());
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        row.add(showHelp);
+        return row;
+    }
+
+    private static Dimension filterPanelScrollSize(FilterPanel panel, int height) {
+        int w = Math.max(panel.getPreferredSize().width + 24, 560);
+        return new Dimension(w, height);
     }
 
     private void openPreviewPage() {

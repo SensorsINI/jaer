@@ -40,6 +40,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
 import net.sf.jaer.util.WindowSaver;
@@ -124,35 +125,30 @@ public class ROSOutputDialog extends JFrame implements WindowSaver.DontResize {
         urlRow.add(copy);
 
         MessageWithLink intro = new MessageWithLink(
-                "Publishes assembled DVS frames (not the OpenGL pixmap) to ROS2 DDS "
-                + "and/or <a href=\"https://foxglove.dev/download\">Foxglove</a> Studio.");
-        MessageWithLink howTo = new MessageWithLink(
-                "<ol style=\"margin:4px 0 0 16px;padding:0;\">"
-                + "<li>Download <a href=\"https://foxglove.dev/download\">Foxglove</a>, then "
-                + "<b>Open connection</b> → <b>Foxglove WebSocket</b> and paste the URL (Copy or Ctrl+C).</li>"
-                + "<li><b>Layouts</b> → <b>Create new layout</b> → choose the <b>Image</b> template.</li>"
-                + "<li>Pick topic <code>/jaer/event_count</code> (or time-surface / voxel).</li>"
-                + "</ol>"
-                + "<p style=\"margin:6px 0 0 0;\">Use the Start/Stop button above to start or stop. "
-                + "Closing this window does not stop publishing.</p>");
+                "Publishes assembled DVS frames (not the OpenGL pixmap)<br>"
+                + "to ROS2 DDS and/or <a href=\"https://foxglove.dev/download\">Foxglove</a> Studio.");
+        JPanel helpRow = showHelpRow(filter,
+                "Foxglove WebSocket, ROS2 topics, and frame types");
 
         JPanel north = new JPanel();
         north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
         north.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
         intro.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         urlRow.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        howTo.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         north.add(enableButton);
         north.add(Box.createVerticalStrut(8));
         north.add(intro);
+        north.add(Box.createVerticalStrut(4));
+        north.add(helpRow);
         north.add(Box.createVerticalStrut(6));
         north.add(urlRow);
-        north.add(howTo);
 
         FilterPanel panel = new FilterPanel(filter);
         panel.setEnabledCheckBoxVisible(false);
+        filter.setControlsVisible(true);
+        panel.setControlsVisible(true);
         JScrollPane scroll = new JScrollPane(panel);
-        scroll.setPreferredSize(new Dimension(640, 480));
+        scroll.setPreferredSize(filterPanelScrollSize(panel, 480));
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton close = new JButton("Close");
         close.setToolTipText("Hide this window; publishing stays in its current state");
@@ -177,6 +173,24 @@ public class ROSOutputDialog extends JFrame implements WindowSaver.DontResize {
 
     public ROSOutput getFilter() {
         return filter;
+    }
+
+    private static JPanel showHelpRow(EventFilter filter, String tip) {
+        JButton showHelp = new JButton("Show Help");
+        showHelp.setMnemonic(KeyEvent.VK_H);
+        showHelp.setToolTipText(tip);
+        showHelp.setEnabled(filter.hasHelp());
+        showHelp.addActionListener(e -> filter.showHelpDialog());
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        row.add(showHelp);
+        return row;
+    }
+
+    private static Dimension filterPanelScrollSize(FilterPanel panel, int height) {
+        int w = Math.max(panel.getPreferredSize().width + 24, 560);
+        return new Dimension(w, height);
     }
 
     private void syncEnableButton() {
