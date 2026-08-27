@@ -32,6 +32,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import org.usb4java.BufferUtils;
@@ -905,6 +906,14 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private int imuCount;
         private byte imuTmpData;
         private boolean imuIgnoreEvents = true;
+        /** First IMU Start of this reader stays FINE; later decode chatter is FINER at 1 Hz. */
+        private static final long IMU_DECODE_LOG_INTERVAL_NS = 1_000_000_000L;
+        private boolean imuLoggedFirstStart;
+        private long lastImuDecodeLogNs;
+        private int imuLogStarts;
+        private int imuLogScale;
+        private int imuLogData;
+        private int imuLogEnds;
         
         private final float ACCEL_G_PER_LSB = 1f / 8192;
         private final float GYRO_DPS_PER_LSB = 1f / 65.5f;
@@ -978,6 +987,42 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             imuFlipZ = resolvedImuFlipZ;
 
             updateTimestampMasterStatus();
+        }
+
+        /**
+         * Per-sample IMU Start/Scale/End/Data is chatter at FINE. Log the first
+         * Start at FINE (issue reports), then a 1 Hz FINER count summary.
+         */
+        private void noteImuDecodeLog(final char kind) {
+            if (kind == 'S' && !imuLoggedFirstStart) {
+                imuLoggedFirstStart = true;
+                lastImuDecodeLogNs = System.nanoTime();
+                CypressFX3.log.fine("IMU6 Start event received (further IMU decode at FINER, 1 Hz).");
+                return;
+            }
+            if (!CypressFX3.log.isLoggable(Level.FINER)) {
+                return;
+            }
+            switch (kind) {
+                case 'S' -> imuLogStarts++;
+                case 'C' -> imuLogScale++;
+                case 'D' -> imuLogData++;
+                case 'E' -> imuLogEnds++;
+                default -> {
+                }
+            }
+            final long nowNs = System.nanoTime();
+            if ((nowNs - lastImuDecodeLogNs) < IMU_DECODE_LOG_INTERVAL_NS) {
+                return;
+            }
+            lastImuDecodeLogNs = nowNs;
+            CypressFX3.log.finer(String.format(
+                    "IMU decode (1 Hz): start=%d scale=%d data=%d end=%d",
+                    imuLogStarts, imuLogScale, imuLogData, imuLogEnds));
+            imuLogStarts = 0;
+            imuLogScale = 0;
+            imuLogData = 0;
+            imuLogEnds = 0;
         }
 
         private void checkMonotonicTimestamp() {
@@ -1103,7 +1148,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         break;
 
                                     case 5: // IMU Start (6 axes)
-                                        CypressFX3.log.fine("IMU6 Start event received.");
+                                        noteImuDecodeLog('S');
 
                                         imuIgnoreEvents = false;
                                         imuCount = 0;
@@ -1115,7 +1160,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         if (imuIgnoreEvents) {
                                             break;
                                         }
-                                        CypressFX3.log.fine("IMU End event received.");
+                                        noteImuDecodeLog('E');
 
                                         if (imuCount == (2 * IMU_DATA_LENGTH)) {
                                             if (usbTypedDemuxActive) {
@@ -1223,7 +1268,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         if (imuIgnoreEvents) {
                                             break;
                                         }
-                                        CypressFX3.log.fine("IMU Data event received.");
+                                        noteImuDecodeLog('D');
 
                                         switch (imuCount) {
                                             case 0:
@@ -1326,7 +1371,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         if (imuIgnoreEvents) {
                                             break;
                                         }
-                                        CypressFX3.log.fine("IMU Scale Config event received.");
+                                        noteImuDecodeLog('C');
 
                                         // Set correct IMU accel and gyro scales, used to interpret subsequent
                                         // IMU samples from the device.
