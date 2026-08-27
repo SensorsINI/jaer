@@ -48,14 +48,8 @@ MA 02110-1301  USA
         <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
         <dependency org="commons-io" name="commons-io" rev="2.15.1"/>
         <!--https://mvnrepository.com/artifact/org.apache.commons/commons-text-->
-        <!-- Used only for WordUtils. GraalJS is a commons-text *test* dep that Ivy wrongly
-             pulls into default (~60MB js+truffle); exclude it. -->
-        <dependency org="org.apache.commons" name="commons-text" rev="1.11.0">
-            <exclude org="org.graalvm.js" module="*"/>
-            <exclude org="org.graalvm.truffle" module="*"/>
-            <exclude org="org.graalvm.sdk" module="*"/>
-            <exclude org="org.graalvm.regex" module="*"/>
-        </dependency>
+        <!-- WordUtils only. GraalJS test deps are excluded globally above. -->
+        <dependency org="org.apache.commons" name="commons-text" rev="1.11.0"/>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
         <dependency org="org.apache.commons" name="commons-collections4" rev="4.4"/>
 
@@ -195,6 +189,11 @@ MA 02110-1301  USA
 
         <!-- Foxglove WebSocket v1 server for Foxglove Studio (no ROS2 install) -->
         <dependency org="org.java-websocket" name="Java-WebSocket" rev="1.5.7"/>
+
+        <!-- Ivy maps Maven *test* GraalJS from commons-text into default. jAER does not
+             use it. Exclude every org.graalvm.* module (22.x js/truffle/sdk/regex and
+             24.x polyglot/collections/word/…) so lib/ and ivy.classpath stay stable. -->
+        <exclude org="org\.graalvm\..+" matcher="regexp"/>
 
     </dependencies>
 </ivy-module>
