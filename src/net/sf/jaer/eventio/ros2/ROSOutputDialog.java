@@ -42,14 +42,16 @@ import javax.swing.plaf.basic.BasicToggleButtonUI;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Modeless control window wrapping a {@link FilterPanel} for {@link ROSOutput}.
  * Parameter changes apply immediately; closing hides the window and leaves publishing running.
  * Enable/disable is the bold toggle at the top; File → Remote only opens this window.
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may still restore.
  */
-public class ROSOutputDialog extends JFrame {
+public class ROSOutputDialog extends JFrame implements WindowSaver.DontResize {
 
     private final ROSOutput filter;
     private final JToggleButton enableButton;
@@ -59,6 +61,7 @@ public class ROSOutputDialog extends JFrame {
     public ROSOutputDialog(Frame parent, ROSOutput filter) {
         super("ROS2 / Foxglove frame output");
         this.filter = filter;
+        setName("ROSOutput");
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
         if (parent != null) {
             setIconImage(parent.getIconImage());

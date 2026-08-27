@@ -45,15 +45,18 @@ import javax.swing.plaf.basic.BasicToggleButtonUI;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Modeless control window wrapping a {@link FilterPanel} for {@link OpenCVOutput}.
  * Closing hides the window and leaves publishing running.
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may still restore.
  */
-public class OpenCVOutputDialog extends JFrame {
+public class OpenCVOutputDialog extends JFrame implements WindowSaver.DontResize {
 
     private final OpenCVOutput filter;
+    private final FilterPanel filterPanel;
     private final JToggleButton enableButton;
     private final PropertyChangeListener enabledSync;
     private final PropertyChangeListener urlSync;
@@ -61,6 +64,7 @@ public class OpenCVOutputDialog extends JFrame {
     public OpenCVOutputDialog(Frame parent, OpenCVOutput filter) {
         super("OpenCV camera output");
         this.filter = filter;
+        setName("OpenCVOutput");
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
         if (parent != null) {
             setIconImage(parent.getIconImage());
@@ -128,19 +132,34 @@ public class OpenCVOutputDialog extends JFrame {
         urlRow.add(copy);
         urlRow.add(open);
 
+        final String pre = "font-family:Monospaced,monospace;font-size:11pt;margin:4px 0;padding:6px;"
+                + "background-color:#f0f0f0;white-space:pre";
         MessageWithLink intro = new MessageWithLink(
                 "Publishes DVS or Davis frames as HTTP Motion JPEG so stock OpenCV "
                 + "<code>VideoCapture</code> can open the sensor like a camera.");
         MessageWithLink howTo = new MessageWithLink(
-                "<ol style=\"margin:4px 0 0 16px;padding:0;\">"
-                + "<li>Enable above, then in Python:<br>"
-                + "<code>cap = cv2.VideoCapture(\"" + filter.getOpenCvClientUrl()
-                + "\", cv2.CAP_FFMPEG)</code></li>"
-                + "<li>Or <a href=\"" + filter.getOpenCvPageUrl() + "\">open the HTML preview</a> "
-                + "(<code>" + filter.getOpenCvPageUrl() + "</code>), not raw <code>/video.mjpg</code>.</li>"
-                + "<li>Linux v4l2loopback: check <b>publishV4l2</b> after "
-                + "<code>modprobe v4l2loopback … exclusive_caps=1</code>.</li>"
-                + "</ol>"
+                "<p style=\"margin:4px 0 0 0;\"><b>Python / OpenCV</b> (any OS) after Start above:</p>"
+                + "<pre style=\"" + pre + "\">cap = cv2.VideoCapture(\""
+                + filter.getOpenCvClientUrl() + "\", cv2.CAP_FFMPEG)</pre>"
+                + "<p style=\"margin:6px 0 0 0;\">Or <a href=\"" + filter.getOpenCvPageUrl()
+                + "\">open the HTML preview</a> at <code>" + filter.getOpenCvPageUrl()
+                + "</code> (not the raw <code>/video.mjpg</code> URL).</p>"
+                + "<p style=\"margin:8px 0 0 0;\"><b>Linux webcam</b> (Cheese, Zoom, Google Meet). "
+                + "These apps need a kernel loopback device. Commands require <code>sudo</code>. "
+                + "No output from <code>modprobe</code> means success.</p>"
+                + "<p style=\"margin:4px 0 0 0;\">Install once:</p>"
+                + "<pre style=\"" + pre + "\">sudo apt install v4l2loopback-dkms v4l-utils</pre>"
+                + "<p style=\"margin:4px 0 0 0;\">Load the module (unload first if it is already loaded):</p>"
+                + "<pre style=\"" + pre + "\">sudo modprobe -r v4l2loopback\n"
+                + "sudo modprobe v4l2loopback devices=1 video_nr=10 card_label=jAER exclusive_caps=1\n"
+                + "v4l2-ctl --list-devices</pre>"
+                + "<p style=\"margin:4px 0 0 0;\">That list should include <b>jAER</b> on "
+                + "<code>/dev/video10</code>. Cheese and Zoom still hide it until jAER writes frames: "
+                + "in the <b>V4L2</b> controls below, enable the <b>publishV4l2</b> checkbox, then Start above. "
+                + "On Ubuntu, rescan cameras:</p>"
+                + "<pre style=\"" + pre + "\">systemctl --user restart pipewire-media-session</pre>"
+                + "<p style=\"margin:4px 0 0 0;\">Quit and reopen Zoom (it caches the camera list). "
+                + "Pick camera <b>jAER</b> in Cheese, Zoom Settings → Video, or Google Meet.</p>"
                 + "<p style=\"margin:6px 0 0 0;\">Use the Start/Stop button above to start or stop. "
                 + "Closing this window does not stop publishing.</p>");
 
@@ -157,9 +176,10 @@ public class OpenCVOutputDialog extends JFrame {
         north.add(urlRow);
         north.add(howTo);
 
-        FilterPanel panel = new FilterPanel(filter);
-        panel.setEnabledCheckBoxVisible(false);
-        JScrollPane scroll = new JScrollPane(panel);
+        filterPanel = new FilterPanel(filter);
+        filterPanel.setEnabledCheckBoxVisible(false);
+        expandFilterControls();
+        JScrollPane scroll = new JScrollPane(filterPanel);
         scroll.setPreferredSize(new Dimension(640, 480));
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton close = new JButton("Close");
@@ -185,6 +205,12 @@ public class OpenCVOutputDialog extends JFrame {
 
     public OpenCVOutput getFilter() {
         return filter;
+    }
+
+    /** Expand OpenCVOutput properties (including publishV4l2) when this window is shown. */
+    public void expandFilterControls() {
+        filter.setControlsVisible(true);
+        filterPanel.setControlsVisible(true);
     }
 
     private void openPreviewPage() {

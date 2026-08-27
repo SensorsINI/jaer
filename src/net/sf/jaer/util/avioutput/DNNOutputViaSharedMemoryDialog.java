@@ -36,6 +36,7 @@ import javax.swing.plaf.basic.BasicToggleButtonUI;
 
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Modeless control window wrapping a {@link FilterPanel} for
@@ -43,8 +44,9 @@ import net.sf.jaer.util.MessageWithLink;
  * closing hides the window and leaves publishing running.
  * Enable/disable is the bold toggle at the top; File → Remote only opens this window.
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may still restore.
  */
-public class DNNOutputViaSharedMemoryDialog extends JFrame {
+public class DNNOutputViaSharedMemoryDialog extends JFrame implements WindowSaver.DontResize {
 
     private final DNNOutputViaSharedMemory filter;
     private final JToggleButton enableButton;
@@ -53,6 +55,7 @@ public class DNNOutputViaSharedMemoryDialog extends JFrame {
     public DNNOutputViaSharedMemoryDialog(Frame parent, DNNOutputViaSharedMemory filter) {
         super("DNN shared memory output");
         this.filter = filter;
+        setName("DNNSharedMemoryOutput");
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
         if (parent != null) {
             setIconImage(parent.getIconImage());

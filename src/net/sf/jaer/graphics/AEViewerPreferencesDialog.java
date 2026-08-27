@@ -53,6 +53,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Nonmodal preferences window for AEViewer. First tab groups preference-backed
@@ -60,8 +61,9 @@ import net.sf.jaer.util.RecentFiles;
  * FilterChain preferences (individual AEFilter property sheets come later).
  * Export/Reset tab exports, imports, or deletes the {@code /jaer} Preferences tree.
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may still restore.
  */
-public class AEViewerPreferencesDialog extends JFrame {
+public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.DontResize {
 
     /**
      * Map the recording-format combo index to the data-file version sentinel:
@@ -144,6 +146,7 @@ public class AEViewerPreferencesDialog extends JFrame {
     public AEViewerPreferencesDialog(AEViewer viewer) {
         super("Preferences");
         this.viewer = viewer;
+        setName("AEViewerPreferences");
         setDefaultCloseOperation(HIDE_ON_CLOSE);
         if (viewer != null) {
             setIconImage(viewer.getIconImage());

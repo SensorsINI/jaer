@@ -210,6 +210,7 @@ import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.avioutput.ExportVideoDialog;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.eventio.export.SaveAsExportDialog;
@@ -761,6 +762,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
         ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
+        ToolTipManager.sharedInstance().setInitialDelay(1500); // 1.5s so tooltips do not obscure menus while navigating
 
         statusTextField.addMouseListener(new MouseAdapter() {
 
@@ -773,7 +775,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 statusTextField.setToolTipText(sb.toString());
 
-                ToolTipManager.sharedInstance().setDismissDelay(10000);
+                ToolTipManager.sharedInstance().setDismissDelay(5000);
             }
 
             public void mouseExited(MouseEvent me) {
@@ -9599,7 +9601,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fileInfoTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
                 JScrollPane scroll = new JScrollPane(fileInfoTextArea);
                 JButton close = new JButton("Close");
-                fileInfoDialog = new JFrame("Recording file info");
+                fileInfoDialog = new FileInfoFrame();
                 fileInfoDialog.setIconImage(getIconImage());
                 fileInfoDialog.getContentPane().add(scroll, BorderLayout.CENTER);
                 JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -9658,6 +9660,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             return "Original (input)\n" + source + "\n\nExported (output)\n" + info;
         }
+
+    /**
+     * File → Show file info. Packed to content; {@link WindowSaver.DontResize}
+     * so a saved huge size cannot stretch it. Stable {@code FileInfo} name so
+     * position restore is not keyed on the per-file title.
+     */
+    private static final class FileInfoFrame extends JFrame implements WindowSaver.DontResize {
+        FileInfoFrame() {
+            super("Recording file info");
+            setName("FileInfo");
+        }
+    }
 
     /**
      * Centralized call to open an input file. The opened file is added the
@@ -10401,6 +10415,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (openCvOutputDialog == null) {
             openCvOutputDialog = new OpenCVOutputDialog(this, f);
         }
+        openCvOutputDialog.expandFilterControls();
         openCvOutputDialog.setVisible(true);
         openCvOutputDialog.toFront();
     }
