@@ -28,6 +28,8 @@ import com.sun.jna.Pointer;
  * before the first {@code S_FMT}. With {@code exclusive_caps=1} those calls strip
  * Output/Capture from {@code device_caps}, and the V4L2 core then rejects
  * {@code S_FMT} with {@code EINVAL} until the module is reloaded.
+ * After a successful {@code S_FMT}, this class sets {@code keep_format=1} so
+ * the format survives jAER exit and the next open is not EINVAL.
  */
 public class V4l2LoopbackSink {
 
@@ -39,6 +41,10 @@ public class V4l2LoopbackSink {
     private static final int V4L2_PIX_FMT_MJPEG = fourcc('M', 'J', 'P', 'G');
     /** Linux x86_64 / aarch64 {@code sizeof(v4l2_format)==208}. */
     private static final int VIDIOC_S_FMT = 0xc0d05605;
+    /** {@code _IOW('V', 28, struct v4l2_control)}. */
+    private static final int VIDIOC_S_CTRL = 0x4008561c;
+    /** v4l2loopback {@code keep_format}: keep pixelformat after the last writer closes. */
+    private static final int CID_KEEP_FORMAT = 0x0098f900;
 
     private final String device;
     private int fd = -1;
@@ -156,6 +162,7 @@ public class V4l2LoopbackSink {
             fd = opened;
             // QUERYCAP first would clear Output on exclusive_caps=1 idle nodes.
             if (setFmtIoctl(libc, w, h, mjpeg, sizeimage, V4L2_BUF_TYPE_VIDEO_OUTPUT)) {
+                setKeepFormat(libc);
                 log.info("v4l2loopback JNA ioctl: " + device + " " + w + "x" + h
                         + (mjpeg ? " MJPG" : " YUYV"));
                 return true;
@@ -195,6 +202,20 @@ public class V4l2LoopbackSink {
         fmt.setInt(24, mjpeg ? 0 : w * 2);
         fmt.setInt(28, sizeimage);
         return libc.ioctl(fd, nativeIoctl(VIDIOC_S_FMT), fmt) == 0;
+    }
+
+    /**
+     * Prevents exclusive_caps idle nodes from losing Output/Capture after jAER
+     * exits, so the next S_FMT is not EINVAL after PipeWire QUERYCAP.
+     */
+    private void setKeepFormat(LibC libc) {
+        Memory ctrl = new Memory(8);
+        ctrl.clear();
+        ctrl.setInt(0, CID_KEEP_FORMAT);
+        ctrl.setInt(4, 1);
+        if (libc.ioctl(fd, nativeIoctl(VIDIOC_S_CTRL), ctrl) != 0) {
+            log.fine("v4l2 keep_format ioctl ignored errno=" + Native.getLastError());
+        }
     }
 
     private static NativeLong nativeIoctl(int request) {

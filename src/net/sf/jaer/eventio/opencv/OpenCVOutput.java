@@ -104,6 +104,10 @@ ls -l /dev/video10
 gst, or Cheese until the overlay shows <code>open</code>. Those QUERYCAP
 calls on an idle <code>exclusive_caps=1</code> node make the next
 <code>S_FMT</code> fail with EINVAL until you reload the module.
+After a successful open, jAER sets v4l2loopback <code>keep_format</code>
+so a later jAER restart should not need another <code>modprobe</code>.
+If you still see <code>S_FMT</code> errno 22, reload the module, then
+start streaming before gst/Cheese/<code>v4l2-ctl</code>.
 <code>exclusive_caps=1</code> is required for Chrome/Zoom.</p>
 <p>Direct preview (MJPEG):</p>
 <pre>
