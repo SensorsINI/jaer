@@ -194,7 +194,7 @@ Slider tweaks use `PotTweaker` ratios (up to 8×) around LSB values captured whe
 
 **Implementation note:** `NRVConfig` computes K from current registers and displays Θ_ON/Θ_OFF. Sliders write only `0x0167`/`0x0168`; `K_REF` (`0x0166`) comes from the loaded settings file or full register table.
 
-`NRVConfig.isInitialized()` is true once a settings `.txt` has been parsed into memory (or applied to an NRV device). Applying registers over I2C is separate (`ensureAppliedToHardware` / `isSettingsApplied`) and happens automatically when an NRV interface attaches.
+`NRVConfig.isInitialized()` is true once a settings `.txt` has been parsed into memory (or applied to an NRV device). Applying registers over I2C is separate (`ensureAppliedToHardware` / `isSettingsApplied`) and happens in `sendConfiguration` on the USB open worker after `open()`, not on the EDT during Interface bind.
 
 ## Preferences
 

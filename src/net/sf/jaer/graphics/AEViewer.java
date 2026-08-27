@@ -984,7 +984,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void cleanup() {
         log.fine("cleanup()");
-        LibUsbHotplug.removeListener(usbHotplugListener);
+        // Do not remove the libusb hotplug listener here. setAeChipClass() calls
+        // cleanup() on every camera/chip switch; dropping the listener left
+        // WAITING deaf to ARRIVED/LEFT (jAER-0.log 4:35:05 "no AEViewer listener").
         stopRecording(true); // in case recording, make sure we give chance to save file
         // Close the playback file without starting USB; aemon.close() follows.
         if (aePlayer != null && !suppressHardwareOpen) {
@@ -6873,6 +6875,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             try {
                 stopViewLoopForExit();
+                LibUsbHotplug.removeListener(usbHotplugListener);
                 cleanup();
 
                 if (lastViewer) {
@@ -8686,7 +8689,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 continue;
             }
             if (m.contains("devicePointer") || m.contains("LIBUSB_ERROR_NO_DEVICE")
-                    || m.contains("NO_DEVICE") || m.contains("not initialized")) {
+                    || m.contains("NO_DEVICE") || m.contains("not initialized")
+                    || m.contains("LIBUSB_ERROR_NOT_FOUND")) {
                 return true;
             }
         }
@@ -9129,6 +9133,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             armExitWatchdog();
             try {
                 stopViewLoopForExit();
+                LibUsbHotplug.removeListener(usbHotplugListener);
                 cleanup();
                 dispose();
                 System.exit(0);

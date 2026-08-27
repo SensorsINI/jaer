@@ -29,6 +29,8 @@ public final class UsbEnumerationSafetyDemo {
         testUsbTransferSubmitHandshake();
         testDavisNoneDavisReopenSequence();
         testHotplugUnplugDoesNotBlockReplug();
+        testChipSwitchKeepsHotplugListener();
+        testNrvClaimAfterHotplug();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -352,6 +354,8 @@ public final class UsbEnumerationSafetyDemo {
                 "devicePointer-not-initialized is treated as USB device gone");
         require(gone.contains("LIBUSB_ERROR_NO_DEVICE"),
                 "LIBUSB_ERROR_NO_DEVICE is treated as USB device gone");
+        require(gone.contains("LIBUSB_ERROR_NOT_FOUND"),
+                "claimInterface NOT_FOUND after hotplug must not set nullInterface");
         String welcome = methodBody(viewer,
                 "public void showWelcomeOverlay() {",
                 "public void showOpeningCameraOverlay(HardwareInterface hw) {");
@@ -368,6 +372,58 @@ public final class UsbEnumerationSafetyDemo {
                 "public void displayChanged(final GLAutoDrawable drawable, final boolean modeChanged, final boolean deviceChanged) {");
         require(usbDraw.contains("isWelcomeOverlayActive()"),
                 "USB bus-speed overlay is not painted over Welcome after unplug");
+    }
+
+    /**
+     * setAeChipClass calls cleanup(); removing the hotplug listener there left
+     * WAITING deaf after Davis→NRV (jAER-0.log 4:35:05).
+     */
+    private static void testChipSwitchKeepsHotplugListener() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String cleanup = methodBody(viewer,
+                "private void cleanup() {",
+                "private boolean isWindows() {");
+        require(!cleanup.contains("LibUsbHotplug.removeListener"),
+                "chip switch cleanup must not drop the libusb hotplug listener");
+        String closing = methodBody(viewer,
+                "private void formWindowClosing(java.awt.event.WindowEvent evt) {",
+                "private void refreshInterfaceMenuItemActionPerformed");
+        require(closing.contains("LibUsbHotplug.removeListener"),
+                "window close still unregisters the hotplug listener");
+        String notify = methodBody(
+                Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb", "LibUsbHotplug.java"),
+                "private static void notifyDeviceChange(boolean arrived, int vid, int pid) {",
+                "private static void pumpEvents() {");
+        require(notify.contains("getNumInterfacesAvailable()"),
+                "hotplug notify rebuilds the Interface menu cache off the EDT");
+    }
+
+    /**
+     * Linux NRV claimInterface NOT_FOUND after hotplug: unconfigured CX3, leaked
+     * handle from EDT apply-on-bind, and no setConfiguration (unlike CypressFX3).
+     */
+    private static void testNrvClaimAfterHotplug() throws Exception {
+        Path nrv = Paths.get("src", "nrv", "usb", "NRVHardwareInterface.java");
+        String acquire = methodBody(nrv,
+                "private void acquireDevice() throws HardwareInterfaceException {",
+                "private void ensureUsbConfiguration() {");
+        require(acquire.contains("ensureUsbConfiguration()"),
+                "NRV claim sets USB configuration 1 before claimInterface");
+        require(acquire.contains("CLAIM_RETRY_MS"),
+                "NRV retries claimInterface after hotplug NOT_FOUND");
+        String open = methodBody(nrv,
+                "public synchronized void open() throws HardwareInterfaceException {",
+                "private void closePartialOpen() {");
+        require(open.contains("closePartialOpen()"),
+                "failed NRV open closes the libusb handle before the next try");
+        String cfg = methodBody(
+                Paths.get("src", "nrv", "chip", "NRVConfig.java"),
+                "public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {",
+                "public List<NRVRegisterSetting> getLoadedSettings() {");
+        require(!cfg.contains("ensureAppliedToHardware()"),
+                "NRV bind must not open USB on the EDT");
+        require(cfg.contains("tryEnsureSettingsParsedFromPreferences()"),
+                "NRV bind still pre-parses settings without opening");
     }
 
     /**

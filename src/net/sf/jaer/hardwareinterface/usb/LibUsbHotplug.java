@@ -159,6 +159,14 @@ public final class LibUsbHotplug {
     private static void notifyDeviceChange(boolean arrived, int vid, int pid) {
         notifyExecutor.execute(() -> {
             HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+            // Rebuild off-EDT so the Interface menu cache includes a camera
+            // plugged in while LIVE (WAITING does not scan). A stale Device
+            // wrapper then fails NRV claimInterface with NOT_FOUND (Linux).
+            try {
+                HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+            } catch (Exception e) {
+                log.log(Level.WARNING, "LibUsb hotplug rescan failed", e);
+            }
             if (listeners.isEmpty()) {
                 log.fine("LibUsb hotplug: no AEViewer listener registered yet");
             }

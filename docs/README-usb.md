@@ -244,6 +244,15 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
 
 ### NRV DELTA01 — VID:PID `04b4:00f0` (FX20), `04b4:00f1` (CX3)
 
+- After Linux hotplug, `LibUsb.open` can succeed while the CX3 is still
+  **config 0**; `claimInterface(0)` then returns `LIBUSB_ERROR_NOT_FOUND`.
+  `acquireDevice` sets configuration 1 (same as Cypress FX3) and retries for 2 s.
+  A failed open closes the libusb handle so the next try is not a second open
+  on a leaked handle.
+- Do not `open()` from `NRVConfig.setHardwareInterface` (EDT bind). I2C apply is
+  `sendConfiguration` on `jaer-aemon-open` after `open()`.
+- `setAeChipClass` must not unregister `LibUsbHotplug` (`cleanup()` is reused
+  for chip switch). Without the listener, WAITING stays deaf to ARRIVED/LEFT.
 - Still calls `LibUsb.getStringDescriptor` in a loop on open. Linux has been
   reliable; Windows can hang the same way FX3/Prophesee used to. Failures are
   logged; open continues if the catch fires, but a native hang never reaches

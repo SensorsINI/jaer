@@ -1241,14 +1241,14 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     @Override
     public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {
         super.setHardwareInterface(hardwareInterface);
-        if (!(hardwareInterface instanceof NRVHardwareInterface nrvHw)) {
+        if (!(hardwareInterface instanceof NRVHardwareInterface)) {
             return;
         }
-        try {
-            ensureAppliedToHardware();
-        } catch (HardwareInterfaceException e) {
-            log.warning("Could not apply NRV settings after hardware attach: " + e.getMessage());
-        }
+        // Do not hw.open() here. Bind runs on the EDT while the previous camera
+        // may still be closing; a failed claim leaked the libusb handle so
+        // ViewLoop's later openAEMonitor got NOT_FOUND (jAER-0.log 4:36:13).
+        // I2C apply is sendConfiguration on jaer-aemon-open after open().
+        tryEnsureSettingsParsedFromPreferences();
     }
 
     public List<NRVRegisterSetting> getLoadedSettings() {

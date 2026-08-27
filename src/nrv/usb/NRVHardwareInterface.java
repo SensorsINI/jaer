@@ -2,10 +2,12 @@ package nrv.usb;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
+import java.nio.IntBuffer;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import org.usb4java.BufferUtils;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
@@ -48,6 +50,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
     private static final int DEFAULT_USB_FIFO_SIZE = 524288;
     private static final int DEFAULT_USB_NUM_BUFFERS = 16;
+    /** After hotplug, Linux can list the CX3 before config 1 / iface 0 exist. */
+    private static final long CLAIM_RETRY_MS = 2000L;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(NRVHardwareInterface.class, "NewEvents", null, null);
 
@@ -229,30 +233,50 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + libUsbOpenHint(status));
         }
 
-        deviceDescriptor = new DeviceDescriptor();
-        status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        if (status != LibUsb.SUCCESS) {
-            LibUsb.close(deviceHandle);
-            deviceHandle = null;
-            throw new HardwareInterfaceException("getDeviceDescriptor(): " + LibUsb.errorName(status));
-        }
-
-        acquireDevice();
-        selectI2CTransport(deviceDescriptor.idProduct());
-
         try {
-            for (int i = 0; i < stringDescriptors.length; i++) {
-                stringDescriptors[i] = LibUsb.getStringDescriptor(deviceHandle, (byte) (i + 1));
+            deviceDescriptor = new DeviceDescriptor();
+            status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+            if (status != LibUsb.SUCCESS) {
+                throw new HardwareInterfaceException("getDeviceDescriptor(): " + LibUsb.errorName(status));
             }
-        } catch (Exception e) {
-            log.warning("Could not read all USB string descriptors: " + e.getMessage());
-        }
 
-        usbTransferFailed = false;
-        isOpened = true;
-        log.info("NRV device opened VID:PID="
-                + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
-        LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
+            acquireDevice();
+            selectI2CTransport(deviceDescriptor.idProduct());
+
+            try {
+                for (int i = 0; i < stringDescriptors.length; i++) {
+                    stringDescriptors[i] = LibUsb.getStringDescriptor(deviceHandle, (byte) (i + 1));
+                }
+            } catch (Exception e) {
+                log.warning("Could not read all USB string descriptors: " + e.getMessage());
+            }
+
+            usbTransferFailed = false;
+            isOpened = true;
+            log.info("NRV device opened VID:PID="
+                    + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
+            LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
+        } catch (HardwareInterfaceException | RuntimeException e) {
+            closePartialOpen();
+            throw e;
+        }
+    }
+
+    /** Drop a libusb handle from a failed {@link #open()} so the next open is not NOT_FOUND. */
+    private void closePartialOpen() {
+        final DeviceHandle handle = deviceHandle;
+        deviceHandle = null;
+        deviceDescriptor = null;
+        i2cTransport = null;
+        isOpened = false;
+        if (handle == null) {
+            return;
+        }
+        try {
+            LibUsb.close(handle);
+        } catch (Exception e) {
+            log.fine("NRV close after failed open: " + e.getMessage());
+        }
     }
 
     /**
@@ -316,18 +340,68 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     }
 
     private void acquireDevice() throws HardwareInterfaceException {
+        final int autoDetach = LibUsb.setAutoDetachKernelDriver(deviceHandle, true);
+        if (autoDetach != LibUsb.SUCCESS && autoDetach != LibUsb.ERROR_NOT_SUPPORTED) {
+            log.fine("setAutoDetachKernelDriver: " + LibUsb.errorName(autoDetach));
+        }
         if (LibUsb.kernelDriverActive(deviceHandle, 0) == 1) {
             final int detach = LibUsb.detachKernelDriver(deviceHandle, 0);
             if (detach != LibUsb.SUCCESS && detach != LibUsb.ERROR_NOT_SUPPORTED) {
                 log.warning("detachKernelDriver: " + LibUsb.errorName(detach));
             }
         }
-        final int status = LibUsb.claimInterface(deviceHandle, 0);
-        if (status != LibUsb.SUCCESS) {
-            String hint = (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY)
-                    ? " Another process may hold the CX3/FX20, or the driver is not WinUSB."
-                    : "";
-            throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status) + hint);
+        ensureUsbConfiguration();
+        int status = LibUsb.ERROR_OTHER;
+        int attempt = 0;
+        final long deadline = System.currentTimeMillis() + CLAIM_RETRY_MS;
+        while (System.currentTimeMillis() < deadline) {
+            status = LibUsb.claimInterface(deviceHandle, 0);
+            if (status == LibUsb.SUCCESS) {
+                if (attempt > 0) {
+                    log.info("NRV claimInterface succeeded after " + attempt + " retries");
+                }
+                return;
+            }
+            if (status != LibUsb.ERROR_NOT_FOUND && status != LibUsb.ERROR_BUSY
+                    && status != LibUsb.ERROR_NO_DEVICE) {
+                break;
+            }
+            attempt++;
+            log.fine("NRV claimInterface " + LibUsb.errorName(status) + " attempt " + attempt
+                    + "; setting config 1 and retrying");
+            ensureUsbConfiguration();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        String hint = (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY)
+                ? " Another process may hold the CX3/FX20, or the driver is not WinUSB."
+                : (status == LibUsb.ERROR_NOT_FOUND
+                        ? " Device may still be enumerating after hotplug; try Interface → Refresh."
+                        : "");
+        throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status) + hint);
+    }
+
+    /** CX3 after hotplug is often still config 0; claim iface 0 then returns NOT_FOUND. */
+    private void ensureUsbConfiguration() {
+        final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
+        try {
+            final int rc = LibUsb.getConfiguration(deviceHandle, activeConfig);
+            if (rc == LibUsb.SUCCESS && activeConfig.get() == 1) {
+                return;
+            }
+            if (rc != LibUsb.SUCCESS) {
+                log.fine("NRV getConfiguration: " + LibUsb.errorName(rc));
+            }
+        } catch (Exception e) {
+            log.fine("NRV getConfiguration: " + e.getMessage());
+        }
+        final int set = LibUsb.setConfiguration(deviceHandle, 1);
+        if (set != LibUsb.SUCCESS) {
+            log.fine("NRV setConfiguration(1): " + LibUsb.errorName(set));
         }
     }
 
