@@ -239,18 +239,47 @@ public final class DrawGL {
         gl.glEnd();
     }
 
-    /** GL-thread TextRenderer cache; a new renderer every string leaked JOGL textures (recording overlay). */
+    /**
+     * GL-thread TextRenderer cache, keyed by atlas pixel size ({@link #atlasFontSize}).
+     * Constructing a new TextRenderer every string leaked JOGL glyph textures (RSS growth
+     * during live view / AEDAT-4 recording overlays). This map is the only construction
+     * site in DrawGL; {@link #drawString}, {@link #lineHeight}, and
+     * {@link #measureStringWidth} all go through {@link #textRendererFor}.
+     */
     private static final Map<Integer, TextRenderer> textRenderers = new HashMap<>();
-    private static final Rectangle2D UNMEASURED_BOUNDS = new Rectangle2D.Float();
+    /** Cached chip-pixel line height per requested {@code fontSize} (before the fontSize&lt;10 scale). */
+    private static final Map<Integer, Float> cachedLineHeights = new HashMap<>();
 
-    private static TextRenderer textRendererFor(int fontSize) {
-        TextRenderer r = textRenderers.get(fontSize);
+    /**
+     * Atlas size for {@code TextRenderer}'s Font. Sizes below 10 are drawn with a 4×
+     * font at scale 0.25 so glyphs stay sharp; the cache key is this atlas size so
+     * requested 8 and atlas 32 share one renderer.
+     */
+    private static int atlasFontSize(int fontSize) {
+        if (fontSize < 1) {
+            fontSize = 1;
+        }
+        return fontSize < 10 ? fontSize * 4 : fontSize;
+    }
+
+    /** draw3D scale matching {@link #atlasFontSize}. */
+    private static float drawScale(int fontSize) {
+        return fontSize < 10 ? 0.25f : 1f;
+    }
+
+    /**
+     * Returns the reused TextRenderer for {@code requestedFontSize}. Only place
+     * {@code new TextRenderer} runs in this class, and only on a cache miss.
+     */
+    private static TextRenderer textRendererFor(int requestedFontSize) {
+        final int atlas = atlasFontSize(requestedFontSize);
+        TextRenderer r = textRenderers.get(atlas);
         if (r == null) {
-            r = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+            r = new TextRenderer(new Font("SansSerif", Font.PLAIN, atlas), true, true);
             // Intel Arc (igxelpgicd64.dll) can ACCESS_VIOLATION in glDrawArrays from
             // TextRenderer's Pipelined_QuadRenderer; ChipCanvas already disables this.
             r.setUseVertexArrays(false);
-            textRenderers.put(fontSize, r);
+            textRenderers.put(atlas, r);
         }
         return r;
     }
@@ -266,22 +295,24 @@ public final class DrawGL {
      * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
      * @param color, e.g. Color.red
      * @param s the string to draw
-     * @return the bounds of the text
+     * @return the bounds of the text. For left-aligned strings ({@code alignmentX==0})
+     *         width is 0 (per-frame {@code getBounds} is skipped to avoid GlyphVector
+     *         allocation); height is {@link #lineHeight}. Use
+     *         {@link #measureStringWidth} when layout needs the string width.
      */
     public static Rectangle2D drawString(int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
-        float scale = 1;
-        if (fontSize < 10) {
-            fontSize *= 4;
-            scale = .25f;
-        }
+        final float scale = drawScale(fontSize);
+        // Line height uses getBounds; must not run inside begin3DRendering.
+        final float leftAlignHeight = (alignmentX == 0) ? lineHeight(fontSize) : 0;
         TextRenderer textRenderer = textRendererFor(fontSize);
         textRenderer.begin3DRendering();
         textRenderer.setColor(color);
         Rectangle2D r;
         if (alignmentX == 0) {
             // getBounds() builds a GlyphVector for the whole string; noise-filter overlays
-            // change every frame and are left-aligned, so skip the measure.
-            r = UNMEASURED_BOUNDS;
+            // change every frame and are left-aligned, so skip the per-string measure.
+            // Height is still needed for MultilineAnnotationTextRenderer line advance.
+            r = new Rectangle2D.Float(0, 0, 0, leftAlignHeight);
             textRenderer.draw3D(s, x, y, 0, scale);
         } else {
             r = textRenderer.getBounds(s);
@@ -293,6 +324,33 @@ public final class DrawGL {
     }
 
     /**
+     * Cached chip-pixel line height for {@code fontSize}, using the same
+     * fontSize&lt;10 scale as {@link #drawString}. Measures a probe string once
+     * per size. Call from the GL thread (same as {@code drawString}).
+     */
+    public static float lineHeight(int fontSize) {
+        if (fontSize < 1) {
+            fontSize = 1;
+        }
+        Float cached = cachedLineHeights.get(fontSize);
+        if (cached != null) {
+            return cached;
+        }
+        final int requested = fontSize;
+        try {
+            Rectangle2D r = textRendererFor(requested).getBounds("Ag");
+            float h = (float) (r.getHeight() * drawScale(requested));
+            if (h < 1f) {
+                h = requested * 1.25f;
+            }
+            cachedLineHeights.put(requested, h);
+            return h;
+        } catch (RuntimeException e) {
+            return requested * 1.25f;
+        }
+    }
+
+    /**
      * Chip-pixel width of {@code s} at {@code fontSize}, using the same
      * fontSize&lt;10 scale as {@link #drawString}.
      */
@@ -300,13 +358,8 @@ public final class DrawGL {
         if (s == null || s.isEmpty()) {
             return 0;
         }
-        float scale = 1;
-        if (fontSize < 10) {
-            fontSize *= 4;
-            scale = .25f;
-        }
         Rectangle2D r = textRendererFor(fontSize).getBounds(s);
-        return (float) (r.getWidth() * scale);
+        return (float) (r.getWidth() * drawScale(fontSize));
     }
 
     /**

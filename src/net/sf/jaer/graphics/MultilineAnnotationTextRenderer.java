@@ -87,7 +87,8 @@ public class MultilineAnnotationTextRenderer {
                     continue;
                 }
                 r = DrawGL.drawString(fontSize, xposition, yshift, 0, color, l);
-                yshift -= r.getHeight() * lineShiftMultiplier;
+                float h = (r != null && r.getHeight() > 0) ? (float) r.getHeight() : DrawGL.lineHeight(fontSize);
+                yshift -= h * lineShiftMultiplier;
                 l = "  " + l;
             }
         } catch (GLException e) {
