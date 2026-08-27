@@ -43,7 +43,14 @@ uses `getCachedNumInterfacesAvailable()` on the EDT so a live camera is not
 re-scanned. **Refresh** enumerates off the EDT.
 
 `usbEnumerationDirty` plus [`LibUsbHotplug`](../src/net/sf/jaer/hardwareinterface/usb/LibUsbHotplug.java)
-avoid a full `getDeviceList` on every poll when hotplug is supported.
+avoid a full `getDeviceList` on every poll when hotplug is supported (Linux/macOS).
+Windows WinUSB in bundled libusb 1.0.22 has no hotplug, so WAITING uses
+[`WindowsUsbPollSchedule`](../src/net/sf/jaer/hardwareinterface/usb/WindowsUsbPollSchedule.java):
+scan every **1 s** for the first minute after startup, window focus, or any
+enumerated-device change (plug/unplug), then every **3 s** for 10 minutes, then
+every **15 s**. A device-list change or AEViewer focus restarts that decay
+(WAITING is interrupted so the next scan is immediate). Phase changes are
+logged at INFO. USB enumeration stays off the EDT.
 
 FX2 and FX3 factories list devices by **VID/PID from `LibUsb.getDeviceDescriptor`
 only**. They must not `LibUsb.open` during scan: opening while another handle is

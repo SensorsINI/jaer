@@ -31,6 +31,7 @@ public final class UsbEnumerationSafetyDemo {
         testHotplugUnplugDoesNotBlockReplug();
         testChipSwitchKeepsHotplugListener();
         testNrvClaimAfterHotplug();
+        testWindowsUsbPollSchedule();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -483,6 +484,73 @@ public final class UsbEnumerationSafetyDemo {
         Path nrv = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
         require(Files.readString(nrv, StandardCharsets.UTF_8).contains("UsbTransferSubmit.awaitQueued"),
                 "NRV AEReader uses the same queued-URB handshake");
+    }
+
+    /**
+     * Windows libusb has no hotplug; WAITING discovery decays 1 s → 3 s → 15 s
+     * and restarts on enumerated-device change.
+     */
+    private static void testWindowsUsbPollSchedule() throws Exception {
+        final long t0 = 1_000_000L;
+        WindowsUsbPollSchedule s = new WindowsUsbPollSchedule(t0);
+        require(s.intervalMs(t0) == WindowsUsbPollSchedule.FAST_INTERVAL_MS,
+                "startup poll is 1 s");
+        require(s.intervalMs(t0 + WindowsUsbPollSchedule.FAST_DURATION_MS - 1)
+                        == WindowsUsbPollSchedule.FAST_INTERVAL_MS,
+                "still 1 s just before 1 min");
+        require(s.intervalMs(t0 + WindowsUsbPollSchedule.FAST_DURATION_MS)
+                        == WindowsUsbPollSchedule.MEDIUM_INTERVAL_MS,
+                "3 s after the first minute");
+        require(s.intervalMs(t0 + WindowsUsbPollSchedule.FAST_DURATION_MS
+                        + WindowsUsbPollSchedule.MEDIUM_DURATION_MS - 1)
+                        == WindowsUsbPollSchedule.MEDIUM_INTERVAL_MS,
+                "still 3 s just before 11 min");
+        require(s.intervalMs(t0 + WindowsUsbPollSchedule.FAST_DURATION_MS
+                        + WindowsUsbPollSchedule.MEDIUM_DURATION_MS)
+                        == WindowsUsbPollSchedule.SLOW_INTERVAL_MS,
+                "15 s after 1 min + 10 min");
+        java.util.logging.Logger log = java.util.logging.Logger.getLogger("net.sf.jaer");
+        require(!s.noteScanResult("none", t0, log), "first fingerprint is baseline");
+        require(!s.noteScanResult("none", t0 + 5_000, log), "unchanged list does not reset");
+        long later = t0 + WindowsUsbPollSchedule.FAST_DURATION_MS
+                + WindowsUsbPollSchedule.MEDIUM_DURATION_MS;
+        require(s.intervalMs(later) == WindowsUsbPollSchedule.SLOW_INTERVAL_MS,
+                "pre-change interval is 15 s");
+        require(s.noteScanResult("DAViSFX3 152a:841a bus1-addr3", later, log),
+                "device appearance resets the schedule");
+        require(s.intervalMs(later) == WindowsUsbPollSchedule.FAST_INTERVAL_MS,
+                "after plug, poll is 1 s again");
+        require(s.waitingSleepMs(t0) <= 600 && s.waitingSleepMs(t0) >= 200,
+                "WAITING sleep is between 200 ms and 600 ms");
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String openHw = methodBody(viewer,
+                "private void openHardwareIfNonambiguous() {",
+                "private boolean bindUnambiguousInterfaceIfPossible");
+        require(openHw.contains("windowsUsbPoll.intervalMs"),
+                "WAITING uses WindowsUsbPollSchedule when hotplug is absent");
+        require(openHw.contains("noteScanResult(usbDeviceFingerprint"),
+                "Windows poll resets when the enumerated set changes");
+        require(openHw.contains("logPhaseIfChanged"),
+                "Windows poll interval changes are logged");
+        String waiting = methodBody(viewer,
+                "WAITING suppressHardwareOpen sleep interrupted",
+                "case FILTER_INPUT:");
+        require(waiting.contains("waitingSleepMs"),
+                "WAITING sleep shortens so 1 s scans are reachable");
+        String openMon = methodBody(viewer,
+                "private void openAEMonitor() {",
+                "private void showUsbLinkOverlayAfterOpen()");
+        require(openMon.contains("resetWindowsUsbPoll(\"device removed\")"),
+                "Windows unplug restarts 1 s scans");
+        String src = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(src.contains("windowGainedFocus"),
+                "AEViewer focus gained restarts Windows 1 s USB scans");
+        require(src.contains("onViewerWindowGainedFocus()"),
+                "focus-gained handler is wired");
+        require(src.contains("resetWindowsUsbPoll(\"window focus gained\")"),
+                "focus gained resets the Windows USB poll to 1 s");
+        require(src.contains("lastInterfaceCheckTime = 0"),
+                "focus gained forces the next WAITING tick to scan immediately");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

@@ -50,7 +50,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	private static final long serialVersionUID = 6795768174203484869L;
 //	HashSet<Class> factoryHashSet = new HashSet<Class>();
 	private final ArrayList<HardwareInterface> interfaceList = new ArrayList<>();
-	/** True until a bus scan completes; libusb hotplug sets this so WAITING can skip 3 s polls. */
+	/** True until a bus scan completes; libusb hotplug sets this so WAITING can skip periodic polls. */
 	private volatile boolean usbEnumerationDirty = true;
 	static final Logger log = Logger.getLogger("net.sf.jaer");
 

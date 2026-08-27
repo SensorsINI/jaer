@@ -187,6 +187,7 @@ import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.WindowsUsbPollSchedule;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
@@ -719,6 +720,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
+        // Windows has no libusb hotplug: clicking the viewer restarts 1 s WAITING
+        // USB scans so a camera plugged in while jAER was in the background is found.
+        addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowGainedFocus(WindowEvent e) {
+                onViewerWindowGainedFocus();
+            }
+        });
         setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
@@ -1036,11 +1045,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private long lastInterfaceCheckTime = 0;
     /** Last libusb ARRIVED/LEFT; empty scans retry until this window elapses. */
     private volatile long lastUsbHotplugTimeMs = 0;
-    private static final long INTERFACE_CHECK_INTERVAL_MS = 3000; // don't scan USB bus too often while paused
     /** Fallback full scan when libusb hotplug is active (events handle the fast path). */
     private static final long HOTPLUG_FALLBACK_CHECK_INTERVAL_MS = 15_000;
     /** After ARRIVED, {@code getDeviceList} can still be empty; retry WAITING scans this long. */
     private static final long HOTPLUG_EMPTY_SCAN_RETRY_MS = 2_000;
+    /** Windows has no libusb hotplug; WAITING discovery decays 1 s → 3 s → 15 s. */
+    private final WindowsUsbPollSchedule windowsUsbPoll = new WindowsUsbPollSchedule();
     private final LibUsbHotplug.Listener usbHotplugListener = this::onLibUsbHotplug;
 
     /**
@@ -1059,21 +1069,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         final boolean dirty = HardwareInterfaceFactory.instance().isUsbEnumerationDirty();
-        final long dtCheck = System.currentTimeMillis() - lastInterfaceCheckTime;
-        final long intervalMs = LibUsbHotplug.isSupported()
-                ? HOTPLUG_FALLBACK_CHECK_INTERVAL_MS : INTERFACE_CHECK_INTERVAL_MS;
+        final long now = System.currentTimeMillis();
+        final long dtCheck = now - lastInterfaceCheckTime;
+        final boolean windowsPoll = !LibUsbHotplug.isSupported();
+        final long intervalMs;
+        if (windowsPoll) {
+            intervalMs = windowsUsbPoll.intervalMs(now);
+            windowsUsbPoll.logPhaseIfChanged(now, log);
+        } else {
+            intervalMs = HOTPLUG_FALLBACK_CHECK_INTERVAL_MS;
+        }
 
         if (!dirty && dtCheck < intervalMs) {
             log.finer(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, intervalMs));
             return;
         }
-        lastInterfaceCheckTime = System.currentTimeMillis();
+        lastInterfaceCheckTime = now;
         if (LibUsbHotplug.isSupported()) {
             HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
         }
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         log.fine("openHardwareIfNonambiguous ninterfaces=" + ninterfaces + " dirtyWas=" + dirty);
+        if (windowsPoll) {
+            windowsUsbPoll.noteScanResult(usbDeviceFingerprint(ninterfaces), now, log);
+        }
         if (ninterfaces == 0 && LibUsbHotplug.isSupported()
                 && (System.currentTimeMillis() - lastUsbHotplugTimeMs) < HOTPLUG_EMPTY_SCAN_RETRY_MS) {
             lastInterfaceCheckTime = 0;
@@ -1091,6 +1111,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         bindUnambiguousInterfaceIfPossible(ninterfaces);
+    }
+
+    /** Sorted unopened labels for Windows poll-schedule reset; does not {@code LibUsb.open}. */
+    private static String usbDeviceFingerprint(int ninterfaces) {
+        if (ninterfaces <= 0) {
+            return "none";
+        }
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        String[] labels = new String[ninterfaces];
+        for (int i = 0; i < ninterfaces; i++) {
+            HardwareInterface hw = factory.getInterface(i);
+            String type = hw != null ? hw.getClass().getSimpleName() : null;
+            labels[i] = UsbIds.unopenedLabel(hw, type);
+        }
+        Arrays.sort(labels);
+        return String.join(", ", labels);
+    }
+
+    /** Windows-only: restart 1 s USB scans for 1 min (unplug / device-gone / focus). */
+    private void resetWindowsUsbPoll(String reason) {
+        if (LibUsbHotplug.isSupported()) {
+            return;
+        }
+        lastInterfaceCheckTime = 0;
+        windowsUsbPoll.reset(reason, System.currentTimeMillis(), log);
+    }
+
+    /**
+     * Clicking back to the viewer (no Windows libusb hotplug) restarts 1 s
+     * WAITING scans so a newly plugged camera is found without waiting 15 s.
+     * USB enumeration stays off the EDT.
+     */
+    private void onViewerWindowGainedFocus() {
+        if (LibUsbHotplug.isSupported()) {
+            return;
+        }
+        resetWindowsUsbPoll("window focus gained");
+        if (viewLoop != null && getPlayMode() == PlayMode.WAITING) {
+            interruptViewloop();
+        }
     }
 
     /**
@@ -3176,6 +3236,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (bound != null && aemon == bound && !bound.isOpen()) {
                     log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
                     nullifyHardware();
+                    resetWindowsUsbPoll("device removed");
                 }
                 openHardwareIfNonambiguous();
                 if (hardwareSwitchInProgress || suppressHardwareOpen
@@ -3441,8 +3502,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (isUsbDeviceGone(e)) {
                     log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
                     nullInterface = false;
+                    resetWindowsUsbPoll("device removed");
                 } else {
-                    // Stop WAITING from rebinding the same ghost device every 3 s
+                    // Stop WAITING from rebinding the same ghost device on the next poll
                     // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
                     nullInterface = true;
                 }
@@ -4527,7 +4589,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 : "Choose AEChip (Interface menu if needed)");
 
                         try {
-                            Thread.sleep(600);
+                            long sleepMs = 600;
+                            if (!LibUsbHotplug.isSupported()) {
+                                long now = System.currentTimeMillis();
+                                windowsUsbPoll.logPhaseIfChanged(now, log);
+                                sleepMs = windowsUsbPoll.waitingSleepMs(now);
+                            }
+                            Thread.sleep(sleepMs);
                         } catch (InterruptedException e) {
                             log.info("WAITING interrupted");
                         }
@@ -6910,6 +6978,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 try {
                     HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
                     final int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+                    if (!LibUsbHotplug.isSupported()) {
+                        windowsUsbPoll.noteScanResult(usbDeviceFingerprint(n),
+                                System.currentTimeMillis(), log);
+                    }
                     SwingUtilities.invokeLater(() -> {
                         // User asked to find cameras; allow auto-open even after Interface→None
                         // or a failed open (those set nullInterface and block WAITING).
