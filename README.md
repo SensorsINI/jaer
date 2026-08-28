@@ -10,7 +10,7 @@
 
 (You get plug-and-play, "it just works" for all the cameras above.) 
 
-jAER efficiently 
+<b>jAER accumulates 20 years of hands-on daily experience working with event cameras as silicon developers and [application demonstrators](#jaer-applications). </b> It [efficiently](docs/README-jaer3.md) (and ergonomically)
  * captures USB event camera output from [most devices](#device-hardware-support), 
  * denoises -- with fast, accurate event filtering algorithms
  * displays -- with a variety of color and 2d/3d options
