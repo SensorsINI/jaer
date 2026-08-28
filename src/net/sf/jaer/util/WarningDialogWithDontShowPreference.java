@@ -71,7 +71,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
      * @param modal true to make dialog model, i.e. to stop other GUI interaction
      */
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text) {
-        this(parent, modal, title, text, JOptionPane.WARNING_MESSAGE);
+        this(parent, modal, title, text, JOptionPane.WARNING_MESSAGE, false, JOptionPane.DEFAULT_OPTION);
     }
 
     /**
@@ -82,14 +82,71 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
      * @param messageType {@link JOptionPane} message type (e.g. INFORMATION_MESSAGE)
      */
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text, int messageType) {
+        this(parent, modal, title, text, messageType, false, JOptionPane.DEFAULT_OPTION);
+    }
+
+    /**
+     * @param parent parent frame to center on, or null
+     * @param modal true to make dialog modal
+     * @param title dialog title (also used as don't-show-again prefs key basis)
+     * @param text message body (may be HTML)
+     * @param messageType {@link JOptionPane} message type (e.g. QUESTION_MESSAGE)
+     * @param defaultDontShowAgain if no preference is stored yet, initial state of Don't show again (true = checked)
+     */
+    public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text, int messageType, boolean defaultDontShowAgain) {
+        this(parent, modal, title, text, messageType, defaultDontShowAgain, JOptionPane.DEFAULT_OPTION);
+    }
+
+    /**
+     * @param parent parent frame to center on, or null
+     * @param modal true to make dialog modal
+     * @param title dialog title (also used as don't-show-again prefs key basis)
+     * @param text message body (may be HTML)
+     * @param messageType {@link JOptionPane} message type (e.g. QUESTION_MESSAGE)
+     * @param defaultDontShowAgain if no preference is stored yet, initial state of Don't show again (true = checked)
+     * @param optionType {@link JOptionPane} option type (e.g. OK_CANCEL_OPTION); {@link JOptionPane#DEFAULT_OPTION} leaves the form default
+     */
+    public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text, int messageType, boolean defaultDontShowAgain, int optionType) {
         super(parent, modal);
         initComponents();
         optionPane.setMessage(text);
         key = title;
         setTitle(title);
         optionPane.setMessageType(messageType);
+        if (optionType != JOptionPane.DEFAULT_OPTION) {
+            optionPane.setOptionType(optionType);
+        }
+        dontShowAgainCheckBox.setSelected(defaultDontShowAgain);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         pack();
+    }
+
+    /**
+     * True if the user confirmed (OK/Yes) or the warning is already disabled.
+     * Call after {@link #setVisible(boolean)} for a confirmation dialog.
+     */
+    public boolean isConfirmed() {
+        if (isWarningDisabled()) {
+            return true;
+        }
+        Object v = optionPane.getValue();
+        if (v == null || v == JOptionPane.UNINITIALIZED_VALUE) {
+            return false;
+        }
+        if (Integer.valueOf(JOptionPane.OK_OPTION).equals(v)) {
+            return true;
+        }
+        return JOptionPane.OK_OPTION == returnStatus;
+    }
+
+    private boolean shouldStoreDontShowPreference(Object optionValue) {
+        if (optionPane.getOptionType() == JOptionPane.OK_CANCEL_OPTION
+                || optionPane.getOptionType() == JOptionPane.YES_NO_OPTION
+                || optionPane.getOptionType() == JOptionPane.YES_NO_CANCEL_OPTION) {
+            return Integer.valueOf(JOptionPane.OK_OPTION).equals(optionValue)
+                    || Integer.valueOf(JOptionPane.YES_OPTION).equals(optionValue);
+        }
+        return true;
     }
 
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
@@ -185,8 +242,10 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
 
     /** Closes the dialog */
     private void closeDialog(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_closeDialog
-        log.info("storing preference for " + prefsKey() + "=" + dontShowAgainCheckBox.isSelected());
-        prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
+        if (shouldStoreDontShowPreference(JOptionPane.CANCEL_OPTION)) {
+            log.info("storing preference for " + prefsKey() + "=" + dontShowAgainCheckBox.isSelected());
+            prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
+        }
         doClose(RET_CANCEL);
     }//GEN-LAST:event_closeDialog
 
@@ -196,10 +255,16 @@ private void optionPanePropertyChange (java.beans.PropertyChangeEvent evt) {//GE
     if (isVisible()
             && (evt.getSource() == optionPane)
             && (prop.equals(JOptionPane.VALUE_PROPERTY))) {
-        //If you were going to check something
-        //before closing the window, you'd do
-        //it here.
-        prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
+        Object v = optionPane.getValue();
+        if (Integer.valueOf(JOptionPane.OK_OPTION).equals(v) || Integer.valueOf(JOptionPane.YES_OPTION).equals(v)) {
+            returnStatus = RET_OK;
+        } else {
+            returnStatus = RET_CANCEL;
+        }
+        if (shouldStoreDontShowPreference(v)) {
+            log.info("storing preference for " + prefsKey() + "=" + dontShowAgainCheckBox.isSelected());
+            prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
+        }
         setVisible(false);
         dispose();
     }

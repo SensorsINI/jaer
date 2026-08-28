@@ -1,0 +1,111 @@
+<html>
+<head>
+  <title>jAER quick help and shortcuts</title>
+</head>
+<body>
+<p><b>See <a href="https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing">user guide</a></b>
+(opens in your browser). Press <b>F1</b> again to hide this window.
+Type to search this page; <b>Esc</b> cancels search; <b>F3</b> / <b>Shift+F3</b> next/previous match.</p>
+
+<p>This page lists the mouse gestures and keys most people use every session.<br>
+Menu names match the AEViewer menus. <br>Chip-specific keys (for example DAVIS
+exposure) appear in those chip menus.</p>
+
+<h2>Mouse on the event display</h2>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Action</th><th>What it does</th></tr>
+  <tr><td>Mouse wheel</td><td>Change <b>contrast</b> (how bright events appear). Wheel up = more contrast. <br>FS=X in top bar shows the full scale event count.</td></tr>
+  <tr><td>Ctrl + mouse wheel</td><td><b>Zoom</b> in/out around the cursor. Same as View → Zoom in/out.</td></tr>
+  <tr><td>Right-drag</td><td><b>Pan</b> the image (2D). In 3D display methods, right-drag moves the origin; left-drag rotates.</td></tr>
+  <tr><td>Right-click</td><td><b>Select a pixel</b> to listen to (spike click / selected cell). Click outside the chip to clear.</td></tr>
+  <tr><td>Shift + mouse wheel</td><td><b>Jog</b> through a recording (or step if paused). Wheel up = forward.</td></tr>
+  <tr><td>Shift+Alt + mouse wheel</td><td>Change playback <b>accumulation</b> (time slice or event count).</td></tr>
+</table>
+<p>Ctrl+<b>=</b> / Ctrl+<b>-</b> zoom; Ctrl+<b>0</b> unzoom. Up/Down arrows also change contrast.</p>
+
+<h2>Keyboard — Live (and always available)</h2>
+<p>These work with a camera (or whenever the viewer has focus). Sorted A–Z within each group.</p>
+
+<h3>File and windows</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>Ctrl+N</td><td>New viewer</td></tr>
+  <tr><td>Ctrl+O</td><td>Open recorded file</td></tr>
+  <tr><td>Ctrl+S</td><td>Save as / export</td></tr>
+  <tr><td>Ctrl+W</td><td>Close viewer or close playing file</td></tr>
+  <tr><td>F1</td><td>Toggle this quick help</td></tr>
+  <tr><td>l (lower case L)</td><td>Start/stop <b>recording</b>, i.e. data Logging. Avoid L right after j/k marker jumps.</td></tr>
+  <tr><td>x</td><td>Exit jAER</td></tr>
+</table>
+
+<h3>Display</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>3</td><td>Cycle display method (2D / 3D / …)</td></tr>
+  <tr><td>C</td><td>Next color rendering mode (gray, RG, time-color, …)</td></tr>
+  <tr><td>Ctrl+C</td><td>Previous color rendering mode</td></tr>
+  <tr><td>Ctrl+F</td><td>Show <b>filters</b> window</td></tr>
+  <tr><td>Ctrl+= / Ctrl+- / Ctrl+0</td><td>Zoom in / zoom out / unzoom</td></tr>
+  <tr><td>Down / Up</td><td>Decrease / increase contrast</td></tr>
+  <tr><td>Left / Right</td><td>Decrease / increase target rendering frame rate</td></tr>
+  <tr><td>P</td><td>Toggle event <b>accumulation</b> (persist events)</td></tr>
+  <tr><td>Shift+P</td><td>Reset accumulation</td></tr>
+  <tr><td>Ctrl+P</td><td>Fading accumulation; then mouse wheel scrolls time</td></tr>
+  <tr><td>Ctrl+Shift+P</td><td>Sliding accumulation; then mouse scrolls rendering packets</td></tr>
+  <tr><td>Space</td><td>Pause / resume the view loop</td></tr>
+  <tr><td>Tab</td><td>Show current rendering mode briefly</td></tr>
+</table>
+
+<h3>Hardware / interface</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>0</td><td>Zero timestamps</td></tr>
+  <tr><td>Ctrl+B</td><td>Show hardware configuration (biases)</td></tr>
+  <tr><td>Ctrl+R</td><td>Set target rendering frame rate. Actual/target shown in top bar.</td></tr>
+  <tr><td>Ctrl+Shift+R</td><td>Reset USB interface</td></tr>
+  <tr><td>Ctrl+Shift+U</td><td>Refresh Interface menu (re-enumerate USB)</td></tr>
+</table>
+
+<h2>Keyboard — Playback</h2>
+<p>Active when a data file is open. Sorted A–Z within each group.</p>
+
+<h3>Playback transport</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>B</td><td>Reverse playback direction</td></tr>
+  <tr><td>f</td><td>Play Faster (more time or events). </td></tr>
+  <tr><td>s</td><td>Play slower (less time or events)</td></tr>
+  <tr><td>, (comma)</td><td>Step backward one packet</td></tr># events before/after filering shown in top bar
+  <tr><td>. (period)</td><td>Step forward one packet</td></tr>
+  <tr><td>R</td><td>Rewind to start</td></tr>
+  <tr><td>Space</td><td>Pause / play</td></tr>
+  <tr><td>T</td><td>Toggle Flextime (fixed duration vs fixed event count)</td></tr>
+</table>
+
+<h3>Jog and speed</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>Ctrl+Shift+,</td><td>Jog backward by N packets</td></tr>
+  <tr><td>Ctrl+Shift+.</td><td>Jog forward by N packets</td></tr>
+  <tr><td>Esc</td><td>Cancel jog</td></tr>
+  <tr><td>F</td><td>Increase accumulation (longer time slice / more events)</td></tr>
+  <tr><td>S</td><td>Decrease accumulation</td></tr>
+</table>
+<p>Shift+mouse wheel jogs; Shift+Alt+wheel changes accumulation. Set N under Playback → Set jog packet count.</p>
+
+<h3>Marks</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>I</td><td>Mark IN (loop start)</td></tr>
+  <tr><td>J</td><td>Jump to previous marker</td></tr>
+  <tr><td>K</td><td>Jump to next marker</td></tr>
+  <tr><td>M</td><td>Toggle a marker at the current time</td></tr>
+  <tr><td>O</td><td>Mark OUT (loop end)</td></tr>
+  <tr><td>Ctrl+M</td><td>Clear all marks</td></tr>
+</table>
+
+<p>Filters window: <b>F1</b> or <b>?</b> opens help for the selected filter when that window is focused.
+File → Preferences has an optional <b>Collect usage data</b> log if you want to see which
+shortcuts you actually use (written under the jAER temp folder <code>interactions</code>).</p>
+</body>
+</html>

@@ -481,6 +481,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private String lastSaveAsSourceFileInfo;
     /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
     private AEViewerPreferencesDialog preferencesDialog;
+    /** Nonmodal Help → Quick help / Shortcuts window (F1). */
+    private AEViewerQuickHelpFrame quickHelpFrame;
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
     private String rememberLastInterfaceDeviceID = null;
@@ -853,6 +855,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // additional help
         try {
             addHelpURLItem(JaerConstants.HELP_URL_USER_GUIDE, "jAER user guide", "Opens the jAER user guide");
+            JMenuItem quickHelpMenuItem = new JMenuItem(new AbstractAction("Quick help/Shortcuts") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    toggleQuickHelp();
+                }
+            });
+            quickHelpMenuItem.setToolTipText("Mouse gestures and common keyboard shortcuts (F1 toggles)");
+            quickHelpMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+            int userGuideIndex = -1;
+            for (int i = 0; i < helpMenu.getMenuComponentCount(); i++) {
+                Component c = helpMenu.getMenuComponent(i);
+                if (c instanceof JMenuItem && "jAER user guide".equals(((JMenuItem) c).getText())) {
+                    userGuideIndex = i;
+                    break;
+                }
+            }
+            helpMenu.insert(quickHelpMenuItem, userGuideIndex < 0 ? 1 : userGuideIndex + 1);
             addHelpURLItem(JaerConstants.HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
             addHelpURLItem(JaerConstants.JAER_ISSUES, "Give feedback/File issue...",
                     "Opens the jAER GitHub Issues page to give feedback or file a bug");
@@ -6936,6 +6955,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
                 return;
             }
+            if (!confirmExitFromWindowClose()) {
+                return;
+            }
             final boolean lastViewer = jaerViewer.getViewers().size() == 1;
             // Arm before any work that can block the EDT (USB close, ViewLoop join).
             if (lastViewer) {
@@ -6971,6 +6993,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
 	}//GEN-LAST:event_formWindowClosing
+
+        /**
+         * Title-bar close only. File → Exit does not use this. Don't show again
+         * defaults to checked so new users confirm once then skip later.
+         */
+        private boolean confirmExitFromWindowClose() {
+            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true,
+                    "Confirm exit",
+                    "<html>Do you want to exit jAER?<p>This prompt is shown only when you close the window with the title-bar close button.<br>"
+                    + "<b>File → Exit</b> quits without asking.",
+                    JOptionPane.QUESTION_MESSAGE, true, JOptionPane.OK_CANCEL_OPTION);
+            d.setLocationRelativeTo(this);
+            d.setVisible(true);
+            return d.isConfirmed();
+        }
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
             showActionText("Scanning USB…");
@@ -9215,6 +9252,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
+    /**
+     * Shows or hides the nonmodal Quick help / Shortcuts window (Help menu / F1).
+     */
+    public void toggleQuickHelp() {
+        if (quickHelpFrame != null && quickHelpFrame.isDisplayable() && quickHelpFrame.isVisible()) {
+            quickHelpFrame.setVisible(false);
+            return;
+        }
+        if (quickHelpFrame == null || !quickHelpFrame.isDisplayable()) {
+            quickHelpFrame = new AEViewerQuickHelpFrame(this);
+        }
+        quickHelpFrame.setVisible(true);
+        quickHelpFrame.toFront();
+    }
+
 	private void preferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferencesMenuItemActionPerformed
             if (preferencesDialog == null || !preferencesDialog.isDisplayable()) {
                 preferencesDialog = new AEViewerPreferencesDialog(this);
@@ -10291,6 +10343,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (preferencesDialog != null) {
             preferencesDialog.dispose();
             preferencesDialog = null;
+        }
+        if (quickHelpFrame != null) {
+            quickHelpFrame.dispose();
+            quickHelpFrame = null;
         }
         ExportVideoDialog.disposeForViewer(this);
         SaveAsExportDialog.disposeForViewer(this);

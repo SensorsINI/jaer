@@ -56,6 +56,7 @@ import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.SplashStartupAbort;
+import net.sf.jaer.util.UiInteractionLog;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
@@ -157,6 +158,7 @@ public class JAERViewer {
         log.info("JOGL version information: " + JoglVersion.getInstance().toString());
 
         windowSaver = new WindowSaver(this, prefs);
+        UiInteractionLog.syncFromPrefs();
         // WindowSaver calls for determining screen insets (e.g. Windows Taskbar) could cause problems on different OS's
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 

@@ -15,6 +15,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.UiInteractionLog;
 import net.sf.jaer.util.WindowSaver;
 
 /**
@@ -129,6 +131,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JSpinner jogPacketCountSpinner;
 
     private JCheckBox rememberLastInterfaceCB;
+    private JCheckBox collectUsageDataCB;
 
     private JCheckBox restoreFilterEnabledStateCB;
     private JCheckBox simpleModeCB;
@@ -251,6 +254,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         content.add(buildPlaybackSection());
         content.add(Box.createVerticalStrut(8));
         content.add(buildInterfaceSection());
+        content.add(Box.createVerticalStrut(8));
+        content.add(buildDiagnosticsSection());
         content.add(Box.createVerticalGlue());
 
         JPanel wrap = new JPanel(new BorderLayout());
@@ -974,6 +979,28 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         return p;
     }
 
+    private JPanel buildDiagnosticsSection() {
+        JPanel p = titledSection("Diagnostics");
+        File dir = UiInteractionLog.directory();
+        collectUsageDataCB = new JCheckBox("Collect usage data");
+        collectUsageDataCB.setToolTipText("<html>When enabled, menu clicks, keys, and mouse clicks/wheel on the UI are appended as JSON lines under<br>"
+                + dir.getAbsolutePath()
+                + "<br>Off by default. Use this to see which shortcuts people actually use.");
+        collectUsageDataCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                UiInteractionLog.setEnabled(collectUsageDataCB.isSelected());
+            }
+        });
+        p.add(collectUsageDataCB, gbc(0));
+        JLabel path = new JLabel("<html>Log folder: " + dir.getAbsolutePath() + "</html>");
+        p.add(path, gbc(1));
+        return p;
+    }
+
     private AEChipRenderer getRenderer() {
         AEChip chip = viewer.getChip();
         return chip == null ? null : chip.getRenderer();
@@ -1036,6 +1063,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
+
+            collectUsageDataCB.setSelected(UiInteractionLog.isEnabled());
 
             RecentFiles recent = viewer.getRecentFiles();
             if (recent != null) {
