@@ -3,6 +3,7 @@ package net.sf.jaer.util;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Frame;
+import java.awt.Window;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
@@ -97,10 +98,15 @@ public final class JaerIssueReporter {
                 + "&body=" + encode(body);
         browse(url, parent);
         if (reportFile != null) {
-            String msg = "A report was copied to the clipboard and saved to:\n"
-                    + reportFile.getAbsolutePath()
-                    + "\n\nPaste it into the GitHub issue, or drag the file onto the issue page after signing in.";
-            JOptionPane.showMessageDialog(parent, msg, "Report issue", JOptionPane.INFORMATION_MESSAGE);
+            Window owner = parent instanceof Window w ? w
+                    : (parent != null ? SwingUtilities.getWindowAncestor(parent) : null);
+            String html = "<html>A report was copied to the clipboard and saved to:<br>"
+                    + ShowFolderSaveConfirmation.escapeHtml(reportFile.getAbsolutePath())
+                    + "<br><br>Paste it into the GitHub issue, or drag the file onto the issue page after signing in.";
+            ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(
+                    owner, reportFile, html, null, null, "Report issue");
+            dialog.setModal(true);
+            dialog.setVisible(true);
         }
         return reportFile;
     }
