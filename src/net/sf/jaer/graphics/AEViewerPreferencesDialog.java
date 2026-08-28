@@ -1029,9 +1029,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         JPanel p = titledSection("Diagnostics");
         File dir = UiInteractionLog.directory();
         collectUsageDataCB = new JCheckBox("Collect usage data");
-        collectUsageDataCB.setToolTipText("<html>When enabled, menu clicks, keys, and mouse clicks/wheel on the UI are appended as JSON lines under<br>"
+        collectUsageDataCB.setToolTipText("<html>When enabled, menu items and keyboard shortcuts (name, purpose, accelerator) are appended as JSON lines under<br>"
                 + dir.getAbsolutePath()
-                + "<br>Off by default. Use this to see which shortcuts people actually use.");
+                + "<br>Mouse motion and wheel are not logged. Off by default.");
         collectUsageDataCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

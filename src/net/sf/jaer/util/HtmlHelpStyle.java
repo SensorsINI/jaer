@@ -159,13 +159,13 @@ public final class HtmlHelpStyle {
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ADD, ctrl), "help-zoom-in");
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, ctrl), "help-zoom-out");
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, ctrl), "help-zoom-out");
-        am.put("help-zoom-in", new AbstractAction() {
+        am.put("help-zoom-in", new AbstractAction("Zoom help text in") {
             @Override
             public void actionPerformed(ActionEvent e) {
                 adjustSizeBy(1);
             }
         });
-        am.put("help-zoom-out", new AbstractAction() {
+        am.put("help-zoom-out", new AbstractAction("Zoom help text out") {
             @Override
             public void actionPerformed(ActionEvent e) {
                 adjustSizeBy(-1);
