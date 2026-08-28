@@ -41,6 +41,7 @@ import javax.swing.text.Document;
 import javax.swing.text.Highlighter;
 
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.WindowSaver;
 
 /**
@@ -98,6 +99,7 @@ public class AEViewerQuickHelpFrame extends JFrame implements WindowSaver.DontRe
         pane = new JEditorPane();
         pane.setEditable(false);
         pane.setContentType("text/html");
+        pane.addPropertyChangeListener("page", e -> HtmlHelpStyle.apply(pane));
         URL url = AEViewerQuickHelpFrame.class.getResource(RESOURCE);
         try {
             if (url != null) {
@@ -106,11 +108,13 @@ public class AEViewerQuickHelpFrame extends JFrame implements WindowSaver.DontRe
                 pane.setText("<html><body><p>Missing classpath resource " + RESOURCE
                         + ".</p><p><a href=\"" + JaerConstants.HELP_URL_USER_GUIDE
                         + "\">See user guide</a></p></body></html>");
+                HtmlHelpStyle.apply(pane);
             }
         } catch (IOException e) {
             pane.setText("<html><body><p>Could not load quick help: " + e
                     + "</p><p><a href=\"" + JaerConstants.HELP_URL_USER_GUIDE
                     + "\">See user guide</a></p></body></html>");
+            HtmlHelpStyle.apply(pane);
         }
         pane.addHyperlinkListener(new HyperlinkListener() {
             @Override
@@ -144,9 +148,9 @@ public class AEViewerQuickHelpFrame extends JFrame implements WindowSaver.DontRe
             }
         });
 
-        JScrollPane scroll = new JScrollPane(pane);
+        JScrollPane scroll = HtmlHelpStyle.createZoomingScrollPane(pane);
         scroll.setPreferredSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        HtmlHelpStyle.installZoom(getRootPane(), pane);
 
         JButton close = new JButton("Close");
         close.addActionListener(e -> setVisible(false));

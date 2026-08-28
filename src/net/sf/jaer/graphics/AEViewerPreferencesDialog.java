@@ -47,11 +47,14 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.apache.commons.text.WordUtils;
+
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
+import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.UiInteractionLog;
@@ -132,6 +135,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox rememberLastInterfaceCB;
     private JCheckBox collectUsageDataCB;
+    private JComboBox<HtmlHelpStyle.HelpFontFamily> helpFontFamilyCB;
+    private JSpinner helpFontSizeSpinner;
 
     private JCheckBox restoreFilterEnabledStateCB;
     private JCheckBox simpleModeCB;
@@ -251,6 +256,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         content.add(Box.createVerticalStrut(8));
         content.add(buildViewSection());
         content.add(Box.createVerticalStrut(8));
+        content.add(buildHelpSection());
+        content.add(Box.createVerticalStrut(8));
         content.add(buildPlaybackSection());
         content.add(Box.createVerticalStrut(8));
         content.add(buildInterfaceSection());
@@ -294,10 +301,11 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         JPanel p = titledSection("jAER preference tree (" + JaerPreferencesStore.jaerTreePath() + ")");
         int y = 0;
 
-        JLabel note = new JLabel("<html>Java Preferences under " + JaerPreferencesStore.jaerTreePath()
+        String noteText = "Java Preferences under " + JaerPreferencesStore.jaerTreePath()
                 + " hold AEViewer layout, last files, USB tuning, chip/filter settings, and Hardware Configuration values"
                 + " that were saved with File → Save. Export the tree to move it to another computer or keep a backup."
-                + " Revert deletes stored values so code defaults apply after restart.</html>");
+                + " Revert deletes stored values so code defaults apply after restart.";
+        JLabel note = new JLabel("<html>" + WordUtils.wrap(noteText, 60).replace("\n", "<br>") + "</html>");
         p.add(note, gbc(y++));
 
         JButton exportBtn = new JButton("Export all jAER preferences...");
@@ -922,6 +930,44 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         return p;
     }
 
+    private JPanel buildHelpSection() {
+        JPanel p = titledSection("Help");
+        int y = 0;
+
+        p.add(new JLabel("Help font family"), gbcLabel(y));
+        helpFontFamilyCB = new JComboBox<>(HtmlHelpStyle.HelpFontFamily.values());
+        helpFontFamilyCB.setToolTipText("Serif or Sans Serif for HTML help (quick help and filter help)");
+        helpFontFamilyCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                HtmlHelpStyle.HelpFontFamily family
+                        = (HtmlHelpStyle.HelpFontFamily) helpFontFamilyCB.getSelectedItem();
+                viewer.setHelpFontFamily(family);
+            }
+        });
+        p.add(helpFontFamilyCB, gbcField(y++));
+
+        p.add(new JLabel("Help font size"), gbcLabel(y));
+        helpFontSizeSpinner = new JSpinner(new SpinnerNumberModel(
+                HtmlHelpStyle.DEFAULT_SIZE_PT, HtmlHelpStyle.MIN_SIZE_PT, HtmlHelpStyle.MAX_SIZE_PT, 1));
+        helpFontSizeSpinner.setToolTipText("Body text size in points for HTML help (8–20). Ctrl+wheel or Ctrl+= / Ctrl+- in a help window also changes this.");
+        helpFontSizeSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setHelpFontSize(((Number) helpFontSizeSpinner.getValue()).intValue());
+            }
+        });
+        p.add(helpFontSizeSpinner, gbcField(y++));
+
+        return p;
+    }
+
     private JPanel buildPlaybackSection() {
         JPanel p = titledSection("Playback");
         int y = 0;
@@ -1055,6 +1101,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
 
             enableFiltersOnStartupCB.setSelected(viewer.isEnableFiltersOnStartup());
+
+            helpFontFamilyCB.setSelectedItem(viewer.getHelpFontFamily());
+            helpFontSizeSpinner.setValue(viewer.getHelpFontSize());
 
             AbstractAEPlayer player = viewer.getAePlayer();
             if (player != null) {

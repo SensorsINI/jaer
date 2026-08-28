@@ -5,11 +5,12 @@
 <body>
 <p><b>See <a href="https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing">user guide</a></b>
 (opens in your browser). Press <b>F1</b> again to hide this window.
-Type to search this page; <b>Esc</b> cancels search; <b>F3</b> / <b>Shift+F3</b> next/previous match.</p>
+Type to search this page; <b>Esc</b> cancels search; <b>F3</b> / <b>Shift+F3</b> next/previous match.
+Ctrl+mouse wheel or Ctrl+<b>=</b> / Ctrl+<b>-</b> zoom this help text.</p>
 
 <p>This page lists the mouse gestures and keys most people use every session.<br>
-Menu names match the AEViewer menus. <br>Chip-specific keys (for example DAVIS
-exposure) appear in those chip menus.</p>
+Menu names match the AEViewer menus. Chip classes that add a menu
+(DAVIS, DVXplorer, …) have their own shortcuts; see <b>Camera chip menus</b> below.</p>
 
 <h2>Mouse on the event display</h2>
 <table border="1" cellpadding="4" cellspacing="0">
@@ -65,6 +66,39 @@ exposure) appear in those chip menus.</p>
   <tr><td>Ctrl+Shift+R</td><td>Reset USB interface</td></tr>
   <tr><td>Ctrl+Shift+U</td><td>Refresh Interface menu (re-enumerate USB)</td></tr>
 </table>
+
+<h2>Camera chip menus</h2>
+<p>Selecting a DAVIS, DVXplorer, or similar chip adds a menu of that name on the
+AEViewer menu bar. Those items register accelerators that only exist while that
+chip is loaded. They use <b>Shift</b> so they do not clash with playback
+<b>F</b>/<b>S</b> (faster/slower) or display <b>C</b> (color mode).</p>
+
+<h3>DAVIS (APS + DVS)</h3>
+<p>Menu <b>DAVIS</b>. Toggles capture and display together.</p>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>Shift+E</td><td>Toggle DVS <b>events</b> (capture and display)</td></tr>
+  <tr><td>Shift+F</td><td>Toggle APS <b>frames</b> (capture and display)</td></tr>
+  <tr><td>Shift+H</td><td>Toggle APS histogram overlay</td></tr>
+  <tr><td>Shift+G</td><td>Toggle global vs rolling shutter</td></tr>
+  <tr><td>Shift+A</td><td>Toggle APS autoexposure</td></tr>
+  <tr><td>Shift+Up / Shift+Down</td><td>Increase / decrease APS exposure</td></tr>
+  <tr><td>Shift+Right / Shift+Left</td><td>Increase / decrease APS frame rate</td></tr>
+  <tr><td>Shift+C</td><td>Toggle APS display autocontrast</td></tr>
+  <tr><td>Ctrl+Shift+Up / Ctrl+Shift+Down</td><td>Increase / decrease APS image contrast</td></tr>
+  <tr><td>Shift+I</td><td>Toggle IMU capture and display</td></tr>
+</table>
+<p>Full APS/IMU controls are in Interface → hardware configuration (User-Friendly Controls, APS, IMU tabs).</p>
+
+<h3>DVXplorer</h3>
+<p>Menu <b>DVXplorer</b> (event camera; no APS frames).</p>
+<table border="1" cellpadding="4" cellspacing="0">
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td>Shift+E</td><td>Toggle DVS events (capture and display)</td></tr>
+  <tr><td>Shift+I</td><td>Toggle IMU capture and display</td></tr>
+</table>
+<p>Other chips (DVS128, multi-camera, cochlea, …) may add a named menu without
+these accelerators. Open that menu to see what it offers.</p>
 
 <h2>Keyboard — Playback</h2>
 <p>Active when a data file is open. Sorted A–Z within each group.</p>

@@ -200,6 +200,7 @@ import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
@@ -9066,6 +9067,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (enableFiltersOnStartupCheckBoxMenuItem != null) {
             enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
         }
+    }
+
+    /** HTML help dialog font family (quick help and filter help). */
+    public HtmlHelpStyle.HelpFontFamily getHelpFontFamily() {
+        return HtmlHelpStyle.getFamily();
+    }
+
+    public void setHelpFontFamily(HtmlHelpStyle.HelpFontFamily helpFontFamily) {
+        HtmlHelpStyle.setFamily(helpFontFamily);
+    }
+
+    /** HTML help dialog body size in points (8–14). */
+    public int getHelpFontSize() {
+        return HtmlHelpStyle.getSizePt();
+    }
+
+    public void setHelpFontSize(int helpFontSize) {
+        HtmlHelpStyle.setSizePt(helpFontSize);
     }
 
     /**

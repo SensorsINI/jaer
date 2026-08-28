@@ -12,7 +12,6 @@ import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
@@ -30,7 +29,6 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -38,6 +36,8 @@ import javax.swing.KeyStroke;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.text.html.HTMLDocument;
+
+import net.sf.jaer.util.HtmlHelpStyle;
 
 /**
  * Nonmodal HTML help dialog for an {@link EventFilter}. URLs in {@code <a href>}
@@ -69,6 +69,7 @@ public class EventFilterHelpDialog extends JDialog {
             ((HTMLDocument) pane.getDocument()).setBase(base);
         }
         pane.setText(wrapHtml(html));
+        HtmlHelpStyle.apply(pane);
         pane.setCaretPosition(0);
         pane.addHyperlinkListener(new HyperlinkListener() {
             @Override
@@ -93,9 +94,9 @@ public class EventFilterHelpDialog extends JDialog {
             }
         });
 
-        JScrollPane scroll = new JScrollPane(pane);
+        JScrollPane scroll = HtmlHelpStyle.createZoomingScrollPane(pane);
         scroll.setPreferredSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        HtmlHelpStyle.installZoom(getRootPane(), pane);
 
         JButton close = new JButton("Close");
         close.addActionListener(e -> dispose());
@@ -169,9 +170,6 @@ public class EventFilterHelpDialog extends JDialog {
         if (trimmed.regionMatches(true, 0, "<html", 0, 5)) {
             return trimmed;
         }
-        JLabel label = new JLabel();
-        Font font = label.getFont();
-        String style = "font-family:" + font.getFamily() + ";font-size:" + font.getSize() + "pt;";
-        return "<html><body style=\"" + style + "\">" + trimmed + "</body></html>";
+        return "<html><body>" + trimmed + "</body></html>";
     }
 }

@@ -141,7 +141,7 @@ public final class Welcome {
      * @return hint line
      */
     public static String helpMenu(AEViewer viewer) {
-        return "See Help menu for more information";
+        return "Hit F1 for shortcuts toggle and see Help menu for more information";
     }
 
     private static void addIfPresent(List<String> lines, String line) {
