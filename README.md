@@ -18,7 +18,7 @@ It [efficiently](docs/README-jaer3.md) (and ergonomically)
  * displays -- with a variety of color and 2d/3d options
  * records -- in a high-speed compressed format (AEDAT-4)
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
- * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)).
+ * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
 
 It can record your datasets and serve recorded or live event sensor output to 
  * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
