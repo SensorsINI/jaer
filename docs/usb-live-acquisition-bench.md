@@ -2,8 +2,8 @@
 
 Use these flags to capture **before/after** baselines when enabling USB-side
 typed `PacketBundle` demux. AEViewer's authoritative route currently applies to
-DAVIS FX3 and SciDVS; other interfaces remain explicit legacy raw compatibility
-routes even if they expose a typed helper.
+DAVIS FX3, SciDVS, and DVXplorer / Mini / Micro; other interfaces remain
+explicit legacy raw compatibility routes even if they expose a typed helper.
 
 ## Flags
 
@@ -43,6 +43,7 @@ The following table lists preference keys ("prefs") and system properties you ca
 |---------------------------|----------------------------------------|---------------------|
 | Davis FX3 (Davis346, SciDVS via same PID) | `hardware/DAViSFX3/usbTypedDemux` | Authoritative typed by default (mono); color RGB stays legacy |
 | Davis dual-write APS/IMU AE | `hardware/DAViSFX3/dualWriteApsImuAe` | `false` when demux on |
+| DVXplorer / Mini / Micro | `hardware/DVXplorerFX3/usbTypedDemux` | Authoritative typed by default; skips live `AEPacketRaw` |
 | NRV | `hardware/NRV/usbTypedDemux` | Legacy raw compatibility |
 | Prophesee | `hardware/Prophesee/usbTypedDemux` | Legacy raw compatibility |
 | DVS128 libusb FX2 | `hardware/CypressFX2DVS128/usbTypedDemux` | Legacy raw compatibility |
@@ -51,9 +52,10 @@ Set the boolean pref to `false` to restore raw + `extractBundle` during validati
 
 ## Route and accounting columns
 
-For normal DAVIS/SciDVS rendering, filtering, AEDAT-4, and AEDZ (with no raw
-sink), `typedDemux=true` means the USB source published a sealed authoritative
-bundle with no raw sidecar. The CSV keeps the original columns and appends:
+For normal DAVIS/SciDVS or DVXplorer rendering, filtering, AEDAT-4, and AEDZ
+(with no raw sink), `typedDemux=true` means the USB source published a sealed
+authoritative bundle with no raw sidecar. The CSV keeps the original columns and
+appends:
 
 - `sourceEvents`, `kepsSource`, and `sourceAcceptedCounts`: accepted source
   elements from sealed metadata, grouped by `PacketType`;
@@ -75,7 +77,7 @@ are never run together.
 
 ## Baseline checklist
 
-For **Davis346/SciDVS** (DVS-only and DVS+APS):
+For **Davis346/SciDVS** (DVS-only and DVS+APS) and **DVXplorer / Mini / Micro**:
 
 1. Run ~60 s with demux **off**; note legacy raw rate, overrun count, loop time, and heap from the live-bench log.
 2. Enable demux (pref / restart); repeat same scene / illumination.
@@ -90,7 +92,8 @@ Record results next to the CSV path for the PR / release notes.
 
 ## USB FIFO / buffer-count reconfiguration (manual)
 
-Live USB readers replace the whole transfer session after a ~400 ms idle delay,
+Live USB readers replace the whole transfer session after a 1 s idle delay
+(`UsbAsyncBulkReaderLifecycle.DEFAULT_DEBOUNCE_MS`),
 so rapid edits coalesce into one restart. The lifecycle logs
 `USB buffer config … active after N ms of no acquisition`; on healthy hardware N
 is well under a second. A multi-second N means the device path is blocking (see

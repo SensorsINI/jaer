@@ -915,21 +915,32 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     /**
      * Show USB speed/topology on the chip view for {@link #USB_LINK_OVERLAY_MS}
-     * after a live camera open (AEChip already matched).
+     * after a live camera open (AEChip already matched). Pass {@code null} to
+     * hide immediately (unplug / WAITING).
      */
     public void showUsbLinkOverlay(String text) {
         if (text == null || text.isEmpty()) {
-            usbLinkOverlayText = null;
-            usbLinkOverlayUntilMs = 0;
+            clearUsbLinkOverlay();
             return;
         }
         usbLinkOverlayText = text;
         usbLinkOverlayUntilMs = System.currentTimeMillis() + USB_LINK_OVERLAY_MS;
     }
 
+    /** Hide the USB bus-speed overlay (unplug, Interface → None, Welcome). */
+    public void clearUsbLinkOverlay() {
+        usbLinkOverlayText = null;
+        usbLinkOverlayUntilMs = 0;
+    }
+
     private void drawUsbLinkOverlayIfNeeded(final GLAutoDrawable drawable) {
         String text = usbLinkOverlayText;
         if (text == null || text.isEmpty()) {
+            return;
+        }
+        if (isWelcomeOverlayActive()) {
+            // Unplug returns WAITING while the 3 s overlay is still armed; do not
+            // paint SuperSpeed text over Welcome / Opening.
             return;
         }
         if (System.currentTimeMillis() > usbLinkOverlayUntilMs) {

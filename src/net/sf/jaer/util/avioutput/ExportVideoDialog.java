@@ -30,15 +30,15 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * File/Export video window: drives {@link JaerAviWriter} to capture the rendered
  * AEViewer OpenGL view to AVI, optionally converting to MP4 with ffmpeg afterward.
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
- *
- * @author tobi
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may still restore.
  */
-public class ExportVideoDialog extends JFrame implements PropertyChangeListener {
+public class ExportVideoDialog extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(ExportVideoDialog.class);
 
@@ -84,6 +84,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener 
     public ExportVideoDialog(AEViewer viewer) {
         super("Export video");
         this.viewer = viewer;
+        setName("ExportVideo");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         if (viewer != null) {
             setIconImage(viewer.getIconImage());

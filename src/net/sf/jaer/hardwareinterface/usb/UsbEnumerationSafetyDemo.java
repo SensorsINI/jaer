@@ -17,7 +17,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.SciDVSReplugDecision;
  * Davis → None → Davis close/reopen order is preserved. The shared-PID gate
  * runs on the real Swing EDT; remaining lifecycle contracts are source order.
  * Run after {@code ant compile}:
- * {@code java -cp build/classes;jars/* net.sf.jaer.hardwareinterface.usb.UsbEnumerationSafetyDemo}
+ * {@code java -cp build/classes;jars/*;lib/* net.sf.jaer.hardwareinterface.usb.UsbEnumerationSafetyDemo}
  */
 public final class UsbEnumerationSafetyDemo {
 
@@ -33,7 +33,10 @@ public final class UsbEnumerationSafetyDemo {
         testFx3FactoryListsWithoutOpen();
         testViewerSkipsOpenDeviceByIdentity();
         testViewerSelectsOnEdtWithFriendlyLabels();
+        testUsbTransferSubmitHandshake();
         testDavisNoneDavisReopenSequence();
+        testHotplugUnplugDoesNotBlockReplug();
+        testMergedHotplugAndReaderFailureContracts();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY BEHAVIORAL_ASSERTIONS="
                 + behavioralAssertions);
@@ -171,6 +174,21 @@ public final class UsbEnumerationSafetyDemo {
                 "DVXplorer open must not VR_DATA_CLEANUP 0xC6 (native hang)");
         require(!dvxOpen.contains("dvxConfig()"),
                 "DVXplorer dvxConfig runs after USB open returns, not inside open()");
+        require(dvxOpen.contains("waitForDataEndpoints()"),
+                "Mini/Micro open waits for bulk IN 0x82 after claim (hotplug SuperSpeed)");
+        String waitEps = methodBody(
+                Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                        "cypressfx3libusb", "DVXplorerFX3HardwareInterface.java"),
+                "private void waitForDataEndpoints() throws HardwareInterfaceException {",
+                "synchronized public void open() throws HardwareInterfaceException {");
+        require(waitEps.contains("AE_MONITOR_ENDPOINT_ADDRESS"),
+                "endpoint wait looks for bulk IN 0x82");
+        require(waitEps.contains("CX3_DEBUG_ENDPOINT"),
+                "endpoint wait looks for IMU interrupt 0x81");
+        require(waitEps.contains("setInterfaceAltSetting"),
+                "endpoint wait selects the alt-setting that has bulk IN");
+        require(waitEps.contains("LIBUSB_ERROR_NOT_FOUND"),
+                "missing 0x82 fails open instead of starting a dead AEReader");
         require(Files.readString(Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx3libusb",
                 "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8)
@@ -204,6 +222,10 @@ public final class UsbEnumerationSafetyDemo {
                 "Mini/Micro BMI160 gyro ODR uses 8-byte SPI (c6ec5a073 skip froze gyros)");
         require(spiOut.contains("FPGA_IMU"),
                 "next-gen streaming params include MODULE_IMU=3");
+        require(spiOut.contains("DVS_EFPS_S5K231Y"),
+                "Mini/Micro ReadoutFPS uses 8-byte DVS_EFPS_S5K231Y (was skipped)");
+        require(spiOut.contains("SPI OUT confirmed"),
+                "Mini/Micro DVS bias SPI logs after vendor request succeeds");
     }
 
     /**
@@ -341,6 +363,156 @@ public final class UsbEnumerationSafetyDemo {
                 "private void drawSkipChipRenderingOverlayIfNeeded");
         require(skip.contains("isWelcomeOverlayActive()"),
                 "WAITING welcome/opening overlay blanks the chip pixmap");
+    }
+
+    /**
+     * Unplug while LIVE closed the wrapper then ViewLoop reopened it
+     * ({@code devicePointer is not initialized}), set {@code nullInterface}, and
+     * ignored the next libusb ARRIVED (jAER-0.log 17:44:59 / 17:46:00).
+     */
+    private static void testHotplugUnplugDoesNotBlockReplug() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String hotplug = methodBody(viewer,
+                "private void onLibUsbHotplug(boolean arrived, int vid, int pid) {",
+                "private static boolean isUsbDeviceGone(Throwable t) {");
+        require(hotplug.contains("!userSelectedNoInterface"),
+                "hotplug add preserves an explicit Interface None selection");
+        require(hotplug.contains("pendingHotplugRemovalCheck = true"),
+                "hotplug remove publishes intent for ViewLoop processing");
+        require(!hotplug.contains("nullifyHardware()"),
+                "libusb callback must not mutate viewer/chip hardware binding");
+        require(hotplug.contains("PlayMode.LIVE"),
+                "hotplug remove interrupts LIVE so ViewLoop does not reopen the dead wrapper");
+        String open = methodBody(viewer,
+                "private void openAEMonitor() {",
+                "private void showUsbLinkOverlayAfterOpen()");
+        require(open.contains("dropping closed hardware wrapper"),
+                "openAEMonitor drops a closed wrapper instead of reopening devicePointer-null");
+        require(open.contains("isUsbDeviceGone(e)"),
+                "failed open of an unplugged device is distinguished from ACCESS");
+        require(open.contains("nullInterface = false"),
+                "device-gone open failure must not block the next plug");
+        String gone = methodBody(viewer,
+                "private static boolean isUsbDeviceGone(Throwable t) {",
+                "private void stopLiveAcquisitionForExit()");
+        require(gone.contains("devicePointer"),
+                "devicePointer-not-initialized is treated as USB device gone");
+        require(gone.contains("LIBUSB_ERROR_NO_DEVICE"),
+                "LIBUSB_ERROR_NO_DEVICE is treated as USB device gone");
+        String welcome = methodBody(viewer,
+                "public void showWelcomeOverlay() {",
+                "public void showOpeningCameraOverlay(HardwareInterface hw) {");
+        require(welcome.contains("clearUsbLinkOverlay()"),
+                "Welcome overlay must hide the USB bus-speed overlay");
+        String nullify = methodBody(viewer,
+                "private void nullifyHardware() {",
+                "private void openAEMonitor() {");
+        require(nullify.contains("clearUsbLinkOverlay()"),
+                "unplug nullifyHardware must hide the USB bus-speed overlay");
+        String usbDraw = methodBody(
+                Paths.get("src", "net", "sf", "jaer", "graphics", "ChipCanvas.java"),
+                "private void drawUsbLinkOverlayIfNeeded(final GLAutoDrawable drawable) {",
+                "public void displayChanged(final GLAutoDrawable drawable, final boolean modeChanged, final boolean deviceChanged) {");
+        require(usbDraw.contains("isWelcomeOverlayActive()"),
+                "USB bus-speed overlay is not painted over Welcome after unplug");
+    }
+
+    private static void testMergedHotplugAndReaderFailureContracts() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String viewerSrc = Files.readString(viewer, StandardCharsets.UTF_8);
+        String none = methodBody(viewer,
+                "JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem(\"None\")",
+                "noneInterfaceButton.setSelected(!interfaceAlreadyOpen)");
+        require(none.contains("userSelectedNoInterface = true"),
+                "Interface None records explicit user intent separately from open failures");
+        String refresh = methodBody(viewer,
+                "private void refreshInterfaceMenuItemActionPerformed",
+                "private void filtersToggleButtonActionPerformed");
+        require(refresh.contains("userSelectedNoInterface = false"),
+                "explicit Refresh clears the Interface None choice");
+        require(viewerSrc.contains("final AEMonitorInterface liveMonitor = aemon"),
+                "ViewLoop snapshots aemon before isOpen/acquire dereferences");
+        String gone = methodBody(viewer,
+                "private static boolean isUsbDeviceGone(Throwable t) {",
+                "private void stopLiveAcquisitionForExit()");
+        require(!gone.contains("m.contains(\"not initialized\")"),
+                "unrelated initialization failures are not classified as device removal");
+
+        Path fx3 = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "cypressfx3libusb", "CypressFX3.java");
+        String acquisition = methodBody(fx3,
+                "public synchronized void setEventAcquisitionEnabled(final boolean enable)",
+                "public boolean isEventAcquisitionEnabled()");
+        require(acquisition.contains("catch (final HardwareInterfaceException | RuntimeException startFailure)"),
+                "reader-start failure rolls endpoint/DVS_RUN back before rethrow");
+        require(acquisition.contains("setInEndpointEnabled(false)"),
+                "reader-start rollback disables the endpoint");
+        String callback = methodBody(fx3,
+                "public void processTransfer(final RestrictedTransfer transfer) {",
+                "private void processTransferLocked");
+        require(callback.contains("final boolean authoritativeTyped"),
+                "one delivery-mode snapshot chooses the callback lock and parse route");
+        require(viewerSrc.contains("processPendingHotplugRemoval()"),
+                "ViewLoop, not libusb callback, performs checked hotplug unbind");
+    }
+
+    /**
+     * USBTransferThread.allocateTransfers throws uncaught {@code LIBUSB_ERROR_NOT_FOUND}
+     * when bulk IN is missing (Mini/Micro hotplug SuperSpeed). Do not go LIVE / DVS_RUN
+     * until URBs are queued; close and WAITING if the reader dies.
+     */
+    private static void testUsbTransferSubmitHandshake() throws Exception {
+        require(UsbTransferSubmit.isSubmitFailure(new IllegalStateException(
+                "could not submit transfer libusb transfer 0x0, error: -5 - LIBUSB_ERROR_NOT_FOUND")),
+                "NOT_FOUND submit wrap is a USBTransferThread start failure");
+        require(UsbTransferSubmit.isUnrecoverableSubmitFailure(new IllegalStateException(
+                "error: LIBUSB_ERROR_NO_DEVICE")),
+                "NO_DEVICE is unrecoverable (do not shrink FIFO)");
+        require(!UsbTransferSubmit.isSubmitFailure(new RuntimeException("unrelated")),
+                "non-USB exceptions are not submit failures");
+        Path submit = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "UsbTransferSubmit.java");
+        require(Files.readString(submit, StandardCharsets.UTF_8).contains("awaitQueued"),
+                "UsbTransferSubmit.awaitQueued joins until URBs are queued");
+        Path fx3 = Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
+        String start = methodBody(fx3,
+                "public void startThread() throws HardwareInterfaceException {",
+                "public boolean stopThread()");
+        require(start.contains("startBulkTransferThread("),
+                "AEReader.startThread uses the queued-URB handshake");
+        require(start.contains("UsbTransferSubmit.awaitQueued"),
+                "AEReader waits for USBTransferThread allocateTransfers before readerStarted");
+        require(start.contains("installFailureHandler"),
+                "AEReader catches uncaught allocateTransfers IllegalStateException");
+        require(start.indexOf("startBulkTransferThread(")
+                        < start.indexOf("firePropertyChange(\"readerStarted\""),
+                "readerStarted fires only after URBs are queued");
+        String bulk = methodBody(fx3,
+                "private void startBulkTransferThread(long generation) throws HardwareInterfaceException {",
+                "public boolean stopThread()");
+        require(bulk.contains("recoverFailedBufferReconfig"),
+                "reader death after LIVE closes the device (ViewLoop WAITING)");
+        String session = methodBody(fx3,
+                "public Config startSession(Config requested, long generation) throws HardwareInterfaceException {",
+                "public void applyIdleConfig(Config config) {");
+        require(session.indexOf("startBulkTransferThread(")
+                        < session.indexOf("resumeStreamingAfterUsbRestart()"),
+                "buffer reconfig must not DVS_RUN until new URBs are queued");
+        String startAe = methodBody(
+                Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                        "cypressfx3libusb", "DVXplorerFX3HardwareInterface.java"),
+                "public void startAEReader() throws HardwareInterfaceException {",
+                "protected void quiesceStreamingForUsbRestart() {");
+        require(startAe.indexOf("getAeReader().startThread()")
+                        < startAe.indexOf("chip.dvxDataStart()"),
+                "Mini/Micro DVS_RUN only after startThread confirms bulk IN queued");
+        Path prophesee = Paths.get("src", "prophesee", "usb", "PropheseeAEReader.java");
+        require(Files.readString(prophesee, StandardCharsets.UTF_8).contains("UsbTransferSubmit.awaitQueued"),
+                "Prophesee AEReader uses the same queued-URB handshake");
+        Path nrv = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
+        require(Files.readString(nrv, StandardCharsets.UTF_8).contains("UsbTransferSubmit.awaitQueued"),
+                "NRV AEReader uses the same queued-URB handshake");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

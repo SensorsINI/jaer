@@ -38,6 +38,8 @@ Everyday (git checkout)
   replace-installed-jar   copy dist/jAER.jar onto the install4j install (Windows UAC).
                           Example:  ant jar-fast replace-installed-jar
                           Override: -Djaer.install.dir=C:\Program Files\jAER
+  install-jaer-run-shortcut  once per computer: Ctrl+F5 in Cursor runs jAER: ant run
+                          VS Code too: -Djaer.shortcut.editor=both
   clean                   delete build/ products (not lib/)
   javadoc                 build Javadoc
   test                    unit tests
@@ -1018,6 +1020,31 @@ and put it on PATH (or set JAVA_HOME).</fail>
               message="Missing ${dist.jar}. Build it first: ant jar   or   ant jar-fast"/>
         <available file="${jaer.install4j.project}" property="jaer.install4j.exists"/>
         <fail unless="jaer.install4j.exists" message="install4j/jaer.install4j not found"/>
+    </target>
+
+    <!-- VS Code/Cursor ignore .vscode/keybindings.json. Merge Ctrl+F5 into this
+         machine's user keybindings. Default editor=cursor; also code|both. -->
+    <property name="jaer.shortcut.editor" value="cursor"/>
+
+    <target name="-compile-install-jaer-run-shortcut-tool" depends="init">
+        <mkdir dir="${build.dir}/tools"/>
+        <javac srcdir="${basedir}/scripts"
+               includes="InstallJaerRunShortcut.java"
+               destdir="${build.dir}/tools"
+               includeantruntime="false"
+               release="11">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+    </target>
+
+    <target name="install-jaer-run-shortcut" depends="-compile-install-jaer-run-shortcut-tool"
+            description="Once per computer: Ctrl+F5 in Cursor runs the jAER: ant run task. VS Code: -Djaer.shortcut.editor=both">
+        <java classname="InstallJaerRunShortcut"
+              classpath="${build.dir}/tools"
+              fork="true"
+              failonerror="true">
+            <arg value="${jaer.shortcut.editor}"/>
+        </java>
     </target>
 
     <target name="replace-installed-jar" depends="-require-dist-jar,checkos"

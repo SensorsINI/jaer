@@ -33,8 +33,6 @@ import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.util.TobiLogger;
 
 import java.awt.Color;
-import java.awt.Insets;
-import java.awt.geom.Rectangle2D;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -164,6 +162,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     @Preferred
     private int fontSize = getInt("fontSize", 8);
+    /** Vertical step between stacked overlay lines, as a multiple of {@link DrawGL#lineHeight}. */
+    private static final float OVERLAY_LINE_SPACING = 1.4f;
 
     public Info(AEChip chip) {
         super(chip);
@@ -710,12 +710,17 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         drawClock(gl, clockTimeMs); // clockTimeMs is updated at the end of each packet, when the clock is displayed
-        drawEventRateBars(drawable);
-        drawPacketTimestampStats(drawable);
-        drawAccumulatedEventCount(drawable);
+        // Stack top-left overlays from a shared Y cursor. Independent fractions of chip
+        // height (e.g. 0.82 vs 0.80) collide on large arrays (DVX 640x480) and when
+        // fontSize is increased; left-aligned DrawGL metrics also used to be empty.
+        final float lineH = DrawGL.lineHeight(fontSize);
+        float y = chip.getSizeY() * 0.95f;
         if (chip.getAeViewer() != null) {
-            drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
+            y = drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion(), y, lineH);
         }
+        y = drawEventRateBars(drawable, y, lineH);
+        y = drawPacketTimestampStats(drawable, y, lineH);
+        drawAccumulatedEventCount(y);
         drawRateSamples(drawable);
         if (measureSparsity && sparsity != null) {
             String s = String.format("Sparsity: last: %.2f%% mean: %.2f%% median: %.2f%% min: %.2f%% max: %.2f%% N=%d", lastSparsity * 100, sparsity.getMean() * 100, sparsity.getPercentile(50) * 100, sparsity.getMin() * 100, sparsity.getMax() * 100, sparsity.getN());
@@ -821,32 +826,27 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     }
 
-    private void drawEventRateBars(GLAutoDrawable drawable) {
+    /**
+     * @param y baseline of the first line (chip pixels from bottom)
+     * @return baseline for the next overlay below this block
+     */
+    private float drawEventRateBars(GLAutoDrawable drawable, float y, float lineH) {
         if (!isEventRate()) {
-            return;
+            return y;
         }
         GL2 gl = drawable.getGL().getGL2();
-        // positioning of rate bars depends on num types and display size
-        Insets borders = chip.getCanvas().getBorderInsets();
-
-        // get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
-        float w = drawable.getSurfaceWidth() - (2 * borders.left * chip.getCanvas().getScale());
         int ntypes = typedEventRateEstimator.getNumCellTypes();
-        final int sx = chip.getSizeX(), sy = chip.getSizeY();
-        final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
+        final int sx = chip.getSizeX();
+        final float xpos = 0, ystep = lineH * OVERLAY_LINE_SPACING, barh = lineH;
 
         gl.glPushMatrix();
-        //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-        //        gl.glLoadIdentity();
         gl.glColor3f(1, 1, 1);
-//        int font = GLUT.BITMAP_9_BY_15;
-//        GLUT glut = chip.getCanvas().getGlut();
         int nbars = typedEventRateEstimator.isMeasureIndividualTypesEnabled() ? ntypes : 1;
         for (int i = 0; i < nbars; i++) {
             final float totalRate = typedEventRateEstimator.getFilteredEventRate(i);
             final float perPixelRate = totalRate / this.nPixels;
-            float bary = yorig - (ystep * i);
-            String s = null;
+            float bary = y - (ystep * i);
+            String s;
             if (typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
                 s = String.format("Type %d: %8s Hz (%8s Hz/pixel) N=%d px", i,
                         engFmt.format(totalRate), engFmt.format(perPixelRate),
@@ -855,23 +855,24 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 s = String.format("All %d types: %8s Hz (%8s Hz/pixel) N=%d px ", ntypes,
                         engFmt.format(totalRate), engFmt.format(perPixelRate), this.nPixels);
             }
-            // get the string length in screen pixels , divide by chip array in screen pixels,
-            // and multiply by number of pixels to get string length in screen pixels.
-            Rectangle2D r = DrawGL.drawString(fontSize, xpos, bary, 0, Color.white, s);
+            DrawGL.drawString(fontSize, xpos, bary, 0, Color.white, s);
+            // Left-aligned drawString does not return width (RSS); measure once per bar.
+            float sw = DrawGL.measureStringWidth(fontSize, s);
             float rate = isEventRatePerPixel() ? perPixelRate : totalRate;
-            int sw = (int) (r.getWidth());
             gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((rate * sx) / getEventRateScaleMax()), bary);
         }
         gl.glPopMatrix();
-
+        return y - (ystep * nbars);
     }
 
-    private void drawPacketTimestampStats(GLAutoDrawable drawable) {
+    /**
+     * @param y baseline of this line
+     * @return baseline for the next overlay below this block
+     */
+    private float drawPacketTimestampStats(GLAutoDrawable drawable, float y, float lineH) {
         if (!showPacketTimestampStats || lastPacketTimestampSpread.count <= 0) {
-            return;
+            return y;
         }
-        final int sy = chip.getSizeY();
-        final float yorig = .82f * sy;
         final TimestampSpread ts = lastPacketTimestampSpread;
         final String s;
         if (ts.count == 1) {
@@ -886,17 +887,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             s = String.format("Displayed packet: %s events, %s unique timestamps, min unique Δt %d us, span %d us",
                     engFmt.format(ts.count), engFmt.format(ts.uniqueTs), ts.minStepUs, ts.spanUs);
         }
-        DrawGL.drawString(fontSize, 0, yorig, 0, Color.white, s);
+        DrawGL.drawString(fontSize, 0, y, 0, Color.white, s);
+        return y - lineH * OVERLAY_LINE_SPACING;
     }
 
-    private void drawAccumulatedEventCount(GLAutoDrawable drawable) {
+    private void drawAccumulatedEventCount(float y) {
         if (!showAccumulatedEventCount) {
             return;
         }
-        GL2 gl = drawable.getGL().getGL2();
-        gl.glColor3f(1, 1, 1);
-        final int sx = chip.getSizeX(), sy = chip.getSizeY();
-        final float yorig = .7f * sy, xpos = 0;
         int n = this.nPixels;
         float cDvs = (float) accumulatedDVSEventCount;
         float cDvsOn = (float) accumulatedDVSOnEventCount;
@@ -914,7 +912,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
         MultilineAnnotationTextRenderer.setFontSize(fontSize);
         MultilineAnnotationTextRenderer.setLineShiftMultiplier(1.15f); // default value is 1.15 lines
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(y);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -936,17 +934,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
     }
 
-    private void drawTimeScaling(GLAutoDrawable drawable, float timeExpansion) {
+    /**
+     * @param y baseline of this line
+     * @return baseline for the next overlay below this block
+     */
+    private float drawTimeScaling(GLAutoDrawable drawable, float timeExpansion, float y, float lineH) {
         if (!isTimeScaling()) {
-            return;
+            return y;
         }
-        final int sx = chip.getSizeX(), sy = chip.getSizeY();
-        final float yorig = .95f * sy, xpos = 0, barh = .03f * sy;
-        int h = drawable.getSurfaceHeight(), w = drawable.getSurfaceWidth();
-        GL2 gl = drawable.getGL().getGL2();
-
-        gl.glPushMatrix();
-        gl.glColor3f(1, 1, 1);
         StringBuilder s = new StringBuilder();
         if ((timeExpansion < 1) && (timeExpansion != 0)) {
             s.append('/');
@@ -955,14 +950,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             s.append('x');
         }
         String s2 = String.format("Time factor: %8s", engFmt.format(timeExpansion) + s);
-        DrawGL.drawString(fontSize, 0, yorig, 0, Color.white, s2);
-        float x0 = xpos;
-        float x1 = (float) (xpos + (x0 * Math.log10(timeExpansion)));
-        float y0 = sy + barh;
-        float y1 = y0;
-        gl.glRectf(x0, y0, x1, y1);
-        gl.glPopMatrix();
-
+        DrawGL.drawString(fontSize, 0, y, 0, Color.white, s2);
+        return y - lineH * OVERLAY_LINE_SPACING;
     }
 
     public boolean isAnalogClock() {

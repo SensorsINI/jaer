@@ -34,8 +34,10 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Modeless control window wrapping a {@link FilterPanel} for
@@ -43,8 +45,9 @@ import net.sf.jaer.util.MessageWithLink;
  * closing hides the window and leaves publishing running.
  * Enable/disable is the bold toggle at the top; File → Remote only opens this window.
  * Implemented as a {@link JFrame} (not an owned {@code JDialog}) so it can go behind AEViewer.
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may still restore.
  */
-public class DNNOutputViaSharedMemoryDialog extends JFrame {
+public class DNNOutputViaSharedMemoryDialog extends JFrame implements WindowSaver.DontResize {
 
     private final DNNOutputViaSharedMemory filter;
     private final JToggleButton enableButton;
@@ -53,6 +56,7 @@ public class DNNOutputViaSharedMemoryDialog extends JFrame {
     public DNNOutputViaSharedMemoryDialog(Frame parent, DNNOutputViaSharedMemory filter) {
         super("DNN shared memory output");
         this.filter = filter;
+        setName("DNNSharedMemoryOutput");
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
         if (parent != null) {
             setIconImage(parent.getIconImage());
@@ -82,19 +86,19 @@ public class DNNOutputViaSharedMemoryDialog extends JFrame {
         });
 
         MessageWithLink intro = new MessageWithLink(
-                "Publishes DVS data over a memory-mapped file plus localhost TCP "
+                "Publishes DVS data over a memory-mapped file plus localhost TCP<br>"
                 + "for a Python DNN. Set <b>outputMode</b> to match the consumer.");
         MessageWithLink howTo = new MessageWithLink(
                 "<ul style=\"margin:4px 0 0 16px;padding:0;\">"
                 + "<li><b>EventCountFrames</b> — 64&times;64 uint8 histograms for "
-                + "<a href=\"https://github.com/SensorsINI/dextra-roshambo-python\">dextra-roshambo-python</a> "
+                + "<a href=\"https://github.com/SensorsINI/dextra-roshambo-python\">dextra-roshambo-python</a><br>"
                 + "<code>consumer.py --jaer-mmap</code> (TCP 14100).</li>"
                 + "<li><b>EventWindows</b> — packed <code>(t,x,y,p)</code> windows for "
-                + "<a href=\"https://github.com/SensorsINI/rpg_e2vid\">rpg_e2vid / FireNet</a> "
+                + "<a href=\"https://github.com/SensorsINI/rpg_e2vid\">rpg_e2vid / FireNet</a><br>"
                 + "<code>live_reconstruction.py</code> (TCP 14101).</li>"
-                + "</ul>"
-                + "<p style=\"margin:6px 0 0 0;\">Use the filter <b>?</b> Help for full setup. "
-                + "Closing this window does not stop publishing; use the Start/Stop button above.</p>");
+                + "</ul>");
+        JPanel helpRow = showHelpRow(filter,
+                "Roshambo EventCountFrames and FireNet EventWindows setup");
 
         JPanel north = new JPanel();
         north.setLayout(new BoxLayout(north, BoxLayout.Y_AXIS));
@@ -104,14 +108,17 @@ public class DNNOutputViaSharedMemoryDialog extends JFrame {
         north.add(enableButton);
         north.add(Box.createVerticalStrut(8));
         north.add(intro);
-        north.add(Box.createVerticalStrut(6));
+        north.add(Box.createVerticalStrut(4));
         north.add(howTo);
+        north.add(Box.createVerticalStrut(4));
+        north.add(helpRow);
 
         FilterPanel panel = new FilterPanel(filter);
         panel.setEnabledCheckBoxVisible(false);
+        filter.setControlsVisible(true);
         panel.setControlsVisible(true);
         JScrollPane scroll = new JScrollPane(panel);
-        scroll.setPreferredSize(new Dimension(640, 520));
+        scroll.setPreferredSize(filterPanelScrollSize(panel, 520));
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton close = new JButton("Close");
         close.setToolTipText("Hide this window; publishing stays in its current state");
@@ -136,6 +143,24 @@ public class DNNOutputViaSharedMemoryDialog extends JFrame {
 
     public DNNOutputViaSharedMemory getFilter() {
         return filter;
+    }
+
+    private static JPanel showHelpRow(EventFilter filter, String tip) {
+        JButton showHelp = new JButton("Show Help");
+        showHelp.setMnemonic(KeyEvent.VK_H);
+        showHelp.setToolTipText(tip);
+        showHelp.setEnabled(filter.hasHelp());
+        showHelp.addActionListener(e -> filter.showHelpDialog());
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        row.add(showHelp);
+        return row;
+    }
+
+    private static Dimension filterPanelScrollSize(FilterPanel panel, int height) {
+        int w = Math.max(panel.getPreferredSize().width + 24, 560);
+        return new Dimension(w, height);
     }
 
     private void syncEnableButton() {

@@ -14,7 +14,7 @@ is not registered), [src/prophesee/README.md](../src/prophesee/README.md),
 Headless source contracts (no hardware): after `ant compile`,
 
 ```text
-java -cp build/classes;jars/* net.sf.jaer.hardwareinterface.usb.UsbEnumerationSafetyDemo
+java -cp build/classes;jars/*;lib/* net.sf.jaer.hardwareinterface.usb.UsbEnumerationSafetyDemo
 ```
 
 On Linux/macOS use `:` instead of `;` in the classpath.
@@ -209,10 +209,23 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
 
 - Skip vendor `VR_DATA_CLEANUP` (0xC6) on open: native `controlTransfer` did not
   return (timeout unused).
-- Skip 8-byte SPI **IN** and non-run **OUT** (`spiConfigReceive` / `spiConfigSend`,
-  req 0xBF): size/orientation and DVS_FLATTEN hang on WinUSB. Size defaults to
-  **640×480**. After USB IN is queued, send **8-byte** `DVS_RUN` only (firmware
-  10 stalls 4-byte `wLength` with `LIBUSB_ERROR_PIPE`; jAER 8:58:38). Do not
+- After claim, wait/retry (2 s) for bulk IN `0x82` and IMU interrupt `0x81`.
+  WinUSB SuperSpeed after hotplug can claim iface 0 before those endpoints
+  exist (`LIBUSB_ERROR_NOT_FOUND`). If they live on another alt-setting, call
+  `LibUsb.setInterfaceAltSetting`. Fail `open()` rather than start AEReader.
+- `USBTransferThread.allocateTransfers` throws uncaught
+  `IllegalStateException` (`could not submit` / `NOT_FOUND`) and never reaches
+  the shutdown callback. `UsbTransferSubmit` installs a handler and joins
+  400 ms until URBs are queued. ViewLoop then gets
+  `HardwareInterfaceException` → close → WAITING instead of LIVE with a dead
+  reader. Later reader death closes the device (`CypressFX3-USB-recover`).
+- Skip 8-byte SPI **IN** and `DVS_FLATTEN` **OUT** (`spiConfigReceive` /
+  `spiConfigSend`, req 0xBF): size/orientation and DVS_FLATTEN hang on WinUSB.
+  Size defaults to **640×480**. After USB IN URBs are queued (`startThread`
+  joined), send **8-byte**
+  `DVS_RUN`, Hardware Configuration DVS params (`DVS_EFPS_S5K231Y`, contrast,
+  global hold/reset), and IMU (`IMU_RUN_*`, BMI160 ODR/range). Firmware 10
+  stalls 4-byte `wLength` with `LIBUSB_ERROR_PIPE` (jAER 8:58:38). Do not
   spawn+join that send while holding the CypressFX3 monitor.
 - Classic FX3 DVXplorer (types 1–3) still uses SPI IN/OUT and USB reset on close/open.
 

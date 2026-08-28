@@ -55,7 +55,7 @@ flowchart LR
 ## Overlapped USB I/O and double buffering
 
 **Authoritative live path** (DAVIS FX3, including SciDVS on the shared DAVIS
-interface): USB decode fills a typed
+interface, and DVXplorer / Mini / Micro): USB decode fills a typed
 [`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java) via
 [`PacketBundlePool`](../src/net/sf/jaer/event/PacketBundlePool.java);
 ViewLoop calls `acquireAvailablePacketBundle()` and **skips**
@@ -93,13 +93,15 @@ sequenceDiagram
 | Family | AEViewer live route | Pref (under `hardware/`) |
 |--------|---------------------|--------------------------|
 | Davis FX3 / SciDVS (same PID) | **Authoritative typed:** Polarity + Frame + IMU, sealed metadata, no raw sidecar | `DAViSFX3/usbTypedDemux` (RGB color stays legacy) |
+| DVXplorer / Mini / Micro | **Authoritative typed:** Polarity + IMU, sealed metadata, no raw sidecar | `DVXplorerFX3/usbTypedDemux` |
 | NRV | Legacy raw compatibility (its current typed helper still acquires raw) | `NRV/usbTypedDemux` |
 | Prophesee EVK4 | Legacy raw compatibility (its current typed helper still acquires raw) | `Prophesee/usbTypedDemux` |
 | DVS128 libusb FX2 | Legacy raw compatibility (its current typed helper still acquires raw) | `CypressFX2DVS128.usbTypedDemux` |
 
 When demux is active on Davis, APS/IMU synthetic AEs are **not** dual-written
 into `AEPacketRaw` by default (`DAViSFX3/dualWriteApsImuAe=false`) — the largest
-live memory win under APS+DVS.
+live memory win under APS+DVS. DVXplorer (classic FX3 and Mini/Micro MIPI) skips
+filling live `AEPacketRaw` entirely when demux is on (`DVXplorerFX3/usbTypedDemux`).
 
 On the authoritative route, accepted counts by `PacketType`, timestamp epochs,
 and exact or unquantified losses come from sealed `AcquisitionMetadata`; an
@@ -113,7 +115,7 @@ methods for one session:
 
 | Selected route | Conditions |
 |----------------|------------|
-| Authoritative typed | Normal DAVIS/SciDVS rendering and typed filtering; AEDAT-4; AEDZ when no legacy sink is active |
+| Authoritative typed | Normal DAVIS/SciDVS or DVXplorer rendering and typed filtering; AEDAT-4; AEDZ when no legacy sink is active |
 | Legacy raw | AEDAT-2; sequencing; active raw unicast or blocking-queue output; acquisition-thread filtering; RGB/unmigrated interfaces |
 
 If one of these conditions changes while acquisition is enabled, ViewLoop first
@@ -129,7 +131,7 @@ flowchart TD
   START([ViewLoop iteration]) --> MODE{PlayMode?}
 
   MODE -->|LIVE| ROUTE{Legacy sink or unmigrated interface?}
-  ROUTE -->|no, DAVIS/SciDVS| HW[Acquire sealed authoritative PacketBundle]
+  ROUTE -->|no, DAVIS/SciDVS or DVXplorer| HW[Acquire sealed authoritative PacketBundle]
   ROUTE -->|yes| RAW[Acquire AEPacketRaw]
   MODE -->|SEQUENCING| RAW
   HW --> BUNDLE[cookedBundle = hwBundle; rawPacket = null]
@@ -313,7 +315,7 @@ on demand for the current timeslice; FRME/IMUS are injected via
 
 | Mode | Input path |
 |------|------------|
-| `LIVE` | One classified route: authoritative DAVIS/SciDVS `acquireAvailablePacketBundle`, otherwise raw acquire + extract |
+| `LIVE` | One classified route: authoritative DAVIS/SciDVS or DVXplorer `acquireAvailablePacketBundle`, otherwise raw acquire + extract |
 | `PLAYBACK` | `AEPlayer` → `AEFileInputStream` / `Aedat4FileInputStream` |
 | `FILTER_INPUT` | Feedback from filters generating events |
 | `REMOTE` / sockets | Network AE streams |
@@ -439,3 +441,4 @@ update the active chip). The user can cancel or load anyway.
 
 - [README-usb.md](README-usb.md) — USB enumeration, Interface menu, EDT rules, per-camera libusb quirks.
 - [CDAVIS_GPU_DEMOSAIC.md](CDAVIS_GPU_DEMOSAIC.md) — GPU demosaic / color display path (orthogonal to PacketBundle).
+- [README-cursor-jaer-rules-setup.md](README-cursor-jaer-rules-setup.md) — Cursor Agent loads this file via `AGENTS.md` and `.cursor/rules/jaer3-architecture.mdc`.

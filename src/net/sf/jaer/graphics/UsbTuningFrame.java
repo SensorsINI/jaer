@@ -32,6 +32,7 @@ import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Separate top-level window for live USB FIFO / buffer count / AE render-packet
@@ -39,7 +40,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
  * auto-apply after a short pause so touchpad / arrow-key adjustments stay usable
  * while the camera runs.
  */
-public class UsbTuningFrame extends JFrame implements PropertyChangeListener {
+public class UsbTuningFrame extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final int UI_DEBOUNCE_MS = 350;
     private static final int RENDER_MIN = 1 << 16;
@@ -66,6 +67,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener {
     public UsbTuningFrame(AEViewer viewer) {
         super("USB tuning" + (viewer != null && viewer.getTitle() != null ? " — " + viewer.getTitle() : ""));
         this.viewer = viewer;
+        setName("UsbTuning");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         if (viewer != null && viewer.getIconImage() != null) {
             setIconImage(viewer.getIconImage());

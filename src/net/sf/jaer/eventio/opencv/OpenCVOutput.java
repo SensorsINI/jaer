@@ -58,8 +58,9 @@ cv::VideoCapture cap("http://127.0.0.1:8090/video.mjpg", cv::CAP_FFMPEG);
 </pre>
 <p>Subset: <code>open</code> / <code>read</code> / <code>release</code> and
 <code>CAP_PROP_FRAME_WIDTH</code> / <code>HEIGHT</code> after the first frame.
-Exposure and biases stay in this dialog. Browser preview:
-<code>http://127.0.0.1:8090/</code> · snapshot <code>/snapshot.jpg</code>.</p>
+Exposure and biases stay in the OpenCV camera output dialog. Browser preview:
+<code>http://127.0.0.1:8090/</code> · snapshot <code>/snapshot.jpg</code>.
+Start/Stop is the green/red button; closing the dialog does not stop publishing.</p>
 <h3>frameSource</h3>
 <ul>
 <li><b>Auto</b> — Davis / HVS <code>FramePacket</code> when present, else DVS event-count.</li>
@@ -69,16 +70,31 @@ Exposure and biases stay in this dialog. Browser preview:
 </ul>
 <p>DVS is Mono8; Davis gray is Mono8; Davis RGB is BGR8 (OpenCV color).
 <code>flipY</code> default on (OpenCV row 0 = top).</p>
-<h3>Linux v4l2loopback</h3>
-<p>Optional <code>publishV4l2</code> writes the same raw frames to
-<code>/dev/video10</code> so Cheese, Zoom, and
-<code>cv2.VideoCapture(10, cv2.CAP_V4L2)</code> see a real camera.
+<h3>Linux v4l2loopback (Cheese, Zoom, Google Meet) — experimental</h3>
+<p>HTTP MJPEG is not a webcam. Cheese / Zoom / Meet only list a camera named
+<b>jAER</b> after this filter writes to <code>/dev/video10</code>.
+This path is <b>work in progress</b>: Zoom may still not list the camera.
+Prefer the MJPEG URL for OpenCV. Enable the <b>publishV4l2</b> checkbox
+(V4L2 group) and Start streaming.
+<code>modprobe</code> needs <b>sudo</b>; no printed output means success.
+If the module is already loaded with the wrong device number, unload first.
 jAER does not load the module:</p>
 <pre>
-sudo apt install v4l2loopback-dkms
+sudo apt install v4l2loopback-dkms v4l-utils
+sudo modprobe -r v4l2loopback
 sudo modprobe v4l2loopback devices=1 video_nr=10 card_label=jAER exclusive_caps=1
 v4l2-ctl --list-devices
 </pre>
+<p>You should see <b>jAER</b> on <code>/dev/video10</code>. Then enable
+<b>publishV4l2</b> and Start. Ubuntu PipeWire only advertises the camera after
+a rescan, and Zoom caches the list:</p>
+<pre>
+systemctl --user restart pipewire-media-session
+</pre>
+<p>Quit and reopen Zoom, then pick <b>jAER</b> (Cheese, Zoom Settings → Video,
+or Google Meet). OpenCV: <code>cv2.VideoCapture(10, cv2.CAP_V4L2)</code>.
+<code>exclusive_caps=1</code> is required for Chrome/Zoom.
+Preview: <code>ffplay -f v4l2 /dev/video10</code>.</p>
 <p><b>skipChipRendering</b> skips OpenGL pixmap updates while still publishing.</p>
 </body>
 </html>
@@ -146,7 +162,8 @@ public class OpenCVOutput extends EventFilter2D {
         setPropertyTooltip(GROUP_SLICE, "timeSliceMethod", "Close a DVS frame after N events or after a time interval");
         setPropertyTooltip(GROUP_SLICE, "eventsPerFrame", "Events per frame when timeSliceMethod is EventCount");
         setPropertyTooltip(GROUP_SLICE, "timeDurationUs", "Slice duration in microseconds when TimeIntervalUs");
-        setPropertyTooltip(GROUP_V4L2, "publishV4l2", "Linux: write YUYV to v4l2loopback device (else no-op)");
+        setPropertyTooltip(GROUP_V4L2, "publishV4l2",
+                "Linux: write frames to /dev/video10 so Cheese/Zoom/Meet see camera jAER (MJPEG URL is not enough)");
         setPropertyTooltip(GROUP_V4L2, "v4l2Device", "v4l2loopback node, e.g. /dev/video10");
         setPropertyTooltip(GROUP_V4L2, "v4l2OutputWidth", "v4l2 width; 0 = raw frame width (even)");
         setPropertyTooltip(GROUP_V4L2, "v4l2OutputHeight", "v4l2 height; 0 = raw frame height");

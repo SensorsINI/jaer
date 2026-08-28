@@ -406,10 +406,22 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
     private void applyReadoutFps() throws HardwareInterfaceException {
         final DVXplorerFX3HardwareInterface fx3 = fx3();
         if (fx3 == null || !fx3.isOpen()) {
+            log.info("ReadoutFPS " + readoutFps.name() + " not sent: DVXplorer USB is closed");
             return;
         }
         if (fx3.isNextGenFirmware()) {
-            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_EFPS_S5K231Y, readoutFps.ordinal());
+            final int ordinal = readoutFps.ordinal();
+            if (!DVXplorerFX3HardwareInterface.isNextGenStreamingParam(
+                    DVXplorer.DVX_DVS, DVXplorer.DVS_EFPS_S5K231Y)) {
+                log.warning(String.format(
+                        "ReadoutFPS %s not sent: Mini/Micro firmware %d skips DVS_EFPS_S5K231Y (param %d)",
+                        readoutFps.name(), fx3.getFirmwareVersion(), DVXplorer.DVS_EFPS_S5K231Y));
+                return;
+            }
+            log.info(String.format(
+                    "ReadoutFPS %s → MODULE_DVS DVS_EFPS_S5K231Y=%d (8-byte SPI, firmware %d)",
+                    readoutFps.name(), ordinal, fx3.getFirmwareVersion()));
+            fx3.spiConfigSend(DVXplorer.DVX_DVS, DVXplorer.DVS_EFPS_S5K231Y, ordinal);
             return;
         }
         final int clk = SYSTEM_CLOCK_FREQUENCY;
@@ -483,6 +495,7 @@ public class DVXplorerConfig extends Biasgen implements ChipControlPanel {
         }
 
         fx3.spiConfigSend(dvs, DVXplorer.REGISTER_DIGITAL_RESTART, 1);
+        log.info("ReadoutFPS " + readoutFps.name() + " written to DEVICE_DVS timing registers");
     }
 
     private void writeU16(DVXplorerFX3HardwareInterface fx3, short base, int value)

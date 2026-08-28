@@ -1,12 +1,14 @@
 package net.sf.jaer.hardwareinterface.usb;
 
+import net.sf.jaer.event.AcquisitionMetadata;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * Shared helper for polarity-only USB demux (NRV, Prophesee, DVS128): fill a
+ * Shared helper for polarity-only USB demux (NRV, Prophesee, DVS128, DVX): fill a
  * pooled {@link PacketBundle} write buffer with {@link PolarityEvent}s.
  * <p>
  * Accumulates into one polarity packet for the write-buffer lifetime (across
@@ -25,6 +27,12 @@ public class UsbPolarityBundleBuilder {
     private OutputEventIterator<PolarityEvent> polarityOut;
     private boolean polarityInBundle;
     private int targetCapacity;
+    private boolean authoritative;
+    private AcquisitionMetadata authoritativeMetadata;
+    private int authoritativeCapacity;
+    private int authoritativeAcceptedElements;
+    private long authoritativeTimestampEpoch;
+    private long pendingHostCapacityLoss;
 
     /**
      * Pre-size both pool-slot polarity packets so live USB does not double
@@ -44,13 +52,45 @@ public class UsbPolarityBundleBuilder {
             polarity1 = new EventPacket<>(PolarityEvent.class);
         }
         polarity1.allocate(targetCapacity);
-        if (fill == null) {
-            fill = new EventPacket<>(PolarityEvent.class);
-        }
-        fill.allocate(targetCapacity);
     }
 
     public synchronized void attach(PacketBundle writeBundle) {
+        authoritative = false;
+        attachPacket(writeBundle);
+    }
+
+    /**
+     * Attaches an authoritative write bundle and resets accounting when its
+     * acquisition-metadata identity changes. Repeated USB callbacks for the same
+     * write slot continue growing the same packet and share one capacity budget.
+     */
+    public synchronized void beginAuthoritative(PacketBundle writeBundle,
+            int capacity, long timestampEpoch) {
+        if (writeBundle == null) {
+            throw new NullPointerException("writeBundle");
+        }
+        if (capacity < 0) {
+            throw new IllegalArgumentException("authoritative capacity must be non-negative");
+        }
+        if (timestampEpoch < 0) {
+            throw new IllegalArgumentException("timestamp epoch must be non-negative");
+        }
+        final AcquisitionMetadata metadata = writeBundle.getAcquisitionMetadata();
+        if (metadata == null) {
+            throw new IllegalStateException("authoritative write bundle has no acquisition metadata");
+        }
+        attachPacket(writeBundle);
+        if (metadata != authoritativeMetadata) {
+            authoritativeMetadata = metadata;
+            authoritativeAcceptedElements = 0;
+            pendingHostCapacityLoss = 0;
+        }
+        authoritative = true;
+        authoritativeCapacity = capacity;
+        authoritativeTimestampEpoch = timestampEpoch;
+    }
+
+    private void attachPacket(PacketBundle writeBundle) {
         if (writeBundle == null) {
             return;
         }
@@ -100,6 +140,33 @@ public class UsbPolarityBundleBuilder {
     }
 
     public synchronized void addPolarity(final int x, final int y, final boolean on, final int timestamp, final int address) {
+        addPolarityUnchecked(x, y, on, timestamp, address);
+    }
+
+    /**
+     * Adds one authoritative polarity event, or records one exact host-capacity
+     * loss while still allowing the decoder to advance its timestamp state.
+     */
+    public synchronized boolean addAuthoritativePolarity(final int x, final int y,
+            final boolean on, final int timestamp, final int address) {
+        if (!authoritative) {
+            throw new IllegalStateException("authoritative polarity added before beginAuthoritative");
+        }
+        if (authoritativeAcceptedElements >= authoritativeCapacity) {
+            pendingHostCapacityLoss = Math.addExact(pendingHostCapacityLoss, 1L);
+            return false;
+        }
+        ensureActive();
+        if (polarity.isEmpty()) {
+            polarity.setTimestampEpoch(authoritativeTimestampEpoch);
+        }
+        addPolarityUnchecked(x, y, on, timestamp, address);
+        authoritativeAcceptedElements++;
+        return true;
+    }
+
+    private void addPolarityUnchecked(final int x, final int y, final boolean on,
+            final int timestamp, final int address) {
         ensureActive();
         PolarityEvent e = polarityOut.nextOutput();
         e.reset();
@@ -110,6 +177,21 @@ public class UsbPolarityBundleBuilder {
         e.type = (byte) (on ? 1 : 0);
         e.setSpecial(false);
         e.address = address;
+    }
+
+    /** Flushes the old epoch packet and starts a fresh one in the same bundle. */
+    public synchronized void onTimestampReset(final long timestampEpoch) {
+        if (!authoritative) {
+            return;
+        }
+        if (timestampEpoch <= authoritativeTimestampEpoch) {
+            throw new IllegalArgumentException("timestamp epoch must advance");
+        }
+        flushAll();
+        authoritativeTimestampEpoch = timestampEpoch;
+        polarity = new EventPacket<>(PolarityEvent.class);
+        polarityOut = polarity.outputIterator();
+        polarityInBundle = false;
     }
 
     /**
@@ -232,11 +314,24 @@ public class UsbPolarityBundleBuilder {
      * every USB chunk — adds once, then grows in place until pool swap.
      */
     public synchronized void flushAll() {
-        if (out == null || polarity == null || polarity.isEmpty() || polarityInBundle) {
+        if (out == null) {
             return;
         }
-        out.add(polarity);
-        polarityInBundle = true;
+        if (polarity != null && !polarity.isEmpty() && !polarityInBundle) {
+            out.add(polarity);
+            polarityInBundle = true;
+        }
+        if (authoritative && pendingHostCapacityLoss > 0) {
+            final AcquisitionMetadata metadata = out.getAcquisitionMetadata();
+            if (metadata == null) {
+                throw new IllegalStateException("authoritative capacity loss has no acquisition metadata");
+            }
+            metadata.recordExactLoss(PacketType.POLARITY,
+                    AcquisitionMetadata.LossKind.HOST_CAPACITY,
+                    pendingHostCapacityLoss,
+                    "DVX authoritative typed per-bundle capacity exhausted");
+            pendingHostCapacityLoss = 0;
+        }
     }
 
     private void ensureActive() {

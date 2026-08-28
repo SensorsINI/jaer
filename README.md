@@ -20,6 +20,7 @@ jAER efficiently
 
 It can record your datasets and serve recorded or live event sensor output to
  * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java))
+ * [OpenCV](https://opencv.org/) as a camera (File → Remote → **OpenCV camera output…**, filter [`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java); `cv2.VideoCapture("http://127.0.0.1:8090/video.mjpg")`)
  * or robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → ROS2 / Foxglove frame output…; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
 
 
@@ -151,6 +152,8 @@ jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works 
 5. Use the included `.vscode/launch.json` configs (**jAER**, **jAER (fast)**, **jAER (fast debug)**) once dependencies are in `lib/` (created by Ivy on `ant compile` / `ant run`).
 
 Ask the agent for Ant targets, chip/filter code under `src/`, and device USB notes rather than inventing a Maven layout.
+
+Agent chats load a short pipeline map from [`AGENTS.md`](AGENTS.md) and attach [`docs/README-jaer3.md`](docs/README-jaer3.md) when Java under `src/` is in context. How that is wired, and how to confirm it on another computer: [`docs/README-cursor-jaer-rules-setup.md`](docs/README-cursor-jaer-rules-setup.md).
 
 ## Code signing policy
 

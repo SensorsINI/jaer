@@ -39,6 +39,8 @@ public final class UsbAsyncBulkReaderLifecycleTest {
         testStoreForNextStartRejectsActiveReader();
         testStatusRequestedVsActive();
         testStatusFailedPhase();
+        testIgnoreScheduleUntilRestartCompletes();
+        testFailedReplaceReconcilesLateRequest();
     }
 
     static void testClampAndTotalCap() {
@@ -213,6 +215,59 @@ public final class UsbAsyncBulkReaderLifecycleTest {
         }
     }
 
+    static void testIgnoreScheduleUntilRestartCompletes() throws Exception {
+        final FakeHost host = new FakeHost();
+        host.running.set(true);
+        host.stopDelayMs = 80;
+        final UsbAsyncBulkReaderLifecycle life = new UsbAsyncBulkReaderLifecycle(host, 40L, 500L);
+        try {
+            life.adoptExternalStart(new Config(4096, 2));
+            life.schedule(new Config(8192, 2));
+            final long deadline = System.nanoTime() + 2_000_000_000L;
+            while (host.stopCount.get() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(5);
+            }
+            assertTrue("first replace should have started", host.stopCount.get() >= 1);
+            life.schedule(new Config(16384, 2));
+            assertEquals(0, host.startCount.get());
+            life.awaitIdle(2000L);
+            assertEquals(2, host.stopCount.get());
+            assertEquals(2, host.startCount.get());
+            assertEquals(new Config(8192, 2), host.lastStarted.get(0));
+            assertEquals(new Config(16384, 2), host.lastStarted.get(1));
+            assertEquals(new Config(16384, 2), life.appliedConfig());
+        } finally {
+            life.shutdown();
+        }
+    }
+
+    static void testFailedReplaceReconcilesLateRequest() throws Exception {
+        final FakeHost host = new FakeHost();
+        host.running.set(true);
+        host.stopSucceeds.set(false);
+        host.stopDelayMs = 80;
+        final UsbAsyncBulkReaderLifecycle life = new UsbAsyncBulkReaderLifecycle(host, 5L, 50L);
+        try {
+            final Config active = new Config(4096, 2);
+            life.adoptExternalStart(active);
+            life.schedule(new Config(8192, 2));
+            final long deadline = System.nanoTime() + 2_000_000_000L;
+            while (host.stopCount.get() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(5);
+            }
+            assertTrue("failed replacement should have started", host.stopCount.get() == 1);
+            life.schedule(new Config(16384, 2));
+            life.awaitIdle(2000L);
+            assertEquals(UsbAsyncBulkReaderLifecycle.State.FAILED, life.state());
+            assertFalse("late request must not remain permanently pending after failure",
+                    life.isReconfigPending());
+            assertEquals(active, life.statusSnapshot().requested);
+            assertEquals(active, life.statusSnapshot().active);
+        } finally {
+            life.shutdown();
+        }
+    }
+
     private static void assertEquals(int expected, int actual) {
         if (expected != actual) {
             throw new AssertionError("expected " + expected + " but was " + actual);
@@ -244,6 +299,7 @@ public final class UsbAsyncBulkReaderLifecycleTest {
     private static final class FakeHost implements UsbAsyncBulkReaderLifecycle.Host {
         final AtomicBoolean running = new AtomicBoolean();
         final AtomicBoolean stopSucceeds = new AtomicBoolean(true);
+        volatile long stopDelayMs;
         final AtomicInteger stopCount = new AtomicInteger();
         final AtomicInteger startCount = new AtomicInteger();
         final AtomicInteger recoverCount = new AtomicInteger();
@@ -280,6 +336,13 @@ public final class UsbAsyncBulkReaderLifecycleTest {
             lastStopGen.set((int) generation);
             synchronized (order) {
                 order.add("stop");
+            }
+            if (stopDelayMs > 0) {
+                try {
+                    Thread.sleep(stopDelayMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
             if (!stopSucceeds.get()) {
                 return false;

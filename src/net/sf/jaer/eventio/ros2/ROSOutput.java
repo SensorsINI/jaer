@@ -64,8 +64,10 @@ Set domain ID (or environment <code>ROS_DOMAIN_ID</code>). On another machine:
 <li><b>VoxelGrid</b> — bilinear time interpolation into B bins, stacked as
 height = B×H on <code>/jaer/voxel_grid</code>.</li>
 </ul>
-<p>Place this filter after denoisers if you want filtered events.
-<b>skipChipRendering</b> skips OpenGL pixmap updates while still publishing.</p>
+<p>Start/Stop is the green/red button in File → Remote; closing that window
+does not stop publishing. Place this filter after denoisers if you want
+filtered events. <b>skipChipRendering</b> skips OpenGL pixmap updates while
+still publishing.</p>
 <h3>Drop detection</h3>
 <p>ROS2 <code>sensor_msgs/Image</code> has no sequence field (ROS2
 <code>Header</code> dropped <code>seq</code>). DDS/RTPS still numbers samples

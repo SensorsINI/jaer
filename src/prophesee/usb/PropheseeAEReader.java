@@ -2,8 +2,8 @@ package prophesee.usb;
 
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.usb4java.LibUsb;
@@ -20,6 +20,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
+import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 import net.sf.jaer.util.TimestampSpread;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Evk4BoardCommand;
@@ -75,7 +76,7 @@ public class PropheseeAEReader {
 
     /**
      * Queue a FIFO/buffer change. Rapid Control-menu scrolls coalesce; one
-     * transfer-session replace runs after a short idle delay.
+     * transfer-session replace runs after {@link UsbAsyncBulkReaderLifecycle#DEFAULT_DEBOUNCE_MS}.
      */
     void applyBufferSettingsAndRestart(int fifoSize, int numBuffers) {
         syncUsbBufferSettings(fifoSize, numBuffers);
@@ -170,6 +171,7 @@ public class PropheseeAEReader {
                     + (attempt > 0 ? ", retry=" + attempt : "") + ")");
             readerActive = true;
             final AtomicReference<Throwable> startError = new AtomicReference<>();
+            final AtomicBoolean running = new AtomicBoolean(false);
             usbTransfer = new USBTransferThread(
                     monitor.getDeviceHandle(),
                     ENDPOINT_IN,
@@ -178,27 +180,19 @@ public class PropheseeAEReader {
                     getNumBuffers(),
                     getFifoSize());
             usbTransfer.setName("PropheseeAEReader");
-            usbTransfer.setUncaughtExceptionHandler((t, ex) -> {
-                startError.set(ex);
-                log.log(Level.WARNING, "Prophesee AEReader died: " + ex.getMessage(), ex);
-            });
+            UsbTransferSubmit.installFailureHandler(usbTransfer, log, "Prophesee AEReader",
+                    startError, running, () -> monitor.markUsbDisconnected(LibUsb.ERROR_IO));
             usbTransfer.start();
-            try {
-                usbTransfer.join(400L);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            if (usbTransfer.isAlive()) {
+            if (UsbTransferSubmit.awaitQueued(usbTransfer, log, "Prophesee AEReader")) {
+                running.set(true);
                 monitor.getReaderSupportInternal().firePropertyChange("readerStarted", false, true);
                 return;
             }
             usbTransfer = null;
             readerActive = false;
             final Throwable err = startError.get();
-            lastFailure = new HardwareInterfaceException("USBTransferThread failed to start (fifo="
-                    + getFifoSize() + " buffers=" + getNumBuffers() + "): "
-                    + (err != null ? err.getMessage() : "thread exited"));
-            if (isDeviceIoFailure(err)) {
+            lastFailure = UsbTransferSubmit.startFailed("Prophesee AEReader", err);
+            if (UsbTransferSubmit.isUnrecoverableSubmitFailure(err)) {
                 // The endpoint or device is wedged; a smaller FIFO cannot fix that and retrying
                 // would only persist a degraded size. Let the caller recover the device.
                 break;
@@ -214,16 +208,6 @@ public class PropheseeAEReader {
         }
         throw lastFailure != null ? lastFailure
                 : new HardwareInterfaceException("USBTransferThread failed to start");
-    }
-
-    private static boolean isDeviceIoFailure(Throwable err) {
-        final String msg = err != null ? err.getMessage() : null;
-        if (msg == null) {
-            return false;
-        }
-        return msg.contains("LIBUSB_ERROR_IO")
-                || msg.contains("LIBUSB_ERROR_NO_DEVICE")
-                || msg.contains("LIBUSB_ERROR_PIPE");
     }
 
     void prepareForStop() {

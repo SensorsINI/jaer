@@ -198,6 +198,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.SciDVSReplugDecision;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -220,6 +221,7 @@ import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.avioutput.ExportVideoDialog;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.eventio.export.SaveAsExportDialog;
@@ -303,7 +305,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static final String HARDWARE_INTERFACE_OBJECT_PROPERTY = "hardwareInterfaceObject";
     private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
     // set true to force null hardware (None in interface menu) even if only single interface
-    private boolean nullInterface = false;
+    private volatile boolean nullInterface = false;
+    /** True only after the user explicitly chooses Interface → None. */
+    private volatile boolean userSelectedNoInterface = false;
+    /** Libusb callback publishes removal intent; ViewLoop owns checked unbind. */
+    private volatile boolean pendingHotplugRemovalCheck = false;
 
     //    volatile boolean stop=false; // volatile because multiple threads will access
     int renderCount = 0;
@@ -379,7 +385,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final long EDT_FREEZE_HALT_MS = 20000;
     EventFilter2D filter1 = null, filter2 = null;
     private AEChipRenderer renderer = null;
-    AEMonitorInterface aemon = null;
+    volatile AEMonitorInterface aemon = null;
     private long aemonOpenSession;
     private ViewLoop viewLoop = new ViewLoop();
     /**
@@ -780,6 +786,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
         ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
+        ToolTipManager.sharedInstance().setInitialDelay(1500); // 1.5s so tooltips do not obscure menus while navigating
 
         statusTextField.addMouseListener(new MouseAdapter() {
 
@@ -792,7 +799,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 statusTextField.setToolTipText(sb.toString());
 
-                ToolTipManager.sharedInstance().setDismissDelay(10000);
+                ToolTipManager.sharedInstance().setDismissDelay(5000);
             }
 
             public void mouseExited(MouseEvent me) {
@@ -1060,9 +1067,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int showMultipleInterfacesMessageCount = 0;
 
     private long lastInterfaceCheckTime = 0;
+    /** Last libusb ARRIVED/LEFT; empty scans retry until this window elapses. */
+    private volatile long lastUsbHotplugTimeMs = 0;
     private static final long INTERFACE_CHECK_INTERVAL_MS = 3000; // don't scan USB bus too often while paused
     /** Fallback full scan when libusb hotplug is active (events handle the fast path). */
     private static final long HOTPLUG_FALLBACK_CHECK_INTERVAL_MS = 15_000;
+    /** After ARRIVED, {@code getDeviceList} can still be empty; retry WAITING scans this long. */
+    private static final long HOTPLUG_EMPTY_SCAN_RETRY_MS = 2_000;
     private final LibUsbHotplug.Listener usbHotplugListener = this::onLibUsbHotplug;
 
     /**
@@ -1077,6 +1088,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners
         // check to see if null interface required instead
         if (nullInterface) {
+            log.fine("openHardwareIfNonambiguous skipped (nullInterface; Interface → None or failed ACCESS open)");
             return;
         }
         final boolean dirty = HardwareInterfaceFactory.instance().isUsbEnumerationDirty();
@@ -1094,6 +1106,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        log.fine("openHardwareIfNonambiguous ninterfaces=" + ninterfaces + " dirtyWas=" + dirty);
+        if (ninterfaces == 0 && LibUsbHotplug.isSupported()
+                && (System.currentTimeMillis() - lastUsbHotplugTimeMs) < HOTPLUG_EMPTY_SCAN_RETRY_MS) {
+            lastInterfaceCheckTime = 0;
+            HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+            log.fine("hotplug scan found 0 devices; will retry on next WAITING tick");
+        }
         if (ninterfaces > 1) {
             if (isRememberLastInterface() && rememberLastInterfaceDeviceID != null) {
                 log.info(String.format("Last interface was %s; %d devices present — pick one from the Interface menu (no USB open to match serial)",
@@ -2656,6 +2675,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         try {
                             showOpeningCameraOverlay(hw);
                             // Allow auto/manual reopen after Interface→None.
+                            userSelectedNoInterface = false;
                             nullInterface = false;
                             final HardwareInterface previous = currentHw;
                             aemon = null;
@@ -2733,6 +2753,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     aemon = null; // TODO aemon is a bad hack
                                 }
                                 HardwareInterface hw = inst.getChosenHardwareInterface();
+                                userSelectedNoInterface = false;
+                                nullInterface = false;
                                 log.info("setting new interface " + hw);
                                 chip.setHardwareInterface(hw);
 //                                }
@@ -2768,6 +2790,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 aemon = null;
                 // force null interface (do not auto-reopen until user picks a device)
+                userSelectedNoInterface = true;
                 nullInterface = true;
                 clearOpeningCameraOverlay();
                 if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
@@ -3048,6 +3071,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (canvas == null) {
             return;
         }
+        canvas.clearUsbLinkOverlay();
         if (pendingOpeningCameraLabel != null) {
             canvas.setWelcomeOverlay(Welcome.opening(this, pendingOpeningCameraLabel));
         } else {
@@ -3206,6 +3230,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             chip.setHardwareInterface(null); // should set chip's biasgen to null also
             //            if(chip.getBiasgen()!=null) chip.getBiasgen().setHardwareInterface(null);
         }
+        pendingOpeningCameraLabel = null;
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas != null) {
+            canvas.clearUsbLinkOverlay();
+        }
     }
 
     /**
@@ -3230,6 +3259,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         } else {
             try {
+                HardwareInterface bound = (chip != null) ? chip.getHardwareInterface() : null;
+                // AEReader shutdown closes the live wrapper on unplug but leaves it on the
+                // chip. Reopening that instance throws devicePointer-not-initialized and
+                // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
+                if (bound != null && aemon == bound && !bound.isOpen()) {
+                    log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
+                    nullifyHardware();
+                }
                 openHardwareIfNonambiguous();
                 if (hardwareSwitchInProgress || suppressHardwareOpen
                         || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
@@ -3492,9 +3529,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     aemon.close();
                 }
                 nullifyHardware();
-                // Stop WAITING from rebinding the same ghost device every 3 s
-                // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
-                nullInterface = true;
+                if (isUsbDeviceGone(e)) {
+                    log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
+                    nullInterface = false;
+                } else {
+                    // Stop WAITING from rebinding the same ghost device every 3 s
+                    // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
+                    nullInterface = true;
+                }
                 setPlaybackControlsEnabledState(false);
                 fixDeviceControlMenuItems();
                 fixRecordingControls();
@@ -3512,6 +3554,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else if (wantLive && getPlayMode() == PlayMode.WAITING && !suppressHardwareOpen) {
             // Only WAITING→LIVE; never overwrite PLAYBACK/REMOTE/FILTER_INPUT (file-open race).
             pendingOpeningCameraLabel = null;
+            ChipCanvas liveCanvas = getChipCanvas();
+            if (liveCanvas != null) {
+                liveCanvas.setWelcomeOverlay(null); // idle defaults if unplug returns to WAITING
+            }
             setPlayMode(PlayMode.LIVE);
             runPendingFirstHardwareUseAfterLive();
         }
@@ -3519,7 +3565,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * After AEChip matching and a successful USB open, show speed/topology on
-     * the chip view for 10 s. Snapshot comes from {@link LibUsbLinkInfo#logOnOpen}.
+     * the chip view for {@link ChipCanvas#USB_LINK_OVERLAY_MS}. Snapshot comes
+     * from {@link LibUsbLinkInfo#logOnOpen}.
      */
     private void showUsbLinkOverlayAfterOpen() {
         LibUsbLinkInfo.Snapshot snap = LibUsbLinkInfo.lastOpen();
@@ -3663,6 +3710,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aemon = null;
             }
             nullInterface = false; // allow ViewLoop to reopen after reset
+            userSelectedNoInterface = false;
             return hw;
         }
     }
@@ -4073,26 +4121,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         PacketBundle hwBundle = null;
                         if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
                             try {
+                                processPendingHotplugRemoval();
                                 openAEMonitor();
                                 if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
                                     // File open flipped mode while we were opening USB — fall through to grabInput.
                                     hwBundle = null;
-                                } else if ((aemon != null) && aemon.isOpen()) {
+                                } else {
+                                    final AEMonitorInterface liveMonitor = aemon;
+                                    if (liveMonitor == null || !liveMonitor.isOpen()) {
+                                        hwBundle = null;
+                                        continue;
+                                    }
                                     final long routeSession = currentLiveRouteSession();
                                     final AEViewerRouteState.LiveDecision routeDecision
-                                            = liveRouteState.selectLiveRoute(aemon,
+                                            = liveRouteState.selectLiveRoute(liveMonitor,
                                                     routeSession,
-                                                    isAuthoritativeTypedRouteEligible());
-                                    applyLiveAcquisitionDecision(routeDecision);
+                                                    isAuthoritativeTypedRouteEligible(liveMonitor));
+                                    applyLiveAcquisitionDecision(routeDecision, liveMonitor);
                                     if (routeDecision.getRoute()
                                             == AEViewerRouteState.LiveRoute.AUTHORITATIVE_TYPED) {
-                                        hwBundle = aemon.acquireAvailablePacketBundle();
+                                        hwBundle = liveMonitor.acquireAvailablePacketBundle();
                                         if (hwBundle == null) {
                                             // Cache the monitor/session decline. The next ViewLoop
                                             // iteration remains legacy without another stop/restart.
                                             applyLiveAcquisitionDecision(
                                                     liveRouteState.typedDeliveryDeclined(
-                                                            aemon, routeSession));
+                                                            liveMonitor, routeSession), liveMonitor);
                                         }
                                     }
                                 }
@@ -4450,13 +4504,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         /**
-         * Classifies the next live poll. Only the DAVIS FX3 implementation has
+         * Classifies the next live poll. DAVIS FX3 and DVXplorer FX3/CX3 have
          * authoritative typed publication; all other interfaces remain explicit
          * compatibility consumers until their acquisition path is migrated.
          */
-        private boolean isAuthoritativeTypedRouteEligible() {
+        private boolean isAuthoritativeTypedRouteEligible(
+                final AEMonitorInterface liveMonitor) {
             return getPlayMode() == PlayMode.LIVE
-                    && aemon instanceof DAViSFX3HardwareInterface
+                    && (liveMonitor instanceof DAViSFX3HardwareInterface
+                    || liveMonitor instanceof DVXplorerFX3HardwareInterface)
                     && !hasActiveLegacyRawSink();
         }
 
@@ -4475,12 +4531,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * active for the same session.
          */
         private void applyLiveAcquisitionDecision(
-                final AEViewerRouteState.LiveDecision decision)
+                final AEViewerRouteState.LiveDecision decision,
+                final AEMonitorInterface liveMonitor)
                 throws HardwareInterfaceException {
             if (decision.requiresAcquisitionRestart()
-                    && aemon != null && aemon.isOpen()
-                    && aemon.isEventAcquisitionEnabled()) {
-                aemon.setEventAcquisitionEnabled(false);
+                    && liveMonitor != null && liveMonitor.isOpen()
+                    && liveMonitor.isEventAcquisitionEnabled()) {
+                liveMonitor.setEventAcquisitionEnabled(false);
             }
             if (decision.requiresAcquisitionRestart()) {
                 log.info("live acquisition route=" + decision.getRoute());
@@ -4563,6 +4620,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     if ((aemon == null) || !aemon.isOpen()) {
                         setPlayMode(PlayMode.WAITING);
+                        if (!hardwareSwitchInProgress) {
+                            showWelcomeOverlay();
+                        }
                         try {
                             Thread.sleep(300);
                         } catch (InterruptedException e) {
@@ -4588,6 +4648,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             aemon.close(); // TODO check if this is OK -tobi
                         }
                         nullifyHardware();
+                        showWelcomeOverlay();
 //                        stopMe();
 
                         return emptyRawPacket;
@@ -4596,6 +4657,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.warning("Interface changed out from under us: " + cce.toString());
                         log.log(Level.SEVERE, cce.toString(), cce);
                         nullifyHardware();
+                        showWelcomeOverlay();
                         return emptyRawPacket;
                     }
                 case PLAYBACK:
@@ -7490,6 +7552,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     SwingUtilities.invokeLater(() -> {
                         // User asked to find cameras; allow auto-open even after Interface→None
                         // or a failed open (those set nullInterface and block WAITING).
+                        userSelectedNoInterface = false;
                         nullInterface = false;
                         lastInterfaceCheckTime = System.currentTimeMillis();
                         boolean playback = getPlayMode() == PlayMode.PLAYBACK
@@ -9281,14 +9344,67 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
     }
 
+    /** Runs only on ViewLoop after a libusb removal callback published intent. */
+    private void processPendingHotplugRemoval() {
+        if (!pendingHotplugRemovalCheck) {
+            return;
+        }
+        final HardwareInterface hw = chip != null ? chip.getHardwareInterface() : null;
+        if (hw == null || getPlayMode() != PlayMode.LIVE) {
+            pendingHotplugRemovalCheck = false;
+            return;
+        }
+        if (hw.isOpen()) {
+            // The callback has no physical identity beyond VID/PID. Keep the
+            // binding until its own wrapper reports closed, avoiding a
+            // wrong-camera unbind for shared PIDs.
+            return;
+        }
+        pendingHotplugRemovalCheck = false;
+        log.info("USB hotplug remove: ViewLoop closing and unbinding closed wrapper " + hw);
+        closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "USB unplug");
+        nullifyHardware();
+        setPlayMode(PlayMode.WAITING);
+        showWelcomeOverlay();
+    }
+
     private void onLibUsbHotplug(boolean arrived, int vid, int pid) {
         log.info(String.format("USB hotplug %s %04x:%04x; scanning for cameras",
                 arrived ? "add" : "remove", vid, pid));
-        log.fine("onLibUsbHotplug playMode=" + getPlayMode() + " " + UsbLog.t());
+        log.fine("onLibUsbHotplug playMode=" + getPlayMode() + " nullInterface=" + nullInterface
+                + " " + UsbLog.t());
+        lastUsbHotplugTimeMs = System.currentTimeMillis();
         lastInterfaceCheckTime = 0;
-        if (getPlayMode() == PlayMode.WAITING && viewLoop != null) {
+        if (arrived) {
+            // Plug-in is user intent. Do not keep the block set by a failed reopen of
+            // the unplugged wrapper (or Interface → Refresh already clears this).
+            pendingHotplugRemovalCheck = false;
+            if (nullInterface && !userSelectedNoInterface) {
+                log.info("USB hotplug add: clearing nullInterface so WAITING can open the camera");
+                nullInterface = false;
+            }
+        } else {
+            pendingHotplugRemovalCheck = true;
+            HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+        }
+        if (viewLoop != null && (getPlayMode() == PlayMode.WAITING || getPlayMode() == PlayMode.LIVE)) {
             interruptViewloop();
         }
+    }
+
+    /** True when open/close failed because the USB device has already left the bus. */
+    private static boolean isUsbDeviceGone(Throwable t) {
+        for (; t != null; t = t.getCause()) {
+            String m = t.getMessage();
+            if (m == null) {
+                continue;
+            }
+            if (m.contains("devicePointer") || m.contains("LIBUSB_ERROR_NO_DEVICE")
+                    || m.contains("NO_DEVICE")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Stop USB/live reader before joining ViewLoop so shutdown does not fill AE buffers. */
@@ -10205,7 +10321,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fileInfoTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
                 JScrollPane scroll = new JScrollPane(fileInfoTextArea);
                 JButton close = new JButton("Close");
-                fileInfoDialog = new JFrame("Recording file info");
+                fileInfoDialog = new FileInfoFrame();
                 fileInfoDialog.setIconImage(getIconImage());
                 fileInfoDialog.getContentPane().add(scroll, BorderLayout.CENTER);
                 JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -10264,6 +10380,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             return "Original (input)\n" + source + "\n\nExported (output)\n" + info;
         }
+
+    /**
+     * File → Show file info. Packed to content; {@link WindowSaver.DontResize}
+     * so a saved huge size cannot stretch it. Stable {@code FileInfo} name so
+     * position restore is not keyed on the per-file title.
+     */
+    private static final class FileInfoFrame extends JFrame implements WindowSaver.DontResize {
+        FileInfoFrame() {
+            super("Recording file info");
+            setName("FileInfo");
+        }
+    }
 
     /**
      * Centralized call to open an input file. The opened file is added the
@@ -11007,6 +11135,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (openCvOutputDialog == null) {
             openCvOutputDialog = new OpenCVOutputDialog(this, f);
         }
+        openCvOutputDialog.expandFilterControls();
         openCvOutputDialog.setVisible(true);
         openCvOutputDialog.toFront();
     }

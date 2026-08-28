@@ -20,12 +20,13 @@ package net.sf.jaer.eventprocessing;
 
 import java.awt.Component;
 import java.util.logging.Logger;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Displays a single filter processing throughput performance
  * @author tobid
  */
-public class EventProcessingPerformanceView extends javax.swing.JFrame {
+public class EventProcessingPerformanceView extends javax.swing.JFrame implements WindowSaver.DontResize {
     
     private static Logger log=Logger.getLogger("net.sf.jaer");
 
@@ -36,6 +37,7 @@ public class EventProcessingPerformanceView extends javax.swing.JFrame {
      */
     public EventProcessingPerformanceView(Component parent) {
         this.parent=parent;
+        setName("EventProcessingPerformance");
         initComponents();
         pack();
     }

@@ -2,6 +2,8 @@ package nrv.usb;
 
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 import org.usb4java.DeviceHandle;
@@ -19,6 +21,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
+import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
@@ -64,7 +67,7 @@ public class NRVAEReader {
 
     /**
      * Queue a FIFO/buffer change. Rapid Control-menu scrolls coalesce; one
-     * transfer-session replace runs after a short idle delay.
+     * transfer-session replace runs after {@link UsbAsyncBulkReaderLifecycle#DEFAULT_DEBOUNCE_MS}.
      */
     void applyBufferSettingsAndRestart(int fifoSize, int numBuffers) {
         syncUsbBufferSettings(fifoSize, numBuffers);
@@ -154,7 +157,19 @@ public class NRVAEReader {
         usbTransfer.setName("NRVAEReaderThread");
         // Daemon so a stuck deallocateTransfers/handleEventsTimeout cannot keep the JVM alive on exit.
         usbTransfer.setDaemon(true);
+        final AtomicReference<Throwable> startError = new AtomicReference<>();
+        final AtomicBoolean running = new AtomicBoolean(false);
+        UsbTransferSubmit.installFailureHandler(usbTransfer, log, "NRV AEReader",
+                startError, running, () -> monitor.recoverFailedBufferReconfig(
+                        UsbTransferSubmit.startFailed("NRV AEReader", startError.get())));
         usbTransfer.start();
+        if (!UsbTransferSubmit.awaitQueued(usbTransfer, log, "NRV AEReader")) {
+            readerActive = false;
+            final Throwable err = startError.get();
+            usbTransfer = null;
+            throw UsbTransferSubmit.startFailed("NRV AEReader", err);
+        }
+        running.set(true);
         monitor.getReaderSupportInternal().firePropertyChange("readerStarted", false, true);
     }
 

@@ -616,7 +616,8 @@ public class DVXplorer extends AETemporalConstastRetina {
         // c6ec5a073 skipped every firmware-10 SPI OUT because DVS_FLATTEN hung
         // WinUSB. That also dropped BMI160 ODR/range; factory gyro ODR 5 is
         // reserved and freezes ~0 dps (Steadicam dead, overlay gyros stuck).
-        // Restore IMU 8-byte SPI only. Keep DVS_FLATTEN / contrast / size IN skipped.
+        // Restore IMU 8-byte SPI. Keep DVS_FLATTEN / size IN skipped.
+        // Contrast / ReadoutFPS / global hold are 8-byte MODULE_DVS OUT via DVXplorerConfig.
         // Firmware ≥10 SPI uses BMI160 ODR register values (dv-processing
         // BoschBMI160* enums). Gyro ODR 5 is reserved and yields frozen ~0 dps.
         spiConfigSend(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 11); // 800 Hz
@@ -1017,11 +1018,16 @@ public class DVXplorer extends AETemporalConstastRetina {
 
         private PacketBundle reusedBundle;
         private ImuPacket bundleImu;
+        /** Reused polarity slice for {@link #extractBundle}; do not {@code new} each packet. */
+        private EventPacket polarityOut;
 
         /**
          * Demux IMU into {@link ImuPacket} so AEDAT-4 recording and typed
          * filters ({@code processImu}, e.g. Steadicam) see gyro samples.
          * A mixed polarity EventPacket skips IMU on the AEDAT-4 writer.
+         * Live USB with {@code hardware/DVXplorerFX3/usbTypedDemux} skips this
+         * path (reader already cooked the bundle); this remains the kill-switch
+         * and file-playback extract.
          */
         @Override
         synchronized public PacketBundle extractBundle(AEPacketRaw in) {
@@ -1043,7 +1049,12 @@ public class DVXplorer extends AETemporalConstastRetina {
                 return reusedBundle;
             }
             cooked.setRawPacket(in);
-            final EventPacket polarity = new EventPacket<>(PolarityEvent.class);
+            if (polarityOut == null) {
+                polarityOut = new EventPacket<>(PolarityEvent.class);
+            } else {
+                polarityOut.clear();
+            }
+            polarityOut.allocate(cooked.getSize());
             if (bundleImu == null) {
                 bundleImu = new ImuPacket();
             } else {
@@ -1057,7 +1068,7 @@ public class DVXplorer extends AETemporalConstastRetina {
                     imuSample = bundleImu.get(bundleImu.getSize() - 1);
                 }
             }
-            final OutputEventIterator polItr = polarity.outputIterator();
+            final OutputEventIterator polItr = polarityOut.outputIterator();
             for (Object o : cooked) {
                 if (o instanceof ApsDvsEvent aps && aps.isImuSample() && aps.getImuSample() != null) {
                     if (!hwImu) {
@@ -1072,8 +1083,8 @@ public class DVXplorer extends AETemporalConstastRetina {
                 reusedBundle.add(bundleImu);
                 bundleImu = new ImuPacket();
             }
-            if (!polarity.isEmpty()) {
-                reusedBundle.add(polarity);
+            if (!polarityOut.isEmpty()) {
+                reusedBundle.add(polarityOut);
             } else if (reusedBundle.isEmpty()) {
                 reusedBundle.addAllowEmpty(cooked);
             }
@@ -1117,6 +1128,7 @@ public class DVXplorer extends AETemporalConstastRetina {
                     skipBy++;
                 }
             }
+            out.allocate((n + skipBy - 1) / Math.max(1, skipBy));
             
             int sym = (sizeY - 1);
             int[] a = in.getAddresses();

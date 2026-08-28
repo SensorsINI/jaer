@@ -103,8 +103,10 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
         if ((out != null) && (out.getEventClass() == in.getEventClass()) && (out.getClass() == in.getClass())) {
             out.systemModificationTimeNs = in.systemModificationTimeNs;
             out.clear();
+            out.allocate(in.getSize());
         } else {
             out = in.constructNewPacket();
+            out.allocate(in.getSize());
         }
     }
 

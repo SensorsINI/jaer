@@ -14,7 +14,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareIn
  * firmware-10 SPI skip. Mini/Micro is the same VID/PID as FX3 DVXplorer
  * ({@code 152a:8419}); CX3 is {@code bcdDevice} type 4.
  * Run after {@code ant compile}:
- * {@code java -cp build/classes:jars/* ch.unizh.ini.jaer.chip.retina.DVXplorerImuConfigDemo}
+ * {@code java -cp build/classes;jars/*;lib/* ch.unizh.ini.jaer.chip.retina.DVXplorerImuConfigDemo}
  */
 public final class DVXplorerImuConfigDemo {
 
@@ -30,6 +30,10 @@ public final class DVXplorerImuConfigDemo {
         testOverlayUsesDisplayPref();
         testEp81UrbRateLimitFrom6b726b46d();
         testImuSampleDtFrom952cfae41e();
+        testUsbTypedDemuxSkipsAePacketRaw();
+        testTypedAccountingEpochSourceContracts();
+        testUsbBufferReconfigQuiescesDvsRun();
+        testWaitForEndpointsBeforeDvsRun();
         System.out.println("DVXPLORER_IMU ASSERTIONS=" + assertions);
         System.out.println("DVXPLORER_IMU PASS");
     }
@@ -64,6 +68,15 @@ public final class DVXplorerImuConfigDemo {
                         CypressFX3.FPGA_DVS, DVXplorer.DVS_FLATTEN),
                 "DVS_FLATTEN stays skipped (WinUSB hang)");
         require(DVXplorerFX3HardwareInterface.isNextGenStreamingParam(
+                        CypressFX3.FPGA_DVS, DVXplorer.DVS_EFPS_S5K231Y),
+                "DVS_EFPS_S5K231Y is 8-byte SPI (ReadoutFPS was skipped on firmware 10+)");
+        require(DVXplorerFX3HardwareInterface.isNextGenStreamingParam(
+                        CypressFX3.FPGA_DVS, DVXplorer.DVS_CONTRAST_THRESHOLD_ON),
+                "DVS_CONTRAST_THRESHOLD_ON is 8-byte SPI");
+        require(DVXplorerFX3HardwareInterface.isNextGenStreamingParam(
+                        CypressFX3.FPGA_DVS, DVXplorer.DVS_GLOBAL_HOLD),
+                "DVS_GLOBAL_HOLD is 8-byte SPI");
+        require(DVXplorerFX3HardwareInterface.isNextGenStreamingParam(
                         CypressFX3.FPGA_IMU, DVXplorer.DVX_IMU_ACCEL_DATA_RATE),
                 "IMU ODR/range is 8-byte SPI (c6ec5a073 skip froze gyro at ODR 5)");
         require(DVXplorerFX3HardwareInterface.isNextGenStreamingParam(
@@ -85,6 +98,10 @@ public final class DVXplorerImuConfigDemo {
                 "DVXplorerConfig exposes displayImu");
         require(cfg.contains("applyImuRun()"),
                 "applyToHardware sends IMU_RUN");
+        require(cfg.contains("DVS_EFPS_S5K231Y"),
+                "applyReadoutFps uses MODULE_DVS DVS_EFPS_S5K231Y like DVXplorerM");
+        require(cfg.contains("ReadoutFPS %s → MODULE_DVS DVS_EFPS_S5K231Y"),
+                "ReadoutFPS logs the ordinal before SPI OUT");
         String panel = Files.readString(Paths.get("src", "ch", "unizh", "ini", "jaer",
                 "chip", "retina", "DVXplorerControlPanel.java"), StandardCharsets.UTF_8);
         require(panel.contains("setImuEnabled"),
@@ -168,6 +185,145 @@ public final class DVXplorerImuConfigDemo {
                 "fromRawUntracked must not set deltaTimeUs (encode-then-decode path)");
         require(first.getTimestampUs() == 1_000 && second.getTimestampUs() == 2_250,
                 "timestamps are stored on the sample");
+    }
+
+    /**
+     * Live DVX USB should cook {@code PacketBundle} in the reader (no
+     * {@code AEPacketRaw} → {@code extractBundle} on the default path).
+     */
+    private static void testUsbTypedDemuxSkipsAePacketRaw() throws Exception {
+        String hw = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(hw.contains("PREF_USB_TYPED_DEMUX = \"usbTypedDemux\""),
+                "DVXplorerFX3 kill-switch pref is usbTypedDemux");
+        require(hw.contains("UsbPolarityBundleBuilder"),
+                "reader uses UsbPolarityBundleBuilder for cooked polarity");
+        require(hw.contains("emitPackedPolarity"),
+                "MIPI and classic FX3 emit cooked polarity from one helper");
+        require(hw.contains("buffer.setNumEvents(0)"),
+                "typed demux does not fill AEPacketRaw (skip intermediate)");
+        require(hw.contains("drainImuIntoLiveBundle"),
+                "authoritative bundle attaches IMU after USB polarity demux");
+        require(hw.contains("beforeAuthoritativeTypedBundleSwap"),
+                "IMU is attached before authoritative metadata is sealed");
+        require(hw.contains("isAuthoritativeTypedCallback()"),
+                "one callback route snapshot preserves raw fallback bookkeeping");
+        require(hw.contains("offerCx3Imu(new IMUSample(currentTimestamp, imuEvents))"),
+                "classic FX3 IMU End queues ImuPacket samples when demux is on");
+        String viewer = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "graphics", "AEViewer.java"), StandardCharsets.UTF_8);
+        require(viewer.contains("liveMonitor instanceof DVXplorerFX3HardwareInterface"),
+                "AEViewer selects the authoritative DVX route from one local monitor snapshot");
+        require("usbTypedDemux".equals(DVXplorerFX3HardwareInterface.PREF_USB_TYPED_DEMUX),
+                "PREF_USB_TYPED_DEMUX constant is usbTypedDemux");
+    }
+
+    /** Source contracts behind the hardware-free typed-demux runtime test. */
+    private static void testTypedAccountingEpochSourceContracts() throws Exception {
+        String hw = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(hw.contains("polarityBuilder.beginAuthoritative(writeBundle, getAEBufferSize(), timestampEpoch)"),
+                "DVX typed accounting is scoped to the current write bundle");
+        require(hw.contains("HasLiveDisplayEventCap.DEFAULT_LIVE_DISPLAY_EVENT_CAP"),
+                "DVX live preallocation uses the established display-cap bound");
+        require(hw.contains("polarityBuilder.addAuthoritativePolarity"),
+                "every typed polarity event passes exact capacity/loss accounting");
+        require(hw.contains("advanceTimestampEpoch("),
+                "classic and MIPI timestamp discontinuities advance the typed epoch");
+        require(hw.contains("classic FX3 31-bit timestamp rollover")
+                && hw.contains("MIPI 31-bit timestamp rollover"),
+                "normal 31-bit timestamp rollovers split authoritative epochs");
+        require(hw.contains("dest.setTimestampEpoch(packetEpoch)"),
+                "queued IMU samples retain their timestamp epoch across a later reset");
+        require(hw.contains("selectedHaveImu"),
+                "IMU endpoint availability is checked on the selected interface/alt");
+        require(hw.contains("cx3ImuEndpointActive = selectedHaveImu"),
+                "inactive alternate-setting IMU endpoints cannot start transfers");
+        require(hw.contains("selectedSettingActive"),
+                "endpoint availability is accepted only after SET_INTERFACE succeeds");
+        require(hw.contains("protected long queueHandshakeMs()"),
+                "DVX opts into the queued-transfer startup wait");
+        String fx3 = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java"),
+                StandardCharsets.UTF_8);
+        int queueHook = fx3.indexOf("protected long queueHandshakeMs()");
+        require(queueHook >= 0 && fx3.substring(queueHook, fx3.indexOf('}', queueHook)).contains("return 0L"),
+                "DAVIS/SciDVS retain zero queued-transfer startup delay");
+        String builder = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "UsbPolarityBundleBuilder.java"),
+                StandardCharsets.UTF_8);
+        require(builder.contains("LossKind.HOST_CAPACITY"),
+                "typed builder records exact host-capacity loss");
+        String ensureCapacity = builder.substring(builder.indexOf("public synchronized void ensureCapacity"),
+                builder.indexOf("public synchronized void attach"));
+        require(!ensureCapacity.contains("fill.allocate"),
+                "live preallocation does not allocate the offline fill packet");
+    }
+
+    /**
+     * ViewLoop pause does not stop DVS_RUN; buffer reconfig must quiesce
+     * streaming before joining USBTransferThread (jAER-0.log 6:37:06).
+     */
+    private static void testUsbBufferReconfigQuiescesDvsRun() throws Exception {
+        String fx3 = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "CypressFX3.java"), StandardCharsets.UTF_8);
+        int stop = fx3.indexOf("public boolean stopSession");
+        int start = fx3.indexOf("public Config startSession");
+        require(stop >= 0 && start > stop, "BufferHost stopSession exists before startSession");
+        String stopBody = fx3.substring(stop, start);
+        require(stopBody.contains("quiesceStreamingForUsbRestart()"),
+                "stopSession must DVS_RUN=0 / quiesce before interruptAndJoin");
+        require(stopBody.indexOf("quiesceStreamingForUsbRestart()")
+                        < stopBody.indexOf("interruptAndJoin"),
+                "quiesceStreamingForUsbRestart must run before interruptAndJoin");
+        String startBody = fx3.substring(start, fx3.indexOf("public void applyIdleConfig"));
+        require(startBody.contains("resumeStreamingAfterUsbRestart()"),
+                "startSession must restore DVS_RUN after the new transfer thread starts");
+        require(startBody.contains("startBulkTransferThread("),
+                "startSession uses the queued-URB handshake before DVS_RUN");
+        require(startBody.indexOf("startBulkTransferThread(")
+                        < startBody.indexOf("resumeStreamingAfterUsbRestart()"),
+                "startSession must not DVS_RUN until bulk IN URBs are queued");
+        String hw = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(hw.contains("void quiesceStreamingForUsbRestart()"),
+                "DVX overrides quiesceStreamingForUsbRestart");
+        require(hw.contains("chip.dvxDataStop()"),
+                "DVX quiesce sends DVS_RUN=0 (ViewLoop pause does not)");
+    }
+
+    /**
+     * Hotplug SuperSpeed can claim iface 0 before bulk IN 0x82 exists.
+     * Wait for the endpoint, then queue URBs, then DVS_RUN.
+     */
+    private static void testWaitForEndpointsBeforeDvsRun() throws Exception {
+        String hw = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(hw.contains("private void waitForDataEndpoints()"),
+                "Mini/Micro open waits for bulk IN 0x82 / IMU 0x81 after claim");
+        require(hw.contains("LibUsb.setInterfaceAltSetting"),
+                "missing 0x82 on alt 0 tries the alt-setting that has it");
+        int startAe = hw.indexOf("public void startAEReader()");
+        int quiesce = hw.indexOf("protected void quiesceStreamingForUsbRestart()");
+        require(startAe >= 0 && quiesce > startAe, "startAEReader exists before quiesce");
+        String startBody = hw.substring(startAe, quiesce);
+        require(startBody.indexOf("getAeReader().startThread()")
+                        < startBody.indexOf("chip.dvxDataStart()"),
+                "DVS_RUN only after startThread (URBs queued or throw)");
+        require(startBody.contains("USB IN queued, sending DVS_RUN"),
+                "log still marks DVS_RUN as after USB IN queued");
+        String fx3 = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java"),
+                StandardCharsets.UTF_8);
+        require(fx3.contains("UsbTransferSubmit.awaitQueued"),
+                "CypressFX3 AEReader joins until allocateTransfers succeeds");
+        require(fx3.contains("installFailureHandler"),
+                "CypressFX3 AEReader catches USBTransferThread submit NOT_FOUND");
     }
 
     private static void require(boolean cond, String msg) {

@@ -32,6 +32,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import org.usb4java.BufferUtils;
 import org.usb4java.ConfigDescriptor;
@@ -46,19 +47,27 @@ import org.usb4java.TransferCallback;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
+import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
+import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 
 /**
  * Adds functionality of DVXplorer / DVXplorer Mini/Micro sensors to CypressFX3.
  * Mini/Micro share VID/PID {@code 152a:8419} with DVXplorer; they are CX3 MIPI
  * ({@code bcdDevice} high byte {@link #DEVICE_TYPE_CX3_MIPI}). Firmware 10+ uses
  * 8-byte SPI like dv-processing {@code DVXplorerM}; USB events are 32-bit MIPI words.
+ * Live USB demux (pref {@code hardware/DVXplorerFX3/usbTypedDemux}, default true)
+ * writes cooked {@link PacketBundle} polarity in the reader and skips
+ * {@link AEPacketRaw} → {@code extractBundle}.
  *
  * @author Pei Haoxiang
  * @see <a href="https://gitlab.com/inivation/dv/dv-processing/-/blob/master/include/dv-processing/io/camera/dvxplorer_m.hpp">dvxplorer_m.hpp</a>
@@ -86,9 +95,17 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     static public final byte VR_DATA_CLEANUP = (byte) 0xC6;
     /** Extra Mini/Micro USB/MIPI/IMU logs: {@code -Djaer.dvx.debug=true}. */
     public static final boolean debug = Boolean.getBoolean("jaer.dvx.debug");
+    private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("DVXplorerFX3");
+    /** Pref kill-switch for USB→PacketBundle polarity demux. Default true. */
+    public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
+    private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
+    private ImuPacket liveImuDrain;
 
     protected DVXplorerFX3HardwareInterface(final Device device) {
         super(device);
+        usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
+        CypressFX3.log.fine("DVXplorerFX3 USB typed demux=" + usbTypedDemuxActive
+                + " (pref " + PREF_USB_TYPED_DEMUX + ")");
     }
     
     /** USB device type from {@code bcdDevice} high byte (FX3=1–3, CX3 MIPI=4). */
@@ -216,16 +233,20 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     private long cx3ImuLastSubmitNs;
     private ScheduledExecutorService cx3ImuScheduler;
     private ScheduledFuture<?> cx3ImuResubmitTask;
-    private final ConcurrentLinkedQueue<IMUSample> cx3ImuQueue = new ConcurrentLinkedQueue<>();
+    private record EpochImuSample(IMUSample sample, long timestampEpoch) {
+    }
+
+    private final ConcurrentLinkedQueue<EpochImuSample> cx3ImuQueue = new ConcurrentLinkedQueue<>();
     private final AtomicInteger cx3ImuQueued = new AtomicInteger();
     private static final int CX3_IMU_QUEUE_MAX = 2000;
+    private volatile boolean cx3ImuEndpointActive;
 
     /**
      * Mini/Micro IMU is on interrupt EP {@code 0x81} (dv-processing debug
      * endpoint). Transfers are completed by the bulk AEReader event loop.
      */
     private void startCx3ImuTransfers() {
-        if (!isNextGenFirmware() || cx3ImuRunning) {
+        if (!isNextGenFirmware() || cx3ImuRunning || !cx3ImuEndpointActive) {
             return;
         }
         stopCx3ImuTransfers();
@@ -324,23 +345,53 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     }
 
     /**
-     * Live Mini/Micro IMU for {@code extractBundle}. Not mixed into the DVS
-     * {@link AEPacketRaw} (that made extractPacket treat thousands of events as IMU).
+     * Live Mini/Micro (and classic FX3 when typed demux is on) IMU samples.
+     * Called from {@link #acquireAvailablePacketBundle()} on the live path and
+     * from {@code extractBundle} when the kill-switch restores raw extract.
      */
     public int drainCx3Imu(final ImuPacket dest) {
         if (dest == null) {
             return 0;
         }
         int n = 0;
-        IMUSample s;
-        while ((s = cx3ImuQueue.poll()) != null) {
+        EpochImuSample queued;
+        long packetEpoch = -1L;
+        while ((queued = cx3ImuQueue.peek()) != null) {
+            if (packetEpoch < 0) {
+                packetEpoch = queued.timestampEpoch();
+                dest.setTimestampEpoch(packetEpoch);
+            } else if (queued.timestampEpoch() != packetEpoch) {
+                break;
+            }
+            cx3ImuQueue.poll();
             cx3ImuQueued.decrementAndGet();
-            dest.appendCopy(s);
+            dest.appendCopy(queued.sample());
             if (++n >= CX3_IMU_QUEUE_MAX) {
                 break;
             }
         }
         return n;
+    }
+
+    /**
+     * Attach Mini/classic IMU side-channel data before the authoritative bundle
+     * is sealed and published.
+     */
+    @Override
+    protected void beforeAuthoritativeTypedBundleSwap(final PacketBundle writeBundle) {
+        drainImuIntoLiveBundle(writeBundle);
+    }
+
+    private void drainImuIntoLiveBundle(final PacketBundle bundle) {
+        if (liveImuDrain == null) {
+            liveImuDrain = new ImuPacket();
+        } else {
+            liveImuDrain.clear();
+        }
+        while (drainCx3Imu(liveImuDrain) > 0) {
+            bundle.add(liveImuDrain);
+            liveImuDrain = new ImuPacket();
+        }
     }
 
     private void offerCx3Imu(final IMUSample sample) {
@@ -350,7 +401,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             }
             cx3ImuQueued.decrementAndGet();
         }
-        cx3ImuQueue.offer(sample);
+        final AEReader reader = getAeReader();
+        final long epoch = reader instanceof RetinaAEReader retina
+                ? retina.currentTimestampEpoch() : 0L;
+        cx3ImuQueue.offer(new EpochImuSample(sample, epoch));
         cx3ImuQueued.incrementAndGet();
     }
 
@@ -382,10 +436,148 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         }
     }
 
+    /**
+     * After claim, Mini/Micro bulk IN {@code 0x82} (and IMU interrupt {@code 0x81})
+     * can be missing until WinUSB SuperSpeed finishes, or they live on another
+     * alt-setting. Starting AEReader then throws uncaught {@code LIBUSB_ERROR_NOT_FOUND}.
+     */
+    private void waitForDataEndpoints() throws HardwareInterfaceException {
+        if (!isMipiCX3Device()) {
+            return;
+        }
+        final long deadline = System.currentTimeMillis() + 2000L;
+        boolean haveBulk = false;
+        boolean haveImu = false;
+        int lastAlt = -1;
+        int lastIface = -1;
+        int lastAltStatus = LibUsb.SUCCESS;
+        cx3ImuEndpointActive = false;
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            final EndpointScan scan = scanDataEndpoints();
+            haveBulk = scan.bulk82Alt >= 0;
+            haveImu = scan.interrupt81Alt >= 0;
+            if (attempt == 1 || !haveBulk || !haveImu) {
+                CypressFX3.log.info("Mini/Micro USB endpoints (attempt " + attempt + "): " + scan.summary);
+            }
+            if (haveBulk) {
+                final int iface = (haveImu && scan.bothIface >= 0) ? scan.bothIface : scan.bulk82Iface;
+                final int alt = (haveImu && scan.bothAlt >= 0) ? scan.bothAlt : scan.bulk82Alt;
+                final boolean selectedHaveImu = scan.interrupt81Iface == iface
+                        && scan.interrupt81Alt == alt;
+                if (alt != lastAlt || iface != lastIface) {
+                    final int status = LibUsb.setInterfaceAltSetting(deviceHandle, iface, alt);
+                    lastAltStatus = status;
+                    CypressFX3.log.info(String.format(
+                            "Mini/Micro setInterfaceAltSetting iface=%d alt=%d for bulk 0x82: %s",
+                            iface, alt, LibUsb.errorName(status)));
+                    if (status == LibUsb.SUCCESS) {
+                        lastAlt = alt;
+                        lastIface = iface;
+                    }
+                }
+                final boolean selectedSettingActive = lastAlt == alt && lastIface == iface;
+                if (selectedSettingActive
+                        && (selectedHaveImu || System.currentTimeMillis() >= deadline)) {
+                    cx3ImuEndpointActive = selectedHaveImu;
+                    if (!selectedHaveImu) {
+                        CypressFX3.log.warning(
+                                "Mini/Micro interrupt EP 0x81 not present; IMU capture skipped until replug");
+                    }
+                    return;
+                }
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                break;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new HardwareInterfaceException("interrupted waiting for Mini/Micro USB data endpoints");
+            }
+        }
+        if (haveBulk && lastAlt >= 0 && lastIface >= 0) {
+            cx3ImuEndpointActive = false;
+            CypressFX3.log.warning("Mini/Micro interrupt EP 0x81 not present; IMU capture skipped until replug");
+            return;
+        }
+        final String altFailure = lastAltStatus == LibUsb.SUCCESS ? ""
+                : "; SET_INTERFACE failed: " + LibUsb.errorName(lastAltStatus);
+        throw new HardwareInterfaceException(
+                "Mini/Micro bulk IN 0x82 not active after USB claim" + altFailure
+                + " (AEReader would get LIBUSB_ERROR_NOT_FOUND)");
+    }
+
+    private EndpointScan scanDataEndpoints() {
+        final EndpointScan scan = new EndpointScan();
+        final ConfigDescriptor config = new ConfigDescriptor();
+        final int status = LibUsb.getActiveConfigDescriptor(device, config);
+        if (status != LibUsb.SUCCESS) {
+            scan.summary = "no config descriptor: " + LibUsb.errorName(status);
+            return scan;
+        }
+        try {
+            final StringBuilder sb = new StringBuilder();
+            for (final Interface iface : config.iface()) {
+                for (final InterfaceDescriptor alt : iface.altsetting()) {
+                    final int ifaceNum = alt.bInterfaceNumber() & 0xFF;
+                    final int altNum = alt.bAlternateSetting() & 0xFF;
+                    boolean has82 = false;
+                    boolean has81 = false;
+                    sb.append(String.format(" iface=%d alt=%d eps=%d",
+                            ifaceNum, altNum, alt.bNumEndpoints() & 0xFF));
+                    for (final EndpointDescriptor ep : alt.endpoint()) {
+                        final int addr = ep.bEndpointAddress() & 0xFF;
+                        final int type = ep.bmAttributes() & 0x03;
+                        sb.append(String.format(" [ep=0x%02x attr=0x%02x max=%d]",
+                                addr, ep.bmAttributes() & 0xFF, ep.wMaxPacketSize() & 0xFFFF));
+                        if (addr == (CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS & 0xFF)
+                                && type == LibUsb.TRANSFER_TYPE_BULK) {
+                            has82 = true;
+                            if (scan.bulk82Alt < 0) {
+                                scan.bulk82Iface = ifaceNum;
+                                scan.bulk82Alt = altNum;
+                            }
+                        }
+                        if (addr == (CX3_DEBUG_ENDPOINT & 0xFF)
+                                && type == LibUsb.TRANSFER_TYPE_INTERRUPT) {
+                            has81 = true;
+                            if (scan.interrupt81Alt < 0) {
+                                scan.interrupt81Iface = ifaceNum;
+                                scan.interrupt81Alt = altNum;
+                            }
+                        }
+                    }
+                    if (has82 && has81 && scan.bothAlt < 0) {
+                        scan.bothIface = ifaceNum;
+                        scan.bothAlt = altNum;
+                    }
+                }
+            }
+            scan.summary = sb.length() == 0 ? "(empty config)" : sb.toString().trim();
+            return scan;
+        } finally {
+            LibUsb.freeConfigDescriptor(config);
+        }
+    }
+
+    private static final class EndpointScan {
+        int bulk82Iface = -1;
+        int bulk82Alt = -1;
+        int interrupt81Iface = -1;
+        int interrupt81Alt = -1;
+        int bothIface = -1;
+        int bothAlt = -1;
+        String summary = "";
+    }
+
     @Override
 	synchronized public void open() throws HardwareInterfaceException {
 		super.open();
         log.fine("DVXplorerFX3 super.open() returned " + UsbLog.t());
+        waitForDataEndpoints();
         final int did = getDID() & 0xFFFF;
         final int type = getUsbDeviceType();
         final boolean cx3 = isMipiCX3Device();
@@ -402,12 +594,18 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     /**
      * Firmware 10 rejects 4-byte {@code VR_FPGA_CONFIG} ({@code LIBUSB_ERROR_PIPE},
      * jAER 8:58:38). 8-byte is required. {@code DVS_FLATTEN} and SPI IN still hang
-     * on WinUSB. Allowed 8-byte OUT: {@code DVS_RUN}, {@code IMU_RUN_*}, and BMI160
-     * ODR/range/filter (without those, factory gyro ODR 5 freezes ~0 dps).
+     * on WinUSB. Allowed 8-byte OUT: {@code DVS_RUN}, Hardware Configuration DVS
+     * params ({@code DVS_EFPS_S5K231Y}, contrast, global hold/reset), {@code IMU_RUN_*},
+     * and BMI160 ODR/range/filter (without those, factory gyro ODR 5 freezes ~0 dps).
      */
     public static boolean isNextGenStreamingParam(final short moduleAddr, final short paramAddr) {
-        if (moduleAddr == CypressFX3.FPGA_DVS && paramAddr == DVXplorer.DVX_DVS_RUN) {
-            return true;
+        if (moduleAddr == CypressFX3.FPGA_DVS) {
+            return paramAddr == DVXplorer.DVX_DVS_RUN
+                    || paramAddr == DVXplorer.DVS_GLOBAL_HOLD
+                    || paramAddr == DVXplorer.DVS_GLOBAL_RESET
+                    || paramAddr == DVXplorer.DVS_EFPS_S5K231Y
+                    || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_ON
+                    || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_OFF;
         }
         if (moduleAddr == CypressFX3.FPGA_IMU) {
             return paramAddr == DVXplorer.DVX_IMU_RUN_ACCELEROMETER
@@ -421,6 +619,18 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     || paramAddr == DVXplorer.DVX_IMU_GYRO_RANGE;
         }
         return false;
+    }
+
+    /** Hardware Configuration DVS writes: log.info after USB confirms (not DVS_RUN). */
+    public static boolean isNextGenDvsBiasParam(final short moduleAddr, final short paramAddr) {
+        if (moduleAddr != CypressFX3.FPGA_DVS) {
+            return false;
+        }
+        return paramAddr == DVXplorer.DVS_GLOBAL_HOLD
+                || paramAddr == DVXplorer.DVS_GLOBAL_RESET
+                || paramAddr == DVXplorer.DVS_EFPS_S5K231Y
+                || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_ON
+                || paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_OFF;
     }
 
     @Override
@@ -437,9 +647,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         // Firmware 10 CX3: 8-byte SPI OUT hangs in LibUsb.controlTransfer the
         // same way SPI IN does (jAER 7:42:25 open, timeout 8 s on DVS_FLATTEN
         // in sendNextGenDefaultConfig). Leave those device firmware defaults.
-        log.fine(String.format(
-                "skipping SPI OUT on Mini/Micro firmware %d module=0x%x param=0x%x %s",
-                getFirmwareVersion(), moduleAddr, paramAddr, UsbLog.t()));
+        log.info(String.format(
+                "skipping SPI OUT on Mini/Micro firmware %d module=0x%x param=0x%x (%s) %s",
+                getFirmwareVersion(), moduleAddr, paramAddr, nextGenParamName(moduleAddr, paramAddr), UsbLog.t()));
     }
 
     /** Big-endian uint64 payload; firmware 10 stalls 4-byte wLength. */
@@ -460,8 +670,48 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             if (deviceHandle != null) {
                 LibUsb.clearHalt(deviceHandle, (byte) 0);
             }
+            log.warning(String.format(
+                    "Mini/Micro 8-byte SPI OUT failed firmware %d module=0x%x param=0x%x (%s) value=%d: %s %s",
+                    getFirmwareVersion(), moduleAddr, paramAddr, nextGenParamName(moduleAddr, paramAddr),
+                    param, e.getMessage(), UsbLog.t()));
             throw e;
         }
+        if (isNextGenDvsBiasParam(moduleAddr, paramAddr)) {
+            log.info(String.format(
+                    "Mini/Micro SPI OUT confirmed firmware %d VR_FPGA_CONFIG module=%d param=%d (%s) value=%d %s",
+                    getFirmwareVersion(), moduleAddr, paramAddr, nextGenParamName(moduleAddr, paramAddr),
+                    param, UsbLog.t()));
+        }
+    }
+
+    static String nextGenParamName(final short moduleAddr, final short paramAddr) {
+        if (moduleAddr == CypressFX3.FPGA_DVS) {
+            if (paramAddr == DVXplorer.DVX_DVS_RUN) {
+                return "DVS_RUN";
+            }
+            if (paramAddr == DVXplorer.DVS_FLATTEN) {
+                return "DVS_FLATTEN";
+            }
+            if (paramAddr == DVXplorer.DVS_GLOBAL_HOLD) {
+                return "DVS_GLOBAL_HOLD";
+            }
+            if (paramAddr == DVXplorer.DVS_GLOBAL_RESET) {
+                return "DVS_GLOBAL_RESET";
+            }
+            if (paramAddr == DVXplorer.DVS_EFPS_S5K231Y) {
+                return "DVS_EFPS_S5K231Y";
+            }
+            if (paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_ON) {
+                return "DVS_CONTRAST_THRESHOLD_ON";
+            }
+            if (paramAddr == DVXplorer.DVS_CONTRAST_THRESHOLD_OFF) {
+                return "DVS_CONTRAST_THRESHOLD_OFF";
+            }
+        }
+        if (moduleAddr == CypressFX3.FPGA_IMU) {
+            return "IMU param " + paramAddr;
+        }
+        return "unknown";
     }
 
     @Override
@@ -568,6 +818,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             if (chip.isImuCaptureEnabled()) {
                 startCx3ImuTransfers();
             }
+            // startThread already joined until bulk IN 0x82 URBs queued (or threw).
             // Do not spawn+join here: setEventAcquisitionEnabled holds this
             // monitor, so the worker cannot enter spiConfigSend (jAER 8:58:36
             // 2 s "native USB" wait was that deadlock; 4-byte then PIPE).
@@ -575,6 +826,48 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             chip.dvxDataStart();
         }
         HardwareInterfaceException.clearException();
+    }
+
+    @Override
+    protected long queueHandshakeMs() {
+        return UsbTransferSubmit.DEFAULT_QUEUE_WAIT_MS;
+    }
+
+    /**
+     * {@code USBTransferThread} never joins while Mini/Micro is filling bulk IN.
+     * ViewLoop pause only skips ViewLoop consume; it does not send {@code DVS_RUN=0}.
+     */
+    @Override
+    protected void quiesceStreamingForUsbRestart() {
+        if (!(getChip() instanceof DVXplorer chip)) {
+            return;
+        }
+        CypressFX3.log.info("Mini/Micro: DVS_RUN=0 before USB buffer-session replace");
+        chip.dvxDataStop();
+        if (chip.isNextGenFirmware()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        stopCx3ImuTransfers();
+    }
+
+    @Override
+    protected void resumeStreamingAfterUsbRestart() {
+        if (!(getChip() instanceof DVXplorer chip)) {
+            return;
+        }
+        if (isNextGenFirmware()) {
+            if (chip.isImuCaptureEnabled()) {
+                startCx3ImuTransfers();
+            }
+            CypressFX3.log.info("Mini/Micro: USB IN queued after buffer reconfig, sending DVS_RUN / IMU_RUN");
+            chip.dvxDataStart();
+            return;
+        }
+        chip.dvxDataStart();
     }
 
     @Override
@@ -620,6 +913,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private long mipiLastUsedReference = -1;
         private long mipiCurrTimestamp;
         private long mipiLastTimestamp;
+        private long timestampEpoch;
         private int mipiReferenceOverflow;
         private long cx3ImuLastTimestamp;
         private long cx3ImuLastHostNs;
@@ -739,6 +1033,61 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             return (true);
         }
 
+        private void beginTypedDemux() {
+            if (!isAuthoritativeTypedCallback()) {
+                return;
+            }
+            if (!Thread.holdsLock(packetBundlePool)) {
+                throw new IllegalStateException("DVX authoritative demux requires the typed-pool lock");
+            }
+            polarityBuilder.ensureCapacity(Math.min(getAEBufferSize(),
+                    HasLiveDisplayEventCap.DEFAULT_LIVE_DISPLAY_EVENT_CAP));
+            final PacketBundle writeBundle = packetBundlePool.writeBuffer();
+            prepareAuthoritativeTypedBundle(writeBundle);
+            polarityBuilder.beginAuthoritative(writeBundle, getAEBufferSize(), timestampEpoch);
+        }
+
+        private void endTypedDemux(final AEPacketRaw buffer) {
+            buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+            if (isAuthoritativeTypedCallback()) {
+                polarityBuilder.flushAll();
+                buffer.setNumEvents(0);
+                return;
+            }
+            buffer.setNumEvents(eventCounter);
+        }
+
+        /**
+         * Cooked polarity matching {@code DVXExtractor.extractPacket}: display
+         * {@code y = (sizeY-1) - packedY}. When demux is on, skip {@link AEPacketRaw}.
+         */
+        private boolean emitPackedPolarity(final AEPacketRaw buffer, final int xAddr, final int yAddr, final int polarity) {
+            final int addr = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT)
+                    | ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT)
+                    | ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
+            if (isAuthoritativeTypedCallback()) {
+                final int sizeY = getChip() != null ? getChip().getSizeY() : dvsSizeY;
+                return polarityBuilder.addAuthoritativePolarity(
+                        xAddr, (sizeY - 1) - yAddr, polarity != 0, currentTimestamp, addr);
+            }
+            buffer.getTimestamps()[eventCounter] = currentTimestamp;
+            buffer.getAddresses()[eventCounter] = addr;
+            eventCounter++;
+            return true;
+        }
+
+        private void advanceTimestampEpoch(final String reason) {
+            timestampEpoch = Math.addExact(timestampEpoch, 1L);
+            if (isAuthoritativeTypedCallback()) {
+                polarityBuilder.onTimestampReset(timestampEpoch);
+            }
+            CypressFX3.log.fine("DVX typed timestamp epoch=" + timestampEpoch + ": " + reason);
+        }
+
+        long currentTimestampEpoch() {
+            return timestampEpoch;
+        }
+
         @Override
         protected void translateEvents(final ByteBuffer b) {
             if (mipiCx3) {
@@ -747,6 +1096,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             }
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                beginTypedDemux();
 
                 // Truncate off any extra partial event.
                 if ((b.limit() & 0x01) != 0) {
@@ -788,6 +1138,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         wrapAdd = 0;
                                         lastTimestamp = 0;
                                         currentTimestamp = 0;
+                                        advanceTimestampEpoch("classic FX3 timestamp reset");
 
                                         updateTimestampMasterStatus();
 
@@ -812,7 +1163,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         CypressFX3.log.fine("IMU End event received.");
 
                                         if (imuCount == (2 * IMU_DATA_LENGTH)) {
-                                            if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
+                                            if (isAuthoritativeTypedCallback()) {
+                                                offerCx3Imu(new IMUSample(currentTimestamp, imuEvents));
+                                            } else if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
                                                 // Check for buffer space is also done inside writeToPacket().
                                                 final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
                                                 eventCounter += imuSample.writeToPacket(buffer, eventCounter);
@@ -845,7 +1198,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                             case 3: 
                                 // 8-pixel group event presence and polarity.
                                 // Code 2 is MGROUP Group 2 (SGROUP OFF), Code 3 is MGROUP Group 1 (SGROUP ON).
-                                if (!ensureCapacity(buffer, eventCounter + 8)) {
+                                if (!isAuthoritativeTypedCallback()
+                                        && !ensureCapacity(buffer, eventCounter + 8)) {
                                     break;
                                 }
 
@@ -876,16 +1230,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         yAddr = temp;
                                     }
 
-                                    buffer.getTimestamps()[eventCounter] = currentTimestamp;
-
-                                    // aedat2 format
-                                    final int y_addr_bits = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT);
-                                    final int x_addr_bits = ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT);
-                                    final int polarity_bits = ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
-                                    final int bits32 = y_addr_bits | x_addr_bits | polarity_bits;
-
-                                    buffer.getAddresses()[eventCounter] = bits32;
-                                    eventCounter++;
+                                    emitPackedPolarity(buffer, xAddr, yAddr, polarity);
                                 }
 
                                 break;
@@ -1082,6 +1427,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                 long wrapSum = (long)wrapAdd + wrapJump;
 
                                 if (wrapSum > (long)Integer.MAX_VALUE) {
+                                    advanceTimestampEpoch("classic FX3 31-bit timestamp rollover");
                                     long wrapRemainder = wrapSum - (long)Integer.MAX_VALUE - 1L;
                                     wrapAdd = (int)wrapRemainder;
 
@@ -1112,9 +1458,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     }
                 } // end loop over usb data buffer
 
-                buffer.setNumEvents(eventCounter);
-                // write capture size
-                buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                endTypedDemux(buffer);
             } // sync on aePacketRawPool
         }
 
@@ -1133,6 +1477,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private void translateMipiCx3Events(final ByteBuffer b) {
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                beginTypedDemux();
                 final int byteLen = b.remaining() > 0 ? b.remaining() : b.limit();
                 if ((byteLen & 0x03) != 0) {
                     CypressFX3.log.warning(String.format(
@@ -1140,7 +1485,6 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     b.limit(b.position() + (byteLen & ~0x03));
                 }
                 buffer.lastCaptureIndex = eventCounter;
-                final int eventsBefore = eventCounter;
                 final ByteBuffer view = b.duplicate();
                 view.order(ByteOrder.LITTLE_ENDIAN);
                 final IntBuffer iBuf = view.asIntBuffer();
@@ -1176,9 +1520,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                         }
                     }
                 }
-                mipiEmitted += eventCounter - eventsBefore;
-                buffer.setNumEvents(eventCounter);
-                buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                endTypedDemux(buffer);
                 if (debug) {
                     final long now = System.currentTimeMillis();
                     if ((now - mipiLastLogMs) >= 2000) {
@@ -1203,7 +1545,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             if (group1Address >= dvsSizeY || group2Address >= dvsSizeY) {
                 return;
             }
-            if (!ensureCapacity(buffer, eventCounter + 16)) {
+            if (!isAuthoritativeTypedCallback()
+                    && !ensureCapacity(buffer, eventCounter + 16)) {
                 return;
             }
             final int group1Events = event & 0x00FF;
@@ -1226,11 +1569,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                     xAddr = yAddr;
                     yAddr = temp;
                 }
-                buffer.getTimestamps()[eventCounter] = currentTimestamp;
-                buffer.getAddresses()[eventCounter] = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT)
-                        | ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT)
-                        | ((polarity & AEDAT2_POLARITY_MASK) << AEDAT2_POLARITY_SHIFT);
-                eventCounter++;
+                if (emitPackedPolarity(buffer, xAddr, yAddr, polarity)) {
+                    mipiEmitted++;
+                }
             }
         }
 
@@ -1251,6 +1592,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                 }
                 mipiLastTimestamp = mipiCurrTimestamp;
                 mipiCurrTimestamp = mipiReferenceUs + timestampSub;
+                if ((mipiLastTimestamp >>> 31) != (mipiCurrTimestamp >>> 31)) {
+                    advanceTimestampEpoch("MIPI 31-bit timestamp rollover");
+                }
                 mipiLastUsedReference = mipiReferenceUs;
                 mipiLastUsedSub = timestampSub;
                 lastTimestamp = currentTimestamp;
@@ -1275,6 +1619,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         }
 
         private void resetMipiParser(final String reason) {
+            if (mipiReferenceUs >= 0 || mipiLastColumn >= 0) {
+                advanceTimestampEpoch("MIPI parser discontinuity: " + reason);
+            }
             mipiLastColumn = -1;
             mipiReferenceUs = -1;
             mipiLastUsedSub = -1;
@@ -1397,4 +1744,3 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         }
     }
 }
-
