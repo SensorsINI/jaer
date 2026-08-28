@@ -10,9 +10,11 @@
 
 (You get plug-and-play, "it just works" for all the cameras above.) 
 
-<b>jAER accumulates 20 years of hands-on daily experience working with event cameras as silicon developers and [application demonstrators](#jaer-applications). </b> It [efficiently](docs/README-jaer3.md) (and ergonomically)
+<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). </b> 
+
+It [efficiently](docs/README-jaer3.md) (and ergonomically)
  * captures USB event camera output from [most devices](#device-hardware-support), 
- * denoises -- with fast, accurate event filtering algorithms
+ * denoises -- with fast and accurate algorithms
  * displays -- with a variety of color and 2d/3d options
  * records -- in a high-speed compressed format (AEDAT-4)
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
