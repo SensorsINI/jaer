@@ -19,8 +19,12 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 | Chips | `src/ch/unizh/ini/jaer/chip/`, `src/nrv/`, `src/prophesee/` |
 | Render | `ChipCanvas`, `AEChipRenderer`, `DavisRenderer` |
 
+## Logs
+
+`ant run` / console is **INFO** (`conf/Logging.properties`). USB and ViewLoop detail is **FINE** in the rotating file `%t/jaer/jAER-%g.log` (`java.io.tmpdir/jaer/`; on Windows `%TEMP%\jaer\`). If the console cannot explain a hang, missed hotplug, or USB open failure, read the newest **`jAER-0.log`** there (not `jaer/logs/` in the repo).
+
 ## Build
 
-`ant compile` is the source of truth. New `AEChip` / `EventFilter2D` types appear in Customize only after `ant compile` (allowlist written into `jAER.jar`). IDE compile-on-save is not enough. Packaged installers load only types from that list.
+`ant compile` is the source of truth (JDK **25**, `javac.source`/`target` 25; `ant check-jdk` if the JVM is too old). New `AEChip` / `EventFilter2D` types appear in Customize only after `ant compile` (allowlist written into `jAER.jar`). IDE compile-on-save is not enough. Packaged installers load only types from that list.
 
 Plans for this repo: `.cursor/plans/`. Shell: bash on Linux/WSL, PowerShell 5.1 on native Windows (`.cursor/rules/shell-by-platform.mdc`).

@@ -305,6 +305,20 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     protected Device device = null;
     protected DeviceHandle deviceHandle = null;
 
+    /** Set when a vendor control transfer hits IO / NO_DEVICE / PIPE; skip USB reset on close. */
+    private final AtomicBoolean usbLinkDead = new AtomicBoolean();
+
+    protected boolean isUsbLinkDead() {
+        return usbLinkDead.get();
+    }
+
+    private void noteUsbControlStatus(int status) {
+        if (status == LibUsb.ERROR_IO || status == LibUsb.ERROR_NO_DEVICE
+                || status == LibUsb.ERROR_NOT_FOUND || status == LibUsb.ERROR_PIPE) {
+            usbLinkDead.set(true);
+        }
+    }
+
     /**
      * This constructor is protected because these instances should be
      * constructed by the CypressFX3Factory. Creates a new instance of
@@ -1730,6 +1744,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         final long tOpen = System.currentTimeMillis();
         CypressFX3.log.info("open(): begin " + UsbIds.unopenedLabel(this, friendlyUnopenedTypeName()));
+        usbLinkDead.set(false);
         int status;
 
         // Open device.
@@ -2162,6 +2177,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 VENDOR_REQUEST_TIMEOUT_MS);
         log.fine(String.format("controlTransfer OUT done status=%d %s", status, UsbLog.t()));
         if (status < LibUsb.SUCCESS) {
+            noteUsbControlStatus(status);
             throw new HardwareInterfaceException(
                     "Unable to send vendor OUT request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));
         }
@@ -2208,6 +2224,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 VENDOR_REQUEST_TIMEOUT_MS);
         log.fine(String.format("controlTransfer IN done status=%d %s", status, UsbLog.t()));
         if (status < LibUsb.SUCCESS) {
+            noteUsbControlStatus(status);
             throw new HardwareInterfaceException(
                     "Unable to send vendor IN request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));
         }

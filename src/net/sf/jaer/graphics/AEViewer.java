@@ -186,6 +186,7 @@ import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
+import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.WindowsUsbPollSchedule;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
@@ -3522,6 +3523,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (isUsbDeviceGone(e)) {
                     log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
                     nullInterface = false;
+                    HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
                     resetWindowsUsbPoll("device removed");
                 } else {
                     // Stop WAITING from rebinding the same ghost device on the next poll
@@ -8791,8 +8793,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /**
+     * True while {@link #showOpeningCameraOverlay} is active (USB open /
+     * {@code dvxConfig} still running). Welcome stays up even though
+     * {@code isOpen()} is already true after the 1 ms libusb open.
+     */
+    public boolean isCameraOpenInProgress() {
+        return pendingOpeningCameraLabel != null;
+    }
+
     /** True when open/close failed because the USB device has already left the bus. */
     private static boolean isUsbDeviceGone(Throwable t) {
+        if (UsbTransferSubmit.isUnrecoverableSubmitFailure(t)) {
+            return true;
+        }
         for (; t != null; t = t.getCause()) {
             String m = t.getMessage();
             if (m == null) {
@@ -8800,7 +8814,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             if (m.contains("devicePointer") || m.contains("LIBUSB_ERROR_NO_DEVICE")
                     || m.contains("NO_DEVICE") || m.contains("not initialized")
-                    || m.contains("LIBUSB_ERROR_NOT_FOUND")) {
+                    || m.contains("LIBUSB_ERROR_NOT_FOUND")
+                    || m.contains("LIBUSB_ERROR_IO") || m.contains("LIBUSB_ERROR_PIPE")) {
                 return true;
             }
         }

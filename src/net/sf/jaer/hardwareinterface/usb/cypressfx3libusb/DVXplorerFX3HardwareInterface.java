@@ -133,7 +133,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             deviceDescriptor = new DeviceDescriptor();
             LibUsb.getDeviceDescriptor(device, deviceDescriptor);
         }
-        return !isMipiCX3Device();
+        return !isMipiCX3Device() && !isUsbLinkDead();
     }
 
     private int usbNoteCount;

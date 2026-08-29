@@ -21,6 +21,7 @@ import net.sf.jaer.graphics.AEViewer;
  * builds ({@link AEViewer#getInterfaceMenuDeviceLabels()}):
  * <ul>
  * <li>no devices listed: plug in a camera or open a recording</li>
+ * <li>one device: name it (auto-open; no extra click)</li>
  * <li>several devices: list those menu labels one per line and point at Interface</li>
  * <li>user chose a camera: {@link #opening(AEViewer, String)} keeps the title
  * and adds opening-progress lines until LIVE or None</li>
@@ -59,6 +60,8 @@ public final class Welcome {
         addIfPresent(lines, title(viewer));
         if (devices.isEmpty()) {
             addIfPresent(lines, plugInOrOpenFile(viewer));
+        } else if (devices.size() == 1) {
+            addIfPresent(lines, "Found " + devices.get(0));
         } else if (devices.size() > 1) {
             lines.addAll(chooseCamera(viewer, devices));
         }

@@ -357,6 +357,10 @@ public final class UsbEnumerationSafetyDemo {
                 "LIBUSB_ERROR_NO_DEVICE is treated as USB device gone");
         require(gone.contains("LIBUSB_ERROR_NOT_FOUND"),
                 "claimInterface NOT_FOUND after hotplug must not set nullInterface");
+        require(gone.contains("LIBUSB_ERROR_IO"),
+                "SPI/control LIBUSB_ERROR_IO on unplug mid-open is treated as USB device gone");
+        require(gone.contains("LIBUSB_ERROR_PIPE"),
+                "LIBUSB_ERROR_PIPE is treated as USB device gone");
         String welcome = methodBody(viewer,
                 "public void showWelcomeOverlay() {",
                 "public void showOpeningCameraOverlay(HardwareInterface hw) {");

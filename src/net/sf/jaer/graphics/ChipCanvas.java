@@ -708,7 +708,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             return false;
         }
         HardwareInterface hw = aeChip.getHardwareInterface();
-        if (hw != null && hw.isOpen()) {
+        if (hw != null && hw.isOpen() && (viewer == null || !viewer.isCameraOpenInProgress())) {
             return false;
         }
         return true;

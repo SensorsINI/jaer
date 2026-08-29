@@ -54,6 +54,7 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
+import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
 import net.sf.jaer.util.TextRendererScale;
@@ -838,6 +839,9 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         catch (final HardwareInterfaceException e) {
             DVXplorer.log.severe(String.format("DVXplorer spi config receiving failed: moduleAddr = %x, paramAddr = %x", moduleAddr, paramAddr));
+            if (UsbTransferSubmit.isUnrecoverableSubmitFailure(e)) {
+                throw new IllegalStateException(e.getMessage(), e);
+            }
             return -1;
         }
     }
@@ -855,6 +859,9 @@ public class DVXplorer extends AETemporalConstastRetina {
             DVXplorer.log.severe(String.format(
                     "DVXplorer spi config sending failed: moduleAddr = %x, paramAddr = %x, param = %x: %s",
                     moduleAddr, paramAddr, param, e.getMessage()));
+            if (UsbTransferSubmit.isUnrecoverableSubmitFailure(e)) {
+                throw new IllegalStateException(e.getMessage(), e);
+            }
             return false;
         }
     }
