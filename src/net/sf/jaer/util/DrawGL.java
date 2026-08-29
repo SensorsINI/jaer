@@ -8,12 +8,17 @@ package net.sf.jaer.util;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLContext;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Static utility methods for drawing stuff. Surround these calls with
@@ -24,6 +29,7 @@ import java.util.Map;
 public final class DrawGL {
 
     static final float RAD_TO_DEG = (float) (180 / Math.PI);
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     /**
      * Don't let anyone instantiate this class.
@@ -240,13 +246,17 @@ public final class DrawGL {
     }
 
     /**
-     * GL-thread TextRenderer cache, keyed by atlas pixel size ({@link #atlasFontSize}).
-     * Constructing a new TextRenderer every string leaked JOGL glyph textures (RSS growth
-     * during live view / AEDAT-4 recording overlays). This map is the only construction
-     * site in DrawGL; {@link #drawString}, {@link #lineHeight}, and
+     * Per-{@link GLContext} TextRenderer cache, inner key atlas pixel size
+     * ({@link #atlasFontSize}). JOGL glyph textures belong to the context that
+     * first used the renderer; a JVM-wide map made two AEViewers share one atlas
+     * (garbled Welcome overlay). Constructing a new TextRenderer every string
+     * leaked those textures (RSS growth during live view / recording overlays).
+     * Reuse within a context; {@link #disposeCurrentContextRenderers()} when
+     * the canvas is destroyed. {@link #drawString}, {@link #lineHeight}, and
      * {@link #measureStringWidth} all go through {@link #textRendererFor}.
      */
-    private static final Map<Integer, TextRenderer> textRenderers = new HashMap<>();
+    private static final Object TEXT_RENDERER_CACHE_LOCK = new Object();
+    private static final IdentityHashMap<GLContext, Map<Integer, TextRenderer>> textRenderersByContext = new IdentityHashMap<>();
     /** Cached chip-pixel line height per requested {@code fontSize} (before the fontSize&lt;10 scale). */
     private static final Map<Integer, Float> cachedLineHeights = new HashMap<>();
 
@@ -268,20 +278,74 @@ public final class DrawGL {
     }
 
     /**
-     * Returns the reused TextRenderer for {@code requestedFontSize}. Only place
-     * {@code new TextRenderer} runs in this class, and only on a cache miss.
+     * Returns the reused TextRenderer for {@code requestedFontSize} in the
+     * current GL context. Only place {@code new TextRenderer} runs in this class,
+     * and only on a cache miss for that context.
      */
     private static TextRenderer textRendererFor(int requestedFontSize) {
-        final int atlas = atlasFontSize(requestedFontSize);
-        TextRenderer r = textRenderers.get(atlas);
-        if (r == null) {
-            r = new TextRenderer(new Font("SansSerif", Font.PLAIN, atlas), true, true);
-            // Intel Arc (igxelpgicd64.dll) can ACCESS_VIOLATION in glDrawArrays from
-            // TextRenderer's Pipelined_QuadRenderer; ChipCanvas already disables this.
-            r.setUseVertexArrays(false);
-            textRenderers.put(atlas, r);
+        GLContext ctx = GLContext.getCurrent();
+        if (ctx == null) {
+            throw new GLException("DrawGL TextRenderer requires a current GL context");
         }
-        return r;
+        final int atlas = atlasFontSize(requestedFontSize);
+        synchronized (TEXT_RENDERER_CACHE_LOCK) {
+            Map<Integer, TextRenderer> byAtlas = textRenderersByContext.get(ctx);
+            if (byAtlas == null) {
+                byAtlas = new HashMap<>();
+                textRenderersByContext.put(ctx, byAtlas);
+            }
+            TextRenderer r = byAtlas.get(atlas);
+            if (r == null) {
+                r = new TextRenderer(new Font("SansSerif", Font.PLAIN, atlas), true, true);
+                // Intel Arc (igxelpgicd64.dll) can ACCESS_VIOLATION in glDrawArrays from
+                // TextRenderer's Pipelined_QuadRenderer; ChipCanvas already disables this.
+                r.setUseVertexArrays(false);
+                byAtlas.put(atlas, r);
+            }
+            return r;
+        }
+    }
+
+    /**
+     * Disposes cached {@link TextRenderer}s for the current GL context. Call
+     * while that context is current (canvas destroy / GLEventListener.dispose).
+     * Idempotent.
+     */
+    public static void disposeCurrentContextRenderers() {
+        GLContext ctx = GLContext.getCurrent();
+        if (ctx == null) {
+            return;
+        }
+        Map<Integer, TextRenderer> byAtlas;
+        synchronized (TEXT_RENDERER_CACHE_LOCK) {
+            byAtlas = textRenderersByContext.remove(ctx);
+        }
+        if (byAtlas == null) {
+            return;
+        }
+        for (TextRenderer r : byAtlas.values()) {
+            if (r == null) {
+                continue;
+            }
+            try {
+                r.dispose();
+            } catch (RuntimeException e) {
+                log.log(Level.FINE, "TextRenderer.dispose: {0}", e.toString());
+            }
+        }
+    }
+
+    /**
+     * Drops cached renderers for {@code ctx} without {@code dispose()} (context
+     * already dead). Avoids pinning the {@link GLContext} in the identity map.
+     */
+    public static void forgetContext(GLContext ctx) {
+        if (ctx == null) {
+            return;
+        }
+        synchronized (TEXT_RENDERER_CACHE_LOCK) {
+            textRenderersByContext.remove(ctx);
+        }
     }
 
     /**
