@@ -6,13 +6,13 @@
 
 ![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
-**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
+**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
 
 (You get plug-and-play, "it just works" for all the cameras above.) 
 
 <b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). </b> 
 
-It [efficiently](docs/README-jaer3.md) (and ergonomically)
+It [efficiently](docs/README-jaer3.md) and ergonomically
  * captures USB event camera output from [most devices](#device-hardware-support), 
  * denoises -- with fast and accurate algorithms
  * displays -- with a variety of color and 2d/3d options
@@ -20,10 +20,10 @@ It [efficiently](docs/README-jaer3.md) (and ergonomically)
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
  * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
 
-It can record your datasets and serve recorded or live event sensor output to 
- * your favorite DNN (File → Remote → **DNN shared memory output…**, filter [`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
- * [OpenCV](https://opencv.org/) as a camera (File → Remote → **OpenCV camera output…**, filter [`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java); `cv2.VideoCapture("http://127.0.0.1:8090/video.mjpg")`). Linux Cheese/Zoom: check **publishV4l2**, overlay `/dev/video10 open`; Cheese via [`scripts/cheese-jaer.sh`](scripts/cheese-jaer.sh).
- * or a robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/) back-end (File → Remote → ROS2 / Foxglove frame output…; Foxglove Studio connects to `ws://127.0.0.1:8765` with no ROS2 install).
+Use it to setup your sensors, record and inspect your datasets, and serve recorded or live event sensor output via File → Remote to
+ * your favorite DNN over **super efficient shared memory** ([`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
+ * [OpenCV](https://opencv.org/) as a camera (File → Remote → **OpenCV camera output…** ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java)).
+ * or a robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/).
 
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
@@ -44,7 +44,7 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
 Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…. 
 
-* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium. `ant run` from a git clone needs [JDK 25+](https://adoptium.net/). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
+* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. A git clone needs [JDK 25+](https://adoptium.net/) to compile (`javac` target 25) and to `ant run`. See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
 * you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 
 
@@ -139,7 +139,7 @@ To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/doc
 
 jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works well for navigation, edits, and agents if you treat **Ant as the source of truth for builds**.
 
-1. **Install a JDK 25+** (for example [Eclipse Temurin](https://adoptium.net/)) and [Apache Ant](https://ant.apache.org/), both on your `PATH`. `javac` still targets 21; `ant run` needs 25+ for `-XX:+UseCompactObjectHeaders`.
+1. **Install a JDK 25+** (for example [Eclipse Temurin](https://adoptium.net/)) and [Apache Ant](https://ant.apache.org/), both on your `PATH`. `javac.source`/`target` is **25**. `ant check-jdk` fails with Adoptium install URLs if the JVM is older.
 2. **Install the Java extension in Cursor / VS Code.** Prefer Microsoft’s [Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) (or at least [Language Support for Java](https://marketplace.visualstudio.com/items?itemName=redhat.java)). Without it, Java navigation, launch configs, and agent context are much weaker.
 3. Open the repo root as the workspace. First-time build:
 
