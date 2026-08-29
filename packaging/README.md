@@ -8,6 +8,6 @@ Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_
 | [winget](winget/) | YAML ready for 3.2.0; hold winget-pkgs PR | `SensorsINI.jAER` — SHA256 filled; first public package is signed **3.3.0**; `wingetcreate submit` when that media is on GitHub |
 | [Homebrew cask](homebrew/) | Cask ready (Intel + Apple Silicon) | Confirm DMG `.app` path on a Mac; publish `SensorsINI/homebrew-jaer` when ready; later `homebrew/cask` |
 | Linux apt / `.deb` | Optional later | [deb/](deb/) — USB cameras need a normal OS process, not snap/flatpak |
-| macOS notarization | Optional later | [macos-notarization.md](macos-notarization.md) |
+| macOS notarization | Individual enrollment in progress | [macos-notarization.md](macos-notarization.md) |
 
 Package-manager installs should drop a marker file named `.jaer-packaged-install` in the jAER installation directory so the in-app **Download and install** button is hidden. Those users run `winget upgrade SensorsINI.jAER` or `brew upgrade --cask jaer`.

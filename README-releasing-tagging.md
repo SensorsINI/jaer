@@ -271,9 +271,9 @@ Output: currentInstallers/<VERSION.txt>/jAER_windows-x64_*.exe
 
 Package-manager trees should include a `.jaer-packaged-install` marker file so Help → Check for release updates does not offer Download and install.
 
-## macOS notarization (deferred)
+## macOS notarization
 
-Unsigned DMGs and user-folder installs remain the supported Mac path. Developer ID + notarization notes: packaging/macos-notarization.md.
+Unsigned DMGs and user-folder installs remain the supported Mac path until membership is Active and install4j is wired. Individual Apple Developer Program (not org): [packaging/macos-notarization.md](packaging/macos-notarization.md).
 
 ## Build notes
 
