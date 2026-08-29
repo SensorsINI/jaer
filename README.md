@@ -20,10 +20,10 @@ It [efficiently](docs/README-jaer3.md) and ergonomically
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
  * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
 
-Use it to setup your sensors, record and inspect your datasets, and serve recorded or live event sensor output via File → Remote to
+Use it to setup your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote** to
  * your favorite DNN over **super efficient shared memory** ([`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
- * [OpenCV](https://opencv.org/) as a camera (File → Remote → **OpenCV camera output…** ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java)).
- * or a robot running [ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/).
+ * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java))); on linux Zoom/Google Meet.
+ * or to a robot as a **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** publisher.
 
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
