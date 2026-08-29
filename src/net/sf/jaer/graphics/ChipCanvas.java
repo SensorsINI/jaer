@@ -50,6 +50,7 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLCapabilities;
+import com.jogamp.opengl.GLContext;
 import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.GLProfile;
@@ -2559,6 +2560,72 @@ public class ChipCanvas implements GLEventListener, Observer {
     @Override
     public void dispose(final GLAutoDrawable arg0) {
         log.fine("disposing " + arg0);
+        disposeGlTextResources();
+    }
+
+    /**
+     * Frees JOGL {@link TextRenderer} glyph textures for this canvas's GL
+     * context. Requires that context to be current. Idempotent.
+     */
+    private void disposeGlTextResources() {
+        DrawGL.disposeCurrentContextRenderers();
+        if (renderer != null) {
+            try {
+                renderer.dispose();
+            } catch (RuntimeException e) {
+                log.log(Level.FINE, "ChipCanvas TextRenderer.dispose: {0}", e.toString());
+            }
+            renderer = null;
+        }
+        if (spikeMarkerTextRenderer != null) {
+            try {
+                spikeMarkerTextRenderer.dispose();
+            } catch (RuntimeException e) {
+                log.log(Level.FINE, "spike-marker TextRenderer.dispose: {0}", e.toString());
+            }
+            spikeMarkerTextRenderer = null;
+        }
+    }
+
+    /**
+     * Makes {@code canvas}'s context current if needed, then
+     * {@link #disposeGlTextResources()}.
+     */
+    private void disposeGlTextResourcesOnCanvas(final GLCanvas canvas) {
+        if (canvas == null) {
+            return;
+        }
+        final GLContext ctx = canvas.getContext();
+        if (ctx == null) {
+            return;
+        }
+        final GLContext previous = GLContext.getCurrent();
+        boolean madeCurrent = false;
+        try {
+            if (previous != ctx) {
+                ctx.makeCurrent();
+                madeCurrent = true;
+            }
+            disposeGlTextResources();
+        } catch (GLException e) {
+            DrawGL.forgetContext(ctx);
+            log.log(Level.FINE, "GL TextRenderer dispose skipped: {0}", e.toString());
+        } finally {
+            if (madeCurrent) {
+                try {
+                    ctx.release();
+                } catch (GLException e) {
+                    log.log(Level.FINE, "GLContext.release: {0}", e.toString());
+                }
+                if (previous != null && previous != ctx) {
+                    try {
+                        previous.makeCurrent();
+                    } catch (GLException e) {
+                        log.log(Level.FINE, "restore GLContext: {0}", e.toString());
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -2614,6 +2681,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         log.fine("destroying GLCanvas " + glCanvas);
+        disposeGlTextResourcesOnCanvas(glCanvas);
         try {
             glCanvas.removeGLEventListener(this);
         } catch (final Exception e) {
