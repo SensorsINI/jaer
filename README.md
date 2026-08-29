@@ -34,7 +34,7 @@ Use it to setup your sensors, record and inspect your datasets, and serve record
 
 You can find the latest releases and binary [install4j](https://www.ej-technologies.com/products/install4j/overview.html) installers at <https://github.com/SensorsINI/jaer/releases>. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
-**Installers are GitHub Release assets** (~200 MB each for 3.3.0, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.3.0 is Temurin **25**; 3.2.0 was Temurin 21). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
+**Installers are GitHub Release assets** (~250 MB each for release 3.3+, with bundled [Eclipse Temurin](https://adoptium.net/) JRE). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
 
  * **Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu. Official apt is not provided (USB cameras need an unsandboxed install); optional `.deb` notes are in [`packaging/deb`](packaging/deb).
 
