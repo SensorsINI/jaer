@@ -24,7 +24,7 @@
 | macOS | Intel | [jAER_macos_3_4_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.4.0/jAER_macos_3_4_0.dmg) |
 | Linux | x64 | [jAER_unix_3_4_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.4.0/jAER_unix_3_4_0.sh) |
 
-Each installer is ~200 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.3.0) — you do not install Java yourself. OpenCV and JOGL natives are per-OS in the installer (the fat jar stays in git clones for `ant run`). GitHub lists the same files again under **Assets** at the bottom of this page. To clone and `ant run`, install [Adoptium JDK 25+](https://adoptium.net/) (`javac` still targets 21).
+Each installer is ~200 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.3.0) — you do not install Java yourself. OpenCV and JOGL natives are per-OS in the installer (the fat jar stays in git clones for `ant run`). GitHub lists the same files again under **Assets** at the bottom of this page. To clone and `ant run`, install [Adoptium JDK 25+](https://adoptium.net/) (`javac` target 25).
 
 Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY) (also covers *git clone* and rebuild from master).
 

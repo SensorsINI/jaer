@@ -1,6 +1,6 @@
 # WIP: GitHub Actions / Java runtime upgrades
 
-Status: **partial** — SignPath Windows workflow uses current action majors; compile target still Java 21.
+Status: **partial** — SignPath Windows workflow uses current action majors. `javac` target is **25** (same as the bundled JRE).
 
 ## Done (this pass)
 
@@ -13,7 +13,7 @@ Status: **partial** — SignPath Windows workflow uses current action majors; co
 
 ## Still open
 
-1. **JDK 25 installer bundle** — done for **3.3.0** (`install4j/jaer.install4j` `release="25/jdk-25.0.4+7"`; CI `setup-java` 25). `javac` still targets 21. 3.2.0 media stays Temurin 21.
+1. **JDK 25 installer bundle and javac target** — done (`install4j/jaer.install4j` `release="25/jdk-25.0.4+7"`; CI `setup-java` 25; `nbproject/project.properties` `javac.source`/`target` 25). 3.2.0 media stays Temurin 21.
 2. **Other Actions** — when adding more workflows, prefer Node-24-based majors (`checkout@v5`, `setup-java@v5`, `upload-artifact@v7+`). Third-party actions (install4j setup, SignPath) may lag; pin and revisit.
 3. **install4j on CI** — currently pinned to **13.0.2** to match local; bump when upgrading the desktop install4j license install.
 
