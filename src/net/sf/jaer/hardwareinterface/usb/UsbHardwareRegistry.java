@@ -52,7 +52,7 @@ public final class UsbHardwareRegistry {
             log.warning(String.format("USB VID/PID %04x:%04x remapped from %s to %s",
                     vid & 0xffff, pid & 0xffff, prev.getSimpleName(), hiClass.getSimpleName()));
         } else if (prev == null) {
-            log.info(String.format("USB VID/PID %04x:%04x → %s",
+            log.fine(String.format("USB VID/PID %04x:%04x → %s",
                     vid & 0xffff, pid & 0xffff, hiClass.getSimpleName()));
         }
     }

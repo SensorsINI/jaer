@@ -201,7 +201,7 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
             try {
                 HotPixelSet hotPixelSet = (HotPixelSet) f.getObject("HotPixelSet", new HotPixelSet());
                 if (hotPixelSet.isEmpty()) {
-                    f.log.info("no hot pixels loaded");
+                    f.log.fine("no hot pixels loaded");
                 } else {
                     clear();
                     for (final HotPixel hotPixel : hotPixelSet) {

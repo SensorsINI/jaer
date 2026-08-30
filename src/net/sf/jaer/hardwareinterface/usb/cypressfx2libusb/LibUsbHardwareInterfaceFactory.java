@@ -20,6 +20,7 @@ import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
 
 /**
@@ -89,34 +90,14 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
         UsbHardwareRegistry.instance().register(VID, PID, cls);
-        log.info(String.format("Put mapping from USB VID/PID=0x%x/0x%x to class %s", VID, PID, cls));
+        log.fine(String.format("Put mapping from USB VID/PID=0x%x/0x%x to class %s", VID, PID, cls));
         LibUsbHotplug.register(VID, PID);
     }
 
     private void refreshCompatibleDevicesList() {
         // Temporary storage to allow modification.
         final List<Device> tmpDrain = new ArrayList<>(buildCompatibleDevicesList());
-
-        // Replace with new data in a non-destructive way, by not touching
-        // values that were already present.
-        final List<Device> removals = new ArrayList<>();
-
-        for (final Device element : compatibleDevicesList) {
-            if (tmpDrain.contains(element)) {
-                tmpDrain.remove(element);
-            } else {
-                removals.add(element);
-                LibUsb.unrefDevice(element);
-            }
-        }
-
-        // Remove all items that need to be deleted and add all the new ones in
-        // only one call each.
-        compatibleDevicesList.removeAll(removals);
-        compatibleDevicesList.addAll(tmpDrain);
-
-        // Consume newContent fully.
-        tmpDrain.clear();
+        UsbIds.mergeLibUsbDeviceScan(compatibleDevicesList, tmpDrain);
     }
 
     private List<Device> buildCompatibleDevicesList() {

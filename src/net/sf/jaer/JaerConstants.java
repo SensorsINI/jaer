@@ -82,6 +82,7 @@ public class JaerConstants {
     public static final String HELP_URL_INIVATION_AEDAT4_DATA = "https://release.inivation.com/?prefix=datasets/";
     /** Prophesee / Metavision sample recordings and datasets (RAW EVT2/EVT3, HDF5, DAT). */
     public static final String HELP_URL_PROPHESEE_SAMPLE_DATA = "https://docs.prophesee.ai/stable/datasets.html#chapter-datasets";
+    private static boolean loggedVersionInfoAlready=false;
     
     public static final String getBuildVersion(){
         // when running from webstart  we are not allowed to open a file on the local file system, but we can
@@ -97,7 +98,10 @@ public class JaerConstants {
                     StringWriter writer=new StringWriter();
                     IOUtils.copy((InputStream)urlContents, writer, "UTF-8");
                     String version=writer.toString();
-                    log.info("found version "+version);
+                    if(!loggedVersionInfoAlready){
+                        log.info("found version "+version);
+                        loggedVersionInfoAlready = true;
+                    }
                     return version;
                 }
                 return "(version not found)";
