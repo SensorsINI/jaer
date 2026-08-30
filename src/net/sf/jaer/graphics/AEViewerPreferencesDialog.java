@@ -822,10 +822,11 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         p.add(maxRecentFoldersSpinner, gbcField(y++));
 
         exitCompletelyWithXCB = new JCheckBox("Exit completely with 'x'");
-        exitCompletelyWithXCB.setToolTipText("<html>When several AEViewer windows are open, the <b>x</b> accelerator "
-                + "exits jAER instead of closing only this window.<br>"
+        exitCompletelyWithXCB.setToolTipText("<html>Applies only to the <b>x</b> key, not File → Exit.<br>"
+                + "When several AEViewer windows are open, <b>x</b> exits jAER instead of closing only this window.<br>"
                 + "Offered the first time you press <b>x</b> with multiple windows.<br>"
-                + "Later exits with several windows still ask you to confirm that all AEViewers will close.");
+                + "Later <b>x</b> exits with several windows still ask you to confirm that all AEViewers will close.<br>"
+                + "File → Exit always quits jAER immediately, with no confirmation.");
         exitCompletelyWithXCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
