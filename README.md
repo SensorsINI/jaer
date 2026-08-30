@@ -187,4 +187,4 @@ See also
 
 ![CapoCaccia Neuromorphic workshop 2021 Hotel dei Pini Hotel bar scene with DAVIS240C](/images/HotelBarDavis.png) 
  
-*A snapshot of 2011 CapoCaccia Neuromorphic Workshop hotel bar activity, showing a frame with its exposure histogram, some colored events from moving people, and an event rate trace over time. Grab [this recording](https://drive.google.com/file/d/1aSuNESuf5KkmQ1HiYGYrzc-jty_zqMGu/view?usp=drive_link) from the [DAVIS24](https://sites.google.com/view/davis24-davis-sample-data/home) dataset.*
+*A snapshot of 2011 CapoCaccia Neuromorphic Workshop hotel bar activity, showing a frame with its exposure histogram, some colored events from moving people, and an event rate trace over time. Grab [this recording](https://drive.google.com/file/d/1aSuNESuf5KkmQ1HiYGYrzc-jty_zqMGu/view?usp=drive_link) from the [DAVIS24](https://sites.google.com/view/davis24-davis-sample-data/home) dataset. It has about 700k events and 700 frames over the 900s (15m) duration.*
