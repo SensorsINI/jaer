@@ -184,7 +184,6 @@ Please use our GitHub bug tracker to report issues and bugs, or our Google Group
 
 See also
 * **DAVIS-USERS user forum:** https://groups.google.com/forum/#!forum/davis-users
-* **inivation support pages:** https://inivation.com/support/
 
 ![CapoCaccia Neuromorphic workshop 2021 Hotel dei Pini Hotel bar scene with DAVIS240C](/images/HotelBarDavis.png) 
  
