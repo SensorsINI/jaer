@@ -588,6 +588,16 @@ public final class UsbEnumerationSafetyDemo {
         String src = Files.readString(viewer, StandardCharsets.UTF_8);
         require(src.contains("prefs.getBoolean(\"rememberLastInterface\", true)"),
                 "Remember last interface defaults to true");
+        require(src.contains("EVENT_REMEMBER_LAST_INTERFACE"),
+                "Remember last interface is a PropertyChange so all AEViewers stay in sync");
+        require(src.contains("if (old == rememberLastInterface)"),
+                "Remember last interface setter no-ops when unchanged (no PropertyChange loop)");
+        String jvSync = Files.readString(Paths.get("src", "net", "sf", "jaer", "JAERViewer.java"),
+                StandardCharsets.UTF_8);
+        require(jvSync.contains("EVENT_REMEMBER_LAST_INTERFACE, viewer"),
+                "new AEViewer listens to siblings for Remember last interface");
+        require(jvSync.contains("removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE"),
+                "closed AEViewer is removed from Remember last interface listeners");
         require(src.contains("ViewerInterfaceBindingMap"),
                 "last camera is stored in the tmpdir map, not Preferences");
         require(src.contains("bindRememberedInterfaceIfPossible"),
