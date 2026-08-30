@@ -8,168 +8,36 @@
  */
 package net.sf.jaer.eventprocessing;
 
-import java.awt.BorderLayout;
-import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Window;
-import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
 
-import javax.swing.AbstractAction;
-import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JEditorPane;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
-import javax.swing.text.html.HTMLDocument;
 
-import net.sf.jaer.util.HtmlHelpStyle;
+import net.sf.jaer.util.HtmlHelpFrame;
 
 /**
- * Nonmodal HTML help dialog for an {@link EventFilter}. URLs in {@code <a href>}
- * are opened with the system browser. Relative {@code <img src>} / {@code href}
- * (e.g. {@code pig.png} next to the filter class) resolve against the class
- * package on the classpath.
+ * Nonmodal HTML help for an {@link EventFilter}. Uses {@link HtmlHelpFrame}
+ * type-to-search. Relative {@code <img src>} / {@code href} resolve against the
+ * filter class package.
  *
- * @author tobi
  * @see EventFilter#showHelpDialog()
  * @see net.sf.jaer.Help
  */
-public class EventFilterHelpDialog extends JDialog {
+public class EventFilterHelpDialog extends HtmlHelpFrame {
 
     private static final long serialVersionUID = 1L;
-    private static final int PREFERRED_WIDTH = 640;
-    private static final int PREFERRED_HEIGHT = 520;
-    private final EventFilter filter;
 
     public EventFilterHelpDialog(Window parent, EventFilter filter, String html) {
-        super(parent, "Help — " + filter.getClass().getSimpleName(), ModalityType.MODELESS);
-        this.filter = filter;
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
-        JEditorPane pane = new JEditorPane();
-        pane.setEditable(false);
-        pane.setContentType("text/html");
-        URL base = packageBaseUrl(filter.getClass());
-        if (base != null && pane.getDocument() instanceof HTMLDocument) {
-            ((HTMLDocument) pane.getDocument()).setBase(base);
-        }
-        pane.setText(wrapHtml(html));
-        HtmlHelpStyle.apply(pane);
-        pane.setCaretPosition(0);
-        pane.addHyperlinkListener(new HyperlinkListener() {
-            @Override
-            public void hyperlinkUpdate(HyperlinkEvent e) {
-                if (e.getEventType() != HyperlinkEvent.EventType.ACTIVATED) {
-                    return;
-                }
-                if (!Desktop.isDesktopSupported() || e.getURL() == null) {
-                    return;
-                }
-                try {
-                    URL url = e.getURL();
-                    if ("file".equalsIgnoreCase(url.getProtocol())) {
-                        Desktop.getDesktop().open(new File(url.toURI()));
-                    } else {
-                        Desktop.getDesktop().browse(url.toURI());
-                    }
-                } catch (IOException | URISyntaxException ex) {
-                    JOptionPane.showMessageDialog(EventFilterHelpDialog.this, ex.toString(), "Could not open link",
-                            JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-
-        JScrollPane scroll = HtmlHelpStyle.createZoomingScrollPane(pane);
-        scroll.setPreferredSize(new Dimension(PREFERRED_WIDTH, PREFERRED_HEIGHT));
-        HtmlHelpStyle.installZoom(getRootPane(), pane);
-
-        JButton close = new JButton("Close");
-        close.addActionListener(e -> dispose());
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttons.add(close);
-
-        getContentPane().setLayout(new BorderLayout(0, 0));
-        getContentPane().add(scroll, BorderLayout.CENTER);
-        getContentPane().add(buttons, BorderLayout.SOUTH);
-
-        getRootPane().setDefaultButton(close);
+        super("Help — " + filter.getClass().getSimpleName(), parent,
+                "EventFilterHelp-" + filter.getClass().getSimpleName(), 640, 520);
+        setDocumentBase(packageBaseUrl(filter.getClass()));
+        setHtml(html);
+        setToggleHandler(filter::toggleHelpDialog);
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "close-help");
-        getRootPane().getActionMap().put("close-help", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                dispose();
-            }
-        });
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_SLASH, InputEvent.SHIFT_DOWN_MASK), "toggle-html-help");
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "toggle-help");
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke(KeyEvent.VK_SLASH, InputEvent.SHIFT_DOWN_MASK), "toggle-help");
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke('?'), "toggle-help");
-        getRootPane().getActionMap().put("toggle-help", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                EventFilterHelpDialog.this.filter.toggleHelpDialog();
-            }
-        });
-
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowOpened(WindowEvent e) {
-                pane.setCaretPosition(0);
-            }
-        });
-
-        pack();
-        setLocationRelativeTo(parent);
-        setMinimumSize(new Dimension(360, 240));
-    }
-
-    /**
-     * Directory URL of {@code clazz} on the classpath (folder or jar entry),
-     * so relative Help resources like {@code pig.png} resolve.
-     */
-    static URL packageBaseUrl(Class<?> clazz) {
-        URL classUrl = clazz.getResource(clazz.getSimpleName() + ".class");
-        if (classUrl == null) {
-            return null;
-        }
-        try {
-            String s = classUrl.toExternalForm();
-            int cut = s.lastIndexOf('/');
-            if (cut < 0) {
-                return null;
-            }
-            return new URL(s.substring(0, cut + 1));
-        } catch (MalformedURLException e) {
-            return null;
-        }
-    }
-
-    private static String wrapHtml(String html) {
-        if (html == null) {
-            html = "";
-        }
-        String trimmed = html.trim();
-        if (trimmed.regionMatches(true, 0, "<html", 0, 5)) {
-            return trimmed;
-        }
-        return "<html><body>" + trimmed + "</body></html>";
+                .put(KeyStroke.getKeyStroke('?'), "toggle-html-help");
     }
 }

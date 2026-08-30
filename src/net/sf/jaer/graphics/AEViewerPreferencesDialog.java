@@ -57,7 +57,9 @@ import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.UiInteractionLog;
+import net.sf.jaer.util.ViewerInterfaceBindingMap;
 import net.sf.jaer.util.WindowSaver;
 
 /**
@@ -135,6 +137,16 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox rememberLastInterfaceCB;
     private JCheckBox collectUsageDataCB;
+    private JCheckBox remoteControlEnabledCB;
+    private JLabel remoteControlRestartHint;
+    private JSpinner remoteControlViewerPortSpinner;
+    private JSpinner remoteControlChipPortSpinner;
+    private JLabel remoteControlSessionLabel;
+    private JButton remoteControlHelpButton;
+    private AEViewerQuickHelpFrame remoteControlHelpDialog;
+    private boolean remoteControlSnapEnabled;
+    private int remoteControlSnapViewerPort;
+    private int remoteControlSnapChipPort;
     private JComboBox<HtmlHelpStyle.HelpFontFamily> helpFontFamilyCB;
     private JSpinner helpFontSizeSpinner;
 
@@ -168,6 +180,11 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 refreshFromViewer();
                 applyPreferenceSearch();
             }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                maybeWarnRemoteControlRestart();
+            }
         });
     }
 
@@ -190,6 +207,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         closeButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                maybeWarnRemoteControlRestart();
                 setVisible(false);
             }
         });
@@ -261,6 +279,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         content.add(buildPlaybackSection());
         content.add(Box.createVerticalStrut(8));
         content.add(buildInterfaceSection());
+        content.add(Box.createVerticalStrut(8));
+        content.add(buildRemoteControlSection());
         content.add(Box.createVerticalStrut(8));
         content.add(buildDiagnosticsSection());
         content.add(Box.createVerticalGlue());
@@ -1011,7 +1031,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JPanel buildInterfaceSection() {
         JPanel p = titledSection("Interface");
         rememberLastInterfaceCB = new JCheckBox("Remember last interface selected");
-        rememberLastInterfaceCB.setToolTipText("Remember the last selected hardware interface and reopen it automatically if found");
+        rememberLastInterfaceCB.setToolTipText("Reopen this window's last USB camera on restart. Mapping is "
+                + ViewerInterfaceBindingMap.file().getAbsolutePath());
         rememberLastInterfaceCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -1023,6 +1044,135 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(rememberLastInterfaceCB, gbc(0));
         return p;
+    }
+
+    private JPanel buildRemoteControlSection() {
+        JPanel p = titledSection("Remote control");
+        int y = 0;
+
+        JPanel enableRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        enableRow.setOpaque(false);
+        remoteControlEnabledCB = new JCheckBox("Enable UDP remote control");
+        remoteControlEnabledCB.setToolTipText("Opens UDP sockets for AEViewer and the current AEChip. Off by default.");
+        remoteControlRestartHint = new JLabel("(restart required)");
+        remoteControlEnabledCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                RemoteControl.setEnabledPref(remoteControlEnabledCB.isSelected());
+                updateRemoteControlRestartHint();
+                if (remoteControlHelpDialog != null && remoteControlHelpDialog.isVisible()) {
+                    remoteControlHelpDialog.setHtml(viewer.getRemoteControlHelpHtml());
+                }
+            }
+        });
+        enableRow.add(remoteControlEnabledCB);
+        enableRow.add(remoteControlRestartHint);
+        p.add(enableRow, gbc(y++));
+
+        p.add(new JLabel("AEViewer UDP port:"), gbcLabel(y));
+        remoteControlViewerPortSpinner = new JSpinner(new SpinnerNumberModel(RemoteControl.PORT_DEFAULT_VIEWER, 1, 65535, 1));
+        remoteControlViewerPortSpinner.setToolTipText("UDP port for this AEViewer. Change takes effect after restart.");
+        remoteControlViewerPortSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                RemoteControl.setViewerPortPref(((Number) remoteControlViewerPortSpinner.getValue()).intValue());
+            }
+        });
+        p.add(remoteControlViewerPortSpinner, gbcField(y++));
+
+        p.add(new JLabel("AEChip UDP port:"), gbcLabel(y));
+        remoteControlChipPortSpinner = new JSpinner(new SpinnerNumberModel(RemoteControl.PORT_DEFAULT, 1, 65535, 1));
+        remoteControlChipPortSpinner.setToolTipText("UDP port for the current AEChip (biases and chip commands). Change takes effect after restart.");
+        remoteControlChipPortSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                RemoteControl.setChipPortPref(((Number) remoteControlChipPortSpinner.getValue()).intValue());
+            }
+        });
+        p.add(remoteControlChipPortSpinner, gbcField(y++));
+
+        remoteControlSessionLabel = new JLabel(" ");
+        p.add(remoteControlSessionLabel, gbc(y++));
+
+        remoteControlHelpButton = new JButton("Show remote control help");
+        remoteControlHelpButton.addActionListener(e -> toggleRemoteControlHelp());
+        p.add(remoteControlHelpButton, gbc(y++));
+
+        return p;
+    }
+
+    private void updateRemoteControlRestartHint() {
+        boolean sessionOn = viewer.getRemoteControl() != null;
+        boolean prefOn = remoteControlEnabledCB.isSelected();
+        remoteControlRestartHint.setVisible(!prefOn);
+        String session;
+        if (sessionOn) {
+            RemoteControl viewerRc = viewer.getRemoteControl();
+            RemoteControl chipRc = viewer.getChip() != null ? viewer.getChip().getRemoteControl() : null;
+            session = "<html>This session:<br>"
+                    + "AEViewer " + viewerRc + "<br>"
+                    + (chipRc != null ? "chip " + chipRc : "chip not listening") + "</html>";
+        } else {
+            session = "<html>This session:<br>remote control is not running.</html>";
+        }
+        remoteControlSessionLabel.setText(session);
+    }
+
+    private void toggleRemoteControlHelp() {
+        if (remoteControlHelpDialog != null && remoteControlHelpDialog.isDisplayable()
+                && remoteControlHelpDialog.isVisible()) {
+            remoteControlHelpDialog.setVisible(false);
+            return;
+        }
+        if (remoteControlHelpDialog == null || !remoteControlHelpDialog.isDisplayable()) {
+            remoteControlHelpDialog = new AEViewerQuickHelpFrame(viewer, "Help — Remote control");
+            remoteControlHelpDialog.setToggleHandler(this::toggleRemoteControlHelp);
+            remoteControlHelpDialog.setHiddenHandler(this::syncRemoteControlHelpButton);
+        }
+        remoteControlHelpDialog.setHtml(viewer.getRemoteControlHelpHtml());
+        remoteControlHelpDialog.setVisible(true);
+        syncRemoteControlHelpButton();
+    }
+
+    private void syncRemoteControlHelpButton() {
+        boolean shown = remoteControlHelpDialog != null && remoteControlHelpDialog.isDisplayable()
+                && remoteControlHelpDialog.isVisible();
+        if (remoteControlHelpButton != null) {
+            remoteControlHelpButton.setText(shown ? "Hide remote control help" : "Show remote control help");
+        }
+    }
+
+    private void snapshotRemoteControlPrefs() {
+        remoteControlSnapEnabled = RemoteControl.isEnabledPref();
+        remoteControlSnapViewerPort = RemoteControl.getViewerPortPref();
+        remoteControlSnapChipPort = RemoteControl.getChipPortPref();
+    }
+
+    private void maybeWarnRemoteControlRestart() {
+        boolean enabled = RemoteControl.isEnabledPref();
+        int viewerPort = RemoteControl.getViewerPortPref();
+        int chipPort = RemoteControl.getChipPortPref();
+        if (enabled == remoteControlSnapEnabled
+                && viewerPort == remoteControlSnapViewerPort
+                && chipPort == remoteControlSnapChipPort) {
+            return;
+        }
+        remoteControlSnapEnabled = enabled;
+        remoteControlSnapViewerPort = viewerPort;
+        remoteControlSnapChipPort = chipPort;
+        JOptionPane.showMessageDialog(this,
+                "Remote control enable or port changes take effect after you restart jAER.",
+                "Restart required",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JPanel buildDiagnosticsSection() {
@@ -1112,6 +1262,16 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
+
+            snapshotRemoteControlPrefs();
+            remoteControlEnabledCB.setSelected(RemoteControl.isEnabledPref());
+            remoteControlViewerPortSpinner.setValue(RemoteControl.getViewerPortPref());
+            remoteControlChipPortSpinner.setValue(RemoteControl.getChipPortPref());
+            updateRemoteControlRestartHint();
+            if (remoteControlHelpDialog != null && remoteControlHelpDialog.isVisible()) {
+                remoteControlHelpDialog.setHtml(viewer.getRemoteControlHelpHtml());
+            }
+            syncRemoteControlHelpButton();
 
             collectUsageDataCB.setSelected(UiInteractionLog.isEnabled());
 

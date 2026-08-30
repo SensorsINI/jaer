@@ -67,6 +67,7 @@ import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -186,11 +187,12 @@ import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
+import net.sf.jaer.hardwareinterface.usb.SessionCameraOpenCoordinator;
+import net.sf.jaer.hardwareinterface.usb.UsbOpenTrace;
 import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.WindowsUsbPollSchedule;
 import net.sf.jaer.hardwareinterface.usb.WinUsbDriverHelp;
-import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
@@ -212,6 +214,7 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.VendorPrefsMigration;
+import net.sf.jaer.util.ViewerInterfaceBindingMap;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.avioutput.ExportVideoDialog;
@@ -486,8 +489,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Nonmodal Help → Quick help / Shortcuts window (F1). */
     private AEViewerQuickHelpFrame quickHelpFrame;
 
-    private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
+    private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", true);
+    /** False for File→New and other extra windows: WAITING must not grab leftover cameras. */
+    private volatile boolean autobindOnWaiting = true;
     private String rememberLastInterfaceDeviceID = null;
+    /** USB serial from a successful open, if the device exposes one. */ 
+    private String rememberLastInterfaceSerial = null;
     /** Session keys for live USB chip-offer dialogs already shown this run. */
     private final java.util.HashSet<String> liveChipOfferPromptedKeys = new java.util.HashSet<>();
 
@@ -507,6 +514,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Davis346red.class.getName(),
         Davis346redColor.class.getName(),
         Davis346blue.class.getName(),
+        SciDVS.class.getName(),
         DVXplorer.class.getName(),
         //        CochleaAMS1c.class.getName(),
         DVS640.class.getName(),
@@ -569,7 +577,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Max wait for worker-thread {@code aemon.open()} on FX3/Davis (claim is fast;
      * biases are sent off-thread).
      */
-    private static final long HARDWARE_OPEN_WAIT_MS = 8_000L;
+    /** Wait for this camera's {@code open()} plus config after the USB open
+     * serializer is held. Sibling cameras queue; they do not overlap libusb. */
+    private static final long HARDWARE_OPEN_WAIT_MS = 25_000L;
     /** Prophesee ISSD includes ~2.5 s sleeps plus many USB register writes. */
     private static final long HARDWARE_OPEN_WAIT_PROPHESEE_MS = 45_000L;
     /**
@@ -740,9 +750,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControlPanel.add(playerControls, BorderLayout.NORTH);
         this.jaerViewer = jaerViewer;
         if (jaerViewer != null) {
+            // File → New (and other extra windows) wait for Interface; only
+            // session restore / first window autobind leftover cameras.
+            autobindOnWaiting = jaerViewer.isRestoringSessionViewers()
+                    || jaerViewer.getViewers().isEmpty();
             // all stuff having to do with synchronizing player buttons here, binding components
             // TODO rework binding of jAERViewer player, AEViewer player, and player GUI. The whole MVC idea is too convoluted now.
             jaerViewer.addViewer(this); // register ourselves; assigns AEViewer-N name for WindowSaver
+            if (!autobindOnWaiting) {
+                nullInterface = true;
+                log.info(getViewerWindowLabel()
+                        + " waiting for Interface menu (not autobinding leftover cameras)");
+            }
+            loadRememberedInterfaceBinding();
             if (jaerViewer.getSyncPlayer() != null) {
                 // now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
                 playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
@@ -752,7 +772,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         } else {
+            autobindOnWaiting = true;
             setViewerInstanceIndex(0);
+            loadRememberedInterfaceBinding();
         }
         validate();
 
@@ -915,7 +937,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("could register help item: " + e.toString());
         }
 
-        HardwareInterfaceFactory.instance().buildInterfaceList(); // once only to start
+        // Do not rescan USB when other viewers are already LIVE (WinUSB getDeviceList
+        // can stall streaming). First window of a session fills the cache.
+        if (HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable() == 0) {
+            HardwareInterfaceFactory.instance().buildInterfaceList();
+        }
         buildInterfaceMenu();
         buildDeviceMenu();
         // Prefer remembered live AEChip before first GLCanvas so ViewLoop does not
@@ -955,38 +981,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         LibUsbHotplug.addListener(usbHotplugListener);
         viewLoop.start();
 
-        try {
-            int remoteControlPort = REMOTE_CONTROL_PORT;
-
-            while (remoteControlPort <= (REMOTE_CONTROL_PORT + 10)) {
-                try {
-                    remoteControl = new RemoteControl(remoteControlPort);
-                } catch (SocketException e) {
-                    // Port already in use, try next.
-                    remoteControlPort++;
-                    continue;
+        if (RemoteControl.isEnabledPref()) {
+            try {
+                int remoteControlPort = RemoteControl.getViewerPortPref();
+                int lastPort = remoteControlPort + 10;
+                while (remoteControlPort <= lastPort) {
+                    try {
+                        remoteControl = new RemoteControl(remoteControlPort);
+                    } catch (SocketException e) {
+                        remoteControlPort++;
+                        continue;
+                    }
+                    break;
                 }
-
-                // Worked!
-                break;
+                if (remoteControl != null) {
+                    remoteControl.addCommandListener(this, REMOTE_START_RECORDING + " <filename>", "starts recording ae data to a file");
+                    remoteControl.addCommandListener(this, REMOTE_STOP_RECORDING, "stops recording ae data to a file");
+                    remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_RECORDING, "starts synchronized recording ae data to a set of files with aeidx filename automatically timestamped");
+                    remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "alias of startrecording");
+                    remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "alias of stoprecording");
+                    remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "alias of togglesyncrecording");
+                    remoteControl.addCommandListener(this, REMOTE_ZERO_TIMESTAMPS, "zeros timestamps on all AEViewers");
+                    remoteControl.addCommandListener(this, REMOTE_OPEN_FILE + " <filename>", "<filename> open file for playback");
+                    remoteControl.addCommandListener(this, REMOTE_PAUSE, "pause player");
+                    remoteControl.addCommandListener(this, REMOTE_PLAY, "resume player");
+                    remoteControl.addCommandListener(this, REMOTE_REWIND, "rewind player");
+                    remoteControl.addCommandListener(this, REMOTE_SET_MARK_IN + " <timestamp_us>", "set mark IN timestamp");
+                    remoteControl.addCommandListener(this, REMOTE_SET_MARK_OUT + " <timestamp_us>", "set mark OUT timestamp");
+                    log.info("created " + remoteControl + " for remote control of some AEViewer functions");
+                }
+            } catch (Exception ex) {
+                log.warning(ex.toString());
             }
-
-            remoteControl.addCommandListener(this, REMOTE_START_RECORDING + " <filename>", "starts recording ae data to a file");
-            remoteControl.addCommandListener(this, REMOTE_STOP_RECORDING, "stops recording ae data to a file");
-            remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_RECORDING, "starts synchronized recording ae data to a set of files with aeidx filename automatically timestamped");
-            remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "alias of startrecording");
-            remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "alias of stoprecording");
-            remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "alias of togglesyncrecording");
-            remoteControl.addCommandListener(this, REMOTE_ZERO_TIMESTAMPS, "zeros timestamps on all AEViewers");
-            remoteControl.addCommandListener(this, REMOTE_OPEN_FILE + " <filename>", "<filename> open file for playback");
-            remoteControl.addCommandListener(this, REMOTE_PAUSE, "pause player");
-            remoteControl.addCommandListener(this, REMOTE_PLAY, "resume player");
-            remoteControl.addCommandListener(this, REMOTE_REWIND, "rewind player");
-            remoteControl.addCommandListener(this, REMOTE_SET_MARK_IN + " <timestamp_us>", "set mark IN timestamp");
-            remoteControl.addCommandListener(this, REMOTE_SET_MARK_OUT + " <timestamp_us>", "set mark OUT timestamp");
-            log.info("created " + remoteControl + " for remote control of some AEViewer functions");
-        } catch (Exception ex) {
-            log.warning(ex.toString());
+        } else {
+            log.fine("AEViewer RemoteControl disabled (Preferences " + RemoteControl.PREF_ENABLED + "=false)");
         }
         setTitleAccordingToState();
 
@@ -1013,6 +1041,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * for other classes, e.g. Chip classes that open sockets.
      */
     private void cleanup() {
+        cleanup(false);
+    }
+
+    /**
+     * @param joinUsbClose true when this AEViewer is exiting (window close /
+     * File → Exit) so leftover windows do not get ACCESS. Chip switch must
+     * pass false — that path already closes USB off the EDT.
+     */
+    private void cleanup(boolean joinUsbClose) {
         log.fine("cleanup()");
         // Do not remove the libusb hotplug listener here. setAeChipClass() calls
         // cleanup() on every camera/chip switch; dropping the listener left
@@ -1023,18 +1060,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aePlayer.stopPlayback(false);
         }
         if (aemon != null) {
-            log.fine("closing device " + aemon + " async (USB close can hang native)");
+            log.fine("closing device " + aemon + (joinUsbClose
+                    ? " (join so leftover viewers do not get ACCESS)"
+                    : " async (USB close can hang native)"));
             final AEMonitorInterface mon = aemon;
             aemon = null;
+            long joinMs = (mon instanceof PropheseeHardwareInterface)
+                    ? HARDWARE_CLOSE_JOIN_MS : HARDWARE_CLOSE_TIMEOUT_MS;
             Thread t = new Thread(() -> {
                 try {
                     mon.close();
                 } catch (Exception e) {
-                    log.warning("async aemon.close in cleanup: " + e);
+                    log.warning("aemon.close in cleanup: " + e);
                 }
             }, "jaer-async-aemon-close");
             t.setDaemon(true);
+            hardwareCloseThread = t;
             t.start();
+            if (joinUsbClose) {
+                try {
+                    t.join(joinMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                if (t.isAlive()) {
+                    log.warning("cleanup: USB close still running after " + joinMs
+                            + " ms; remaining viewers may see ACCESS until native close finishes");
+                } else {
+                    log.info("cleanup: closed " + mon);
+                }
+            }
         }
 
         if (unicastInput != null) {
@@ -1062,6 +1117,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
     private int showMultipleInterfacesMessageCount = 0;
+    private int lastWelcomeInterfaceCount = -1;
 
     private long lastInterfaceCheckTime = 0;
     /** Last libusb ARRIVED/LEFT; empty scans retry until this window elapses. */
@@ -1075,16 +1131,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private final LibUsbHotplug.Listener usbHotplugListener = this::onLibUsbHotplug;
 
     /**
-     * If we are are the only viewer, automatically set interface to the
-     * hardware interface if there is only 1 of them and there is not already a
-     * hardware interface (e.g. StereoPairHardwareInterface which consists of
-     * two interfaces). otherwise force user choice.
+     * Bind a remembered camera (tmpdir map) or the sole interface when this is
+     * the only viewer. Multiple AEViewers reopen the cameras they last used.
      */
     private void openHardwareIfNonambiguous() {
         // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
         //        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners
         // check to see if null interface required instead
+        if (!SessionCameraOpenCoordinator.mayOpenUsb(this)) {
+            return;
+        }
         if (nullInterface) {
             log.fine("openHardwareIfNonambiguous skipped (nullInterface; Interface → None or failed ACCESS open)");
             return;
@@ -1121,17 +1178,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
             log.fine("hotplug scan found 0 devices; will retry on next WAITING tick");
         }
-        if (ninterfaces > 1) {
-            if (isRememberLastInterface() && rememberLastInterfaceDeviceID != null) {
-                log.info(String.format("Last interface was %s; %d devices present — pick one from the Interface menu (no USB open to match serial)",
-                        rememberLastInterfaceDeviceID, ninterfaces));
-            } else {
-                if ((showMultipleInterfacesMessageCount++ % 100) == 0) {
-                    log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
-                }
-            }
+        boolean bound = bindRememberedInterfaceIfPossible(ninterfaces);
+        if (!bound) {
+            bound = bindUnambiguousInterfaceIfPossible(ninterfaces);
         }
-        bindUnambiguousInterfaceIfPossible(ninterfaces);
+        if (!bound && ninterfaces > 1 && (showMultipleInterfacesMessageCount++ % 100) == 0) {
+            log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
+        }
+        if (getPlayMode() == PlayMode.WAITING && ninterfaces != lastWelcomeInterfaceCount) {
+            lastWelcomeInterfaceCount = ninterfaces;
+            SwingUtilities.invokeLater(this::showWelcomeOverlay);
+        }
     }
 
     /** Sorted unopened labels for Windows poll-schedule reset; does not {@code LibUsb.open}. */
@@ -1143,8 +1200,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String[] labels = new String[ninterfaces];
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
-            String type = hw != null ? hw.getClass().getSimpleName() : null;
-            labels[i] = UsbIds.unopenedLabel(hw, type);
+            labels[i] = UsbIds.enumerationKey(hw);
         }
         Arrays.sort(labels);
         return String.join(", ", labels);
@@ -1168,10 +1224,324 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (LibUsbHotplug.isSupported()) {
             return;
         }
+        if (!SessionCameraOpenCoordinator.mayOpenUsb(this)) {
+            return;
+        }
         resetWindowsUsbPoll("window focus gained");
         if (viewLoop != null && getPlayMode() == PlayMode.WAITING) {
             interruptViewloop();
         }
+    }
+
+    /**
+     * Rebind this window's last USB camera from
+     * {@link ViewerInterfaceBindingMap} (tmpdir file). Works with multiple
+     * AEViewers and multiple devices. Does not {@code LibUsb.open}.
+     */
+    /** Serializes bind across ViewLoops so four restored windows do not grab the same camera. */
+    private static final Object HARDWARE_CLAIM_LOCK = new Object();
+    /**
+     * Serializes native {@code open()}+config across AEViewers. The coordinator
+     * only blocks USB during UI restore; this lock is the open serializer.
+     */
+    private static final ReentrantLock USB_OPEN_SERIAL_LOCK = new ReentrantLock(true);
+    /** LIVE ticks where aemon was not open; drop to WAITING only after several. */
+    private int liveOpenMisses;
+    private static volatile String usbOpenSerialHolder;
+    private boolean loggedStartupBindMiss;
+
+    private boolean bindRememberedInterfaceIfPossible(int ninterfaces) {
+        if (!autobindOnWaiting && !SessionCameraOpenCoordinator.hasOpenGrant(this)) {
+            return false;
+        }
+        if (!isRememberLastInterface() || nullInterface || chip == null || ninterfaces < 1) {
+            return false;
+        }
+        if (chip.getHardwareInterface() != null) {
+            return false;
+        }
+        if (NetworkChip.class.isInstance(chip)) {
+            return false;
+        }
+        HardwareInterface match;
+        String reason;
+        synchronized (HARDWARE_CLAIM_LOCK) {
+            if (chip.getHardwareInterface() != null) {
+                return false;
+            }
+            match = findAutobindMatch(ninterfaces);
+            reason = lastAutobindReason;
+            if (match == null) {
+                logBindMiss(reason);
+                return false;
+            }
+        }
+        // Chip chooser must not hold the claim lock (EDT dialog).
+        ensureChipCompatibleWithLiveDevice(match);
+        synchronized (HARDWARE_CLAIM_LOCK) {
+            if (chip.getHardwareInterface() != null) {
+                return true;
+            }
+            if (hardwareTakenByOtherViewer(match)) {
+                match = firstUnusedMatchingThisChip(ninterfaces);
+                if (match == null) {
+                    logBindMiss("camera taken before bind; no unused match for "
+                            + chip.getClass().getSimpleName());
+                    return false;
+                }
+                reason = "first unused after race " + chip.getClass().getSimpleName();
+            }
+            bindLiveHardwareIfCompatible(match, getViewerWindowLabel() + " autobind (" + reason + ") ");
+            return chip.getHardwareInterface() != null;
+        }
+    }
+
+    private volatile String lastAutobindReason;
+
+    private HardwareInterface findAutobindMatch(int ninterfaces) {
+        ViewerInterfaceBindingMap.Binding remembered = ViewerInterfaceBindingMap.get(viewerInstanceIndex);
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        HardwareInterface match = null;
+        HardwareInterface uniqueVidPid = null;
+        int vidPidHits = 0;
+        String wantVidPid = remembered == null ? null : remembered.vidPid();
+        lastAutobindReason = remembered == null
+                ? "no map entry in " + ViewerInterfaceBindingMap.file().getName()
+                : null;
+        for (int i = 0; i < ninterfaces; i++) {
+            HardwareInterface hw = factory.getInterface(i);
+            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+                continue;
+            }
+            if (remembered != null && remembered.matches(hw)) {
+                match = hw;
+                break;
+            }
+            if (wantVidPid != null && wantVidPid.equals(ViewerInterfaceBindingMap.vidPid(UsbIds.enumerationKey(hw)))) {
+                vidPidHits++;
+                uniqueVidPid = hw;
+            }
+        }
+        if (match != null) {
+            lastAutobindReason = "map " + remembered.label;
+            return match;
+        }
+        if (wantVidPid != null && vidPidHits == 1) {
+            lastAutobindReason = "sole unused " + wantVidPid;
+            return uniqueVidPid;
+        }
+        match = firstUnusedMatchingThisChip(ninterfaces);
+        if (match != null) {
+            lastAutobindReason = remembered == null
+                    ? "first unused camera matching " + chip.getClass().getSimpleName()
+                    : "remembered taken; unused " + chip.getClass().getSimpleName();
+            return match;
+        }
+        // Same-family leftover only (never EVK4 onto a DVS128 window).
+        match = firstUnusedNotReservedForOtherViewer(ninterfaces);
+        if (match != null) {
+            lastAutobindReason = "leftover same-family " + UsbIds.enumerationKey(match);
+            return match;
+        }
+        lastAutobindReason = remembered == null
+                ? "no unused camera matching " + chip.getClass().getSimpleName()
+                : "remembered " + remembered.label + " not free among "
+                        + ninterfaces + " devices";
+        return null;
+    }
+
+    private void logBindMiss(String reason) {
+        log.fine(getViewerWindowLabel() + " autobind miss: " + reason);
+        if (!loggedStartupBindMiss) {
+            loggedStartupBindMiss = true;
+            log.info(getViewerWindowLabel() + " did not autobind: " + reason);
+        }
+    }
+
+    /**
+     * First enumerated camera this restored AEChip declares and no other
+     * viewer has claimed. Two DVX windows each take the next unused DVX.
+     */
+    private HardwareInterface firstUnusedMatchingThisChip(int ninterfaces) {
+        if (chip == null || !LiveDeviceChipDetector.declaresAnyUsbDevices(chip.getClass())) {
+            return null;
+        }
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        for (int i = 0; i < ninterfaces; i++) {
+            HardwareInterface hw = factory.getInterface(i);
+            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+                continue;
+            }
+            if (hardwareReservedForOtherViewer(hw)) {
+                continue;
+            }
+            if (LiveDeviceChipDetector.currentChipMatches(chip.getClass(), hw)) {
+                return hw;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Same-family leftover: unused camera matching this AEChip that is not
+     * another window's remembered camera. Never binds a different family.
+     */
+    private HardwareInterface firstUnusedNotReservedForOtherViewer(int ninterfaces) {
+        if (chip == null || !LiveDeviceChipDetector.declaresAnyUsbDevices(chip.getClass())) {
+            return null;
+        }
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        for (int i = 0; i < ninterfaces; i++) {
+            HardwareInterface hw = factory.getInterface(i);
+            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+                continue;
+            }
+            if (hardwareReservedForOtherViewer(hw)) {
+                continue;
+            }
+            if (!LiveDeviceChipDetector.currentChipMatches(chip.getClass(), hw)) {
+                continue;
+            }
+            return hw;
+        }
+        return null;
+    }
+
+    private boolean hardwareReservedForOtherViewer(HardwareInterface hw) {
+        if (jaerViewer == null || hw == null) {
+            return false;
+        }
+        for (AEViewer other : jaerViewer.getViewers()) {
+            if (other == this) {
+                continue;
+            }
+            ViewerInterfaceBindingMap.Binding b = ViewerInterfaceBindingMap.get(other.getViewerInstanceIndex());
+            if (b != null && b.matches(hw)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Viewer that already has this USB camera on its chip (this window or
+     * another). Match is bus/addr, then VID:PID+topology from enumeration
+     * keys (does not open the USB device).
+     */
+    private AEViewer viewerClaimingHardware(HardwareInterface hw) {
+        if (jaerViewer == null || hw == null) {
+            return null;
+        }
+        for (AEViewer other : jaerViewer.getViewers()) {
+            if (other.getChip() == null) {
+                continue;
+            }
+            HardwareInterface taken = other.getChip().getHardwareInterface();
+            if (taken == null) {
+                continue;
+            }
+            if (UsbIds.samePhysicalDevice(hw, taken)) {
+                return other;
+            }
+            String keyHw = UsbIds.enumerationKey(hw);
+            String keyTaken = UsbIds.enumerationKey(taken);
+            String vp1 = ViewerInterfaceBindingMap.vidPid(keyHw);
+            String vp2 = ViewerInterfaceBindingMap.vidPid(keyTaken);
+            String ba1 = ViewerInterfaceBindingMap.busAddr(keyHw);
+            String ba2 = ViewerInterfaceBindingMap.busAddr(keyTaken);
+            if (vp1 != null && vp1.equals(vp2) && ba1 != null && ba1.equals(ba2)) {
+                return other;
+            }
+        }
+        return null;
+    }
+
+    private boolean hardwareTakenByOtherViewer(HardwareInterface hw) {
+        AEViewer owner = viewerClaimingHardware(hw);
+        return owner != null && owner != this;
+    }
+
+    /** Title suffix, e.g. {@code AEViewer #1} ({@code viewerInstanceIndex + 1}). */
+    public String getViewerWindowLabel() {
+        return "AEViewer #" + (viewerInstanceIndex + 1);
+    }
+
+    /**
+     * Interface / Welcome label: family + (#n), plus which window already
+     * opened this camera when that is not this viewer.
+     */
+    private String interfaceChoiceLabel(HardwareInterface hw, int index) {
+        String base = String.format("%s (#%d)", interfaceMenuLabel(hw), index);
+        AEViewer owner = viewerClaimingHardware(hw);
+        if (owner != null && owner != this) {
+            return base + " — " + owner.getViewerWindowLabel();
+        }
+        if (hw.isOpen() && (chip == null || !UsbIds.samePhysicalDevice(hw, chip.getHardwareInterface()))) {
+            return base + " — already open";
+        }
+        return base;
+    }
+
+    /**
+     * Refresh Welcome overlays on other WAITING viewers so Interface claims
+     * stay aligned across windows (not a thread lock).
+     */
+    private void notifyOtherViewersOfHardwareClaimChange() {
+        if (jaerViewer == null) {
+            return;
+        }
+        Runnable refresh = () -> {
+            for (AEViewer other : jaerViewer.getViewers()) {
+                if (other == this || other.getPlayMode() != PlayMode.WAITING) {
+                    continue;
+                }
+                HardwareInterface otherHw = other.getChip() == null
+                        ? null : other.getChip().getHardwareInterface();
+                if (otherHw != null && otherHw.isOpen()) {
+                    continue;
+                }
+                other.showWelcomeOverlay();
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            refresh.run();
+        } else {
+            SwingUtilities.invokeLater(refresh);
+        }
+    }
+
+    private void loadRememberedInterfaceBinding() {
+        ViewerInterfaceBindingMap.Binding b = ViewerInterfaceBindingMap.get(viewerInstanceIndex);
+        if (b == null) {
+            return;
+        }
+        rememberLastInterfaceSerial = b.serial.isBlank() ? null : b.serial;
+        rememberLastInterfaceDeviceID = rememberLastInterfaceSerial != null ? rememberLastInterfaceSerial : b.label;
+    }
+
+    /**
+     * Write this window's current USB identity to the tmpdir map.
+     */
+    public void persistRememberedInterfaceBinding() {
+        if (!isRememberLastInterface() || chip == null) {
+            return;
+        }
+        HardwareInterface hw = chip.getHardwareInterface();
+        if (hw instanceof USBInterface) {
+            rememberUsbIdentity(hw, rememberLastInterfaceSerial);
+        }
+    }
+
+    private void rememberUsbIdentity(HardwareInterface hw, String serial) {
+        if (!isRememberLastInterface() || !(hw instanceof USBInterface)) {
+            return;
+        }
+        String label = UsbIds.enumerationKey(hw);
+        String ser = (serial == null || serial.isBlank()) ? null : serial;
+        rememberLastInterfaceSerial = ser;
+        rememberLastInterfaceDeviceID = ser != null ? ser : label;
+        String chipName = chip != null ? chip.getClass().getName() : "";
+        ViewerInterfaceBindingMap.put(viewerInstanceIndex, label, ser, chipName);
     }
 
     /**
@@ -1191,30 +1561,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (ninterfaces != 1) {
             return false;
         }
-        HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
-        if (hw == null) {
-            return false;
-        }
-        // UDP interfaces should only be opened if the chip is a NetworkChip
-        if (UDPInterface.class.isInstance(hw)) {
-            if (NetworkChip.class.isInstance(chip)) {
-                log.info("opening unambiguous network device");
-                chip.setHardwareInterface(hw);
-                return true;
+        synchronized (HARDWARE_CLAIM_LOCK) {
+            HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+            if (hw == null) {
+                return false;
             }
-            return false;
+            // UDP interfaces should only be opened if the chip is a NetworkChip
+            if (UDPInterface.class.isInstance(hw)) {
+                if (NetworkChip.class.isInstance(chip)) {
+                    log.info("opening unambiguous network device");
+                    chip.setHardwareInterface(hw);
+                    return true;
+                }
+                return false;
+            }
+            if (NetworkChip.class.isInstance(chip)) {
+                return false;
+            }
+            ensureChipCompatibleWithLiveDevice(hw);
+            // Chip switch closes HW; re-fetch sole interface if needed.
+            if (chip.getHardwareInterface() == null && hw != null) {
+                hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous device to ");
+            }
+            return chip.getHardwareInterface() != null;
         }
-        if (NetworkChip.class.isInstance(chip)) {
-            return false;
-        }
-        ensureChipCompatibleWithLiveDevice(hw);
-        // Chip switch closes HW; re-fetch sole interface if needed.
-        if (chip.getHardwareInterface() == null && hw != null) {
-            hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
-            bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous device to ");
-        }
-        return chip.getHardwareInterface() != null;
     }
+
     private ArrayList<String> chipClassNames;
     private ArrayList<Class> chipClasses;
 
@@ -1534,17 +1907,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * <li>Search the AEChip menu, then {@link #DEFAULT_CHIP_CLASS_NAMES} if the
      * leftover Customize list has no VID/PID match (upgrade without clearing
      * Preferences).</li>
-     * <li>When a DAVIS/SciDVS VID/PID match is ambiguous, select SciDVS if the
-     * FPGA reports its exact validated raw DVS geometry.</li>
      * <li>If a remembered AEChip exists for this device key and is still a
      * match, apply it silently.</li>
      * <li>If exactly one AEChip matches and it is already selected,
      * continue.</li>
      * <li>If exactly one matches but the current AEChip does not declare this
      * VID/PID, switch to it (and add it to the menu if needed).</li>
-     * <li>If several match (e.g. Davis346 red/blue), offer a chooser: OK
-     * stores a dialog default; Remember auto-applies next time. Choosing from
-     * the AEChip menu clears Remember mappings.</li>
+     * <li>If several match (e.g. Davis346 red/blue and experimental SciDVS,
+     * same VID/PID) and the current AEChip already declares this VID/PID, keep
+     * it. Do not open USB to distinguish SciDVS from Davis346.</li>
+     * <li>If several match and the current AEChip cannot drive this device,
+     * offer a chooser that lists every match (including SciDVS). OK stores a
+     * dialog default; Remember auto-applies next time. Choosing from the AEChip
+     * menu clears Remember mappings.</li>
      * </ul>
      * Safe to call from ViewLoop (uses EDT).
      */
@@ -1575,9 +1950,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
 
-        // Prefer remembered AEChip before any USB I/O. Interface→select runs on the
-        // EDT; probeSciDVS opens LibUsb with infinite control-transfer timeout and
-        // freezes the UI if another camera is mid-open (see jAER-0.log hang).
+        // Prefer remembered AEChip. Same VID/PID for Davis346 and experimental
+        // SciDVS is resolved by AEChip menu / chooser, not by opening USB.
         String deviceKey = liveDevicePromptKey(hw, ids);
         Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, found);
         if (remembered != null) {
@@ -1590,45 +1964,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
 
-        // DAVIS and SciDVS share VID/PID. Probe FPGA geometry only off the EDT
-        // (ViewLoop auto-open). On the EDT, fall through to the chooser.
-        if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface
-                && !SwingUtilities.isEventDispatchThread()) {
-            try {
-                if (((DAViSFX3HardwareInterface) hw).probeSciDVSByFpgaGeometry()) {
-                    // Probe opens the interface so serial is available for prefs.
-                    deviceKey = liveDevicePromptKey(hw, ids);
-                    liveChipOfferPromptedKeys.add(deviceKey);
-                    addChipClassesToMenu(java.util.Collections.singletonList(SciDVS.class));
-                    if (!SciDVS.class.equals(getAeChipClass())) {
-                        log.info("FPGA DVS geometry identifies SciDVS for USB device " + deviceKey);
-                        setAeChipClass(SciDVS.class);
-                    }
-                    return;
-                }
-                found = new java.util.ArrayList<>(found);
-                found.remove(SciDVS.class);
-                deviceKey = liveDevicePromptKey(hw, ids);
-            } catch (HardwareInterfaceException | RuntimeException e) {
-                log.info("Could not read FPGA DVS geometry for USB device " + ids.key()
-                        + "; retaining normal AEChip selection: " + e.getMessage());
-            }
-        } else if (found.size() > 1 && hw instanceof DAViSFX3HardwareInterface
-                && SwingUtilities.isEventDispatchThread()) {
-            log.info("Skipping SciDVS FPGA probe on EDT for USB " + ids.key()
-                    + " (use remembered AEChip or chooser; avoids LibUsb hang)");
-        }
-
-        final java.util.List<Class<? extends AEChip>> matches = found;
-
         Class current = getAeChipClass();
         boolean currentIsMatch = false;
-        for (Class<? extends AEChip> m : matches) {
+        for (Class<? extends AEChip> m : found) {
             if (m.equals(current)) {
                 currentIsMatch = true;
                 break;
             }
         }
+
+        final java.util.List<Class<? extends AEChip>> matches = found;
 
         // Unique match and already selected — continue.
         if (matches.size() == 1 && currentIsMatch) {
@@ -1651,14 +1996,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
 
-        // Already asked this session: only skip if the current AEChip can still drive
-        // this device. If the user switched to another chip (e.g. NRV) and replugged
-        // Davis, we must offer again — otherwise HI is bound to the wrong AEChip and
-        // LIVE never recovers.
-        if (currentIsMatch && liveChipOfferPromptedKeys.contains(deviceKey)) {
+        // Several chips share this VID/PID. If this window already has a matching
+        // AEChip (Davis346blue from last session), keep it. A modal chooser here
+        // stays up after autobind has already gone LIVE.
+        if (currentIsMatch) {
+            liveChipOfferPromptedKeys.add(deviceKey);
             return;
         }
         liveChipOfferPromptedKeys.add(deviceKey);
+
+        if (autobindOnWaiting && !SessionCameraOpenCoordinator.hasOpenGrant(this)) {
+            log.info("session restore: skip AEChip chooser for " + ids.key()
+                    + " (keep current AEChip; Interface can change it)");
+            return;
+        }
 
         final Class<? extends AEChip>[] chosenHolder = new Class[1];
         final boolean[] rememberHolder = new boolean[1];
@@ -1680,7 +2031,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(0, 10));
             panel.add(new javax.swing.JLabel(String.format(
                     "<html>USB device <b>%s</b> matches several AEChips (same VID/PID).<br>"
-                    + "jAER cannot tell which physical camera this is (e.g. Davis346 red vs blue).<br>"
+                    + "jAER cannot tell which physical camera this is (e.g. Davis346 red vs blue vs SciDVS).<br>"
                     + "Current AEChip is <b>%s</b>. Choose the AEChip for this camera:<br>"
                     + "<b>OK</b> uses it now and as the dialog default next time;<br>"
                     + "<b>Remember this selection</b> also auto-opens it when this device is found.</html>",
@@ -1889,6 +2240,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             ((AEMonitorInterface) hw).setChip(chip);
         }
         chip.setHardwareInterface(hw);
+        if (hw instanceof USBInterface) {
+            rememberUsbIdentity(hw, rememberLastInterfaceSerial);
+        }
+        notifyOtherViewersOfHardwareClaimChange();
     }
 
     /**
@@ -2130,6 +2485,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public int getViewerInstanceIndex() {
         return viewerInstanceIndex;
+    }
+
+    /** True for session-restore / first window; File → New is false. */
+    public boolean isAutobindOnWaiting() {
+        return autobindOnWaiting;
+    }
+
+    /** Unused: session viewers keep autobind so restart rebinds without Interface. */
+    public void endSessionAutobind() {
+        // Intentionally empty. Permanent disable was the restart killer.
     }
 
     /**
@@ -2663,11 +3028,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
                 // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
                 // then appendOfEventReferences a menu item to select this interface.
-                String menuText = String.format("%s (#%d)", interfaceMenuLabel(hw), i);
+                String menuText = interfaceChoiceLabel(hw, i);
                 log.info(String.format("Adding menu item for %s", menuText));
                 interfaceButton = new JRadioButtonMenuItem(menuText);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, i);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, hw);
+                AEViewer claimedBy = viewerClaimingHardware(hw);
+                if (claimedBy == null && hw.isOpen()
+                        && (chip == null || !UsbIds.samePhysicalDevice(hw, chip.getHardwareInterface()))) {
+                    interfaceButton.setEnabled(false);
+                    interfaceButton.setText(menuText + " — already open");
+                    interfaceButton.setToolTipText("USB handle already open (another window)");
+                    interfaceMenu.add(interfaceButton);
+                    bg.add(interfaceButton);
+                    continue;
+                }
+                if (claimedBy != null && claimedBy != this) {
+                    interfaceButton.setEnabled(false);
+                    interfaceButton.setToolTipText("Already open in " + claimedBy.getViewerWindowLabel());
+                    interfaceMenu.add(interfaceButton);
+                    bg.add(interfaceButton);
+                    continue;
+                }
                 interfaceMenu.add(interfaceButton);
                 bg.add(interfaceButton);
                 interfaceButton.addActionListener(new ActionListener() {
@@ -2688,6 +3070,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // Block ViewLoop open until bind finishes. LIVE + nulled HI
                         // otherwise starts the next camera during chip construct and
                         // Prophesee ISSD shutdown (EVK4 → Davis 8:12:14).
+                        SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this);
                         hardwareSwitchInProgress = true;
                         try {
                             showOpeningCameraOverlay(hw);
@@ -2711,7 +3094,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     closeHardwareInterfaceWithTimeout(previous, closeWait, "Switch interface");
                                 }
                             }
-                            // Chip chooser / SciDVS probe / bind must stay on the EDT.
+                            // Chip chooser / bind must stay on the EDT.
                             // Off-EDT open with a timeout abandoned mid-dialog and left the
                             // wrong AEChip bound (see jAER log: Not binding … to Prophesee…).
                             ensureChipCompatibleWithLiveDevice(hw);
@@ -2722,6 +3105,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                                 bindLiveHardwareIfCompatible(bind, "selected interface " + evt.getActionCommand()
                                         + " with HardwareInterface number" + interfaceNumber + " which is ");
+                                rememberUsbIdentity(bind, null);
                             }
                             if (getPlayMode() != PlayMode.PLAYBACK && getPlayMode() != PlayMode.FILTER_INPUT) {
                                 setPlayMode(PlayMode.WAITING);
@@ -2743,13 +3127,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
 
         for (Class c : HardwareInterfaceFactory.factories) {
-            log.info(String.format("Checking HardwareInterfaceFactory %s", c.toString()));
+            log.fine(String.format("Checking HardwareInterfaceFactory %s", c.toString()));
             if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
                 //                log.log(Level.INFO, "found hardware chooser class {0}", c);
                 try {
                     Method m = (c.getMethod("instance")); // get singleton instance of factory
                     final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
-                    log.info(String.format("Adding menu item for %s", inst.getName()));
+                    log.fine(String.format("Adding menu item for %s", inst.getName()));
                     JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getName());
                     mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
                     interfaceMenu.add(mi);
@@ -2803,9 +3187,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setHardwareInterface(null);
                 }
                 aemon = null;
+                SessionCameraOpenCoordinator.userCancelledOpen(AEViewer.this);
                 // force null interface (do not auto-reopen until user picks a device)
                 nullInterface = true;
+                rememberLastInterfaceDeviceID = null;
+                rememberLastInterfaceSerial = null;
+                ViewerInterfaceBindingMap.remove(viewerInstanceIndex);
                 clearOpeningCameraOverlay();
+                notifyOtherViewersOfHardwareClaimChange();
                 if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
                     setPlayMode(PlayMode.WAITING);
                 }
@@ -2830,7 +3219,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 JMenuItem item = (JMenuItem) c;
                 // set the button on for the actual interface of the chip if there is one already
-                if ((item != null) && (item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY) != null) && item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY).toString().equals(chip == null ? null : chip.getHardwareInterface().toString())) {
+                Object bound = item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY);
+                if (bound instanceof HardwareInterface
+                        && UsbIds.samePhysicalDevice((HardwareInterface) bound, chip.getHardwareInterface())) {
                     item.setSelected(true);
                     //                    System.out.println("selected "+item.getText());
                     choseOneButton = true;
@@ -2878,7 +3269,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         public RememberLastInterfaceAction() {
             super("Remember last interface selected");
-            putValue(Action.SHORT_DESCRIPTION, "Select to remember the last selected hardware interface and reopen it automatically if it is found");
+            putValue(Action.SHORT_DESCRIPTION, "Reopen this window's last USB camera on restart (saved under java.io.tmpdir/jaer)");
             putValue(Action.SELECTED_KEY, isRememberLastInterface());
 //            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK|java.awt.event.InputEvent.CTRL_DOWN_MASK));
         }
@@ -2997,16 +3388,228 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Device labels from the last USB enumeration cache (same text as Interface
+     * menu radios). Not the last menu snapshot: two WAITING viewers can share
+     * two cameras while each menu was last built with one item.
+     *
+     * @return never {@code null}
+     */
+    public List<String> getEnumeratedDeviceLabels() {
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        int n = factory.getCachedNumInterfacesAvailable();
+        if (n <= 0) {
+            return List.of();
+        }
+        List<String> labels = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            HardwareInterface hw = factory.getInterface(i);
+            if (hw == null) {
+                continue;
+            }
+            labels.add(interfaceChoiceLabel(hw, i));
+        }
+        return List.copyOf(labels);
+    }
+
+    /**
+     * How many {@link AEViewer} windows this process has. Auto-open is only
+     * for a single viewer with a single camera.
+     */
+    public int getOpenViewerCount() {
+        return jaerViewer == null ? 1 : jaerViewer.getViewers().size();
+    }
+
+    /**
      * Device labels from the last Interface menu build (same text as the radio
      * items). Empty when no choosable interface is listed. Safe to call from
      * the render thread; the list is an immutable snapshot.
      *
      * @return never {@code null}
      * @see #buildInterfaceMenu(JMenu, boolean)
+     * @see #getEnumeratedDeviceLabels()
      */
     public List<String> getInterfaceMenuDeviceLabels() {
         List<String> labels = interfaceMenuDeviceLabels;
         return labels != null ? labels : List.of();
+    }
+
+    /** Interface → None is in force (do not autobind until the user picks a device). */
+    public boolean isNullInterface() {
+        return nullInterface;
+    }
+
+    public boolean isHardwareSwitchInProgress() {
+        return hardwareSwitchInProgress;
+    }
+
+    /**
+     * Bound/available USB state for {@link net.sf.jaer.hardwareinterface.usb.USBRebindTester}.
+     * Safe off the EDT (volatile flags + cached factory list).
+     */
+    public String dumpUsbRebindState() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getViewerWindowLabel());
+        sb.append(" index=").append(viewerInstanceIndex);
+        sb.append(" play=").append(getPlayMode());
+        sb.append(" chip=");
+        sb.append(chip == null ? "-" : chip.getClass().getSimpleName());
+        sb.append('\n');
+        HardwareInterface hw = chip == null ? null : chip.getHardwareInterface();
+        sb.append("  hw=").append(hw == null ? "-" : UsbIds.enumerationKey(hw));
+        try {
+            sb.append(" open=").append(hw != null && hw.isOpen());
+        } catch (Throwable t) {
+            sb.append(" open=").append(t.getClass().getSimpleName());
+        }
+        sb.append(" aemon=");
+        if (aemon == null) {
+            sb.append("-");
+        } else {
+            try {
+                sb.append(aemon.isOpen() ? "open" : "closed");
+            } catch (Throwable t) {
+                sb.append(t.getClass().getSimpleName());
+            }
+        }
+        sb.append('\n');
+        sb.append("  nullInterface=").append(nullInterface);
+        sb.append(" hwSwitch=").append(hardwareSwitchInProgress);
+        sb.append(" autobind=").append(autobindOnWaiting);
+        sb.append(" suppressHW=").append(suppressHardwareOpen);
+        sb.append('\n');
+        String wait = SessionCameraOpenCoordinator.waitReason(this);
+        sb.append("  grant=").append(SessionCameraOpenCoordinator.hasOpenGrant(this));
+        sb.append(" mayOpen=").append(SessionCameraOpenCoordinator.mayOpenUsb(this));
+        sb.append(" wait=").append(wait == null ? "-" : wait);
+        sb.append('\n');
+        ViewerInterfaceBindingMap.Binding b = ViewerInterfaceBindingMap.get(viewerInstanceIndex);
+        sb.append("  map=").append(b == null ? "-" : b.label);
+        if (b != null && !b.chipClass.isBlank()) {
+            sb.append(" chip=").append(b.chipClass);
+        }
+        sb.append('\n');
+        return sb.toString();
+    }
+
+    /**
+     * Rebuild the Interface menu and click an item. Must run on the EDT.
+     * {@code match} is {@code None}, {@code Refresh}, {@code unbound}, a factory
+     * index, or a substring of the radio text (bus/addr, VID:PID, label).
+     */
+    public String injectInterfaceMenuClick(String match) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            throw new IllegalStateException("injectInterfaceMenuClick must run on the EDT");
+        }
+        if (match == null || match.isBlank()) {
+            return "ERR empty menu match\n";
+        }
+        String want = match.trim();
+        if (want.equalsIgnoreCase("Refresh")) {
+            refreshInterfaceMenuItem.doClick();
+            return getViewerWindowLabel() + " clicked Refresh\n";
+        }
+        buildInterfaceMenu(interfaceMenu, false);
+        JMenuItem found = findInterfaceMenuItem(want);
+        if (found == null) {
+            return getViewerWindowLabel() + " no Interface item matching '" + want + "'\n"
+                    + listInterfaceMenuItems();
+        }
+        if (!found.isEnabled()) {
+            return getViewerWindowLabel() + " Interface item disabled: " + found.getText() + "\n";
+        }
+        found.doClick();
+        return getViewerWindowLabel() + " clicked " + found.getText() + "\n";
+    }
+
+    /** Rebuild Interface menu and list items. EDT only. */
+    public String listInterfaceMenuItems() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            throw new IllegalStateException("listInterfaceMenuItems must run on the EDT");
+        }
+        buildInterfaceMenu(interfaceMenu, false);
+        StringBuilder sb = new StringBuilder();
+        sb.append(getViewerWindowLabel()).append(" Interface menu\n");
+        if (interfaceMenu == null) {
+            return sb.append("  (menu not created)\n").toString();
+        }
+        for (Component c : interfaceMenu.getMenuComponents()) {
+            if (!(c instanceof JMenuItem)) {
+                continue;
+            }
+            JMenuItem item = (JMenuItem) c;
+            String text = item.getText();
+            if (text == null || text.isBlank()) {
+                continue;
+            }
+            Object num = item.getClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY);
+            sb.append("  ");
+            if (!item.isEnabled()) {
+                sb.append("[disabled] ");
+            }
+            if (item instanceof javax.swing.JRadioButtonMenuItem radio && radio.isSelected()) {
+                sb.append("[selected] ");
+            }
+            if (num instanceof Integer) {
+                sb.append('[').append(num).append("] ");
+            }
+            sb.append(text).append('\n');
+        }
+        return sb.toString();
+    }
+
+    private JMenuItem findInterfaceMenuItem(String match) {
+        if (interfaceMenu == null) {
+            return null;
+        }
+        String want = match.trim();
+        boolean unbound = want.equalsIgnoreCase("unbound");
+        Integer wantIndex = null;
+        try {
+            wantIndex = Integer.valueOf(want);
+        } catch (NumberFormatException ignored) {
+        }
+        JMenuItem firstUnbound = null;
+        for (Component c : interfaceMenu.getMenuComponents()) {
+            if (!(c instanceof JMenuItem)) {
+                continue;
+            }
+            JMenuItem item = (JMenuItem) c;
+            String text = item.getText();
+            if (text == null) {
+                continue;
+            }
+            if (want.equalsIgnoreCase("None") && text.equalsIgnoreCase("None")) {
+                return item;
+            }
+            Object num = item.getClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY);
+            Object bound = item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY);
+            if (wantIndex != null && wantIndex.equals(num)) {
+                return item;
+            }
+            if (!unbound && text.toLowerCase().contains(want.toLowerCase())
+                    && !text.equalsIgnoreCase("None") && !text.equalsIgnoreCase("Refresh")) {
+                return item;
+            }
+            if (unbound && item.isEnabled() && bound instanceof HardwareInterface
+                    && num instanceof Integer) {
+                HardwareInterface hw = (HardwareInterface) bound;
+                AEViewer owner = viewerClaimingHardware(hw);
+                if (owner == null || owner == this) {
+                    HardwareInterface current = chip == null ? null : chip.getHardwareInterface();
+                    if (current == null || !UsbIds.samePhysicalDevice(hw, current)) {
+                        if (firstUnbound == null) {
+                            firstUnbound = item;
+                        }
+                    }
+                }
+            }
+        }
+        return firstUnbound;
+    }
+
+    /** File → Exit. Safe to invoke from the tester on the EDT. */
+    public void requestExit() {
+        exitMenuItemActionPerformed(null);
     }
 
     /**
@@ -3221,11 +3824,87 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             chip.setHardwareInterface(null); // should set chip's biasgen to null also
             //            if(chip.getBiasgen()!=null) chip.getBiasgen().setHardwareInterface(null);
         }
+        notifyOtherViewersOfHardwareClaimChange();
         pendingOpeningCameraLabel = null;
         ChipCanvas canvas = getChipCanvas();
         if (canvas != null) {
             canvas.clearUsbLinkOverlay();
         }
+    }
+
+    /** True when the last USB scan still lists this bus/addr (not an unplug). */
+    private boolean factoryCacheHasPhysicalDevice(HardwareInterface hw) {
+        if (hw == null) {
+            return false;
+        }
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        int n = factory.getCachedNumInterfacesAvailable();
+        for (int i = 0; i < n; i++) {
+            if (UsbIds.samePhysicalDevice(hw, factory.getInterface(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Wait for {@link #USB_OPEN_SERIAL_LOCK} without starting this camera's
+     * open timeout. Returns false if ViewLoop is stopping, playback won, or
+     * the bind vanished.
+     */
+    private boolean acquireUsbOpenSerialLock(AEMonitorInterface opening) {
+        long lastLogMs = 0;
+        boolean showedWait = false;
+        while (true) {
+            if (viewLoop != null && viewLoop.stop) {
+                return false;
+            }
+            if (hardwareSwitchInProgress || suppressHardwareOpen
+                    || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+                return false;
+            }
+            if (chip == null || chip.getHardwareInterface() != opening) {
+                return false;
+            }
+            try {
+                if (USB_OPEN_SERIAL_LOCK.tryLock(100, TimeUnit.MILLISECONDS)) {
+                    usbOpenSerialHolder = getViewerWindowLabel() + " " + UsbIds.enumerationKey(opening);
+                    log.info("USB open serializer: " + usbOpenSerialHolder);
+                    UsbOpenTrace.event("hold", "one open+config", usbOpenSerialHolder);
+                    return true;
+                }
+            } catch (InterruptedException ie) {
+                if (viewLoop != null && viewLoop.stop) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+                log.info("USB open serializer: interrupt while waiting; continuing");
+            }
+            long now = System.currentTimeMillis();
+            if (now - lastLogMs >= 5000) {
+                lastLogMs = now;
+                String holder = usbOpenSerialHolder;
+                log.info("USB open serializer: waiting to open " + opening
+                        + (holder == null ? "" : " (in progress: " + holder + ")"));
+                UsbOpenTrace.event("wait", "queue behind in-progress open",
+                        opening + " behind=" + holder);
+                if (!showedWait) {
+                    showedWait = true;
+                    showActionText("Waiting for another camera USB open…");
+                }
+            }
+        }
+    }
+
+    private void releaseUsbOpenSerialLock() {
+        if (!USB_OPEN_SERIAL_LOCK.isHeldByCurrentThread()) {
+            return;
+        }
+        log.fine("USB open serializer: released " + usbOpenSerialHolder);
+        UsbOpenTrace.event("release", "next camera may open",
+                usbOpenSerialHolder == null ? "none" : usbOpenSerialHolder);
+        usbOpenSerialHolder = null;
+        USB_OPEN_SERIAL_LOCK.unlock();
     }
 
     /**
@@ -3237,6 +3916,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // open/aemon.open() blocked EDT setPlayMode(PLAYBACK) indefinitely.
         boolean wantLive = false;
         boolean wantWaiting = false;
+        boolean sessionDeviceGone = false;
         if (hardwareSwitchInProgress || suppressHardwareOpen
                 || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
             // don't open hardware if playing a file, a file open is in progress,
@@ -3249,19 +3929,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 wantLive = true;
             }
         } else {
+            if (!SessionCameraOpenCoordinator.mayOpenUsb(this)) {
+                return;
+            }
             try {
                 HardwareInterface bound = (chip != null) ? chip.getHardwareInterface() : null;
                 // AEReader shutdown closes the live wrapper on unplug but leaves it on the
                 // chip. Reopening that instance throws devicePointer-not-initialized and
                 // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
                 if (bound != null && aemon == bound && !bound.isOpen()) {
+                    boolean stillPlugged = factoryCacheHasPhysicalDevice(bound);
                     log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
                     nullifyHardware();
-                    resetWindowsUsbPoll("device removed");
+                    if (stillPlugged) {
+                        // Same-tick map-autobind was a close/open loop. Permanent
+                        // nullInterface left cameras WAITING after a sibling DVX
+                        // open timeout during Prophesee ISSD (jAER 3:19:38).
+                        log.info("USB still enumerated after close of " + UsbIds.enumerationKey(bound)
+                                + "; retry bind on next WAITING poll");
+                        wantWaiting = true;
+                    } else {
+                        resetWindowsUsbPoll("device removed");
+                    }
+                    if (stillPlugged) {
+                        setPlayMode(PlayMode.WAITING);
+                        showWelcomeOverlay();
+                        return;
+                    }
                 }
                 openHardwareIfNonambiguous();
                 if (hardwareSwitchInProgress || suppressHardwareOpen
                         || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+                    return;
+                }
+                if (chip.getHardwareInterface() == null) {
+                    SessionCameraOpenCoordinator.noteEmptyBind(this);
+                    return;
+                }
+                if (SessionCameraOpenCoordinator.shouldDeferClassicDvxOpen(this)) {
+                    log.fine(getViewerWindowLabel() + " defer classic DVX open until other cameras are LIVE");
                     return;
                 }
                 // openHardwareIfNonambiguous will set chip's hardware interface, here we store local reference
@@ -3278,9 +3984,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     aemon.setChip(chip);
                     log.info("openAEMonitor: opening " + aemon);
                     showActionText("Opening " + aemon + "…");
+                    final AEMonitorInterface opening = aemon;
+                    boolean serialHeld = false;
+                    try {
+                    serialHeld = acquireUsbOpenSerialLock(opening);
+                    if (!serialHeld) {
+                        if (viewLoop != null && viewLoop.stop) {
+                            aemon = null;
+                            return;
+                        }
+                        if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK
+                                || getPlayMode() == PlayMode.FILTER_INPUT) {
+                            return;
+                        }
+                        aemon = null;
+                        wantWaiting = true;
+                        return;
+                    }
                     // Open on a worker so Interface switch can abort a stuck Prophesee ISSD /
                     // native USB call without freezing ViewLoop forever (log 10:49:00–16).
-                    final AEMonitorInterface opening = aemon;
                     final AtomicReference<Throwable> openError = new AtomicReference<>();
                     final CountDownLatch openDone = new CountDownLatch(1);
                     final AEChip chipForOpen = chip;
@@ -3307,6 +4029,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     log.fine("jaer-aemon-open sendConfiguration done " + UsbLog.t());
                                 }
                             }
+                            // AEReader starts on ViewLoop after LIVE. Queuing Mini IN on
+                            // this opener starved EVK4 ISSD (LIBUSB_ERROR_TIMEOUT at
+                            // readFirmwareInfo, jAER 4:20:44).
                         } catch (Throwable t) {
                             openError.set(t);
                             log.fine("openAEMonitor worker open() threw " + t + " " + UsbLog.t());
@@ -3367,6 +4092,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (now >= openDeadline) {
                             log.warning("openAEMonitor: open of " + opening + " timed out after "
                                     + openWaitMs + " ms; aborting");
+                            UsbOpenTrace.event("timeout", "unbind hung camera; release serializer",
+                                    opening + " workerAlive=" + opener.isAlive());
                             log.fine("openAEMonitor timeout " + UsbLog.t()
                                     + " worker=" + UsbLog.stack(opener, 12));
                             showActionText("Open timed out — aborting");
@@ -3395,6 +4122,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         unbindAbandonedHardware(opening);
                         aemon = null;
                         wantWaiting = true;
+                        if (opener.isAlive()) {
+                            UsbOpenTrace.event("timeout-release",
+                                    "release serializer so remaining cameras can open",
+                                    UsbIds.enumerationKey(opening) + " " + UsbLog.stack(opener, 6));
+                        }
+                        SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this, "timeout");
                         return;
                     }
                     Throwable openTh = openError.get();
@@ -3421,18 +4154,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         aemon = null;
                         wantWaiting = true;
+                        SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this, "interface-changed");
                         return;
                     }
                     if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
                         // File open won the race while USB open blocked; leave device but do not go LIVE.
                         log.info("openAEMonitor: playMode became PLAYBACK during aemon.open(); skipping LIVE");
+                        SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this, "playback");
                         return;
                     }
                     if (aemon instanceof USBInterface) {
                         USBInterface usb = (USBInterface) aemon;
+                        String serial = null;
                         if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
-                            rememberLastInterfaceDeviceID = usb.getStringDescriptors()[2];
+                            serial = usb.getStringDescriptors()[2];
                         }
+                        rememberUsbIdentity(aemon, serial);
                     }
                     fixRecordingControls();
                     fixBiasgenControls();
@@ -3485,6 +4222,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         printUSBStatisticsCBMI.setSelected(((HasUsbStatistics) aemon).isPrintUsbStatistics());
                     }
                     showUsbLinkOverlayAfterOpen();
+                    } finally {
+                        if (serialHeld) {
+                            releaseUsbOpenSerialLock();
+                        }
+                    }
                 } else if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof AESequencerInterface)) {
                     // the 'chip's' hardware interface is a pure sequencer
                     enableMonSeqMenu(true);
@@ -3509,6 +4251,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             } catch (Exception e) {
                 log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
+                UsbOpenTrace.event("open-failed", "open succeeds or ACCESS after hung sibling",
+                        String.valueOf(e.getMessage()));
                 log.log(Level.FINE, e.toString(), e);
                 if (aemon instanceof PropheseeHardwareInterface) {
                     PropheseeHardwareInterface.maybeShowLinuxUdevAccessDialog(this, e);
@@ -3523,8 +4267,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (isUsbDeviceGone(e)) {
                     log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
                     nullInterface = false;
+                    sessionDeviceGone = true;
                     HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
                     resetWindowsUsbPoll("device removed");
+                } else if (SessionCameraOpenCoordinator.hasOpenGrant(this)
+                        && factoryCacheHasPhysicalDevice(aemon)) {
+                    // Interface select + ACCESS: sibling closer may still hold WinUSB.
+                    // Do not permanent-nullInterface; next poll / second click can retry.
+                    log.warning("USB ACCESS after Interface select of still-enumerated "
+                            + UsbIds.enumerationKey(aemon) + "; will retry");
+                    nullInterface = false;
                 } else {
                     // Stop WAITING from rebinding the same ghost device on the next poll
                     // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
@@ -3544,6 +4296,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             pendingOpeningCameraLabel = null;
             setPlayMode(PlayMode.WAITING);
             showWelcomeOverlay();
+            SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this,
+                    sessionDeviceGone ? "device-gone" : "open-failed");
+            if (sessionDeviceGone) {
+                SessionCameraOpenCoordinator.allowRememberedRebind(this);
+            }
         } else if (wantLive && getPlayMode() == PlayMode.WAITING && !suppressHardwareOpen) {
             // Only WAITING→LIVE; never overwrite PLAYBACK/REMOTE/FILTER_INPUT (file-open race).
             pendingOpeningCameraLabel = null;
@@ -3552,6 +4309,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 liveCanvas.setWelcomeOverlay(null); // idle defaults if unplug returns to WAITING
             }
             setPlayMode(PlayMode.LIVE);
+            liveOpenMisses = 0;
+            SessionCameraOpenCoordinator.noteAcquiring(this);
             runPendingFirstHardwareUseAfterLive();
         }
     }
@@ -3834,7 +4593,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (!matches.isEmpty()) {
             String family = chipFamilyMenuLabel(matches);
             UsbIds.Pair ids = UsbIds.peek(hw);
-            return ids.isKnown() ? family + " (" + ids.key() + ")" : family;
+            String topo = ViewerInterfaceBindingMap.busAddr(UsbIds.enumerationKey(hw));
+            String id = ids.isKnown() ? ids.key() : "";
+            if (topo != null) {
+                return id.isEmpty() ? family + " " + topo : family + " (" + id + " " + topo + ")";
+            }
+            return ids.isKnown() ? family + " (" + id + ")" : family;
         }
         return hw.toString();
     }
@@ -4123,10 +4887,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             } catch (Exception ex) {
                                 log.log(Level.WARNING, "acquireAvailablePacketBundle failed, falling back to raw extract", ex);
                                 hwBundle = null;
+                                if (ex instanceof HardwareInterfaceException
+                                        && !(SessionCameraOpenCoordinator.hasOpenGrant(AEViewer.this)
+                                        && factoryCacheHasPhysicalDevice(aemon))) {
+                                    // AEReader failed to queue USB IN then USBTransferThread
+                                    // shutdown closed the wrapper. WAITING autobind every 1 s
+                                    // was Davis346 LIVE/WAITING blink (jAER 3:27:31).
+                                    // ACCESS after Interface on a still-enumerated device is retried.
+                                    nullInterface = true;
+                                }
                             }
                         }
                         if (hwBundle != null) {
                             viewLoopUsedHwTypedBundle = true;
+                            SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this);
                             rawPacket = hwBundle.getRawPacket();
                             cookedBundle = hwBundle;
                             if (cookedBundle.isEmpty()) {
@@ -4500,20 +5274,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return emptyRawPacket; // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
                     }
                 case LIVE:
-                    if (!nullInterface && !hardwareSwitchInProgress) {
-                        openAEMonitor();
-                    }
-                    if ((aemon == null) || !aemon.isOpen()) {
-                        setPlayMode(PlayMode.WAITING);
-                        if (!hardwareSwitchInProgress) {
-                            showWelcomeOverlay();
+                    if (aemon != null && aemon.isOpen()) {
+                        liveOpenMisses = 0;
+                    } else {
+                        if (!nullInterface && !hardwareSwitchInProgress) {
+                            openAEMonitor();
                         }
-                        try {
-                            Thread.sleep(300);
-                        } catch (InterruptedException e) {
-                            log.warning("LIVE openAEMonitor sleep interrupted");
+                        if ((aemon == null) || !aemon.isOpen()) {
+                            liveOpenMisses++;
+                            if (liveOpenMisses < 3 && !hardwareSwitchInProgress) {
+                                try {
+                                    Thread.sleep(150);
+                                } catch (InterruptedException e) {
+                                    log.fine("LIVE reopen miss sleep interrupted");
+                                }
+                                return emptyRawPacket;
+                            }
+                            liveOpenMisses = 0;
+                            setPlayMode(PlayMode.WAITING);
+                            if (!hardwareSwitchInProgress) {
+                                showWelcomeOverlay();
+                            }
+                            try {
+                                Thread.sleep(300);
+                            } catch (InterruptedException e) {
+                                log.warning("LIVE openAEMonitor sleep interrupted");
+                            }
+                            return emptyRawPacket;
                         }
-                        return emptyRawPacket;
+                        liveOpenMisses = 0;
                     }
                     droppedDataInfo = aemon.getDroppedDataInfo();
                     try {
@@ -4522,7 +5311,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             log.warning("AEViewer.ViewLoop.run(): AEMonitorInterface became null during acquisition");
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
-                        return aemon.acquireAvailableEventsFromDriver();
+                        AEPacketRaw liveRaw = aemon.acquireAvailableEventsFromDriver();
+                        SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this);
+                        return liveRaw;
                     } catch (HardwareInterfaceException | IllegalArgumentException e) {
                         if (stop) {
                             break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
@@ -4534,6 +5325,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         nullifyHardware();
                         showWelcomeOverlay();
+                        SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(AEViewer.this, "acquire-failed");
 //                        stopMe();
 
                         return emptyRawPacket;
@@ -4543,6 +5335,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.log(Level.SEVERE, cce.toString(), cce);
                         nullifyHardware();
                         showWelcomeOverlay();
+                        SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(AEViewer.this, "acquire-failed");
                         return emptyRawPacket;
                     }
                 case PLAYBACK:
@@ -4601,14 +5394,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         return emptyRawPacket;
                     }
+                    String sessionWait = SessionCameraOpenCoordinator.waitReason(AEViewer.this);
+                    if (sessionWait != null) {
+                        statisticsLabel.setText(sessionWait);
+                        SessionCameraOpenCoordinator.pollWatchdog();
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException e) {
+                            log.fine("WAITING session USB gate interrupted");
+                        }
+                        return emptyRawPacket;
+                    }
                     if (!nullInterface) {
                         openAEMonitor();
                     }
 
                     if ((aemon == null) || !aemon.isOpen()) {
-                        statisticsLabel.setText(nullInterface
-                                ? "Choose a camera from the Interface menu"
-                                : "Choose AEChip (Interface menu if needed)");
+                        final int nDev = HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable();
+                        if (nDev <= 0) {
+                            statisticsLabel.setText("WAITING; File/Open (^o) to play a recording");
+                        } else if (nDev > 1 || getOpenViewerCount() > 1) {
+                            statisticsLabel.setText("WAITING: " + nDev
+                                    + " devices found; use Interface menu to choose one");
+                        } else {
+                            statisticsLabel.setText("WAITING: 1 device found");
+                        }
 
                         try {
                             long sleepMs = 600;
@@ -6969,7 +7779,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 stopViewLoopForExit();
                 LibUsbHotplug.removeListener(usbHotplugListener);
-                cleanup();
+                cleanup(true);
 
                 if (lastViewer) {
                     log.info("window closing event, only 1 viewer, calling System.exit");
@@ -7025,11 +7835,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     SwingUtilities.invokeLater(() -> {
                         // User asked to find cameras; allow auto-open even after Interface→None
                         // or a failed open (those set nullInterface and block WAITING).
+                        SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this);
                         nullInterface = false;
                         lastInterfaceCheckTime = System.currentTimeMillis();
                         boolean playback = getPlayMode() == PlayMode.PLAYBACK
                                 || getPlayMode() == PlayMode.FILTER_INPUT;
-                        boolean bound = !playback && bindUnambiguousInterfaceIfPossible(n);
+                        boolean bound = false;
+                        if (!playback) {
+                            bound = bindRememberedInterfaceIfPossible(n);
+                            if (!bound) {
+                                bound = bindUnambiguousInterfaceIfPossible(n);
+                            }
+                        }
                         buildInterfaceMenu();
                         if (bound) {
                             interruptViewloop();
@@ -8729,9 +9546,62 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Default port number for remote control of this AEViewer.
-     *
+     * Overridden by {@link RemoteControl#getViewerPortPref()}.
      */
-    public final int REMOTE_CONTROL_PORT = 8997; // TODO make this the starting port number but find a free one if not available.
+    public final int REMOTE_CONTROL_PORT = RemoteControl.PORT_DEFAULT_VIEWER;
+
+    /**
+     * UDP remote control for this viewer, or null if disabled or bind failed.
+     */
+    public RemoteControl getRemoteControl() {
+        return remoteControl;
+    }
+
+    /**
+     * HTML for the shared help frame: usage plus live command lists when this
+     * session has listeners.
+     */
+    public String getRemoteControlHelpHtml() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<html><body>");
+        sb.append("<p>Remote control accepts UDP text commands (for example ");
+        sb.append("<code>nc -u localhost PORT</code> on Linux, or <code>nc.exe -u localhost PORT</code> on Windows). ");
+        sb.append("Send <code>help</code> on that socket for the command list.</p>");
+        sb.append("<p>There are two listeners when the feature is enabled:</p><ul>");
+        sb.append("<li><b>AEViewer</b> — recording, playback, pause, open file, zero timestamps.</li>");
+        sb.append("<li><b>AEChip</b> — chip-specific settings such as biases and Davis exposure, APS/DVS/IMU enables.</li>");
+        sb.append("</ul>");
+        RemoteControl viewerRc = remoteControl;
+        AEChip chip = getChip();
+        RemoteControl chipRc = chip != null ? chip.getRemoteControl() : null;
+        if (viewerRc == null && chipRc == null) {
+            sb.append("<p>This session has remote control off, so no commands are registered yet. ");
+            sb.append("Enable the option, set the ports to match your controller, then restart jAER.</p>");
+        } else {
+            if (viewerRc != null) {
+                sb.append("<h3>AEViewer (").append(escRemoteHelp(viewerRc.toString())).append(")</h3><pre>");
+                sb.append(escRemoteHelp(viewerRc.getHelp()));
+                sb.append("</pre>");
+            }
+            if (chipRc != null) {
+                String chipName = chip.getClass().getSimpleName();
+                sb.append("<h3>").append(escRemoteHelp(chipName)).append(" (").append(escRemoteHelp(chipRc.toString())).append(")</h3><pre>");
+                sb.append(escRemoteHelp(chipRc.getHelp()));
+                sb.append("</pre>");
+            } else {
+                sb.append("<p>The current AEChip is not listening on a UDP port.</p>");
+            }
+        }
+        sb.append("</body></html>");
+        return sb.toString();
+    }
+
+    private static String escRemoteHelp(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
 
     /**
      * Returns the frame for configurating chip. Could be null until user
@@ -8769,14 +9639,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 + " " + UsbLog.t());
         lastUsbHotplugTimeMs = System.currentTimeMillis();
         lastInterfaceCheckTime = 0;
+        if (SessionCameraOpenCoordinator.isUiRestore()) {
+            return;
+        }
         if (arrived) {
-            // Plug-in is user intent. Do not keep the block set by a failed reopen of
-            // the unplugged wrapper (or Interface → Refresh already clears this).
-            if (nullInterface) {
-                log.info("USB hotplug add: clearing nullInterface so WAITING can open the camera");
+            // Do not clear nullInterface on every viewer (Interface-menu thrash).
+            // Session serial / an explicit grant may open; otherwise overlay only.
+            if (SessionCameraOpenCoordinator.mayOpenUsb(this) && nullInterface) {
+                log.info("USB hotplug add: clearing nullInterface for " + getViewerWindowLabel());
+                nullInterface = false;
             }
-            nullInterface = false;
+            if (getPlayMode() == PlayMode.WAITING) {
+                SwingUtilities.invokeLater(this::showWelcomeOverlay);
+            }
+            if (viewLoop != null && SessionCameraOpenCoordinator.mayOpenUsb(this)
+                    && getPlayMode() == PlayMode.WAITING) {
+                interruptViewloop();
+            }
+            return;
         } else {
+            boolean unbound = false;
             HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
             if (hw != null) {
                 UsbIds.Pair ids = UsbIds.peek(hw);
@@ -8785,11 +9667,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (vidPidMatch || (getPlayMode() == PlayMode.LIVE && !hw.isOpen())) {
                     log.info("USB hotplug remove: unbinding " + hw);
                     nullifyHardware();
+                    unbound = true;
                 }
             }
-        }
-        if (viewLoop != null && (getPlayMode() == PlayMode.WAITING || getPlayMode() == PlayMode.LIVE)) {
-            interruptViewloop();
+            if (unbound && viewLoop != null) {
+                interruptViewloop();
+            }
         }
     }
 
@@ -9277,7 +10160,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 stopViewLoopForExit();
                 LibUsbHotplug.removeListener(usbHotplugListener);
-                cleanup();
+                cleanup(true);
                 dispose();
                 System.exit(0);
             } catch (Throwable t) {

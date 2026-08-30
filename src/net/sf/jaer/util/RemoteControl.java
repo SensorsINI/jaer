@@ -15,6 +15,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.JaerConstants;
 /**
  * Remote control via a datagram connection. Listeners add themselves with a command string and list of arguments.
  * Remote control builds a parser and returns calls the appropriate listener. The listener can access the arguments by name.
@@ -77,8 +80,53 @@ public class RemoteControl /* implements RemoteControlled */{
     /** Max length of remote control packet in bytes. */
     public static final int MAX_COMMAND_LENGTH_BYTES = 8196;
     private static Logger log = Logger.getLogger("net.sf.jaer");
-    /** The default UDP local port for the default constructor. */
+    /** The default UDP local port for the Chip RemoteControl. */
     public static final int PORT_DEFAULT = 8995;
+    /** Default UDP port for AEViewer remote control (Chip uses {@link #PORT_DEFAULT}). */
+    public static final int PORT_DEFAULT_VIEWER = 8997;
+    public static final String PREF_ENABLED = "remoteControlEnabled";
+    public static final String PREF_VIEWER_PORT = "remoteControlPort";
+    public static final String PREF_CHIP_PORT = "chipRemoteControlPort";
+
+    /** Preferences live on the AEViewer node so Chip and AEViewer share one flag/ports. */
+    public static Preferences prefsNode() {
+        return JaerConstants.PREFS_ROOT.node("AEViewer");
+    }
+
+    /** Default false: UDP sockets and listener threads are not created unless enabled. */
+    public static boolean isEnabledPref() {
+        return prefsNode().getBoolean(PREF_ENABLED, false);
+    }
+
+    public static void setEnabledPref(boolean enabled) {
+        prefsNode().putBoolean(PREF_ENABLED, enabled);
+    }
+
+    public static int getViewerPortPref() {
+        return prefsNode().getInt(PREF_VIEWER_PORT, PORT_DEFAULT_VIEWER);
+    }
+
+    public static void setViewerPortPref(int port) {
+        prefsNode().putInt(PREF_VIEWER_PORT, clampPort(port));
+    }
+
+    public static int getChipPortPref() {
+        return prefsNode().getInt(PREF_CHIP_PORT, PORT_DEFAULT);
+    }
+
+    public static void setChipPortPref(int port) {
+        prefsNode().putInt(PREF_CHIP_PORT, clampPort(port));
+    }
+
+    public static int clampPort(int port) {
+        if (port < 1) {
+            return 1;
+        }
+        if (port > 65535) {
+            return 65535;
+        }
+        return port;
+    }
     private int port;
     private HashMap<String,RemoteControlled> controlledMap = new HashMap<String,RemoteControlled>();
     private HashMap<String,RemoteControlCommand> cmdMap = new HashMap<String,RemoteControlCommand>();
@@ -108,7 +156,7 @@ public class RemoteControl /* implements RemoteControlled */{
         } catch ( SocketException e ){
             throw new SocketException(e + " on port " + port);
         }
-        log.info("Constructed uninitialized and empty " + this);
+        log.fine("Constructed uninitialized and empty " + this);
         ( T = new RemoteControlDatagramSocketThread() ).start();
     }
 
@@ -151,7 +199,7 @@ public class RemoteControl /* implements RemoteControlled */{
         descriptionMap.put(cmdKey,description);
     }
 
-    private String getHelp (){
+    public String getHelp (){
         StringBuffer s = new StringBuffer("Available commands are\n");
         Map<String,RemoteControlled> sortedMap = new TreeMap(cmdMap);
         for ( Entry e:sortedMap.entrySet() ){

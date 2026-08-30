@@ -17,7 +17,6 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -251,7 +250,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Open nonmodal {@link Help} dialog, if any. Accessed from the EDT.
      */
-    private JDialog helpDialog = null;
+    private EventFilterHelpDialog helpDialog = null;
     //    /** true means the events are filtered in place, replacing the contents of the input packet and more
     //     *efficiently using memory. false means a new event packet is created and populated for the output of the filter.
     //     *<p>
@@ -1530,7 +1529,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     private void disposeHelpDialog() {
-        final JDialog d = helpDialog;
+        final EventFilterHelpDialog d = helpDialog;
         helpDialog = null;
         if (d == null) {
             return;

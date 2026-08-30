@@ -200,11 +200,16 @@ public class Chip extends Observable {
             log.fine(result.message());
         }
 
-        try {
-            remoteControl = new RemoteControl();
-            log.info("Created " + remoteControl + " for control of " + this);
-        } catch (IOException e) {
-            log.warning("couldn't make remote control for " + this + " : " + e);
+        if (RemoteControl.isEnabledPref()) {
+            try {
+                remoteControl = new RemoteControl(RemoteControl.getChipPortPref());
+                log.info("Created " + remoteControl + " for control of " + this);
+            } catch (IOException e) {
+                log.warning("couldn't make remote control for " + this + " : " + e);
+            }
+        } else {
+            remoteControl = null;
+            log.fine("RemoteControl disabled for " + this + " (Preferences " + RemoteControl.PREF_ENABLED + "=false)");
         }
         defaultFirmwareBixFileForBlankDevice = getPrefs().get(DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE, null);
     }
