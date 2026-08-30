@@ -25,6 +25,9 @@ Use it to setup your sensors, record and inspect your datasets, and serve record
  * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java))); on linux Zoom/Google Meet.
  * or to a robot as a **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** publisher.
 
+You can also
+* [Export your data](docs/README-file-formats.md) in CSV, hdf5, or save data to quick compressed AEDAT-4 with **File → Save As...** \
+* Creat mp4 videos with **File → Export video...** 
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 *What it looks like to interact with jAER*
@@ -183,4 +186,6 @@ See also
 * **DAVIS-USERS user forum:** https://groups.google.com/forum/#!forum/davis-users
 * **inivation support pages:** https://inivation.com/support/
 
-![Hotel bar scene with DAVIS140C](/images/HotelBarDavis.png)
+![CapoCaccia Neuromorphic workshop 2021 Hotel dei Pini Hotel bar scene with DAVIS240C](/images/HotelBarDavis.png) 
+ 
+*A snapshot of 2011 CapoCaccia Neuromorphic Workshop hotel bar activity, showing a frame with its exposure histogram, some colored events from moving people, and an event rate trace over time. Grab [this recording](https://drive.google.com/file/d/1aSuNESuf5KkmQ1HiYGYrzc-jty_zqMGu/view?usp=drive_link) from the [DAVIS24](https://sites.google.com/view/davis24-davis-sample-data/home) dataset.*
