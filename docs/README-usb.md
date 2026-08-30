@@ -181,15 +181,16 @@ AEReader starts on ViewLoop after PlayMode LIVE. Closing a viewer joins
 `aemon.close()` so leftover windows do not get `LIBUSB_ERROR_ACCESS`.
 
 On timeout, unbind that camera and release the serializer. Classic FX3 DVX
-is **not autobound** (WinUSB SPI `controlTransfer` hangs; a 1-viewer map
-pointing at it blocked DVS128). Interface may still select it. Mini / Micro
-still autobind. Classic DVX still skips SPI **IN** size/orientation (defaults
-640×480). SPI **OUT** (opening / default / DVS_RUN) is sent so the sensor
-produces events. Classic DVX does not {@code LibUsb.resetDevice} on open/close
-(that reset took down sibling cameras on Interface → None). A hung classic SPI
-unbinds **that** wrapper only — do not {@code close()} it (same monitor as the
-stuck native call). The next camera’s `open()` does **not** join a closer for a
-**different** bus/addr (that 20 s wait delayed DVS128 after a hung DVX).
+is autobound **last** (after Mini / DVS / Davis are LIVE) so a WinUSB SPI
+`controlTransfer` hang cannot stall siblings. Interface may open it immediately.
+Classic DVX still skips SPI **IN** size/orientation when siblings are LIVE
+(defaults 640×480). SPI **OUT** (opening / default / DVS_RUN) is sent so the
+sensor produces events when it is the only camera. Classic DVX does not
+{@code LibUsb.resetDevice} on open/close (that reset took down sibling cameras
+on Interface → None). A hung classic SPI unbinds **that** wrapper only — do
+not {@code close()} it (same monitor as the stuck native call). The next
+camera’s `open()` does **not** join a closer for a **different** bus/addr
+(that 20 s wait delayed DVS128 after a hung DVX).
 
 Session trace: `${java.io.tmpdir}/jaer/usb-open-trace.log` (`UsbOpenTrace`).
 

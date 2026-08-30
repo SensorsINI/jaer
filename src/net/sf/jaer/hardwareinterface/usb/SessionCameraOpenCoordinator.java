@@ -21,8 +21,9 @@ import net.sf.jaer.util.ViewerInterfaceBindingMap;
  * Interface. Native {@code open()} is serialized by
  * {@code AEViewer.USB_OPEN_SERIAL_LOCK}, not by a second token machine.
  *
- * <p>Classic FX3 DVXplorer is not autobound (WinUSB SPI hang). Interface may
- * still select it. A hung classic SPI does not skip that camera forever.
+ * <p>Classic FX3 DVXplorer is autobound last (after Mini / DVS / Davis are
+ * LIVE) so its WinUSB SPI cannot stall siblings. Interface may open it
+ * immediately. A hung classic SPI unbinds that wrapper only.
  */
 public final class SessionCameraOpenCoordinator {
 
@@ -43,6 +44,9 @@ public final class SessionCameraOpenCoordinator {
     private static final java.util.Map<AEViewer, Integer> emptyScans = new java.util.IdentityHashMap<>();
     /** Already logged LIVE acquire for this viewer (ViewLoop calls every tick). */
     private static final Set<AEViewer> acquiringLogged = java.util.Collections.newSetFromMap(
+            new java.util.IdentityHashMap<>());
+    /** One INFO per restore that classic DVX is waiting for siblings. */
+    private static final Set<AEViewer> classicDeferLogged = java.util.Collections.newSetFromMap(
             new java.util.IdentityHashMap<>());
 
     private SessionCameraOpenCoordinator() {
@@ -95,6 +99,7 @@ public final class SessionCameraOpenCoordinator {
             userGrant = null;
             restorePending.clear();
             emptyScans.clear();
+            classicDeferLogged.clear();
         }
         UsbOpenTrace.event("ui-restore", "no USB until WindowSaver places all AEViewers",
                 jv == null ? "null" : "JAERViewer");
@@ -126,6 +131,7 @@ public final class SessionCameraOpenCoordinator {
             snapshot = jv == null ? List.of() : new ArrayList<>(jv.getViewers());
             restorePending.clear();
             emptyScans.clear();
+            classicDeferLogged.clear();
             for (AEViewer v : snapshot) {
                 if (v != null && v.isAutobindOnWaiting()) {
                     restorePending.add(v);
@@ -185,19 +191,21 @@ public final class SessionCameraOpenCoordinator {
 
     /**
      * Classic FX3 DVX waits until other session cameras have bound+opened or
-     * given up, so Mini / DVS / Davis reach LIVE first.
+     * given up, so Mini / DVS / Davis reach LIVE first. Interface grant
+     * opens immediately.
      */
     public static boolean shouldDeferClassicDvxOpen(AEViewer v) {
         if (v == null || !isClassicDvxViewer(v)) {
             return false;
         }
-        List<AEViewer> pending;
         synchronized (LOCK) {
-            pending = new ArrayList<>(restorePending);
-        }
-        for (AEViewer other : pending) {
-            if (other != null && other != v && !isClassicDvxViewer(other)) {
-                return true;
+            if (userGrant == v) {
+                return false;
+            }
+            for (AEViewer other : restorePending) {
+                if (other != null && other != v && !isClassicDvxViewer(other)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -239,6 +247,12 @@ public final class SessionCameraOpenCoordinator {
             }
         }
         if (shouldDeferClassicDvxOpen(v)) {
+            synchronized (LOCK) {
+                if (classicDeferLogged.add(v)) {
+                    log.info(label(v) + " will open classic DVX after other cameras are LIVE");
+                    UsbOpenTrace.event("classic-dvx-defer", "open last after siblings LIVE", label(v));
+                }
+            }
             return "Waiting for other cameras before classic DVX…";
         }
         return null;
@@ -276,6 +290,7 @@ public final class SessionCameraOpenCoordinator {
             restorePending.remove(v);
             emptyScans.remove(v);
             acquiringLogged.remove(v);
+            classicDeferLogged.remove(v);
         }
         UsbOpenTrace.event("user-none", "Interface → None", v.getViewerWindowLabel());
     }
@@ -324,6 +339,7 @@ public final class SessionCameraOpenCoordinator {
             }
             restorePending.remove(v);
             emptyScans.remove(v);
+            classicDeferLogged.remove(v);
             if ("live-acquiring".equals(outcome)) {
                 if (!acquiringLogged.add(v)) {
                     return;

@@ -13,7 +13,7 @@ Factory presets for biasing live in [`deviceSettings/NRV/`](../../deviceSettings
 
 - **USB:** Cypress `VID 0x04B4`
   - `PID 0x00F0` — FX20 (FX20 I2C transport, 4-byte write payload)
-  - `PID 0x00F1` — CX3 (CX3 I2C transport, 1–2 byte payload)
+  - `PID 0x00F1` — CX3 (CX3 I2C transport, 1–2 byte payload). Engineering-sample DELTA01 boards appear in Windows Device Manager as a cryptic Cypress FX3, not “NRV” / “DELTA01”.
 - **Events:** bulk IN endpoint `0x81`
 - **I2C:** vendor requests `0xBA` (write) / `0xAB` (read); sensor slave `0x20`
 

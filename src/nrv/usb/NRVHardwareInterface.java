@@ -36,6 +36,8 @@ import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 
 /**
  * LibUsb driver for NRV DVS cameras (Cypress VID 0x04B4, PID 0x00F0 / 0x00F1).
+ * DELTA01 engineering samples enumerate as a generic Cypress FX3 in Windows
+ * Device Manager (name is not “NRV” or “DELTA01”).
  *
  * @see https://nrv.kr/
  */
@@ -43,6 +45,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     public static final short VID = (short) 0x04B4;
     public static final short PID_FX20 = (short) 0x00F0;
+    /** CX3 bridge. Engineering-sample DELTA01 often appears in Device Manager as FX3. */
     public static final short PID_CX3 = (short) 0x00F1;
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");

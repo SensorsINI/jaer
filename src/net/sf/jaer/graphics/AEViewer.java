@@ -507,6 +507,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private String rememberLastInterfaceSerial = null;
     /** Session keys for live USB chip-offer dialogs already shown this run. */
     private final java.util.HashSet<String> liveChipOfferPromptedKeys = new java.util.HashSet<>();
+    /** Cancel on the live AEChip chooser: do not show it again until Interface is clicked. */
+    private final java.util.HashSet<String> liveChipOfferDeclinedKeys = new java.util.HashSet<>();
+    private volatile boolean liveChipOfferDialogShowing;
 
     private AEChip chip;
     /**
@@ -1338,9 +1341,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
                 continue;
             }
-            if (skipClassicDvxAutobind(hw)) {
-                continue;
-            }
             if (remembered != null && remembered.matches(hw)) {
                 match = hw;
                 break;
@@ -1378,18 +1378,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return null;
     }
 
-    /**
-     * Classic FX3 DVX SPI hangs on WinUSB. Autobind skips it; Interface may
-     * still select it. A 1-viewer map pointing at classic DVX must not block
-     * DVS128 / Mini / Davis.
-     */
-    private boolean skipClassicDvxAutobind(HardwareInterface hw) {
-        if (SessionCameraOpenCoordinator.hasOpenGrant(this)) {
-            return false;
-        }
-        return SessionCameraOpenCoordinator.isClassicDvxHardware(hw);
-    }
-
     private void logBindMiss(String reason) {
         log.fine(getViewerWindowLabel() + " autobind miss: " + reason);
         if (!loggedStartupBindMiss) {
@@ -1410,9 +1398,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
             if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
-                continue;
-            }
-            if (skipClassicDvxAutobind(hw)) {
                 continue;
             }
             if (hardwareReservedForOtherViewer(hw)) {
@@ -1437,9 +1422,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
             if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
-                continue;
-            }
-            if (skipClassicDvxAutobind(hw)) {
                 continue;
             }
             if (hardwareReservedForOtherViewer(hw)) {
@@ -2051,6 +2033,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         liveChipOfferPromptedKeys.add(deviceKey);
 
+        if (liveChipOfferDeclinedKeys.contains(deviceKey)) {
+            log.fine("AEChip chooser already cancelled this session for " + deviceKey);
+            return;
+        }
+        if (liveChipOfferDialogShowing) {
+            return;
+        }
+
         if (autobindOnWaiting && !SessionCameraOpenCoordinator.hasOpenGrant(this)) {
             log.info("session restore: skip AEChip chooser for " + ids.key()
                     + " (keep current AEChip; Interface can change it)");
@@ -2059,7 +2049,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         final Class<? extends AEChip>[] chosenHolder = new Class[1];
         final boolean[] rememberHolder = new boolean[1];
-        final String idLabel = ids.key();
+        final String idLabel = UsbIds.enumerationKey(hw);
         final String promptDeviceKey = deviceKey;
         Runnable dialog = () -> {
             String currentName = current == null ? "(none)" : current.getSimpleName();
@@ -2078,9 +2068,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             panel.add(new javax.swing.JLabel(String.format(
                     "<html>USB device <b>%s</b> matches several AEChips (same VID/PID).<br>"
                     + "jAER cannot tell which physical camera this is (e.g. Davis346 red vs blue vs SciDVS).<br>"
+                    + "The bus/address is for logs only; Windows Device Manager does not show those numbers.<br>"
                     + "Current AEChip is <b>%s</b>. Choose the AEChip for this camera:<br>"
                     + "<b>OK</b> uses it now and as the dialog default next time;<br>"
-                    + "<b>Remember this selection</b> also auto-opens it when this device is found.</html>",
+                    + "<b>Remember this selection</b> also auto-opens it when this device is found.<br>"
+                    + "<b>Cancel</b> stops asking until you pick Interface again.</html>",
                     idLabel, currentName)), java.awt.BorderLayout.NORTH);
             javax.swing.JComboBox<String> combo = new javax.swing.JComboBox<>(names);
             combo.setSelectedIndex(preselect);
@@ -2105,6 +2097,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         };
+        liveChipOfferDialogShowing = true;
         try {
             if (javax.swing.SwingUtilities.isEventDispatchThread()) {
                 dialog.run();
@@ -2114,10 +2107,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warning("Interrupted during live AEChip offer dialog");
+            liveChipOfferDeclinedKeys.add(deviceKey);
+            nullInterface = true;
             return;
         } catch (java.lang.reflect.InvocationTargetException e) {
             log.warning("Live AEChip offer dialog failed: " + e.getCause());
             return;
+        } finally {
+            liveChipOfferDialogShowing = false;
         }
         if (chosenHolder[0] != null) {
             // OK and Remember both store the dialog default for next prompt.
@@ -2135,6 +2132,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         + " for USB device " + deviceKey);
                 setAeChipClass(chosenHolder[0]);
             }
+            liveChipOfferDeclinedKeys.remove(deviceKey);
+        } else {
+            liveChipOfferDeclinedKeys.add(deviceKey);
+            nullInterface = true;
+            log.info("AEChip chooser cancelled for " + deviceKey
+                    + "; not asking again until Interface is selected");
         }
     }
 
@@ -2196,6 +2199,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("Could not clear remembered live AEChip prefs: " + e);
         }
         liveChipOfferPromptedKeys.clear();
+        liveChipOfferDeclinedKeys.clear();
     }
 
     private String liveDevicePromptKey(HardwareInterface hw, UsbIds.Pair ids) {
@@ -3117,6 +3121,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // otherwise starts the next camera during chip construct and
                         // Prophesee ISSD shutdown (EVK4 → Davis 8:12:14).
                         SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this);
+                        liveChipOfferDeclinedKeys.clear();
                         hardwareSwitchInProgress = true;
                         try {
                             showOpeningCameraOverlay(hw);

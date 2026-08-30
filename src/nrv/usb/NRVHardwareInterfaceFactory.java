@@ -23,6 +23,8 @@ import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 
 /**
  * Enumerates NRV DVS cameras (Cypress 0x04B4:0x00F0 and 0x04B4:0x00F1).
+ * Engineering-sample DELTA01 shows in Windows Device Manager as a cryptic
+ * Cypress FX3; match by VID/PID, not the Device Manager string.
  *
  * @see https://nrv.kr/
  */

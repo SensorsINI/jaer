@@ -143,6 +143,11 @@ public final class UsbEnumerationSafetyDemo {
                 && ensure.indexOf("if (currentIsMatch)")
                 < ensure.indexOf("showOptionDialog"),
                 "Davis red/blue/SciDVS chooser must not appear when current AEChip already matches");
+        require(ensure.contains("liveChipOfferDeclinedKeys")
+                && ensure.contains("not asking again until Interface is selected"),
+                "Cancel on the AEChip chooser must not re-show on the next WAITING poll");
+        require(ensure.contains("UsbIds.enumerationKey(hw)"),
+                "AEChip chooser shows VID/PID and bus/addr");
         require(src.contains("SciDVS.class.getName()"),
                 "SciDVS is a default AEChip for the shared Davis346 VID/PID");
         require(src.contains("jaer-aemon-open"),
@@ -796,8 +801,10 @@ public final class UsbEnumerationSafetyDemo {
                 "LIVE does not bounce to WAITING on a one-tick closed aemon");
         require(v.contains("USB ACCESS after Interface select"),
                 "ACCESS after Interface on a still-enumerated device is retried");
-        require(v.contains("skipClassicDvxAutobind("),
-                "classic FX3 DVX is not autobound (Interface may still select it)");
+        require(!v.contains("skipClassicDvxAutobind("),
+                "classic FX3 DVX is autobound last, not skipped");
+        require(v.contains("shouldDeferClassicDvxOpen("),
+                "classic FX3 DVX open waits until other session cameras are LIVE");
         require(v.contains("not waiting for close of"),
                 "ViewLoop does not join a hung closer for a different camera");
         require(v.contains("keepInterfaceGrant"),

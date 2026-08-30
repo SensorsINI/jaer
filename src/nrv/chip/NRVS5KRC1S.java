@@ -23,10 +23,12 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * NRV (NeuroReality Vision) DELTA01 S5KRC1S DVS sensor (960x720) over Cypress USB3.
+ * Engineering-sample boards show in Windows Device Manager as a cryptic Cypress
+ * FX3 (not “NRV” or “DELTA01”); jAER matches {@code 04b4:00f0} / {@code 04b4:00f1}.
  *
  * @see https://nrv.kr/
  */
-@Description("NRV (NeuroReality Vision) DELTA01 S5KRC1S 960x720 DVS camera, 9um pitch, final Samsung DVS chip for first round of event camera development")
+@Description("NRV (NeuroReality Vision) DELTA01 S5KRC1S 960x720 DVS camera, 9um pitch, final Samsung DVS chip for first round of event camera development. Engineering samples appear in Device Manager as a cryptic Cypress FX3.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = NRVHardwareInterface.VID, pid = NRVHardwareInterface.PID_FX20),
