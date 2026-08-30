@@ -109,7 +109,7 @@ if (gpuDemosaicEnabled && !isSeparateAPSByColor()) {
 ### Compile / jar
 
 ```bash
-export JAVA_HOME=/usr/lib/apache-netbeans/jdk   # or local JDK 21+
+export JAVA_HOME=/usr/lib/apache-netbeans/jdk   # or local JDK 25+
 cd /path/to/jaer
 ant compile    # → build/classes
 ant jar        # → dist/jAER.jar  (required for jAERViewer script)

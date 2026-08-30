@@ -57,6 +57,8 @@ import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.SplashStartupAbort;
 import net.sf.jaer.util.UiInteractionLog;
+import net.sf.jaer.hardwareinterface.usb.SessionCameraOpenCoordinator;
+import net.sf.jaer.hardwareinterface.usb.USBRebindTester;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
@@ -92,6 +94,8 @@ public class JAERViewer {
      */
     protected static Logger log;
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
+    /** True while {@link RunningThread} reconstructs last-session windows. Extra File→New viewers must not autobind leftover cameras. */
+    private volatile boolean restoringSessionViewers;
     private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", false); // default false so that all viewers are independent
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
     private ToggleSyncEnabledAction toggleSyncEnabledAction = new ToggleSyncEnabledAction();
@@ -164,6 +168,8 @@ public class JAERViewer {
 
         SwingUtilities.invokeLater(new RunningThread());
 
+        USBRebindTester.start(this);
+
         markViewerRunning();
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
@@ -199,6 +205,13 @@ public class JAERViewer {
                         }
                     } else {
                         System.out.println("JAERViewer shutdown hook - skipping last-chip Preferences write (reverted)");
+                    }
+                    try {
+                        for (AEViewer v : viewers) {
+                            v.persistRememberedInterfaceBinding();
+                        }
+                    } catch (Exception e) {
+                        System.err.println("could not store AEViewer USB bindings: " + e);
                     }
                     System.out.println("JAERViewer shutdown hook - saving possible open data recording");
                     try {
@@ -442,6 +455,8 @@ public class JAERViewer {
             }
 
             AEViewer firstViewer = null;
+            SessionCameraOpenCoordinator.beginUiRestore(JAERViewer.this);
+            restoringSessionViewers = true;
             try {
                 if (classNames == null) {
                     AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
@@ -467,8 +482,11 @@ public class JAERViewer {
 
                 err.printStackTrace();
             } finally {
+                restoringSessionViewers = false;
                 SplashStartupAbort.disarm();
             }
+            WindowSaver.runAfterQueuedRestores(
+                    () -> SessionCameraOpenCoordinator.uiRestoreComplete(JAERViewer.this));
             if (firstViewer != null) {
                 final AEViewer parent = firstViewer;
                 SwingUtilities.invokeLater(() -> maybeOfferNewReleaseNotes(parent));
@@ -566,6 +584,11 @@ public class JAERViewer {
         }
     }
 
+    /** True only while last-session AEViewers are being reconstructed. */
+    public boolean isRestoringSessionViewers() {
+        return restoringSessionViewers;
+    }
+
     public void addViewer(AEViewer viewer) {
         if (syncPlayer == null) {
             syncPlayer = new SyncPlayer(viewer, this);
@@ -585,6 +608,7 @@ public class JAERViewer {
         });
         buildMenus(viewer);
         refreshViewerTitles();
+        refreshWaitingWelcomeOverlays();
     }
 
     /** Lowest unused {@code AEViewer-N} index so WindowSaver can restore each viewer separately. */
@@ -650,6 +674,16 @@ public class JAERViewer {
             bb.setEnabled(en);
         }
         refreshViewerTitles();
+        refreshWaitingWelcomeOverlays();
+    }
+
+    /** WAITING overlays list the same camera claims as the Interface menu. */
+    private void refreshWaitingWelcomeOverlays() {
+        for (AEViewer v : viewers) {
+            if (v.getPlayMode() == AEViewer.PlayMode.WAITING) {
+                v.showWelcomeOverlay();
+            }
+        }
     }
 
     /**

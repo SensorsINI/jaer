@@ -1284,6 +1284,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         class ProcessAEData implements RestrictedTransferCallback {
 
             private final long generation;
+            /** Unplug drains every in-flight URB; log the first failure only. */
+            private int usbInErrorLogs;
 
             ProcessAEData(long generation) {
                 this.generation = generation;
@@ -1334,8 +1336,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                             realTimeFilter(addresses, timestamps);
                         }
                     } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-                        CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
-                                + LibUsb.errorName(transfer.status()));
+                        final String err = LibUsb.errorName(transfer.status());
+                        if (usbInErrorLogs++ == 0) {
+                            CypressFX3.log.warning("USB IN " + err
+                                    + " (typical on unplug); further in-flight URBs at FINE");
+                        } else {
+                            CypressFX3.log.fine("USB IN " + err + " bytes=" + transfer.actualLength());
+                        }
                         if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
                             dvx.noteUsbTransfer(transfer.status(), transfer.actualLength());
                         }
@@ -1719,6 +1726,26 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
+     * {@link #close()} no-ops when {@code !isOpened}, so a failed {@link #open()}
+     * must drop the libusb handle here or WinUSB keeps ACCESS for the next viewer.
+     */
+    private void abortFailedOpen() {
+        if (isOpened || deviceHandle == null) {
+            return;
+        }
+        try {
+            LibUsb.releaseInterface(deviceHandle, 0);
+        } catch (RuntimeException ignored) {
+        }
+        try {
+            LibUsb.close(deviceHandle);
+        } catch (RuntimeException e) {
+            log.warning("abortFailedOpen: " + e);
+        }
+        deviceHandle = null;
+    }
+
+    /**
      * Constructs a new USB connection and opens it. Does NOT start event
      * acquisition.
      *
@@ -1746,7 +1773,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         CypressFX3.log.info("open(): begin " + UsbIds.unopenedLabel(this, friendlyUnopenedTypeName()));
         usbLinkDead.set(false);
         int status;
+        boolean completed = false;
 
+        try {
         // Open device.
         if (deviceHandle == null) {
             final DeviceHandle handle = new DeviceHandle();
@@ -1839,13 +1868,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             LibUsb.claimInterface(deviceHandle, 0);
         } catch (Exception e) {
             log.log(Level.SEVERE, "Exception try to LibUsb.claimInterface: " + e.toString(), e);
-            return;
+            throw new HardwareInterfaceException("open(): claimInterface failed: " + e);
         }
         CypressFX3.log.info(String.format("open(): interface claimed after %d ms (skipping USB string descriptors)",
                 System.currentTimeMillis() - tOpen));
         populateDescriptors();
 
         isOpened = true;
+        completed = true;
 
         CypressFX3.log.info(String.format("open(): device opened in %d ms (%s)",
                 System.currentTimeMillis() - tOpen, stringDescription));
@@ -1857,6 +1887,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             }
         } catch (IllegalStateException e) {
             log.warning(String.format("Could not check device speed: %s", e.toString()));
+        }
+        } finally {
+            if (!completed) {
+                abortFailedOpen();
+            }
         }
 
         // start the thread that listens for device status information.

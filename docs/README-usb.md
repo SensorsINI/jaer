@@ -112,8 +112,10 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
 
 ## Interface menu, EDT, Welcome overlay
 
-- Skip the already-open camera with `UsbIds.samePhysicalDevice` (libusb bus/address),
-  not product-string equality.
+- Skip this viewer's already-open camera with `UsbIds.samePhysicalDevice` (libusb
+  bus/address), not product-string equality. Cameras open in **other** AEViewers
+  stay listed, disabled, as `… — AEViewer #N`. Welcome overlays use the same
+  labels and refresh when a claim changes.
 - Menu text: `interfaceMenuLabel` / `UsbIds.unopenedLabel`. Do not call
   `getStringDescriptors()` unless `isOpen()`.
 - **None** closes asynchronously: `closeHardwareInterfaceWithTimeout` (3 s
@@ -122,10 +124,24 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
   must not `openAEMonitor` while the previous HI is nulled and the next chip
   is still being constructed. `interruptViewloop` runs **after** that flag
   clears, and open/close waits ignore it (do not unbind a 1 ms Davis open).
-- Selection binds on the EDT (`ensureChipCompatibleWithLiveDevice`). SciDVS FPGA
-  probe is **not** on the EDT.
-- Several plugged cameras: no auto-bind (`openHardwareIfNonambiguous` requires a
-  single device). Welcome lists Interface-menu labels.
+- Libusb factory refresh matches devices by bus/addr (`UsbIds.mergeLibUsbDeviceScan`).
+  `Device.equals` is a new JNI pointer after each `getDeviceList`; treating that
+  as removal unrefs a LIVE CypressFX3/Prophesee handle and starts a
+  drop → map-autobind loop (Prophesee ISSD finish vs AEViewer #1 DVX).
+- Selection binds on the EDT (`ensureChipCompatibleWithLiveDevice`). SciDVS shares
+  Davis346 VID/PID (`152a:841a` / `841b`); firmware cannot distinguish them, so
+  jAER does **not** open USB to read FPGA geometry. SciDVS is a default AEChip
+  for that VID/PID and appears in the chooser with Davis346 red/blue. If this
+  window's AEChip already matches the VID/PID, keep it (no chooser). Menu labels
+  include bus/addr and `— already open` when the handle is claimed but not yet
+  on a chip.
+- Several plugged cameras: remembered map (tmpdir) plus unused cameras matching
+  each restored AEChip (same family only; never leftover-bind EVK4 onto a DVS128
+  window). File → New (and other extra AEViewers) stay WAITING until the user
+  picks Interface. ViewLoops claim under one lock so two DVX windows do not grab
+  the same device. Sole-device auto-bind still requires one viewer. Welcome lists
+  Interface-menu labels. Interface radio always binds that viewer (never drops
+  the click); a busy sibling `open()` is waited on `USB_OPEN_SERIAL_LOCK`.
 - While WAITING with no open hardware, [`ChipCanvas`](../src/net/sf/jaer/graphics/ChipCanvas.java)
   blanks the chip pixmap (`shouldSkipChipDisplay` / `isWelcomeOverlayActive`) so
   leftover APS/DVS is not drawn under the overlay. Interface click / bind shows
@@ -135,17 +151,50 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
 
 ## Open, config, close, abandon
 
-`AEViewer.openAEMonitor()` starts thread `jaer-aemon-open`. ViewLoop waits:
+Session restore does **not** open USB while windows are still being created.
+`JAERViewer.RunningThread` calls
+[`SessionCameraOpenCoordinator.beginUiRestore`](../src/net/sf/jaer/hardwareinterface/usb/SessionCameraOpenCoordinator.java)
+before any `AEViewer`. After every frame is visible,
+`WindowSaver.runAfterQueuedRestores` applies saved bounds, then
+`uiRestoreComplete` pre-scans off the EDT and enters **RUNNING**. Session-restored
+viewers keep autobind (`autobindOnWaiting`) so a restart rebinds without Interface.
+File → New stays WAITING until the user picks a camera.
+
+Interface / Refresh calls `userRequestedOpen` on **that** viewer and always
+succeeds. Native `open()` waits on `USB_OPEN_SERIAL_LOCK` if another camera is
+still in `open()`. A map miss does not set `nullInterface`.
+
+`AEViewer.openAEMonitor()` uses thread `jaer-aemon-open` and
+`USB_OPEN_SERIAL_LOCK`. Bind uses `HARDWARE_CLAIM_LOCK` (chooser is not held).
+The per-camera open timeout starts **after** this serializer is acquired.
+AEReader starts on ViewLoop after PlayMode LIVE. Closing a viewer joins
+`aemon.close()` so leftover windows do not get `LIBUSB_ERROR_ACCESS`.
+
+On timeout, unbind that camera and release the serializer. Classic FX3 DVX
+is **not autobound** (WinUSB SPI `controlTransfer` hangs; a 1-viewer map
+pointing at it blocked DVS128). Interface may still select it. Mini / Micro
+still autobind. Classic DVX still skips SPI **IN** size/orientation (defaults
+640×480). SPI **OUT** (opening / default / DVS_RUN) is sent so the sensor
+produces events. Classic DVX does not {@code LibUsb.resetDevice} on open/close
+(that reset took down sibling cameras on Interface → None). A hung classic SPI
+unbinds **that** wrapper only — do not {@code close()} it (same monitor as the
+stuck native call). The next camera’s `open()` does **not** join a closer for a
+**different** bus/addr (that 20 s wait delayed DVS128 after a hung DVX).
+
+Session trace: `${java.io.tmpdir}/jaer/usb-open-trace.log` (`UsbOpenTrace`).
+
+ViewLoop waits:
 
 | Device | Wait |
 |--------|------|
-| Cypress FX2/FX3, DVX, NRV, … | 8 s (`HARDWARE_OPEN_WAIT_MS`) |
+| Cypress FX2/FX3, DVX, NRV, … | 25 s (`HARDWARE_OPEN_WAIT_MS`) after serializer |
 | Prophesee EVK4 | 45 s (`HARDWARE_OPEN_WAIT_PROPHESEE_MS`) — ISSD / Treuzell bulk |
 
-On timeout or Interface change: `unbindAbandonedHardware`, set `nullInterface = true`.
+On timeout or Interface change: `unbindAbandonedHardware`.
 Do **not** call `close()` on a hung synchronized `open()` (that waits on the same
-monitor as the stuck native transfer). `nullInterface` also after
-`LIBUSB_ERROR_ACCESS` so WAITING does not rebind a ghost device every ~3 s.
+monitor as the stuck native transfer). `LIBUSB_ERROR_ACCESS` after an Interface
+select of a still-enumerated device is retried (sibling close may still hold
+WinUSB). Permanent `nullInterface` stays for a ghost device or Interface → None.
 
 `sendConfiguration` / DVX `dvxConfig` runs on **the same opener thread** after
 `open()` returns, **before** PlayMode LIVE. There is no parallel `jaer-send-biases`
@@ -166,12 +215,13 @@ handle. `CypressFX3-USB-recover` must not start a second `close()` from inside
 the synchronized closer.
 
 ViewLoop `openAEMonitor` **joins** the previous `jaer-hw-close` (20 s,
-`HARDWARE_CLOSE_JOIN_MS`) before starting the next camera. Prophesee ISSD
-stop/destroy often exceeds 3 s; a 3 s join then opened Davis while EVK4 close
-was still in Treuzell, and `interruptViewloop` unbound the Davis wrapper.
-`interruptViewloop` during that join or the following `open()` wait is ignored
-unless ViewLoop is stopping. Interface switch must not open Prophesee/Davis
-while the previous close is still in native USB.
+`HARDWARE_CLOSE_JOIN_MS`) only when that closer is the **same physical
+device**. Prophesee ISSD stop/destroy often exceeds 3 s; a 3 s join then
+opened Davis while EVK4 close was still in Treuzell, and `interruptViewloop`
+unbound the Davis wrapper. `interruptViewloop` during that join or the
+following `open()` wait is ignored unless ViewLoop is stopping. Interface
+switch must not open Prophesee/Davis while the previous close of **that**
+camera is still in native USB.
 
 FX2 libusb `close()` already stops acquisition before `isOpened = false`.
 
@@ -199,7 +249,9 @@ after a rapid switch. `DVXplorerFX3HardwareInterface` still resets **non-CX3**
 ### Cypress FX3 DAVIS / SciDVS — VID:PID `152a:841a` (FX3), `152a:841b` (FX2 PID on some boards)
 
 - Factory: `LibUsb3HardwareInterfaceFactory` → `DAViSFX3HardwareInterface`.
-  SciDVS shares these PIDs; `SciDVSHardwareInterface` is not registered.
+  SciDVS shares these PIDs (`SciDVSHardwareInterface` is not registered). Pick
+  SciDVS from the AEChip menu or the USB AEChip chooser; do not open the camera
+  to fingerprint FPGA geometry.
 - Open: skip USB string descriptors; no USB reset (`shouldResetUsbDevice` false).
 - After Interface switch, first SPI `controlTransfer` (`getRealClockValues` /
   `adjustHWParam` / `sendConfiguration`) can hang even with a 500 ms timeout.
@@ -234,7 +286,10 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
   global hold/reset), and IMU (`IMU_RUN_*`, BMI160 ODR/range). Firmware 10
   stalls 4-byte `wLength` with `LIBUSB_ERROR_PIPE` (jAER 8:58:38). Do not
   spawn+join that send while holding the CypressFX3 monitor.
-- Classic FX3 DVXplorer (types 1–3) still uses SPI IN/OUT and USB reset on close/open.
+- Classic FX3 DVXplorer (types 1–3): session restore opens this camera **last**
+  so Mini / DVS / Davis are already LIVE. On WinUSB, classic SPI OUT
+  `controlTransfer` can hang; abort unbinds **that** wrapper only. USB reset
+  on close/open is off. Retry from Interface if needed.
 
 ### Prophesee EVK4 HD — VID:PID `04b4:00f5`
 
@@ -292,8 +347,24 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
 | `LIBUSB_ERROR_ACCESS` | Another handle, udev, wrong WinUSB driver | Fail open; `nullInterface` so WAITING does not retry every 3 s |
 | `LIBUSB_ERROR_BUSY` / `NOT_SUPPORTED` | Driver or exclusive owner | Same; Windows hint in `libUsbOpenHint` |
 | Open worker still alive after 8 s / 45 s | Native control/bulk never returned | Unbind; do not `close()` the hung instance |
-| Interface menu / EDT freeze | USB or SciDVS probe on EDT, or `toString()`/`getStringDescriptors` while closed | Must not happen; scan and probe stay off EDT |
+| Interface menu / EDT freeze | USB scan or `toString()`/`getStringDescriptors` while closed | Must not happen; scan stays off EDT |
 | Ghost CypressFX3 after failed open | Menu skip by `toString()` equality | Skip by `UsbIds.samePhysicalDevice` |
 
 Unplug does not unblock a thread already inside a hung WinUSB transfer; kill the
 JVM.
+
+---
+
+## USBRebindTester (optional CLI)
+
+[`USBRebindTester`](../src/net/sf/jaer/hardwareinterface/usb/USBRebindTester.java)
+is **off** unless jAER is started with `-Djaer.usbRebindTester=true`. Then it
+listens on `127.0.0.1:18997` and dumps viewer / factory / binding-map /
+coordinator state. It can inject Interface-menu clicks; do not use that for
+routine testing.
+
+```text
+java -Djaer.usbRebindTester=true ...
+powershell -File scripts/usb-rebind.ps1 help
+powershell -File scripts/usb-rebind.ps1 status
+```

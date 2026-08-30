@@ -1189,6 +1189,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         class ProcessAEData implements RestrictedTransferCallback {
 
             private final long generation;
+            private int usbInErrorLogs;
 
             ProcessAEData(long generation) {
                 this.generation = generation;
@@ -1240,8 +1241,13 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
                             realTimeFilter(addresses, timestamps);
                         }
                     } else {
-                        CypressFX2.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength()
-                                + "  Status: " + LibUsb.errorName(transfer.status()));
+                        final String err = LibUsb.errorName(transfer.status());
+                        if (usbInErrorLogs++ == 0) {
+                            CypressFX2.log.warning("USB IN " + err
+                                    + " (typical on unplug); further in-flight URBs at FINE");
+                        } else {
+                            CypressFX2.log.fine("USB IN " + err + " bytes=" + transfer.actualLength());
+                        }
                     }
 
                     if (timestampsReset) {

@@ -7,7 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-/** Offline acceptance checks for exact FPGA-geometry SciDVS auto-detection. */
+/**
+ * Offline checks: FPGA-geometry classifier stays on the hardware interface, but
+ * AEViewer must not open USB to distinguish SciDVS from Davis346 (same VID/PID).
+ */
 public final class SciDVSDeviceAutoDetectionDemo {
 
     private static final Path HARDWARE_SOURCE = Paths.get("src", "net", "sf", "jaer",
@@ -25,8 +28,7 @@ public final class SciDVSDeviceAutoDetectionDemo {
         testExactGeometryClassifier();
         testProbeReadsOnlyDvsGeometry();
         testProbeUsesOneNormalOpenLifecycle();
-        testViewerRemembersBeforeProbeAndSkipsProbeOnEdt();
-        testNonSciDvsFingerprintExcludesSciDvsCandidate();
+        testViewerDoesNotProbeFpgaAndListsSciDvsAsCandidate();
         testBindingInstallsReverseAssociationFirst();
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION ASSERTIONS=" + assertions);
         System.out.println("SCIDVS_DEVICE_AUTO_DETECTION PASS");
@@ -89,37 +91,24 @@ public final class SciDVSDeviceAutoDetectionDemo {
                 "the probe's still-open interface prevents a second reset at binding");
     }
 
-    private static void testViewerRemembersBeforeProbeAndSkipsProbeOnEdt() throws Exception {
+    private static void testViewerDoesNotProbeFpgaAndListsSciDvsAsCandidate() throws Exception {
         String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
         String method = between(source,
                 "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
                 "private Class<? extends AEChip> loadRememberedLiveChip");
-        int remembered = method.indexOf("loadRememberedLiveChip(");
-        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
-        require(remembered >= 0 && probe > remembered,
-                "remembered AEChip is applied before any SciDVS FPGA probe (keeps EDT responsive)");
-        require(method.contains("!SwingUtilities.isEventDispatchThread()"),
-                "SciDVS FPGA probe is skipped on the EDT (Interface menu must not LibUsb.open)");
-        require(method.contains("setAeChipClass(SciDVS.class)"),
-                "positive fingerprint selects SciDVS directly when probe runs off-EDT");
-        require(method.contains("catch (HardwareInterfaceException"),
-                "probe failure falls back to existing chooser path");
-        // When probe runs off-EDT, refresh deviceKey after open so serial can disambiguate.
-        int deviceKeyAfterProbe = method.indexOf("liveDevicePromptKey(hw, ids)", probe);
-        require(deviceKeyAfterProbe > probe,
-                "shared-PID device key is refreshed after the geometry probe opens the interface");
-    }
-
-    private static void testNonSciDvsFingerprintExcludesSciDvsCandidate() throws Exception {
-        String source = Files.readString(VIEWER_SOURCE, StandardCharsets.UTF_8);
-        String method = between(source,
-                "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
-                "private Class<? extends AEChip> loadRememberedLiveChip");
-        int probe = method.indexOf("probeSciDVSByFpgaGeometry()");
-        int excludeSciDvs = method.indexOf("found.remove(SciDVS.class)");
-        int currentMatch = method.indexOf("boolean currentIsMatch");
-        require(probe >= 0 && excludeSciDvs > probe && excludeSciDvs < currentMatch,
-                "a successful non-SciDVS fingerprint excludes SciDVS before prompt suppression");
+        require(!method.contains("probeSciDVSByFpgaGeometry()"),
+                "ensureChip must not open USB to distinguish SciDVS from Davis346");
+        require(!method.contains("found.remove(SciDVS.class)"),
+                "SciDVS stays in the shared-VID/PID candidate list");
+        require(method.contains("loadRememberedLiveChip("),
+                "remembered AEChip is still applied before the chooser");
+        require(method.contains("if (currentIsMatch)")
+                && method.indexOf("if (currentIsMatch)") < method.indexOf("showOptionDialog"),
+                "current matching AEChip skips the Davis346/SciDVS chooser");
+        require(method.contains("Davis346 red vs blue vs SciDVS"),
+                "chooser copy lists SciDVS as a same-VID/PID camera");
+        require(source.contains("SciDVS.class.getName()"),
+                "SciDVS is in DEFAULT_CHIP_CLASS_NAMES so leftover Customize menus include it");
     }
 
     private static void testBindingInstallsReverseAssociationFirst() throws Exception {

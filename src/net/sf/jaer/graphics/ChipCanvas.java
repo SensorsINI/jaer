@@ -1640,6 +1640,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         // if observable is a chip object and arg is a string size property then set a new scaleChipPixels2ScreenPixels
         if ((o == chip) && (arg instanceof String)) {
             if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
+                if (chip.getNumPixels() == 0) {
+                    return;
+                }
                 ZCLIP = chip.getMaxSize();
                 updateSpikeMarkerScale();
                 unzoom();
@@ -1983,7 +1986,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                     return;
                 }
                 if (chip.getNumPixels() == 0) {
-                    log.warning("chip is not initialized yet");
+                    // Observer unzoom on EVENT_SIZEX can run before sizeY is set.
+                    log.fine("chip is not initialized yet; clip bounds deferred until size is set");
                     return;
                 }
                 if (currentZoomChipPixel == null) {

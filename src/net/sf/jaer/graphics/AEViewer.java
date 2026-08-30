@@ -567,6 +567,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final long HARDWARE_CLOSE_JOIN_MS = 20_000L;
     /** In-flight {@code jaer-hw-close}; next {@link #openAEMonitor()} joins this first. */
     private volatile Thread hardwareCloseThread;
+    /** Device the current {@link #hardwareCloseThread} is closing. */
+    private volatile HardwareInterface hardwareCloseTarget;
+    /** {@code jaer-aemon-open} still in native USB after timeout; do not {@code close()}. */
+    private volatile HardwareInterface abandonedHungHardware;
+    private volatile Thread hardwareOpenThread;
+    private volatile HardwareInterface hardwareOpenTarget;
     /**
      * Interface menu is detaching/binding a camera. ViewLoop must not call
      * {@link #openAEMonitor()} until bind finishes; {@link #interruptViewloop()}
@@ -1075,6 +1081,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }, "jaer-async-aemon-close");
             t.setDaemon(true);
+            hardwareCloseTarget = (HardwareInterface) mon;
             hardwareCloseThread = t;
             t.start();
             if (joinUsbClose) {
@@ -1313,6 +1320,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
                 continue;
             }
+            if (skipClassicDvxAutobind(hw)) {
+                continue;
+            }
             if (remembered != null && remembered.matches(hw)) {
                 match = hw;
                 break;
@@ -1350,6 +1360,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return null;
     }
 
+    /**
+     * Classic FX3 DVX SPI hangs on WinUSB. Autobind skips it; Interface may
+     * still select it. A 1-viewer map pointing at classic DVX must not block
+     * DVS128 / Mini / Davis.
+     */
+    private boolean skipClassicDvxAutobind(HardwareInterface hw) {
+        if (SessionCameraOpenCoordinator.hasOpenGrant(this)) {
+            return false;
+        }
+        return SessionCameraOpenCoordinator.isClassicDvxHardware(hw);
+    }
+
     private void logBindMiss(String reason) {
         log.fine(getViewerWindowLabel() + " autobind miss: " + reason);
         if (!loggedStartupBindMiss) {
@@ -1370,6 +1392,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
             if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+                continue;
+            }
+            if (skipClassicDvxAutobind(hw)) {
                 continue;
             }
             if (hardwareReservedForOtherViewer(hw)) {
@@ -1394,6 +1419,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
             if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+                continue;
+            }
+            if (skipClassicDvxAutobind(hw)) {
                 continue;
             }
             if (hardwareReservedForOtherViewer(hw)) {
@@ -3085,7 +3113,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 if (previous instanceof PropheseeHardwareInterface) {
                                     ((PropheseeHardwareInterface) previous).requestOpenAbort();
                                 }
-                                if (previous.isOpen()
+                                if (isHungNativeHardware(previous)) {
+                                    log.info("not closing hung " + previous
+                                            + "; unbind only before selecting " + hw);
+                                    abandonedHungHardware = previous;
+                                } else if (previous.isOpen()
                                         || (previous instanceof PropheseeHardwareInterface
                                         && ((PropheseeHardwareInterface) previous).isOpenInProgress())) {
                                     log.info("closing previous interface before selecting " + hw);
@@ -3200,9 +3232,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 interruptViewloop();
                 if (hw != null) {
-                    log.info(String.format("selected None interface so closing %s (async, timeout %d ms)",
-                            hw, HARDWARE_CLOSE_TIMEOUT_MS));
-                    closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "Close interface");
+                    if (isHungNativeHardware(hw)) {
+                        log.info("None: not closing hung " + hw);
+                        abandonedHungHardware = hw;
+                    } else {
+                        log.info(String.format("selected None interface so closing %s (async, timeout %d ms)",
+                                hw, HARDWARE_CLOSE_TIMEOUT_MS));
+                        closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "Close interface");
+                    }
                 }
             }
         });
@@ -3917,6 +3954,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean wantLive = false;
         boolean wantWaiting = false;
         boolean sessionDeviceGone = false;
+        boolean keepInterfaceGrant = false;
         if (hardwareSwitchInProgress || suppressHardwareOpen
                 || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
             // don't open hardware if playing a file, a file open is in progress,
@@ -3939,22 +3977,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
                 if (bound != null && aemon == bound && !bound.isOpen()) {
                     boolean stillPlugged = factoryCacheHasPhysicalDevice(bound);
-                    log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
-                    nullifyHardware();
-                    if (stillPlugged) {
-                        // Same-tick map-autobind was a close/open loop. Permanent
-                        // nullInterface left cameras WAITING after a sibling DVX
-                        // open timeout during Prophesee ISSD (jAER 3:19:38).
-                        log.info("USB still enumerated after close of " + UsbIds.enumerationKey(bound)
-                                + "; retry bind on next WAITING poll");
-                        wantWaiting = true;
+                    boolean retrySame = SessionCameraOpenCoordinator.hasOpenGrant(this) && stillPlugged;
+                    if (retrySame) {
+                        log.info("retrying Interface-selected closed wrapper: " + bound);
                     } else {
-                        resetWindowsUsbPoll("device removed");
-                    }
-                    if (stillPlugged) {
-                        setPlayMode(PlayMode.WAITING);
-                        showWelcomeOverlay();
-                        return;
+                        log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
+                        nullifyHardware();
+                        if (stillPlugged) {
+                            // Same-tick map-autobind was a close/open loop. Permanent
+                            // nullInterface left cameras WAITING after a sibling DVX
+                            // open timeout during Prophesee ISSD (jAER 3:19:38).
+                            log.info("USB still enumerated after close of " + UsbIds.enumerationKey(bound)
+                                    + "; retry bind on next WAITING poll");
+                            wantWaiting = true;
+                        } else {
+                            resetWindowsUsbPoll("device removed");
+                        }
+                        if (stillPlugged) {
+                            setPlayMode(PlayMode.WAITING);
+                            showWelcomeOverlay();
+                            return;
+                        }
                     }
                 }
                 openHardwareIfNonambiguous();
@@ -4040,6 +4083,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }, "jaer-aemon-open");
                     opener.setDaemon(true);
+                    hardwareOpenThread = opener;
+                    hardwareOpenTarget = opening;
                     opener.start();
                     boolean abandoned = false;
                     final long openWaitMs = (opening instanceof PropheseeHardwareInterface)
@@ -4119,6 +4164,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // Do not close() the same instance: open() is synchronized and
                         // still inside native USB, so close() blocks forever (log 11:14:16).
                         // Unbind so ViewLoop does not retry this wrapper (became "CypressFX3").
+                        abandonedHungHardware = opening;
                         unbindAbandonedHardware(opening);
                         aemon = null;
                         wantWaiting = true;
@@ -4163,6 +4209,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this, "playback");
                         return;
                     }
+                    hardwareOpenThread = null;
+                    hardwareOpenTarget = null;
                     if (aemon instanceof USBInterface) {
                         USBInterface usb = (USBInterface) aemon;
                         String serial = null;
@@ -4259,28 +4307,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 WinUsbDriverHelp.maybeShowDialog(this, aemon, e);
                 MacosLibusbHelp.maybeShowDialog(this, e);
-                if (aemon != null) {
-                    log.info("closing Monitor " + aemon.getClass().getSimpleName());
-                    aemon.close();
-                }
-                nullifyHardware();
-                if (isUsbDeviceGone(e)) {
-                    log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
-                    nullInterface = false;
-                    sessionDeviceGone = true;
-                    HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
-                    resetWindowsUsbPoll("device removed");
-                } else if (SessionCameraOpenCoordinator.hasOpenGrant(this)
-                        && factoryCacheHasPhysicalDevice(aemon)) {
+                HardwareInterface failed = aemon;
+                boolean stillPlugged = factoryCacheHasPhysicalDevice(failed);
+                boolean keepForRetry = SessionCameraOpenCoordinator.hasOpenGrant(this)
+                        && stillPlugged && !isUsbDeviceGone(e);
+                if (keepForRetry) {
                     // Interface select + ACCESS: sibling closer may still hold WinUSB.
-                    // Do not permanent-nullInterface; next poll / second click can retry.
+                    // Keep the bound wrapper so the next poll retries this camera,
+                    // not a map-autobind of hung classic DVX.
                     log.warning("USB ACCESS after Interface select of still-enumerated "
-                            + UsbIds.enumerationKey(aemon) + "; will retry");
+                            + UsbIds.enumerationKey(failed) + "; will retry");
                     nullInterface = false;
+                    keepInterfaceGrant = true;
                 } else {
-                    // Stop WAITING from rebinding the same ghost device on the next poll
-                    // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
-                    nullInterface = true;
+                    if (aemon != null) {
+                        log.info("closing Monitor " + aemon.getClass().getSimpleName());
+                        aemon.close();
+                    }
+                    nullifyHardware();
+                    if (isUsbDeviceGone(e)) {
+                        log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
+                        nullInterface = false;
+                        sessionDeviceGone = true;
+                        HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+                        resetWindowsUsbPoll("device removed");
+                    } else {
+                        // Stop WAITING from rebinding the same ghost device on the next poll
+                        // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
+                        nullInterface = true;
+                    }
                 }
                 setPlaybackControlsEnabledState(false);
                 fixDeviceControlMenuItems();
@@ -4296,8 +4351,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             pendingOpeningCameraLabel = null;
             setPlayMode(PlayMode.WAITING);
             showWelcomeOverlay();
-            SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this,
-                    sessionDeviceGone ? "device-gone" : "open-failed");
+            if (!keepInterfaceGrant) {
+                SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this,
+                        sessionDeviceGone ? "device-gone" : "open-failed");
+            }
             if (sessionDeviceGone) {
                 SessionCameraOpenCoordinator.allowRememberedRebind(this);
             }
@@ -4472,6 +4529,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Next Interface selection enumerates a fresh factory instance.
      */
     private void unbindAbandonedHardware(HardwareInterface hung) {
+        if (hung != null) {
+            abandonedHungHardware = hung;
+        }
         if (chip != null && (hung == null || chip.getHardwareInterface() == hung
                 || chip.getHardwareInterface() == null)) {
             chip.setHardwareInterface(null);
@@ -4490,15 +4550,52 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * True when {@code open()} or {@code dvxConfig} is still in native USB on
+     * this wrapper. {@code close()} on the same synchronized instance blocks.
+     */
+    private boolean isHungNativeHardware(HardwareInterface hw) {
+        if (hw == null) {
+            return false;
+        }
+        if (hw == abandonedHungHardware) {
+            return true;
+        }
+        Thread opener = hardwareOpenThread;
+        return hw == hardwareOpenTarget && opener != null && opener.isAlive();
+    }
+
+    private boolean shouldSkipCloseWait(HardwareInterface next, HardwareInterface closing) {
+        if (closing == null) {
+            return false;
+        }
+        if (next != null && !UsbIds.samePhysicalDevice(next, closing)) {
+            return true;
+        }
+        if (next == null && (isHungNativeHardware(closing)
+                || SessionCameraOpenCoordinator.isClassicDvxHardware(closing))) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * ViewLoop must not start the next {@code aemon.open()} while
      * {@code jaer-hw-close} is still in native USB. Wait up to
-     * {@link #HARDWARE_CLOSE_JOIN_MS}; {@link #interruptViewloop()} from the
-     * same Interface click must not abort this join. FX3/FX2/Prophesee/NRV skip
-     * {@code LibUsb.close} if the AEReader is still alive.
+     * {@link #HARDWARE_CLOSE_JOIN_MS} when the closer is the same physical
+     * device. A hung classic DVX closer must not delay DVS128 / Mini / Davis.
+     * {@link #interruptViewloop()} from the same Interface click must not abort
+     * this join.
      */
     private void awaitPendingHardwareClose() {
         final Thread closer = hardwareCloseThread;
         if (closer == null || !closer.isAlive()) {
+            return;
+        }
+        HardwareInterface next = chip != null ? chip.getHardwareInterface() : null;
+        HardwareInterface closing = hardwareCloseTarget;
+        if (shouldSkipCloseWait(next, closing)) {
+            log.info("openAEMonitor: not waiting for close of " + closing
+                    + " before opening " + (next == null ? "unbound next camera" : next));
             return;
         }
         log.info("openAEMonitor: waiting for previous hardware close");
@@ -4537,6 +4634,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (hw == null) {
             return null;
         }
+        if (isHungNativeHardware(hw)) {
+            log.info(actionLabel + ": not closing hung " + hw);
+            abandonedHungHardware = hw;
+            return null;
+        }
         Thread closer = new Thread(() -> {
             log.fine(actionLabel + " close() begin " + hw + " " + UsbLog.t());
             try {
@@ -4548,6 +4650,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.fine(actionLabel + " close() end " + UsbLog.t());
         }, "jaer-hw-close");
         closer.setDaemon(true);
+        hardwareCloseTarget = hw;
         hardwareCloseThread = closer;
         closer.start();
         // Do not block the EDT: schedule a timeout watcher on a background thread.

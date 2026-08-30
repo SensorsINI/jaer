@@ -320,20 +320,23 @@ public class DVXplorer extends AETemporalConstastRetina {
      */
     public void dvxReceiveInitParams(DVXplorerFX3HardwareInterface fx3) {
         if (!isMipiCX3Device()) {
-            final int logicClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
-            final int usbClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
-            final int clockDeviationFactor = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
-            logicClockActual = (double)logicClock * (double)clockDeviationFactor / 1000.0;
-            usbClockActual = (double)usbClock * (double)clockDeviationFactor / 1000.0;
-            DVXplorer.log.info(String.format("Device clock frequencies - Logic: %f, USB: %f.", logicClockActual, usbClockActual));
-        } else {
-            setName("DVXplorerMicro");
-            if (debug) {
-                DVXplorer.log.info(String.format(
-                        "DVXplorer Mini/Micro CX3 MIPI firmware %d (%s)",
-                        fx3.getFirmwareVersion(),
-                        isNextGenFirmware() ? "dv-processing DVXplorerM protocol" : "libcaer pre-v10 protocol"));
-            }
+            // Classic FX3 DVX: SPI IN hangs in native WinUSB while other cameras
+            // already have async AEReaders (same libusb context). Clock defaults
+            // are 104 / 83.2 MHz; geometry is 640x480.
+            sizeX = 640;
+            sizeY = 480;
+            setSizeX(sizeX);
+            setSizeY(sizeY);
+            DVXplorer.log.info("Classic DVX: skipping SPI IN init params (WinUSB hang with other LIVE cameras); using 640x480");
+            return;
+        }
+
+        setName("DVXplorerMicro");
+        if (debug) {
+            DVXplorer.log.info(String.format(
+                    "DVXplorer Mini/Micro CX3 MIPI firmware %d (%s)",
+                    fx3.getFirmwareVersion(),
+                    isNextGenFirmware() ? "dv-processing DVXplorerM protocol" : "libcaer pre-v10 protocol"));
         }
 
         if (isNextGenFirmware()) {

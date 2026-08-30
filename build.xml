@@ -30,7 +30,8 @@ Main jAER Ant tasks    ant help     (this list)
 Default with no args:  ant         same as ant jar
 
 Everyday (git checkout)
-  compile                 Ivy retrieve + javac. First-time / after ivy.xml changes.
+  check-jdk               fail if this JVM is older than JDK 25; print Adoptium install URL
+  compile                 Ivy retrieve + javac. First-time / after ivy.xml changes. Needs JDK 25+.
   run                     compile, then launch JAERViewer. Needs JDK 25+.
   compile-fast            javac only (lib/ already filled by compile or download-deps).
   jar                     compile + dist/jAER.jar
@@ -182,16 +183,29 @@ Scripts (not Ant)
     <target name="-post-init" depends="install-macos-libusb">
     </target>
 
-    <!-- run.jvmargs uses -XX:+UseCompactObjectHeaders (JEP 519). Do not wrap the
-         NetBeans <java> task to parse "Unrecognized VM option"; fail before launch. -->
-    <target name="-check-runtime-jvm">
-        <condition property="jaer.jvm.ok.for.run">
+    <!-- javac.source/target 25 and run.jvmargs -XX:+UseCompactObjectHeaders (JEP 519).
+         Fail before javac/launch. Also: ant check-jdk -->
+    <target name="check-jdk" description="Require JDK 25+ (Adoptium Temurin) for compile and run.">
+        <condition property="jaer.jdk.ok">
             <javaversion atleast="25"/>
         </condition>
-        <fail unless="jaer.jvm.ok.for.run">This JVM (${java.version}) does not support -XX:+UseCompactObjectHeaders (needs JDK 25+).
-Install the latest Eclipse Temurin JDK from https://adoptium.net/
-and put it on PATH (or set JAVA_HOME).</fail>
+        <fail unless="jaer.jdk.ok"><![CDATA[
+This JVM is ${java.version} (java.home=${java.home}).
+jAER compiles to Java 25 bytecode and needs JDK 25+ to compile and to run from git (ant compile / ant run).
+
+Install Eclipse Temurin 25 (LTS) from https://adoptium.net/
+  Windows:  https://adoptium.net/temurin/releases/?os=windows&package=jdk&version=25
+            or  winget install EclipseAdoptium.Temurin.25.JDK
+  macOS:    https://adoptium.net/temurin/releases/?os=mac&package=jdk&version=25
+            or  brew install --cask temurin@25
+  Linux:    https://adoptium.net/temurin/releases/?os=linux&package=jdk&version=25
+
+Then put that JDK on PATH and set JAVA_HOME to it. Confirm with:  java -version
+Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAVA_HOME.
+]]></fail>
     </target>
+
+    <target name="-check-runtime-jvm" depends="check-jdk"/>
 
     <target depends="-check-runtime-jvm,init,compile" description="Run a main class." name="run">
         <j2seproject1:java>
@@ -297,10 +311,10 @@ and put it on PATH (or set JAVA_HOME).</fail>
     
     <!-- Ivy hook for normal compile (overrides empty NetBeans placeholders in build-impl.xml). -->
     <target name="-pre-compile-ivy" depends="download-deps"/>
-    <target name="-pre-compile" depends="-pre-compile-ivy"/>
+    <target name="-pre-compile" depends="check-jdk,-pre-compile-ivy"/>
 
     <target name="-pre-compile-single-ivy" depends="download-deps"/>
-    <target name="-pre-compile-single" depends="-pre-compile-single-ivy"/>
+    <target name="-pre-compile-single" depends="check-jdk,-pre-compile-single-ivy"/>
 
     <!-- Same javac/copy as -do-compile but without -pre-compile (no Ivy). lib/ must exist; run download-deps after ivy.xml changes. -->
     <target depends="init,deps-jar,-pre-pre-compile,-copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile-without-ivy">
@@ -334,11 +348,11 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="compile-fast"
-            depends="init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile"
+            depends="check-jdk,init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile"
             description="Compile Java only without Ivy resolve/retrieve."/>
 
     <target name="compile-single-fast"
-            depends="init,deps-jar,-verify-automatic-build,-pre-pre-compile,-do-compile-single,-post-compile-single"
+            depends="check-jdk,init,deps-jar,-verify-automatic-build,-pre-pre-compile,-do-compile-single,-post-compile-single"
             description="Compile selected files without Ivy resolve/retrieve."/>
 
     <!-- Fast JAR: store-only pack (jar cvfM0) avoids single-threaded DEFLATE; optional 7z if on PATH. -->

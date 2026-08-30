@@ -86,15 +86,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     private Boolean sciDVSFpgaGeometryMatch;
 
     /**
-     * Probes the two read-only FPGA DVS geometry registers and caches whether
-     * they match the validated SciDVS bitstream. The register axes are the raw
-     * stream axes, hence {@code 126x112} for the logical {@code 112x126} chip.
-     *
-     * <p>The first read uses the normal Cypress open path when necessary,
-     * including its one USB reset and interface claim. The same interface is
-     * left open, so later chip binding does not perform a second reset. This
-     * method does not start acquisition, write an FPGA register, or close the
-     * device.
+     * Probes the two read-only FPGA DVS geometry registers (experimental).
+     * The register axes are the raw stream axes, hence {@code 126x112} for the
+     * logical {@code 112x126} chip. AEViewer does <strong>not</strong> call
+     * this: SciDVS shares Davis346 VID/PID and firmware cannot distinguish
+     * them, so SciDVS is listed as another AEChip for that VID/PID.
      *
      * @return true only for the exact validated SciDVS FPGA geometry
      * @throws HardwareInterfaceException if the FPGA geometry cannot be read

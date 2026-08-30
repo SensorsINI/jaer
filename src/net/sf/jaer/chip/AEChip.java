@@ -483,7 +483,7 @@ public class AEChip extends Chip2D {
      *
      */
     public void onRegistration() {
-        log.info("registering " + this);
+        log.fine("registering " + this);
     }
 
     /**

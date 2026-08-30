@@ -1,23 +1,37 @@
 ---
-description: Store all jAER Cursor plans under jaer/.cursor/plans for cross-platform work
+description: Store all jAER Cursor plans under jaer/.cursor/plans for Dropbox multi-box work
 alwaysApply: true
 ---
 
 # jAER plan location
 
-When creating or updating Cursor plans for this repository, always write them under:
+Canonical plans live in the **jAER repo**:
 
-`.cursor/plans/`
+`.cursor/plans/*.plan.md`
 
-(resolved from the jAER repo root, e.g. `jaer/.cursor/plans/…`).
+(e.g. `jaer/.cursor/plans/usb_autobind_restore.plan.md`). That folder Dropbox-syncs across machines. Gitignores `*.plan.md`; that is fine.
+
+## CreatePlan is not enough
+
+Cursor **CreatePlan** writes only to the **user-global** folder
+(`~/.cursor/plans/` or `%USERPROFILE%\.cursor\plans\`). That path does **not**
+sync with this repo. After CreatePlan (or any plan edit):
+
+1. **Immediately Write** the same markdown to `.cursor/plans/<descriptive_name>.plan.md`
+2. Prefer names like `usb_autobind_restore.plan.md` (not only the CreatePlan hash name)
+3. If you update a plan, update the **repo** copy; do not leave the mirror stale
+4. **Strip CreatePlan YAML** (`name:`, `todos:`, `isProject:`) from the repo
+   copy. That frontmatter makes Cursor show a second **Build** button on the
+   Dropbox file. Keep the prose. Build stays on the user-global hashed plan.
+
+A plan that exists only under `%USERPROFILE%\.cursor\plans\` is incomplete.
 
 ## Do
 
 - Put new `.plan.md` files in `.cursor/plans/`
-- Prefer descriptive names like `python_frame_ipc_shared_memory.plan.md`
-- Keep plans in-repo so they sync across machines (Dropbox/git) for cross-platform jAER work
+- Keep plans in-repo so they sync across machines (Dropbox) for jAER work
 
 ## Do not
 
-- Write plans only to the user-global Cursor plans folder when the work is about this jAER repo
-- Scatter plans under `docs/`, `/tmp`, or random paths unless the user explicitly asks
+- Finish a plan turn with the file only in the user-global Cursor plans folder
+- Scatter plans under `docs/`, `/tmp`, or random paths unless the user asks

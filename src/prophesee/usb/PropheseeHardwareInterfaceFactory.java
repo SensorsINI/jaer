@@ -20,6 +20,7 @@ import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 
 /**
  * Enumerates Prophesee EVK4 HD cameras (Cypress 0x04B4:0x00F5).
@@ -66,18 +67,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
 
     private void refreshCompatibleDevicesList() {
         final List<Device> tmpDrain = new ArrayList<>(buildCompatibleDevicesList());
-        final List<Device> removals = new ArrayList<>();
-        for (final Device element : compatibleDevicesList) {
-            if (tmpDrain.contains(element)) {
-                tmpDrain.remove(element);
-            } else {
-                removals.add(element);
-                LibUsb.unrefDevice(element);
-            }
-        }
-        compatibleDevicesList.removeAll(removals);
-        compatibleDevicesList.addAll(tmpDrain);
-        tmpDrain.clear();
+        UsbIds.mergeLibUsbDeviceScan(compatibleDevicesList, tmpDrain);
     }
 
     private List<Device> buildCompatibleDevicesList() {

@@ -19,6 +19,7 @@ import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import org.usb4java.LibUsbException;
 
 public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
@@ -81,27 +82,9 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
     private void refreshCompatibleDevicesList() {
         // Temporary storage to allow modification.
         final List<Device> tmpDrain = new ArrayList<>(buildCompatibleDevicesList());
-
-        // Replace with new data in a non-destructive way, by not touching
-        // values that were already present.
-        final List<Device> removals = new ArrayList<>();
-
-        for (final Device element : compatibleDevicesList) {
-            if (tmpDrain.contains(element)) {
-                tmpDrain.remove(element);
-            } else {
-                removals.add(element);
-                LibUsb.unrefDevice(element);
-            }
-        }
-
-        // Remove all items that need to be deleted and add all the new ones in
-        // only one call each.
-        compatibleDevicesList.removeAll(removals);
-        compatibleDevicesList.addAll(tmpDrain);
-
-        // Consume newContent fully.
-        tmpDrain.clear();
+        // Device.equals is native-pointer identity; match bus/addr or a rescan
+        // unrefs the Device a LIVE CypressFX3 still holds (AEViewer #1 DVX bind loop).
+        UsbIds.mergeLibUsbDeviceScan(compatibleDevicesList, tmpDrain);
     }
 
     private List<Device> buildCompatibleDevicesList() {

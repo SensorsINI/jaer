@@ -27,4 +27,4 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 
 `ant compile` is the source of truth (JDK **25**, `javac.source`/`target` 25; `ant check-jdk` if the JVM is too old). New `AEChip` / `EventFilter2D` types appear in Customize only after `ant compile` (allowlist written into `jAER.jar`). IDE compile-on-save is not enough. Packaged installers load only types from that list.
 
-Plans for this repo: `.cursor/plans/`. Shell: bash on Linux/WSL, PowerShell 5.1 on native Windows (`.cursor/rules/shell-by-platform.mdc`).
+Plans for this repo: `.cursor/plans/` (CreatePlan’s user-global file must be copied there the same turn). Shell: bash on Linux/WSL, PowerShell 5.1 on native Windows (`.cursor/rules/shell-by-platform.mdc`).

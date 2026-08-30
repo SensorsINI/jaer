@@ -249,6 +249,15 @@ public class WindowSaver implements AWTEventListener {
 
     }
 
+    /**
+     * {@link #loadSettings} applies bounds on a later EDT turn. After every
+     * session frame has been {@code setVisible} (so {@code WINDOW_OPENED} has
+     * already queued those restores), run {@code r} on the following EDT turn.
+     */
+    public static void runAfterQueuedRestores(Runnable r) {
+        SwingUtilities.invokeLater(r);
+    }
+
     // returns true if there is a stored preference
     private boolean isPreference(String name) {
         return !(preferences.get(name, null) == null);

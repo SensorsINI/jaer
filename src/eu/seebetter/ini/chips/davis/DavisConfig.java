@@ -1250,10 +1250,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             setColorCorrection(getChip().getPrefs().getBoolean(getPreferencesHeader() + "colorCorrection", true));
             setMonochrome(getChip().getPrefs().getBoolean(getPreferencesHeader() + "monochrome", true));
 
-            if (getContrastContoller() != null) { // might not exist until constructor is finished
+            if (getContrastContoller() != null) { // might not exist until DavisRenderer is constructed
                 getContrastContoller().loadPreferences();
             } else {
-                log.warning("Could not load preferences for null ContrastController");
+                log.fine("ContrastController not ready yet (DavisRenderer constructed after biasgen); prefs load when renderer is set");
             }
         }
 

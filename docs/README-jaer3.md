@@ -319,13 +319,16 @@ matches that device against the AEChip menu. AEViewer then:
   still a valid match, applies that AEChip silently;
 - binds without prompting if the current chip is the **sole** VID/PID match;
 - switches automatically when exactly one menu chip matches but differs from current;
-- offers a chooser (OK / Remember this selection / Cancel) when several chips share
-  the PID (typical for Davis FX3) — USB cannot distinguish e.g. Davis346 red vs blue:
+- keeps the current AEChip when it already matches the VID/PID (session restore /
+  startup autobind) even if several Davis variants share the PID;
+- offers a chooser (OK / Remember this selection / Cancel) only when several chips
+  share the PID **and** the current AEChip cannot drive the device (Davis346 red
+  vs blue vs experimental SciDVS; firmware cannot distinguish SciDVS, so it is
+  listed rather than probed over USB):
   - **OK** uses the choice now and as the dialog default next time (still prompts);
   - **Remember this selection** also auto-opens that AEChip when the device is found;
 - choosing an AEChip from the **AEChip menu** clears Remember mappings so a different
   camera is not forced to the old variant;
-- without Remember, prompts at most once per device key per session.
 
 Prefs keys:
 - `AEViewer.liveChipOffer.chip.<deviceKey>` → Remember auto-open FQCN
@@ -344,6 +347,10 @@ public class MyCamera extends AETemporalConstastRetina { ... }
 
 Generic playback-only chips (e.g. `DVS640`) omit `@UsbDevices` and are ignored
 by live matching.
+
+Live USB `open()` / config runs **one camera at a time** across AEViewers
+(see [README-usb.md](README-usb.md#open-config-close-abandon)). Bind can still
+happen in parallel.
 
 ---
 

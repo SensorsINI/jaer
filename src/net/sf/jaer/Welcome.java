@@ -17,12 +17,12 @@ import net.sf.jaer.graphics.AEViewer;
  * Copy for the centered chip-view welcome overlay shown while an
  * {@link AEViewer} is waiting for a device or recorded file.
  * <p>
- * Device advice follows the Interface menu that {@link AEViewer} already
- * builds ({@link AEViewer#getInterfaceMenuDeviceLabels()}):
+ * Device advice follows the current USB enumeration
+ * ({@link AEViewer#getEnumeratedDeviceLabels()}), not a stale Interface menu:
  * <ul>
  * <li>no devices listed: plug in a camera or open a recording</li>
- * <li>one device: name it (auto-open; no extra click)</li>
- * <li>several devices: list those menu labels one per line and point at Interface</li>
+ * <li>one device and one viewer: name it (auto-open; no extra click)</li>
+ * <li>several devices, or more than one viewer: list cameras and point at Interface</li>
  * <li>user chose a camera: {@link #opening(AEViewer, String)} keeps the title
  * and adds opening-progress lines until LIVE or None</li>
  * </ul>
@@ -47,23 +47,27 @@ public final class Welcome {
     /**
      * Overlay lines for a viewer. Title always includes
      * {@link JaerConstants#getReleaseVersion()}. Device hints come from the
-     * viewer's Interface menu snapshot.
+     * USB enumeration cache (all cameras), not this viewer's last menu build.
+     * Cameras already open in another window are labeled {@code — AEViewer #N}
+     * or {@code — already open} (USB handle held without a chip claim).
      *
      * @param viewer the AEViewer that will show the overlay, or {@code null}
      * @return non-empty array of overlay lines
      */
     public static String[] linesFor(AEViewer viewer) {
         List<String> devices = viewer != null
-                ? viewer.getInterfaceMenuDeviceLabels()
+                ? viewer.getEnumeratedDeviceLabels()
                 : List.of();
         List<String> lines = new ArrayList<>(5);
         addIfPresent(lines, title(viewer));
+        boolean choose = !devices.isEmpty()
+                && (devices.size() > 1 || (viewer != null && viewer.getOpenViewerCount() > 1));
         if (devices.isEmpty()) {
             addIfPresent(lines, plugInOrOpenFile(viewer));
-        } else if (devices.size() == 1) {
-            addIfPresent(lines, "Found " + devices.get(0));
-        } else if (devices.size() > 1) {
+        } else if (choose) {
             lines.addAll(chooseCamera(viewer, devices));
+        } else {
+            addIfPresent(lines, "Found " + devices.get(0));
         }
         addIfPresent(lines, sampleData(viewer));
         addIfPresent(lines, helpMenu(viewer));
@@ -108,17 +112,17 @@ public final class Welcome {
     }
 
     /**
-     * Shown when the Interface menu lists several devices: a header line, then
-     * one indented line per menu label so names fit the overlay width.
+     * Shown when more than one camera is listed, or more than one viewer is
+     * open: header line, then one indented line per device.
      *
      * @param viewer unused
-     * @param devices Interface-menu item text from
-     * {@link AEViewer#getInterfaceMenuDeviceLabels()}
+     * @param devices Interface-menu style labels from
+     * {@link AEViewer#getEnumeratedDeviceLabels()}
      * @return hint lines (header plus one line per device)
      */
     public static List<String> chooseCamera(AEViewer viewer, List<String> devices) {
         List<String> out = new ArrayList<>(devices.size() + 1);
-        out.add("Multiple devices found. Choose one from Interface menu:");
+        out.add("Choose a camera from Interface menu:");
         for (String device : devices) {
             if (device != null && !device.isEmpty()) {
                 out.add("  " + device);

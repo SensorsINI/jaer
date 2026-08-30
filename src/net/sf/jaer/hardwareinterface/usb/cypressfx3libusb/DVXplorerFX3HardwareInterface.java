@@ -129,11 +129,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
     @Override
     protected boolean shouldResetUsbDevice() {
-        if (deviceDescriptor == null && device != null) {
-            deviceDescriptor = new DeviceDescriptor();
-            LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        }
-        return !isMipiCX3Device() && !isUsbLinkDead();
+        // Classic FX3 used to reset on open/close. That reset takes down
+        // sibling WinUSB cameras (Interface → None on one viewer).
+        return false;
     }
 
     private int usbNoteCount;
@@ -151,7 +149,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             usbErrorCount++;
         }
         if (status != LibUsb.TRANSFER_COMPLETED) {
-            CypressFX3.log.warning(String.format(
+            CypressFX3.log.fine(String.format(
                     "Mini/Micro USB: n=%d complete=%d err=%d lastStatus=%s lastBytes=%d",
                     usbNoteCount, usbCompleteCount, usbErrorCount, LibUsb.errorName(status), actualLength));
             return;

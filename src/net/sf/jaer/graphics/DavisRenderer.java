@@ -141,18 +141,14 @@ public class DavisRenderer extends AEChipRenderer {
     public DavisRenderer(final AEChip chip) {
         super(chip);
 
-        if (chip.getNumPixels() == 0) {
-            log.warning("chip has zero pixels; is the constuctor of AEFrameChipRenderer called before size of the AEChip is set?");
-            return;
-        }
-
         checkPixmapAllocation();
 
         if (chip instanceof DavisChip) {
             contrastController = new DavisVideoContrastController((DavisChip) chip);
-            // when contrast controller properties change, inform this so this can pass on to the chip
         } else {
-            log.warning("cannot make a DavisVideoContrastController for this chip because it does not extend DavisChip");
+            // DVS128 / DVXplorer reuse this renderer for DVS pixmap; APS contrast is N/A.
+            log.fine("no DavisVideoContrastController: " + chip.getClass().getSimpleName()
+                    + " does not extend DavisChip");
         }
         initializeGrayLevelFromColorMode();
     } // constructor

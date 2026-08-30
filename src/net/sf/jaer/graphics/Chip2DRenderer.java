@@ -209,7 +209,9 @@ public class Chip2DRenderer implements Observer {
     protected void resetPixmapGrayLevel(float value) {
         checkPixmapAllocation();
         if (chip.getNumPixels() == 0) {
-            log.warning("chip has zero pixels; is the constuctor of Chip2DRenderer called before size of the AEChip is set?");
+            // Java runs Chip2D/AEChip (and AETemporalConstastRetina) constructors before the
+            // concrete chip can setSizeX/Y. Pixmap is filled later when size becomes finite.
+            log.fine("chip has zero pixels; pixmap gray fill skipped until chip size is set");
             return;
         }
         final int n = 3 * chip.getNumPixels();

@@ -35,7 +35,7 @@ public class MultiViewerFromMultiCamera extends DavisRenderer{
         super(chip);  
         
         if (chip.getNumPixels() == 0) {
-            log.warning("chip has zero pixels; is the constuctor of AEFrameChipRenderer called before size of the AEChip is set?");
+            log.fine("chip has zero pixels; MultiViewerFromMultiCamera pixmap deferred until size is set");
             return;
         }
         
@@ -54,7 +54,8 @@ public class MultiViewerFromMultiCamera extends DavisRenderer{
             contrastController = new DavisVideoContrastController((MultiDavisCameraChip) chip);
             contrastController.getSupport().addPropertyChangeListener(this);
         } else {
-            log.warning("cannot make a DavisVideoContrastController for this chip because it does not extend DavisChip");
+            log.fine("no DavisVideoContrastController: " + chip.getClass().getSimpleName()
+                    + " does not extend MultiDavisCameraChip");
         }
         
     }

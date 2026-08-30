@@ -126,8 +126,9 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
             devicesFound += String.format("\n %s for USB VID/PID 0x%x/0x%x",
                     vidPidToClassMap.get(vidPid).toString(), vidPid.left, vidPid.right);
         }
+        // TODO comment out once USB enumeration is stable (1 Hz Windows poll floods the console).
         if (nFound > 0) {
-            log.info(devicesFound);
+            log.fine(devicesFound);
         }
 
         LibUsb.freeDeviceList(devList, true);

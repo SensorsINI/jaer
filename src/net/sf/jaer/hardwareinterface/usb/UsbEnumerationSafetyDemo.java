@@ -32,6 +32,9 @@ public final class UsbEnumerationSafetyDemo {
         testChipSwitchKeepsHotplugListener();
         testNrvClaimAfterHotplug();
         testWindowsUsbPollSchedule();
+        testRememberLastInterfaceMap();
+        testUsbOpenSerializer();
+        testSessionCameraOpenCoordinator();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -63,6 +66,17 @@ public final class UsbEnumerationSafetyDemo {
                 "public USBInterface getFirstAvailableInterface()");
         require(!list.contains("LibUsb.open("),
                 "FX3 factory must not LibUsb.open during USB scan");
+        String fx3Factory = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "LibUsb3HardwareInterfaceFactory.java"),
+                StandardCharsets.UTF_8);
+        require(fx3Factory.contains("UsbIds.mergeLibUsbDeviceScan("),
+                "FX3 factory refresh must keep Device refs by bus/addr, not Device.equals");
+        require(Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
+                StandardCharsets.UTF_8).contains("USB still enumerated after close"),
+                "closed wrapper still on the bus must not map-autobind in a loop");
+        require(Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
+                StandardCharsets.UTF_8).contains("retry bind on next WAITING poll"),
+                "still-enumerated close must not set nullInterface (cameras stayed WAITING)");
     }
 
     private static void testViewerSkipsOpenDeviceByIdentity() throws Exception {
@@ -71,6 +85,12 @@ public final class UsbEnumerationSafetyDemo {
                 "private volatile List<String> interfaceMenuDeviceLabels");
         require(menu.contains("UsbIds.samePhysicalDevice(hw, chip.getHardwareInterface())"),
                 "Interface menu skips the already-open camera by USB bus/addr");
+        require(menu.contains("interfaceChoiceLabel(hw, i)"),
+                "Interface menu labels include other-viewer claims");
+        require(menu.contains("viewerClaimingHardware(hw)"),
+                "Interface menu marks cameras already bound in another AEViewer");
+        require(menu.contains("already open"),
+                "Interface menu disables factory wrappers that already have a USB handle");
         require(!menu.contains("hw.toString().equals(chip.getHardwareInterface().toString())"),
                 "menu skip is not product-string equality (ghost CypressFX3)");
     }
@@ -112,19 +132,25 @@ public final class UsbEnumerationSafetyDemo {
         String ensure = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
                 "public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw)",
                 "private Class<? extends AEChip> loadRememberedLiveChip");
-        require(ensure.contains("!SwingUtilities.isEventDispatchThread()"),
-                "SciDVS FPGA LibUsb probe must not run on the EDT");
-        require(ensure.indexOf("loadRememberedLiveChip(")
-                < ensure.indexOf("probeSciDVSByFpgaGeometry()"),
-                "remembered AEChip wins before any USB probe");
+        require(!ensure.contains("probeSciDVSByFpgaGeometry()"),
+                "ensureChip must not open USB to distinguish SciDVS from Davis346");
+        require(ensure.contains("if (currentIsMatch)")
+                && ensure.indexOf("if (currentIsMatch)")
+                < ensure.indexOf("showOptionDialog"),
+                "Davis red/blue/SciDVS chooser must not appear when current AEChip already matches");
+        require(src.contains("SciDVS.class.getName()"),
+                "SciDVS is a default AEChip for the shared Davis346 VID/PID");
         require(src.contains("jaer-aemon-open"),
                 "aemon.open runs on a worker so ViewLoop can abandon a stuck open");
         require(src.contains("unbindAbandonedHardware("),
                 "timed-out open unbinds the hung wrapper instead of retrying close/open");
-        require(Files.readString(Paths.get("src", "net", "sf", "jaer",
+        String fx3Src = Files.readString(Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java"),
-                StandardCharsets.UTF_8).contains("skipping USB string descriptors"),
+                StandardCharsets.UTF_8);
+        require(fx3Src.contains("skipping USB string descriptors"),
                 "CypressFX3 open must not issue USB string-descriptor transfers");
+        require(fx3Src.contains("abortFailedOpen()"),
+                "failed FX3 open must release the libusb handle (close() no-ops if !isOpened)");
         String dvxOpen = methodBody(
                 Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
                         "cypressfx3libusb", "DVXplorerFX3HardwareInterface.java"),
@@ -555,6 +581,208 @@ public final class UsbEnumerationSafetyDemo {
                 "focus gained resets the Windows USB poll to 1 s");
         require(src.contains("lastInterfaceCheckTime = 0"),
                 "focus gained forces the next WAITING tick to scan immediately");
+    }
+
+    private static void testRememberLastInterfaceMap() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String src = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(src.contains("prefs.getBoolean(\"rememberLastInterface\", true)"),
+                "Remember last interface defaults to true");
+        require(src.contains("ViewerInterfaceBindingMap"),
+                "last camera is stored in the tmpdir map, not Preferences");
+        require(src.contains("bindRememberedInterfaceIfPossible"),
+                "WAITING rebinds this window's last USB camera");
+        String remembered = methodBody(viewer,
+                "private boolean bindRememberedInterfaceIfPossible(int ninterfaces) {",
+                "private boolean hardwareTakenByOtherViewer");
+        require(!remembered.contains("LibUsb.open"),
+                "remembered-camera match must not LibUsb.open");
+        require(!remembered.contains("getStringDescriptors"),
+                "remembered-camera match must not read USB string descriptors");
+        require(remembered.contains("ViewerInterfaceBindingMap.get(viewerInstanceIndex)"),
+                "binding is per AEViewer-N window");
+        require(remembered.contains("firstUnusedMatchingThisChip"),
+                "empty map still autobinds unused cameras matching the restored AEChip");
+        require(remembered.contains("firstUnusedNotReservedForOtherViewer"),
+                "stale map falls back to a leftover camera not reserved by another window");
+        require(remembered.contains("hardwareReservedForOtherViewer"),
+                "leftover fallback must not steal another viewer's remembered camera");
+        require(remembered.contains("HARDWARE_CLAIM_LOCK"),
+                "multi-viewer autobind claims one camera at a time");
+        require(remembered.contains("autobindOnWaiting"),
+                "File→New viewers do not autobind leftover cameras");
+        String jv = Files.readString(Paths.get("src", "net", "sf", "jaer", "JAERViewer.java"),
+                StandardCharsets.UTF_8);
+        require(jv.contains("restoringSessionViewers"),
+                "session restore is marked so extra viewers can skip autobind");
+        require(src.contains("getCachedNumInterfacesAvailable() == 0"),
+                "extra AEViewer must not rebuild the USB list while others are LIVE");
+        Path map = Paths.get("src", "net", "sf", "jaer", "util", "ViewerInterfaceBindingMap.java");
+        String mapSrc = Files.readString(map, StandardCharsets.UTF_8);
+        require(mapSrc.contains("JaerTmpdir.file(FILE_NAME)"),
+                "map file lives under java.io.tmpdir/jaer");
+        require(mapSrc.contains("aeviewer-interface-map.properties"),
+                "map file name is aeviewer-interface-map.properties");
+        require(mapSrc.contains("in-memory map still used") || mapSrc.contains("cache()"),
+                "map keeps an in-memory cache if Windows cannot replace the file");
+    }
+
+    /**
+     * Parallel AEViewer opens hung WinUSB (classic DVX SPI IN during Prophesee
+     * ISSD, jAER 3:50:18). Bind stays under HARDWARE_CLAIM_LOCK; USB open+config
+     * is one-at-a-time and the per-camera timeout starts after that lock.
+     * Timeout releases the serializer so remaining cameras can open (jAER 4:20:44).
+     */
+    private static void testUsbOpenSerializer() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String src = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(src.contains("USB_OPEN_SERIAL_LOCK"),
+                "AEViewers share a USB open serializer");
+        require(src.contains("new ReentrantLock(true)"),
+                "USB open serializer is fair");
+        String open = methodBody(viewer,
+                "private void openAEMonitor() {",
+                "private void showUsbLinkOverlayAfterOpen()");
+        require(open.contains("acquireUsbOpenSerialLock("),
+                "openAEMonitor waits for the USB open serializer");
+        require(open.contains("releaseUsbOpenSerialLock()"),
+                "openAEMonitor releases the USB open serializer");
+        int alreadyOpen = open.indexOf("aemon.isOpen()");
+        int bind = open.indexOf("openHardwareIfNonambiguous()");
+        int serial = open.indexOf("acquireUsbOpenSerialLock(");
+        int deadline = open.indexOf("openDeadline");
+        require(alreadyOpen >= 0 && alreadyOpen < serial,
+                "already-open LIVE path does not take the USB open serializer");
+        require(bind >= 0 && serial > bind,
+                "USB open serializes after bind (AEChip chooser is not held)");
+        require(serial >= 0 && deadline > serial,
+                "per-camera open timeout starts after the serializer is held");
+        require(!open.contains("opening.setEventAcquisitionEnabled(true)"),
+                "opener does not start AEReader before releasing the serializer");
+        require(!open.contains("releaseUsbOpenSerialLockWhenWorkerDone("),
+                "timeout releases the serializer immediately so remaining cameras can open");
+        require(open.contains("timeout-release"),
+                "timeout unbinds the hung camera and releases the serializer");
+        require(open.contains("UsbOpenTrace.event("),
+                "USB open phases are written to usb-open-trace.log");
+        Path trace = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "UsbOpenTrace.java");
+        String traceSrc = Files.readString(trace, StandardCharsets.UTF_8);
+        require(traceSrc.contains("usb-open-trace.log"),
+                "session USB open trace is usb-open-trace.log under jaer tmpdir");
+        require(traceSrc.contains("ui-restore -> running"),
+                "trace header documents session restore then RUNNING autobind");
+        Path dvx = Paths.get("src", "ch", "unizh", "ini", "jaer", "chip", "retina",
+                "DVXplorer.java");
+        String dvxSrc = Files.readString(dvx, StandardCharsets.UTF_8);
+        require(dvxSrc.contains("skipping SPI IN init params"),
+                "classic DVX still skips SPI IN size/orientation");
+        require(!dvxSrc.contains("skipping SPI OUT opening config"),
+                "classic DVX sends SPI OUT so the sensor produces events");
+        String dvxHi = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb",
+                "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(dvxHi.contains("protected boolean shouldResetUsbDevice()")
+                && dvxHi.contains("return false;"),
+                "classic DVX must not USB-reset on close (takes down sibling cameras)");
+        String acquire = methodBody(viewer,
+                "private boolean acquireUsbOpenSerialLock(AEMonitorInterface opening) {",
+                "private void releaseUsbOpenSerialLock() {");
+        require(acquire.contains("tryLock(100, TimeUnit.MILLISECONDS)"),
+                "serializer wait is interruptible in 100 ms slices");
+        require(acquire.contains("PlayMode.PLAYBACK"),
+                "file open aborts the serializer wait");
+    }
+
+    /**
+     * Session cameras stay closed until WindowSaver places every AEViewer.
+     * After RUNNING, session viewers autobind; Interface never drops a click.
+     * Native open is serialized by USB_OPEN_SERIAL_LOCK.
+     */
+    private static void testSessionCameraOpenCoordinator() throws Exception {
+        Path coord = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "SessionCameraOpenCoordinator.java");
+        String src = Files.readString(coord, StandardCharsets.UTF_8);
+        require(src.contains("beginUiRestore("),
+                "session USB open waits for UI restore");
+        require(src.contains("uiRestoreComplete("),
+                "RUNNING starts after WindowSaver");
+        require(src.contains("Phase.RUNNING"),
+                "coordinator has RUNNING (not STEADY-disables-autobind)");
+        require(!src.contains("serial-skip"),
+                "classic DVX is not skipped forever at session start");
+        require(src.contains("shouldDeferClassicDvxOpen("),
+                "classic FX3 DVX opens last so other cameras reach LIVE first");
+        require(src.contains("isClassicDvxHardware("),
+                "classic FX3 DVX is identified without LibUsb.open");
+        require(src.contains("userRequestedOpen("),
+                "Interface grants the clicking viewer");
+        require(src.contains("always succeeds") || src.contains("Always succeeds"),
+                "Interface click is never dropped");
+        require(!src.contains("pendingUserGrant"),
+                "Interface is not queued-and-dropped");
+        require(src.contains("@return always {@code false}"),
+                "noteEmptyBind does not set nullInterface");
+        Path jv = Paths.get("src", "net", "sf", "jaer", "JAERViewer.java");
+        String jvSrc = Files.readString(jv, StandardCharsets.UTF_8);
+        require(jvSrc.contains("SessionCameraOpenCoordinator.beginUiRestore"),
+                "RunningThread blocks USB before constructing AEViewers");
+        require(jvSrc.contains("WindowSaver.runAfterQueuedRestores"),
+                "RUNNING waits until WindowSaver apply bounds");
+        require(jvSrc.indexOf("SessionCameraOpenCoordinator.beginUiRestore")
+                < jvSrc.indexOf("restoringSessionViewers = true"),
+                "UI restore gate is armed before session windows are created");
+        Path ws = Paths.get("src", "net", "sf", "jaer", "util", "WindowSaver.java");
+        String wsSrc = Files.readString(ws, StandardCharsets.UTF_8);
+        require(wsSrc.contains("runAfterQueuedRestores"),
+                "WindowSaver exposes a flush after loadSettings invokeLater");
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String v = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(v.contains("SessionCameraOpenCoordinator.mayOpenUsb(this)"),
+                "ViewLoop bind/open is gated during UI restore");
+        require(v.contains("SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this);"),
+                "Interface always requests open (no early return)");
+        require(!v.contains("if (!SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this))"),
+                "Interface does not drop the click when another camera is opening");
+        require(v.contains("leftover same-family"),
+                "restore leftover bind is same AEChip family only");
+        require(v.contains("SessionCameraOpenCoordinator.waitReason(AEViewer.this)"),
+                "WAITING shows UI restore / classic-DVX defer");
+        require(v.contains("SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this)"),
+                "LIVE acquire is traced");
+        require(v.contains("liveOpenMisses"),
+                "LIVE does not bounce to WAITING on a one-tick closed aemon");
+        require(v.contains("USB ACCESS after Interface select"),
+                "ACCESS after Interface on a still-enumerated device is retried");
+        require(v.contains("skipClassicDvxAutobind("),
+                "classic FX3 DVX is not autobound (Interface may still select it)");
+        require(v.contains("not waiting for close of"),
+                "ViewLoop does not join a hung closer for a different camera");
+        require(v.contains("keepInterfaceGrant"),
+                "ACCESS retry keeps the Interface grant so map does not steal");
+        require(v.contains("isHungNativeHardware("),
+                "Interface does not close() a hung synchronized open");
+        require(v.contains("join so leftover viewers do not get ACCESS")
+                || v.contains("cleanup: USB close still running"),
+                "closing a viewer joins aemon.close so remaining windows can open");
+        int bundle = v.indexOf("hwBundle = aemon.acquireAvailablePacketBundle()");
+        int note = v.indexOf("SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this)");
+        require(bundle >= 0 && note > bundle,
+                "typed PacketBundle LIVE path notes acquiring (not only grabInput)");
+        String hotplug = methodBody(viewer,
+                "private void onLibUsbHotplug(boolean arrived, int vid, int pid) {",
+                "public boolean isCameraOpenInProgress()");
+        require(hotplug.contains("isUiRestore()"),
+                "hotplug is ignored while windows are still restoring");
+        require(hotplug.contains("mayOpenUsb(this)"),
+                "hotplug add does not clear nullInterface on every viewer");
+        Path tester = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "USBRebindTester.java");
+        String testerSrc = Files.readString(tester, StandardCharsets.UTF_8);
+        require(testerSrc.contains("jaer.usbRebindTester\", \"false\""),
+                "USBRebindTester is off unless -Djaer.usbRebindTester=true");
+        require(v.contains("injectInterfaceMenuClick("),
+                "AEViewer exposes Interface doClick for the optional tester");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

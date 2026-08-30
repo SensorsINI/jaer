@@ -37,7 +37,7 @@ tree. Rules under `.cursor/rules/` **are** tracked.
 | Location | What belongs there |
 |----------|-------------------|
 | Cursor **User Rules** (Settings → Rules, or `~/.cursor/` user rules) | Machine/account preferences only (editor, shell habits). They apply to **every** project, including siblings such as `rpg_e2vid` |
-| User-global plans folder | Not canonical for jAER. Use `jaer/.cursor/plans/` |
+| User-global plans folder (`~/.cursor/plans`) | CreatePlan writes here. **Not** canonical. Same turn: copy to `jaer/.cursor/plans/` |
 | `*.code-workspace` | Gitignored (machine paths, JDK home) |
 
 Do **not** put the jAER pipeline summary in User Rules.

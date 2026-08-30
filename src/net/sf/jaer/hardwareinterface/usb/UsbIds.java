@@ -5,6 +5,8 @@
  */
 package net.sf.jaer.hardwareinterface.usb;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -113,11 +115,62 @@ public final class UsbIds {
             return false;
         }
         try {
-            return LibUsb.getBusNumber(da) == LibUsb.getBusNumber(db)
-                    && LibUsb.getDeviceAddress(da) == LibUsb.getDeviceAddress(db);
+            return sameUsbPort(da, db);
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+    /**
+     * Same USB bus/addr. {@link Device#equals} is native-pointer identity; each
+     * {@code LibUsb.getDeviceList} returns new JNI wrappers for the same port.
+     */
+    public static boolean sameUsbPort(Device a, Device b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a == b) {
+            return true;
+        }
+        try {
+            return LibUsb.getBusNumber(a) == LibUsb.getBusNumber(b)
+                    && LibUsb.getDeviceAddress(a) == LibUsb.getDeviceAddress(b);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Merge a fresh libusb scan into {@code kept}. Keep existing Device objects
+     * when the port is still present (LIVE wrappers hold those refs). Unref
+     * scan duplicates and devices that disappeared.
+     */
+    public static void mergeLibUsbDeviceScan(List<Device> kept, List<Device> scanned) {
+        if (kept == null || scanned == null) {
+            return;
+        }
+        final List<Device> removals = new ArrayList<>();
+        for (Device old : kept) {
+            Device dup = takeSameUsbPort(scanned, old);
+            if (dup != null) {
+                LibUsb.unrefDevice(dup);
+            } else {
+                removals.add(old);
+                LibUsb.unrefDevice(old);
+            }
+        }
+        kept.removeAll(removals);
+        kept.addAll(scanned);
+        scanned.clear();
+    }
+
+    private static Device takeSameUsbPort(List<Device> scanned, Device old) {
+        for (int i = 0; i < scanned.size(); i++) {
+            if (sameUsbPort(scanned.get(i), old)) {
+                return scanned.remove(i);
+            }
+        }
+        return null;
     }
 
     /**
@@ -142,6 +195,17 @@ public final class UsbIds {
             return name + " " + ids.key() + topo;
         }
         return name + topo;
+    }
+
+    /**
+     * Stable enumeration identity for last-interface mapping: class simple name
+     * plus VID:PID and bus/addr. Does not {@code LibUsb.open}.
+     */
+    public static String enumerationKey(HardwareInterface hw) {
+        if (hw == null) {
+            return "";
+        }
+        return unopenedLabel(hw, hw.getClass().getSimpleName());
     }
 
     /**
