@@ -5,6 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerMicroFX3HardwareInterface;
+
 /**
  * Headless checks: Interface menu must not {@code LibUsb.open} an already-open
  * FX3 (EDT hang / CypressFX3 ghost), chip selection stays on the EDT, and
@@ -35,6 +38,7 @@ public final class UsbEnumerationSafetyDemo {
         testRememberLastInterfaceMap();
         testUsbOpenSerializer();
         testSessionCameraOpenCoordinator();
+        testDvxClassicVsMicroTypes();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -686,15 +690,25 @@ public final class UsbEnumerationSafetyDemo {
                 "DVXplorer.java");
         String dvxSrc = Files.readString(dvx, StandardCharsets.UTF_8);
         require(dvxSrc.contains("skipping SPI IN init params"),
-                "classic DVX still skips SPI IN size/orientation");
-        require(!dvxSrc.contains("skipping SPI OUT opening config"),
-                "classic DVX sends SPI OUT so the sensor produces events");
+                "classic DVX skips SPI IN when sibling libusb AEReaders are LIVE");
+        require(dvxSrc.contains("skipping SPI OUT opening config"),
+                "classic DVX skips SPI OUT when sibling libusb AEReaders are LIVE");
+        require(dvxSrc.contains("classicSpiBlockedBySiblingReaders"),
+                "classic DVX SPI is gated on sibling USBTransferThread event loops");
         String dvxHi = Files.readString(Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx3libusb",
                 "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
         require(dvxHi.contains("protected boolean shouldResetUsbDevice()")
                 && dvxHi.contains("return false;"),
                 "classic DVX must not USB-reset on close (takes down sibling cameras)");
+        require(dvxHi.contains("classicSpiBlockedBySiblingReaders"),
+                "classic FX3 HI skips 4-byte SPI when sibling event loops are LIVE");
+        Path registry = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "LibUsbAsyncReaderRegistry.java");
+        require(Files.readString(registry, StandardCharsets.UTF_8).contains("siblingEventLoopsLive"),
+                "sibling USBTransferThread event loops are detected before classic SPI");
+        require(src.contains("keeping newly bound"),
+                "hung classic open must not nullInterface a newly selected camera");
         String acquire = methodBody(viewer,
                 "private boolean acquireUsbOpenSerialLock(AEMonitorInterface opening) {",
                 "private void releaseUsbOpenSerialLock() {");
@@ -725,6 +739,8 @@ public final class UsbEnumerationSafetyDemo {
                 "classic FX3 DVX opens last so other cameras reach LIVE first");
         require(src.contains("isClassicDvxHardware("),
                 "classic FX3 DVX is identified without LibUsb.open");
+        require(src.contains("DVXplorerMicroFX3HardwareInterface"),
+                "classic vs Mini/Micro are different HardwareInterface types");
         require(src.contains("userRequestedOpen("),
                 "Interface grants the clicking viewer");
         require(src.contains("always succeeds") || src.contains("Always succeeds"),
@@ -793,6 +809,38 @@ public final class UsbEnumerationSafetyDemo {
                 "USBRebindTester is off unless -Djaer.usbRebindTester=true");
         require(v.contains("injectInterfaceMenuClick("),
                 "AEViewer exposes Interface doClick for the optional tester");
+    }
+
+    private static void testDvxClassicVsMicroTypes() throws Exception {
+        Path factory = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "cypressfx3libusb", "LibUsb3HardwareInterfaceFactory.java");
+        String fac = Files.readString(factory, StandardCharsets.UTF_8);
+        require(fac.contains("hardwareClassForBcdDevice("),
+                "factory picks DVX HI class from bcdDevice without LibUsb.open");
+        require(Files.exists(Paths.get("src", "net", "sf", "jaer", "hardwareinterface",
+                "usb", "cypressfx3libusb", "DVXplorerMicroFX3HardwareInterface.java")),
+                "Mini/Micro has its own HardwareInterface subclass");
+        require(Files.exists(Paths.get("src", "ch", "unizh", "ini", "jaer", "chip",
+                "retina", "DVXplorerMicro.java")),
+                "Mini/Micro has its own AEChip subclass");
+        Path detector = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
+                "LiveDeviceChipDetector.java");
+        String det = Files.readString(detector, StandardCharsets.UTF_8);
+        require(det.contains("chipCompatibleWithHardware("),
+                "VID/PID match does not bind classic DVX chip to a Micro HI");
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        require(Files.readString(viewer, StandardCharsets.UTF_8).contains("DVXplorerMicro.class.getName()"),
+                "DVXplorerMicro is a default AEChip");
+        require(DVXplorerFX3HardwareInterface.isCx3MipiBcdDevice(0x040A),
+                "bcdDevice 0x040A is CX3 type 4");
+        require(!DVXplorerFX3HardwareInterface.isCx3MipiBcdDevice(0x0308),
+                "bcdDevice 0x0308 is classic FX3 type 3");
+        require(DVXplorerFX3HardwareInterface.hardwareClassForBcdDevice(0x040A)
+                        == DVXplorerMicroFX3HardwareInterface.class,
+                "type 4 constructs DVXplorerMicroFX3HardwareInterface");
+        require(DVXplorerFX3HardwareInterface.hardwareClassForBcdDevice(0x0308)
+                        == DVXplorerFX3HardwareInterface.class,
+                "type 3 constructs DVXplorerFX3HardwareInterface");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

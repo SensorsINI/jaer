@@ -1392,6 +1392,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             return bufferLifecycle.isReconfigPending();
         }
 
+        public boolean isTransferAlive() {
+            return usbTransfer != null && usbTransfer.isAlive();
+        }
+
         /**
          * Applies the filterChain processing on the most recently captured
          * data. The processing is done by extracting the events just captured
@@ -2333,6 +2337,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     public AEReader getAeReader() {
         return aeReader;
+    }
+
+    /** True while this device's {@code USBTransferThread} is in {@code handleEvents}. */
+    protected boolean isAeReaderTransferAlive() {
+        return aeReader != null && aeReader.isTransferAlive();
     }
 
     public void setAeReader(final AEReader aeReader) {

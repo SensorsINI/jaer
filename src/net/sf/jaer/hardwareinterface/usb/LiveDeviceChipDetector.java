@@ -10,10 +10,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
+import ch.unizh.ini.jaer.chip.retina.DVXplorer;
+import ch.unizh.ini.jaer.chip.retina.DVXplorerMicro;
 import net.sf.jaer.UsbDevice;
 import net.sf.jaer.UsbDevices;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerMicroFX3HardwareInterface;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 
 /**
@@ -60,7 +64,9 @@ public final class LiveDeviceChipDetector {
         if (!ids.isKnown()) {
             return Collections.emptyList();
         }
-        return findMatches(ids.vid, ids.pid, loadedChipClassNames);
+        List<Class<? extends AEChip>> matches = findMatches(ids.vid, ids.pid, loadedChipClassNames);
+        matches.removeIf(c -> !chipCompatibleWithHardware(c, hw));
+        return matches;
     }
 
     /**
@@ -77,11 +83,11 @@ public final class LiveDeviceChipDetector {
 
     public static Class<? extends AEChip> detectUnique(HardwareInterface hw,
             List<String> loadedChipClassNames) {
-        UsbIds.Pair ids = UsbIds.peek(hw);
-        if (!ids.isKnown()) {
-            return null;
+        List<Class<? extends AEChip>> matches = findMatches(hw, loadedChipClassNames);
+        if (matches.size() == 1) {
+            return matches.get(0);
         }
-        return detectUnique(ids.vid, ids.pid, loadedChipClassNames);
+        return null;
     }
 
     /** True if this chip class (or an inherited @UsbDevices) lists the pair. */
@@ -106,7 +112,26 @@ public final class LiveDeviceChipDetector {
             return false;
         }
         UsbIds.Pair ids = UsbIds.peek(hw);
-        return ids.isKnown() && declaresVidPid(currentChipClass, ids.vid, ids.pid);
+        return ids.isKnown() && declaresVidPid(currentChipClass, ids.vid, ids.pid)
+                && chipCompatibleWithHardware(currentChipClass, hw);
+    }
+
+    /**
+     * Same VID/PID is not enough for DVXplorer vs Mini/Micro: factory already
+     * chose the HI from {@code bcdDevice}.
+     */
+    public static boolean chipCompatibleWithHardware(Class<?> chipClass, HardwareInterface hw) {
+        if (chipClass == null || hw == null) {
+            return false;
+        }
+        if (hw instanceof DVXplorerMicroFX3HardwareInterface) {
+            return DVXplorerMicro.class.isAssignableFrom(chipClass);
+        }
+        if (hw instanceof DVXplorerFX3HardwareInterface) {
+            return DVXplorer.class.isAssignableFrom(chipClass)
+                    && !DVXplorerMicro.class.isAssignableFrom(chipClass);
+        }
+        return true;
     }
 
     /** True if this class (or a superclass) declares {@link UsbDevices}. */

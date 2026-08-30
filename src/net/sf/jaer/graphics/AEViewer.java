@@ -523,6 +523,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Davis346blue.class.getName(),
         SciDVS.class.getName(),
         DVXplorer.class.getName(),
+        DVXplorerMicro.class.getName(),
         //        CochleaAMS1c.class.getName(),
         DVS640.class.getName(),
         NRVS5KRC1S.class.getName(),
@@ -4235,13 +4236,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // Unbind so ViewLoop does not retry this wrapper (became "CypressFX3").
                         abandonedHungHardware = opening;
                         unbindAbandonedHardware(opening);
-                        aemon = null;
-                        wantWaiting = true;
+                        if (aemon == opening) {
+                            aemon = null;
+                        }
                         if (opener.isAlive()) {
                             UsbOpenTrace.event("timeout-release",
                                     "release serializer so remaining cameras can open",
                                     UsbIds.enumerationKey(opening) + " " + UsbLog.stack(opener, 6));
                         }
+                        HardwareInterface nextHi = (chip != null) ? chip.getHardwareInterface() : null;
+                        if (nextHi != null && nextHi != opening) {
+                            nullInterface = false;
+                            SessionCameraOpenCoordinator.userRequestedOpen(this);
+                            log.info("openAEMonitor: keeping newly bound " + nextHi
+                                    + " after abort of hung " + opening);
+                            return;
+                        }
+                        wantWaiting = true;
                         SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(this, "timeout");
                         return;
                     }
@@ -4601,8 +4612,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (hung != null) {
             abandonedHungHardware = hung;
         }
-        if (chip != null && (hung == null || chip.getHardwareInterface() == hung
-                || chip.getHardwareInterface() == null)) {
+        HardwareInterface current = (chip != null) ? chip.getHardwareInterface() : null;
+        if (current != null && hung != null && current != hung) {
+            if (aemon == hung) {
+                aemon = null;
+            }
+            log.info("Unbound hung hardware; keeping newly bound " + current);
+            log.fine("unbindAbandonedHardware hung=" + hung + " kept=" + current + " " + UsbLog.t());
+            clearOpeningCameraOverlay();
+            return;
+        }
+        if (chip != null && (hung == null || current == hung || current == null)) {
             chip.setHardwareInterface(null);
         }
         aemon = null;
@@ -4775,7 +4795,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return hw.toString();
     }
 
-    /** Collapse Davis346blue/red/… to {@code Davis346}; keep SciDVS / DVXplorer distinct. */
+    /** Collapse Davis346blue/red/… to {@code Davis346}; keep SciDVS / DVXplorer / DVXplorerMicro distinct. */
     private static String chipFamilyMenuLabel(java.util.List<Class<? extends AEChip>> matches) {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
         for (Class<? extends AEChip> c : matches) {

@@ -31,7 +31,7 @@ is a singleton. Registered factories (`HardwareInterfaceFactory.factories`):
 | Factory | Typical cameras |
 |---------|-----------------|
 | `LibUsbHardwareInterfaceFactory` | DVS128 / other Cypress FX2 libusb |
-| `LibUsb3HardwareInterfaceFactory` | DAVIS346, SciDVS (same PID), DVXplorer / Mini / Micro, Cochlea FX3 |
+| `LibUsb3HardwareInterfaceFactory` | DAVIS346, SciDVS (same PID), DVXplorer FX3 vs Mini/Micro CX3 (`bcdDevice`), Cochlea FX3 |
 | `NRVHardwareInterfaceFactory` | NRV DELTA01 FX20/CX3 |
 | `PropheseeHardwareInterfaceFactory` | EVK4 HD |
 | `UDPInterfaceFactory`, `eDVS128_InterfaceFactory`, `SpiNNaker_InterfaceFactory`, `OpalKellyFX3Factory` | non-libusb or special |
@@ -101,9 +101,12 @@ one PID (Davis346 red vs blue vs SciDVS). Chip auto-offer is described in
 [README-jaer3.md](README-jaer3.md#usb-vidpid-and-aechip-auto-offer).
 
 Same PID with a different `bcdDevice` (DVXplorer Mini/Micro type 4 vs classic
-FX3 types 1–3) is **not** a second registry entry; the factory still constructs
-`DVXplorerFX3HardwareInterface` and the subclass reads `bcdDevice` after
-`getDeviceDescriptor` (no string descriptors).
+FX3 types 1–3) is **not** a second VID/PID registry entry. `getInterface`
+reads `bcdDevice` from the descriptor (no `LibUsb.open`) and constructs
+`DVXplorerMicroFX3HardwareInterface` or `DVXplorerFX3HardwareInterface`.
+AEChips are `DVXplorerMicro` vs `DVXplorer`. Classic Samsung SPI stays on the
+FX3 type only. `USBTransferThread` is async bulk IN; it does not run these
+`LibUsb.controlTransfer` SPI calls.
 
 Interface menu and Welcome overlay labels should name the family from this
 VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
@@ -263,8 +266,9 @@ after a rapid switch. `DVXplorerFX3HardwareInterface` still resets **non-CX3**
 
 ### DVXplorer Mini / Micro — VID:PID `152a:8419`, `bcdDevice` type 4, firmware ≥ 10
 
-Same factory PID as classic FX3 DVXplorer; distinguish with `bcdDevice` high
-byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
+AEChip `DVXplorerMicro` and HI `DVXplorerMicroFX3HardwareInterface`. Same
+factory PID as classic FX3 `DVXplorer`; `getInterface` uses `bcdDevice` high
+byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 
 - Skip vendor `VR_DATA_CLEANUP` (0xC6) on open: native `controlTransfer` did not
   return (timeout unused).
@@ -287,9 +291,12 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`) and firmware nibble.
   stalls 4-byte `wLength` with `LIBUSB_ERROR_PIPE` (jAER 8:58:38). Do not
   spawn+join that send while holding the CypressFX3 monitor.
 - Classic FX3 DVXplorer (types 1–3): session restore opens this camera **last**
-  so Mini / DVS / Davis are already LIVE. On WinUSB, classic SPI OUT
-  `controlTransfer` can hang; abort unbinds **that** wrapper only. USB reset
-  on close/open is off. Retry from Interface if needed.
+  so Mini / DVS / Davis are already LIVE. On WinUSB, classic 4-byte SPI
+  (`VR_FPGA_CONFIG` IN or OUT) deadlocks in native `controlTransfer` while
+  another `USBTransferThread` is in `handleEvents` (timeout unused). Skip
+  that SPI and go LIVE on firmware defaults; sole-camera open still sends
+  SPI. Abort of a hung wrapper must not set `nullInterface` if the user
+  already bound another camera. USB reset on close/open is off.
 
 ### Prophesee EVK4 HD — VID:PID `04b4:00f5`
 

@@ -50,6 +50,7 @@ import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.event.ImuPacket;
@@ -60,10 +61,9 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * Adds functionality of DVXplorer / DVXplorer Mini/Micro sensors to CypressFX3.
- * Mini/Micro share VID/PID {@code 152a:8419} with DVXplorer; they are CX3 MIPI
- * ({@code bcdDevice} high byte {@link #DEVICE_TYPE_CX3_MIPI}). Firmware 10+ uses
- * 8-byte SPI like dv-processing {@code DVXplorerM}; USB events are 32-bit MIPI words.
+ * Classic FX3 DVXplorer. Mini/Micro are {@link DVXplorerMicroFX3HardwareInterface}
+ * (same VID/PID {@code 152a:8419}; factory uses {@code bcdDevice} type 4).
+ * Firmware 10+ CX3 uses 8-byte SPI like dv-processing {@code DVXplorerM}.
  * Live USB demux (pref {@code hardware/DVXplorerFX3/usbTypedDemux}, default true)
  * writes cooked {@link PacketBundle} polarity in the reader and skips
  * {@link AEPacketRaw} → {@code extractBundle}.
@@ -117,9 +117,25 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         return getDID() & 0xFF;
     }
 
+    /** {@code bcdDevice} high byte 4 is CX3 Mini/Micro; types 1–3 are classic FX3. */
+    public static boolean isCx3MipiBcdDevice(int bcdDevice) {
+        return ((bcdDevice >> 8) & 0xFF) == DEVICE_TYPE_CX3_MIPI;
+    }
+
+    /**
+     * Factory class for {@code 152a:8419} from the USB descriptor (no
+     * {@code LibUsb.open}).
+     */
+    public static Class<? extends DVXplorerFX3HardwareInterface> hardwareClassForBcdDevice(int bcdDevice) {
+        return isCx3MipiBcdDevice(bcdDevice)
+                ? DVXplorerMicroFX3HardwareInterface.class
+                : DVXplorerFX3HardwareInterface.class;
+    }
+
     /** True for DVXplorer Mini/Micro (CX3 MIPI), same VID/PID as FX3 DVXplorer. */
     public boolean isMipiCX3Device() {
-        return getUsbDeviceType() == DEVICE_TYPE_CX3_MIPI;
+        return this instanceof DVXplorerMicroFX3HardwareInterface
+                || getUsbDeviceType() == DEVICE_TYPE_CX3_MIPI;
     }
 
     /** Firmware 10+ Mini/Micro: 8-byte SPI and high-level {@code MODULE_DVS} params. */
@@ -132,6 +148,33 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         // Classic FX3 used to reset on open/close. That reset takes down
         // sibling WinUSB cameras (Interface → None on one viewer).
         return false;
+    }
+
+    private boolean classicSpiSkipLogged;
+
+    /**
+     * Classic 4-byte {@code VR_FPGA_CONFIG} deadlocks in native WinUSB when
+     * another {@code USBTransferThread} is in {@code handleEvents} on the
+     * shared libusb context (DVS128 LIVE + classic open, jAER 11:57:37).
+     * The 500 ms timeout never returns. Sole-camera open still sends SPI.
+     */
+    public boolean classicSpiBlockedBySiblingReaders() {
+        if (isMipiCX3Device()) {
+            return false;
+        }
+        return LibUsbAsyncReaderRegistry.siblingEventLoopsLive(isAeReaderTransferAlive());
+    }
+
+    private void logClassicSpiSkip(String dir, short moduleAddr, short paramAddr) {
+        if (!classicSpiSkipLogged) {
+            classicSpiSkipLogged = true;
+            CypressFX3.log.info(String.format(
+                    "Classic DVX: skipping 4-byte SPI %s while other libusb AEReaders are LIVE (WinUSB hang); firmware defaults %s",
+                    dir, UsbLog.t()));
+        }
+        CypressFX3.log.fine(String.format(
+                "Classic DVX: skip SPI %s module=0x%x param=0x%x %s",
+                dir, moduleAddr, paramAddr, UsbLog.t()));
     }
 
     private int usbNoteCount;
@@ -608,6 +651,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     @Override
     public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, int param)
             throws HardwareInterfaceException {
+        if (classicSpiBlockedBySiblingReaders()) {
+            logClassicSpiSkip("OUT", moduleAddr, paramAddr);
+            return;
+        }
         if (!isNextGenFirmware()) {
             super.spiConfigSend(moduleAddr, paramAddr, param);
             return;
@@ -689,6 +736,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     @Override
     public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr)
             throws HardwareInterfaceException {
+        if (classicSpiBlockedBySiblingReaders()) {
+            logClassicSpiSkip("IN", moduleAddr, paramAddr);
+            return 0;
+        }
         if (!isNextGenFirmware()) {
             return super.spiConfigReceive(moduleAddr, paramAddr);
         }

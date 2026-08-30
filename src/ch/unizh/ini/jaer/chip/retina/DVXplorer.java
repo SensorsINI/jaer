@@ -64,7 +64,7 @@ import net.sf.jaer.util.TextRendererScale;
  * 
  * @author Pei Haoxiang, Tobi Delbruck
  */
-@Description("DVXplorer / DVXplorer Mini/Micro, 640x480, 9um pitch, Samsung DVS (iniVation)")
+@Description("DVXplorer, 640x480, 9um pitch, Samsung DVS FX3 (iniVation). Mini/Micro is DVXplorerMicro.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = CypressFX3.VID, pid = DVXplorerFX3HardwareInterface.PID_FX3)
@@ -286,6 +286,9 @@ public class DVXplorer extends AETemporalConstastRetina {
     public final static short DVX_DVS_RUN = 3;
     
     public boolean isMipiCX3Device() {
+        if (this instanceof DVXplorerMicro) {
+            return true;
+        }
         if (getHardwareInterface() instanceof DVXplorerFX3HardwareInterface d) {
             return d.isMipiCX3Device();
         }
@@ -320,23 +323,28 @@ public class DVXplorer extends AETemporalConstastRetina {
      */
     public void dvxReceiveInitParams(DVXplorerFX3HardwareInterface fx3) {
         if (!isMipiCX3Device()) {
-            // Classic FX3 DVX: SPI IN hangs in native WinUSB while other cameras
-            // already have async AEReaders (same libusb context). Clock defaults
-            // are 104 / 83.2 MHz; geometry is 640x480.
-            sizeX = 640;
-            sizeY = 480;
-            setSizeX(sizeX);
-            setSizeY(sizeY);
-            DVXplorer.log.info("Classic DVX: skipping SPI IN init params (WinUSB hang with other LIVE cameras); using 640x480");
-            return;
-        }
-
-        setName("DVXplorerMicro");
-        if (debug) {
-            DVXplorer.log.info(String.format(
-                    "DVXplorer Mini/Micro CX3 MIPI firmware %d (%s)",
-                    fx3.getFirmwareVersion(),
-                    isNextGenFirmware() ? "dv-processing DVXplorerM protocol" : "libcaer pre-v10 protocol"));
+            if (fx3 != null && fx3.classicSpiBlockedBySiblingReaders()) {
+                sizeX = 640;
+                sizeY = 480;
+                setSizeX(sizeX);
+                setSizeY(sizeY);
+                DVXplorer.log.info("Classic DVX: skipping SPI IN init params (WinUSB hang with other LIVE cameras); using 640x480");
+                return;
+            }
+            final int logicClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
+            final int usbClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
+            final int clockDeviationFactor = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
+            logicClockActual = (double) logicClock * (double) clockDeviationFactor / 1000.0;
+            usbClockActual = (double) usbClock * (double) clockDeviationFactor / 1000.0;
+            DVXplorer.log.info(String.format("Device clock frequencies - Logic: %f, USB: %f.", logicClockActual, usbClockActual));
+        } else {
+            setName("DVXplorerMicro");
+            if (debug) {
+                DVXplorer.log.info(String.format(
+                        "DVXplorer Mini/Micro CX3 MIPI firmware %d (%s)",
+                        fx3.getFirmwareVersion(),
+                        isNextGenFirmware() ? "dv-processing DVXplorerM protocol" : "libcaer pre-v10 protocol"));
+            }
         }
 
         if (isNextGenFirmware()) {
@@ -357,7 +365,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         setSizeX(sizeX);
         setSizeY(sizeY);
-        
+
         final int dvsOrientation = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
         dvsInvertXY = (short)(dvsOrientation & 0x04);
         dvsFlipX = (short)(dvsOrientation & 0x02);
@@ -376,6 +384,10 @@ public class DVXplorer extends AETemporalConstastRetina {
      */
     public void dvxSendOpeningConfig(DVXplorerFX3HardwareInterface fx3) {
         if (!isMipiCX3Device()) {
+            if (fx3 != null && fx3.classicSpiBlockedBySiblingReaders()) {
+                DVXplorer.log.info("Classic DVX: skipping SPI OUT opening config (WinUSB hang with other LIVE cameras)");
+                return;
+            }
             // Initialize Samsung DVS chip.
             spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN_CHIP, 1);
 
@@ -872,6 +884,9 @@ public class DVXplorer extends AETemporalConstastRetina {
     public boolean spiConfigSendAndCheck(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
         if (fx3 == null) {
             return false;
+        }
+        if (fx3.classicSpiBlockedBySiblingReaders()) {
+            return true;
         }
         spiConfigSend(fx3, moduleAddr, paramAddr, param);
         if (isNextGenFirmware()) {

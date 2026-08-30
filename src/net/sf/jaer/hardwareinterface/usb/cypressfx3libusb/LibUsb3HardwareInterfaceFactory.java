@@ -60,6 +60,8 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
         // Build a mapping of VID/PID pairs and corresponding
         // HardwareInterfaces.
+        // Classic FX3 vs Mini/Micro CX3 share 152a:8419; getInterface picks
+        // the class from bcdDevice (no LibUsb.open).
         addDeviceToMap(CypressFX3.VID, DVXplorerFX3HardwareInterface.PID_FX3, DVXplorerFX3HardwareInterface.class);
 
         // Includes SciDVS boards that share these PIDs (GAER SciDVSHardwareInterface is not registered).
@@ -163,7 +165,10 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
         final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
 
-        final Class<?> cls = vidPidToClassMap.get(vidPid);
+        Class<?> cls = vidPidToClassMap.get(vidPid);
+        if (vidPid.left == CypressFX3.VID && vidPid.right == DVXplorerFX3HardwareInterface.PID_FX3) {
+            cls = DVXplorerFX3HardwareInterface.hardwareClassForBcdDevice(devDesc.bcdDevice());
+        }
 
         Constructor<?> constr = null;
         try {

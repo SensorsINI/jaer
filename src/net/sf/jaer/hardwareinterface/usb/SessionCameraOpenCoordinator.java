@@ -146,8 +146,8 @@ public final class SessionCameraOpenCoordinator {
      * Classic FX3 DVXplorer (not Mini/Micro). Does not {@code LibUsb.open}.
      */
     public static boolean isClassicDvxHardware(HardwareInterface hw) {
-        return hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface dvx
-                && !dvx.isMipiCX3Device();
+        return hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface
+                && !(hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerMicroFX3HardwareInterface);
     }
 
     /**
@@ -171,9 +171,10 @@ public final class SessionCameraOpenCoordinator {
             int n = factory.getCachedNumInterfacesAvailable();
             for (int i = 0; i < n; i++) {
                 HardwareInterface hw = factory.getInterface(i);
-                if (hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface dvx
+                if (hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface
+                        && !(hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerMicroFX3HardwareInterface)
                         && b.matches(hw)) {
-                    return !dvx.isMipiCX3Device();
+                    return true;
                 }
             }
         } catch (Throwable t) {
