@@ -17,8 +17,8 @@ import java.util.logging.Logger;
 
 import net.sf.jaer.UsbDevices;
 import net.sf.jaer.chip.Chip;
-import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory;
-import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
+// import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory;
+// import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
@@ -41,6 +41,8 @@ import java.util.logging.Level;
  * <p>
  * Thesycon USBIO factories ({@code USBIOHardwareInterfaceFactory}, {@code SiLabs_USBIO_C8051F3xxFactory})
  * are intentionally not registered; see {@code docs/WIP-USBIO-purge.md}. Sources remain for libusb porting.
+ * {@code eDVS128_InterfaceFactory} and {@code SpiNNaker_InterfaceFactory} are also unregistered for now
+ * (sources remain). They would otherwise appear as Interface-menu chooser dialogs.
  *
  * @author tobi
  */
@@ -67,8 +69,9 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		NRVHardwareInterfaceFactory.class,
 		PropheseeHardwareInterfaceFactory.class,
 		UDPInterfaceFactory.class,
-		eDVS128_InterfaceFactory.class,
-		SpiNNaker_InterfaceFactory.class,
+		// eDVS / SpiNNaker chooser factories unregistered for now (sources remain)
+		// eDVS128_InterfaceFactory.class,
+		// SpiNNaker_InterfaceFactory.class,
                 OpalKellyFX3Factory.class,
 	};
 	private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
