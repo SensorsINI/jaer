@@ -67,6 +67,50 @@ public final class DavisExtractBundleDemo {
             System.exit(1);
         }
 
+        // USB SOF must abandon a stuck half-frame so SignalRead is accepted again.
+        DavisFrameAssembler asm3 = new DavisFrameAssembler(w, h, 1000);
+        asm3.process(200, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.ResetRead, true, false, false);
+        asm3.process(50, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.SignalRead, true, false, false);
+        if (!asm3.isInFrame() || asm3.getSignalCount() != 1) {
+            System.out.println("FAIL: expected in-progress frame before SOF resync");
+            System.exit(1);
+        }
+        FramePacket sofAbandoned = asm3.onUsbFrameStart(t++);
+        if (sofAbandoned != null) {
+            System.out.println("FAIL: incomplete frame must not be emitted on SOF");
+            System.exit(1);
+        }
+        if (!asm3.isInFrame() || asm3.getSignalCount() != 0) {
+            System.out.println("FAIL: SOF should open a fresh frame");
+            System.exit(1);
+        }
+        FramePacket afterSof = null;
+        for (short[] xy : order) {
+            asm3.process(200, t++, xy[0], xy[1], ApsDvsEvent.ReadoutType.ResetRead,
+                    xy[0] == 0 && xy[1] == 0, xy[0] == 1 && xy[1] == 1, false);
+        }
+        for (int i = 0; i < 4; i++) {
+            short[] xy = order[i];
+            afterSof = asm3.process(50, t++, xy[0], xy[1], ApsDvsEvent.ReadoutType.SignalRead,
+                    i == 0, i == 3, false);
+        }
+        if (afterSof == null) {
+            System.out.println("FAIL: expected complete frame after SOF resync");
+            System.exit(1);
+        }
+        FramePacket eofIncomplete = new DavisFrameAssembler(w, h, 1000).onUsbFrameEnd(t++);
+        DavisFrameAssembler asm4 = new DavisFrameAssembler(w, h, 1000);
+        asm4.onUsbFrameStart(t++);
+        asm4.process(50, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.SignalRead, true, false, false);
+        if (asm4.onUsbFrameEnd(t++) != null || !asm4.isInFrame() || asm4.getSignalCount() != 1) {
+            System.out.println("FAIL: incomplete EOF should keep the frame open for late samples");
+            System.exit(1);
+        }
+        if (eofIncomplete != null) {
+            System.out.println("FAIL: EOF on idle assembler should be a no-op");
+            System.exit(1);
+        }
+
         System.out.println(bundle);
         boolean ok = done != null
                 && done.getPacketType() == PacketType.FRAME

@@ -7,7 +7,9 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
+import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -95,6 +97,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.MenuSelectionManager;
 import javax.swing.SwingUtilities;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
@@ -577,6 +580,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private volatile Thread hardwareCloseThread;
     /** Device the current {@link #hardwareCloseThread} is closing. */
     private volatile HardwareInterface hardwareCloseTarget;
+    /**
+     * Closer that stops every open USB interface before a bus reset. Shared
+     * libusb context: a sibling AEReader still in native USB makes the next
+     * IN queue fail. Every viewer joins this before {@code open()}.
+     */
+    private static volatile Thread usbBusResetCloser;
     /** {@code jaer-aemon-open} still in native USB after timeout; do not {@code close()}. */
     private volatile HardwareInterface abandonedHungHardware;
     private volatile Thread hardwareOpenThread;
@@ -3354,23 +3363,60 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         public ResetHardwareIntefaceAction() {
             super("Reset USB interface");
             putValue(Action.NAME, "Reset USB interface");
-            putValue(Action.SHORT_DESCRIPTION, "Initiates a hard reset on USB interface");
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Close and reopen this USB interface. Does not reset Davis FPGA logic; unplug/replug if APS frames stay incomplete.");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             showAction("USB reset");
-            // Detach immediately; never call close() while holding viewLoop (deadlock / EDT hang).
-            final HardwareInterface hw = detachHardwareInterfaceForReset();
-            if (hw == null) {
+            // Detach every USB HI first. LibUsb.resetDevice / abandoned IN URBs
+            // on the shared default context wreck sibling endpoints.
+            final List<HardwareInterface> toClose = new ArrayList<>();
+            if (jaerViewer != null) {
+                for (AEViewer v : jaerViewer.getViewers()) {
+                    if (v == AEViewer.this) {
+                        continue;
+                    }
+                    HardwareInterface other = v.detachUsbHardwareForBusReset();
+                    if (other != null) {
+                        toClose.add(other);
+                    }
+                }
+            }
+            final HardwareInterface thisHw = detachHardwareInterfaceForReset();
+            if (thisHw != null) {
+                toClose.add(thisHw);
+            }
+            if (toClose.isEmpty()) {
                 showAction("No USB interface to reset");
                 return;
             }
-            log.info(String.format("Resetting %s (async close, timeout %d ms)",
-                    hw, HARDWARE_CLOSE_TIMEOUT_MS));
-            closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "USB reset");
+            log.info(String.format("USB reset: closing %d interface(s) before reopen (timeout %d ms)",
+                    toClose.size(), HARDWARE_CLOSE_TIMEOUT_MS));
+            closeHardwareInterfacesWithTimeout(toClose, HARDWARE_CLOSE_TIMEOUT_MS, "USB reset", thisHw, true);
         }
+    }
+
+    /**
+     * Davis FPGA APS sequencer stayed mid-frame after host USB reset/reopen.
+     * Interface → Reset USB does not reset camera logic; unplug/replug does.
+     */
+    public void warnDavisApsStuckNeedReplug() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::warnDavisApsStuckNeedReplug);
+            return;
+        }
+        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, false,
+                "Davis APS readout stuck",
+                "<html>The Davis FPGA APS sequencer is still mid-frame "
+                        + "(incomplete frames, far fewer signal samples than W×H).<br>"
+                        + "Interface → Reset USB only restarts the host USB reader; "
+                        + "it does not reset camera logic.<br>"
+                        + "<p><b>Unplug the Davis USB cable, wait a second, then plug it back in.</b></html>");
+        d.setLocationRelativeTo(this);
+        d.setVisible(true);
     }
 
     final public class FrameRateIncreaseAction extends MyAction {
@@ -3712,11 +3758,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (exitMenuItem == null) {
             return;
         }
-        if (isExitCompletelyWithX()) {
-            exitMenuItem.setToolTipText("Exits jAER (all AEViewer windows). With several windows, you will be asked to confirm.");
-        } else {
-            exitMenuItem.setToolTipText("Closes this AEViewer. Turn on File → Preferences → Exit completely with 'x' to quit jAER instead.");
+        String xPart = isExitCompletelyWithX()
+                ? "The x key also exits jAER (confirms when several windows are open)."
+                : "The x key closes only this AEViewer.";
+        exitMenuItem.setToolTipText("File → Exit quits jAER immediately (all windows, no confirmation). " + xPart);
+    }
+
+    /**
+     * True when File → Exit was fired by the {@code x} KeyStroke, not a menu
+     * click or mnemonic while the File menu is open.
+     */
+    private static boolean isXAcceleratorActivation(ActionEvent evt) {
+        if (evt == null) {
+            return false;
         }
+        if (MenuSelectionManager.defaultManager().getSelectedPath().length > 0) {
+            return false;
+        }
+        AWTEvent cur = EventQueue.getCurrentEvent();
+        if (!(cur instanceof KeyEvent)) {
+            return false;
+        }
+        KeyEvent ke = (KeyEvent) cur;
+        if (ke.getKeyCode() != KeyEvent.VK_X) {
+            return false;
+        }
+        int mods = ke.getModifiersEx();
+        return (mods & (InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.META_DOWN_MASK)) == 0;
     }
 
     /**
@@ -4592,6 +4660,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private HardwareInterface detachHardwareInterfaceForReset() {
         synchronized (viewLoop) {
             HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+            if (!(hw instanceof USBInterface)) {
+                return null;
+            }
             if (chip != null) {
                 chip.setHardwareInterface(null); // AEViewer will reopen when nullInterface is false
             }
@@ -4601,6 +4672,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             nullInterface = false; // allow ViewLoop to reopen after reset
             return hw;
         }
+    }
+
+    /**
+     * Sibling viewer: drop its USB HI so a bus reset cannot leave its AEReader
+     * in native libusb. Blocks autobind ({@code nullInterface}) until the user
+     * picks Interface again.
+     */
+    HardwareInterface detachUsbHardwareForBusReset() {
+        final HardwareInterface hw;
+        synchronized (viewLoop) {
+            hw = (chip != null) ? chip.getHardwareInterface() : null;
+            if (!(hw instanceof USBInterface)) {
+                return null;
+            }
+            chip.setHardwareInterface(null);
+            if (aemon == hw) {
+                aemon = null;
+            }
+            nullInterface = true;
+        }
+        if (getPlayMode() == PlayMode.LIVE) {
+            setPlayMode(PlayMode.WAITING);
+        }
+        return hw;
     }
 
     /**
@@ -4676,6 +4771,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * this join.
      */
     private void awaitPendingHardwareClose() {
+        final Thread busReset = usbBusResetCloser;
+        if (busReset != null && busReset.isAlive()) {
+            log.info("openAEMonitor: waiting for USB bus-reset close of all interfaces");
+            final long busDeadline = System.currentTimeMillis() + HARDWARE_CLOSE_JOIN_MS;
+            while (busReset.isAlive()) {
+                long remaining = busDeadline - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    break;
+                }
+                try {
+                    busReset.join(Math.min(200L, remaining));
+                } catch (InterruptedException e) {
+                    if (viewLoop != null && viewLoop.stop) {
+                        Thread.currentThread().interrupt();
+                        log.info("openAEMonitor: ViewLoop stopping during USB bus-reset close wait");
+                        return;
+                    }
+                    log.fine("openAEMonitor: interrupt during USB bus-reset close wait; still waiting");
+                }
+            }
+            if (busReset.isAlive()) {
+                log.warning("openAEMonitor: USB bus-reset close still alive after "
+                        + HARDWARE_CLOSE_JOIN_MS
+                        + " ms; opening next camera (native close skipped if AEReader hung)");
+            }
+        }
         final Thread closer = hardwareCloseThread;
         if (closer == null || !closer.isAlive()) {
             return;
@@ -4723,24 +4844,50 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (hw == null) {
             return null;
         }
-        if (isHungNativeHardware(hw)) {
-            log.info(actionLabel + ": not closing hung " + hw);
-            abandonedHungHardware = hw;
+        return closeHardwareInterfacesWithTimeout(List.of(hw), timeoutMs, actionLabel, hw, false);
+    }
+
+    /**
+     * Close detached hardware interfaces on one daemon thread. ViewLoop joins
+     * that thread before the next {@code open()}. When {@code busReset} is
+     * true, every viewer waits ({@link #usbBusResetCloser}).
+     */
+    private Thread closeHardwareInterfacesWithTimeout(List<HardwareInterface> hws, long timeoutMs,
+            String actionLabel, HardwareInterface waitTarget, boolean busReset) {
+        List<HardwareInterface> closable = new ArrayList<>();
+        for (HardwareInterface hw : hws) {
+            if (hw == null) {
+                continue;
+            }
+            if (isHungNativeHardware(hw)) {
+                log.info(actionLabel + ": not closing hung " + hw);
+                abandonedHungHardware = hw;
+                continue;
+            }
+            closable.add(hw);
+        }
+        if (closable.isEmpty()) {
             return null;
         }
+        final HardwareInterface logged = waitTarget != null ? waitTarget : closable.get(closable.size() - 1);
         Thread closer = new Thread(() -> {
-            log.fine(actionLabel + " close() begin " + hw + " " + UsbLog.t());
-            try {
-                hw.close();
-                log.info(actionLabel + ": closed " + hw);
-            } catch (Exception ex) {
-                log.warning(actionLabel + ": exception closing device: " + ex);
+            for (HardwareInterface hw : closable) {
+                log.fine(actionLabel + " close() begin " + hw + " " + UsbLog.t());
+                try {
+                    hw.close();
+                    log.info(actionLabel + ": closed " + hw);
+                } catch (Exception ex) {
+                    log.warning(actionLabel + ": exception closing device: " + ex);
+                }
+                log.fine(actionLabel + " close() end " + UsbLog.t());
             }
-            log.fine(actionLabel + " close() end " + UsbLog.t());
         }, "jaer-hw-close");
         closer.setDaemon(true);
-        hardwareCloseTarget = hw;
+        hardwareCloseTarget = logged;
         hardwareCloseThread = closer;
+        if (busReset) {
+            usbBusResetCloser = closer;
+        }
         closer.start();
         // Do not block the EDT: schedule a timeout watcher on a background thread.
         Thread watcher = new Thread(() -> {
@@ -4753,7 +4900,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (closer.isAlive()) {
                 log.warning(String.format(
                         "%s: hardware close timed out after %d ms; abandoning stuck close of %s (daemon thread). UI continues; unplug/replug if device stays busy.",
-                        actionLabel, timeoutMs, hw));
+                        actionLabel, timeoutMs, logged));
                 SwingUtilities.invokeLater(() -> showActionText(actionLabel + " timed out"));
             } else {
                 SwingUtilities.invokeLater(() -> showActionText(actionLabel + " done"));
@@ -5077,7 +5224,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     hwBundle = aemon.acquireAvailablePacketBundle();
                                 }
                             } catch (Exception ex) {
-                                log.log(Level.WARNING, "acquireAvailablePacketBundle failed, falling back to raw extract", ex);
+                                if (ex instanceof HardwareInterfaceException
+                                        && ex.getMessage() != null
+                                        && ex.getMessage().contains("failed to queue USB IN")) {
+                                    log.warning("acquireAvailablePacketBundle: " + ex.getMessage()
+                                            + " (will retry after USB settle)");
+                                } else {
+                                    log.log(Level.WARNING, "acquireAvailablePacketBundle failed, falling back to raw extract", ex);
+                                }
                                 hwBundle = null;
                                 if (ex instanceof HardwareInterfaceException
                                         && !(SessionCameraOpenCoordinator.hasOpenGrant(AEViewer.this)
@@ -6941,7 +7095,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
         exitMenuItem.setMnemonic('x');
         exitMenuItem.setText("Exit");
-        exitMenuItem.setToolTipText("Exits jAER (all AEViewer windows). With several windows, you will be asked to confirm.");
+        exitMenuItem.setToolTipText("File → Exit quits jAER immediately (all windows, no confirmation). The x key follows Preferences → Exit completely with 'x'.");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exitMenuItemActionPerformed(evt);
@@ -7971,9 +8125,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_formWindowClosing
 
         /**
-         * One-time confirm for title-bar close and for {@code x} / File → Exit
-         * when this is the last AEViewer. Don't show again defaults to checked
-         * so new users confirm once then skip later.
+         * One-time confirm for title-bar close and for the {@code x} accelerator
+         * when this is the last AEViewer. File → Exit does not use this.
+         * Don't show again defaults to checked so new users confirm once then skip later.
          */
         private boolean confirmExitFromWindowClose() {
             WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true,
@@ -10389,6 +10543,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
             if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
+                return;
+            }
+            if (!isXAcceleratorActivation(evt)) {
+                doExitAllViewers();
                 return;
             }
 

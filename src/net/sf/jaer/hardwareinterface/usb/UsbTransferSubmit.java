@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -96,8 +97,31 @@ public final class UsbTransferSubmit {
             log.info(name + ": USB IN transfers queued");
             return true;
         }
-        log.warning(name + " exited before USB IN transfers queued");
+        final Throwable submitFail = startFailureOf(thread, null);
+        if (submitFail != null) {
+            log.warning(name + " exited before USB IN transfers queued: " + submitFail.getMessage());
+        } else {
+            log.warning(name + " exited before USB IN transfers queued");
+        }
         return false;
+    }
+
+    /**
+     * {@link USBTransferThread#run()} catches {@code allocateTransfers} failures
+     * and stores them on {@link USBTransferThread#getStartFailure()}; it does
+     * not throw, so an uncaught-exception handler stays empty ("thread exited").
+     */
+    public static Throwable startFailureOf(Thread thread, AtomicReference<Throwable> startError) {
+        if (startError != null) {
+            final Throwable err = startError.get();
+            if (err != null) {
+                return err;
+            }
+        }
+        if (thread instanceof USBTransferThread utt) {
+            return utt.getStartFailure();
+        }
+        return null;
     }
 
     public static HardwareInterfaceException startFailed(String name, Throwable err) {

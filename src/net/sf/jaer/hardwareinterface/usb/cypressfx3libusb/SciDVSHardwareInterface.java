@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 
 import org.usb4java.Device;
 
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -189,6 +190,16 @@ public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 				imuFlipX, imuFlipY, imuFlipZ), super.toString());
 			gaerRawSink = new SciDVSGaerRawSink(
 				SciDVSHardwareInterface.this::getAEBufferSize, this::handleTimestampReset);
+		}
+
+		@Override
+		protected void resetDecodeState() {
+			if (gaerDecoder != null) {
+				gaerDecoder.resetApsState();
+			}
+			if (getChip() instanceof DavisBaseCamera) {
+				((DavisBaseCamera) getChip()).resetUsbApsAssembler();
+			}
 		}
 
 		@Override

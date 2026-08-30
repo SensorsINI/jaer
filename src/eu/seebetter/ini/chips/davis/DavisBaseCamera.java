@@ -50,6 +50,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEvent.ColorFilter;
@@ -433,6 +434,18 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         } catch (final ClassCastException e) {
             Chip.log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
+        resetUsbApsAssembler();
+    }
+
+    /**
+     * Drop a half-assembled APS frame. The chip extractor outlives AEReader
+     * restart and USB reset; leftover {@code inFrame} ignores later samples.
+     */
+    public void resetUsbApsAssembler() {
+        EventExtractor2D ex = getEventExtractor();
+        if (ex instanceof DavisEventExtractor) {
+            ((DavisEventExtractor) ex).resetApsAssembler();
+        }
     }
 
     /**
@@ -490,6 +503,12 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             this.setYmask((byte)DavisChip.YMASK); // used to construct raw address from synthetic events, such as those used for NoiseTesterFilter denoising studies. Ensures unique hashcode for HotPixelFilter
             if (chip instanceof DavisBaseCamera) {
                 frameAssembler = new DavisFrameAssembler((DavisBaseCamera) chip);
+            }
+        }
+
+        void resetApsAssembler() {
+            if (frameAssembler != null) {
+                frameAssembler.reset();
             }
         }
 

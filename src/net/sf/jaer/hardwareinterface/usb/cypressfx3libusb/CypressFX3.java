@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 import org.usb4java.BufferUtils;
@@ -289,6 +290,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * packet is reused.
      */
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
+    /** After USB reset, do not retry AEReader start every ViewLoop tick. */
+    private volatile long aeReaderStartNotBeforeMs;
+    private static final long AE_READER_START_COOLDOWN_MS = 1500L;
+
     protected boolean inEndpointEnabled = false; // raphael: changed from
     // private to protected,
     // because i need to access
@@ -493,7 +498,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // make sure event acquisition is running
         if (!inEndpointEnabled) {
-            setEventAcquisitionEnabled(true);
+            try {
+                setEventAcquisitionEnabled(true);
+            } catch (final HardwareInterfaceException e) {
+                if (e.getMessage() != null && e.getMessage().contains("start deferred")) {
+                    // Cooldown after USB-reset IN queue failure; swap empty buffers.
+                } else {
+                    throw e;
+                }
+            }
         }
 
         // HardwareInterfaceException.clearException();
@@ -639,7 +652,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
-        if (logicRevision != requiredLogicRevision) {
+        // 0 means SPI was skipped (classic DVX + sibling AEReaders) or the
+        // transfer failed — not a real FPGA revision. Treating it as "need
+        // Flashy" put up a frozen dialog and started the decoder at 0×0.
+        if (logicRevision == 0) {
+            log.warning(String.format(
+                    "Could not read FPGA logic revision (got 0; required %d). Not treating as a firmware mismatch.",
+                    requiredLogicRevision));
+        } else if (logicRevision != requiredLogicRevision) {
             updateStringBuilder
                     .append(String.format("<p>Device logic version incorrect. You have version %d; but version %d is required.</p>",
                             logicRevision, requiredLogicRevision));
@@ -654,25 +674,21 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             updateStringBuilder.append("<p><p>Open the URL for firmware updates in browser? <i>No</i> or <i>Cancel</i> will just close this dialog.</p>");
             log.warning(updateStringBuilder.toString());
             final MessageWithLink updateString = new MessageWithLink(updateStringBuilder.toString());
-
-            final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
-                @Override
-                public Void doInBackground() {
-                    int ret=JOptionPane.showConfirmDialog(null, updateString);
-                    if (ret==JOptionPane.OK_OPTION && Desktop.isDesktopSupported()) {
-                        try {
-                            Desktop.getDesktop().browse(new URI(JaerConstants.HELP_USER_GUIDE_URL_FLASHY));
-                        } catch (Exception ex) {
-                            Logger.getLogger(CypressFX3.class.getName()).log(Level.WARNING, null, ex);
-                        }
+            Runnable show = () -> {
+                int ret = JOptionPane.showConfirmDialog(null, updateString);
+                if (ret == JOptionPane.OK_OPTION && Desktop.isDesktopSupported()) {
+                    try {
+                        Desktop.getDesktop().browse(new URI(JaerConstants.HELP_USER_GUIDE_URL_FLASHY));
+                    } catch (Exception ex) {
+                        Logger.getLogger(CypressFX3.class.getName()).log(Level.WARNING, null, ex);
                     }
-
-                    return (null);
                 }
             };
-            strWorker.execute();
-
-//			throw new HardwareInterfaceException(updateString);
+            if (SwingUtilities.isEventDispatchThread()) {
+                show.run();
+            } else {
+                SwingUtilities.invokeLater(show);
+            }
         }
     }
 
@@ -1145,9 +1161,21 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             bufferLifecycle = new UsbAsyncBulkReaderLifecycle(new BufferHost());
         }
 
+        /**
+         * Subclass APS/DVS parse state. Default no-op. A new
+         * {@code USBTransferThread} on this reader must not resume a half-frame.
+         */
+        protected void resetDecodeState() {
+        }
+
         public void startThread() throws HardwareInterfaceException {
             if (usbTransfer != null && usbTransfer.isAlive()) {
                 return;
+            }
+            resetDecodeState();
+            if (System.currentTimeMillis() < aeReaderStartNotBeforeMs) {
+                throw new HardwareInterfaceException(
+                        "CypressFX3 AEReader start deferred after USB IN queue failure");
             }
             if (!isOpen()) {
                 try {
@@ -1168,19 +1196,43 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             } catch (final HardwareInterfaceException e) {
                 readerActive = false;
                 bufferLifecycle.markFailed();
+                aeReaderStartNotBeforeMs = System.currentTimeMillis() + AE_READER_START_COOLDOWN_MS;
                 throw e;
             }
 
             getSupport().firePropertyChange("readerStarted", false, true);
         }
 
+        private void startBulkTransferThread(long generation) throws HardwareInterfaceException {
+            for (int attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    startBulkTransferThreadOnce(generation);
+                    return;
+                } catch (final HardwareInterfaceException e) {
+                    if (attempt == 3 || !isOpen()) {
+                        throw e;
+                    }
+                    final long settleMs = 400L * attempt;
+                    CypressFX3.log.warning("CypressFX3 AEReader start attempt " + attempt
+                            + "/3 failed (" + e.getMessage() + "); retrying after " + settleMs + " ms USB settle");
+                    try {
+                        Thread.sleep(settleMs);
+                    } catch (final InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                }
+            }
+        }
+
         /**
          * USBTransferThread.allocateTransfers throws on missing bulk IN 0x82
          * ({@code LIBUSB_ERROR_NOT_FOUND}) and never reaches the shutdown
          * callback. Join until URBs are queued, or throw so LIVE does not start
-         * with a dead reader.
+         * with a dead reader. After Interface → Reset USB, the first submit
+         * often exits before queue (device still settling).
          */
-        private void startBulkTransferThread(long generation) throws HardwareInterfaceException {
+        private void startBulkTransferThreadOnce(long generation) throws HardwareInterfaceException {
             usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
                     LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(generation), getNumBuffers(), getFifoSize(),
                     null, null, () -> {
@@ -1205,7 +1257,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             usbTransfer.start();
             if (!UsbTransferSubmit.awaitQueued(usbTransfer, CypressFX3.log, "CypressFX3 AEReader")) {
                 readerActive = false;
-                final Throwable err = startError.get();
+                final Throwable err = UsbTransferSubmit.startFailureOf(usbTransfer, startError);
                 usbTransfer = null;
                 throw UsbTransferSubmit.startFailed("CypressFX3 AEReader", err);
             }
@@ -1643,7 +1695,17 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // Start reader before sending data enable commands.
         setInEndpointEnabled(enable);
         if (enable) {
-            startAEReader();
+            try {
+                startAEReader();
+            } catch (final HardwareInterfaceException e) {
+                try {
+                    setInEndpointEnabled(false);
+                } catch (final HardwareInterfaceException disableEx) {
+                    CypressFX3.log.warning("Could not disable IN after AEReader start failure: " + disableEx);
+                    inEndpointEnabled = false;
+                }
+                throw e;
+            }
         } else {
             log.info("stopping AEReader");
             stopAEReader();
@@ -2395,7 +2457,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
-     * Resets the USB device using USBIO resetDevice
+     * {@code LibUsb.resetDevice} on this handle. Do not call while any AEReader
+     * (this device or a sibling on the default libusb context) is still in
+     * native USB. Interface → Reset USB closes every open USB HI first.
      */
     public void resetUSB() {
         if (deviceHandle == null) {

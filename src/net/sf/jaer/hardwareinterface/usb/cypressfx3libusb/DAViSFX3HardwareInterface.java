@@ -11,18 +11,25 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.prefs.Preferences;
+
+import javax.swing.SwingUtilities;
 
 import org.usb4java.Device;
 
 import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisUsbPacketBundleBuilder;
 import eu.seebetter.ini.chips.davis.SciDVS;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -55,6 +62,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
     /** When demux active: also write APS/IMU synthetic AEs into raw (validation). */
     private volatile boolean dualWriteApsImuAe;
+
+    /** Consecutive APS frames whose column/row counts did not match FPGA size. */
+    private final AtomicInteger apsDesyncFrames = new AtomicInteger();
+    private final AtomicBoolean apsSequencerRestartRequested = new AtomicBoolean();
+    private final AtomicBoolean apsStuckReplugDialogShown = new AtomicBoolean();
+    private volatile long lastApsSequencerRestartMs;
+    private static final int APS_DESYNC_RESTART_FRAMES = 3;
+    private static final long APS_SEQUENCER_RESTART_COOLDOWN_MS = 10000;
 
     protected DAViSFX3HardwareInterface(final Device device) {
         super(device);
@@ -131,6 +146,63 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         getAeReader().startThread(); // arg is number of errors before giving up
         HardwareInterfaceException.clearException();
+    }
+
+    @Override
+    public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+        final AEPacketRaw packet = super.acquireAvailableEventsFromDriver();
+        maybeRestartApsSequencer();
+        return packet;
+    }
+
+    /**
+     * Do not pulse {@code APS.Run} on column-count errors. 4:36:05–4:36:19 that
+     * abort ran every ~2 s and prevented a full 89960-sample frame from finishing.
+     * Log once per episode; SOF + implicit column wrap are the host resync.
+     */
+    private void maybeRestartApsSequencer() {
+        if (!apsSequencerRestartRequested.compareAndSet(true, false)) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if ((now - lastApsSequencerRestartMs) < APS_SEQUENCER_RESTART_COOLDOWN_MS) {
+            return;
+        }
+        lastApsSequencerRestartMs = now;
+        CypressFX3.log.warning("DAViSFX3: APS column counts off for "
+                + APS_DESYNC_RESTART_FRAMES
+                + " frames (host saw fewer ADC samples than FPGA size). "
+                + "WaitOnTransferStall does not create missing samples; "
+                + "USB reset does not reset FPGA APS logic — unplug and replug the Davis.");
+        warnReplugDavisIfApsStuck();
+    }
+
+    /**
+     * Interface → Reset USB only restarts the host reader. The FPGA APS
+     * sequencer can stay mid-frame (~55k/89960 forever). Tell this AEViewer
+     * once per open.
+     */
+    private void warnReplugDavisIfApsStuck() {
+        if (!apsStuckReplugDialogShown.compareAndSet(false, true)) {
+            return;
+        }
+        final AEChip chip = getChip();
+        final AEViewer viewer = chip != null ? chip.getAeViewer() : null;
+        if (viewer == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(viewer::warnDavisApsStuckNeedReplug);
+    }
+
+    private void noteApsFrameCounts(final boolean columnCountsOk) {
+        if (columnCountsOk) {
+            apsDesyncFrames.set(0);
+            return;
+        }
+        if (apsDesyncFrames.incrementAndGet() >= APS_DESYNC_RESTART_FRAMES) {
+            apsDesyncFrames.set(0);
+            apsSequencerRestartRequested.set(true);
+        }
     }
 
     private void getRealClockValues() {
@@ -241,6 +313,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         private final SciDVSGaerRawSink gaerRawSink;
         private final SciDVSGaerTypedSink gaerTypedSink;
         private Boolean gaerResolved;
+        private boolean streamGeometryLogged;
 
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
@@ -300,6 +373,46 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     typedBuilder, gaerRawSink,
                     () -> getChip() != null ? getChip().getSizeX() : dvsSizeX,
                     this::handleGaerTimestampReset);
+            logStreamGeometry();
+        }
+
+        /**
+         * FPGA DVS/APS registers are stream axes. Davis346 is chip 346×260 and
+         * FPGA DVS 260×346 when {@code invertXY} is set — not a wrong AEChip.
+         */
+        private void logStreamGeometry() {
+            final int dvsLogicalW = dvsInvertXY ? dvsSizeY : dvsSizeX;
+            final int dvsLogicalH = dvsInvertXY ? dvsSizeX : dvsSizeY;
+            final int apsLogicalW = apsInvertXY ? apsSizeY : apsSizeX;
+            final int apsLogicalH = apsInvertXY ? apsSizeX : apsSizeY;
+            CypressFX3.log.info(String.format(
+                    "DAViSFX3 FPGA stream DVS %dx%d invertXY=%s → logical %dx%d; APS %dx%d invertXY=%s flipX=%s flipY=%s → logical %dx%d",
+                    dvsSizeX, dvsSizeY, dvsInvertXY, dvsLogicalW, dvsLogicalH,
+                    apsSizeX, apsSizeY, apsInvertXY, apsFlipX, apsFlipY, apsLogicalW, apsLogicalH));
+            if (getChip() == null) {
+                return;
+            }
+            streamGeometryLogged = true;
+            final int chipW = getChip().getSizeX();
+            final int chipH = getChip().getSizeY();
+            final String chipName = getChip().getClass().getSimpleName();
+            if (chipW == dvsLogicalW && chipH == dvsLogicalH) {
+                if (dvsInvertXY && (chipW != dvsSizeX || chipH != dvsSizeY)) {
+                    CypressFX3.log.info(String.format(
+                            "DAViSFX3 %s %dx%d matches FPGA DVS after invertXY (stream %dx%d)",
+                            chipName, chipW, chipH, dvsSizeX, dvsSizeY));
+                }
+            } else {
+                CypressFX3.log.warning(String.format(
+                        "DAViSFX3 %s %dx%d does not match FPGA DVS logical %dx%d (stream %dx%d invertXY=%s)",
+                        chipName, chipW, chipH, dvsLogicalW, dvsLogicalH, dvsSizeX, dvsSizeY, dvsInvertXY));
+            }
+            if (chipW != apsLogicalW || chipH != apsLogicalH) {
+                CypressFX3.log.warning(String.format(
+                        "DAViSFX3 %s %dx%d does not match FPGA APS logical %dx%d (stream %dx%d invertXY=%s); "
+                                + "USB frame samples may clip or leave a black region",
+                        chipName, chipW, chipH, apsLogicalW, apsLogicalH, apsSizeX, apsSizeY, apsInvertXY));
+            }
         }
 
         private boolean shouldLogGaerWarning() {
@@ -324,6 +437,31 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
             apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
             Arrays.fill(apsCountX, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
             Arrays.fill(apsCountY, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
+        }
+
+        /**
+         * USBTransferThread restart (reset, failed IN queue, cooldown retry)
+         * reuses this reader. APS counters, IMU parse, and the frame assembler
+         * must not keep the previous session's mid-frame state.
+         */
+        @Override
+        protected void resetDecodeState() {
+            initFrame();
+            wrapAdd = 0;
+            lastTimestamp = 0;
+            currentTimestamp = 0;
+            dvsLastY = 0;
+            imuCount = 0;
+            imuType = 0;
+            imuTmpData = 0;
+            rollingShutterFrame = false;
+            typedBuilder.resetAssembler();
+            if (gaerDecoder != null) {
+                gaerDecoder.resetApsState();
+            }
+            if (getChip() instanceof DavisBaseCamera) {
+                ((DavisBaseCamera) getChip()).resetUsbApsAssembler();
+            }
         }
 
         private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
@@ -356,10 +494,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                     CypressFX3.log.info("DAViSFX3 SciDVS GAER selected=" + gaerResolved
                             + " rawProperty=" + System.getProperty(SciDVSGaerMode.PROPERTY)
                             + " chipClass=" + (getChip() == null ? "null" : getChip().getClass().getName()));
-                    if (getChip().getSizeX() != dvsSizeX || getChip().getSizeY() != dvsSizeY) {
-                        CypressFX3.log.warning("DAViSFX3 chip geometry " + getChip().getSizeX() + "x"
-                                + getChip().getSizeY() + " differs from FPGA DVS geometry "
-                                + dvsSizeX + "x" + dvsSizeY);
+                    if (!streamGeometryLogged) {
+                        logStreamGeometry();
                     }
                 }
 
@@ -484,12 +620,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                     case 10: // APS Frame End
                                         CypressFX3.log.finest("APS Frame End event received.");
 
+                                        boolean columnCountsOk = true;
                                         for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
-                                            if (apsCountX[j] != apsSizeX && warningCount % WARNING_INTERVAL == 0) {
-                                                CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
-                                                        + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                                            if (apsCountX[j] != apsSizeX) {
+                                                columnCountsOk = false;
+                                                if (warningCount % WARNING_INTERVAL == 0) {
+                                                    CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
+                                                            + "/" + apsSizeX + "] (FPGA APS stream). Missing columns are not filled by WaitOnTransferStall.");
+                                                }
+                                                warningCount++;
                                             }
-                                            warningCount++;
+                                        }
+                                        noteApsFrameCounts(columnCountsOk);
+                                        if (typedOut != null) {
+                                            typedBuilder.onFrameEnd(currentTimestamp);
                                         }
 
                                         break;
@@ -521,8 +665,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
                                         if (apsCountY[apsCurrentReadoutType] != apsSizeY && warningCount % WARNING_INTERVAL == 0) {
                                             CypressFX3.log.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
-                                                    + apsCountY[apsCurrentReadoutType]
-                                                    + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                                                    + apsCountY[apsCurrentReadoutType] + "/" + apsSizeY
+                                                    + "] (0=reset, 1=signal). Empty or short columns: FPGA APS markers without ADC words, or host counters skipped samples.");
                                             warningCount++;
                                         }
 
@@ -607,10 +751,21 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                 break;
 
                             case 4: // APS ADC sample
-                                // Let's check that apsCountY is not above the maximum. This could happen
-                                // if start/end of column events are discarded (no wait on transfer stall).
-                                if (((apsCountY[apsCurrentReadoutType] >= apsSizeY) || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) && warningCount % WARNING_INTERVAL == 0) {
-                                    CypressFX3.log.fine("APS ADC sample: row or column count is at maximum, discarding further samples.");
+                                // Missed Column End/Start: wrap to the next column instead of
+                                // dropping the rest of the frame (that left 61k–81k/89960 samples).
+                                while (apsCountY[apsCurrentReadoutType] >= apsSizeY
+                                        && apsCountX[apsCurrentReadoutType] < apsSizeX) {
+                                    apsCountX[apsCurrentReadoutType]++;
+                                    apsCountY[apsCurrentReadoutType] = 0;
+                                    if (warningCount % WARNING_INTERVAL == 0) {
+                                        CypressFX3.log.fine("APS ADC sample: implicit column wrap after missed column marker.");
+                                    }
+                                    warningCount++;
+                                }
+                                if (apsCountX[apsCurrentReadoutType] >= apsSizeX) {
+                                    if (warningCount % WARNING_INTERVAL == 0) {
+                                        CypressFX3.log.fine("APS ADC sample: column count is at maximum, discarding further samples.");
+                                    }
                                     warningCount++;
                                     break;
                                 }

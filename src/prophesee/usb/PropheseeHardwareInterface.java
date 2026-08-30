@@ -23,6 +23,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
+import org.usb4java.Context;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
@@ -250,6 +251,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     public DeviceHandle getDeviceHandle() {
         return deviceHandle;
+    }
+
+    /** Session used for ISSD bulk and {@code USBTransferThread} event pumping. */
+    public Context getLibUsbContext() {
+        return PropheseeLibUsb.context();
     }
 
     AEPacketRawPool getAePacketRawPool() {

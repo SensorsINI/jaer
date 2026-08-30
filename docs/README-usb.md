@@ -123,6 +123,13 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
   `getStringDescriptors()` unless `isOpen()`.
 - **None** closes asynchronously: `closeHardwareInterfaceWithTimeout` (3 s
   watcher, thread `jaer-hw-close`).
+- **Reset USB interface** detaches every open `USBInterface` (this viewer
+  reopens; siblings stay `nullInterface` so they do not autobind mid-reset)
+  and closes them on one `jaer-hw-close` thread **before** any
+  `LibUsb.resetDevice` / reopen. A leftover AEReader in native USB on the
+  shared default libusb context makes the next IN queue fail
+  (`LIBUSB_ERROR_NOT_FOUND` / `IllegalStateException`). ViewLoop joins
+  `usbBusResetCloser` before `open()`.
 - Selection sets `hardwareSwitchInProgress` until bind + `WAITING`. ViewLoop
   must not `openAEMonitor` while the previous HI is nulled and the next chip
   is still being constructed. `interruptViewloop` runs **after** that flag
@@ -261,6 +268,15 @@ after a rapid switch. `DVXplorerFX3HardwareInterface` still resets **non-CX3**
   The 8 s opener abort unbinds Java-side; the native thread may stay in USB.
 - Close: stop AEReader before `isOpened = false`. AEReader join is 3 s; then
   `disableINEndpoint` SPI can still hang if the reader did not stop.
+- AEReader `startThread` calls `resetDecodeState()` (DAViS: APS column
+  counters, IMU parse, USB and chip `DavisFrameAssembler`). A reused reader
+  after reset/cooldown must not resume a half-frame.
+- A stable APS signal count well below `W*H` (e.g. ~55k/89960 every EOF) is
+  missing ADC words from the FPGA stream, not a host FIFO-stall setting.
+  `APS.WaitOnTransferStall` cannot invent samples. Column End `[0 - 0]` on
+  RESET is FPGA markers without ADC words or host counters that skipped them.
+  Interface → Reset USB does not reset FPGA APS state. After three short
+  frames the viewer shows **Davis APS readout stuck** (replug the camera).
 - Do not select the same camera again while `jaer-hw-close` is still running:
   a new `LibUsb.open` can succeed in 1 ms, then the first SPI IN hangs.
 
@@ -305,7 +321,11 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
   Treuzell). `requestOpenAbort()` cannot cancel an in-flight native
   `LibUsb.bulkTransfer`. ViewLoop waits **45 s** then abandons.
 - Event path is async `USBTransferThread` on bulk IN `0x81`. Control path is
-  sync bulk. Draining a streaming EVK4 to reconfigure FIFO can block for tens
+  sync bulk. Both use a **dedicated libusb `Context`** (`PropheseeLibUsb`)
+  so ISSD and the 2 MiB event reader do not `handleEvents` on the default
+  context shared by Cypress/DVS128 readers (those cameras stalled or
+  exceptional-closed during EVK4 open, jAER 12:48).
+- Draining a streaming EVK4 to reconfigure FIFO can block for tens
   of seconds and stall 0x81 (`LIBUSB_ERROR_IO`); see
   [usb-live-acquisition-bench.md](usb-live-acquisition-bench.md).
 - Linux `LIBUSB_ERROR_ACCESS`: udev permissions or another process; Windows:

@@ -39,6 +39,7 @@ public final class UsbEnumerationSafetyDemo {
         testUsbOpenSerializer();
         testSessionCameraOpenCoordinator();
         testDvxClassicVsMicroTypes();
+        testUsbResetClosesAllInterfaces();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -513,8 +514,14 @@ public final class UsbEnumerationSafetyDemo {
                         < startAe.indexOf("chip.dvxDataStart()"),
                 "Mini/Micro DVS_RUN only after startThread confirms bulk IN queued");
         Path prophesee = Paths.get("src", "prophesee", "usb", "PropheseeAEReader.java");
-        require(Files.readString(prophesee, StandardCharsets.UTF_8).contains("UsbTransferSubmit.awaitQueued"),
+        String propheseeSrc = Files.readString(prophesee, StandardCharsets.UTF_8);
+        require(propheseeSrc.contains("UsbTransferSubmit.awaitQueued"),
                 "Prophesee AEReader uses the same queued-URB handshake");
+        require(propheseeSrc.contains("monitor.getLibUsbContext()"),
+                "Prophesee AEReader pumps a dedicated libusb context, not the Cypress default");
+        Path propheseeFactory = Paths.get("src", "prophesee", "usb", "PropheseeHardwareInterfaceFactory.java");
+        require(Files.readString(propheseeFactory, StandardCharsets.UTF_8).contains("PropheseeLibUsb.context()"),
+                "Prophesee factory enumerates on the dedicated libusb context");
         Path nrv = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
         require(Files.readString(nrv, StandardCharsets.UTF_8).contains("UsbTransferSubmit.awaitQueued"),
                 "NRV AEReader uses the same queued-URB handshake");
@@ -703,6 +710,15 @@ public final class UsbEnumerationSafetyDemo {
                 "classic DVX must not USB-reset on close (takes down sibling cameras)");
         require(dvxHi.contains("classicSpiBlockedBySiblingReaders"),
                 "classic FX3 HI skips 4-byte SPI when sibling event loops are LIVE");
+        require(dvxHi.contains("using 640x480 (sibling SPI skip or failed read)"),
+                "classic DVX AEReader must not start at 0x0 when SPI IN is skipped");
+        String fx3 = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java"),
+                StandardCharsets.UTF_8);
+        require(fx3.contains("Could not read FPGA logic revision (got 0"),
+                "logic revision 0 is unreadable SPI, not a Flashy mismatch");
+        require(fx3.contains("SwingUtilities.invokeLater(show)"),
+                "firmware dialog is shown on the EDT, not SwingWorker.doInBackground");
         Path registry = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
                 "LibUsbAsyncReaderRegistry.java");
         require(Files.readString(registry, StandardCharsets.UTF_8).contains("siblingEventLoopsLive"),
@@ -841,6 +857,55 @@ public final class UsbEnumerationSafetyDemo {
         require(DVXplorerFX3HardwareInterface.hardwareClassForBcdDevice(0x0308)
                         == DVXplorerFX3HardwareInterface.class,
                 "type 3 constructs DVXplorerFX3HardwareInterface");
+    }
+
+    /**
+     * Interface → Reset USB must stop every open USB HI before any
+     * {@code LibUsb.resetDevice} / reopen. AEReader parse state is cleared on
+     * the next startThread.
+     */
+    private static void testUsbResetClosesAllInterfaces() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        Path fx3 = Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
+        String reset = methodBody(viewer,
+                "final public class ResetHardwareIntefaceAction extends MyAction {",
+                "final public class FrameRateIncreaseAction extends MyAction {");
+        require(reset.contains("detachUsbHardwareForBusReset()"),
+                "USB reset detaches sibling viewers first");
+        require(reset.contains("closeHardwareInterfacesWithTimeout("),
+                "USB reset closes every detached USB HI on one thread");
+        require(reset.contains("thisHw, true"),
+                "USB reset marks the closer as a bus-reset closer");
+        String await = methodBody(viewer,
+                "private void awaitPendingHardwareClose() {",
+                "private Thread closeHardwareInterfaceWithTimeout(");
+        require(await.contains("usbBusResetCloser"),
+                "ViewLoop joins the bus-reset closer before any open");
+        String start = methodBody(fx3,
+                "public void startThread() throws HardwareInterfaceException {",
+                "private void startBulkTransferThread(long generation)");
+        require(start.contains("resetDecodeState()"),
+                "AEReader start clears parse state before a new USBTransferThread");
+        Path davis = Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "DAViSFX3HardwareInterface.java");
+        String davisSrc = Files.readString(davis, StandardCharsets.UTF_8);
+        require(davisSrc.contains("protected void resetDecodeState()"),
+                "DAViS RetinaAEReader resets APS counters and assembler");
+        require(!davisSrc.contains("Enable 'Ensure APS data transfer'"),
+                "APS shortage must not recommend WaitOnTransferStall");
+        require(davisSrc.contains("USB reset does not reset FPGA APS logic"),
+                "APS desync log says USB reset does not reset FPGA logic");
+        require(davisSrc.contains("warnReplugDavisIfApsStuck()"),
+                "three short APS frames offer a replug dialog on this AEViewer");
+        String viewerSrc = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(viewerSrc.contains("public void warnDavisApsStuckNeedReplug()"),
+                "AEViewer hosts the Davis APS stuck / replug dialog");
+        require(viewerSrc.contains("Unplug the Davis USB cable"),
+                "Davis APS stuck dialog tells the user to replug");
+        Path chip = Paths.get("src", "eu", "seebetter", "ini", "chips", "davis", "DavisBaseCamera.java");
+        require(Files.readString(chip, StandardCharsets.UTF_8).contains("resetUsbApsAssembler()"),
+                "chip extractor assembler is reset with the USB reader");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

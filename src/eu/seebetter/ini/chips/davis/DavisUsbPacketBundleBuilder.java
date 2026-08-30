@@ -142,15 +142,39 @@ public class DavisUsbPacketBundleBuilder {
         this.rollingShutter = rollingShutter;
     }
 
+    /** Drop in-progress APS assembly. Called when the USB reader is restarted. */
+    public void resetAssembler() {
+        if (frameAssembler != null) {
+            frameAssembler.reset();
+        }
+    }
+
     /**
-     * APS Frame-Start special from USB. Opens the assembler if idle; does not
-     * {@link DavisFrameAssembler#reset()} (that caused SignalRead-without-frame
-     * when Reset column samples were sparse or reordered).
+     * APS Frame-Start special from USB. Always opens a new assembler frame so a
+     * leftover half-frame cannot block SignalRead (Davis346 desync).
      */
     public void onFrameStart(boolean rolling, int timestamp) {
         setRollingShutter(rolling);
         ensureAssembler(apsWidth, apsHeight);
-        frameAssembler.ensureFrameOpen(timestamp);
+        emitIfComplete(frameAssembler.onUsbFrameStart(timestamp));
+    }
+
+    /**
+     * APS Frame-End special from USB. Completes only a full frame; incomplete
+     * leftovers stay open for late USB samples (next SOF abandons them).
+     */
+    public void onFrameEnd(int timestamp) {
+        ensureAssembler(apsWidth, apsHeight);
+        emitIfComplete(frameAssembler.onUsbFrameEnd(timestamp));
+    }
+
+    private void emitIfComplete(FramePacket frame) {
+        if (frame != null && out != null) {
+            out.add(frame);
+            if (chip != null) {
+                chip.noteUsbAssembledFrame(frame);
+            }
+        }
     }
 
     public void addPolarity(final int x, final int y, final boolean on, final int timestamp) {
@@ -224,12 +248,7 @@ public class DavisUsbPacketBundleBuilder {
         ApsDvsEvent.ReadoutType type = resetRead ? ApsDvsEvent.ReadoutType.ResetRead : ApsDvsEvent.ReadoutType.SignalRead;
         FramePacket frame = frameAssembler.process(adcSample, timestamp, (short) x, (short) y, type, pixFirst, pixLast,
                 rollingShutter);
-        if (frame != null && out != null) {
-            out.add(frame);
-            if (chip != null) {
-                chip.noteUsbAssembledFrame(frame);
-            }
-        }
+        emitIfComplete(frame);
         return frame;
     }
 

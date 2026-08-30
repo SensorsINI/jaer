@@ -25,7 +25,7 @@ public final class SciDVSGaerFx3WiringDemo {
             "hardwareinterface", "usb", "cypressfx3libusb",
             "DAViSFX3HardwareInterface.java");
     private static final String STANDARD_LOOP_SHA256
-            = "ea21529c5cedb0e26d284b1a5c9cecb3798db3ccdab248d9e25cdceab29fc03f";
+            = "0a30a314dcbf5a75c191370fcca3738c82f027905c7883e5957350ea9dab7794";
     private static int assertions;
 
     private SciDVSGaerFx3WiringDemo() {

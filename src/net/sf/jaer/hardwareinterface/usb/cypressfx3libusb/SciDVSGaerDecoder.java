@@ -218,7 +218,7 @@ final class SciDVSGaerDecoder {
                         if (throttle.shouldLog()) {
                             LOG.severe("APS Frame End: wrong column count [" + i + " - " + apsCountX[i]
                                     + "/" + config.apsSizeX
-                                    + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                                    + "] (FPGA APS stream). Missing columns are not filled by WaitOnTransferStall.");
                         }
                     }
                 }
@@ -247,7 +247,7 @@ final class SciDVSGaerDecoder {
                     if (throttle.shouldLog()) {
                         LOG.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
                                 + apsCountY[apsCurrentReadoutType] + "/" + config.apsSizeY
-                                + "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
+                                + "] (0=reset, 1=signal). Empty or short columns: FPGA APS markers without ADC words, or host counters skipped samples.");
                     }
                 }
                 apsCountX[apsCurrentReadoutType]++;
@@ -505,5 +505,11 @@ final class SciDVSGaerDecoder {
         apsCurrentReadoutType = APS_READOUT_RESET;
         Arrays.fill(apsCountX, 0, APS_READOUT_TYPES_NUM, (short) 0);
         Arrays.fill(apsCountY, 0, APS_READOUT_TYPES_NUM, (short) 0);
+    }
+
+    /** Clear APS column counters. USB reader restart must not keep a half-frame. */
+    void resetApsState() {
+        initFrame();
+        rollingShutterFrame = false;
     }
 }

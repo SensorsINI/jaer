@@ -178,7 +178,9 @@ public class PropheseeAEReader {
                     LibUsb.TRANSFER_TYPE_BULK,
                     new ProcessAEData(generation),
                     getNumBuffers(),
-                    getFifoSize());
+                    getFifoSize(),
+                    null, null, null,
+                    monitor.getLibUsbContext());
             usbTransfer.setName("PropheseeAEReader");
             UsbTransferSubmit.installFailureHandler(usbTransfer, log, "Prophesee AEReader",
                     startError, running, () -> monitor.markUsbDisconnected(LibUsb.ERROR_IO));

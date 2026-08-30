@@ -959,6 +959,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private static final long IMU_DECODE_LOG_INTERVAL_NS = 1_000_000_000L;
         private boolean imuLoggedFirstStart;
         private long lastImuDecodeLogNs;
+        private int rangeErrorLogged;
         private int imuLogStarts;
         private int imuLogScale;
         private int imuLogData;
@@ -1017,8 +1018,16 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             } else {
                 checkFirmwareLogic(REQUIRED_FIRMWARE_VERSION_FX3, REQUIRED_LOGIC_REVISION_FX3);
                 resolvedChipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
-                resolvedSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
-                resolvedSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+                final int rx = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+                final int ry = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+                if (rx > 0 && ry > 0) {
+                    resolvedSizeX = rx;
+                    resolvedSizeY = ry;
+                } else {
+                    CypressFX3.log.warning(String.format(
+                            "Classic DVX DVS size SPI returned %dx%d; using 640x480 (sibling SPI skip or failed read)",
+                            rx, ry));
+                }
                 resolvedInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
                 final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 1);
                 resolvedImuFlipX = (imuOrientation & 0x04) != 0;
@@ -1036,6 +1045,19 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             imuFlipZ = resolvedImuFlipZ;
 
             updateTimestampMasterStatus();
+        }
+
+        /** First few out-of-range events only — a 0×0 size used to flood SEVERE. */
+        private void logRangeError(String fmt, Object... args) {
+            if (rangeErrorLogged >= 3) {
+                return;
+            }
+            rangeErrorLogged++;
+            String msg = String.format(fmt, args);
+            if (rangeErrorLogged == 3) {
+                msg += " (further out-of-range suppressed)";
+            }
+            CypressFX3.log.severe(msg);
         }
 
         /**
@@ -1072,6 +1094,31 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             imuLogScale = 0;
             imuLogData = 0;
             imuLogEnds = 0;
+        }
+
+        @Override
+        protected void resetDecodeState() {
+            wrapOverflow = 0;
+            wrapAdd = 0;
+            lastTimestamp = 0;
+            currentTimestamp = 0;
+            dvsLastX = 0;
+            dvsLastYG1 = 0;
+            dvsLastYG2 = 0;
+            mipiLastColumn = -1;
+            mipiReferenceUs = -1;
+            mipiLastReference = -1;
+            mipiLastUsedSub = -1;
+            mipiLastUsedReference = -1;
+            mipiCurrTimestamp = 0;
+            mipiLastTimestamp = 0;
+            mipiReferenceOverflow = 0;
+            cx3ImuLastTimestamp = 0;
+            cx3ImuLastHostNs = 0;
+            imuCount = 0;
+            imuType = 0;
+            imuTmpData = 0;
+            imuIgnoreEvents = true;
         }
 
         private void checkMonotonicTimestamp() {
@@ -1236,7 +1283,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                 final int columnAddr = data & 0x03FF;
 
                                 if (columnAddr >= dvsSizeX) {
-                                    CypressFX3.log.severe(String.format("DVS: X address out of range (0-%d): %d.", (dvsSizeX - 1), columnAddr));
+                                    logRangeError("DVS: X address out of range (0-%d): %d.", (dvsSizeX - 1), columnAddr);
                                     break; // Skip invalid X address (don't update lastX).
                                 }
 
@@ -1294,11 +1341,11 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
                                 // Check range conformity.
                                 if (group1Address >= dvsSizeY) {
-                                    CypressFX3.log.severe(String.format("DVS: Group1 Y address out of range (0-%d): %d.", (dvsSizeY - 1), group1Address));
+                                    logRangeError("DVS: Group1 Y address out of range (0-%d): %d.", (dvsSizeY - 1), group1Address);
                                     break;  // Skip invalid G1 Y address (don't update lastYs).
                                 }
                                 if (group2Address >= dvsSizeY) {
-                                    CypressFX3.log.severe(String.format("DVS: Group2 Y address out of range (0-%d): %d.", (dvsSizeY - 1), group2Address));
+                                    logRangeError("DVS: Group2 Y address out of range (0-%d): %d.", (dvsSizeY - 1), group2Address);
                                     break;  // Skip invalid G2 Y address (don't update lastYs).
                                 }
 

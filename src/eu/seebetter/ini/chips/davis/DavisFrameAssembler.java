@@ -98,7 +98,8 @@ public class DavisFrameAssembler {
     /**
      * USB Frame-Start special: open a frame if none is active so subsequent
      * Reset/Signal ADC samples are accepted. Does <b>not</b> wipe an in-progress
-     * frame (unlike {@link #reset()}).
+     * frame (unlike {@link #reset()}). Prefer {@link #onUsbFrameStart(int)} when
+     * the FPGA sent a real SOF — that aborts a stuck half-frame.
      */
     public void ensureFrameOpen(int timestamp) {
         if (inFrame) {
@@ -111,6 +112,59 @@ public class DavisFrameAssembler {
         }
         ensureBuffers(w, h);
         startFrame(w, h, timestamp);
+    }
+
+    /**
+     * FPGA APS Frame-Start: abandon an incomplete frame and open a new one.
+     * A leftover {@code inFrame} with too few signal samples is how Davis346
+     * stayed torn after a missed column marker (SignalRead then ignored).
+     *
+     * @return a completed previous frame only if it already had {@code W*H}
+     *         signal samples; incomplete leftovers are discarded
+     */
+    public FramePacket onUsbFrameStart(int timestamp) {
+        FramePacket completed = null;
+        if (inFrame && signalCount >= nPixels()) {
+            timestampEofUs = timestamp;
+            completed = finishFrame();
+        } else if (inFrame) {
+            if (signalCount > 0 && (warningCount++ % 30) == 0) {
+                log.warning("APS Frame Start while previous frame incomplete (" + signalCount + "/"
+                        + nPixels() + " signal samples); discarding and resyncing");
+            }
+            reset();
+        }
+        final int w = width();
+        final int h = height();
+        if (w <= 0 || h <= 0) {
+            return completed;
+        }
+        ensureBuffers(w, h);
+        startFrame(w, h, timestamp);
+        return completed;
+    }
+
+    /**
+     * FPGA APS Frame-End: emit only if the signal count is complete. Incomplete
+     * frames stay open so samples in later USB transfers can still finish the
+     * count. The next SOF abandons a leftover. Do <b>not</b> {@link #reset()}
+     * here — that caused {@code SignalRead without active frame} and blocked
+     * recovery (Davis346 61k–81k/89960 then idle).
+     */
+    public FramePacket onUsbFrameEnd(int timestamp) {
+        if (!inFrame) {
+            return null;
+        }
+        if (signalCount >= nPixels()) {
+            timestampEofUs = timestamp;
+            return finishFrame();
+        }
+        if (signalCount > 0 && (warningCount++ % 30) == 0) {
+            log.warning("APS Frame End with only " + signalCount + "/" + nPixels()
+                    + " signal samples; keeping frame open for late USB words (will not reach W*H if the FPGA never sent them)");
+        }
+        timestampEofUs = timestamp;
+        return null;
     }
 
     /**
@@ -143,6 +197,8 @@ public class DavisFrameAssembler {
             if (idx >= 0) {
                 resetBuf[idx] = (short) adcSample;
                 resetCount++;
+            } else {
+                noteOutOfRange(x, y, w, h, readoutType);
             }
             if (pixLast && !rollingShutter) {
                 timestampSoeUs = timestamp;
@@ -171,6 +227,8 @@ public class DavisFrameAssembler {
                 }
                 building.getPixels()[idx] = (short) cds;
                 signalCount++;
+            } else {
+                noteOutOfRange(x, y, w, h, readoutType);
             }
             if (pixLast) {
                 timestampEofUs = timestamp;
@@ -233,6 +291,13 @@ public class DavisFrameAssembler {
         final int n = w * h;
         if (resetBuf == null || resetBuf.length != n) {
             resetBuf = new short[n];
+        }
+    }
+
+    private void noteOutOfRange(short x, short y, int w, int h, ApsDvsEvent.ReadoutType readoutType) {
+        if ((warningCount++ % 1000) == 0) {
+            log.warning("APS " + readoutType + " sample (" + x + "," + y + ") outside frame "
+                    + w + "x" + h + "; check FPGA APS invertXY vs chip size");
         }
     }
 

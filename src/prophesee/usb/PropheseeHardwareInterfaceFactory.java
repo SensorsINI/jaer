@@ -45,6 +45,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
             if (result != LibUsb.SUCCESS) {
                 throw new LibUsbException("Unable to initialize libusb", result);
             }
+            PropheseeLibUsb.context();
         } catch (UnsatisfiedLinkError | LibUsbException ule) {
             MacosLibusbHelp.maybeShowDialog(ule);
             UnsatisfiedLinkError u = new UnsatisfiedLinkError(
@@ -73,7 +74,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
     private List<Device> buildCompatibleDevicesList() {
         final List<Device> list = new ArrayList<>();
         final DeviceList devList = new DeviceList();
-        LibUsb.getDeviceList(null, devList);
+        LibUsb.getDeviceList(PropheseeLibUsb.context(), devList);
         final DeviceDescriptor devDesc = new DeviceDescriptor();
 
         for (final Device dev : devList) {
