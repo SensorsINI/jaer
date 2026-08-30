@@ -6643,6 +6643,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         recordingMenuItem = new javax.swing.JMenuItem();
         recordingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         recordingSetTimelimitMenuItem = new javax.swing.JMenuItem();
+        recordingFilterSeparator = new javax.swing.JSeparator();
         recordFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         networkSeparator = new javax.swing.JSeparator();
@@ -6991,6 +6992,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(recordingSetTimelimitMenuItem);
+        fileMenu.add(recordingFilterSeparator);
 
         enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
         enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
@@ -12405,6 +12407,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem recordingMenuItem;
     private javax.swing.JCheckBoxMenuItem recordingPlaybackImmediatelyCheckBoxMenuItem;
     private javax.swing.JMenuItem recordingSetTimelimitMenuItem;
+    private javax.swing.JSeparator recordingFilterSeparator;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenu monSeqMenu;
     private javax.swing.JMenuItem monSeqMissedEventsMenuItem;
