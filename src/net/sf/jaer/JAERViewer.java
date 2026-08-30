@@ -596,6 +596,13 @@ public class JAERViewer {
         }
         viewer.setViewerInstanceIndex(allocateViewerIndex());
         getViewers().add(viewer);
+        for (AEViewer other : getViewers()) {
+            if (other == viewer) {
+                continue;
+            }
+            other.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, viewer);
+            viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, other);
+        }
         viewer.addWindowListener(new java.awt.event.WindowAdapter() {
 
             @Override
@@ -664,6 +671,13 @@ public class JAERViewer {
     }
 
     public void removeViewer(AEViewer v) {
+        for (AEViewer other : getViewers()) {
+            if (other == v) {
+                continue;
+            }
+            other.getSupport().removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, v);
+            v.getSupport().removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, other);
+        }
         if (getViewers().remove(v) == false) {
             log.warning("JAERViewer.removeViewer(): " + v + " is not in viewers list");
         } else {

@@ -5,6 +5,8 @@
  */
 package net.sf.jaer.graphics;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
@@ -31,8 +33,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -135,6 +135,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
 
+    private JCheckBox exitCompletelyWithXCB;
     private JCheckBox rememberLastInterfaceCB;
     private JCheckBox collectUsageDataCB;
     private JCheckBox remoteControlEnabledCB;
@@ -172,6 +173,26 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             setIconImage(viewer.getIconImage());
         }
         buildUi();
+        if (viewer != null) {
+            viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE,
+                    new PropertyChangeListener() {
+                        @Override
+                        public void propertyChange(PropertyChangeEvent evt) {
+                            if (rememberLastInterfaceCB == null || updatingUi) {
+                                return;
+                            }
+                            Object nv = evt.getNewValue();
+                            if (nv instanceof Boolean) {
+                                updatingUi = true;
+                                try {
+                                    rememberLastInterfaceCB.setSelected((Boolean) nv);
+                                } finally {
+                                    updatingUi = false;
+                                }
+                            }
+                        }
+                    });
+        }
         pack();
         setLocationRelativeTo(viewer);
         addWindowListener(new WindowAdapter() {
@@ -407,17 +428,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private void quitJaer() {
         dispose();
-        JMenu file = viewer.getFileMenu();
-        if (file != null) {
-            for (int i = 0; i < file.getItemCount(); i++) {
-                JMenuItem item = file.getItem(i);
-                if (item != null && "Exit".equals(item.getText())) {
-                    item.doClick();
-                    return;
-                }
-            }
-        }
-        System.exit(0);
+        viewer.requestExit();
     }
 
     private JPanel buildFiltersGlobalSection() {
@@ -810,6 +821,22 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(maxRecentFoldersSpinner, gbcField(y++));
 
+        exitCompletelyWithXCB = new JCheckBox("Exit completely with 'x'");
+        exitCompletelyWithXCB.setToolTipText("<html>When several AEViewer windows are open, the <b>x</b> accelerator "
+                + "exits jAER instead of closing only this window.<br>"
+                + "Offered the first time you press <b>x</b> with multiple windows.<br>"
+                + "Later exits with several windows still ask you to confirm that all AEViewers will close.");
+        exitCompletelyWithXCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setExitCompletelyWithX(exitCompletelyWithXCB.isSelected());
+            }
+        });
+        p.add(exitCompletelyWithXCB, gbc(y++));
+
         return p;
     }
 
@@ -1031,7 +1058,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JPanel buildInterfaceSection() {
         JPanel p = titledSection("Interface");
         rememberLastInterfaceCB = new JCheckBox("Remember last interface selected");
-        rememberLastInterfaceCB.setToolTipText("Reopen this window's last USB camera on restart. Mapping is "
+        rememberLastInterfaceCB.setToolTipText("Reopen each window's last USB camera on restart (global; all AEViewers share this). Mapping is "
                 + ViewerInterfaceBindingMap.file().getAbsolutePath());
         rememberLastInterfaceCB.addActionListener(new ActionListener() {
             @Override
@@ -1262,6 +1289,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
+            if (exitCompletelyWithXCB != null) {
+                exitCompletelyWithXCB.setSelected(viewer.isExitCompletelyWithX());
+            }
 
             snapshotRemoteControlPrefs();
             remoteControlEnabledCB.setSelected(RemoteControl.isEnabledPref());

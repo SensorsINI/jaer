@@ -229,7 +229,7 @@
                 </Property>
                 <Property name="mnemonic" type="int" value="120"/>
                 <Property name="text" type="java.lang.String" value="Exit"/>
-                <Property name="toolTipText" type="java.lang.String" value="Exits all viewers"/>
+                <Property name="toolTipText" type="java.lang.String" value="Exits jAER (all AEViewer windows). With several windows, you will be asked to confirm."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="exitMenuItemActionPerformed"/>

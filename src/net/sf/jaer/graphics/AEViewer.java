@@ -243,6 +243,8 @@ import org.opencv.core.Core;
  * <li> "chip" - when a new AEChip is built for the viewer.
  * <li> "paused" - when paused or resumed - old and new booleans are passed to
  * firePropertyChange.
+ * <li> "rememberLastInterface" - global Interface-menu checkbox; all AEViewers
+ * stay in sync. Setter no-ops when the value is unchanged.
  * </ul>
  * In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as
  * PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
@@ -290,7 +292,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled",
             EVENT_RECORDING_STARTED = "recordingStarted",
-            EVENT_RECORDING_STOPPED = "recordingStopped";
+            EVENT_RECORDING_STOPPED = "recordingStopped",
+            EVENT_REMEMBER_LAST_INTERFACE = "rememberLastInterface";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
@@ -490,6 +493,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEViewerQuickHelpFrame quickHelpFrame;
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", true);
+    /** Prefs key: {@code x} / File → Exit quits jAER instead of closing only this window. */
+    public static final String PREF_EXIT_COMPLETELY_WITH_X = "AEViewer.exitCompletelyWithX";
+    /** Prefs key: user has already chosen {@link #PREF_EXIT_COMPLETELY_WITH_X} (dialog or Preferences). */
+    public static final String PREF_EXIT_COMPLETELY_WITH_X_CHOSEN = "AEViewer.exitCompletelyWithXChosen";
     /** False for File→New and other extra windows: WAITING must not grab leftover cameras. */
     private volatile boolean autobindOnWaiting = true;
     private String rememberLastInterfaceDeviceID = null;
@@ -667,6 +674,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        updateExitMenuTooltip();
         initRosOutputRemoteMenu();
         initDnnSharedMemoryRemoteMenu();
         initOpenCvOutputRemoteMenu();
@@ -3014,7 +3022,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setSelected(true);
             interfaceMenu.add(new JSeparator());
             interfaceAlreadyOpen = true;
-            log.info(String.format("Added open device %s", chip.getHardwareInterface().toString()));
+            log.fine(String.format("Added open device %s", chip.getHardwareInterface().toString()));
             // don't appendOfEventReferences action listener because we are already selected as interface
         }
         ButtonGroup bg = new ButtonGroup();
@@ -3280,7 +3288,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
         JMenuItem resetDeviceB = new JMenuItem(new ResetHardwareIntefaceAction());
         interfaceMenu.add(resetDeviceB);
-        JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(new RememberLastInterfaceAction());
+        JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(getRememberLastInterfaceAction());
         interfaceMenu.add(rememberSeletedInterfaceMI);
 
         snapshotInterfaceMenuDevices();
@@ -3295,27 +3303,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * @param rememberLastInterface the rememberLastInterface to set
+     * Global Interface-menu setting (shared {@code AEViewer} prefs node).
+     * Unchanged values return without firing so sibling PropertyChange
+     * listeners cannot loop.
      */
     public void setRememberLastInterface(boolean rememberLastInterface) {
+        boolean old = this.rememberLastInterface;
+        if (old == rememberLastInterface) {
+            return;
+        }
         this.rememberLastInterface = rememberLastInterface;
         prefs.putBoolean("rememberLastInterface", this.rememberLastInterface);
+        if (rememberLastInterfaceAction != null) {
+            rememberLastInterfaceAction.putValue(Action.SELECTED_KEY, this.rememberLastInterface);
+        }
+        getSupport().firePropertyChange(EVENT_REMEMBER_LAST_INTERFACE, old, this.rememberLastInterface);
+    }
+
+    private RememberLastInterfaceAction rememberLastInterfaceAction;
+
+    RememberLastInterfaceAction getRememberLastInterfaceAction() {
+        if (rememberLastInterfaceAction == null) {
+            rememberLastInterfaceAction = new RememberLastInterfaceAction();
+        }
+        return rememberLastInterfaceAction;
     }
 
     final public class RememberLastInterfaceAction extends MyAction {
 
         public RememberLastInterfaceAction() {
             super("Remember last interface selected");
-            putValue(Action.SHORT_DESCRIPTION, "Reopen this window's last USB camera on restart (saved under java.io.tmpdir/jaer)");
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Reopen each window's last USB camera on restart (global; all AEViewers share this)");
             putValue(Action.SELECTED_KEY, isRememberLastInterface());
-//            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK|java.awt.event.InputEvent.CTRL_DOWN_MASK));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             setRememberLastInterface(!rememberLastInterface);
-            putValue(Action.SELECTED_KEY, isRememberLastInterface());
-            showAction(isRememberLastInterface() ? "Will reopen last interfaceAutomatically" : "Selec desired interface from Interface menu");
+            showAction(isRememberLastInterface()
+                    ? "Will reopen last interface automatically"
+                    : "Select desired interface from Interface menu");
         }
 
     }
@@ -3644,9 +3672,50 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return firstUnbound;
     }
 
-    /** File → Exit. Safe to invoke from the tester on the EDT. */
+    /** File → Exit without confirmation. Safe to invoke from the tester on the EDT. */
     public void requestExit() {
-        exitMenuItemActionPerformed(null);
+        doExitAllViewers();
+    }
+
+    /**
+     * If selected, the {@code x} accelerator (File → Exit) quits jAER. If not,
+     * {@code x} closes only this AEViewer when more than one is open.
+     */
+    public boolean isExitCompletelyWithX() {
+        return prefs.getBoolean(PREF_EXIT_COMPLETELY_WITH_X, true);
+    }
+
+    /** True after the user set {@link #isExitCompletelyWithX()} in the first multi-viewer dialog or Preferences. */
+    public boolean isExitCompletelyWithXChosen() {
+        return prefs.getBoolean(PREF_EXIT_COMPLETELY_WITH_X_CHOSEN, false);
+    }
+
+    /**
+     * Sticky choice for the {@code x} accelerator. Also marks the choice as made
+     * so the first-time multi-viewer dialog is not shown again.
+     */
+    public void setExitCompletelyWithX(boolean exitCompletely) {
+        prefs.putBoolean(PREF_EXIT_COMPLETELY_WITH_X, exitCompletely);
+        prefs.putBoolean(PREF_EXIT_COMPLETELY_WITH_X_CHOSEN, true);
+        updateExitMenuTooltip();
+        if (jaerViewer != null) {
+            for (AEViewer v : jaerViewer.getViewers()) {
+                if (v != this) {
+                    v.updateExitMenuTooltip();
+                }
+            }
+        }
+    }
+
+    private void updateExitMenuTooltip() {
+        if (exitMenuItem == null) {
+            return;
+        }
+        if (isExitCompletelyWithX()) {
+            exitMenuItem.setToolTipText("Exits jAER (all AEViewer windows). With several windows, you will be asked to confirm.");
+        } else {
+            exitMenuItem.setToolTipText("Closes this AEViewer. Turn on File → Preferences → Exit completely with 'x' to quit jAER instead.");
+        }
     }
 
     /**
@@ -6852,7 +6921,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
         exitMenuItem.setMnemonic('x');
         exitMenuItem.setText("Exit");
-        exitMenuItem.setToolTipText("Exits all viewers");
+        exitMenuItem.setToolTipText("Exits jAER (all AEViewer windows). With several windows, you will be asked to confirm.");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exitMenuItemActionPerformed(evt);
@@ -7874,55 +7943,92 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (!confirmExitFromWindowClose()) {
                 return;
             }
-            final boolean lastViewer = jaerViewer.getViewers().size() == 1;
-            // Arm before any work that can block the EDT (USB close, ViewLoop join).
-            if (lastViewer) {
-                armExitWatchdog();
-            }
-            try {
-                stopViewLoopForExit();
-                LibUsbHotplug.removeListener(usbHotplugListener);
-                cleanup(true);
-
-                if (lastViewer) {
-                    log.info("window closing event, only 1 viewer, calling System.exit");
-                    //            stopMe(); // TODO seems to deadlock
-                    System.exit(0);
-                } else {
-                    log.info("window closing event with more than one AEViewer window, calling stopMe");
-                    if ((filterFrame != null) && filterFrame.isVisible()) {
-                        filterFrame.dispose();  // close this frame if the window is closed
-                    }
-                    disposeRosOutputDialog();
-                    disposeDnnSharedMemoryDialog();
-                    disposeOpenCvOutputDialog();
-                    disposeFileMenuFrames();
-
-                    // TODO should close biasgen window also
-                    stopMe();
-                    dispose();
-                }
-            } catch (Throwable t) {
-                log.log(Level.SEVERE, "orderly window-close shutdown failed", t);
-                if (lastViewer) {
-                    System.exit(1);
-                }
+            if (getOpenViewerCount() <= 1) {
+                doExitAllViewers();
+            } else {
+                closeThisViewerOnly(false);
             }
 	}//GEN-LAST:event_formWindowClosing
 
         /**
-         * Title-bar close only. File → Exit does not use this. Don't show again
-         * defaults to checked so new users confirm once then skip later.
+         * One-time confirm for title-bar close and for {@code x} / File → Exit
+         * when this is the last AEViewer. Don't show again defaults to checked
+         * so new users confirm once then skip later.
          */
         private boolean confirmExitFromWindowClose() {
             WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true,
                     "Confirm exit",
-                    "<html>Do you want to exit jAER?<p>This prompt is shown only when you close the window with the title-bar close button.<br>"
-                    + "<b>File → Exit</b> quits without asking.",
+                    "<html>Do you want to exit jAER?<p>Shown once for the title-bar close button or the <b>x</b> accelerator"
+                    + " when this is the last AEViewer.",
                     JOptionPane.QUESTION_MESSAGE, true, JOptionPane.OK_CANCEL_OPTION);
             d.setLocationRelativeTo(this);
             d.setVisible(true);
             return d.isConfirmed();
+        }
+
+        /**
+         * First time {@code x} is used with several AEViewers: sticky choice.
+         * @return 0 exit completely, 1 close this viewer, anything else cancel
+         */
+        private int offerFirstTimeXExitChoice(int viewerCount) {
+            String msg = "<html>You have <b>" + viewerCount + " AEViewer</b> windows open.<p>"
+                    + "What should the <b>x</b> key do from now on?<p>"
+                    + "You can change this later in File → Preferences "
+                    + "(<i>Exit completely with 'x'</i>).";
+            String[] options = {"Exit completely", "Close this viewer", "Cancel"};
+            return JOptionPane.showOptionDialog(this, msg, "x key with multiple AEViewers",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        }
+
+        /** Subsequent {@code x} with several windows and {@link #isExitCompletelyWithX()}. */
+        private boolean confirmExitClosesAllViewers(int viewerCount) {
+            String msg = "<html>Exit will close all <b>" + viewerCount + " AEViewer</b> windows.<p>Continue?";
+            int choice = JOptionPane.showConfirmDialog(this, msg, "Exit jAER?",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            return choice == JOptionPane.OK_OPTION;
+        }
+
+        /**
+         * Close this window only; other AEViewers stay open.
+         * @param removeFromViewerList false when already inside {@code windowClosing}
+         * (JAERViewer removes this viewer); true for File → Exit / {@code x}
+         */
+        private void closeThisViewerOnly(boolean removeFromViewerList) {
+            log.info("closing this AEViewer; other windows remain");
+            try {
+                stopViewLoopForExit();
+                LibUsbHotplug.removeListener(usbHotplugListener);
+                cleanup(true);
+                if ((filterFrame != null) && filterFrame.isVisible()) {
+                    filterFrame.dispose();
+                }
+                disposeRosOutputDialog();
+                disposeDnnSharedMemoryDialog();
+                disposeOpenCvOutputDialog();
+                disposeFileMenuFrames();
+                stopMe();
+                if (removeFromViewerList && jaerViewer != null && jaerViewer.getViewers().contains(this)) {
+                    jaerViewer.removeViewer(this);
+                }
+                dispose();
+            } catch (Throwable t) {
+                log.log(Level.SEVERE, "orderly viewer-close failed", t);
+            }
+        }
+
+        /** Quit the JVM after stopping this viewer's loop and USB. */
+        private void doExitAllViewers() {
+            armExitWatchdog();
+            try {
+                stopViewLoopForExit();
+                LibUsbHotplug.removeListener(usbHotplugListener);
+                cleanup(true);
+                dispose();
+                System.exit(0);
+            } catch (Throwable t) {
+                log.log(Level.SEVERE, "orderly Exit-menu shutdown failed; forcing System.exit(1)", t);
+                System.exit(1);
+            }
         }
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
@@ -8232,6 +8338,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if (EVENT_REMEMBER_LAST_INTERFACE.equals(evt.getPropertyName())) {
+            Object nv = evt.getNewValue();
+            if (nv instanceof Boolean) {
+                setRememberLastInterface((Boolean) nv);
+            }
+            return;
+        }
         if (evt.getSource() instanceof HardwareInterface) {
             if (evt.getPropertyName().equals("readerStarted")) { // comes from hardware interface AEReader thread
                 //            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
@@ -10259,17 +10372,38 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
 
-            armExitWatchdog();
-            try {
-                stopViewLoopForExit();
-                LibUsbHotplug.removeListener(usbHotplugListener);
-                cleanup(true);
-                dispose();
-                System.exit(0);
-            } catch (Throwable t) {
-                log.log(Level.SEVERE, "orderly Exit-menu shutdown failed; forcing System.exit(1)", t);
-                System.exit(1);
+            final int viewerCount = getOpenViewerCount();
+            final boolean multiple = viewerCount > 1;
+
+            if (multiple && !isExitCompletelyWithXChosen()) {
+                int choice = offerFirstTimeXExitChoice(viewerCount);
+                if (choice == 0) {
+                    setExitCompletelyWithX(true);
+                    doExitAllViewers();
+                } else if (choice == 1) {
+                    setExitCompletelyWithX(false);
+                    closeThisViewerOnly(true);
+                }
+                return;
             }
+
+            if (multiple && !isExitCompletelyWithX()) {
+                closeThisViewerOnly(true);
+                return;
+            }
+
+            if (multiple) {
+                if (!confirmExitClosesAllViewers(viewerCount)) {
+                    return;
+                }
+                doExitAllViewers();
+                return;
+            }
+
+            if (!confirmExitFromWindowClose()) {
+                return;
+            }
+            doExitAllViewers();
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
     /**
