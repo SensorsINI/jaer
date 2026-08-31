@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
@@ -48,6 +49,8 @@ public class Aedat4FileOutputStream implements Closeable {
     private final AEChip chip;
     private final int compression;
     private final RecordingConfigurationSnapshot snapshot;
+    private final List<Aedat4CameraTrack> tracks;
+    private Aedat4CameraTrack currentTrack;
     private final long baseUs;
     private final List<DataDefinition> dataDefinitions = new ArrayList<>();
     private final long headerPosition;
@@ -55,9 +58,9 @@ public class Aedat4FileOutputStream implements Closeable {
     private boolean closed;
     /**
      * Camera timestamps are 32-bit µs; add 2^32 on wrap so AEDAT-4 Unix times
-     * stay monotonic (12 h recordings). Shared across events/frames/IMU.
+     * stay monotonic (12 h recordings). Per-camera unwrap lives on each
+     * {@link Aedat4CameraTrack}.
      */
-    private final TimestampUnwrapper timestampUnwrapper = new TimestampUnwrapper();
     /** Uncompressed FlatBuffer packet payload bytes (before LZ4/ZSTD). */
     private long uncompressedPayloadBytes;
     /** Compressed packet payload bytes written to the file (same as uncompressed if NONE). */
@@ -117,22 +120,59 @@ public class Aedat4FileOutputStream implements Closeable {
      */
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             RecordingConfigurationSnapshot snapshot) throws IOException {
-        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot, false);
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot, false, null);
+    }
+
+    /**
+     * Muxed cameras sharing one file. Tracks must be frozen before this call
+     * (snapshots, source labels, stream bases). Shared {@code baseUnixUs}.
+     */
+    public Aedat4FileOutputStream(FileOutputStream outputStream, List<Aedat4CameraTrack> tracks, int compression,
+            long baseUnixUs) throws IOException {
+        this(outputStream, tracks == null || tracks.isEmpty() ? null : tracks.get(0).chip, compression,
+                baseUnixUs, firstSnapshot(tracks), false, tracks);
+    }
+
+    private static RecordingConfigurationSnapshot firstSnapshot(List<Aedat4CameraTrack> tracks) {
+        if (tracks == null || tracks.isEmpty()) {
+            return null;
+        }
+        return tracks.get(0).snapshot;
     }
 
     private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure)
+            throws IOException {
+        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, null);
+    }
+
+    private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure,
+            List<Aedat4CameraTrack> suppliedTracks)
             throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
         this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
-        RecordingConfigurationSnapshot initializedSnapshot;
         ByteBuffer initializedPacketHeader;
         long initializedHeaderPosition;
+        RecordingConfigurationSnapshot initializedSnapshot;
+        List<Aedat4CameraTrack> initializedTracks;
         try {
-            initializedSnapshot = snapshot != null ? snapshot : RecordingConfigurationSnapshot.captureFromChip(chip);
+            initializedSnapshot =
+                    snapshot != null ? snapshot : RecordingConfigurationSnapshot.captureFromChip(chip);
+            if (suppliedTracks != null && !suppliedTracks.isEmpty()) {
+                initializedTracks = Collections.unmodifiableList(new ArrayList<>(suppliedTracks));
+            } else {
+                initializedTracks = Collections.singletonList(
+                        new Aedat4CameraTrack(chip,
+                                chip == null ? "jAER" : chip.getClass().getSimpleName(),
+                                initializedSnapshot, 0));
+            }
+            this.tracks = initializedTracks;
+            this.currentTrack = initializedTracks.get(0);
+            this.snapshot = initializedSnapshot;
             initializedPacketHeader = ByteBuffer.allocateDirect(8).order(ByteOrder.LITTLE_ENDIAN);
             channel.write(ByteBuffer.wrap(VERSION_LINE));
             initializedHeaderPosition = channel.position();
@@ -151,7 +191,6 @@ public class Aedat4FileOutputStream implements Closeable {
             }
             throw failure;
         }
-        this.snapshot = initializedSnapshot;
         this.packetHeader = initializedPacketHeader;
         this.headerPosition = initializedHeaderPosition;
     }
@@ -164,15 +203,35 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public long getEventsWritten() {
-        return countStream(STREAM_EVENTS);
+        long n = 0;
+        for (Aedat4CameraTrack t : tracks) {
+            n += countStream(t.eventsStreamId());
+        }
+        return n;
     }
 
     public long getFramesWritten() {
-        return countStream(STREAM_FRAMES);
+        long n = 0;
+        for (Aedat4CameraTrack t : tracks) {
+            n += countStream(t.framesStreamId());
+        }
+        return n;
     }
 
     public long getImuSamplesWritten() {
-        return countStream(STREAM_IMU);
+        long n = 0;
+        for (Aedat4CameraTrack t : tracks) {
+            n += countStream(t.imuStreamId());
+        }
+        return n;
+    }
+
+    public int getTrackCount() {
+        return tracks.size();
+    }
+
+    public List<Aedat4CameraTrack> getTracks() {
+        return tracks;
     }
 
     private long countStream(int streamId) {
@@ -197,9 +256,22 @@ public class Aedat4FileOutputStream implements Closeable {
      *                        counts them.
      */
     public synchronized void writeBundle(PacketBundle bundle, boolean skipFilteredOut) throws IOException {
+        writeBundle(bundle, skipFilteredOut, 0);
+    }
+
+    /**
+     * Write a camera's {@link PacketBundle} onto that track's EVTS/FRME/IMUS IDs.
+     */
+    public synchronized void writeBundle(PacketBundle bundle, boolean skipFilteredOut, int trackIndex)
+            throws IOException {
         if (bundle == null || bundle.isEmpty()) {
             return;
         }
+        if (trackIndex < 0 || trackIndex >= tracks.size()) {
+            throw new IllegalArgumentException("AEDAT-4 track index " + trackIndex
+                    + " out of range 0.." + (tracks.size() - 1));
+        }
+        currentTrack = tracks.get(trackIndex);
         for (TypedDataPacket packet : bundle) {
             if (packet == null || packet.isEmpty()) {
                 continue;
@@ -249,7 +321,7 @@ public class Aedat4FileOutputStream implements Closeable {
         int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(eventBuilder, vector);
         eventBuilder.finishSizePrefixed(root, "EVTS");
         byte[] payload = eventBuilder.sizedByteArray();
-        writePacket(STREAM_EVENTS, payload, n, evTimestamps[0], evTimestamps[n - 1]);
+        writePacket(currentTrack.eventsStreamId(), payload, n, evTimestamps[0], evTimestamps[n - 1]);
     }
 
     private int appendPolarityEvent(BasicEvent event, long[] timestamps, short[] xs, short[] ys,
@@ -291,7 +363,7 @@ public class Aedat4FileOutputStream implements Closeable {
                 (short) packet.getWidth(), (short) packet.getHeight(), (short) 0, (short) 0, pixelsOffset,
                 packet.getExposureUs(), FrameSource.SENSOR);
         builder.finishSizePrefixed(root, "FRME");
-        writePacket(STREAM_FRAMES, builder.sizedByteArray(), 1, start, end);
+        writePacket(currentTrack.framesStreamId(), builder.sizedByteArray(), 1, start, end);
     }
 
     private void writeImuPacket(ImuPacket packet) throws IOException {
@@ -315,7 +387,7 @@ public class Aedat4FileOutputStream implements Closeable {
         int vector = IMUPacket.createElementsVector(builder, offsets);
         int root = IMUPacket.createIMUPacket(builder, vector);
         builder.finishSizePrefixed(root, "IMUS");
-        writePacket(STREAM_IMU, builder.sizedByteArray(), n, first, last);
+        writePacket(currentTrack.imuStreamId(), builder.sizedByteArray(), n, first, last);
     }
 
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
@@ -340,14 +412,14 @@ public class Aedat4FileOutputStream implements Closeable {
      * and add 2^32 on wrap so DV-compatible Unix µs stay monotonic.
      */
     private long toUnixUs(int relativeUs) {
-        return baseUs + timestampUnwrapper.unwrapUnsigned32(relativeUs);
+        return baseUs + currentTrack.unwrapper.unwrapUnsigned32(relativeUs);
     }
 
     private long toUnixUs(long relativeUs) {
         if (relativeUs >= Integer.MIN_VALUE && relativeUs <= Integer.MAX_VALUE) {
             return toUnixUs((int) relativeUs);
         }
-        return baseUs + timestampUnwrapper.unwrapRaw(relativeUs);
+        return baseUs + currentTrack.unwrapper.unwrapRaw(relativeUs);
     }
 
     private byte[] buildIOHeader(long dataTablePosition) {
@@ -356,7 +428,7 @@ public class Aedat4FileOutputStream implements Closeable {
 
     private byte[] buildIOHeader(long dataTablePosition, RecordingConfigurationSnapshot headerSnapshot) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        int info = builder.createString(Aedat4InfoNode.build(chip, compression, headerSnapshot));
+        int info = builder.createString(Aedat4InfoNode.build(tracks, compression));
         int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
@@ -472,11 +544,15 @@ public class Aedat4FileOutputStream implements Closeable {
         long frames = 0;
         long imuSamples = 0;
         for (DataDefinition d : dataDefinitions) {
-            if (d.streamId == STREAM_EVENTS) {
+            int rem = d.streamId % Aedat4CameraTrack.STREAMS_PER_CAMERA;
+            if (rem < 0) {
+                rem += Aedat4CameraTrack.STREAMS_PER_CAMERA;
+            }
+            if (rem == 0) {
                 events += d.numElements;
-            } else if (d.streamId == STREAM_FRAMES) {
+            } else if (rem == 1) {
                 frames += d.numElements;
-            } else if (d.streamId == STREAM_IMU) {
+            } else if (rem == 2) {
                 imuSamples += d.numElements;
             }
         }

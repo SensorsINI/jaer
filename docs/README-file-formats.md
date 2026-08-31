@@ -22,14 +22,14 @@ Official format specs (where available) are linked from the **Format** column an
 | **[DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/)** | `.h5` / `.hdf5` (`events.h5`) | cooked `/events/{p,t,x,y}`, `/ms_to_idx`, `/t_offset` | [DSEC](https://dsec.ifi.uzh.ch/) (UZH); also some EVK4 exports | yes | Save As⁷ | no | Play: Blosc + ZSTD; Save As: uncompressed | Size from HDF5 attrs or max x/y — chip `DVS640` (640×480) or `DVS1280x720SD` (1280×720); left/right are separate files |
 | **[ROS bag](http://wiki.ros.org/Bags)** | `.bag` | ROS1 bag (rpg_dvs_ros / MVSEC / EV-IMO topics) | ROS / UZH RPG / dataset authors | yes | no | no⁵ | Bag-internal (ROS serialization); not jAER-selectable | DAVIS-class topics in RPG/MVSEC/EV-IMO bags |
 | **Text events** | `.csv`, `.txt` | One DVS event per line (`t,x,y,p` variants) | Various exports / tools | yes | Save As⁷ | no | None (ASCII text) | Any polarity chip after address reconstruct (often DAVIS-oriented CSV) |
-| **Index playlist** | `.aeidx` (also `.index`) | List of paths to AE data files | jAER | yes | yes⁶ | `.index` is legacy | N/A (text index) | N/A — points at other recordings |
+| **Index playlist** | `.aeidx` (also `.index`) | List of paths to AE data files | jAER | yes | AEDAT-2/AEDZ sync only⁶ | `.index` is legacy | N/A (text index) | N/A — points at other recordings |
 
 ¹ Prefer `.aedat2` for new AEDAT-2 writes; `.aedat` remains accepted on open.  
 ² Playback support in [`AEFileInputStream`](../src/net/sf/jaer/eventio/AEFileInputStream.java); not offered as a recording format.  
 ³ Recording no longer uses bare `.dat` as the preferred extension.  
 ⁴ Live EVK4 capture is recorded as AEDAT-4/2 in jAER; Metavision Studio writes `.raw` (and can export DAT).  
 ⁵ Still common for public datasets; not a jAER-native recording path.  
-⁶ Created when using synchronized multi-viewer recording (an `.aeidx` listing the sibling data files).
+⁶ **AEDAT-4** synchronized recording writes **one** `.aedat4` with 3 streams per camera (EVTS/FRME/IMUS). `.aeidx` is still written for AEDAT-2/AEDZ sync, and old `.aeidx` files still open.  
 ⁷ **File → Save As…** (`Ctrl+Shift+S`) while playing a recording (not live recording). Formats: native **AEDAT-4** (default; preferred over re-recording to clip IN/OUT or apply EventFilters), CSV/text, DSEC HDF5. Optional IN/OUT markers and EventFilters. CSV/HDF5 can add HVS sidecars (`XXX-frames/` PNGs, `XXX-imu.csv`); AEDAT-4 keeps frames/IMU in the file.
 
 ---
@@ -61,7 +61,7 @@ Recording format is chosen in AEViewer prefs / Control menu (`recordingDataFileV
 
 | Format | Writer | Notes |
 |--------|--------|--------|
-| [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileOutputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileOutputStream.java) | DV-compatible FlatBuffers packets (events, frames, IMU). Live recording compression via `AEViewer.aedat4Compression`. **File → Save As** (playback) writes the same format (IN/OUT clip, optional EventFilters; compression chosen in the dialog). Sparse index cache under `${java.io.tmpdir}/jaer/` (`*.aedat4idx`) speeds reopen. |
+| [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileOutputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileOutputStream.java) | DV-compatible FlatBuffers packets (events, frames, IMU). Live recording compression via `AEViewer.aedat4Compression`. **Synchronized** multi-viewer recording muxes each camera as EVTS/FRME/IMUS (IDs `3i`/`3i+1`/`3i+2`) in **one** file. **File → Save As** (playback) writes the same format (IN/OUT clip, optional EventFilters; compression chosen in the dialog). Sparse index cache under `${java.io.tmpdir}/jaer/` (`*.aedat4idx`) speeds reopen. |
 | [AEDAT-2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html) | [`AEFileOutputStream`](../src/net/sf/jaer/eventio/AEFileOutputStream.java) | Classic `#` ASCII header + binary address/timestamp pairs. Extension `.aedat2`. |
 | [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEOutputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEOutputStream.java) | **File → Save As** (playback). Cooked `/events/{p,t,x,y}` with DSEC/image coords (`y=0` top, `p` 0=off/1=on), `/ms_to_idx`, `/t_offset`; uncompressed (jHDF 0.12). Width/height attributes for reopen. |
 | Text CSV/TXT | [`CsvEventSink`](../src/net/sf/jaer/eventio/export/CsvEventSink.java) | **File → Save As** (playback). Options match [`DavisTextEventFormatter`](../src/net/sf/jaer/util/textio/DavisTextEventFormatter.java) (`t,x,y,p` variants; RPG preset). The EventFilter [`DavisTextOutputWriter`](../src/net/sf/jaer/util/textio/DavisTextOutputWriter.java) still streams text during play. |
@@ -91,7 +91,7 @@ Dialog: [`SaveAsExportDialog`](../src/net/sf/jaer/eventio/export/SaveAsExportDia
 | [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEInputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEInputStream.java) | Single-camera cooked `events.h5` (left or right): pack via chip `getAddressFromCell`. Uses [jHDF](https://jhdf.io/) + [`BloscHdf5Filter`](../src/net/sf/jaer/eventio/dsec/BloscHdf5Filter.java) for Blosc/ZSTD. Chip from peeked size: `DVS640` (640×480) or `DVS1280x720SD` (1280×720). Stereo dual-stream later. **Save As** writes the same layout uncompressed via [`DsecHdf5AEOutputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEOutputStream.java). |
 | [ROS bag](http://wiki.ros.org/Bags) | [`RosbagFileInputStream`](../src/net/sf/jaer/eventio/ros/RosbagFileInputStream.java) | Topics under `/dvs/`, `/davis/left/`, or `/samsung/camera/` headers. |
 | Text | [`TextFileInputStream`](../src/net/sf/jaer/eventio/TextFileInputStream.java) | CSV/space-separated DVS lines; options for timestamp units and polarity. |
-| Index | AEPlayer index path | Opens the listed AE files in sequence. |
+| Index | AEPlayer / SyncPlayer | `.aeidx` playlists still open. Multi-stream AEDAT-4: EVTS chooser can open one viewer or several (same file, different stream IDs). |
 
 Chip auto-detect for recordings: [`RecordingChipDetector`](../src/net/sf/jaer/eventio/RecordingChipDetector.java) (filename token, AEDAT-4 `infoNode`, Metavision RAW / DAT header, AEDAT-2 header). `.dat` with a `% ` header is Metavision DAT; other `.dat` still falls back to `DVS128`.
 
@@ -119,6 +119,7 @@ Help → **Sample data** in AEViewer:
 |------|-----|
 | DAVIS346 AEDAT-2 samples | [DAVIS24 site](https://sites.google.com/view/davis24-davis-sample-data/home) |
 | AEDAT-4 / DV samples | [MISTLab/event_based_data](https://github.com/MISTLab/event_based_data) |
+| EvDownsampling multi-camera AEDAT-4 | [anindyaghosh/EvDownsampling](https://github.com/anindyaghosh/EvDownsampling#readme) (DAVIS346 + DVXplorer in one file; Figshare data) |
 | Prophesee / Metavision samples | [Prophesee datasets](https://docs.prophesee.ai/stable/datasets.html#chapter-datasets) |
 
 Constants: [`JaerConstants`](../src/net/sf/jaer/JaerConstants.java).
@@ -130,3 +131,20 @@ Constants: [`JaerConstants`](../src/net/sf/jaer/JaerConstants.java).
 - [jAER 3 pipeline](README-jaer3.md) — PacketBundle path and AEDAT-4 recording
 - [Prophesee driver README](../src/prophesee/README.md) — EVK4 live + RAW EVT3 / DAT playback
 - [USB live acquisition bench](usb-live-acquisition-bench.md)
+
+## Muxed AEDAT-4 bench (2–8 live cameras)
+
+Manual checks after File sync on, recording format AEDAT-4:
+
+- Start/stop sync record: **one** `.aedat4`, `infoNode` has 3×N streams where N is
+  **LIVE cameras** (idle WAITING windows are not tracks); no new `.aeidx`.
+  Opening that file must **not** disable File sync; the EVTS chooser can spawn
+  extra viewers.
+- Disk: muxed size vs sum of old per-camera files (payload similar; one header/table).
+- CPU: ViewLoop `recordPacket` lock on one `synchronized writeBundle` (FINE log / VisualVM).
+- Open: EVTS dialog → one stream vs all viewers; seek/rewind with sync on.
+- Reopen: index cache per stream (`*.s{id}.aedat4idx`); second open of the same stream should hit cache.
+- Regression: single-camera record/play; open an old `.aeidx`.
+- AEDAT-2 + sync still writes `.aeidx`.
+
+Smoke: `java -cp build/classes;lib/*;jars/* net.sf.jaer.eventio.aedat4.Aedat4MultiStreamRoundtripDemo` (Unix classpath uses `:`).

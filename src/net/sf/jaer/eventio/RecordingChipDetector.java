@@ -395,7 +395,7 @@ public final class RecordingChipDetector {
         return events;
     }
 
-    static String peekAedat4InfoNodeXml(File file) {
+    public static String peekAedat4InfoNodeXml(File file) {
         try (FileInputStream in = new FileInputStream(file); FileChannel channel = in.getChannel()) {
             ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);
             readFully(channel, version);
@@ -552,13 +552,17 @@ public final class RecordingChipDetector {
         // DV camera names: MODEL_SERIAL → use MODEL for matching
         String family = dvCameraFamily(hintName);
         String normFamily = family != null ? normalize(family) : "";
+        String muxChip = stripJaerMuxSerial(hintName);
+        String normMuxChip = normalize(muxChip);
+        boolean muxStripped = muxChip != null && !muxChip.equals(hintName) && !normMuxChip.isEmpty();
 
         Class<? extends AEChip> exact = null;
         List<Class<? extends AEChip>> soft = new ArrayList<>();
         for (Class<? extends AEChip> c : loaded) {
             String simple = c.getSimpleName();
             String normSimple = normalize(simple);
-            if (simple.equalsIgnoreCase(hintName) || normSimple.equals(normHint)) {
+            if (simple.equalsIgnoreCase(hintName) || normSimple.equals(normHint)
+                    || (muxStripped && (simple.equalsIgnoreCase(muxChip) || normSimple.equals(normMuxChip)))) {
                 exact = c;
                 break;
             }
@@ -591,12 +595,62 @@ public final class RecordingChipDetector {
         for (Class<? extends AEChip> c : soft) {
             if (c.getSimpleName().toLowerCase(Locale.ROOT).contains("red")) {
                 if (red != null) {
-                    return null; // still ambiguous
+                    red = null;
+                    break;
                 }
                 red = c;
             }
         }
-        return red;
+        if (red != null) {
+            return red;
+        }
+        return preferLongestSimpleName(soft);
+    }
+
+    /**
+     * jAER mux {@code source} is {@code ChipSimpleName-serialAlnum}. DV uses
+     * {@code FAMILY_SERIAL} (underscore). Returns the chip token when the suffix
+     * looks like a short USB serial, otherwise {@code source}.
+     */
+    static String stripJaerMuxSerial(String source) {
+        if (source == null || source.isEmpty()) {
+            return source;
+        }
+        int dash = source.lastIndexOf('-');
+        if (dash <= 0) {
+            return source;
+        }
+        String serial = source.substring(dash + 1);
+        if (serial.isEmpty() || serial.length() > RecordingFilename.MAX_SERIAL_ALNUM) {
+            return source;
+        }
+        for (int i = 0; i < serial.length(); i++) {
+            if (!Character.isLetterOrDigit(serial.charAt(i))) {
+                return source;
+            }
+        }
+        return source.substring(0, dash);
+    }
+
+    /** Unique longest simple name among soft matches (DVXplorer vs DVXplorerMicro). */
+    private static Class<? extends AEChip> preferLongestSimpleName(List<Class<? extends AEChip>> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        Class<? extends AEChip> best = null;
+        int bestLen = -1;
+        boolean tie = false;
+        for (Class<? extends AEChip> c : candidates) {
+            int len = normalize(c.getSimpleName()).length();
+            if (len > bestLen) {
+                bestLen = len;
+                best = c;
+                tie = false;
+            } else if (len == bestLen) {
+                tie = true;
+            }
+        }
+        return tie ? null : best;
     }
 
     /**
