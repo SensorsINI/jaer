@@ -307,11 +307,11 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
             dvs128Menu.add(flipRightMenuItem);
 
             JMenuItem overlapItem = new JMenuItem("Overlap pixels…");
-            overlapItem.setToolTipText("Columns treated as shared FOV (default 16)");
+            overlapItem.setToolTipText("Live stitch columns (default 16). Recorded AEDAT-4 x already uses the overlap at record time.");
             overlapItem.addActionListener(evt -> {
                 AEViewer v = getAeViewer();
                 String s = JOptionPane.showInputDialog(v,
-                        "Overlap columns (0–128)",
+                        "Overlap columns (0–128).\nLive capture remaps native x with this value.\nPlayback already stored panoramic x; changing overlap here skips out-of-range file x.",
                         Integer.toString(overlapPixels));
                 if (s == null) {
                     return;

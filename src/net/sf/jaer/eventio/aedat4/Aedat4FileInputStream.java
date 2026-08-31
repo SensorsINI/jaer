@@ -143,6 +143,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private boolean haveEmittedTimestamp;
     private int timestampResetBitmask;
 
+    private static final long SKIPPED_EVENT_WARNING_INTERVAL_MS = 1000L;
+    private long lastSkippedEventWarningMs;
+    private long skippedEventsSinceWarning;
+
     /** Typed packets for the most recent readPacketBy* time window. */
     private final List<FramePacket> pendingFrames = new ArrayList<>();
     private final List<ImuPacket> pendingImu = new ArrayList<>();
@@ -1096,9 +1100,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         if (skipped > 0) {
-            log.warning(String.format(
-                    "AEDAT-4 extractPolarity [%,d,%,d) skipped %d events (null/out-of-range)",
-                    startIdx, endIdx, skipped));
+            skippedEventsSinceWarning += skipped;
+            long now = System.currentTimeMillis();
+            if (now - lastSkippedEventWarningMs >= SKIPPED_EVENT_WARNING_INTERVAL_MS) {
+                log.warning(String.format(
+                        "AEDAT-4 extractPolarity [%,d,%,d) skipped %d events this slice, %,d since last notice (null/out-of-range)",
+                        startIdx, endIdx, skipped, skippedEventsSinceWarning));
+                lastSkippedEventWarningMs = now;
+                skippedEventsSinceWarning = 0;
+            }
         }
         return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
     }
