@@ -90,7 +90,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 	 * @return an iterator that can iterate over all the events, DVS, APS, and IMU.
 	 */
 	public Iterator<E> fullIterator() {
-		return super.inputIterator();
+		return new InItr();
 	}
 
 	/**
@@ -101,7 +101,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 	 */
 	@Override
 	public Iterator<E> iterator() {
-		return inputIterator();
+		return new InDvsItr();
 	}
 
 	/**
@@ -128,13 +128,25 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 //			}
 //              tobi removed, too many problems with it
 
-			while ((cursor < size) && (elementData[cursor] != null)
-				&& (elementData[cursor].isFilteredOut() || !elementData[cursor].isDVSEvent())) {
-				filteredOutCount++;
-				cursor++;
-			} // TODO can get null events here which causes null pointer exception; not clear how this is possible
-
-			return cursor < size;
+			final E[] data = iterationData;
+			if (data == null) {
+				return false;
+			}
+			final int limit = iterationLimit;
+			while (cursor < limit) {
+				final E ev = data[cursor];
+				if (ev == null) {
+					cursor++;
+					continue;
+				}
+				if (ev.isFilteredOut() || !ev.isDVSEvent()) {
+					filteredOutCount++;
+					cursor++;
+					continue;
+				}
+				return true;
+			}
+			return false;
 		}
 
 		@Override

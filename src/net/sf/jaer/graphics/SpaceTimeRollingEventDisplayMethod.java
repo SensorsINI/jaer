@@ -558,76 +558,95 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             log.warning("SpaceTimeRollingEventDisplayMethod requires AEChipRenderer, got " + chipRenderer);
             return;
         }
-        final int timeScale = ((AEChipRenderer) chipRenderer).getFadingOrSlidingFrames();
-        final int newTimeWindowUs = computeTimeWindowUs(chip, timeScale);
-        final boolean newPacket = packet.getLastTimestamp() != previousLasttimestamp;
-        final boolean timeScaleChanged = timeScale != previousTimeScale;
-        final boolean timeWindowChanged = newTimeWindowUs != timeWindowUs;
-        previousLasttimestamp = packet.getLastTimestamp();
-        previousTimeScale = timeScale;
-        final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
-        if (!interactionPreview && (newPacket || timeScaleChanged || timeWindowChanged)) {
-            final int n = packet.getSize();
-            if (n > 0) {
-            final int t1 = packet.getLastTimestamp();
-            if (timeWindowChanged) {
-                regenerateAxesDisplayList = true;
+        try {
+            final int timeScale = ((AEChipRenderer) chipRenderer).getFadingOrSlidingFrames();
+            final int newTimeWindowUs = computeTimeWindowUs(chip, timeScale);
+            final boolean newPacket = packet.getLastTimestamp() != previousLasttimestamp;
+            final boolean timeScaleChanged = timeScale != previousTimeScale;
+            final boolean timeWindowChanged = newTimeWindowUs != timeWindowUs;
+            previousLasttimestamp = packet.getLastTimestamp();
+            previousTimeScale = timeScale;
+            final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
+            if (!interactionPreview && (newPacket || timeScaleChanged || timeWindowChanged)) {
+                final int n = packet.getSize();
+                if (n > 0) {
+                final int t1 = packet.getLastTimestamp();
+                if (timeWindowChanged) {
+                    regenerateAxesDisplayList = true;
+                    if (newPacket) {
+                        eventVertexBuffer.clear();
+                        if (eventList != null) {
+                            eventList.clear();
+                        }
+                        apsFramesInTimeWindow.clear();
+                        dvsFramesInTimeWindow.clear();
+                    }
+                }
+                timeWindowUs = newTimeWindowUs;
+                this.t1 = t1;
+                this.t0 = t1 - timeWindowUs;
+
+                sx = chip.getSizeX();
+                sy = chip.getSizeY();
+                smax = chip.getMaxSize();
+                tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
+
+                pruneOldEventsAndFrames(this.t0, this.t1);
                 if (newPacket) {
-                    eventVertexBuffer.clear();
-                    if (eventList != null) {
-                        eventList.clear();
-                    }
-                    apsFramesInTimeWindow.clear();
-                    dvsFramesInTimeWindow.clear();
-                }
-            }
-            timeWindowUs = newTimeWindowUs;
-            this.t1 = t1;
-            this.t0 = t1 - timeWindowUs;
-
-            sx = chip.getSizeX();
-            sy = chip.getSizeY();
-            smax = chip.getMaxSize();
-            tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
-
-            pruneOldEventsAndFrames(this.t0, this.t1);
-            if (newPacket) {
-                checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
-                addEventsToEventList(packet);
-                if (displayDvsFrames) {
-                    DavisRenderer renderer = getDavisRenderer();
-                    if (renderer != null && renderer.getPacket() != null) {
-                        // One DVS texture per new packet — not on every display()/repaint
-                        dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), this.t1);
-                        log.log(Level.FINE, "New DVS frame with timestamp {0}", this.t1);
+                    checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
+                    addEventsToEventList(packet);
+                    if (displayDvsFrames) {
+                        DavisRenderer renderer = getDavisRenderer();
+                        if (renderer != null && renderer.getPacket() != null) {
+                            // One DVS texture per new packet — not on every display()/repaint
+                            dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), this.t1);
+                            log.log(Level.FINE, "New DVS frame with timestamp {0}", this.t1);
+                        }
                     }
                 }
-            }
-            checkEventVertexBufferAllocation(eventList != null ? eventList.size() : packet.getSize());
-            eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
-            if (eventList != null) {
-                for (BasicEvent ev : eventList) {
-                    if ((ev.timestamp < this.t0) || (ev.timestamp > this.t1)) {
-                        continue; // don't render events outside of box, no matter how they get there
+                checkEventVertexBufferAllocation(eventList != null ? eventList.size() : packet.getSize());
+                eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
+                if (eventList != null) {
+                    for (BasicEvent ev : eventList) {
+                        if ((ev.timestamp < this.t0) || (ev.timestamp > this.t1)) {
+                            continue; // don't render events outside of box, no matter how they get there
+                        }
+                        eventVertexBuffer.putFloat(ev.x);
+                        eventVertexBuffer.putFloat(ev.y);
+                        final float z = tfac * (ev.timestamp - this.t1);
+                        eventVertexBuffer.putFloat(z); // negative z
                     }
-                    eventVertexBuffer.putFloat(ev.x);
-                    eventVertexBuffer.putFloat(ev.y);
-                    final float z = tfac * (ev.timestamp - this.t1);
-                    eventVertexBuffer.putFloat(z); // negative z
+                }
+                eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
+                checkGLError(gl, "set uniform t0 and t1");
                 }
             }
-            eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
-            checkGLError(gl, "set uniform t0 and t1");
-            }
+        } catch (RuntimeException e) {
+            // ViewLoop may still be filling/iterating chip.getLastData(); do not kill the GL thread
+            // (GitHub issue 60: ArrayIndexOutOfBoundsException in EventPacket.InItr).
+            log.log(Level.WARNING, "Space-time rolling skipped a frame: {0}", e.toString());
         }
-        renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
+        if (eventVertexBuffer != null) {
+            renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
+        }
         displayStatusChangeText(drawable);
     }
 
+    /**
+     * Copies events from the live packet into {@link #eventList}. Uses a local
+     * array reference and a clamped count so ViewLoop mutation of the packet
+     * (or a shared {@link EventPacket} iterator) cannot walk off
+     * {@code elementData}.
+     */
     private void addEventsToEventList(final EventPacket<BasicEvent> packet) {
-        for (BasicEvent e : packet) {
-//            BasicEvent e = (BasicEvent) o;
-            if (e.isSpecial() || e.isFilteredOut()) {
+        final BasicEvent[] data = packet.getElementData();
+        if (data == null || eventList == null) {
+            return;
+        }
+        final int n = Math.min(packet.getSize(), data.length);
+        for (int i = 0; i < n; i++) {
+            final BasicEvent e = data[i];
+            if (e == null || e.isSpecial() || e.isFilteredOut()) {
                 continue;
             }
             BasicEvent ne = new BasicEvent();

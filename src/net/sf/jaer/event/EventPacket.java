@@ -10,6 +10,7 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -345,6 +346,10 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 
     /**
      * Returns after initializing the iterator over input events of type <E>.
+     * Reuses one {@link InItr} (reset each call). Filters on the ViewLoop
+     * thread should use this. Rendering / OpenGL {@code for (E e : packet)} uses
+     * {@link #iterator()}, which allocates a separate iterator so it cannot
+     * share this cursor.
      *
      * @return an iterator that can iterate over the events that are NOT
      * filtered out.
@@ -506,11 +511,21 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * An iterator of type <E> over the input events. Skips events that are
      * filteredOut.
+     * <p>
+     * Each instance snapshots the backing array and size at {@link #reset()} so
+     * two consumers (ViewLoop renderer vs OpenGL display) can iterate the same
+     * packet without sharing a cursor. Concurrent {@link #enlargeCapacity()}
+     * replaces {@code elementData}; this iterator keeps the array it started
+     * with, so it does not throw {@link ArrayIndexOutOfBoundsException}.
      */
     public class InItr implements Iterator<E> {
 
         protected int cursor;
         protected boolean usingTimeout;
+        /** Backing array at reset; not the live {@code elementData} field. */
+        protected E[] iterationData;
+        /** {@code min(size, iterationData.length)} at reset. */
+        protected int iterationLimit;
 
         /**
          * Constructs a new instance of the InItr.
@@ -534,12 +549,24 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 //                return false;
 //            }
 
-            while ((cursor < size) && (elementData[cursor] != null) && elementData[cursor].isFilteredOut()) {
+            final E[] data = iterationData;
+            if (data == null) {
+                return false;
+            }
+            final int limit = iterationLimit;
+            while (cursor < limit) {
+                final E ev = data[cursor];
+                if (ev == null) {
+                    cursor++;
+                    continue;
+                }
+                if (!ev.isFilteredOut()) {
+                    return true;
+                }
                 filteredOutCount++;
                 cursor++;
-            } // TODO can get null events here which causes null pointer exception; not clear how this is possible
-
-            return cursor < size;
+            }
+            return false;
         }
 
         /**
@@ -549,16 +576,27 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
          */
         @Override
         public E next() {
-            return elementData[cursor++];
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return iterationData[cursor++];
         }
 
         /**
-         * Sets the pointer to zero to point to first event and sets the
-         * usingTimeout flag.
+         * Sets the pointer to zero to point to first event and snapshots the
+         * current backing array and size so later growth/swap cannot walk off
+         * the array.
          */
         public void reset() {
             cursor = 0;
             filteredOutCount=0;
+            iterationData = elementData;
+            if (iterationData == null) {
+                iterationLimit = 0;
+            } else {
+                final int sz = size;
+                iterationLimit = sz <= iterationData.length ? sz : iterationData.length;
+            }
 //            usingTimeout = timeLimitTimer==null?false:timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled
             // but flag to
             // check it it only set on packet reset
@@ -955,12 +993,18 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * Initializes and returns an iterator over elements of type <E>. This
      * iterator returns only events that are not filteredOut.
+     * <p>
+     * Returns a <em>new</em> iterator each call. Do not share
+     * {@link #inputIterator()} with the OpenGL thread: ViewLoop
+     * {@code AEChipRenderer.render} and {@code DisplayMethod.display} both
+     * for-each the last packet, and a single cursor races to
+     * {@code ArrayIndexOutOfBoundsException} (GitHub issue 60).
      *
      * @return an Iterator.
      */
     @Override
     public Iterator<E> iterator() {
-        return inputIterator();
+        return new InItr();
     }
 
     /**

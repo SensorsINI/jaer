@@ -560,7 +560,13 @@ public class ChipCanvas implements GLEventListener, Observer {
             } else {
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
                 gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-                m.display(drawable);
+                try {
+                    m.display(drawable);
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    // ViewLoop renderer and GL display both iterate chip.getLastData();
+                    // a shared iterator cursor used to walk off EventPacket.elementData (issue 60).
+                    log.log(Level.WARNING, "DisplayMethod.display ArrayIndexOutOfBoundsException: {0}", e.toString());
+                }
             }
             checkGLError(gl, glu, "after DisplayMethod.display()");
             showSpike(gl);
@@ -1310,7 +1316,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      * calls repaint on the glCanvas
      */
     public void repaint() {
-        glCanvas.repaint();
+        if (glCanvas != null) {
+            glCanvas.repaint();
+        }
     }
 
     /**
@@ -1319,7 +1327,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @param tm time to repaint within, in ms
      */
     public void repaint(final long tm) {
-        glCanvas.repaint(tm);
+        if (glCanvas != null) {
+            glCanvas.repaint(tm);
+        }
     }
 
     /**
