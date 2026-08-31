@@ -1,7 +1,8 @@
 /*
  * FlyEyeRenderer.java
  *
- * Panoramic DVS128 pair: left = green, right = red, overlap yellow.
+ * Panoramic DVS128 pair. GrayLevel / RedGreen / RedBlue use the same ON/OFF
+ * coloring as a single DVS on both eyes. Overlap is not disambiguated.
  */
 package net.sf.jaer.graphics;
 
@@ -12,7 +13,6 @@ import com.jogamp.opengl.GLAutoDrawable;
 import ch.unizh.ini.jaer.chip.flyeye.FlyEye;
 import ch.unizh.ini.jaer.chip.flyeye.FlyEyeGeometry;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.FlyEyeEvent;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
 
@@ -34,26 +34,17 @@ public class FlyEyeRenderer extends DavisRenderer implements FrameAnnotater {
 
     @Override
     protected void updateEventMaps(final PolarityEvent e) {
-        if (!(e instanceof FlyEyeEvent fe)) {
-            super.updateEventMaps(e);
+        if (e.isSpecial()) {
             return;
         }
-        if (fe.isSpecial()) {
-            return;
-        }
-        final int index = getIndex(e);
+        // FlyEyeEvent.getNumCellTypes() is 4 (camera×polarity). DavisRenderer
+        // would then paint type-color RGB instead of GrayLevel/RedGreen/RedBlue.
         float[] map = dvsEventsMap.array();
+        final int index = getIndex(e);
         if ((index < 0) || (index >= map.length)) {
             return;
         }
-        map[index + 3] = 1f;
-        final boolean on = (e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled;
-        final float step = on ? colorContrastAdditiveStep : -colorContrastAdditiveStep;
-        if (fe.camera == FlyEyeEvent.Camera.LEFT) {
-            map[index + 1] += step; // green
-        } else {
-            map[index] += step; // red
-        }
+        updateEventMapsByPolarity(e, map, index);
     }
 
     @Override

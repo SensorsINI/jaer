@@ -112,8 +112,12 @@ public final class UsbEnumerationSafetyDemo {
                 "AEDAT-4 playback must pack panoramic x back to DVS128+stereo (not dummy 128 flipx)");
         String flyRen = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics",
                 "FlyEyeRenderer.java"), StandardCharsets.UTF_8);
-        require(flyRen.contains("if (fe.isSpecial())"),
+        require(flyRen.contains("isSpecial()"),
                 "FlyEyeRenderer must not pixmap-index special events (x=-1 OOB)");
+        require(flyRen.contains("updateEventMapsByPolarity"),
+                "FlyEye GrayLevel/RedGreen/RedBlue must use DVS ON/OFF coloring on both eyes");
+        require(!flyRen.contains("isRight()"),
+                "FlyEyeRenderer must not paint left as green and right as red");
         require(flyChip.contains("super(chip)"),
                 "FlyEye extractor is bound to the panoramic chip, not a dummy DVS128");
         require(!flyChip.contains("SYNC_EVENT_BITMASK"),

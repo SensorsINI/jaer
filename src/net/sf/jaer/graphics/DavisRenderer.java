@@ -802,7 +802,16 @@ public class DavisRenderer extends AEChipRenderer {
             final float alpha = map[index + 3] + (1.0f / (colorScale));
             map[index + 3] += clip01(alpha);
         } else {
-            switch (colorMode) {
+            updateEventMapsByPolarity(e, map, index);
+        } // celltypes<=2
+    } // updateEventMaps
+
+    /**
+     * ON/OFF pixmap update used for chips with two polarities. FlyEye has four
+     * cell types (camera×polarity) but still wants this DVS coloring.
+     */
+    protected void updateEventMapsByPolarity(final PolarityEvent e, final float[] map, final int index) {
+        switch (colorMode) {
                 case ColorTime: {
                     final int ts0 = packet.getFirstTimestamp();
                     final float dt = packet.getDurationUs();
@@ -884,9 +893,8 @@ public class DavisRenderer extends AEChipRenderer {
                         map[index + 2] -= colorContrastAdditiveStep; // red up
                     }
                 }
-            } // switch colorMode
-        } // celltypes<=2
-    } // updateEventMaps
+        } // switch colorMode
+    }
 
     protected final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
     protected long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
