@@ -1,6 +1,5 @@
 package net.sf.jaer.util;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -8,6 +7,8 @@ import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
@@ -40,20 +41,24 @@ public class RecentFoldersComboAccessory extends JPanel {
         this.recentFiles = recentFiles;
         this.chooser = chooser;
         this.afterDirectoryChange = afterDirectoryChange;
-        setLayout(new BorderLayout(0, 8));
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder("Recent folders"),
                 BorderFactory.createEmptyBorder(4, 8, 8, 8)));
         JLabel hint = new JLabel("<html>Jump to a folder<br>from the File menu list");
         hint.setFont(hint.getFont().deriveFont(Font.PLAIN, 11f));
-        add(hint, BorderLayout.NORTH);
+        hint.setAlignmentX(LEFT_ALIGNMENT);
+        add(hint);
 
         combo = new JComboBox<>();
         combo.setRenderer(new FolderRenderer());
         combo.setMaximumRowCount(recentFiles != null ? recentFiles.getMaxFolders() : RecentFiles.DEFAULT_MAX_FOLDERS);
         combo.setToolTipText("Open this folder in the save dialog");
+        combo.setAlignmentX(LEFT_ALIGNMENT);
         combo.setPreferredSize(new Dimension(280, combo.getPreferredSize().height));
-        add(combo, BorderLayout.CENTER);
+        combo.setMaximumSize(new Dimension(Integer.MAX_VALUE, combo.getPreferredSize().height));
+        add(Box.createVerticalStrut(4));
+        add(combo);
 
         combo.addActionListener(e -> {
             if (syncing) {
@@ -88,6 +93,12 @@ public class RecentFoldersComboAccessory extends JPanel {
         });
 
         rebuildModel();
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        Dimension p = getPreferredSize();
+        return new Dimension(Integer.MAX_VALUE, p.height);
     }
 
     private void rebuildModel() {

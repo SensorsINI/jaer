@@ -610,7 +610,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      * Overlay while recording: transparent red {@code Recording}, Apply Filters
      * flag ({@link AEViewer#isRecordFilteredEventsEnabled()}), elapsed
      * {@code Recorded XXhYYmZZs}, plus total and remaining when a recording time
-     * limit is set. Gated by {@link AEViewer#isShowRecordingOverlay()}.
+     * limit is set, and free disk space (refreshed about every 5 s). Gated by
+     * {@link AEViewer#isShowRecordingOverlay()}.
      */
     private void drawRecordingOverlayIfNeeded(final GLAutoDrawable drawable) {
         if (!(chip instanceof AEChip)) {
@@ -631,18 +632,17 @@ public class ChipCanvas implements GLEventListener, Observer {
         String[] limitLines = (limitText == null || limitText.isEmpty()) ? new String[0] : limitText.split("\n");
         try {
             GL2 gl = drawable.getGL().getGL2();
+            float maxW = chip.getSizeX() * 0.70f;
             int fontsize = Math.max(8, Math.round(14 * (chip.getSizeX() / 346f)));
-            float scale = 1f;
-            if (fontsize < 10) {
-                fontsize *= 2;
-                scale = .5f;
-            }
-            int limitFontsize = Math.max(8, Math.round(fontsize * 0.75f));
-            gl.glPushMatrix();
-            gl.glScalef(scale, scale, scale);
+            fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{recordingLine}, maxW);
+            int limitFontsize = Math.max(6, Math.round(fontsize * 0.75f));
+            String[] detailLines = new String[1 + limitLines.length];
+            detailLines[0] = applyFiltersLine;
+            System.arraycopy(limitLines, 0, detailLines, 1, limitLines.length);
+            limitFontsize = DrawGL.fontSizeToFitWidth(limitFontsize, detailLines, maxW);
             float lineSpace = fontsize * 1.35f;
-            float xpos = (chip.getSizeX() / 2f) / scale;
-            float y = (chip.getSizeY() * 0.92f) / scale;
+            float xpos = chip.getSizeX() / 2f;
+            float y = chip.getSizeY() * 0.92f;
             DrawGL.drawString(fontsize, xpos, y, .5f, RECORDING_OVERLAY_COLOR, recordingLine);
             y -= lineSpace;
             DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f,
@@ -652,7 +652,6 @@ public class ChipCanvas implements GLEventListener, Observer {
                 DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.yellow, line);
                 y -= limitFontsize * 1.4f;
             }
-            gl.glPopMatrix();
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
         }

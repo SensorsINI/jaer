@@ -8,6 +8,7 @@ package net.sf.jaer.graphics;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -57,6 +58,7 @@ import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.RecordingDiskSpace;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.UiInteractionLog;
 import net.sf.jaer.util.ViewerInterfaceBindingMap;
@@ -123,6 +125,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JTextField timestampResetBitmaskTF;
     private JComboBox<String> recordingFormatCB;
     private JComboBox<String> aedat4CompressionCB;
+    private JLabel recordingFolderStatusLabel;
 
     private JCheckBox activeRenderingCB;
     private JCheckBox renderBlankFramesCB;
@@ -660,6 +663,36 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
         });
         p.add(aedat4CompressionCB, gbcField(y++));
+
+        p.add(new JLabel("Recording folder:"), gbcLabel(y));
+        recordingFolderStatusLabel = new JLabel();
+        recordingFolderStatusLabel.setToolTipText("Current next-recording folder and free space on that volume");
+        p.add(recordingFolderStatusLabel, gbcField(y++));
+
+        JButton chooseRecordingFolderBtn = new JButton("Choose...");
+        chooseRecordingFolderBtn.setToolTipText("Folder for the next Start recording (L). Temporary files are written here until you save.");
+        chooseRecordingFolderBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                File folder = RecordingFolderChooser.chooseFolder(AEViewerPreferencesDialog.this,
+                        viewer.getLastRecordingFolder(), viewer.getRecentFiles(),
+                        "Use this folder",
+                        "Choose next recording folder (need at least "
+                        + RecordingDiskSpace.minFreeSpaceLabel() + " free)");
+                if (folder != null) {
+                    viewer.setLastRecordingFolder(folder);
+                    refreshRecordingFolderStatus();
+                }
+            }
+        });
+        GridBagConstraints chooseGbc = gbcField(y++);
+        chooseGbc.fill = GridBagConstraints.NONE;
+        chooseGbc.weightx = 0;
+        chooseGbc.anchor = GridBagConstraints.WEST;
+        p.add(chooseRecordingFolderBtn, chooseGbc);
 
         recordingPlaybackImmediatelyCB = new JCheckBox("Playback recorded data immediately after recording");
         recordingPlaybackImmediatelyCB.setToolTipText("If enabled, recorded data plays back immediately");
@@ -1237,6 +1270,32 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         return chip == null ? null : chip.getCanvas();
     }
 
+    private void refreshRecordingFolderStatus() {
+        if (recordingFolderStatusLabel == null) {
+            return;
+        }
+        File folder = viewer.getLastRecordingFolder();
+        if (folder == null) {
+            recordingFolderStatusLabel.setText("<html>No recording folder set</html>");
+            recordingFolderStatusLabel.setForeground(Color.DARK_GRAY);
+            return;
+        }
+        long free = RecordingDiskSpace.usableBytes(folder);
+        boolean enough = free >= RecordingDiskSpace.MIN_FREE_BYTES;
+        String path = folder.getAbsolutePath();
+        recordingFolderStatusLabel.setText("<html>" + escapeHtml(path)
+                + "<br><b>" + RecordingDiskSpace.formatBytes(free) + " free</b>"
+                + " (need " + RecordingDiskSpace.minFreeSpaceLabel() + " to start recording)</html>");
+        recordingFolderStatusLabel.setForeground(enough ? new Color(0x1B5E20) : new Color(0xB71C1C));
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
     private void refreshFromViewer() {
         updatingUi = true;
         try {
@@ -1256,6 +1315,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             recordingFormatCB.setSelectedIndex(versionIndex);
             aedat4CompressionCB.setSelectedIndex(viewer.getAedat4Compression());
             aedat4CompressionCB.setEnabled(aedat4);
+            refreshRecordingFolderStatus();
 
             activeRenderingCB.setSelected(viewer.isActiveRenderingEnabled());
             renderBlankFramesCB.setSelected(viewer.isRenderBlankFramesEnabled());

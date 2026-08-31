@@ -213,6 +213,7 @@ import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
+import net.sf.jaer.util.RecordingDiskSpace;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -477,6 +478,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Cached overlay for recording time limit; refreshed at most once per second. */
     private volatile String recordingTimeLimitOverlayText = null;
     private volatile long recordingTimeLimitOverlayLastMs = 0;
+    /** Usable bytes on the recording volume; refreshed at {@link RecordingDiskSpace#CHECK_INTERVAL_MS}. */
+    private volatile long recordingFreeSpaceBytes = -1L;
+    private volatile long recordingFreeSpaceCheckedMs = 0L;
     private boolean recordFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
     /** Recording format version string, e.g. {@code "4.0"} or {@code "2.0"}. */
     private String recordingDataFileVersion = prefs.get("AEViewer.loggingDataFileVersion",
@@ -5176,6 +5180,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     continue;
                 }
                 stopRecordingIfTimeLimitReached();
+                stopRecordingIfDiskSpaceLow();
                 // Heartbeat when FINE: proves ViewLoop is alive vs stuck in USB/JOGL.
                 if (log.isLoggable(Level.FINE)) {
                     long now = System.currentTimeMillis();
@@ -5840,6 +5845,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
             Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
                     : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
+            if (streamLock == null) {
+                return;
+            }
+            IOException writeFailure = null;
             synchronized (streamLock) {
                 try {
                     if (aedat4RecordingOutputStream != null) {
@@ -5862,23 +5871,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         recordingOutputStream.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
-                    log.log(Level.SEVERE, e.toString(), e);
-
-                    setRecordingEnabled(false);
-                    try {
-                        if (aedat4RecordingOutputStream != null) {
-                            aedat4RecordingOutputStream.close();
-                        } else if (aedzRecordingOutputStream != null) {
-                            aedzRecordingOutputStream.close();
-                        } else {
-                            recordingOutputStream.close();
-                        }
-                    } catch (IOException e2) {
-                        log.log(Level.SEVERE, "Exception closing file: " + e2.toString(), e2);
-
-                    }
+                    writeFailure = e;
                 }
             }
+            if (writeFailure != null) {
+                log.log(Level.SEVERE, writeFailure.toString(), writeFailure);
+                String detail = writeFailure.getMessage() != null ? writeFailure.getMessage() : writeFailure.toString();
+                detail = detail.replace("&", "&amp;").replace("<", "&lt;");
+                stopRecordingFromViewLoop("<html>Recording was automatically stopped because the file could not be written:<br>"
+                        + detail + "<br><br>The disk may be full. Save the recording that was written.</html>");
+                return;
+            }
+            stopRecordingIfDiskSpaceLow();
             if (recordingTimeLimit > 0) { // we may have a defined time for recording, if so, check here and abort recording
                 stopRecordingIfTimeLimitReached();
             }
@@ -8816,6 +8820,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Closeable writer = null;
         try {
             recordingFile = new File(filename);
+            File relocated = relocateRecordingPathToFolderWithSpace(recordingFile);
+            if (relocated == null) {
+                recordingFile = null;
+                log.warning("recording not started: not enough free disk space (need "
+                        + RecordingDiskSpace.minFreeSpaceLabel() + ")");
+                return null;
+            }
+            recordingFile = relocated;
+            filename = recordingFile.getAbsolutePath();
             // Freeze the configuration once at recording start; the same immutable
             // snapshot is handed to the AEDAT-4 writer and placed on the chip so the
             // legacy writer and readers use the identical recording-start values.
@@ -8880,6 +8893,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordingStartTime = System.currentTimeMillis();
             recordingTimeLimitOverlayText = null;
             recordingTimeLimitOverlayLastMs = 0;
+            recordingFreeSpaceBytes = -1L;
+            recordingFreeSpaceCheckedMs = 0L;
             log.info("starting recording to " + recordingFile.getAbsolutePath());
             getSupport().firePropertyChange(EVENT_RECORDING_STARTED, null, recordingFile);
 
@@ -9334,6 +9349,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @return chosen File
      */
     synchronized public File stopRecording(boolean confirmFilename) {
+        return stopRecording(confirmFilename, null);
+    }
+
+    /**
+     * Stops recording. When {@code autoStopMessage} is non-null, a warning
+     * dialog explains why recording ended before the save dialog.
+     *
+     * @param confirmFilename true to show file dialog to confirm filename
+     * @param autoStopMessage optional HTML/plain reason the recording ended
+     * @return chosen File
+     */
+    synchronized public File stopRecording(boolean confirmFilename, String autoStopMessage) {
         // the file has already been recorded somewhere with a timestamped name, what this method does is
         // to move the already recorded file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
@@ -9346,8 +9373,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             recordingButton.setText("Start recording");
             recordingMenuItem.setText("Start recording data");
-            try {
-                log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + recordingFile);
+            log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + recordingFile);
                 final boolean wasAedat4 = aedat4RecordingOutputStream != null;
                 final boolean wasAedz = aedzRecordingOutputStream != null;
                 final String preferredSaveExt = wasAedat4
@@ -9359,25 +9385,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
                 final RecordingConfigurationSnapshot stoppingSnapshot = activeRecordingSnapshot;
                 try {
-                    synchronized (streamLock) {
-                        setRecordingEnabled(false);
-                        if (aedat4RecordingOutputStream != null) {
-                            aedat4RecordingOutputStream.close();
-                            fileInfo = aedat4RecordingOutputStream.toString();
-                            aedat4RecordingOutputStream = null;
-                        } else if (aedzRecordingOutputStream != null) {
-                            aedzRecordingOutputStream.close();
-                            fileInfo = aedzRecordingOutputStream.toString();
-                            aedzRecordingOutputStream = null;
-                        } else {
-                            recordingOutputStream.close();
-                            fileInfo = recordingOutputStream.toString();
+                    if (streamLock != null) {
+                        synchronized (streamLock) {
+                            setRecordingEnabled(false);
+                            try {
+                                if (aedat4RecordingOutputStream != null) {
+                                    aedat4RecordingOutputStream.close();
+                                    fileInfo = aedat4RecordingOutputStream.toString();
+                                } else if (aedzRecordingOutputStream != null) {
+                                    aedzRecordingOutputStream.close();
+                                    fileInfo = aedzRecordingOutputStream.toString();
+                                } else if (recordingOutputStream != null) {
+                                    recordingOutputStream.close();
+                                    fileInfo = recordingOutputStream.toString();
+                                }
+                            } catch (IOException closeEx) {
+                                log.log(Level.WARNING, "closing recording file: " + closeEx, closeEx);
+                                if (fileInfo.isEmpty()) {
+                                    fileInfo = "close failed: " + closeEx.getMessage();
+                                }
+                            } finally {
+                                aedat4RecordingOutputStream = null;
+                                aedzRecordingOutputStream = null;
+                                recordingOutputStream = null;
+                            }
                         }
+                    } else {
+                        setRecordingEnabled(false);
                     }
                 } finally {
                     // Close failures must not retain stale recording metadata, and a
                     // newer owner-installed snapshot must survive this stop.
                     releaseActiveRecordingSnapshot(stoppingSnapshot);
+                }
+
+                if (autoStopMessage != null) {
+                    JOptionPane.showMessageDialog(this, autoStopMessage, "Recording stopped",
+                            JOptionPane.WARNING_MESSAGE);
                 }
                 // if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
 
@@ -9450,7 +9494,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             // persist the folder the user actually saved into
                             lastRecordingFolder = newFile.getParentFile() != null
                                     ? newFile.getParentFile() : chooser.getCurrentDirectory();
-                            prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getCanonicalPath());
+                            persistLastRecordingFolder(lastRecordingFolder);
 
                             File saved = relocateRecordingFile(newFile);
                             if (saved != null) {
@@ -9483,12 +9527,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                 }
-
-            } catch (IOException e) {
-                String msg = "In trying to save a recording output file, got exception: " + e.toString();
-                JOptionPane.showMessageDialog(this, msg, "Error saving file", JOptionPane.ERROR_MESSAGE);
-                log.log(Level.WARNING, msg, e);
-            }
 
             if ((retValue == JFileChooser.APPROVE_OPTION) && isRecordingPlaybackImmediatelyEnabled()) {
                 try {
@@ -9720,8 +9758,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Overlay detail while recording: elapsed {@code Recorded XXhYYmZZs}, plus
-     * total and remaining when a time limit is set. Refreshed at most once per
-     * second.
+     * total and remaining when a time limit is set, and free disk space
+     * (volume probe at most every 5 s). Refreshed at most once per second.
      *
      * @return overlay lines, or {@code null} when not recording or overlay is off
      */
@@ -9743,6 +9781,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             sb.append('\n').append(formatRecordingDurationHms(recordingTimeLimit)).append(" total");
             sb.append('\n').append(formatRecordingDurationHms(remainingMs)).append(" left to record");
         }
+        sb.append('\n').append(recordingFreeSpaceOverlayLine());
         recordingTimeLimitOverlayText = sb.toString();
         return recordingTimeLimitOverlayText;
     }
@@ -10916,6 +10955,151 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void invalidateRecordingTimeLimitOverlay() {
         recordingTimeLimitOverlayText = null;
         recordingTimeLimitOverlayLastMs = 0;
+    }
+
+    private void persistLastRecordingFolder(File folder) {
+        if (folder == null) {
+            return;
+        }
+        lastRecordingFolder = folder;
+        try {
+            prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getCanonicalPath());
+        } catch (IOException e) {
+            prefs.put("AEViewer.lastLoggingFolder", lastRecordingFolder.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Folder used for the next {@link #startRecording()} (temporary file until
+     * the save dialog).
+     */
+    public File getLastRecordingFolder() {
+        return lastRecordingFolder;
+    }
+
+    /**
+     * Sets and persists the folder for the next recording.
+     */
+    public void setLastRecordingFolder(File folder) {
+        persistLastRecordingFolder(folder);
+        if (folder != null) {
+            log.info("next recording folder " + folder.getAbsolutePath()
+                    + " (" + RecordingDiskSpace.formatBytes(RecordingDiskSpace.usableBytes(folder))
+                    + " free)");
+        }
+    }
+
+    /**
+     * If {@code intendedFile}'s volume has enough free space, return it.
+     * Otherwise open a folder chooser (unless headless). {@code null} means
+     * do not start recording.
+     */
+    private File relocateRecordingPathToFolderWithSpace(File intendedFile) {
+        File dir = RecordingDiskSpace.directoryToProbe(intendedFile);
+        if (RecordingDiskSpace.hasEnoughSpace(dir)) {
+            return intendedFile;
+        }
+        long free = RecordingDiskSpace.usableBytes(dir);
+        log.warning("recording folder " + dir + " has only " + RecordingDiskSpace.formatBytes(free)
+                + " free (need " + RecordingDiskSpace.minFreeSpaceLabel() + ")");
+        if (GraphicsEnvironment.isHeadless()) {
+            return null;
+        }
+        File[] chosen = new File[1];
+        Runnable prompt = () -> {
+            File folder = RecordingFolderChooser.chooseFolder(AEViewer.this,
+                    dir != null ? dir : lastRecordingFolder, recentFiles);
+            if (folder == null) {
+                chosen[0] = null;
+                return;
+            }
+            persistLastRecordingFolder(folder);
+            String name = intendedFile.getName();
+            chosen[0] = name != null && !name.isEmpty() ? new File(folder, name) : new File(folder, "recording");
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            prompt.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(prompt);
+            } catch (Exception e) {
+                log.log(Level.WARNING, "could not show recording folder chooser: " + e, e);
+                return null;
+            }
+        }
+        return chosen[0];
+    }
+
+    private void refreshRecordingFreeSpaceCache(boolean force) {
+        if (!isRecordingEnabled() || recordingFile == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (!force && recordingFreeSpaceBytes >= 0L
+                && (now - recordingFreeSpaceCheckedMs) < RecordingDiskSpace.CHECK_INTERVAL_MS) {
+            return;
+        }
+        recordingFreeSpaceBytes = RecordingDiskSpace.usableBytes(recordingFile);
+        recordingFreeSpaceCheckedMs = now;
+    }
+
+    private String recordingFreeSpaceOverlayLine() {
+        refreshRecordingFreeSpaceCache(false);
+        long recordedBytes = 0L;
+        try {
+            if (recordingFile != null) {
+                recordedBytes = recordingFile.length();
+            }
+        } catch (SecurityException e) {
+            recordedBytes = 0L;
+        }
+        return RecordingDiskSpace.overlayLine(recordingFreeSpaceBytes, recordedBytes, recordingElapsedMs());
+    }
+
+    /**
+     * Stops recording from the view loop (or EDT) and shows the save dialog.
+     */
+    private void stopRecordingFromViewLoop(String reason) {
+        if (!isRecordingEnabled()) {
+            return;
+        }
+        Runnable stop = () -> {
+            if (isRecordingEnabled()) {
+                stopRecording(true, reason);
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            stop.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(stop);
+            } catch (Exception e) {
+                log.log(Level.SEVERE, "Exception stopping recording: " + e.toString(), e);
+            }
+        }
+    }
+
+    /**
+     * Stops recording when usable space on the recording volume is below
+     * {@link RecordingDiskSpace#MIN_FREE_BYTES}. Probes at most every
+     * {@link RecordingDiskSpace#CHECK_INTERVAL_MS}.
+     */
+    private void stopRecordingIfDiskSpaceLow() {
+        if (!isRecordingEnabled() || recordingFile == null) {
+            return;
+        }
+        refreshRecordingFreeSpaceCache(false);
+        if (recordingFreeSpaceBytes >= RecordingDiskSpace.MIN_FREE_BYTES) {
+            return;
+        }
+        String reason = "<html>Recording was automatically stopped because free disk space dropped below "
+                + RecordingDiskSpace.minFreeSpaceLabel() + ".<br>The recording folder had "
+                + RecordingDiskSpace.formatBytes(Math.max(0L, recordingFreeSpaceBytes))
+                + " free.<br><br>Save the recording that was written.</html>";
+        log.warning("recording auto-stopped: free space "
+                + RecordingDiskSpace.formatBytes(recordingFreeSpaceBytes)
+                + " below " + RecordingDiskSpace.minFreeSpaceLabel());
+        stopRecordingFromViewLoop(reason);
     }
 
     /**
