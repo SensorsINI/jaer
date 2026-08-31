@@ -315,7 +315,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (glCanvas != null) {
             log.info("GLCanvas=" + glCanvas.toString());
             if (glCanvas.getContext() != null) {
-                log.info("GLCanvas has GLContext=" + glCanvas.getContext().toString());
+                log.fine("GLCanvas has GLContext=" + glCanvas.getContext().toString());
             }
         }
 

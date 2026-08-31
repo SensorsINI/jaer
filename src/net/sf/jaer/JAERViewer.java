@@ -25,6 +25,7 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -49,6 +50,10 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
+import net.sf.jaer.eventio.RecordingFilename;
+import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
+import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.FileAccessTimeout;
@@ -159,7 +164,7 @@ public class JAERViewer {
 //        final boolean createNewDevice = true; // use 'own' display device!
 //        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
 //        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
-        log.info("JOGL version information: " + JoglVersion.getInstance().toString());
+        log.fine("JOGL version information: " + JoglVersion.getInstance().toString());
 
         windowSaver = new WindowSaver(this, prefs);
         UiInteractionLog.syncFromPrefs();
@@ -711,6 +716,7 @@ public class JAERViewer {
         return viewers.size();
     }
     File indexFile = null;
+    Aedat4FileOutputStream muxedAedat4OutputStream = null;
     final String indexFileNameHeader = "JAERViewer-";
     final String indexFileSuffix = AEDataFile.INDEX_FILE_EXTENSION;
     DateFormat recordingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
@@ -736,35 +742,94 @@ public class JAERViewer {
     public void startSynchronizedRecording() {
         log.info("starting synchronized recording");
 
-        if (viewers.size() > 1) {// && !isElectricalSyncEnabled()){
-//            zeroTimestamps();  // TODO this is commented out because there is still a bug of getting old timestamps at start of recording, causing problems when synchronized playback is enabled.
-        } else {
-            // log.info("not zeroing all board timestamps because they are specified electrically synchronized");
-        }
         for (AEViewer v : viewers) {
             v.setPaused(true);
-
         }
 
-        for (AEViewer v : viewers) {
-            File f = v.startRecording();
-
+        boolean muxAedat4 = viewers.size() > 1
+                && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(viewers.get(0).getRecordingDataFileVersion());
+        if (muxAedat4) {
+            startMuxedAedat4Recording();
+        } else {
+            if (viewers.size() > 1) {
+                log.info("synchronized recording uses per-file + .aeidx (format is not AEDAT-4)");
+            }
+            for (AEViewer v : viewers) {
+                v.startRecording();
+            }
         }
         for (AEViewer v : viewers) {
             v.setPaused(false);
-
         }
 
         recordingEnabled = true;
     }
 
+    private void startMuxedAedat4Recording() {
+        AEViewer first = viewers.get(0);
+        List<Aedat4CameraTrack> tracks = new ArrayList<>();
+        List<RecordingFilename.DeviceToken> tokens = new ArrayList<>();
+        int i = 0;
+        for (AEViewer v : viewers) {
+            RecordingConfigurationSnapshot snap = RecordingConfigurationSnapshot.captureFromChip(v.getChip());
+            if (v.getChip() != null) {
+                v.getChip().setRecordingConfigurationSnapshot(snap);
+            }
+            tracks.add(Aedat4CameraTrack.fromChip(v.getChip(), snap, i));
+            tokens.add(RecordingFilename.tokenFromChip(v.getChip()));
+            i++;
+        }
+        String base = RecordingFilename.muxedAedat4Base(tokens, new Date());
+        File file = RecordingFilename.uniqueFile(first.lastRecordingFolder, base,
+                AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            long baseUs = System.currentTimeMillis() * 1000L;
+            muxedAedat4OutputStream = new Aedat4FileOutputStream(fos, tracks, first.getAedat4Compression(), baseUs);
+            int idx = 0;
+            for (AEViewer v : viewers) {
+                v.attachSharedAedat4Recording(muxedAedat4OutputStream, file, idx, idx == 0, tracks.get(idx).snapshot);
+                idx++;
+            }
+            log.info("muxed AEDAT-4 recording " + file.getAbsolutePath() + " cameras=" + tracks.size());
+        } catch (IOException e) {
+            log.log(java.util.logging.Level.WARNING, "muxed AEDAT-4 open failed: " + e, e);
+            muxedAedat4OutputStream = null;
+            for (AEViewer v : viewers) {
+                if (v.getChip() != null) {
+                    v.getChip().setRecordingConfigurationSnapshot(null);
+                }
+            }
+        }
+    }
+
     public void stopSynchronizedRecording() {
         log.info("stopping synchronized recording");
+        if (!viewers.isEmpty()) {
+            viewers.get(0).aePlayer.pause();
+        }
+
+        if (muxedAedat4OutputStream != null) {
+            AEViewer owner = viewers.get(0);
+            for (int i = 1; i < viewers.size(); i++) {
+                viewers.get(i).detachSharedAedat4RecordingWithoutClose();
+            }
+            File f = owner.stopRecording(true);
+            muxedAedat4OutputStream = null;
+            if (f != null && f.exists()) {
+                for (AEViewer v : viewers) {
+                    v.getRecentFiles().addFile(f);
+                }
+            }
+            if (!viewers.isEmpty()) {
+                viewers.get(0).aePlayer.resume();
+            }
+            recordingEnabled = false;
+            return;
+        }
+
         FileWriter writer = null;
         boolean writingIndex = false;
-        // pause all viewers
-        viewers.get(0).aePlayer.pause();
-
         try {
             for (AEViewer v : viewers) {
                 File f = v.stopRecording(getNumViewers() == 1); // only confirm filename if there is only a single viewer
@@ -793,14 +858,14 @@ public class JAERViewer {
                     v.getRecentFiles().addFile(indexFile);
                 }
                 log.info("Saved index file " + indexFile.getCanonicalPath());
-//                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getCanonicalPath());
             }
         } catch (IOException e) {
             log.warning("creating index file " + indexFile);
             e.printStackTrace();
         }
-        // resume all viewers
-        viewers.get(0).aePlayer.resume();
+        if (!viewers.isEmpty()) {
+            viewers.get(0).aePlayer.resume();
+        }
 
         recordingEnabled = false;
     }
