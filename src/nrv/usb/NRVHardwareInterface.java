@@ -516,13 +516,17 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public String toString() {
-        if (isOpened && stringDescriptors != null && stringDescriptors[1] != null
-                && !stringDescriptors[1].isBlank()) {
-            String sn = (stringDescriptors[2] != null && !stringDescriptors[2].isBlank())
-                    ? " " + stringDescriptors[2] : "";
-            return stringDescriptors[1] + sn;
+        try {
+            if (isOpened && stringDescriptors != null && stringDescriptors[1] != null
+                    && !stringDescriptors[1].isBlank()) {
+                String sn = (stringDescriptors[2] != null && !stringDescriptors[2].isBlank())
+                        ? " " + stringDescriptors[2] : "";
+                return stringDescriptors[1] + sn;
+            }
+            return UsbIds.unopenedLabel(this, getTypeName());
+        } catch (RuntimeException e) {
+            return getTypeName();
         }
-        return UsbIds.unopenedLabel(this, getTypeName());
     }
 
     @Override
@@ -754,33 +758,43 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
      * Populate device descriptor from libusb without claiming the interface.
      */
     public void ensureUsbDeviceDescriptor() {
-        if (deviceDescriptor != null || device == null) {
+        if (UsbIds.descriptorReadable(deviceDescriptor)) {
             return;
         }
-        deviceDescriptor = new DeviceDescriptor();
-        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        if (status != LibUsb.SUCCESS) {
-            log.warning("Could not read NRV USB device descriptor: " + LibUsb.errorName(status));
-            deviceDescriptor = null;
-        }
+        deviceDescriptor = UsbIds.readDeviceDescriptor(device);
     }
 
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
         ensureUsbDeviceDescriptor();
-        return deviceDescriptor == null ? VID : deviceDescriptor.idVendor();
+        try {
+            return deviceDescriptor == null ? VID : deviceDescriptor.idVendor();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
+            return VID;
+        }
     }
 
     @Override
     public short getPID() {
         ensureUsbDeviceDescriptor();
-        return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
+            return 0;
+        }
     }
 
     @Override
     public short getDID() {
         ensureUsbDeviceDescriptor();
-        return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
+            return 0;
+        }
     }
 
     @Override

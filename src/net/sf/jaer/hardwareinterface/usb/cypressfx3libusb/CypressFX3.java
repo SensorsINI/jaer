@@ -243,14 +243,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     private void populateDescriptors() {
         try {
-            int status;
-
             // getString device descriptor
-            if (deviceDescriptor == null) {
-                deviceDescriptor = new DeviceDescriptor();
-                status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-                if (status != LibUsb.SUCCESS) {
-                    throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor: " + LibUsb.errorName(status));
+            if (!UsbIds.descriptorReadable(deviceDescriptor)) {
+                deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+                if (deviceDescriptor == null) {
+                    throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor failed");
                 }
             }
 
@@ -380,10 +377,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public String toString() {
-        if (numberOfStringDescriptors != 0) {
-            return stringDescription;
+        try {
+            if (numberOfStringDescriptors != 0 && stringDescription != null) {
+                return stringDescription;
+            }
+            return UsbIds.unopenedLabel(this, friendlyUnopenedTypeName());
+        } catch (RuntimeException e) {
+            return getClass().getSimpleName();
         }
-        return UsbIds.unopenedLabel(this, friendlyUnopenedTypeName());
     }
 
     /**
@@ -391,9 +392,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * read. Avoids raw class names like {@code DAViSFX3HardwareInterface}.
      */
     protected String friendlyUnopenedTypeName() {
-        ensureUsbDeviceDescriptor();
-        if (deviceDescriptor != null) {
-            final short pid = deviceDescriptor.idProduct();
+        try {
+            final short pid = getPID();
             if (pid == DAViSFX3HardwareInterface.PID_FX3 || pid == DAViSFX3HardwareInterface.PID_FX2) {
                 return "Davis / SciDVS";
             }
@@ -403,6 +403,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             if (pid == CochleaFX3HardwareInterface.PID_FX3) {
                 return "CochleaFX3";
             }
+        } catch (RuntimeException e) {
+            CypressFX3.log.log(Level.FINE, "friendlyUnopenedTypeName after USB unplug", e);
         }
         return getClass().getSimpleName();
     }
@@ -1878,9 +1880,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         // Check for blank devices (must first get device descriptor).
+        if (!UsbIds.descriptorReadable(deviceDescriptor)) {
+            deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+        }
         if (deviceDescriptor == null) {
-            deviceDescriptor = new DeviceDescriptor();
-            LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+            throw new HardwareInterfaceException("open(): getDeviceDescriptor failed");
         }
 
         if (isBlankDevice()) { // TODO throws null pointer exception if deviceDescriptor is not obtained above, which
@@ -2031,9 +2035,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         // Check for blank devices (must first get device descriptor).
+        if (!UsbIds.descriptorReadable(deviceDescriptor)) {
+            deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+        }
         if (deviceDescriptor == null) {
-            deviceDescriptor = new DeviceDescriptor();
-            LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+            throw new HardwareInterfaceException("open_minimal_close(): getDeviceDescriptor failed");
         }
 
         if (isBlankDevice()) {
@@ -2117,39 +2123,39 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     /**
      * Populate {@link #deviceDescriptor} from libusb without claiming the
-     * interface for AE streaming. Safe to call before {@link #open()}.
+     * interface for AE streaming. Safe to call before {@link #open()}. After
+     * unplug, never leaves a {@link DeviceDescriptor} whose native pointer is
+     * uninitialized ({@code idProduct} used to throw from Welcome/toString).
      */
     public void ensureUsbDeviceDescriptor() {
-        if (deviceDescriptor != null || device == null) {
+        if (UsbIds.descriptorReadable(deviceDescriptor)) {
             return;
         }
-        deviceDescriptor = new DeviceDescriptor();
-        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        if (status != LibUsb.SUCCESS) {
-            CypressFX3.log.warning("Could not read USB device descriptor: " + LibUsb.errorName(status));
+        deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+    }
+
+    private short usbDescriptorShort(java.util.function.ToIntFunction<DeviceDescriptor> field) {
+        ensureUsbDeviceDescriptor();
+        DeviceDescriptor d = deviceDescriptor;
+        if (d == null) {
+            return 0;
+        }
+        try {
+            return (short) field.applyAsInt(d);
+        } catch (IllegalStateException e) {
             deviceDescriptor = null;
+            return 0;
         }
     }
 
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
-        ensureUsbDeviceDescriptor();
-        if (deviceDescriptor == null) {
-            CypressFX3.log.warning("USBAEMonitor: getVID called but device descriptor unavailable");
-            return 0;
-        }
-        // int[] n=new int[2]; n is never used
-        return deviceDescriptor.idVendor();
+        return usbDescriptorShort(DeviceDescriptor::idVendor);
     }
 
     @Override
     public short getPID() {
-        ensureUsbDeviceDescriptor();
-        if (deviceDescriptor == null) {
-            CypressFX3.log.warning("USBAEMonitor: getPID called but device descriptor unavailable");
-            return 0;
-        }
-        return deviceDescriptor.idProduct();
+        return usbDescriptorShort(DeviceDescriptor::idProduct);
     }
 
     /**
@@ -2158,12 +2164,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     @Override
     public short getDID() { // this is not part of USB spec in device
         // descriptor.
-        ensureUsbDeviceDescriptor();
-        if (deviceDescriptor == null) {
-            CypressFX3.log.warning("USBAEMonitor: getDID called but device descriptor unavailable");
-            return 0;
-        }
-        return deviceDescriptor.bcdDevice();
+        return usbDescriptorShort(DeviceDescriptor::bcdDevice);
     }
 
     /**

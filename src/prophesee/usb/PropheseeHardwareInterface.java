@@ -50,6 +50,7 @@ import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
@@ -945,33 +946,43 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
      * Populate device descriptor from libusb without claiming the interface.
      */
     public void ensureUsbDeviceDescriptor() {
-        if (deviceDescriptor != null || device == null) {
+        if (UsbIds.descriptorReadable(deviceDescriptor)) {
             return;
         }
-        deviceDescriptor = new DeviceDescriptor();
-        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        if (status != LibUsb.SUCCESS) {
-            log.warning("Could not read Prophesee USB device descriptor: " + LibUsb.errorName(status));
-            deviceDescriptor = null;
-        }
+        deviceDescriptor = UsbIds.readDeviceDescriptor(device);
     }
 
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
         ensureUsbDeviceDescriptor();
-        return deviceDescriptor == null ? VID : deviceDescriptor.idVendor();
+        try {
+            return deviceDescriptor == null ? VID : deviceDescriptor.idVendor();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
+            return VID;
+        }
     }
 
     @Override
     public short getPID() {
         ensureUsbDeviceDescriptor();
-        return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
+            return 0;
+        }
     }
 
     @Override
     public short getDID() {
         ensureUsbDeviceDescriptor();
-        return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
+            return 0;
+        }
     }
 
     @Override
@@ -1053,14 +1064,18 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     @Override
     public String toString() {
-        if (deviceDescriptor != null) {
-            return String.format("Prophesee EVK4 HD %04x:%04x%s",
-                    deviceDescriptor.idVendor(), deviceDescriptor.idProduct(),
-                    serial.isEmpty() ? "" : " serial=" + serial);
+        try {
+            if (UsbIds.descriptorReadable(deviceDescriptor)) {
+                return String.format("Prophesee EVK4 HD %04x:%04x%s",
+                        deviceDescriptor.idVendor(), deviceDescriptor.idProduct(),
+                        serial.isEmpty() ? "" : " serial=" + serial);
+            }
+            if (!serial.isEmpty()) {
+                return "Prophesee EVK4 HD serial=" + serial;
+            }
+            return "Prophesee EVK4 HD";
+        } catch (RuntimeException e) {
+            return "Prophesee EVK4 HD";
         }
-        if (!serial.isEmpty()) {
-            return "Prophesee EVK4 HD serial=" + serial;
-        }
-        return "Prophesee EVK4 HD";
     }
 }
