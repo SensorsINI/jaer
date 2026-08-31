@@ -159,6 +159,7 @@ import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
+import net.sf.jaer.eventio.RecordingFilename;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
@@ -300,7 +301,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled",
             EVENT_RECORDING_STARTED = "recordingStarted",
             EVENT_RECORDING_STOPPED = "recordingStopped",
-            EVENT_REMEMBER_LAST_INTERFACE = "rememberLastInterface";
+            EVENT_REMEMBER_LAST_INTERFACE = "rememberLastInterface",
+            EVENT_SYNC_ENABLED = "syncEnabled";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
@@ -311,6 +313,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
     // set true to force null hardware (None in interface menu) even if only single interface
     private boolean nullInterface = false;
+    /** ACCESS/BUSY retries after Interface select (sibling closer). ISSD TIMEOUT is not retried. */
+    private int usbAccessOpenRetries;
+    private static final int MAX_USB_ACCESS_OPEN_RETRIES = 2;
 
     //    volatile boolean stop=false; // volatile because multiple threads will access
     int renderCount = 0;
@@ -330,6 +335,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * (canvas rebuild during AEChip switch).
      */
     private volatile String pendingOpeningCameraLabel = null;
+    /** Live USB / ISSD step under {@link #pendingOpeningCameraLabel}; {@code null} uses the generic hint. */
+    private volatile String pendingOpeningCameraStatus = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
     int tickUs = 1;
     public AEPlayer aePlayer;
@@ -433,6 +440,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private File recordingFile = null;
     AEFileOutputStream recordingOutputStream;
     Aedat4FileOutputStream aedat4RecordingOutputStream;
+    /** Muxed AEDAT-4 camera index (0 = streams 0/1/2). */
+    int aedat4RecordingTrackIndex;
+    /** False when this viewer shares a muxed file owned by another viewer. */
+    boolean aedat4RecordingOwnsClose = true;
     AEDZOutputStream aedzRecordingOutputStream;
     private RecordingConfigurationSnapshot activeRecordingSnapshot;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
@@ -571,6 +582,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static boolean showedSkippedPacketsRenderingWarning = false;
     /** Live ARS max saved when entering file playback; restored when leaving PLAYBACK. */
     private int adaptiveRenderSkipMaxBeforePlayback = -1;
+    /** True when this recording temporarily enabled ARS (was off). Restored on stop. */
+    private boolean arsForcedOnForRecording;
     /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
     private boolean eventAcquisitionPausedForPlayback;
     /**
@@ -620,6 +633,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * for multi-camera files; consumed by {@link AEChip#constuctFileInputStream}.
      */
     private Integer pendingAedat4EventStreamId;
+    private List<RecordingChipDetector.StreamHint> pendingExtraAedat4EventStreams;
+    /** Extra same-file AEDAT-4 viewers skip the LZ4 re-record dialog (origin already chose). */
+    private boolean skipAedat4Lz4Offer;
     private boolean suppressAdaptiveRenderSkipMenuSync;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
@@ -984,6 +1000,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_PROPHESEE_SAMPLE_DATA,
                     "Prophesee / Metavision sample data",
                     "Prophesee sample recordings and datasets (RAW EVT2/EVT3, HDF5, DAT) including EVK4 / IMX636"));
+            sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_EVDOWNSAMPLING,
+                    "EvDownsampling Multi-camera (AEDAT-4)",
+                    "DAVIS346 (346×260) + DVXplorer (640×480) muxed in one AEDAT-4 for comparing resolutions (Ghosh et al.); recordings on Figshare, linked from the README"));
             addHelpItem(sampleDataMenu);
             addHelpItem(new JSeparator());
         } catch (Exception e) {
@@ -1049,7 +1068,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (remoteControl != null) {
                     remoteControl.addCommandListener(this, REMOTE_START_RECORDING + " <filename>", "starts recording ae data to a file");
                     remoteControl.addCommandListener(this, REMOTE_STOP_RECORDING, "stops recording ae data to a file");
-                    remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_RECORDING, "starts synchronized recording ae data to a set of files with aeidx filename automatically timestamped");
+                    remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_RECORDING, "starts synchronized recording: one multi-stream AEDAT-4 (or .aeidx for AEDAT-2)");
                     remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "alias of startrecording");
                     remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "alias of stoprecording");
                     remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "alias of togglesyncrecording");
@@ -1211,18 +1230,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             intervalMs = HOTPLUG_FALLBACK_CHECK_INTERVAL_MS;
         }
 
-        if (!dirty && dtCheck < intervalMs) {
-            log.finer(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, intervalMs));
-            return;
-        }
-        lastInterfaceCheckTime = now;
-        if (LibUsbHotplug.isSupported()) {
-            HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+        boolean kickedScan = false;
+        if (USB_OPEN_SERIAL_LOCK.isLocked()) {
+            log.fine("skip background USB scan; native open in progress");
+        } else if (dirty || dtCheck >= intervalMs) {
+            lastInterfaceCheckTime = now;
+            if (LibUsbHotplug.isSupported()) {
+                HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+            }
+            // Do not block ViewLoop on getDeviceList: after NRV unplug Windows
+            // WinUSB can hang that call, and the factory monitor then froze the
+            // EDT when the user opened Interface (AEViewer #6, 2026-08-31).
+            HardwareInterfaceFactory.instance().requestBackgroundScan();
+            kickedScan = true;
+        } else {
+            log.finer(String.format("Not kicking USB scan because only %,d<%,d ms have elapsed since last check", dtCheck, intervalMs));
         }
 
-        int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        int ninterfaces = HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable();
         log.fine("openHardwareIfNonambiguous ninterfaces=" + ninterfaces + " dirtyWas=" + dirty);
-        if (windowsPoll) {
+        if (windowsPoll && kickedScan) {
             windowsUsbPoll.noteScanResult(usbDeviceFingerprint(ninterfaces), now, log);
         }
         if (ninterfaces == 0 && LibUsbHotplug.isSupported()
@@ -1235,7 +1262,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (!bound) {
             bound = bindUnambiguousInterfaceIfPossible(ninterfaces);
         }
-        if (!bound && ninterfaces > 1 && (showMultipleInterfacesMessageCount++ % 100) == 0) {
+        if (!bound && ninterfaces > 1 && kickedScan && (showMultipleInterfacesMessageCount++ % 100) == 0) {
             log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
         }
         if (getPlayMode() == PlayMode.WAITING && ninterfaces != lastWelcomeInterfaceCount) {
@@ -2331,19 +2358,39 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (file == null || !file.isFile()) {
             return true;
         }
-        pendingAedat4EventStreamId = null;
+        Integer alreadyPending = pendingAedat4EventStreamId;
         Class<? extends AEChip> suggested = null;
         String name = file.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4) || name.endsWith(".aedat4")) {
             List<RecordingChipDetector.StreamHint> eventStreams
                     = RecordingChipDetector.listAedat4EventStreams(file);
             if (eventStreams.size() > 1) {
-                RecordingChipDetector.StreamHint chosen = chooseAedat4EventStream(file, eventStreams);
-                if (chosen == null) {
-                    log.info("Playback open canceled (AEDAT-4 stream selection)");
-                    return false;
+                RecordingChipDetector.StreamHint chosen;
+                if (alreadyPending != null) {
+                    chosen = streamById(eventStreams, alreadyPending);
+                    if (chosen == null) {
+                        log.warning("Pending AEDAT-4 stream " + alreadyPending + " not in file; using first EVTS");
+                        chosen = eventStreams.get(0);
+                        pendingAedat4EventStreamId = chosen.streamId;
+                    }
+                } else {
+                    List<RecordingChipDetector.StreamHint> selected
+                            = chooseAedat4EventStreams(file, eventStreams);
+                    if (selected == null || selected.isEmpty()) {
+                        log.info("Playback open canceled (AEDAT-4 stream selection)");
+                        pendingAedat4EventStreamId = null;
+                        pendingExtraAedat4EventStreams = null;
+                        return false;
+                    }
+                    chosen = selected.get(0);
+                    pendingAedat4EventStreamId = chosen.streamId;
+                    if (selected.size() > 1 && jaerViewer != null) {
+                        pendingExtraAedat4EventStreams = new ArrayList<>(
+                                selected.subList(1, selected.size()));
+                    } else {
+                        pendingExtraAedat4EventStreams = null;
+                    }
                 }
-                pendingAedat4EventStreamId = chosen.streamId;
                 suggested = RecordingChipDetector.resolve(chosen.toChipHint(),
                         loadChipClasses(chipClassNames));
                 log.info("AEDAT-4 stream selected: " + chosen.displayLabel()
@@ -2378,6 +2425,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
             log.info("Playback open canceled (AEChip mismatch dialog)");
             pendingAedat4EventStreamId = null;
+            pendingExtraAedat4EventStreams = null;
             return false;
         }
         if (choice == JOptionPane.YES_OPTION) {
@@ -2400,6 +2448,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return id;
     }
 
+    public void setPendingAedat4EventStreamId(Integer eventStreamId) {
+        pendingAedat4EventStreamId = eventStreamId;
+    }
+
+    public void setSkipAedat4Lz4Offer(boolean skip) {
+        skipAedat4Lz4Offer = skip;
+    }
+
+    /** After this viewer has opened the file, spawn extra same-file EVTS viewers. */
+    public void spawnPendingExtraAedat4Streams(File file) {
+        List<RecordingChipDetector.StreamHint> extra = pendingExtraAedat4EventStreams;
+        pendingExtraAedat4EventStreams = null;
+        if (file == null || extra == null || extra.isEmpty() || jaerViewer == null) {
+            return;
+        }
+        if (!jaerViewer.isSyncEnabled()) {
+            jaerViewer.setSyncEnabled(true);
+        }
+        jaerViewer.getSyncPlayer().startAdditionalAedat4Streams(file, extra, this);
+    }
+
+    public void clearPendingExtraAedat4Streams() {
+        pendingExtraAedat4EventStreams = null;
+    }
+
+    public List<Class<? extends AEChip>> loadedAeChipClasses() {
+        return loadChipClasses(chipClassNames);
+    }
+
+    private static RecordingChipDetector.StreamHint streamById(
+            List<RecordingChipDetector.StreamHint> streams, int streamId) {
+        for (RecordingChipDetector.StreamHint s : streams) {
+            if (s.streamId == streamId) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     /**
      * If {@code file} is a DV AEDAT-4 with dependent-block LZ4, offer to open or
      * create a sibling {@code *-rerecord.aedat4} with fast independent-block LZ4.
@@ -2408,6 +2495,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public Aedat4Lz4Rerecorder.OpenPlan offerAedat4Lz4Rerecord(File file) {
         if (file == null || !file.isFile() || Aedat4Lz4Rerecorder.isRerecordFile(file)) {
+            return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+        }
+        if (skipAedat4Lz4Offer) {
+            skipAedat4Lz4Offer = false;
             return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
         }
         String lower = file.getName().toLowerCase(Locale.ROOT);
@@ -2503,35 +2594,48 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return null;
     }
 
-    private RecordingChipDetector.StreamHint chooseAedat4EventStream(
+    private List<RecordingChipDetector.StreamHint> chooseAedat4EventStreams(
             File file, List<RecordingChipDetector.StreamHint> eventStreams) {
         String[] labels = new String[eventStreams.size()];
+        List<Class<? extends AEChip>> loaded = loadChipClasses(chipClassNames);
         for (int i = 0; i < eventStreams.size(); i++) {
-            labels[i] = eventStreams.get(i).displayLabel();
+            RecordingChipDetector.StreamHint s = eventStreams.get(i);
+            String label = s.displayLabel();
+            if (RecordingChipDetector.resolve(s.toChipHint(), loaded) == null) {
+                label = label + " — unresolved AEChip";
+                log.warning("AEDAT-4 EVTS stream listed but AEChip not resolved: " + s.displayLabel());
+            }
+            labels[i] = label;
         }
         javax.swing.JList<String> list = new javax.swing.JList<>(labels);
-        list.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        list.setSelectedIndex(0);
+        list.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        list.setSelectionInterval(0, labels.length - 1);
         list.setVisibleRowCount(Math.min(8, labels.length));
         int choice = JOptionPane.showConfirmDialog(
                 this,
                 new Object[]{
                     "<html>This AEDAT-4 file contains <b>" + eventStreams.size()
                     + "</b> event camera streams.<br>"
-                    + "jAER can play one stream at a time. Select which to open:<br><br></html>",
+                    + "Select one stream for this viewer, or several to open extra viewers.<br><br></html>",
                     new javax.swing.JScrollPane(list)
                 },
-                "Select AEDAT-4 camera stream — " + file.getName(),
+                "Select AEDAT-4 camera stream(s) — " + file.getName(),
                 JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (choice != JOptionPane.OK_OPTION) {
             return null;
         }
-        int idx = list.getSelectedIndex();
-        if (idx < 0 || idx >= eventStreams.size()) {
+        int[] idx = list.getSelectedIndices();
+        if (idx.length == 0) {
             return null;
         }
-        return eventStreams.get(idx);
+        List<RecordingChipDetector.StreamHint> selected = new ArrayList<>(idx.length);
+        for (int i : idx) {
+            if (i >= 0 && i < eventStreams.size()) {
+                selected.add(eventStreams.get(i));
+            }
+        }
+        return selected;
     }
 
     @SuppressWarnings("unchecked")
@@ -2930,7 +3034,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (chipClassNames == null || chipClassNames.isEmpty()) {
                 return;
             }
-            if (HardwareInterfaceFactory.instance().getNumInterfacesAvailable() != 1) {
+            if (HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable() != 1) {
                 return;
             }
             HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
@@ -3152,6 +3256,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             showOpeningCameraOverlay(hw);
                             // Allow auto/manual reopen after Interface→None.
                             nullInterface = false;
+                            usbAccessOpenRetries = 0;
                             final HardwareInterface previous = currentHw;
                             aemon = null;
                             // Detach first; close previous async so EDT does not block on USB.
@@ -3262,33 +3367,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public void actionPerformed(ActionEvent evt) {
-                final HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
-                if (chip != null) {
-                    chip.setHardwareInterface(null);
-                }
-                aemon = null;
-                SessionCameraOpenCoordinator.userCancelledOpen(AEViewer.this);
-                // force null interface (do not auto-reopen until user picks a device)
-                nullInterface = true;
-                rememberLastInterfaceDeviceID = null;
-                rememberLastInterfaceSerial = null;
-                ViewerInterfaceBindingMap.remove(viewerInstanceIndex);
-                clearOpeningCameraOverlay();
-                notifyOtherViewersOfHardwareClaimChange();
-                if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
-                    setPlayMode(PlayMode.WAITING);
-                }
-                interruptViewloop();
-                if (hw != null) {
-                    if (isHungNativeHardware(hw)) {
-                        log.info("None: not closing hung " + hw);
-                        abandonedHungHardware = hw;
-                    } else {
-                        log.info(String.format("selected None interface so closing %s (async, timeout %d ms)",
-                                hw, HARDWARE_CLOSE_TIMEOUT_MS));
-                        closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "Close interface");
-                    }
-                }
+                selectNoneInterface();
             }
         });
 //        interfaceMenu.add(new JSeparator());
@@ -3311,7 +3390,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     //                    System.out.println("selected "+item.getText());
                     choseOneButton = true;
                     // normal interface selected
-                    nullInterface = false;
                 }
             }
         }
@@ -3333,6 +3411,81 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         snapshotInterfaceMenuDevices();
         showWelcomeOverlay();
+    }
+
+    /**
+     * Interface → None: abort an in-flight open (including Prophesee ISSD),
+     * unbind this viewer, and close the USB handle asynchronously. Does not
+     * stop {@link #viewLoop}.
+     */
+    public void selectNoneInterface() {
+        final HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+        if (chip != null) {
+            chip.setHardwareInterface(null);
+        }
+        aemon = null;
+        SessionCameraOpenCoordinator.userCancelledOpen(AEViewer.this);
+        // force null interface (do not auto-reopen until user picks a device)
+        nullInterface = true;
+        usbAccessOpenRetries = 0;
+        HardwareInterface abortOpen = hardwareOpenTarget;
+        if (abortOpen instanceof PropheseeHardwareInterface) {
+            ((PropheseeHardwareInterface) abortOpen).requestOpenAbort();
+        } else if (hw instanceof PropheseeHardwareInterface) {
+            ((PropheseeHardwareInterface) hw).requestOpenAbort();
+        }
+        rememberLastInterfaceDeviceID = null;
+        rememberLastInterfaceSerial = null;
+        ViewerInterfaceBindingMap.remove(viewerInstanceIndex);
+        clearOpeningCameraOverlay();
+        notifyOtherViewersOfHardwareClaimChange();
+        if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
+            setPlayMode(PlayMode.WAITING);
+        }
+        interruptViewloop();
+        if (hw != null) {
+            if (isHungNativeHardware(hw)) {
+                log.info("None: not closing hung " + hw);
+                abandonedHungHardware = hw;
+            } else {
+                log.info(String.format("selected None interface so closing %s (async, timeout %d ms)",
+                        hw, HARDWARE_CLOSE_TIMEOUT_MS));
+                closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "Close interface");
+            }
+        }
+    }
+
+    /**
+     * Ctrl+W / File → Close: abort the current activity without closing this
+     * window. Window close still uses the title-bar X ({@link #stopMe()}).
+     * Priority: stop recording, then close playback, then Interface → None.
+     */
+    public void closeOrAbortCurrentActivity() {
+        if (isRecordingEnabled()) {
+            log.info("Ctrl+W: stopping recording");
+            toggleRecording();
+            showActionText("Stopped recording");
+            return;
+        }
+        if (getPlayMode() == PlayMode.PLAYBACK) {
+            log.info("Ctrl+W: closing playback file");
+            getAePlayer().stopPlayback();
+            showActionText("Closed file");
+            return;
+        }
+        final HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+        final boolean opening = hardwareOpenTarget != null;
+        final boolean liveUsb = getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING;
+        final boolean usbOpen = hw != null && (hw.isOpen()
+                || (hw instanceof PropheseeHardwareInterface
+                && ((PropheseeHardwareInterface) hw).isOpenInProgress()));
+        if (opening || liveUsb || usbOpen) {
+            log.info("Ctrl+W: Interface → None");
+            selectNoneInterface();
+            showActionText("Interface None");
+            return;
+        }
+        log.fine("Ctrl+W: nothing to abort (WAITING, no device)");
     }
 
     /**
@@ -3872,7 +4025,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         canvas.clearUsbLinkOverlay();
         if (pendingOpeningCameraLabel != null) {
-            canvas.setWelcomeOverlay(Welcome.opening(this, pendingOpeningCameraLabel));
+            canvas.setWelcomeOverlay(Welcome.opening(this, pendingOpeningCameraLabel, pendingOpeningCameraStatus));
         } else {
             canvas.setWelcomeOverlay(Welcome.linesFor(this));
         }
@@ -3889,12 +4042,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void showOpeningCameraOverlay(HardwareInterface hw) {
         String label = hw == null ? "camera" : interfaceMenuLabel(hw);
         pendingOpeningCameraLabel = label;
+        pendingOpeningCameraStatus = null;
         ChipCanvas canvas = getChipCanvas();
         if (canvas == null) {
             return;
         }
-        canvas.setWelcomeOverlay(Welcome.opening(this, label));
+        canvas.setWelcomeOverlay(Welcome.opening(this, label, pendingOpeningCameraStatus));
         canvas.repaint();
+    }
+
+    /**
+     * Updates the opening overlay with the current USB / ISSD step. Safe from
+     * the open worker: ViewLoop is blocked in {@code openAEMonitor} await, so
+     * this paints the GL canvas from the EDT.
+     *
+     * @param status short phase name, e.g. {@code ISSD Init}
+     */
+    public void updateOpeningCameraStatus(String status) {
+        if (pendingOpeningCameraLabel == null) {
+            return;
+        }
+        pendingOpeningCameraStatus = status;
+        Runnable paint = () -> {
+            if (pendingOpeningCameraLabel == null) {
+                return;
+            }
+            ChipCanvas canvas = getChipCanvas();
+            if (canvas == null) {
+                return;
+            }
+            canvas.setWelcomeOverlay(Welcome.opening(this, pendingOpeningCameraLabel, pendingOpeningCameraStatus));
+            canvas.paintFrame();
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            paint.run();
+        } else {
+            SwingUtilities.invokeLater(paint);
+        }
     }
 
     /**
@@ -3903,6 +4087,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public void clearOpeningCameraOverlay() {
         pendingOpeningCameraLabel = null;
+        pendingOpeningCameraStatus = null;
         showWelcomeOverlay();
     }
 
@@ -4031,6 +4216,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         notifyOtherViewersOfHardwareClaimChange();
         pendingOpeningCameraLabel = null;
+        pendingOpeningCameraStatus = null;
         ChipCanvas canvas = getChipCanvas();
         if (canvas != null) {
             canvas.clearUsbLinkOverlay();
@@ -4074,6 +4260,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 if (USB_OPEN_SERIAL_LOCK.tryLock(100, TimeUnit.MILLISECONDS)) {
                     usbOpenSerialHolder = getViewerWindowLabel() + " " + UsbIds.enumerationKey(opening);
+                    HardwareInterfaceFactory.instance().noteUsbNativeOpenBegin();
                     log.info("USB open serializer: " + usbOpenSerialHolder);
                     UsbOpenTrace.event("hold", "one open+config", usbOpenSerialHolder);
                     return true;
@@ -4109,6 +4296,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         UsbOpenTrace.event("release", "next camera may open",
                 usbOpenSerialHolder == null ? "none" : usbOpenSerialHolder);
         usbOpenSerialHolder = null;
+        HardwareInterfaceFactory.instance().noteUsbNativeOpenEnd();
         USB_OPEN_SERIAL_LOCK.unlock();
     }
 
@@ -4144,6 +4332,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // chip. Reopening that instance throws devicePointer-not-initialized and
                 // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
                 if (bound != null && aemon == bound && !bound.isOpen()) {
+                    if (nullInterface) {
+                        log.info("Interface → None: not reopening closed wrapper " + bound);
+                        nullifyHardware();
+                        wantWaiting = true;
+                        setPlayMode(PlayMode.WAITING);
+                        showWelcomeOverlay();
+                        return;
+                    }
                     boolean stillPlugged = factoryCacheHasPhysicalDevice(bound);
                     boolean retrySame = SessionCameraOpenCoordinator.hasOpenGrant(this) && stillPlugged;
                     if (retrySame) {
@@ -4220,6 +4416,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     Thread opener = new Thread(() -> {
                         log.fine("openAEMonitor worker begin open() of " + opening + " " + UsbLog.t());
                         try {
+                            HardwareInterfaceFactory.instance().awaitBackgroundScanIdle(2000);
                             opening.open();
                             log.fine("openAEMonitor worker open() returned " + opening + " " + UsbLog.t());
                             // Configure on this worker before ViewLoop goes LIVE.
@@ -4389,6 +4586,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     hardwareOpenThread = null;
                     hardwareOpenTarget = null;
+                    usbAccessOpenRetries = 0;
                     if (aemon instanceof USBInterface) {
                         USBInterface usb = (USBInterface) aemon;
                         String serial = null;
@@ -4487,15 +4685,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 MacosLibusbHelp.maybeShowDialog(this, e);
                 HardwareInterface failed = aemon;
                 boolean stillPlugged = factoryCacheHasPhysicalDevice(failed);
-                boolean keepForRetry = SessionCameraOpenCoordinator.hasOpenGrant(this)
-                        && stillPlugged && !isUsbDeviceGone(e);
+                boolean transientAccess = isTransientUsbAccess(e);
+                boolean keepForRetry = !nullInterface
+                        && SessionCameraOpenCoordinator.hasOpenGrant(this)
+                        && stillPlugged && transientAccess
+                        && usbAccessOpenRetries < MAX_USB_ACCESS_OPEN_RETRIES;
                 if (keepForRetry) {
-                    // Interface select + ACCESS: sibling closer may still hold WinUSB.
-                    // Keep the bound wrapper so the next poll retries this camera,
-                    // not a map-autobind of hung classic DVX.
+                    usbAccessOpenRetries++;
                     log.warning("USB ACCESS after Interface select of still-enumerated "
-                            + UsbIds.enumerationKey(failed) + "; will retry");
-                    nullInterface = false;
+                            + UsbIds.enumerationKey(failed) + " (retry " + usbAccessOpenRetries
+                            + "/" + MAX_USB_ACCESS_OPEN_RETRIES + ")");
                     keepInterfaceGrant = true;
                 } else {
                     if (aemon != null) {
@@ -4503,6 +4702,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         aemon.close();
                     }
                     nullifyHardware();
+                    usbAccessOpenRetries = 0;
                     if (isUsbDeviceGone(e)) {
                         log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
                         nullInterface = false;
@@ -4510,9 +4710,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
                         resetWindowsUsbPoll("device removed");
                     } else {
-                        // Stop WAITING from rebinding the same ghost device on the next poll
-                        // (jAER 12:15: ACCESS loop after unplug; UI looked hung).
+                        // Stop WAITING from rebinding: ACCESS loop, ISSD TIMEOUT after
+                        // None, or retries exhausted (jAER 09:37:16 EVK4 control write).
                         nullInterface = true;
+                        if (transientAccess) {
+                            log.info("USB ACCESS retries exhausted; choose Interface to try again");
+                        }
                     }
                 }
                 setPlaybackControlsEnabledState(false);
@@ -4527,6 +4730,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             pendingFirstHardwareUseImport = false;
             disarmEdtLivenessWatchdog();
             pendingOpeningCameraLabel = null;
+            pendingOpeningCameraStatus = null;
             setPlayMode(PlayMode.WAITING);
             showWelcomeOverlay();
             if (!keepInterfaceGrant) {
@@ -4539,6 +4743,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else if (wantLive && getPlayMode() == PlayMode.WAITING && !suppressHardwareOpen) {
             // Only WAITING→LIVE; never overwrite PLAYBACK/REMOTE/FILTER_INPUT (file-open race).
             pendingOpeningCameraLabel = null;
+            pendingOpeningCameraStatus = null;
             ChipCanvas liveCanvas = getChipCanvas();
             if (liveCanvas != null) {
                 liveCanvas.setWelcomeOverlay(null); // idle defaults if unplug returns to WAITING
@@ -5126,7 +5331,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // On others, it seems to be needed for some settings (ticket #75).
             biasesToggleButton.setEnabled(true);
         }
-        closeMenuItem.setEnabled(yes);
+        closeMenuItem.setEnabled(true);
         saveAsMenuItem.setEnabled(yes);
         showFileInfoMenuItem.setEnabled(yes && isShowFileInfoAvailable());
         increasePlaybackSpeedMenuItem.setEnabled(yes);
@@ -5324,6 +5529,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             getFrameRater().takeAfter();
                             getRenderer().adaptRenderSkipping();
                             renderCount++;
+                            if (isRecordingEnabled() && chipCanvas != null) {
+                                // Skip pixmap render but keep the recording overlay updating.
+                                chipCanvas.paintFrame();
+                            }
                             paceViewLoopFrame();
                             continue;
                         }
@@ -5862,6 +6071,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void recordPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
+            if (getPlayMode() == PlayMode.WAITING) {
+                return;
+            }
             Object streamLock = aedat4RecordingOutputStream != null ? aedat4RecordingOutputStream
                     : (aedzRecordingOutputStream != null ? aedzRecordingOutputStream : recordingOutputStream);
             if (streamLock == null) {
@@ -5877,7 +6089,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // File → "Enable filtering of recorded events" still applies to AEDAT-2.
                         boolean skipFilteredOut = isRecordFilteredEventsEnabled()
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
-                        aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut);
+                        aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut, aedat4RecordingTrackIndex);
                     } else if (aedzRecordingOutputStream != null) {
                         aedzRecordingOutputStream.writePacket(isRecordFilteredEventsEnabled()
                                 ? extractor.reconstructRawPacket(cookedPacket)
@@ -6941,7 +7153,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         closeMenuItem.setMnemonic('C');
         closeMenuItem.setText("Close");
-        closeMenuItem.setToolTipText("Closes this viewer or the playing data file");
+        closeMenuItem.setToolTipText("Ctrl+W: stop recording, close a playing file, or Interface → None if a camera is open/opening. Window close still uses the title-bar X.");
         closeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeMenuItemActionPerformed(evt);
@@ -7295,7 +7507,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.add(setFrameRateMenuItem);
 
         skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat recording is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat recording is unaffected. Recording turns ARS on automatically if it was off.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -7768,6 +7980,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     void syncAdaptiveRenderSkipMenuFromRenderer() {
         if (chip == null || chip.getRenderer() == null) {
+            return;
+        }
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::syncAdaptiveRenderSkipMenuFromRenderer);
             return;
         }
         suppressAdaptiveRenderSkipMenuSync = true;
@@ -8542,6 +8758,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             return;
         }
+        if (EVENT_SYNC_ENABLED.equals(evt.getPropertyName())) {
+            Object nv = evt.getNewValue();
+            if (nv instanceof Boolean && jaerViewer != null) {
+                jaerViewer.setSyncEnabled((Boolean) nv);
+            }
+            return;
+        }
         if (evt.getSource() instanceof HardwareInterface) {
             if (evt.getPropertyName().equals("readerStarted")) { // comes from hardware interface AEReader thread
                 //            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
@@ -8861,7 +9084,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aedzRecordingOutputStream = null;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 constructRecordingWriter(chip, opened, (stream, snapshot) -> {
-                    aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+            aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+                    aedat4RecordingTrackIndex = 0;
+                    aedat4RecordingOwnsClose = true;
                 });
                 writer = aedat4RecordingOutputStream;
                 log.info(String.format("AEDAT-4 recording compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of recorded events)",
@@ -8939,6 +9164,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Join a muxed AEDAT-4 already opened by {@link net.sf.jaer.JAERViewer}.
+     *
+     * @param ownsClose true only for the viewer that must {@code close()} the stream
+     */
+    public synchronized void attachSharedAedat4Recording(Aedat4FileOutputStream stream, File file,
+            int trackIndex, boolean ownsClose, RecordingConfigurationSnapshot snapshot) {
+        aedat4RecordingOutputStream = stream;
+        recordingOutputStream = null;
+        aedzRecordingOutputStream = null;
+        recordingFile = file;
+        aedat4RecordingTrackIndex = trackIndex;
+        aedat4RecordingOwnsClose = ownsClose;
+        activeRecordingSnapshot = snapshot;
+        if (chip != null && snapshot != null) {
+            chip.setRecordingConfigurationSnapshot(snapshot);
+        }
+        setRecordingEnabled(true);
+        fixRecordingControls();
+        recordingStartTime = System.currentTimeMillis();
+        recordingTimeLimitOverlayText = null;
+        recordingTimeLimitOverlayLastMs = 0;
+        log.info("sharing AEDAT-4 mux " + file + " track=" + trackIndex + " ownsClose=" + ownsClose);
+        getSupport().firePropertyChange(EVENT_RECORDING_STARTED, null, recordingFile);
+    }
+
+    public synchronized void detachSharedAedat4RecordingWithoutClose() {
+        RecordingConfigurationSnapshot stopping = activeRecordingSnapshot;
+        aedat4RecordingOutputStream = null;
+        recordingOutputStream = null;
+        aedzRecordingOutputStream = null;
+        aedat4RecordingOwnsClose = true;
+        aedat4RecordingTrackIndex = 0;
+        setRecordingEnabled(false);
+        recordingPaused = false;
+        releaseActiveRecordingSnapshot(stopping);
+        fixRecordingControls();
+    }
+
+    /**
      * The opened raw recording stream together with the immutable recording-start
      * snapshot that was frozen (and placed on the chip) just before the file was
      * opened.
@@ -8998,6 +9262,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordingEnabled = false;
             recordingPaused = false;
             recordingFile = null;
+            aedat4RecordingOwnsClose = true;
+            aedat4RecordingTrackIndex = 0;
             if (opened != null) {
                 clearCapturedSnapshotByIdentity(chip, opened.snapshot);
                 if (activeRecordingSnapshot == opened.snapshot) {
@@ -9144,54 +9410,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            return null;
 //        }
         dataFileVersionNum = getRecordingDataFileVersion();
-
-        String dateString
-                = AEDataFile.DATE_FORMAT.format(new Date()); // uses local time zone on this computer (must be set correctly to be able to find true local time of recording later)
-        String className
-                = chip.getClass().getSimpleName();
-        int suffixNumber = 0;
-        // TODO replace with real serial number code in devices!
-        String serialNumber = "";
-        if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof USBInterface)) {
-            USBInterface usb = (USBInterface) chip.getHardwareInterface();
-            if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
-                serialNumber = usb.getStringDescriptors()[2];
-            }
-            // replace non-printable characters with X to avoid errors on windows 10 with creating such filenames.
-            // this sitation can occur with early prototypes that lack serial number (i.e. serial number is integer 0)
-            StringBuilder sb = new StringBuilder("-");
-            for (Character c : serialNumber.toCharArray()) {
-                if (Character.isLetterOrDigit(c)) {
-                    sb.append(c);
-                } else {
-                    sb.append('X');
-                }
-            }
-            serialNumber = sb.toString();
-
-        }
-        boolean succeeded = false;
-        String filename;
-
-        do {
-            // Record files to the temporary folder initially; the user may move or delete the file when recording ends.
-            // Use the extension for the preferred data-file version so the selected format (e.g. AEDAT-2
-            // or AEDZ) is actually honored; previously this was hardcoded to .aedat4, which made startRecording
-            // route to AEDAT-4 regardless of the preference.
-            filename = lastRecordingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.extensionForVersion(dataFileVersionNum);
-            File lf = new File(filename);
-            if (!lf.isFile()) {
-                succeeded = true;
-            }
-
-        } while ((succeeded == false) && (suffixNumber++ <= 5));
-        if (succeeded == false) {
-            log.warning("AEViewer.startRecording(): could not open a unique new file for recording after trying up to " + filename);
-            return null;
-        }
-
-        File lf = startRecording(filename, dataFileVersionNum);
-        return lf;
+        String base = RecordingFilename.singleCameraBase(chip, new Date());
+        File lf = RecordingFilename.uniqueFile(lastRecordingFolder, base,
+                AEDataFile.extensionForVersion(dataFileVersionNum));
+        return startRecording(lf.getAbsolutePath(), dataFileVersionNum);
 
     }
 
@@ -9388,6 +9610,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int retValue = JFileChooser.CANCEL_OPTION;
         String fileInfo = "";
         if (isRecordingEnabled()) {
+            if (aedat4RecordingOutputStream != null && !aedat4RecordingOwnsClose) {
+                log.info("Detaching from shared AEDAT-4 mux without closing (track "
+                        + aedat4RecordingTrackIndex + ")");
+                File shared = recordingFile;
+                detachSharedAedat4RecordingWithoutClose();
+                return shared;
+            }
             if (recordingButton.isSelected()) {
                 recordingButton.setSelected(false);
             }
@@ -9396,6 +9625,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordingMenuItem.setText("Start recording data");
             log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + recordingFile);
                 final boolean wasAedat4 = aedat4RecordingOutputStream != null;
+                final boolean muxedConfirm = wasAedat4 && aedat4RecordingOwnsClose
+                        && aedat4RecordingOutputStream.getTrackCount() > 1;
                 final boolean wasAedz = aedzRecordingOutputStream != null;
                 final String preferredSaveExt = wasAedat4
                         ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4
@@ -9446,7 +9677,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 // if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
 
-                if (confirmFilename && !jaerViewer.isSyncEnabled()) {
+                if (confirmFilename && (!jaerViewer.isSyncEnabled() || muxedConfirm)) {
                     // Pause live acquisition/rendering while the modal save UI is up so
                     // USB packets are not cooked/rendered into unbounded memory.
                     final boolean wasPausedForSaveDialog = isPaused();
@@ -9779,8 +10010,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Overlay detail while recording: elapsed {@code Recorded XXhYYmZZs}, plus
-     * total and remaining when a time limit is set, and free disk space
-     * (volume probe at most every 5 s). Refreshed at most once per second.
+     * total and remaining when a time limit is set, free disk space
+     * (volume probe at most every 5 s), and ARS skip state. Refreshed at most once per second.
      *
      * @return overlay lines, or {@code null} when not recording or overlay is off
      */
@@ -9803,6 +10034,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             sb.append('\n').append(formatRecordingDurationHms(remainingMs)).append(" left to record");
         }
         sb.append('\n').append(recordingFreeSpaceOverlayLine());
+        sb.append('\n').append(recordingArsOverlayLine());
         recordingTimeLimitOverlayText = sb.toString();
         return recordingTimeLimitOverlayText;
     }
@@ -9821,11 +10053,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return String.format("%02dh%02dm%02ds", h, m, s);
     }
 
+    private String recordingArsOverlayLine() {
+        if (chip == null || chip.getRenderer() == null) {
+            return "ARS off";
+        }
+        AEChipRenderer r = chip.getRenderer();
+        if (!r.isAdaptiveRenderSkippingEnabled()) {
+            return "ARS off";
+        }
+        String mode = arsForcedOnForRecording ? "ARS auto" : "ARS on";
+        return mode + " skip " + r.getSkipFrameRenderingNumberCurrent()
+                + "/" + r.getSkipFrameRenderingNumberMax();
+    }
+
     /**
-     * Returns true if currently recording data to file
-     *
-     * @return the recordingEnabled
+     * While recording, enable ARS if it was off so ViewLoop can skip pixmap
+     * rendering under load (USB readers keep draining). Does not persist prefs.
      */
+    private void enableAdaptiveRenderSkippingForRecording() {
+        if (chip == null || chip.getRenderer() == null) {
+            return;
+        }
+        AEChipRenderer r = chip.getRenderer();
+        boolean wasOn = r.isAdaptiveRenderSkippingEnabled();
+        arsForcedOnForRecording = !wasOn;
+        if (!wasOn) {
+            r.setSkipFrameRenderingNumberMax(r.getConfiguredSkipFrameRenderingNumberMax(), false);
+            log.info("ARS enabled for recording (was off); pixmap rendering skipped so USB/record stay drained");
+        }
+        r.boostSkipToMaximum();
+        syncAdaptiveRenderSkipMenuFromRenderer();
+    }
+
+    private void restoreAdaptiveRenderSkippingAfterRecording() {
+        if (!arsForcedOnForRecording) {
+            return;
+        }
+        arsForcedOnForRecording = false;
+        if (chip != null && chip.getRenderer() != null) {
+            chip.getRenderer().setSkipFrameRenderingNumberMax(0, false);
+            syncAdaptiveRenderSkipMenuFromRenderer();
+            log.info("ARS restored off after recording");
+        }
+    }
     public boolean isRecordingEnabled() {
         return recordingEnabled;
     }
@@ -9838,9 +10108,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param recordingEnabled the recordingEnabled to set
      */
     private void setRecordingEnabled(boolean recordingEnabled) {
+        boolean wasRecording = this.recordingEnabled;
         this.recordingEnabled = recordingEnabled;
         if (!recordingEnabled) {
             recordingTimeLimitOverlayText = null;
+            if (wasRecording) {
+                restoreAdaptiveRenderSkippingAfterRecording();
+            }
+        } else if (!wasRecording) {
+            enableAdaptiveRenderSkippingForRecording();
         }
     }
 
@@ -10147,6 +10423,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     || m.contains("NO_DEVICE") || m.contains("not initialized")
                     || m.contains("LIBUSB_ERROR_NOT_FOUND")
                     || m.contains("LIBUSB_ERROR_IO") || m.contains("LIBUSB_ERROR_PIPE")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True for {@code LIBUSB_ERROR_ACCESS}/{@code BUSY} where a sibling closer
+     * may still hold WinUSB. ISSD {@code TIMEOUT} is a failed bring-up, not a
+     * brief ACCESS, and must not be retried every 2 s (EVK4 09:37:16).
+     */
+    private static boolean isTransientUsbAccess(Throwable t) {
+        for (; t != null; t = t.getCause()) {
+            String m = t.getMessage();
+            if (m == null) {
+                continue;
+            }
+            if (m.contains("LIBUSB_ERROR_ACCESS") || m.contains("LIBUSB_ERROR_BUSY")) {
                 return true;
             }
         }
@@ -10670,7 +10964,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
 	private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
-            log.warning("no effect here - this event is handled by jAERViewer, not AEViewer");
+            if (jaerViewer != null) {
+                jaerViewer.setSyncEnabled(syncEnabledCheckBoxMenuItem.isSelected());
+            }
 	}//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
 
 	@Description("""
@@ -11169,7 +11465,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
 
 	private void closeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeMenuItemActionPerformed
-            stopMe();
+            closeOrAbortCurrentActivity();
 	}//GEN-LAST:event_closeMenuItemActionPerformed
 
         private void exportVideoMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
@@ -11402,6 +11698,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         chip.getRenderer().setAdaptiveRenderSkippingEnabled(
                 skipPacketsRenderingCheckBoxMenuItem.isSelected());
+        arsForcedOnForRecording = false;
         if (getPlayMode() == PlayMode.PLAYBACK) {
             // A user choice during playback supersedes the temporary saved state.
             adaptiveRenderSkipMaxBeforePlayback = -1;
@@ -12217,6 +12514,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     public JCheckBoxMenuItem getSyncEnabledCheckBoxMenuItem() {
         return syncEnabledCheckBoxMenuItem;
+    }
+
+    /**
+     * File / player checkboxes only. Does not persist or fire
+     * {@link #EVENT_SYNC_ENABLED} (that is {@link JAERViewer#setSyncEnabled}).
+     */
+    public void applySyncEnabledUi(boolean enabled) {
+        if (syncEnabledCheckBoxMenuItem != null && syncEnabledCheckBoxMenuItem.isSelected() != enabled) {
+            syncEnabledCheckBoxMenuItem.setSelected(enabled);
+        }
+        if (getPlayerControls() != null) {
+            javax.swing.JCheckBox cb = getPlayerControls().getSyncPlaybackCheckBox();
+            if (cb != null && cb.isSelected() != enabled) {
+                cb.setSelected(enabled);
+            }
+        }
     }
 
     public void setSyncEnabledCheckBoxMenuItem(javax.swing.JCheckBoxMenuItem syncEnabledCheckBoxMenuItem) {

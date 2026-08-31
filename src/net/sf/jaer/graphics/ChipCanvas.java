@@ -610,8 +610,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      * Overlay while recording: transparent red {@code Recording}, Apply Filters
      * flag ({@link AEViewer#isRecordFilteredEventsEnabled()}), elapsed
      * {@code Recorded XXhYYmZZs}, plus total and remaining when a recording time
-     * limit is set, and free disk space (refreshed about every 5 s). Gated by
-     * {@link AEViewer#isShowRecordingOverlay()}.
+     * limit is set, free disk space (refreshed about every 5 s), and ARS skip
+     * state. Gated by {@link AEViewer#isShowRecordingOverlay()}.
      */
     private void drawRecordingOverlayIfNeeded(final GLAutoDrawable drawable) {
         if (!(chip instanceof AEChip)) {

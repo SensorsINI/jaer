@@ -1921,6 +1921,18 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * Jump skip to max so the next packets skip pixmap render (recording / overload).
+     * {@link #adaptRenderSkipping()} can lower it again if the loop is idle.
+     */
+    public void boostSkipToMaximum() {
+        if (skipFrameRenderingNumberMax <= 0) {
+            return;
+        }
+        skipFrameRenderingNumberCurrent = skipFrameRenderingNumberMax;
+        skipFramesCounter = skipFrameRenderingNumberCurrent;
+    }
+
+    /**
      * @return the skipFramesCounter
      */
     public int getSkipPacketsRenderingCount() {

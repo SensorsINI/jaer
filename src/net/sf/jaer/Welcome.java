@@ -83,11 +83,27 @@ public final class Welcome {
      * @return overlay lines naming the camera being opened
      */
     public static String[] opening(AEViewer viewer, String cameraName) {
+        return opening(viewer, cameraName, null);
+    }
+
+    /**
+     * Opening overlay with a live status line (e.g. Prophesee ISSD phase).
+     *
+     * @param viewer used for the title line
+     * @param cameraName Interface-menu label or hardware {@code toString}
+     * @param status current bring-up step, or {@code null} for the generic hint
+     * @return overlay lines naming the camera and the current step
+     */
+    public static String[] opening(AEViewer viewer, String cameraName, String status) {
         String name = (cameraName == null || cameraName.isEmpty()) ? "camera" : cameraName;
         List<String> lines = new ArrayList<>(3);
         addIfPresent(lines, title(viewer));
         lines.add("Opening " + name + "…");
-        lines.add("USB setup can take several seconds");
+        if (status != null && !status.isEmpty()) {
+            lines.add(status);
+        } else {
+            lines.add("USB setup can take several seconds");
+        }
         return lines.toArray(String[]::new);
     }
 

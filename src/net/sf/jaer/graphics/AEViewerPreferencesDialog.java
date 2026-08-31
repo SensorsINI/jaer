@@ -195,6 +195,24 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                             }
                         }
                     });
+            viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED,
+                    new PropertyChangeListener() {
+                        @Override
+                        public void propertyChange(PropertyChangeEvent evt) {
+                            if (syncEnabledCB == null || updatingUi) {
+                                return;
+                            }
+                            Object nv = evt.getNewValue();
+                            if (nv instanceof Boolean) {
+                                updatingUi = true;
+                                try {
+                                    syncEnabledCB.setSelected((Boolean) nv);
+                                } finally {
+                                    updatingUi = false;
+                                }
+                            }
+                        }
+                    });
         }
         pack();
         setLocationRelativeTo(viewer);

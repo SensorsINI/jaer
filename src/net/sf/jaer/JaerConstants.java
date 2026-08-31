@@ -80,6 +80,8 @@ public class JaerConstants {
     public static final String HELP_URL_AEDAT4_SAMPLE_DATA = "https://github.com/MISTLab/event_based_data";
     /** iniVation release repository AEDAT-4 sample datasets. */
     public static final String HELP_URL_INIVATION_AEDAT4_DATA = "https://release.inivation.com/?prefix=datasets/";
+    /** Dual-camera DAVIS346 + DVXplorer muxed AEDAT-4 (Ghosh et al. EvDownsampling). */
+    public static final String HELP_URL_EVDOWNSAMPLING = "https://github.com/anindyaghosh/EvDownsampling#readme";
     /** Prophesee / Metavision sample recordings and datasets (RAW EVT2/EVT3, HDF5, DAT). */
     public static final String HELP_URL_PROPHESEE_SAMPLE_DATA = "https://docs.prophesee.ai/stable/datasets.html#chapter-datasets";
     private static boolean loggedVersionInfoAlready=false;

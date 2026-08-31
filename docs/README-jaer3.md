@@ -225,7 +225,10 @@ After filtering:
 
 Rendering can be **skipped** adaptively under load (`packetLevelRenderSkipping`)
 when no filters need every packet and AVI sync recording is not active; recording
-of raw data can still occur on the skip path.
+of raw data can still occur on the skip path. Starting a data recording turns ARS
+**on** if it was off (not persisted) and boosts skip to max so ViewLoop keeps
+draining USB while LZ4/write runs; the recording overlay shows `ARS auto skip n/max`.
+The previous ARS on/off state is restored when recording stops.
 
 ---
 
@@ -249,6 +252,10 @@ flowchart TD
 
 - Default recording format can be AEDAT-4; compression is chosen in preferences
   (`Aedat4Compression`).
+- **Synchronized** recording (2+ **LIVE** viewers, AEDAT-4): one file; each live
+  viewer writes its `PacketBundle` onto a camera track (EVTS + frames + IMU).
+  Idle **WAITING** windows are not muxed. AEDAT-2/AEDZ sync still uses per-file
+  `.aeidx`.
 - On close, the writer logs an estimate such as
   `compressed to XX% of raw (payload … → …)` comparing uncompressed FlatBuffer
   payloads to compressed sizes.

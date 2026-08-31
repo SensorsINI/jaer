@@ -13,6 +13,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import net.sf.jaer.UsbDevices;
@@ -55,8 +58,22 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	private static final long serialVersionUID = 6795768174203484869L;
 //	HashSet<Class> factoryHashSet = new HashSet<Class>();
 	private final ArrayList<HardwareInterface> interfaceList = new ArrayList<>();
+	/**
+	 * Last completed scan. Replaced atomically so Interface-menu / EDT reads
+	 * never wait on {@code LibUsb.getDeviceList} (Windows WinUSB can hang that
+	 * call after an NRV unplug; synchronized cache reads then froze Swing).
+	 */
+	private volatile List<HardwareInterface> interfaceSnapshot = List.of();
 	/** True until a bus scan completes; libusb hotplug sets this so WAITING can skip periodic polls. */
 	private volatile boolean usbEnumerationDirty = true;
+	/** Coalesce WAITING background scans; a hung {@code getDeviceList} must not start another. */
+	private final AtomicBoolean backgroundScanQueued = new AtomicBoolean(false);
+	/**
+	 * Native {@code open()}+config in progress ({@code USB_OPEN_SERIAL_LOCK}).
+	 * WAITING must not {@code getDeviceList} then: WinUSB times out EVK4 ISSD
+	 * bulk and stalls NRV I2C (jAER 10:14:08 Prophesee; 10:12:43 NRV).
+	 */
+	private final AtomicInteger usbNativeOpenCount = new AtomicInteger();
 	static final Logger log = Logger.getLogger("net.sf.jaer");
 
 	// these are devices that can be enumerated and opened
@@ -109,7 +126,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	 * @see #getNumInterfacesAvailable()
 	 */
 	synchronized public void buildInterfaceList() {
-		interfaceList.clear();
+		final ArrayList<HardwareInterface> built = new ArrayList<>();
 		HardwareInterface u;
 		// System.out.println("****** HardwareInterfaceFactory.building interface list");
 
@@ -127,7 +144,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 						continue;
 					}
 
-					interfaceList.add(u);
+					built.add(u);
                                         // don't do following because to print device toString() requires opening it minimally. this causes hang on windows.
 //					log.log(Level.INFO, "HardwareInterfaceFactory.buildInterfaceList: added device {0} with HardwareInterfaceFactory {1}", new Object[]{u, factorie});
 				}
@@ -145,6 +162,11 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 						new Object[] { factorie, e.getCause() != null ? e.getCause() : e });
 			}
 		}
+		// Publish only after the scan finishes so a hung getDeviceList leaves
+		// the previous snapshot readable from the EDT.
+		interfaceList.clear();
+		interfaceList.addAll(built);
+		interfaceSnapshot = List.copyOf(built);
 	}
 
 	/**
@@ -161,14 +183,81 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	}
 
 	/**
-	 * Number of interfaces from the last {@link #buildInterfaceList()}. Does not
-	 * scan the USB bus; use from the Interface menu when a device is already open.
+	 * Number of interfaces from the last completed {@link #buildInterfaceList()}.
+	 * Does not scan the USB bus and does not wait for an in-flight scan. Use from
+	 * the Interface menu / EDT.
 	 *
 	 * @return cached device count
 	 * @see #getNumInterfacesAvailable()
 	 */
-	synchronized public int getCachedNumInterfacesAvailable() {
-		return interfaceList.size();
+	public int getCachedNumInterfacesAvailable() {
+		return interfaceSnapshot.size();
+	}
+
+	/**
+	 * Kick a USB bus scan on a daemon if one is not already running. Returns
+	 * immediately. WAITING ViewLoop must use this plus
+	 * {@link #getCachedNumInterfacesAvailable()} so a hung WinUSB
+	 * {@code getDeviceList} cannot freeze that window (or the EDT via the
+	 * factory monitor).
+	 */
+	public void requestBackgroundScan() {
+		if (usbNativeOpenCount.get() > 0) {
+			log.fine("background USB scan skipped; native open in progress");
+			return;
+		}
+		if (!usbEnumerationDirty && LibUsbHotplug.isSupported()) {
+			return;
+		}
+		if (!backgroundScanQueued.compareAndSet(false, true)) {
+			return;
+		}
+		Thread t = new Thread(() -> {
+			try {
+				if (usbNativeOpenCount.get() > 0) {
+					log.fine("background USB scan aborted; native open in progress");
+					return;
+				}
+				getNumInterfacesAvailable();
+			} catch (Throwable e) {
+				log.log(Level.WARNING, "background USB scan failed: " + e, e);
+			} finally {
+				backgroundScanQueued.set(false);
+			}
+		}, "jaer-usb-scan");
+		t.setDaemon(true);
+		t.start();
+	}
+
+	/** {@code AEViewer} holds {@code USB_OPEN_SERIAL_LOCK} around native open+config. */
+	public void noteUsbNativeOpenBegin() {
+		usbNativeOpenCount.incrementAndGet();
+	}
+
+	public void noteUsbNativeOpenEnd() {
+		usbNativeOpenCount.updateAndGet(n -> Math.max(0, n - 1));
+	}
+
+	/**
+	 * Wait until an in-flight {@code jaer-usb-scan} finishes, or {@code timeoutMs}.
+	 * Call after taking the open serializer so ISSD / I2C do not overlap
+	 * {@code getDeviceList}.
+	 */
+	public void awaitBackgroundScanIdle(long timeoutMs) {
+		final long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMs);
+		while (backgroundScanQueued.get()) {
+			if (System.currentTimeMillis() >= deadline) {
+				log.fine("background USB scan still running after " + timeoutMs
+						+ " ms; continuing open");
+				return;
+			}
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			}
+		}
 	}
 
 	/**
@@ -183,7 +272,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	synchronized public int getNumInterfacesAvailable() {
 		// With libusb hotplug the list stays valid until a plug event (or explicit dirty).
 		if (!usbEnumerationDirty && LibUsbHotplug.isSupported()) {
-			return interfaceList.size();
+			return interfaceSnapshot.size();
 		}
 		// Rebuild until a hotplug arriving mid-scan is included (stale getDeviceList).
 		int spins = 0;
@@ -191,32 +280,23 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 			usbEnumerationDirty = false;
 			buildInterfaceList();
 		} while (usbEnumerationDirty && ++spins < 3);
-		return interfaceList.size();
+		return interfaceSnapshot.size();
 	}
 
-	/** @return first available interface, starting with CypressFX2 and then going to SiLabsC8051F320 */
+	/** @return first available interface from the last completed scan. Does not wait for an in-flight scan. */
 	@Override
-	synchronized public HardwareInterface getFirstAvailableInterface() {
+	public HardwareInterface getFirstAvailableInterface() {
 		return getInterface(0);
 	}
 
-	/** build list of devices and return the n'th one, 0 based */
+	/** Return the n'th interface from the last completed scan. Does not wait for an in-flight scan. */
 	@Override
-	synchronized public HardwareInterface getInterface(final int n) {
-		// buildInterfaceList();
-		if ((interfaceList == null) || interfaceList.isEmpty()) {
+	public HardwareInterface getInterface(final int n) {
+		final List<HardwareInterface> snap = interfaceSnapshot;
+		if (snap.isEmpty() || n < 0 || n > (snap.size() - 1)) {
 			return null;
 		}
-
-		if (n > (interfaceList.size() - 1)) {
-			return null;
-		}
-		else {
-			final HardwareInterface hw = interfaceList.get(n);
-			// System.out.println("HardwareInterfaceFactory.getInterace("+n+")="+hw);
-
-			return hw;
-		}
+		return snap.get(n);
 	}
 
 	// public static void main(String [] arg) {

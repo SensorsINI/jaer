@@ -346,7 +346,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         final Aedat4Lz4Rerecorder.OpenPlan lz4Plan = viewer.offerAedat4Lz4Rerecord(file);
         if (lz4Plan == null || lz4Plan.fileToOpen == null) {
             viewer.endFilePlaybackOpen();
-            setPaused(false);
+            viewer.setPaused(false);
+            viewer.clearPendingExtraAedat4Streams();
             return;
         }
         final File playFile = lz4Plan.fileToOpen;
@@ -504,6 +505,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                                 JOptionPane.ERROR_MESSAGE);
                     }
                     if (stream == null || isCancelled() || progressMonitor.isCanceled()) {
+                        viewer.clearPendingExtraAedat4Streams();
                         log.fine("done(): aborting open (null stream or cancel)");
                         if (stream != null) {
                             try {
@@ -566,6 +568,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     log.fine("done(): endFilePlaybackOpen + setPaused(false)");
                     viewer.endFilePlaybackOpen();
                     viewer.setPaused(false);
+                    viewer.spawnPendingExtraAedat4Streams(playFile);
                     log.info("AEDAT-4 open: EDT setup complete, playback should run");
                     log.fine("done(): playback UI setup complete");
                 } finally {

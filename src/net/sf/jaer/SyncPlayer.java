@@ -23,10 +23,12 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.IndexFileFilter;
@@ -175,8 +177,16 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
         if (!indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) && !indexFile.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)) {
+            AEViewer v = firstViewerForFileOpen();
+            if (isAedat4File(indexFile)) {
+                // Muxed AEDAT-4 is one file with several EVTS streams. Keep sync on;
+                // AEViewer.ensureChipCompatibleWithRecording shows the stream chooser
+                // and spawnPendingExtraAedat4Streams opens extra viewers.
+                log.info(indexFile + " is AEDAT-4 (not an .aeidx playlist); opening with EVTS stream chooser, leaving sync enabled");
+                v.aePlayer.startPlayback(indexFile);
+                return;
+            }
             log.info(indexFile + " doesn\'t appear to be an index file pointing to a set of data files because it does't end with the correct extension (.aeidx or .index), opening it in the first viewer and setting sync enabled false");
-            AEViewer v = outer.getViewers().get(0);
             if (outer.isSyncEnabled()) {
                 JOptionPane.showMessageDialog(v, "<html>You are opening a single data file so synchronization has been disabled<br>To reenable, use File/Synchronization enabled</html>");
 //                    setSyncEnabled(false);
@@ -279,6 +289,119 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             }
         }
         outer.setPlayBack(true);
+    }
+
+    /**
+     * Open additional EVTS streams of the same AEDAT-4 in extra viewers.
+     * {@code origin} is already opening {@code file} as the first selected stream.
+     */
+    public void startAdditionalAedat4Streams(File file, List<RecordingChipDetector.StreamHint> streams,
+            AEViewer origin) {
+        if (file == null || streams == null || streams.isEmpty() || origin == null) {
+            return;
+        }
+        getPlayingViewers().clear();
+        getPlayingViewers().add(origin);
+        ArrayList<AEViewer> used = new ArrayList<AEViewer>();
+        used.add(origin);
+        List<Class<? extends AEChip>> loaded = origin.loadedAeChipClasses();
+        for (RecordingChipDetector.StreamHint s : streams) {
+            Class<? extends AEChip> want = RecordingChipDetector.resolve(s.toChipHint(), loaded);
+            AEViewer vToUse = null;
+            for (AEViewer v : outer.getViewers()) {
+                if (used.contains(v)) {
+                    continue;
+                }
+                if (want == null || (v.getAeChipClass() != null
+                        && (v.getAeChipClass().equals(want)
+                        || v.getAeChipClass().getSimpleName().equalsIgnoreCase(want.getSimpleName())))) {
+                    vToUse = v;
+                    used.add(v);
+                    break;
+                }
+            }
+            if (vToUse == null) {
+                log.info("no AEViewer for AEDAT-4 stream " + s.displayLabel() + ", making new one");
+                vToUse = new AEViewer(outer);
+                used.add(vToUse);
+                vToUse.setVisible(true);
+                vToUse.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            }
+            if (want != null) {
+                vToUse.setAeChipClass(want);
+            }
+            vToUse.setPendingAedat4EventStreamId(s.streamId);
+            vToUse.setSkipAedat4Lz4Offer(true);
+            try {
+                vToUse.aePlayer.stopPlayback();
+                vToUse.aePlayer.startPlayback(file);
+                if (vToUse.aePlayer.getAEInputStream() != null) {
+                    vToUse.aePlayer.getAEInputStream().getSupport()
+                            .addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+                }
+            } catch (IOException | InterruptedException e) {
+                log.warning("opening AEDAT-4 stream " + s.displayLabel() + ": " + e);
+            }
+            getPlayingViewers().add(vToUse);
+        }
+        numPlayers = getPlayingViewers().size();
+        log.info("AEDAT-4 multi-stream playback: " + numPlayers + " viewers for " + file.getName());
+        makeBarrier();
+        initTime();
+        outer.setPlayBack(true);
+        for (AEViewer v : getPlayingViewers()) {
+            v.setCursor(Cursor.getDefaultCursor());
+        }
+    }
+
+    /**
+     * Same-file multi-stream playback (all selected EVTS streams).
+     */
+    public void startPlayback(File aedat4, List<RecordingChipDetector.StreamHint> streams)
+            throws IOException, InterruptedException {
+        if (aedat4 == null || streams == null || streams.isEmpty()) {
+            return;
+        }
+        stopPlayback();
+        AEViewer first = outer.getViewers().isEmpty() ? new AEViewer(outer) : outer.getViewers().get(0);
+        first.setPendingAedat4EventStreamId(streams.get(0).streamId);
+        Class<? extends AEChip> firstChip = RecordingChipDetector.resolve(streams.get(0).toChipHint(),
+                first.loadedAeChipClasses());
+        if (firstChip != null) {
+            first.setAeChipClass(firstChip);
+        }
+        first.aePlayer.startPlayback(aedat4);
+        if (streams.size() > 1) {
+            startAdditionalAedat4Streams(aedat4, streams.subList(1, streams.size()), first);
+        } else {
+            getPlayingViewers().clear();
+            getPlayingViewers().add(first);
+            numPlayers = 1;
+            makeBarrier();
+            initTime();
+            outer.setPlayBack(true);
+        }
+    }
+
+    private static boolean isAedat4File(File f) {
+        if (f == null || f.getName() == null) {
+            return false;
+        }
+        return f.getName().toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
+    }
+
+    /** Prefer a non-WAITING window so the EVTS chooser is not shown on an idle viewer. */
+    private AEViewer firstViewerForFileOpen() {
+        List<AEViewer> list = outer.getViewers();
+        if (list == null || list.isEmpty()) {
+            return new AEViewer(outer);
+        }
+        for (AEViewer v : list) {
+            if (v.getPlayMode() != AEViewer.PlayMode.WAITING) {
+                return v;
+            }
+        }
+        return list.get(0);
     }
 
     /**

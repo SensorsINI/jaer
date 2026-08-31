@@ -44,6 +44,7 @@ import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.Action;
 import javax.swing.JMenu;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
@@ -101,7 +102,7 @@ public class JAERViewer {
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
     /** True while {@link RunningThread} reconstructs last-session windows. Extra File→New viewers must not autobind leftover cameras. */
     private volatile boolean restoringSessionViewers;
-    private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", false); // default false so that all viewers are independent
+    private boolean syncEnabled = loadSyncEnabledPref();
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
     private ToggleSyncEnabledAction toggleSyncEnabledAction = new ToggleSyncEnabledAction();
     
@@ -607,6 +608,8 @@ public class JAERViewer {
             }
             other.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, viewer);
             viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, other);
+            other.getSupport().addPropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, viewer);
+            viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, other);
         }
         viewer.addWindowListener(new java.awt.event.WindowAdapter() {
 
@@ -654,16 +657,20 @@ public class JAERViewer {
         v.getRecordingButton().setAction(action);
         v.getRecordingMenuItem().setAction(action);
 
-        // adds to each AEViewers syncenabled check box menu item the toggleSyncEnabledAction
+        // File menu checkbox keeps its own listener (setAction left a second
+        // listener that only logged "no effect here"). Player checkbox uses the Action.
         AbstractButton b = v.getSyncEnabledCheckBoxMenuItem();
-        b.setAction(getToggleSyncEnabledAction());
-        syncEnableButtons.add(b);   // we need this stupid list because java 1.5 doesn't have Action property to support togglebuttons selected state (1.6 adds it)
+        if (!syncEnableButtons.contains(b)) {
+            syncEnableButtons.add(b);
+        }
         b.setSelected(isSyncEnabled());
 
         AbstractButton bbb = v.getPlayerControls().getSyncPlaybackCheckBox(); // TODO dependency, depends on existing player control panel
-        syncEnableButtons.add(bbb);
-        bbb.setSelected(isSyncEnabled());
+        if (!syncEnableButtons.contains(bbb)) {
+            syncEnableButtons.add(bbb);
+        }
         bbb.setAction(getToggleSyncEnabledAction());
+        bbb.setSelected(isSyncEnabled());
 
         boolean en = true; //viewers.size()>1? true:false;
         for (AbstractButton bb : syncEnableButtons) {
@@ -682,6 +689,8 @@ public class JAERViewer {
             }
             other.getSupport().removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, v);
             v.getSupport().removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, other);
+            other.getSupport().removePropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, v);
+            v.getSupport().removePropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, other);
         }
         if (getViewers().remove(v) == false) {
             log.warning("JAERViewer.removeViewer(): " + v + " is not in viewers list");
@@ -717,6 +726,8 @@ public class JAERViewer {
     }
     File indexFile = null;
     Aedat4FileOutputStream muxedAedat4OutputStream = null;
+    /** Viewers attached to the current muxed AEDAT-4 (excludes idle WAITING). */
+    private List<AEViewer> muxedRecordingViewers = new ArrayList<>();
     final String indexFileNameHeader = "JAERViewer-";
     final String indexFileSuffix = AEDataFile.INDEX_FILE_EXTENSION;
     DateFormat recordingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
@@ -739,6 +750,25 @@ public class JAERViewer {
         return indexFile;
     }
 
+    /**
+     * Viewers that should join synchronized recording. Idle {@code WAITING}
+     * windows (no live camera / file) are omitted so they do not become empty
+     * mux tracks.
+     */
+    List<AEViewer> viewersForSynchronizedRecording() {
+        List<AEViewer> out = new ArrayList<>();
+        for (AEViewer v : viewers) {
+            if (v == null || v.getChip() == null) {
+                continue;
+            }
+            if (v.getPlayMode() == AEViewer.PlayMode.WAITING) {
+                continue;
+            }
+            out.add(v);
+        }
+        return out;
+    }
+
     public void startSynchronizedRecording() {
         log.info("starting synchronized recording");
 
@@ -746,15 +776,40 @@ public class JAERViewer {
             v.setPaused(true);
         }
 
-        boolean muxAedat4 = viewers.size() > 1
-                && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(viewers.get(0).getRecordingDataFileVersion());
+        List<AEViewer> rec = viewersForSynchronizedRecording();
+        int skippedWaiting = viewers.size() - rec.size();
+        if (skippedWaiting > 0) {
+            log.info("synchronized recording skips " + skippedWaiting
+                    + " idle WAITING viewer(s); recording " + rec.size());
+        }
+        if (rec.isEmpty()) {
+            log.warning("synchronized recording: no LIVE/PLAYBACK viewers (idle WAITING windows are not recorded)");
+            AEViewer parent = viewers.isEmpty() ? null : viewers.get(0);
+            JOptionPane.showMessageDialog(parent,
+                    "No cameras are running. Idle WAITING windows are not recorded.",
+                    "Recording", JOptionPane.INFORMATION_MESSAGE);
+            for (AEViewer v : viewers) {
+                v.setPaused(false);
+            }
+            recordingEnabled = false;
+            return;
+        }
+
+        boolean muxAedat4 = rec.size() > 1
+                && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(rec.get(0).getRecordingDataFileVersion());
         if (muxAedat4) {
-            startMuxedAedat4Recording();
+            if (!startMuxedAedat4Recording(rec)) {
+                for (AEViewer v : viewers) {
+                    v.setPaused(false);
+                }
+                recordingEnabled = false;
+                return;
+            }
         } else {
-            if (viewers.size() > 1) {
+            if (rec.size() > 1) {
                 log.info("synchronized recording uses per-file + .aeidx (format is not AEDAT-4)");
             }
-            for (AEViewer v : viewers) {
+            for (AEViewer v : rec) {
                 v.startRecording();
             }
         }
@@ -765,12 +820,13 @@ public class JAERViewer {
         recordingEnabled = true;
     }
 
-    private void startMuxedAedat4Recording() {
-        AEViewer first = viewers.get(0);
+    private boolean startMuxedAedat4Recording(List<AEViewer> rec) {
+        muxedRecordingViewers = new ArrayList<>(rec);
+        AEViewer first = rec.get(0);
         List<Aedat4CameraTrack> tracks = new ArrayList<>();
         List<RecordingFilename.DeviceToken> tokens = new ArrayList<>();
         int i = 0;
-        for (AEViewer v : viewers) {
+        for (AEViewer v : rec) {
             RecordingConfigurationSnapshot snap = RecordingConfigurationSnapshot.captureFromChip(v.getChip());
             if (v.getChip() != null) {
                 v.getChip().setRecordingConfigurationSnapshot(snap);
@@ -787,19 +843,22 @@ public class JAERViewer {
             long baseUs = System.currentTimeMillis() * 1000L;
             muxedAedat4OutputStream = new Aedat4FileOutputStream(fos, tracks, first.getAedat4Compression(), baseUs);
             int idx = 0;
-            for (AEViewer v : viewers) {
+            for (AEViewer v : rec) {
                 v.attachSharedAedat4Recording(muxedAedat4OutputStream, file, idx, idx == 0, tracks.get(idx).snapshot);
                 idx++;
             }
             log.info("muxed AEDAT-4 recording " + file.getAbsolutePath() + " cameras=" + tracks.size());
+            return true;
         } catch (IOException e) {
             log.log(java.util.logging.Level.WARNING, "muxed AEDAT-4 open failed: " + e, e);
             muxedAedat4OutputStream = null;
-            for (AEViewer v : viewers) {
+            muxedRecordingViewers = new ArrayList<>();
+            for (AEViewer v : rec) {
                 if (v.getChip() != null) {
                     v.getChip().setRecordingConfigurationSnapshot(null);
                 }
             }
+            return false;
         }
     }
 
@@ -810,12 +869,17 @@ public class JAERViewer {
         }
 
         if (muxedAedat4OutputStream != null) {
-            AEViewer owner = viewers.get(0);
-            for (int i = 1; i < viewers.size(); i++) {
-                viewers.get(i).detachSharedAedat4RecordingWithoutClose();
+            List<AEViewer> rec = muxedRecordingViewers.isEmpty()
+                    ? viewersForSynchronizedRecording() : muxedRecordingViewers;
+            AEViewer owner = rec.isEmpty() ? viewers.get(0) : rec.get(0);
+            for (AEViewer v : viewers) {
+                if (v != owner) {
+                    v.detachSharedAedat4RecordingWithoutClose();
+                }
             }
             File f = owner.stopRecording(true);
             muxedAedat4OutputStream = null;
+            muxedRecordingViewers = new ArrayList<>();
             if (f != null && f.exists()) {
                 for (AEViewer v : viewers) {
                     v.getRecentFiles().addFile(f);
@@ -831,15 +895,19 @@ public class JAERViewer {
         FileWriter writer = null;
         boolean writingIndex = false;
         try {
-            for (AEViewer v : viewers) {
-                File f = v.stopRecording(getNumViewers() == 1); // only confirm filename if there is only a single viewer
+            List<AEViewer> rec = viewersForSynchronizedRecording();
+            if (rec.isEmpty()) {
+                rec = viewers;
+            }
+            for (AEViewer v : rec) {
+                File f = v.stopRecording(rec.size() == 1); // only confirm filename if there is only a single viewer
                 if (f == null) {
                     log.warning("something is wrong; the recording file is null when you tried to stop recording data. Ignoring this AEViewer instance. \nYou may be trying to do synchronized recording when using only a single AEViewer. \n Disable this functionality from the menu File/Synchronize AEViewer recording/playback");
                     continue;
                 }
                 log.info("Stopped recording to file " + f);
                 if (f.exists()) { // if not cancelled
-                    if (getNumViewers() > 1) {
+                    if (rec.size() > 1) {
 
                         if (writer == null) {
                             writingIndex = true;
@@ -850,7 +918,7 @@ public class JAERViewer {
                     }
                 }
             }
-            if ((viewers.size() > 1) && writingIndex) {
+            if ((rec.size() > 1) && writingIndex) {
                 writer.close();
             }
             if (indexFile != null) {
@@ -983,12 +1051,18 @@ public class JAERViewer {
             putValue(NAME, name);
             putValue(SHORT_DESCRIPTION, "<html>When enabled, multiple viewer recording and playback are synchronized. <br>Does not affect timestamp synchronization except to send timestamp reset to all viewers."
                     + "<br>Device electrical synchronization is independent of this setting.");
+            putValue(Action.SELECTED_KEY, isSyncEnabled());
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
-            setSyncEnabled(!isSyncEnabled());
+            boolean next;
+            if (e != null && e.getSource() instanceof AbstractButton) {
+                next = ((AbstractButton) e.getSource()).isSelected();
+            } else {
+                next = !isSyncEnabled();
+            }
+            setSyncEnabled(next);
         }
     }
     
@@ -1015,23 +1089,41 @@ public class JAERViewer {
         return syncEnabled;
     }
 
+    private static boolean loadSyncEnabledPref() {
+        Preferences ae = JaerConstants.PREFS_ROOT.node("AEViewer");
+        if (ae.get("syncEnabled", null) != null) {
+            return ae.getBoolean("syncEnabled", false);
+        }
+        return prefs.getBoolean("JAERViewer.syncEnabled", false);
+    }
+
     /**
      * Controls whether multiple viewers are synchronized for recording and
-     * playback.
+     * playback. Unchanged values return without firing so sibling
+     * {@link AEViewer#EVENT_SYNC_ENABLED} listeners cannot loop. Persists on
+     * the shared AEViewer prefs node and {@code JAERViewer.syncEnabled}.
      *
      * @param syncEnabled true to be synchronized.
      */
     public void setSyncEnabled(boolean syncEnabled) {
+        if (this.syncEnabled == syncEnabled) {
+            return;
+        }
+        boolean old = this.syncEnabled;
         this.syncEnabled = syncEnabled;
         prefs.putBoolean("JAERViewer.syncEnabled", syncEnabled);
+        JaerConstants.PREFS_ROOT.node("AEViewer").putBoolean("syncEnabled", syncEnabled);
+        toggleSyncEnabledAction.putValue(Action.SELECTED_KEY, syncEnabled);
         for (AbstractButton b : syncEnableButtons) {
             b.setSelected(syncEnabled);
         }
         for (AEViewer v : viewers) {
+            v.applySyncEnabledUi(syncEnabled);
             AbstractAEPlayer p = syncEnabled ? syncPlayer : v.aePlayer;
             if (v.getPlayerControls() != null) {
                 v.getPlayerControls().setAePlayer(p);
             }
+            v.getSupport().firePropertyChange(AEViewer.EVENT_SYNC_ENABLED, old, syncEnabled);
         }
     }
 
