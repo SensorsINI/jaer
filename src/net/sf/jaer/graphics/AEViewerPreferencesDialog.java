@@ -770,7 +770,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
         p.add(new JLabel("Timestamp reset bitmask (hex):"), gbcLabel(y));
         timestampResetBitmaskTF = new JTextField(8);
-        timestampResetBitmaskTF.setToolTipText("Whenever any of these bits are set in an address, time is zeroed at that point. Re-open the file after changing.");
+        timestampResetBitmaskTF.setToolTipText("<html>Hex bitmask for zeroing timestamps in playback files (e.g. 8000).<br>"
+                + "Whenever any of these bits are set in an address, time is zeroed at that point and later timestamps have that time subtracted.<br>"
+                + "Re-open the file after changing.");
         timestampResetBitmaskTF.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

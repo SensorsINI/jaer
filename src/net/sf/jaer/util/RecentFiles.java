@@ -57,6 +57,8 @@ public class RecentFiles {
     private final JSeparator beforeFilesSep = new JSeparator();
     private final JSeparator beforeFoldersSep = new JSeparator();
     private final JSeparator beforePreferencesSep = new JSeparator();
+    /** Disabled header above recent files and folders in the File menu. */
+    private final JMenuItem recentFilesHeader = new JMenuItem("Recent files/folders");
     
     /** Creates a new instance of RecentFiles
      * @param prefs the Preferences node to store recent files in
@@ -70,6 +72,7 @@ public class RecentFiles {
         this.listener=listener;
         maxFiles = clampLimit(prefs.getInt(PREF_MAX_FILES, DEFAULT_MAX_FILES));
         maxFolders = clampLimit(prefs.getInt(PREF_MAX_FOLDERS, DEFAULT_MAX_FOLDERS));
+        recentFilesHeader.setEnabled(false);
         getPrefs();
         fileMenuList=new ArrayList<JMenuItem>(maxFiles);
         buildMenu();
@@ -161,6 +164,7 @@ public class RecentFiles {
         }
         fileMenuList.clear();
         fileMenu.remove(beforeFilesSep);
+        fileMenu.remove(recentFilesHeader);
         fileMenu.remove(beforeFoldersSep);
         fileMenu.remove(beforePreferencesSep);
 
@@ -216,9 +220,10 @@ public class RecentFiles {
 
         // Always keep the recent-files block so File does not run Preferences/Exit
         // into the previous group when the list is empty (fresh prefs, new machine).
-        // [sep] files... [sep] folders... [sep] Preferences
+        // [sep] Recent files/folders [files...] [sep] folders... [sep] Preferences
         int idx = getRecentFilesInsertIndex();
         fileMenu.add(beforeFilesSep, idx++);
+        fileMenu.insert(recentFilesHeader, idx++);
         if (!hasFiles && !hasFolders) {
             JMenuItem empty = new JMenuItem("No recent files");
             empty.setEnabled(false);

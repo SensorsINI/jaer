@@ -982,7 +982,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setAeChipClass(aeChipClass);
 
         playerControlPanel.setVisible(false);
-        timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
         setFocusable(true);
         requestFocus();
 
@@ -6658,7 +6657,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         blockingQueueOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JSeparator();
         exitSeperator = new javax.swing.JSeparator();
         preferencesMenuItem = new javax.swing.JMenuItem();
@@ -7080,17 +7078,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(syncEnabledCheckBoxMenuItem);
-
-        timestampResetBitmaskMenuItem.setMnemonic('t');
-        timestampResetBitmaskMenuItem.setText("dummy, set in constructor");
-        timestampResetBitmaskMenuItem.setToolTipText("Setting a bitmask here will memorize and subtract timestamps when address  & bitmask != 0");
-        timestampResetBitmaskMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                timestampResetBitmaskMenuItemActionPerformed(evt);
-            }
-        });
-        fileMenu.add(timestampResetBitmaskMenuItem);
-        // RecentFiles inserts: [sep] recent files [sep] folders [sep] before Preferences
+        // RecentFiles inserts: [sep] Recent files/folders [files] [sep] folders [sep] before Preferences
 
         preferencesMenuItem.setMnemonic('p');
         preferencesMenuItem.setText("Preferences...");
@@ -10320,16 +10308,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Sets the timestamp reset bitmask used when opening AE input streams and
-     * updates the File menu item label.
+     * Sets the timestamp reset bitmask used when opening AE input streams.
+     * Edited from File → Preferences (File section). Re-open the file after changing.
      */
     public void setAeFileInputStreamTimestampResetBitmask(int aeFileInputStreamTimestampResetBitmask) {
         this.aeFileInputStreamTimestampResetBitmask = aeFileInputStreamTimestampResetBitmask;
         prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask", aeFileInputStreamTimestampResetBitmask);
         log.info("set aeFileInputStreamTimestampResetBitmask=" + HexString.toString(aeFileInputStreamTimestampResetBitmask));
-        if (timestampResetBitmaskMenuItem != null) {
-            timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
-        }
     }
 
     public boolean isCheckNonMonotonicTimeExceptionsEnabled() {
@@ -10977,18 +10962,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
             setRecordingPlaybackImmediatelyEnabled(!isRecordingPlaybackImmediatelyEnabled());
 	}//GEN-LAST:event_recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
-
-	private void timestampResetBitmaskMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampResetBitmaskMenuItemActionPerformed
-            String ret = (String) JOptionPane.showInputDialog(this, "<html>Enter hex value bitmask for zeroing timestamps, e.g. 8000<br>Whenever any of these bits are set, the time will be zeroed at this point,<br> and subsequent timestamps will have this one subtracted from it.<br>The file must be opened after the mask is set.", "Timestamp reset bitmask value", JOptionPane.QUESTION_MESSAGE, null, null, Integer.toHexString(aeFileInputStreamTimestampResetBitmask));
-            if (ret == null) {
-                return;
-            }
-            try {
-                setAeFileInputStreamTimestampResetBitmask(Integer.parseInt(ret, 16));
-            } catch (Exception e) {
-                log.warning(e.toString());
-            }
-	}//GEN-LAST:event_timestampResetBitmaskMenuItemActionPerformed
 
 	private void closeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeMenuItemActionPerformed
             stopMe();
@@ -12450,7 +12423,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JTextField statusTextField;
     private javax.swing.JCheckBoxMenuItem syncEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator syncSeperator;
-    private javax.swing.JMenuItem timestampResetBitmaskMenuItem;
     private javax.swing.JMenuItem toggleMarkerMI;
     private javax.swing.JMenuItem togglePlaybackDirectionMenuItem;
     private javax.swing.JCheckBoxMenuItem unicastOutputEnabledCheckBoxMenuItem;
