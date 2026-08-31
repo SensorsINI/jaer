@@ -244,7 +244,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 setEventRate(true);
                 String s = "statistics from Info filter logged starting at " + new Date() + " and originating from ";
                 if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                    s = s + " file " + chip.getAeViewer().getAePlayer().getAEInputStream().getFile().toString();
+                    AEFileInputStreamInterface stream = chip.getAeViewer().getAeFileInputStream();
+                    s = s + " file " + (stream == null ? "(none)" : stream.getFile().toString());
                 } else {
                     s = s + " input during PlayMode=" + chip.getAeViewer().getPlayMode().toString();
                 }
@@ -496,7 +497,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         } else if (evt.getSource() instanceof AEViewer) {
             if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't get this because AEViewer doesn't refire event from AEPlayer and we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
                 // new value is file name
-                aeFileInputStream = chip.getAeViewer().getAePlayer().getAEInputStream();
+                aeFileInputStream = chip.getAeViewer().getAeFileInputStream();
                 getAbsoluteStartingTimeMsFromFile();
                 for (RateHistory r : rateHistories.values()) {
                     r.clear();

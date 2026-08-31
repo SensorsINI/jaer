@@ -168,6 +168,29 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      */
     public void setCurrentStartTimestamp(int currentStartTimestamp);
 
+    /**
+     * Seek to the event (or packet) nearest {@code timestampUs} without a linear
+     * scan of the file. Default maps the time linearly onto {@link #size()}
+     * using first/last timestamps. AEDAT-4 overrides this with a packet-table
+     * binary search (no decompress).
+     */
+    default void setPositionFromTimestamp(int timestampUs) {
+        int first = getFirstTimestamp();
+        int last = getLastTimestamp();
+        long dur = (last & 0xffffffffL) - (first & 0xffffffffL);
+        if (dur <= 0) {
+            setCurrentStartTimestamp(timestampUs);
+            return;
+        }
+        double frac = ((timestampUs & 0xffffffffL) - (first & 0xffffffffL)) / (double) dur;
+        if (frac < 0) {
+            frac = 0;
+        } else if (frac > 1) {
+            frac = 1;
+        }
+        setFractionalPosition((float) frac);
+    }
+
     /** Adds or removes a marker at current position() of AEFileInputStream.
      * 
      * @return true if marker added, false if one is removed.

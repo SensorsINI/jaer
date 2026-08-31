@@ -45,7 +45,6 @@ import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.MessageWithLink;
@@ -770,10 +769,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
-                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-                    AEFileInputStreamInterface in = player.getAEInputStream();
-                    in.getSupport().addPropertyChangeListener(this);
-                    // Treat FileOpen same as a rewind
+                    AEViewer v = chip.getAeViewer();
+                    AEFileInputStreamInterface in = v == null ? null : v.getAeFileInputStream();
+                    if (in != null) {
+                        in.getSupport().addPropertyChangeListener(this);
+                    }
                     resetFilter();
                     break;
             }

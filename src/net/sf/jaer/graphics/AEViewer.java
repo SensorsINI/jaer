@@ -2403,6 +2403,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (selected.size() > 1 && jaerViewer != null) {
                         pendingExtraAedat4EventStreams = new ArrayList<>(
                                 selected.subList(1, selected.size()));
+                        if (!jaerViewer.isSyncEnabled()) {
+                            log.info("enabling synchronized recording/playback for "
+                                    + selected.size() + " AEDAT-4 cameras");
+                            jaerViewer.setSyncEnabled(true);
+                        }
                     } else {
                         pendingExtraAedat4EventStreams = null;
                     }
@@ -12636,6 +12641,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         return jaerViewer.getSyncPlayer();
+    }
+
+    /**
+     * This window's own player. Use when you need the file stream attached to
+     * this viewer; {@link #getAePlayer()} is SyncPlayer during multi-viewer
+     * sync and that player has no {@code AEInputStream}.
+     */
+    public AEPlayer getLocalAePlayer() {
+        return aePlayer;
+    }
+
+    /**
+     * File input stream for this viewer, or null. Never SyncPlayer's stream
+     * (there isn't one).
+     */
+    public AEFileInputStreamInterface getAeFileInputStream() {
+        return aePlayer == null ? null : aePlayer.getAEInputStream();
     }
 
     /**

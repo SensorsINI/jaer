@@ -27,6 +27,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JSlider;
 import javax.swing.plaf.basic.BasicSliderUI;
 import javax.swing.plaf.basic.BasicSliderUI.TrackListener;
+import net.sf.jaer.JAERViewer;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -789,39 +790,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         synchronized (aePlayer) {
             try {
-                int oldtime = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
-                aeViewer.aePlayer.setFractionalPosition(fracPos); // sets position in events
-                int time = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
-                aeViewer.aePlayer.getAEInputStream().setCurrentStartTimestamp(time); // tobi commented out to support RosbagFileInputStream
-                String s = String.format("%8.3f s, %10d position", time * 1e-6f, aeViewer.aePlayer.getAEInputStream().position());
+                aeViewer.aePlayer.setFractionalPosition(fracPos);
+                AEFileInputStreamInterface stream = aeViewer.aePlayer.getAEInputStream();
+                int time = stream.getMostRecentTimestamp();
+                stream.setCurrentStartTimestamp(time);
+                String s = String.format("%8.3f s, %10d position", time * 1e-6f, stream.position());
                 aeViewer.setStatusMessage(s);
-//                log.info("slider position "+s);
-                //                log.info(this+" slider set time to "+time);
-                if (aeViewer.getJaerViewer().getViewers().size() > 1) {
-                    if (time < oldtime) {
-                        // we need to set position in all viewers so that we catch up to present desired time
-                        AbstractAEPlayer p;
-                        AEFileInputStreamInterface is;
-
-                        try {
-                            for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {
-                                if (true) {
-                                    p = v.aePlayer; // we want local play here!
-                                    is = p.getAEInputStream();
-                                    if (is != null) {
-                                        is.rewind();
-                                    } else {
-                                        log.warning("null ae input stream on reposition");
-                                    }
-
-                                }
-                            }
-                            aeViewer.getJaerViewer().getSyncPlayer().setTime(time);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-
-                    }
+                JAERViewer jv = aeViewer.getJaerViewer();
+                if (jv != null && jv.isSyncEnabled() && jv.getViewers().size() > 1) {
+                    jv.getSyncPlayer().seekAllToTimestamp(time, aeViewer);
                 }
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();

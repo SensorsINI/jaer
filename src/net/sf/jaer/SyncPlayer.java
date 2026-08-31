@@ -143,12 +143,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     }
 
     synchronized void makeBarrier() {
-        if (numPlayers < 1) {
-            log.warning("cannot make barrier for " + numPlayers + " viewers - something is wrong");
-            log.warning("disabling sychronized playback because probably multiple viewers are active but we are not playing set of sychronized files");
-            outer.getToggleSyncEnabledAction().actionPerformed(null);
-            // toggle all the viewers syncenabled menu item
-//               JOptionPane.showMessageDialog(null,"Disabled sychronized playback because files are not part of sychronized set");
+        if (numPlayers < 2) {
+            log.fine("skip CyclicBarrier; need 2+ players, have " + numPlayers);
+            barrier = null;
             return;
         }
         log.info("making barrier for " + this);
@@ -179,10 +176,12 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         if (!indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) && !indexFile.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)) {
             AEViewer v = firstViewerForFileOpen();
             if (isAedat4File(indexFile)) {
-                // Muxed AEDAT-4 is one file with several EVTS streams. Keep sync on;
-                // AEViewer.ensureChipCompatibleWithRecording shows the stream chooser
-                // and spawnPendingExtraAedat4Streams opens extra viewers.
-                log.info(indexFile + " is AEDAT-4 (not an .aeidx playlist); opening with EVTS stream chooser, leaving sync enabled");
+                // Muxed AEDAT-4 is one file with several EVTS streams. Drop a
+                // stale barrier so the first viewer's ViewLoop does not await
+                // leftover parties or toggle sync off. Chooser + spawn enable
+                // sync when 2+ cameras are selected.
+                resetSyncGroup();
+                log.info(indexFile + " is AEDAT-4 (not an .aeidx playlist); opening with EVTS stream chooser");
                 v.aePlayer.startPlayback(indexFile);
                 return;
             }
@@ -300,6 +299,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         if (file == null || streams == null || streams.isEmpty() || origin == null) {
             return;
         }
+        if (!outer.isSyncEnabled()) {
+            log.info("enabling synchronized recording/playback for multi-stream AEDAT-4");
+            outer.setSyncEnabled(true);
+        }
         getPlayingViewers().clear();
         getPlayingViewers().add(origin);
         ArrayList<AEViewer> used = new ArrayList<AEViewer>();
@@ -363,6 +366,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             return;
         }
         stopPlayback();
+        resetSyncGroup();
+        if (streams.size() > 1 && !outer.isSyncEnabled()) {
+            log.info("enabling synchronized recording/playback for multi-stream AEDAT-4");
+            outer.setSyncEnabled(true);
+        }
         AEViewer first = outer.getViewers().isEmpty() ? new AEViewer(outer) : outer.getViewers().get(0);
         first.setPendingAedat4EventStreamId(streams.get(0).streamId);
         Class<? extends AEChip> firstChip = RecordingChipDetector.resolve(streams.get(0).toChipHint(),
@@ -412,7 +420,15 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         for (AEViewer v : outer.getViewers()) {
             v.aePlayer.stopPlayback();
         }
+        resetSyncGroup();
         outer.setPlayBack(false);
+    }
+
+    /** Drop CyclicBarrier and playing-viewer list so the next open cannot await stale parties. */
+    private void resetSyncGroup() {
+        getPlayingViewers().clear();
+        numPlayers = 0;
+        barrier = null;
     }
 
     // iniitalizes time pointer for all viewers by getting first timestep for each viewer's ae input stream
@@ -426,10 +442,14 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                     minTime = t;
                 }
             } catch (NullPointerException e) {
-                log.warning("NullPointerException when initializing time for viewer " + v);
+                log.fine("skip viewer without stream while initializing sync time: " + v);
             }
         }
         log.info("JAERViewer.SyncPlayer.initialized time min value found: " + minTime);
+        if (minTime == Integer.MAX_VALUE) {
+            log.fine("initTime: no streams ready yet");
+            return;
+        }
         setTime(minTime);
     }
 
@@ -478,38 +498,35 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         // We first set all the player's currentStartTimestamp to the same values, based on all the player's values.
         // Since currentStartTimestamp is set by each player to whatever time it happens to end at
         // (which is not nessarily the last timestamp plust the delta time), we have to keep synchrnozing the players
+        if (numPlayers < 2 || getPlayingViewers().size() < 2) {
+            return player.getNextPacket(player);
+        }
         int[] currentTimes = new int[getPlayingViewers().size()];
         int i = 0;
-//        System.out.print("current times ");
         try {
             for (AEViewer v : getPlayingViewers()) {
                 currentTimes[i++] = v.aePlayer.getTime();
-//            System.out.println(currentTimes[i-1]+" ");
             }
         } catch (ConcurrentModificationException e) {
             log.warning("caught " + e.toString() + " when finding current packet times from all viewers");
         }
-//        System.out.println("");
         int maxtime = Integer.MIN_VALUE;
         for (int t : currentTimes) {
             if (t > maxtime) {
                 maxtime = t;
             }
         }
-//        System.out.println(Thread.currentThread()+" set time="+maxtime);
-        setTime(maxtime);
+        if (maxtime != Integer.MIN_VALUE) {
+            setTime(maxtime);
+        }
 
         AEPacketRaw ae = player.getNextPacket(player);
-        if (numPlayers == 1) {
-            return ae;
-        }
         try {
             if (barrier == null) {
                 makeBarrier();
             }
             if (barrier == null) {
-                // still don't have barrier for some reason so just return null
-                return null;
+                return ae;
             }
 //                log.info(Thread.currentThread()+" starting wait on barrier "+barrier+", number threads already waiting="+barrier.getNumberWaiting());
 //            int awaitVal = barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
@@ -604,13 +621,29 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     @Override
     public void setTime(int time) {
         currentTime = time;
-//            log.info("JAERViewer.SyncPlayer.setTime("+time+")");
         try {
             for (AEViewer v : getPlayingViewers()) {
-                v.aePlayer.setTime(getTime());
+                if (v.aePlayer.getAEInputStream() != null) {
+                    v.aePlayer.setTime(getTime());
+                }
             }
         } catch (ConcurrentModificationException e) {
             log.warning("couldn\'t set time on a viewer because of exception " + e.getMessage());
+        }
+    }
+
+    /**
+     * Slider / jog: move every playing viewer to the packet nearest
+     * {@code timeUs}. {@code origin} is already at that time.
+     */
+    public void seekAllToTimestamp(int timeUs, AEViewer origin) {
+        currentTime = timeUs;
+        List<AEViewer> group = getPlayingViewers().isEmpty() ? outer.getViewers() : getPlayingViewers();
+        for (AEViewer v : group) {
+            if (v == origin || v.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+                continue;
+            }
+            v.aePlayer.seekToTimestamp(timeUs);
         }
     }
 

@@ -2039,6 +2039,78 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public void setCurrentStartTimestamp(int currentStartTimestamp) { this.currentStartTimestamp = currentStartTimestamp; }
 
+    /**
+     * Packet-table binary search to the event index nearest {@code timestampUs}
+     * (relative µs). Does not decompress packets.
+     */
+    @Override
+    public synchronized void setPositionFromTimestamp(int timestampUs) {
+        position(eventIndexNearestTimestamp(timestampUs & 0xffffffffL));
+    }
+
+    /**
+     * Nearest playable event index for relative timestamp {@code t} using only
+     * the sparse packet table (or timeline). No file I/O.
+     */
+    long eventIndexNearestTimestamp(long t) {
+        if (!hasPolarity()) {
+            int n = timelineTimestamps.length;
+            if (n == 0) {
+                return 0;
+            }
+            int lo = 0;
+            int hi = n - 1;
+            while (lo < hi) {
+                int mid = (lo + hi) >>> 1;
+                if ((timelineTimestamps[mid] & 0xffffffffL) < t) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+            if (lo > 0) {
+                long a = timelineTimestamps[lo - 1] & 0xffffffffL;
+                long b = timelineTimestamps[lo] & 0xffffffffL;
+                if (Math.abs(t - a) <= Math.abs(b - t)) {
+                    return lo - 1;
+                }
+            }
+            return lo;
+        }
+        if (eventRefs.length == 0 || eventCount == 0) {
+            return 0;
+        }
+        if (t <= eventRefs[0].unixStart) {
+            return eventRefs[0].firstEventIndex;
+        }
+        PacketRef last = eventRefs[eventRefs.length - 1];
+        if (t >= last.unixEnd) {
+            return Math.max(0, eventCount - 1);
+        }
+        int lo = 0;
+        int hi = eventRefs.length - 1;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (eventRefs[mid].unixEnd < t) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        PacketRef r = eventRefs[lo];
+        if (r.numElements <= 1 || r.unixEnd <= r.unixStart) {
+            return r.firstEventIndex;
+        }
+        double frac = (t - r.unixStart) / (double) (r.unixEnd - r.unixStart);
+        if (frac < 0) {
+            frac = 0;
+        } else if (frac > 1) {
+            frac = 1;
+        }
+        long idx = r.firstEventIndex + Math.round(frac * (r.numElements - 1));
+        return Math.max(0, Math.min(eventCount - 1, idx));
+    }
+
     @Override
     public boolean toggleMarker() {
         Long here = position;

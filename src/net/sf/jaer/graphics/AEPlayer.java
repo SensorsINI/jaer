@@ -562,7 +562,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         renderer.showRenderingModeTextOnAeViewer();
                     }
                     log.fine("done(): fire EVENT_FILEOPEN");
-                    getSupport().firePropertyChange(EVENT_FILEOPEN, null, playFile);
+                    try {
+                        getSupport().firePropertyChange(EVENT_FILEOPEN, null, playFile);
+                    } catch (RuntimeException e) {
+                        log.log(Level.WARNING, "EVENT_FILEOPEN listener failed (continuing open): " + e, e);
+                    }
                     log.fine("done(): setInputFile");
                     viewer.setInputFile(file);
                     log.fine("done(): endFilePlaybackOpen + setPaused(false)");
@@ -974,12 +978,29 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void setTime(int time) {
-//            System.out.println(this+".setTime("+time+")");
         if (aeInputStream != null) {
             aeInputStream.setCurrentStartTimestamp(time);
         } else {
-            log.warning("null AEInputStream");
-            Thread.dumpStack();
+            log.fine("setTime ignored (no AEInputStream yet)");
+        }
+    }
+
+    /**
+     * Seek this player's stream to the packet nearest {@code timestampUs} and
+     * reset filters/accumulation so the next frame matches.
+     */
+    public void seekToTimestamp(int timestampUs) {
+        if (aeInputStream == null) {
+            return;
+        }
+        aeInputStream.setPositionFromTimestamp(timestampUs);
+        if (viewer != null) {
+            if (viewer.filterChain != null) {
+                viewer.filterChain.reset();
+            }
+            if (viewer.getRenderer() != null) {
+                viewer.getRenderer().resetAccumulation();
+            }
         }
     }
 

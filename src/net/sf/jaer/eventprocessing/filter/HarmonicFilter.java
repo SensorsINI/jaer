@@ -201,10 +201,10 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
      */
     private void maybeSubscribeToPlaybackStream() {
         maybeAddListeners(chip);
-        if (chip.getAeViewer() == null || chip.getAeViewer().getAePlayer() == null) {
+        if (chip.getAeViewer() == null) {
             return;
         }
-        AEFileInputStreamInterface in = chip.getAeViewer().getAePlayer().getAEInputStream();
+        AEFileInputStreamInterface in = chip.getAeViewer().getAeFileInputStream();
         if (in == null || in == subscribedStream) {
             return;
         }
@@ -227,9 +227,8 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
                 resetFilter();
                 break;
             case AEViewer.EVENT_FILEOPEN:
-                // super already registered us on the new stream; just remember it
-                if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
-                    subscribedStream = chip.getAeViewer().getAePlayer().getAEInputStream();
+                if (chip.getAeViewer() != null) {
+                    subscribedStream = chip.getAeViewer().getAeFileInputStream();
                 } else {
                     subscribedStream = null;
                 }

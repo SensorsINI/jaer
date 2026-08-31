@@ -46,7 +46,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.HighpassFilter;
@@ -908,9 +907,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             flushCounter = FLUSH_COUNT;
         } else if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) {
             log.info("File Open");
-            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-            AEFileInputStreamInterface in = (player.getAEInputStream());
-            in.getSupport().addPropertyChangeListener(this);
+            AEViewer v = chip.getAeViewer();
+            AEFileInputStreamInterface in = v == null ? null : v.getAeFileInputStream();
+            if (in != null) {
+                in.getSupport().addPropertyChangeListener(this);
+            }
             resetFilter();
             flushCounter = FLUSH_COUNT;
         }
