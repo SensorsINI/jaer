@@ -1,4 +1,4 @@
-# jAER
+# jAER-#
 
 **Welcome to the jAER Desktop Application for Event Sensors**
 
@@ -6,7 +6,7 @@
 
 ![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
-**Why use proprietary vendor camera software?** jAER is a full-featured cross-platform (Linux, Windows, MacOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
+**Why use proprietary vendor camera software?** jAER is a full-featured 2026 cross-platform (Linux, Windows, MacOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
 
 (You get plug-and-play, "it just works" for all the cameras above.) 
 
