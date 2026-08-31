@@ -15,7 +15,6 @@ import java.util.prefs.Preferences;
 import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketBundlePool;
@@ -338,9 +337,8 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                                 polarityBuilder.addSpecial(addr, ts);
                             } else {
                                 // Match DVS128.Extractor: x flipped, type = (1-addr)&1
-                                final AEChip chip = getChip();
-                                final int sizeX = chip != null ? chip.getSizeX() : 128;
-                                final int sxm = sizeX - 1;
+                                // Native width is always 128; stereo/FlyEye wrap must not use panoramic sizeX.
+                                final int sxm = 127;
                                 final int x = sxm - ((addr & 0xfe) >>> 1);
                                 final int y = (addr & 0x7f00) >>> 8;
                                 final boolean on = ((1 - addr) & 1) != 0;

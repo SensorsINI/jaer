@@ -7,6 +7,7 @@ Examples:
   Davis240/DAVIS240B.xml
   Davis346/Davis346blue.xml
   DVS128/DVS128.xml
+  DVS128/FlyEye.xml
 
 Optional variants (manual File→Load) may keep descriptive names in the same family folder.
 Obsolete experimental presets may exist locally under olderSystemsAndExperimental/ (gitignored).

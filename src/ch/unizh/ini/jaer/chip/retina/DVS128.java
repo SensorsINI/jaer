@@ -150,7 +150,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      */
     @Override
     public void update(Observable o, Object arg) {
-        if ((o instanceof AEChip) && (getHardwareInterface() == null)) {
+        if ((o instanceof AEChip) && (getAssignedHardwareInterface() == null)) {
             // if hw interface is not correct type then disable menu items
             if (arrayResetMenuItem != null) {
                 arrayResetMenuItem.setEnabled(false);
@@ -165,7 +165,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 ledMenu.setEnabled(false);
             }
         } else {
-            if (!(getHardwareInterface() instanceof HasResettablePixelArray)) {
+            HardwareInterface hw = getAssignedHardwareInterface();
+            if (!(hw instanceof HasResettablePixelArray)) {
                 if (arrayResetMenuItem != null) {
                     arrayResetMenuItem.setEnabled(false);
                 }
@@ -176,13 +177,13 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 arrayResetMenuItem.setEnabled(true);
                 setArrayResetMenuItem.setEnabled(true);
             }
-            if (!(getHardwareInterface() instanceof HasSyncEventOutput)) {
+            if (!(hw instanceof HasSyncEventOutput)) {
                 if (syncEnabledMenuItem != null) {
                     syncEnabledMenuItem.setEnabled(false);
                 }
             } else if (syncEnabledMenuItem != null) {
                 syncEnabledMenuItem.setEnabled(true);
-                HasSyncEventOutput hasSync = (HasSyncEventOutput) getHardwareInterface();
+                HasSyncEventOutput hasSync = (HasSyncEventOutput) hw;
                 syncEnabledMenuItem.setSelected(hasSync.isSyncEventEnabled());
                 if (!hasSync.isSyncEventEnabled()) {
                     WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Timestamps disabled",
@@ -190,13 +191,13 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     d.setVisible(true);
                 }
             }
-            if (!(getHardwareInterface() instanceof HasLEDControl)) {
+            if (!(hw instanceof HasLEDControl)) {
                 if (ledMenu != null) {
                     ledMenu.setEnabled(false);
                 }
             } else if (ledMenu != null) {
                 ledMenu.setEnabled(true);
-                HasLEDControl ledControlled = (HasLEDControl) getHardwareInterface();
+                HasLEDControl ledControlled = (HasLEDControl) hw;
                 switch (ledControlled.getLEDState(0)) {
                     case ON:
                         ledOnBut.setSelected(true);

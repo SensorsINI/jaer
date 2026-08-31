@@ -353,15 +353,11 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     private void populateDescriptors() {
         try {
-            int status;
-
             // getString device descriptor
-            if (deviceDescriptor == null) {
-                deviceDescriptor = new DeviceDescriptor();
-                status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-                if (status != LibUsb.SUCCESS) {
-                    throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor: "
-                            + LibUsb.errorName(status));
+            if (!UsbIds.descriptorReadable(deviceDescriptor)) {
+                deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+                if (deviceDescriptor == null) {
+                    throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor failed");
                 }
             }
 
@@ -415,14 +411,27 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      * packet is reused.
      */
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
-    protected boolean inEndpointEnabled = false; // raphael: changed from
+    protected volatile boolean inEndpointEnabled = false; // raphael: changed from
     // private to protected,
     // because i need to access
     // this member
     /**
-     * device open status
+     * True after USB IN STALL/ERROR (typical unplug). Acquire must not retry
+     * {@code setEventAcquisitionEnabled(true)}. {@code LibUsb.controlTransfer}
+     * / {@code LibUsb.close} while another camera's USBTransferThread is in
+     * {@code handleEvents} asserts {@code poll_windows.c} {@code fd != NULL}.
      */
-    private boolean isOpened = false;
+    private volatile boolean inEndpointLost = false;
+    /**
+     * device open status. Volatile and not taken by {@link #isOpen()} so the
+     * EDT does not wait on a hung USB monitor (same contract as CypressFX3).
+     */
+    private volatile boolean isOpened = false;
+    /**
+     * Native handle stashed on unplug so {@link #releaseAbandonedNativeHandle()}
+     * can {@code LibUsb.close} after sibling FlyEye readers have stopped.
+     */
+    private DeviceHandle abandonedNativeHandle;
     /**
      * the device number, out of all potential compatible devices that could be
      * opened
@@ -487,10 +496,14 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public String toString() {
-        if (numberOfStringDescriptors != 0) {
-            return stringDescription;
+        try {
+            if (numberOfStringDescriptors != 0 && stringDescription != null) {
+                return stringDescription;
+            }
+            return UsbIds.unopenedLabel(this, getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            return getClass().getSimpleName();
         }
-        return UsbIds.unopenedLabel(this, getClass().getSimpleName());
     }
 
     /** Libusb device pointer for identity compares; does not open the handle. */
@@ -560,6 +573,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // make sure event acquisition is running
         if (!inEndpointEnabled) {
+            if (inEndpointLost) {
+                throw new HardwareInterfaceException("USB IN endpoint lost (unplug)");
+            }
             setEventAcquisitionEnabled(true);
         }
 
@@ -733,14 +749,17 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             if (isOpen()) {
                 boolean readerDead = true;
                 try {
-                    if (getAeReader() != null) {
-                        readerDead = stopAEReader();
+                    stopUsbReadersWithoutNativeClose();
+                    if (getAeReader() != null && getAeReader().usbTransfer != null
+                            && getAeReader().usbTransfer.isAlive()) {
+                        readerDead = false;
                     }
-                    if (readerDead) {
+                    if (inEndpointLost) {
+                        CypressFX2.log.warning(
+                                "CypressFX2 unplug: no vendor request; native handle deferred until pair readers stop");
+                        stashAbandonedNativeHandle();
+                    } else if (readerDead) {
                         setInEndpointEnabled(false);
-                        if (asyncStatusThread != null) {
-                            asyncStatusThread.stopThread();
-                        }
                         try {
                             LibUsb.releaseInterface(deviceHandle, 0);
                         } catch (final IllegalStateException e) {
@@ -781,6 +800,38 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             throw new HardwareInterfaceException("failed to open device: " + e.getMessage(), e);
         }
         deviceHandle = handle;
+    }
+
+    /**
+     * {@code LibUsb.close} a handle stashed after unplug. Call only after this
+     * device's USBTransferThreads (and FlyEye sibling readers) have stopped.
+     */
+    public void releaseAbandonedNativeHandle() {
+        DeviceHandle h = abandonedNativeHandle;
+        abandonedNativeHandle = null;
+        if (h == null) {
+            return;
+        }
+        try {
+            LibUsb.releaseInterface(h, 0);
+        } catch (final IllegalStateException e) {
+            CypressFX2.log.fine("releaseAbandonedNativeHandle releaseInterface: " + e.getMessage());
+        }
+        try {
+            LibUsb.close(h);
+            CypressFX2.log.info("CypressFX2 released abandoned USB handle after readers stopped");
+        } catch (final IllegalStateException e) {
+            CypressFX2.log.fine("releaseAbandonedNativeHandle close: " + e.getMessage());
+        }
+    }
+
+    private void stashAbandonedNativeHandle() {
+        if (deviceHandle != null) {
+            abandonedNativeHandle = deviceHandle;
+            deviceHandle = null;
+        }
+        deviceDescriptor = null;
+        UsbAsyncBulkReaderLifecycle.abandonNativeHandle(false, log, "CypressFX2");
     }
 
     /**
@@ -842,6 +893,55 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         return inEndpointEnabled;
     }
 
+    /** True after USB IN STALL/ERROR; do not issue native USB I/O on this handle. */
+    public boolean isInEndpointLost() {
+        return inEndpointLost;
+    }
+
+    /** Factory wrappers that already lost IN cannot be reopened; wait for a rescan. */
+    public boolean isUnopenableAfterUnplug() {
+        return inEndpointLost || (deviceHandle == null && abandonedNativeHandle != null);
+    }
+
+    /**
+     * Stop bulk + status reader threads without {@code LibUsb.close}. Pair
+     * close must do this on both cameras before releasing either handle.
+     * After unplug, join only — {@code cancelTransfer} asserts
+     * {@code poll_windows.c} {@code fd != NULL}.
+     */
+    public void stopUsbReadersWithoutNativeClose() {
+        if (inEndpointLost) {
+            joinUsbReadersQuiet();
+            return;
+        }
+        if (getAeReader() != null) {
+            stopAEReader();
+        }
+        if (asyncStatusThread != null) {
+            asyncStatusThread.stopThread();
+        }
+    }
+
+    private void joinUsbReadersQuiet() {
+        final AEReader reader = getAeReader();
+        if (reader != null && reader.usbTransfer != null) {
+            try {
+                reader.usbTransfer.join(UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (asyncStatusThread != null) {
+            asyncStatusThread.joinQuiet(UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS);
+        }
+    }
+
+    /** From USBTransferThread callbacks: no native I/O, no monitor. */
+    void markUsbInLost() {
+        inEndpointLost = true;
+        inEndpointEnabled = false;
+    }
+
     /**
      * sends a vendor request to enable or disable in transfers of AEs
      *
@@ -871,6 +971,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         sendVendorRequest(CypressFX2.VENDOR_REQUEST_START_TRANSFER, (short) 0, (short) 0);
 
         inEndpointEnabled = true;
+        inEndpointLost = false;
     }
 
     /**
@@ -879,9 +980,14 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      * FX2_to_extFIFO.c
      */
     protected synchronized void disableINEndpoint() {
+        if (inEndpointLost || deviceHandle == null) {
+            inEndpointEnabled = false;
+            return;
+        }
         try {
             sendVendorRequest(CypressFX2.VENDOR_REQUEST_STOP_TRANSFER, (short) 0, (short) 0);
         } catch (final HardwareInterfaceException e) {
+            inEndpointLost = true;
             CypressFX2.log
                     .info("disableINEndpoint: couldn't send vendor request to disable IN transfers--it could be that device is gone or sendor is OFF and and completing GPIF cycle");
         }
@@ -939,6 +1045,17 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             }
         }
 
+        void joinQuiet(long timeoutMs) {
+            if (usbTransfer == null) {
+                return;
+            }
+            try {
+                usbTransfer.join(timeoutMs);
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
         private class ProcessStatusMessages implements RestrictedTransferCallback {
 
             @Override
@@ -950,6 +1067,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             public void processTransfer(final RestrictedTransfer transfer) {
                 if (transfer.status() != LibUsb.TRANSFER_COMPLETED) {
                     if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                        CypressFX2.this.markUsbInLost();
                         CypressFX2.log.warning("Error waiting for completion of read on status pipe: "
                                 + LibUsb.errorName(transfer.status()));
                     }
@@ -1243,6 +1361,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
                             realTimeFilter(addresses, timestamps);
                         }
                     } else {
+                        CypressFX2.this.markUsbInLost();
                         final String err = LibUsb.errorName(transfer.status());
                         if (usbInErrorLogs++ == 0) {
                             CypressFX2.log.warning("USB IN " + err
@@ -1667,9 +1786,11 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             openLibUsbDeviceHandle();
 
             // Check for blank devices (must first get device descriptor).
+            if (!UsbIds.descriptorReadable(deviceDescriptor)) {
+                deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+            }
             if (deviceDescriptor == null) {
-                deviceDescriptor = new DeviceDescriptor();
-                LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+                throw new HardwareInterfaceException("open(): getDeviceDescriptor failed");
             }
 
             if (isBlankDevice()) {
@@ -1730,6 +1851,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
             populateDescriptors();
 
+            inEndpointLost = false;
             isOpened = true;
 
             CypressFX2.log.info("open(): device opened");
@@ -1789,9 +1911,11 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             openLibUsbDeviceHandle();
 
             // Check for blank devices (must first get device descriptor).
+            if (!UsbIds.descriptorReadable(deviceDescriptor)) {
+                deviceDescriptor = UsbIds.readDeviceDescriptor(device);
+            }
             if (deviceDescriptor == null) {
-                deviceDescriptor = new DeviceDescriptor();
-                LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+                throw new HardwareInterfaceException("open_minimal_close(): getDeviceDescriptor failed");
             }
 
             if (isBlankDevice()) {
@@ -1879,39 +2003,36 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     /**
      * Populate {@link #deviceDescriptor} from libusb without claiming the
-     * interface for AE streaming. Safe to call before {@link #open()}.
+     * interface for AE streaming. Safe to call before {@link #open()}. After
+     * unplug, never leaves a descriptor whose native pointer is uninitialized.
      */
     public void ensureUsbDeviceDescriptor() {
-        if (deviceDescriptor != null || device == null) {
+        if (UsbIds.descriptorReadable(deviceDescriptor)) {
             return;
         }
-        deviceDescriptor = new DeviceDescriptor();
-        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
-        if (status != LibUsb.SUCCESS) {
-            CypressFX2.log.warning("Could not read USB device descriptor: " + LibUsb.errorName(status));
-            deviceDescriptor = null;
-        }
+        deviceDescriptor = UsbIds.readDeviceDescriptor(device);
     }
 
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
         ensureUsbDeviceDescriptor();
-        if (deviceDescriptor == null) {
-            CypressFX2.log.warning("USBAEMonitor: getVID called but device descriptor unavailable");
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.idVendor();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
             return 0;
         }
-        // int[] n=new int[2]; n is never used
-        return deviceDescriptor.idVendor();
     }
 
     @Override
     public short getPID() {
         ensureUsbDeviceDescriptor();
-        if (deviceDescriptor == null) {
-            CypressFX2.log.warning("USBAEMonitor: getPID called but device descriptor unavailable");
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
             return 0;
         }
-        return deviceDescriptor.idProduct();
     }
 
     /**
@@ -1921,11 +2042,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     public short getDID() { // this is not part of USB spec in device
         // descriptor.
         ensureUsbDeviceDescriptor();
-        if (deviceDescriptor == null) {
-            CypressFX2.log.warning("USBAEMonitor: getDID called but device descriptor unavailable");
+        try {
+            return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
+        } catch (IllegalStateException e) {
+            deviceDescriptor = null;
             return 0;
         }
-        return deviceDescriptor.bcdDevice();
     }
 
     /**
@@ -1934,7 +2056,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      * @return true if already open
      */
     @Override
-    synchronized public boolean isOpen() {
+    public boolean isOpen() {
         return isOpened;
     }
 
@@ -2033,6 +2155,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     synchronized public void sendVendorRequest(final byte request, final short value, final short index,
             ByteBuffer dataBuffer) throws HardwareInterfaceException {
+        if (inEndpointLost) {
+            throw new HardwareInterfaceException("USB device gone (unplug); not sending vendor request");
+        }
         if (!isOpen()) {
             open();
         }

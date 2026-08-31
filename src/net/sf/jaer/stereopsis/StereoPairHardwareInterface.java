@@ -20,6 +20,8 @@ import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.hardwareinterface.CompositeHardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -42,7 +44,7 @@ from the devices owing to buffering.
  *
  * @author tobi
  */
-public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBufferControl,PropertyChangeListener{
+public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBufferControl,PropertyChangeListener, CompositeHardwareInterface {
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected AEChip chip;
     private AEMonitorInterface aemonLeft;
@@ -95,6 +97,11 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
 
     public void setAemonRight (AEMonitorInterface aemonRight){
         this.aemonRight = aemonRight;
+    }
+
+    @Override
+    public HardwareInterface[] getComponentInterfaces() {
+        return new HardwareInterface[] { aemonLeft, aemonRight };
     }
 
     /**
@@ -484,11 +491,27 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
     }
 
     public void close (){
+        stopUsbReadersQuiet(getAemonLeft());
+        stopUsbReadersQuiet(getAemonRight());
+        releaseAbandoned(getAemonLeft());
+        releaseAbandoned(getAemonRight());
         if ( getAemonLeft() != null ){
             getAemonLeft().close();
         }
         if ( getAemonRight() != null ){
             getAemonRight().close();
+        }
+    }
+
+    private static void stopUsbReadersQuiet(AEMonitorInterface aemon) {
+        if (aemon instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2 fx2) {
+            fx2.stopUsbReadersWithoutNativeClose();
+        }
+    }
+
+    private static void releaseAbandoned(AEMonitorInterface aemon) {
+        if (aemon instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2 fx2) {
+            fx2.releaseAbandonedNativeHandle();
         }
     }
 
@@ -500,7 +523,12 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
         addSupport(aemonLeft);
         addSupport(aemonRight);
         getAemonLeft().open();
-        getAemonRight().open();
+        try {
+            getAemonRight().open();
+        } catch (HardwareInterfaceException e) {
+            getAemonLeft().close();
+            throw e;
+        }
         resetTimestamps(); // tobi added to synchronize two inputs on open
 
     }

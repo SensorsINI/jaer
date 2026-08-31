@@ -11,8 +11,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.usb4java.Device;
+import org.usb4java.DeviceDescriptor;
 import org.usb4java.LibUsb;
 
+import net.sf.jaer.hardwareinterface.CompositeHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
@@ -101,6 +103,8 @@ public final class UsbIds {
 
     /**
      * True when both interfaces wrap the same USB bus address (not VID/PID alone).
+     * {@link CompositeHardwareInterface} wrappers (stereo / FlyEye / multi-camera)
+     * match if any child is the same physical device.
      */
     public static boolean samePhysicalDevice(HardwareInterface a, HardwareInterface b) {
         if (a == null || b == null) {
@@ -109,16 +113,46 @@ public final class UsbIds {
         if (a == b) {
             return true;
         }
-        Device da = libUsbDevice(a);
-        Device db = libUsbDevice(b);
-        if (da == null || db == null) {
-            return false;
+        for (HardwareInterface ca : components(a)) {
+            if (ca == null) {
+                continue;
+            }
+            for (HardwareInterface cb : components(b)) {
+                if (cb == null) {
+                    continue;
+                }
+                if (ca == cb) {
+                    return true;
+                }
+                Device da = libUsbDevice(ca);
+                Device db = libUsbDevice(cb);
+                if (da == null || db == null) {
+                    continue;
+                }
+                try {
+                    if (sameUsbPort(da, db)) {
+                        return true;
+                    }
+                } catch (RuntimeException e) {
+                    // ignore
+                }
+            }
         }
-        try {
-            return sameUsbPort(da, db);
-        } catch (RuntimeException e) {
-            return false;
+        return false;
+    }
+
+    /**
+     * Unwrap a {@link CompositeHardwareInterface} to its children; otherwise
+     * {@code hw} alone. Does not {@code LibUsb.open}.
+     */
+    public static HardwareInterface[] components(HardwareInterface hw) {
+        if (hw instanceof CompositeHardwareInterface composite) {
+            HardwareInterface[] c = composite.getComponentInterfaces();
+            if (c != null && c.length > 0) {
+                return c;
+            }
         }
+        return new HardwareInterface[] { hw };
     }
 
     /**
@@ -206,6 +240,54 @@ public final class UsbIds {
             return "";
         }
         return unopenedLabel(hw, hw.getClass().getSimpleName());
+    }
+
+    /**
+     * Fill a new {@link DeviceDescriptor} from libusb without claiming the
+     * interface. Returns {@code null} when {@code device} is gone or the
+     * native descriptor pointer was never initialized (unplug). Never returns
+     * a descriptor whose {@code idProduct()} throws
+     * {@code IllegalStateException}.
+     *
+     * @param device libusb device, or {@code null}
+     * @return populated descriptor, or {@code null}
+     */
+    public static DeviceDescriptor readDeviceDescriptor(Device device) {
+        if (device == null) {
+            return null;
+        }
+        DeviceDescriptor d = new DeviceDescriptor();
+        try {
+            int status = LibUsb.getDeviceDescriptor(device, d);
+            if (status != LibUsb.SUCCESS) {
+                log.log(Level.FINE, "getDeviceDescriptor: {0}", LibUsb.errorName(status));
+                return null;
+            }
+            d.idProduct();
+            return d;
+        } catch (IllegalStateException e) {
+            log.log(Level.FINE, "USB device descriptor native pointer not initialized", e);
+            return null;
+        }
+    }
+
+    /**
+     * True when field accessors on {@code d} will not throw because the
+     * usb4java native pointer is missing (typical after unplug/close).
+     *
+     * @param d descriptor, or {@code null}
+     * @return {@code false} if {@code d} is null or its native pointer is dead
+     */
+    public static boolean descriptorReadable(DeviceDescriptor d) {
+        if (d == null) {
+            return false;
+        }
+        try {
+            d.idProduct();
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     /**

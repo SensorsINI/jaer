@@ -52,13 +52,21 @@ enumerates off the EDT (`getNumInterfacesAvailable()`). WAITING kicks
 
 `usbEnumerationDirty` plus [`LibUsbHotplug`](../src/net/sf/jaer/hardwareinterface/usb/LibUsbHotplug.java)
 avoid a full `getDeviceList` on every poll when hotplug is supported (Linux/macOS).
-Windows WinUSB in bundled libusb 1.0.22 has no hotplug, so WAITING uses
+libusb in bundled libusb 1.0.22 has no hotplug, so WAITING uses
 [`WindowsUsbPollSchedule`](../src/net/sf/jaer/hardwareinterface/usb/WindowsUsbPollSchedule.java):
 scan every **1 s** for the first minute after startup, window focus, or any
 enumerated-device change (plug/unplug), then every **3 s** for 10 minutes, then
 every **15 s**. A device-list change or AEViewer focus restarts that decay
 (WAITING is interrupted so the next scan is immediate). Phase changes are
 logged at INFO. USB enumeration stays off the EDT.
+
+Unplugging one DVS128 of a FlyEye pair must not
+`LibUsb.controlTransfer` / `LibUsb.close` while the other camera’s
+`USBTransferThread` is still in `handleEventsTimeout` (shared default libusb
+context). That sequence asserts `poll_windows.c` `fd != NULL` in
+`libusb4java.dll`. STALL/ERROR sets `inEndpointLost`; disable-IN skips the
+vendor request; pair `close()` stops both readers first and abandons the
+unplugged handle.
 
 WAITING must **not** `getDeviceList` while another viewer holds
 `USB_OPEN_SERIAL_LOCK` (native open+config). Concurrent `getDeviceList` during
@@ -162,11 +170,25 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
   on a chip.
 - Several plugged cameras: remembered map (tmpdir) plus unused cameras matching
   each restored AEChip (same family only; never leftover-bind EVK4 onto a DVS128
-  window). File → New (and other extra AEViewers) stay WAITING until the user
+  window). A remembered USB id is ignored when the window's current AEChip does
+  not declare it (e.g. DVS128 playback leftover vs a live Davis) so WAITING
+  polls do not log skip-chooser / not-binding every second. File → New (and other
+  extra AEViewers) stay WAITING until the user
   picks Interface. ViewLoops claim under one lock so two DVX windows do not grab
   the same device. Sole-device auto-bind still requires one viewer. Welcome lists
   Interface-menu labels. Interface radio always binds that viewer (never drops
   the click); a busy sibling `open()` is waited on `USB_OPEN_SERIAL_LOCK`.
+- **FlyEye / stereo pair:** Sensor → FlyEye claims **two** unused DVS128 wrappers
+  for that one AEViewer (`FlyEyeHardwareInterface`, no `LibUsb.open` in the
+  getter). [`UsbIds.samePhysicalDevice`](../src/net/sf/jaer/hardwareinterface/usb/UsbIds.java)
+  unwraps [`CompositeHardwareInterface`](../src/net/sf/jaer/hardwareinterface/CompositeHardwareInterface.java)
+  so both cameras show as taken (`— AEViewer #N`). Empty `@UsbDevices({})` on
+  FlyEye so a single DVS128 does not auto-offer FlyEye. A closed or failed
+  FlyEye pair is dropped (not ACCESS-retried); `nullInterface` stays false so
+  WAITING can claim the current two DVS128s after an unplug, a mistaken DVX
+  plug, or a second DVS128 arriving. Composite “still plugged” requires
+  **every** child in the factory cache. `CypressFX2` wrappers with
+  `inEndpointLost` / an abandoned handle are skipped.
 - While WAITING with no open hardware, [`ChipCanvas`](../src/net/sf/jaer/graphics/ChipCanvas.java)
   blanks the chip pixmap (`shouldSkipChipDisplay` / `isWelcomeOverlayActive`) so
   leftover APS/DVS is not drawn under the overlay. Interface click / bind shows
@@ -223,12 +245,14 @@ ViewLoop waits:
 On timeout or Interface change: `unbindAbandonedHardware`.
 Do **not** call `close()` on a hung synchronized `open()` (that waits on the same
 monitor as the stuck native transfer). `LIBUSB_ERROR_ACCESS` after an Interface
-select of a still-enumerated device is retried at most twice (sibling close may
-still hold WinUSB). ISSD `LIBUSB_ERROR_TIMEOUT` is **not** ACCESS: it stops and
-sets `nullInterface` so WAITING does not loop every 2 s (EVK4 after Interface
-→ None). Permanent `nullInterface` stays for a ghost device, ISSD failure, or
-Interface → None. None aborts an in-flight Prophesee open and will not reopen
-a closed wrapper.
+select of a still-enumerated **single** device is retried at most twice
+(sibling close may still hold WinUSB). A `FlyEyeHardwareInterface` is not
+retried: drop the pair and leave `nullInterface` false so the next WAITING
+poll can claim whatever DVS128s are on the bus. ISSD `LIBUSB_ERROR_TIMEOUT` is
+**not** ACCESS: it stops and sets `nullInterface` so WAITING does not loop
+every 2 s (EVK4 after Interface → None). Permanent `nullInterface` stays for a
+ghost device, ISSD failure, or Interface → None. None aborts an in-flight
+Prophesee open and will not reopen a closed wrapper.
 
 `sendConfiguration` / DVX `dvxConfig` runs on **the same opener thread** after
 `open()` returns, **before** PlayMode LIVE. There is no parallel `jaer-send-biases`
@@ -240,7 +264,10 @@ FX3 `close()` must stop the AEReader and `setInEndpointEnabled(false)` **while
 `isOpen()` is still true**, then set `isOpened = false`. Clearing `isOpened` first
 made `setEventAcquisitionEnabled(false)` a no-op; leftover bulk URBs then hung
 the next open (None → Davis). `isOpen()` is not synchronized (`volatile isOpened`)
-so EDT paint does not wait on a hung USB monitor.
+so EDT paint / Interface menu does not wait on a hung USB monitor. CypressFX2
+libusb uses the same contract: after a DVS128 unplug, `disableINEndpoint` sets
+`inEndpointLost` so acquire does not retry `setEventAcquisitionEnabled` (that
+native control transfer hangs on Windows and froze Interface → Refresh).
 
 If the AEReader join times out, **do not** `LibUsb.releaseInterface` /
 `LibUsb.close`: that crashed the JVM (`hs_err_pid34924`, `ntdll` AV on
@@ -301,6 +328,12 @@ after a rapid switch. `DVXplorerFX3HardwareInterface` still resets **non-CX3**
   RESET is FPGA markers without ADC words or host counters that skipped them.
   Interface → Reset USB does not reset FPGA APS state. After three short
   frames the viewer shows **Davis APS readout stuck** (replug the camera).
+- After unplug, Welcome / Interface labels must not call usb4java
+  `DeviceDescriptor.idProduct` on a stale wrapper
+  (`deviceDescriptorPointer is not initialized` killed ViewLoop, jAER
+  5:31:47). `UsbIds.readDeviceDescriptor` never returns an uninitialized
+  descriptor; `CypressFX3.toString` and `showWelcomeOverlay` catch
+  `RuntimeException`; ViewLoop continues if `grabInput` still throws.
 - Do not select the same camera again while `jaer-hw-close` is still running:
   a new `LibUsb.open` can succeed in 1 ms, then the first SPI IN hangs.
 
@@ -412,7 +445,7 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 
 | Symptom | Typical cause | What jAER does |
 |---------|---------------|----------------|
-| `LIBUSB_ERROR_ACCESS` | Another handle, udev, wrong WinUSB driver | After Interface: retry twice; then `nullInterface`. Autobind / None: `nullInterface` |
+| `LIBUSB_ERROR_ACCESS` | Another handle, udev, wrong WinUSB driver | Single camera after Interface: retry twice; then `nullInterface`. FlyEye: drop pair, do not set `nullInterface`. Autobind / None: `nullInterface` |
 | ISSD `LIBUSB_ERROR_TIMEOUT` | EVK4 control write during bring-up; often WAITING `getDeviceList` on WinUSB | Fail open; `nullInterface` (do not retry every 2 s) |
 | `LIBUSB_ERROR_BUSY` / `NOT_SUPPORTED` | Driver or exclusive owner | Same; Windows hint in `libUsbOpenHint` |
 | Open worker still alive after 8 s / 45 s | Native control/bulk never returned | Unbind; do not `close()` the hung instance |

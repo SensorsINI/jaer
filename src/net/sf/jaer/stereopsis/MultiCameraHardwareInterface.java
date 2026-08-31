@@ -25,6 +25,8 @@ import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.MultiCameraApsDvsEvent;
 import net.sf.jaer.event.MultiCameraEvent;
+import net.sf.jaer.hardwareinterface.CompositeHardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
@@ -50,7 +52,7 @@ from the devices owing to buffering.
  *
  * @author tobi
  */
-public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderBufferControl, PropertyChangeListener {
+public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderBufferControl, PropertyChangeListener, CompositeHardwareInterface {
 
     final static Logger log = Logger.getLogger("net.sf.jaer");  // define Logger first in case exception thrown in constructor that needs to log the error
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -88,6 +90,13 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
             this.aemons[i] = aemons[i];
             aeFifos[i] = new AEFifo(null);
         }
+    }
+
+    @Override
+    public HardwareInterface[] getComponentInterfaces() {
+        HardwareInterface[] out = new HardwareInterface[aemons.length];
+        System.arraycopy(aemons, 0, out, 0, aemons.length);
+        return out;
     }
 
     /**

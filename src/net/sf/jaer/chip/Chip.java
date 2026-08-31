@@ -390,6 +390,14 @@ public class Chip extends Observable {
     }
 
     /**
+     * Bound interface with no side effects. {@link #getHardwareInterface()} on
+     * FlyEye claims a DVS128 pair; claim checks must use this instead.
+     */
+    public HardwareInterface getAssignedHardwareInterface() {
+        return this.hardwareInterface;
+    }
+
+    /**
      * Sets the hardware interface and the bias generators hardware interface
      * (if the interface supports the bias generator). Notifies Observers with
      * the new HardwareInterface.

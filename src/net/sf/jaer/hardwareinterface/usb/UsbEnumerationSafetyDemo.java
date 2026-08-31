@@ -43,6 +43,7 @@ public final class UsbEnumerationSafetyDemo {
         testUsbResetClosesAllInterfaces();
         testFx2AeReaderClosesOffReaderThread();
         testCtrlWAbortsActivityNotViewer();
+        testFlyEyePairClaimDoesNotOpenUsb();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -50,9 +51,111 @@ public final class UsbEnumerationSafetyDemo {
     private static void testSamePhysicalDeviceNullSafe() {
         require(!UsbIds.samePhysicalDevice(null, null), "null devices are not the same");
         require(UsbIds.libUsbDevice(null) == null, "null hw has no libusb device");
+        require(UsbIds.readDeviceDescriptor(null) == null, "null libusb device has no descriptor");
+        require(!UsbIds.descriptorReadable(null), "null DeviceDescriptor is not readable");
         require("USB".equals(UsbIds.unopenedLabel(null, null).trim())
                 || UsbIds.unopenedLabel(null, "USB").startsWith("USB"),
                 "unopened label with null hw does not throw");
+        require(Files.exists(Paths.get("src", "net", "sf", "jaer", "hardwareinterface",
+                "CompositeHardwareInterface.java")),
+                "CompositeHardwareInterface unwraps stereo/FlyEye for claim checks");
+    }
+
+    private static void testFlyEyePairClaimDoesNotOpenUsb() throws Exception {
+        String usbIds = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "UsbIds.java"), StandardCharsets.UTF_8);
+        require(usbIds.contains("CompositeHardwareInterface"),
+                "UsbIds.samePhysicalDevice unwraps composite stereo/FlyEye children");
+        require(usbIds.contains("public static HardwareInterface[] components("),
+                "UsbIds.components lists wrapper children without LibUsb.open");
+        String flyHw = Files.readString(Paths.get("src", "ch", "unizh", "ini", "jaer",
+                "chip", "flyeye", "FlyEyeHardwareInterface.java"), StandardCharsets.UTF_8);
+        require(flyHw.contains("getCachedNumInterfacesAvailable()"),
+                "FlyEye pair claim uses the enumeration snapshot, not a USB scan");
+        require(flyHw.contains("claimUnusedDvs128Pair"),
+                "FlyEye claims two unused DVS128 wrappers");
+        require(!methodBody(Paths.get("src", "ch", "unizh", "ini", "jaer", "chip", "flyeye",
+                "FlyEyeHardwareInterface.java"),
+                "public static FlyEyeHardwareInterface claimUnusedDvs128Pair",
+                "private static boolean takenByOtherViewer")
+                .contains(".open()"),
+                "FlyEye claim must not LibUsb.open; ViewLoop opens the composite");
+        String flyChip = Files.readString(Paths.get("src", "ch", "unizh", "ini", "jaer",
+                "chip", "flyeye", "FlyEye.java"), StandardCharsets.UTF_8);
+        require(flyChip.contains("@UsbDevices({})"),
+                "FlyEye does not inherit DVS128 auto-offer for a single camera");
+        require(flyHw.contains("getAssignedHardwareInterface()"),
+                "FlyEye pair claim must not call getHardwareInterface (StackOverflowError)");
+        require(flyChip.contains("getAeViewer() != null"),
+                "FlyEye.getHardwareInterface must not claim during AEChip construction");
+        String viewer = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics",
+                "AEViewer.java"), StandardCharsets.UTF_8);
+        require(viewer.contains("runWithHardwareClaim("),
+                "FlyEye pair bind shares HARDWARE_CLAIM_LOCK with autobind");
+        require(viewer.contains("chip instanceof FlyEye && FlyEyeHardwareInterface.isDvs128Monitor(hw)"),
+                "ensureChip must not switch FlyEye back to DVS128 on unique @UsbDevices match");
+        require(viewer.contains("getAssignedHardwareInterface()"),
+                "claim checks must not call FlyEye.getHardwareInterface (pair claim / StackOverflowError)");
+        require(flyHw.contains("assignEyesBySerialAndPref"),
+                "FlyEye assigns left/right from USB serial after open (not bus/addr)");
+        require(flyHw.contains("isEyesSwapped()"),
+                "FlyEye applies swap-eyes pref after serial order");
+        require(flyChip.contains("!SwingUtilities.isEventDispatchThread()"),
+                "FlyEye.getHardwareInterface must not claim a pair on the EDT");
+        require(flyChip.contains("bindingPair"),
+                "FlyEye bind must not re-enter from DVS128.update (StackOverflowError)");
+        require(flyChip.contains("isUnusableAfterUnplug()"),
+                "claimed-but-closed FlyEye pair must stay until ViewLoop opens it");
+        require(flyHw.contains("isUnusableAfterUnplug"),
+                "FlyEye drops a pair only after a child lost IN, not because !isOpen()");
+        String dvsUpdate = methodBody(Paths.get("src", "ch", "unizh", "ini", "jaer",
+                "chip", "retina", "DVS128.java"),
+                "public void update(Observable o, Object arg) {",
+                "private void enableDVS128Menu");
+        require(dvsUpdate.contains("getAssignedHardwareInterface()"),
+                "DVS128.update must not call getHardwareInterface (FlyEye pair claim / StackOverflowError)");
+        require(!dvsUpdate.contains("getHardwareInterface()"),
+                "DVS128.update observer must use getAssignedHardwareInterface");
+        String fx2 = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx2libusb", "CypressFX2.java"),
+                StandardCharsets.UTF_8);
+        require(fx2.contains("inEndpointLost"),
+                "DVS128 unplug must not retry IN enable (Windows native hang)");
+        require(fx2.contains("markUsbInLost()"),
+                "USB IN STALL must set inEndpointLost before any vendor request");
+        require(methodBody(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx2libusb", "CypressFX2.java"),
+                "protected synchronized void disableINEndpoint() {",
+                "public PropertyChangeSupport getReaderSupport()")
+                .contains("if (inEndpointLost"),
+                "disableINEndpoint must skip vendor request after unplug (poll_windows.c fd != NULL)");
+        require(fx2.contains("releaseAbandonedNativeHandle"),
+                "unplug stashes native handle; pair close LibUsb.close after both readers stop");
+        require(fx2.contains("isUnopenableAfterUnplug"),
+                "FlyEye claim skips DVS128 wrappers whose IN was lost");
+        String stereoClose = methodBody(Paths.get("src", "net", "sf", "jaer",
+                "stereopsis", "StereoPairHardwareInterface.java"),
+                "public void close (){",
+                "public void open ()");
+        require(stereoClose.contains("stopUsbReadersQuiet"),
+                "FlyEye/stereo close stops both USB readers before LibUsb.close");
+        require(stereoClose.contains("releaseAbandoned"),
+                "FlyEye/stereo close LibUsb.close abandoned handles after readers stop");
+        require(viewer.contains("dropped pair so WAITING can claim current DVS128s"),
+                "FlyEye ACCESS must not set nullInterface (2nd DVS128 never bound)");
+        require(viewer.contains("factoryCacheHasSingleDevice"),
+                "composite still-plugged requires every child on the bus");
+        String fx2IsOpen = methodBody(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx2libusb", "CypressFX2.java"),
+                "public boolean isOpen() {",
+                "final public int getTimestampTickUs()");
+        require(!fx2IsOpen.contains("synchronized"),
+                "FX2 isOpen must not take the USB monitor (Interface menu during hung IN enable)");
+        String dvs128Usb = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx2libusb",
+                "CypressFX2LibUsbDVS128HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(dvs128Usb.contains("final int sxm = 127"),
+                "DVS128 USB demux decodes native 128 width (not panoramic FlyEye sizeX)");
     }
 
     private static void testCypressToStringDoesNotOpen() throws Exception {
@@ -65,6 +168,16 @@ public final class UsbEnumerationSafetyDemo {
         require(toString.contains("UsbIds.unopenedLabel")
                 || toString.contains("friendlyUnopenedTypeName"),
                 "unopened FX3 label uses VID/PID without claiming the device");
+        require(toString.contains("catch (RuntimeException"),
+                "CypressFX3.toString must not throw after unplug (Welcome killed ViewLoop)");
+        String ensure = methodBody(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java"),
+                "public void ensureUsbDeviceDescriptor() {",
+                "private short usbDescriptorShort");
+        require(ensure.contains("UsbIds.readDeviceDescriptor"),
+                "FX3 descriptor fill must not leave an uninitialized usb4java DeviceDescriptor");
+        require(ensure.contains("UsbIds.descriptorReadable"),
+                "FX3 must drop a DeviceDescriptor whose native pointer is dead");
     }
 
     private static void testFx3FactoryListsWithoutOpen() throws Exception {
@@ -91,7 +204,7 @@ public final class UsbEnumerationSafetyDemo {
         String menu = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
                 "public void buildInterfaceMenu(JMenu interfaceMenu, boolean forceUsbRescan)",
                 "private volatile List<String> interfaceMenuDeviceLabels");
-        require(menu.contains("UsbIds.samePhysicalDevice(hw, chip.getHardwareInterface())"),
+        require(menu.contains("UsbIds.samePhysicalDevice(hw, chip.getAssignedHardwareInterface())"),
                 "Interface menu skips the already-open camera by USB bus/addr");
         require(menu.contains("interfaceChoiceLabel(hw, i)"),
                 "Interface menu labels include other-viewer claims");
@@ -456,6 +569,13 @@ public final class UsbEnumerationSafetyDemo {
                 "public void showOpeningCameraOverlay(HardwareInterface hw) {");
         require(welcome.contains("clearUsbLinkOverlay()"),
                 "Welcome overlay must hide the USB bus-speed overlay");
+        require(welcome.contains("catch (RuntimeException"),
+                "Welcome overlay must not throw after USB unplug (ViewLoop UCE)");
+        require(welcome.contains("Welcome.defaultLines()"),
+                "Welcome overlay falls back to default copy if device labels throw");
+        require(Files.readString(viewer, StandardCharsets.UTF_8)
+                .contains("grabInput failed; ViewLoop continues"),
+                "ViewLoop must catch grabInput RuntimeException so unplug cannot kill the thread");
         String nullify = methodBody(viewer,
                 "private void nullifyHardware() {",
                 "private void openAEMonitor() {");
@@ -767,6 +887,8 @@ public final class UsbEnumerationSafetyDemo {
                 "remembered-camera match must not read USB string descriptors");
         require(remembered.contains("ViewerInterfaceBindingMap.get(viewerInstanceIndex)"),
                 "binding is per AEViewer-N window");
+        require(remembered.contains("currentChipCanDrive"),
+                "remembered USB is not bound if it does not match this window's AEChip");
         require(remembered.contains("firstUnusedMatchingThisChip"),
                 "empty map still autobinds unused cameras matching the restored AEChip");
         require(remembered.contains("firstUnusedNotReservedForOtherViewer"),
