@@ -65,6 +65,7 @@ import net.sf.jaer.util.SplashStartupAbort;
 import net.sf.jaer.util.UiInteractionLog;
 import net.sf.jaer.hardwareinterface.usb.SessionCameraOpenCoordinator;
 import net.sf.jaer.hardwareinterface.usb.USBRebindTester;
+import net.sf.jaer.util.JaerWindowGroupRaiser;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
@@ -171,6 +172,7 @@ public class JAERViewer {
         UiInteractionLog.syncFromPrefs();
         // WindowSaver calls for determining screen insets (e.g. Windows Taskbar) could cause problems on different OS's
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
+        JaerWindowGroupRaiser.install();
 
         SwingUtilities.invokeLater(new RunningThread());
 
@@ -608,6 +610,8 @@ public class JAERViewer {
             }
             other.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, viewer);
             viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, other);
+            other.getSupport().addPropertyChangeListener(AEViewer.EVENT_RAISE_ALL_WINDOWS_ON_FOCUS, viewer);
+            viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_RAISE_ALL_WINDOWS_ON_FOCUS, other);
             other.getSupport().addPropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, viewer);
             viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, other);
         }
@@ -689,6 +693,8 @@ public class JAERViewer {
             }
             other.getSupport().removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, v);
             v.getSupport().removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE, other);
+            other.getSupport().removePropertyChangeListener(AEViewer.EVENT_RAISE_ALL_WINDOWS_ON_FOCUS, v);
+            v.getSupport().removePropertyChangeListener(AEViewer.EVENT_RAISE_ALL_WINDOWS_ON_FOCUS, other);
             other.getSupport().removePropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, v);
             v.getSupport().removePropertyChangeListener(AEViewer.EVENT_SYNC_ENABLED, other);
         }

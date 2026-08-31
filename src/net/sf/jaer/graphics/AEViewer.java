@@ -224,6 +224,7 @@ import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.ViewerInterfaceBindingMap;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.JaerWindowGroupRaiser;
 import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.avioutput.ExportVideoDialog;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
@@ -303,6 +304,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_RECORDING_STARTED = "recordingStarted",
             EVENT_RECORDING_STOPPED = "recordingStopped",
             EVENT_REMEMBER_LAST_INTERFACE = "rememberLastInterface",
+            EVENT_RAISE_ALL_WINDOWS_ON_FOCUS = "raiseAllWindowsOnFocus",
             EVENT_SYNC_ENABLED = "syncEnabled";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -515,8 +517,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEViewerQuickHelpFrame quickHelpFrame;
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", true);
+    private boolean raiseAllWindowsOnFocus = prefs.getBoolean(JaerWindowGroupRaiser.PREF_KEY,
+            JaerWindowGroupRaiser.PREF_DEFAULT);
     /** Prefs key: {@code x} / File → Exit quits jAER instead of closing only this window. */
     public static final String PREF_EXIT_COMPLETELY_WITH_X = "AEViewer.exitCompletelyWithX";
+    /** Prefs key: raise all jAER frames when any one is activated (shared AEViewer node). */
+    public static final String PREF_RAISE_ALL_WINDOWS_ON_FOCUS = JaerWindowGroupRaiser.PREF_KEY;
     /** Prefs key: user has already chosen {@link #PREF_EXIT_COMPLETELY_WITH_X} (dialog or Preferences). */
     public static final String PREF_EXIT_COMPLETELY_WITH_X_CHOSEN = "AEViewer.exitCompletelyWithXChosen";
     /** False for File→New and other extra windows: WAITING must not grab leftover cameras. */
@@ -813,6 +819,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 onViewerWindowGainedFocus();
             }
         });
+        JaerWindowGroupRaiser.install();
         setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
@@ -3969,6 +3976,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         }
+    }
+
+    /**
+     * When true, activating any jAER frame or dialog raises the other visible
+     * (non-iconified) windows of this process so extra AEViewers, Biasgen, and
+     * Filters are not left behind other applications. Shared AEViewer prefs
+     * node. Unchanged values return without firing so sibling listeners cannot
+     * loop.
+     */
+    public boolean isRaiseAllWindowsOnFocus() {
+        return raiseAllWindowsOnFocus;
+    }
+
+    /**
+     * Global window-group setting. See {@link #isRaiseAllWindowsOnFocus()}.
+     */
+    public void setRaiseAllWindowsOnFocus(boolean raiseAllWindowsOnFocus) {
+        boolean old = this.raiseAllWindowsOnFocus;
+        if (old == raiseAllWindowsOnFocus) {
+            return;
+        }
+        this.raiseAllWindowsOnFocus = raiseAllWindowsOnFocus;
+        JaerWindowGroupRaiser.setEnabled(raiseAllWindowsOnFocus);
+        getSupport().firePropertyChange(EVENT_RAISE_ALL_WINDOWS_ON_FOCUS, old, this.raiseAllWindowsOnFocus);
     }
 
     private void updateExitMenuTooltip() {
@@ -8799,6 +8830,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             Object nv = evt.getNewValue();
             if (nv instanceof Boolean) {
                 setRememberLastInterface((Boolean) nv);
+            }
+            return;
+        }
+        if (EVENT_RAISE_ALL_WINDOWS_ON_FOCUS.equals(evt.getPropertyName())) {
+            Object nv = evt.getNewValue();
+            if (nv instanceof Boolean) {
+                setRaiseAllWindowsOnFocus((Boolean) nv);
             }
             return;
         }

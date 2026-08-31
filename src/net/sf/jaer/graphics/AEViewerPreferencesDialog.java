@@ -134,6 +134,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JSpinner adaptiveRenderSkipMaxSpinner;
     private JSpinner borderSpaceSpinner;
     private JCheckBox enableFiltersOnStartupCB;
+    private JCheckBox raiseAllWindowsOnFocusCB;
 
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
@@ -207,6 +208,24 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                                 updatingUi = true;
                                 try {
                                     syncEnabledCB.setSelected((Boolean) nv);
+                                } finally {
+                                    updatingUi = false;
+                                }
+                            }
+                        }
+                    });
+            viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_RAISE_ALL_WINDOWS_ON_FOCUS,
+                    new PropertyChangeListener() {
+                        @Override
+                        public void propertyChange(PropertyChangeEvent evt) {
+                            if (raiseAllWindowsOnFocusCB == null || updatingUi) {
+                                return;
+                            }
+                            Object nv = evt.getNewValue();
+                            if (nv instanceof Boolean) {
+                                updatingUi = true;
+                                try {
+                                    raiseAllWindowsOnFocusCB.setSelected((Boolean) nv);
                                 } finally {
                                     updatingUi = false;
                                 }
@@ -1028,6 +1047,24 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(enableFiltersOnStartupCB, gbc(y++));
 
+        raiseAllWindowsOnFocusCB = new JCheckBox("Raise all jAER windows when any window is focused");
+        raiseAllWindowsOnFocusCB.setToolTipText("<html>When any jAER window is activated, bring the other visible windows of this process to the front<br>"
+                + "(other AEViewers, Hardware Configuration / Biasgen, Filters, Preferences).<br>"
+                + "Minimized windows stay minimized. Menus and tooltips are not raised.<br>"
+                + "<b>Windows:</b> works for windows of this process once jAER is in the foreground.<br>"
+                + "<b>macOS:</b> native apps already group windows; Swing often does not — this uses toFront().<br>"
+                + "<b>Linux:</b> some window managers ignore toFront() (focus-stealing prevention); uncheck if it flickers or does nothing.");
+        raiseAllWindowsOnFocusCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setRaiseAllWindowsOnFocus(raiseAllWindowsOnFocusCB.isSelected());
+            }
+        });
+        p.add(raiseAllWindowsOnFocusCB, gbc(y++));
+
         return p;
     }
 
@@ -1359,6 +1396,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
 
             enableFiltersOnStartupCB.setSelected(viewer.isEnableFiltersOnStartup());
+            if (raiseAllWindowsOnFocusCB != null) {
+                raiseAllWindowsOnFocusCB.setSelected(viewer.isRaiseAllWindowsOnFocus());
+            }
 
             helpFontFamilyCB.setSelectedItem(viewer.getHelpFontFamily());
             helpFontSizeSpinner.setValue(viewer.getHelpFontSize());
