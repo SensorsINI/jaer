@@ -157,6 +157,26 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface {
     }
 
     @Override
+    protected boolean includeTimestampMasterMenuItem() {
+        return false;
+    }
+
+    @Override
+    protected void maybeWarnWhenNotDirectSyncInterface() {
+        showTimestampMasterWarning();
+    }
+
+    @Override
+    protected String timestampsDisabledWarningHtml() {
+        return "<html>DVS128StereoPair does not use a Timestamp master checkbox (the pair’s hardware is not a single DVS128).<br><br>"
+                + "<b>How timestamp master is set</b><br>"
+                + "Left camera is master, right is slave (set when the pair is bound).<br>"
+                + "Connect left <b>OUT</b> to right <b>IN</b> and share <b>GND</b>.<br>"
+                + "Then menu bar <b>Control → Zero timestamps</b> (keyboard 0).<br>"
+                + "If the eyes are reversed, use <b>DVS128StereoPair → Swap left/right eye USB input</b>.";
+    }
+
+    @Override
     public int getNumCellTypes() {
         return 4;
     }

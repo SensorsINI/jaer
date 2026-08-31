@@ -333,6 +333,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      * the event reader - a buffer pool thread from USBIO subclassing
      */
     protected AEReader aeReader = null;
+    /** Set when the FX2 status pipe or DVS128 data path reports a hardware timestamp reset. */
+    private volatile long lastHardwareResetEventNanos;
     /**
      * the thread that reads device status messages on EP1
      */
@@ -675,6 +677,16 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         } catch (final HardwareInterfaceException e) {
             CypressFX2.log.warning("CypressFX2.resetTimestamps: couldn't send vendor request to reset timestamps");
         }
+    }
+
+    /** Host-side time of the last firmware timestamp-reset (status pipe or DVS128 reset event). */
+    public long getLastHardwareResetEventNanos() {
+        return lastHardwareResetEventNanos;
+    }
+
+    /** Called from the USB reader when the device confirms a timestamp reset. */
+    public void noteHardwareResetEvent() {
+        lastHardwareResetEventNanos = System.nanoTime();
     }
 
     /**
@@ -1304,6 +1316,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             wrapAdd = WRAP_START;
             timestampsReset = true; // will inform reader thread that timestamps
             // are reset
+            CypressFX2.this.noteHardwareResetEvent();
         }
 
         class ProcessAEData implements RestrictedTransferCallback {

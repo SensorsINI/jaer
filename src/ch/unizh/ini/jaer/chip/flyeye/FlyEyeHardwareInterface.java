@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.logging.Logger;
 
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -151,12 +154,17 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         }
     }
 
+    private static final int TIMESTAMP_RESET_TRIES = 3;
+    private static final long TIMESTAMP_RESET_WAIT_MS = 400L;
+    private static final int TIMESTAMP_ALIGN_US = 10_000;
+
     @Override
     public void open() throws HardwareInterfaceException {
         super.open();
         assignEyesBySerialAndPref();
         configureSyncMaster();
         logAssignment();
+        showTimestampResetDialog(confirmTimestampResetBothCameras());
     }
 
     /**
@@ -184,16 +192,25 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         setChip(flyEye);
     }
 
-    private void configureSyncMaster() {
+    void configureSyncMaster() {
         AEMonitorInterface left = getAemonLeft();
         AEMonitorInterface right = getAemonRight();
+        FlyEye.TimestampMaster master = flyEye == null ? FlyEye.TimestampMaster.NONE
+                : flyEye.getTimestampMaster();
+        boolean leftMaster = master != FlyEye.TimestampMaster.RIGHT;
+        boolean rightMaster = master != FlyEye.TimestampMaster.LEFT;
         if (left instanceof HasSyncEventOutput syncLeft) {
-            syncLeft.setSyncEventEnabled(true);
+            syncLeft.setSyncEventEnabled(leftMaster);
         }
         if (right instanceof HasSyncEventOutput syncRight) {
-            syncRight.setSyncEventEnabled(false);
+            syncRight.setSyncEventEnabled(rightMaster);
         }
-        log.info("FlyEye left DVS128 is timestamp master");
+        if (master == FlyEye.TimestampMaster.NONE) {
+            log.info("FlyEye both DVS128s are timestamp masters (no sync cable)");
+        } else {
+            log.info("FlyEye " + (master == FlyEye.TimestampMaster.LEFT ? "left" : "right")
+                    + " DVS128 is timestamp master (sync cable)");
+        }
     }
 
     private void logAssignment() {
@@ -230,6 +247,156 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             }
         }
         return key;
+    }
+
+    /**
+     * Vendor-reset both cameras up to {@link #TIMESTAMP_RESET_TRIES} times and
+     * wait for firmware reset events plus PacketBundle last timestamps within
+     * {@link #TIMESTAMP_ALIGN_US}.
+     */
+    TimestampResetResult confirmTimestampResetBothCameras() {
+        AEMonitorInterface left = getAemonLeft();
+        AEMonitorInterface right = getAemonRight();
+        if (left == null || right == null) {
+            return TimestampResetResult.failed("missing camera");
+        }
+        TimestampResetResult last = TimestampResetResult.failed("no attempt");
+        for (int attempt = 1; attempt <= TIMESTAMP_RESET_TRIES; attempt++) {
+            long t0L = lastHardwareResetNanos(left);
+            long t0R = lastHardwareResetNanos(right);
+            left.resetTimestamps();
+            right.resetTimestamps();
+            drainChildBundles(left, right);
+            long deadline = System.currentTimeMillis() + TIMESTAMP_RESET_WAIT_MS;
+            boolean bothEvents = false;
+            Long deltaUs = null;
+            while (System.currentTimeMillis() < deadline) {
+                bothEvents = lastHardwareResetNanos(left) > t0L
+                        && lastHardwareResetNanos(right) > t0R;
+                deltaUs = packetTimestampDeltaUs(left, right);
+                if (deltaUs != null && Math.abs(deltaUs) <= TIMESTAMP_ALIGN_US) {
+                    log.info("FlyEye timestamp reset confirmed: Δt=" + deltaUs
+                            + " µs (attempt " + attempt + "/" + TIMESTAMP_RESET_TRIES
+                            + ", bothResetEvents=" + bothEvents + ")");
+                    return TimestampResetResult.aligned(deltaUs, bothEvents);
+                }
+                if (bothEvents && deltaUs == null) {
+                    // Both firmware resets arrived; no polarity yet. Keep waiting
+                    // until timeout for a 10 ms packet check.
+                }
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return TimestampResetResult.failed("interrupted");
+                }
+            }
+            last = deltaUs != null
+                    ? TimestampResetResult.misaligned(deltaUs, bothEvents)
+                    : TimestampResetResult.failed(bothEvents
+                            ? "reset events from both cameras but no polarity packets"
+                            : "no reset event from "
+                                    + (lastHardwareResetNanos(left) > t0L ? "right" : "left")
+                                    + " camera");
+            log.warning("FlyEye timestamp reset attempt " + attempt + "/"
+                    + TIMESTAMP_RESET_TRIES + ": " + last.detail);
+        }
+        return last;
+    }
+
+    private void drainChildBundles(AEMonitorInterface left, AEMonitorInterface right) {
+        try {
+            left.acquireAvailablePacketBundle();
+            right.acquireAvailablePacketBundle();
+        } catch (HardwareInterfaceException e) {
+            log.fine("FlyEye drain after timestamp reset: " + e.getMessage());
+        }
+    }
+
+    /** Last-timestamp delta (left − right) when both polarity packets are non-empty. */
+    private static Long packetTimestampDeltaUs(AEMonitorInterface left, AEMonitorInterface right) {
+        try {
+            PacketBundle lb = left.acquireAvailablePacketBundle();
+            PacketBundle rb = right.acquireAvailablePacketBundle();
+            EventPacket<?> lp = lb == null ? null : lb.getFirstPolarityPacket();
+            EventPacket<?> rp = rb == null ? null : rb.getFirstPolarityPacket();
+            if (lp == null || rp == null || lp.isEmpty() || rp.isEmpty()) {
+                return null;
+            }
+            return (long) lp.getLastTimestamp() - rp.getLastTimestamp();
+        } catch (HardwareInterfaceException e) {
+            return null;
+        }
+    }
+
+    static long lastHardwareResetNanos(AEMonitorInterface aemon) {
+        if (aemon instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2 fx2) {
+            return fx2.getLastHardwareResetEventNanos();
+        }
+        if (aemon instanceof CypressFX2DVS128HardwareInterface usbIo) {
+            return usbIo.getLastHardwareResetEventNanos();
+        }
+        return 0L;
+    }
+
+    void showTimestampResetDialog(TimestampResetResult result) {
+        if (flyEye == null) {
+            return;
+        }
+        AEViewer viewer = flyEye.getAeViewer();
+        boolean masterEnabled = flyEye.getTimestampMaster() != FlyEye.TimestampMaster.NONE;
+        Runnable show;
+        if (result.aligned) {
+            String msg = String.format(
+                    "<html>FlyEye timestamps aligned.<br>Left and right PacketBundle last timestamps differ by %,d µs (limit 10 ms).",
+                    result.deltaUs == null ? 0L : Math.abs(result.deltaUs));
+            show = () -> JOptionPane.showMessageDialog(viewer, msg,
+                    "FlyEye timestamps", JOptionPane.INFORMATION_MESSAGE);
+        } else if (masterEnabled) {
+            log.warning("FlyEye timestamp reset not confirmed (" + result.detail
+                    + "); timestamp-master option is on, skipping dialog");
+            return;
+        } else {
+            String msg = "<html>FlyEye could not confirm a timestamp reset on both DVS128 cameras.<br>"
+                    + (result.detail != null ? result.detail + "<br>" : "")
+                    + "Clocks that differ by minutes make playback time slices look empty.<br><br>"
+                    + "Use <b>Control → Zero timestamps</b> (keyboard 0) and check the log for a reset event from <b>both</b> serials.<br>"
+                    + "If a sync cable is connected (master OUT → slave IN and GND), set <b>FlyEye → Timestamp master → Left camera</b> or <b>Right camera</b>.";
+            show = () -> JOptionPane.showMessageDialog(viewer, msg,
+                    "FlyEye timestamp reset", JOptionPane.WARNING_MESSAGE);
+        }
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            SwingUtilities.invokeLater(show);
+        }
+    }
+
+    static final class TimestampResetResult {
+        final boolean aligned;
+        final boolean bothResetEvents;
+        final Long deltaUs;
+        final String detail;
+
+        private TimestampResetResult(boolean aligned, boolean bothResetEvents, Long deltaUs, String detail) {
+            this.aligned = aligned;
+            this.bothResetEvents = bothResetEvents;
+            this.deltaUs = deltaUs;
+            this.detail = detail;
+        }
+
+        static TimestampResetResult aligned(long deltaUs, boolean bothResetEvents) {
+            return new TimestampResetResult(true, bothResetEvents, deltaUs, "Δt=" + deltaUs + " µs");
+        }
+
+        static TimestampResetResult misaligned(long deltaUs, boolean bothResetEvents) {
+            return new TimestampResetResult(false, bothResetEvents, deltaUs,
+                    "Δt=" + deltaUs + " µs (limit " + TIMESTAMP_ALIGN_US + " µs)");
+        }
+
+        static TimestampResetResult failed(String detail) {
+            return new TimestampResetResult(false, false, null, detail);
+        }
     }
 
     /** Swap which USB device is left vs right (after swap-eyes menu). */

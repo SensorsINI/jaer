@@ -44,6 +44,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -181,14 +182,13 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 if (syncEnabledMenuItem != null) {
                     syncEnabledMenuItem.setEnabled(false);
                 }
+                maybeWarnWhenNotDirectSyncInterface();
             } else if (syncEnabledMenuItem != null) {
                 syncEnabledMenuItem.setEnabled(true);
                 HasSyncEventOutput hasSync = (HasSyncEventOutput) hw;
                 syncEnabledMenuItem.setSelected(hasSync.isSyncEventEnabled());
                 if (!hasSync.isSyncEventEnabled()) {
-                    WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Timestamps disabled",
-                            "<html>Timestamps may not advance if you are using the DVS128 as a standalone camera. <br>Use DVS128/Timestamp master / Enable sync event output to enable them.");
-                    d.setVisible(true);
+                    showTimestampMasterWarning();
                 }
             }
             if (!(hw instanceof HasLEDControl)) {
@@ -215,6 +215,56 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             // timestamps will not advance in this case
 
         }
+    }
+
+    private boolean timestampMasterWarningShown;
+
+    /**
+     * FlyEye / DVS128StereoPair: composite HI is not {@link HasSyncEventOutput}.
+     * Show how to set timestamp master on that chip (once per instance).
+     */
+    protected void maybeWarnWhenNotDirectSyncInterface() {
+    }
+
+    /**
+     * Don't-show-again dialog. Skip child left/right chips inside a pair.
+     */
+    protected void showTimestampMasterWarning() {
+        AEViewer v = getAeViewer();
+        if (v == null || v.getChip() != this) {
+            return;
+        }
+        if (timestampMasterWarningShown) {
+            return;
+        }
+        timestampMasterWarningShown = true;
+        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
+                v, false, timestampMasterWarningTitle(), timestampsDisabledWarningHtml());
+        d.setVisible(true);
+    }
+
+    protected String timestampMasterWarningTitle() {
+        return getClass().getSimpleName() + " timestamp master";
+    }
+
+    /**
+     * Exact menu path for this chip. FlyEye and DVS128StereoPair override.
+     */
+    protected String timestampsDisabledWarningHtml() {
+        String menu = getClass().getSimpleName();
+        return "<html>This DVS128 is not timestamp master, so timestamps may not advance.<br><br>"
+                + "<b>How to set it</b><br>"
+                + "Menu bar: <b>" + menu + " → Timestamp master / Enable sync event input</b> — check the box.<br>"
+                + "A standalone camera must have that item checked.<br>"
+                + "After changing it, use <b>Control → Zero timestamps</b> (keyboard 0).<br>"
+                + "To slave this camera to another, uncheck the box and connect the master's OUT to this IN (and GND).";
+    }
+
+    /**
+     * False on panoramic FlyEye (it has its own Timestamp master submenu).
+     */
+    protected boolean includeTimestampMasterMenuItem() {
+        return true;
     }
 
     /**
@@ -279,26 +329,24 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             if (syncEnabledMenuItem == null) {
                 syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event input");
                 syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with raw event address " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " (see logging output for cooked special event address)<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
-                if (getHardwareInterface() instanceof HasSyncEventOutput) {
-                    HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
+                syncEnabledMenuItem.addActionListener(new ActionListener() {
 
-                    syncEnabledMenuItem.addActionListener(new ActionListener() {
-
-                        @Override
-                        public void actionPerformed(ActionEvent evt) {
-                            HardwareInterface hw = getHardwareInterface();
-                            if (hw == null) {
-                                log.warning("null hardware interface");
-                                return;
-                            }
-                            if (!(hw instanceof HasSyncEventOutput)) {
-                                log.warning("cannot change sync enabled state of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasSyncEventOutput");
-                                return;
-                            }
-                            log.info("setting sync enabled");
-                            ((HasSyncEventOutput) hw).setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
+                    @Override
+                    public void actionPerformed(ActionEvent evt) {
+                        HardwareInterface hw = getAssignedHardwareInterface();
+                        if (hw == null) {
+                            log.warning("null hardware interface");
+                            return;
                         }
-                    });
+                        if (!(hw instanceof HasSyncEventOutput)) {
+                            log.warning("cannot change sync enabled state of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasSyncEventOutput");
+                            return;
+                        }
+                        log.info("setting sync enabled");
+                        ((HasSyncEventOutput) hw).setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
+                    }
+                });
+                if (includeTimestampMasterMenuItem()) {
                     dvs128Menu.add(syncEnabledMenuItem);
                 }
             }
@@ -307,49 +355,46 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 ledMenu = new JMenu("LED control");
                 ledMenu.getPopupMenu().setLightWeightPopupEnabled(false);
                 ledMenu.setToolTipText("LED control");
-                if (getHardwareInterface() instanceof HasLEDControl) {
-                    final HasLEDControl h = (HasLEDControl) getHardwareInterface();
-                    ledOnBut = new JRadioButtonMenuItem("Turn LED on");
-                    ledOffBut = new JRadioButtonMenuItem("Turn LED off");
-                    ledFlashingBut = new JRadioButtonMenuItem("Make LED flash");
-                    final ButtonGroup group = new ButtonGroup();
-                    group.add(ledOnBut);
-                    group.add(ledOffBut);
-                    group.add(ledFlashingBut);
-                    ledMenu.add(ledOffBut);
-                    ledMenu.add(ledOnBut);
-                    ledMenu.add(ledFlashingBut);
+                ledOnBut = new JRadioButtonMenuItem("Turn LED on");
+                ledOffBut = new JRadioButtonMenuItem("Turn LED off");
+                ledFlashingBut = new JRadioButtonMenuItem("Make LED flash");
+                final ButtonGroup group = new ButtonGroup();
+                group.add(ledOnBut);
+                group.add(ledOffBut);
+                group.add(ledFlashingBut);
+                ledMenu.add(ledOffBut);
+                ledMenu.add(ledOnBut);
+                ledMenu.add(ledFlashingBut);
 
-                    ActionListener ledListener = new ActionListener() {
+                ActionListener ledListener = new ActionListener() {
 
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            HardwareInterface hw = getHardwareInterface();
-                            if (hw == null) {
-                                log.warning("null hardware interface");
-                                return;
-                            }
-                            if (!(hw instanceof HasLEDControl)) {
-                                log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
-                                return;
-                            }
-                            HasLEDControl h = (HasLEDControl) hw;
-                            if (e.getSource() == ledOffBut) {
-                                h.setLEDState(0, LEDState.OFF);
-                            } else if (e.getSource() == ledOnBut) {
-                                h.setLEDState(0, LEDState.ON);
-                            } else if (e.getSource() == ledFlashingBut) {
-                                h.setLEDState(0, LEDState.FLASHING);
-                            }
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        HardwareInterface hw = getAssignedHardwareInterface();
+                        if (hw == null) {
+                            log.warning("null hardware interface");
+                            return;
                         }
-                    };
+                        if (!(hw instanceof HasLEDControl)) {
+                            log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
+                            return;
+                        }
+                        HasLEDControl h = (HasLEDControl) hw;
+                        if (e.getSource() == ledOffBut) {
+                            h.setLEDState(0, LEDState.OFF);
+                        } else if (e.getSource() == ledOnBut) {
+                            h.setLEDState(0, LEDState.ON);
+                        } else if (e.getSource() == ledFlashingBut) {
+                            h.setLEDState(0, LEDState.FLASHING);
+                        }
+                    }
+                };
 
-                    ledOffBut.addActionListener(ledListener);
-                    ledOnBut.addActionListener(ledListener);
-                    ledFlashingBut.addActionListener(ledListener);
+                ledOffBut.addActionListener(ledListener);
+                ledOnBut.addActionListener(ledListener);
+                ledFlashingBut.addActionListener(ledListener);
 
-                    dvs128Menu.add(ledMenu);
-                }
+                dvs128Menu.add(ledMenu);
                 if (getAeViewer() != null) {
                     getAeViewer().addMenu(dvs128Menu);
                 }

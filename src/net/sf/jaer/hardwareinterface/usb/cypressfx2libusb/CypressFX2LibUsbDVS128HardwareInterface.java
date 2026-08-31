@@ -39,9 +39,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
     protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     /** Pref kill-switch for USB→PacketBundle polarity demux. */
     public static final String PREF_USB_TYPED_DEMUX = "CypressFX2DVS128.usbTypedDemux";
-    private boolean syncEventEnabled = CypressFX2LibUsbDVS128HardwareInterface.prefs.getBoolean(
-            "CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default
-    //  is true so that device is the timestamp master by default, necessary after firmware rev 11
+    private boolean syncEventEnabled = true; // firmware rev 11+ needs master; do not load a shared pref (FlyEye slave mode used to persist false for every DVS128)
 
     /**
      * Vendor request for setting LED
@@ -134,13 +132,11 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
 
     @Override
     public void setSyncEventEnabled(final boolean yes) {
-        CypressFX2.log.info("setting " + yes);
+            CypressFX2.log.info("setting " + yes);
 
         try {
             this.sendVendorRequest(VENDOR_REQUEST_SET_SYNC_ENABLED, yes ? (byte) 1 : (byte) 0, (byte) 0);
             syncEventEnabled = yes;
-            CypressFX2LibUsbDVS128HardwareInterface.prefs.putBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled",
-                    yes);
         } catch (final HardwareInterfaceException e) {
             CypressFX2.log.warning(e.toString());
         }
@@ -284,6 +280,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                         // this firmware version uses reset events to reset timestamps
                         resetTimestamps();
                         lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
+                        noteHardwareResetEvent();
                         if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT)
                                 || ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
                             CypressFX2.log.info(this + ".translateEvents got reset event from hardware, timestamp "

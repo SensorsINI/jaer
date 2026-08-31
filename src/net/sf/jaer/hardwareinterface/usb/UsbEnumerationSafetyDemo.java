@@ -108,8 +108,14 @@ public final class UsbEnumerationSafetyDemo {
                 "claimed-but-closed FlyEye pair must stay until ViewLoop opens it");
         require(flyHw.contains("isUnusableAfterUnplug"),
                 "FlyEye drops a pair only after a child lost IN, not because !isOpen()");
-        require(flyChip.contains("packPanoramicAddress"),
-                "AEDAT-4 playback must pack panoramic x back to DVS128+stereo (not dummy 128 flipx)");
+        require(flyChip.contains("timestampMaster"),
+                "FlyEye timestamp-master pref chooses sync-cable master or independent clocks");
+        require(flyHw.contains("TIMESTAMP_RESET_TRIES"),
+                "FlyEye open retries timestamp reset on both cameras");
+        require(flyHw.contains("TIMESTAMP_ALIGN_US"),
+                "FlyEye confirms reset when PacketBundle timestamps are within 10 ms");
+        require(flyHw.contains("both DVS128s are timestamp masters"),
+                "without Timestamp master, both cameras emit reset events (right must not stay slave)");
         String flyRen = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics",
                 "FlyEyeRenderer.java"), StandardCharsets.UTF_8);
         require(flyRen.contains("isSpecial()"),
@@ -138,6 +144,14 @@ public final class UsbEnumerationSafetyDemo {
                 "DVS128.update must not call getHardwareInterface (FlyEye pair claim / StackOverflowError)");
         require(!dvsUpdate.contains("getHardwareInterface()"),
                 "DVS128.update observer must use getAssignedHardwareInterface");
+        String dvsMenu = methodBody(Paths.get("src", "ch", "unizh", "ini", "jaer",
+                "chip", "retina", "DVS128.java"),
+                "private void enableDVS128Menu(boolean yes) {",
+                "public void onDeregistration() {");
+        require(dvsMenu.contains("includeTimestampMasterMenuItem()"),
+                "DVS128 Timestamp master menu must be added even when hardware is not open yet");
+        require(!dvsMenu.contains("if (getHardwareInterface() instanceof HasSyncEventOutput)"),
+                "DVS128 Timestamp master must not wait for HasSyncEventOutput at menu-build time");
         String fx2 = Files.readString(Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx2libusb", "CypressFX2.java"),
                 StandardCharsets.UTF_8);

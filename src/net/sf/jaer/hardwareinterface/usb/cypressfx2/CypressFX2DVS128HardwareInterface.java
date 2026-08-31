@@ -36,6 +36,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     /** Vendor request for setting LED */
     public final byte VENDOR_REQUEST_LED = (byte) 0xCD;
     private LEDState ledState = LEDState.UNKNOWN; // efferent copy, since we can't read it
+    private volatile long lastHardwareResetEventNanos;
     /** SYNC events are detected when this bit mask is detected in the input event stream.
     @see HasSyncEventOutput
      */
@@ -75,6 +76,10 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
             log.warning(e.toString());
         }
 
+    }
+
+    public long getLastHardwareResetEventNanos() {
+        return lastHardwareResetEventNanos;
     }
 
     @Override
@@ -212,6 +217,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
+                        lastHardwareResetEventNanos = System.nanoTime();
                         if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) || ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
                             log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0x3f) << 8))));
                         }

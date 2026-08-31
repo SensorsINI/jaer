@@ -8,9 +8,12 @@ package ch.unizh.ini.jaer.chip.flyeye;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.SwingUtilities;
 
 import net.sf.jaer.Description;
@@ -45,9 +48,18 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
     private boolean eyesSwapped;
     private boolean flipLeftX;
     private boolean flipRightX;
+    private TimestampMaster timestampMaster;
     private JCheckBoxMenuItem swapEyesMenuItem;
     private JCheckBoxMenuItem flipLeftMenuItem;
     private JCheckBoxMenuItem flipRightMenuItem;
+    private JRadioButtonMenuItem timestampMasterNoneItem;
+    private JRadioButtonMenuItem timestampMasterLeftItem;
+    private JRadioButtonMenuItem timestampMasterRightItem;
+
+    /** Which DVS128 drives the sync cable. {@code NONE} = both are masters (no cable). */
+    public enum TimestampMaster {
+        NONE, LEFT, RIGHT
+    }
     /** True while {@link #bindDvs128PairIfAvailable()} is on the stack so
      * {@link DVS128#update} → {@link #getHardwareInterface()} cannot re-enter. */
     private boolean bindingPair;
@@ -64,6 +76,7 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         eyesSwapped = getPrefs().getBoolean("eyesSwapped", false);
         flipLeftX = getPrefs().getBoolean("flipLeftX", false);
         flipRightX = getPrefs().getBoolean("flipRightX", false);
+        timestampMaster = parseTimestampMaster(getPrefs().get("timestampMaster", TimestampMaster.NONE.name()));
         setSizeX(FlyEyeGeometry.panoramicWidth(overlapPixels));
         setSizeY(FlyEyeGeometry.NATIVE_H);
         setEventExtractor(new Extractor(this));
@@ -205,9 +218,65 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         getPrefs().putBoolean("flipRightX", flipRightX);
     }
 
+    public TimestampMaster getTimestampMaster() {
+        return timestampMaster;
+    }
+
+    public void setTimestampMaster(TimestampMaster timestampMaster) {
+        if (timestampMaster == null) {
+            timestampMaster = TimestampMaster.NONE;
+        }
+        this.timestampMaster = timestampMaster;
+        getPrefs().put("timestampMaster", timestampMaster.name());
+        syncTimestampMasterMenu();
+        if (hardwareInterface instanceof FlyEyeHardwareInterface flyHw && flyHw.isOpen()) {
+            flyHw.configureSyncMaster();
+        }
+    }
+
+    private static TimestampMaster parseTimestampMaster(String s) {
+        if (s == null) {
+            return TimestampMaster.NONE;
+        }
+        try {
+            return TimestampMaster.valueOf(s.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return TimestampMaster.NONE;
+        }
+    }
+
+    private void syncTimestampMasterMenu() {
+        if (timestampMasterNoneItem == null) {
+            return;
+        }
+        timestampMasterNoneItem.setSelected(timestampMaster == TimestampMaster.NONE);
+        timestampMasterLeftItem.setSelected(timestampMaster == TimestampMaster.LEFT);
+        timestampMasterRightItem.setSelected(timestampMaster == TimestampMaster.RIGHT);
+    }
+
     @Override
     public int getNumCellTypes() {
         return 4;
+    }
+
+    @Override
+    protected boolean includeTimestampMasterMenuItem() {
+        return false;
+    }
+
+    @Override
+    protected void maybeWarnWhenNotDirectSyncInterface() {
+        showTimestampMasterWarning();
+    }
+
+    @Override
+    protected String timestampsDisabledWarningHtml() {
+        return "<html>FlyEye does not use the DVS128 “Timestamp master / Enable sync event input” checkbox.<br><br>"
+                + "<b>How to set timestamp master</b><br>"
+                + "Menu bar: <b>FlyEye → Timestamp master</b><br>"
+                + "• <b>None (independent clocks)</b> — default, no sync cable. Then <b>Control → Zero timestamps</b> (keyboard 0) so both cameras reset.<br>"
+                + "• <b>Left camera</b> or <b>Right camera</b> — that camera is hardware master. Connect its OUT pin to the other camera’s IN pin and connect GND.<br>"
+                + "You can also use <b>FlyEye → Reset timestamps…</b> to confirm both clocks.";
     }
 
     @Override
@@ -254,6 +323,37 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
                 }
             });
             dvs128Menu.add(overlapItem);
+
+            JMenu masterMenu = new JMenu("Timestamp master");
+            masterMenu.setToolTipText("<html>None: both cameras run independent clocks (default, no sync cable).<br>"
+                    + "Left/Right: that camera is hardware master; connect its OUT to the slave IN and share GND.");
+            ButtonGroup masterGroup = new ButtonGroup();
+            timestampMasterNoneItem = new JRadioButtonMenuItem("None (independent clocks)");
+            timestampMasterLeftItem = new JRadioButtonMenuItem("Left camera (sync cable)");
+            timestampMasterRightItem = new JRadioButtonMenuItem("Right camera (sync cable)");
+            masterGroup.add(timestampMasterNoneItem);
+            masterGroup.add(timestampMasterLeftItem);
+            masterGroup.add(timestampMasterRightItem);
+            timestampMasterNoneItem.addActionListener(evt -> setTimestampMaster(TimestampMaster.NONE));
+            timestampMasterLeftItem.addActionListener(evt -> setTimestampMaster(TimestampMaster.LEFT));
+            timestampMasterRightItem.addActionListener(evt -> setTimestampMaster(TimestampMaster.RIGHT));
+            masterMenu.add(timestampMasterNoneItem);
+            masterMenu.add(timestampMasterLeftItem);
+            masterMenu.add(timestampMasterRightItem);
+            dvs128Menu.add(masterMenu);
+            syncTimestampMasterMenu();
+
+            JMenuItem resetTsItem = new JMenuItem("Reset timestamps…");
+            resetTsItem.setToolTipText("Vendor-reset both DVS128s and confirm PacketBundle times within 10 ms");
+            resetTsItem.addActionListener(evt -> {
+                if (!(hardwareInterface instanceof FlyEyeHardwareInterface flyHw) || !flyHw.isOpen()) {
+                    log.warning("FlyEye hardware is not open");
+                    return;
+                }
+                new Thread(() -> flyHw.showTimestampResetDialog(
+                        flyHw.confirmTimestampResetBothCameras()), "FlyEye-ts-reset").start();
+            });
+            dvs128Menu.add(resetTsItem);
         }
     }
 
