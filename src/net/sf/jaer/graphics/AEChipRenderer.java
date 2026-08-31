@@ -1526,7 +1526,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             putValue(ACCELERATOR_KEY,
                     javax.swing.KeyStroke.getKeyStroke(
                             java.awt.event.KeyEvent.VK_P,
-                            java.awt.event.InputEvent.CTRL_DOWN_MASK + java.awt.event.InputEvent.SHIFT_DOWN_MASK
+                            java.awt.event.InputEvent.CTRL_DOWN_MASK | java.awt.event.InputEvent.ALT_DOWN_MASK
                     )
             );
             putValue(Action.SELECTED_KEY, isSlidingWindowEnabled());

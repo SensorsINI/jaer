@@ -750,12 +750,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
-        // Ctrl+Shift+U: Interface → Refresh. Menu accelerators are not always delivered
-        // when the heavyweight GL canvas has focus; Windows has no libusb hotplug.
+        // Ctrl+Shift+P: File → Preferences. Menu accelerators are not always delivered
+        // when the heavyweight GL canvas has focus.
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
-                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_U
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_P
                         || !e.isControlDown() || !e.isShiftDown() || e.isAltDown()) {
                     return false;
                 }
@@ -763,7 +763,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (active != AEViewer.this) {
                     return false;
                 }
-                refreshInterfaceMenuItem.doClick();
+                preferencesMenuItem.doClick();
+                e.consume();
+                return true;
+            }
+        });
+        // Ctrl+Alt+P: View → Sliding window (moved off Ctrl+Shift+P).
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_P
+                        || !e.isControlDown() || !e.isAltDown() || e.isShiftDown()) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                if (slidingMI != null) {
+                    slidingMI.doClick();
+                }
                 e.consume();
                 return true;
             }
@@ -7086,7 +7105,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         preferencesMenuItem.setMnemonic('p');
         preferencesMenuItem.setText("Preferences...");
-        preferencesMenuItem.setToolTipText("Edit AEViewer preferences");
+        preferencesMenuItem.setToolTipText("Edit AEViewer preferences (Ctrl+Shift+P)");
+        preferencesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P,
+                java.awt.event.InputEvent.CTRL_DOWN_MASK | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         preferencesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 preferencesMenuItemActionPerformed(evt);
@@ -7196,7 +7217,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fadingMI.setToolTipText("Controls if previous DVS events fade away according to color scale or frames are just last slice");
         viewMenu.add(fadingMI);
 
-        slidingMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        slidingMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK | java.awt.event.InputEvent.ALT_DOWN_MASK));
         slidingMI.setText("Sliding window");
         slidingMI.setToolTipText("Controls if previous DVS events fade away according to color scale or frames are just last slice");
         viewMenu.add(slidingMI);
