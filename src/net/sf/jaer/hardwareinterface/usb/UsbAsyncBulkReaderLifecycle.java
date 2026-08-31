@@ -17,6 +17,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.SwingWorker;
+
 /**
  * Serializes USB async-bulk reader sessions so FIFO/buffer-count changes never
  * overlap libusb transfer sets. Scroll-wheel adjustments update a pending
@@ -373,10 +375,19 @@ public final class UsbAsyncBulkReaderLifecycle {
     /**
      * Interrupt {@code thread} and join. Returns true only if it is no longer
      * alive. Does not clear the caller's reference.
+     * <p>
+     * Must not run on {@code thread} itself: {@code interrupt()} then
+     * {@code join()} on the current thread throws {@code InterruptedException}
+     * immediately while the thread is still alive, which looks like a join
+     * timeout and makes hosts {@link #abandonNativeHandle}.
      */
     public static boolean interruptAndJoin(Thread thread, long timeoutMs, Logger log, String label) {
         if (thread == null) {
             return true;
+        }
+        if (thread == Thread.currentThread()) {
+            log.warning(label + ": interruptAndJoin on the reader thread; skipping join (close must run off AEReader)");
+            return false;
         }
         thread.interrupt();
         try {
@@ -390,6 +401,26 @@ public final class UsbAsyncBulkReaderLifecycle {
             return false;
         }
         return true;
+    }
+
+    /**
+     * USBTransferThread exceptional-shutdown runs on the AEReader. Hosts must
+     * not {@code close()} there: {@link #interruptAndJoin} on the current
+     * thread fails immediately and the host abandons the native handle
+     * ({@code LIBUSB_ERROR_ACCESS} on the next open).
+     */
+    public static void closeHostOffReaderThread(Runnable close) {
+        if (close == null) {
+            return;
+        }
+        final SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                close.run();
+                return null;
+            }
+        };
+        worker.execute();
     }
 
     /**

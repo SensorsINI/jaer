@@ -43,8 +43,12 @@ needs FrontPanel `okjFrontPanel.jar` on the classpath and the native
 `okjFrontPanel` library on `java.library.path` if re-enabled.
 
 `buildInterfaceList()` walks every factory. It is expensive. The Interface menu
-uses `getCachedNumInterfacesAvailable()` on the EDT so a live camera is not
-re-scanned. **Refresh** enumerates off the EDT.
+uses `getCachedNumInterfacesAvailable()` / `getInterface(n)` on the **last
+completed scan snapshot**. Those reads are **not** synchronized with the scan:
+a hung Windows `LibUsb.getDeviceList` after NRV unplug used to freeze Swing
+because the menu waited on the same factory monitor. **Refresh** still
+enumerates off the EDT (`getNumInterfacesAvailable()`). WAITING kicks
+`requestBackgroundScan()` so ViewLoop does not sit inside `getDeviceList`.
 
 `usbEnumerationDirty` plus [`LibUsbHotplug`](../src/net/sf/jaer/hardwareinterface/usb/LibUsbHotplug.java)
 avoid a full `getDeviceList` on every poll when hotplug is supported (Linux/macOS).
@@ -55,6 +59,13 @@ enumerated-device change (plug/unplug), then every **3 s** for 10 minutes, then
 every **15 s**. A device-list change or AEViewer focus restarts that decay
 (WAITING is interrupted so the next scan is immediate). Phase changes are
 logged at INFO. USB enumeration stays off the EDT.
+
+WAITING must **not** `getDeviceList` while another viewer holds
+`USB_OPEN_SERIAL_LOCK` (native open+config). Concurrent `getDeviceList` during
+EVK4 ISSD bulk times out (`LIBUSB_ERROR_TIMEOUT` on `0x79`, jAER 10:14:08) and
+stalls NRV I2C `applySettings`. `requestBackgroundScan` skips when
+`noteUsbNativeOpenBegin` is in effect; the open worker
+`awaitBackgroundScanIdle(2000)` before `open()`.
 
 FX2 and FX3 factories list devices by **VID/PID from `LibUsb.getDeviceDescriptor`
 only**. They must not `LibUsb.open` during scan: opening while another handle is
@@ -208,8 +219,12 @@ ViewLoop waits:
 On timeout or Interface change: `unbindAbandonedHardware`.
 Do **not** call `close()` on a hung synchronized `open()` (that waits on the same
 monitor as the stuck native transfer). `LIBUSB_ERROR_ACCESS` after an Interface
-select of a still-enumerated device is retried (sibling close may still hold
-WinUSB). Permanent `nullInterface` stays for a ghost device or Interface → None.
+select of a still-enumerated device is retried at most twice (sibling close may
+still hold WinUSB). ISSD `LIBUSB_ERROR_TIMEOUT` is **not** ACCESS: it stops and
+sets `nullInterface` so WAITING does not loop every 2 s (EVK4 after Interface
+→ None). Permanent `nullInterface` stays for a ghost device, ISSD failure, or
+Interface → None. None aborts an in-flight Prophesee open and will not reopen
+a closed wrapper.
 
 `sendConfiguration` / DVX `dvxConfig` runs on **the same opener thread** after
 `open()` returns, **before** PlayMode LIVE. There is no parallel `jaer-send-biases`
@@ -325,6 +340,10 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 - After claim, `Imx636Init` + `Evk4BoardCommand.bulkTransfer` (synchronous
   Treuzell). `requestOpenAbort()` cannot cancel an in-flight native
   `LibUsb.bulkTransfer`. ViewLoop waits **45 s** then abandons.
+- ISSD first command (`0x79`) is a 1 s bulk OUT. A WAITING sibling
+  `getDeviceList` during that write is `LIBUSB_ERROR_TIMEOUT`; AEViewer then
+  sets `nullInterface` and shows the device list again (jAER 10:14:08 after
+  Interface → None on every other camera). Do not scan USB during native open.
 - Event path is async `USBTransferThread` on bulk IN `0x81`. Control path is
   sync bulk. Both use a **dedicated libusb `Context`** (`PropheseeLibUsb`)
   so ISSD and the 2 MiB event reader do not `handleEvents` on the default
@@ -338,6 +357,9 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 
 ### NRV DELTA01 — VID:PID `04b4:00f0` (FX20), `04b4:00f1` (CX3)
 
+- Factory: `NRVHardwareInterfaceFactory` → `NRVHardwareInterface`. Scan is
+  VID/PID only; device-list merge is `UsbIds.mergeLibUsbDeviceScan` (same as
+  FX3/Prophesee) so a WAITING sibling scan does not unref a LIVE NRV `Device`.
 - After Linux hotplug, `LibUsb.open` can succeed while the CX3 is still
   **config 0**; `claimInterface(0)` then returns `LIBUSB_ERROR_NOT_FOUND`.
   `acquireDevice` sets configuration 1 (same as Cypress FX3) and retries for 2 s.
@@ -347,12 +369,15 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
   `sendConfiguration` on `jaer-aemon-open` after `open()`.
 - `setAeChipClass` must not unregister `LibUsbHotplug` (`cleanup()` is reused
   for chip switch). Without the listener, WAITING stays deaf to ARRIVED/LEFT.
-- Still calls `LibUsb.getStringDescriptor` in a loop on open. Linux has been
-  reliable; Windows can hang the same way FX3/Prophesee used to. Failures are
-  logged; open continues if the catch fires, but a native hang never reaches
-  the catch.
+- Open does **not** call `LibUsb.getStringDescriptor` (no timeout on WinUSB;
+  same hang as FX3/Prophesee). Labels use type name plus bus/addr.
+- Unplug `markUsbDisconnected` starts `NRV-USB-disconnect` and calls `close()`
+  **without** holding the HI monitor for the whole teardown (that blocked
+  synchronized `open()` / ViewLoop).
 - Async bulk readout like Prophesee (`USBTransferThread`). I2C via vendor
-  requests `0xBA` / `0xAB`.
+  requests `0xBA` / `0xAB`. Exceptional AEReader shutdown must
+  `closeHostOffReaderThread` (same as FX2/FX3): a dead reader that does not
+  `close()` leaves LIVE with no events.
 
 ### DVS128 Cypress FX2 libusb
 
@@ -362,6 +387,13 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
   `CypressFX2.populateDescriptors()`. Linux OK in recent tests; Windows after
   a rapid switch is the same class of hang as FX3 strings used to be.
 - Close stops acquisition while still open, then clears `isOpened`.
+- AEReader exceptional-shutdown must **not** call `close()` on the transfer
+  thread. That `interruptAndJoin`s itself, looks like a 3 s timeout, and
+  `abandonNativeHandle` leaves WinUSB holding the device
+  (`LIBUSB_ERROR_ACCESS` on the next open — jAER 09:56:29 AEViewer #2
+  DVS128-V1 0633). Both FX2 and FX3 schedule
+  `UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread` so join can wait for
+  the reader to exit, then `LibUsb.close`.
 
 ### Other libusb devices on the FX3 factory
 
@@ -376,10 +408,11 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 
 | Symptom | Typical cause | What jAER does |
 |---------|---------------|----------------|
-| `LIBUSB_ERROR_ACCESS` | Another handle, udev, wrong WinUSB driver | Fail open; `nullInterface` so WAITING does not retry every 3 s |
+| `LIBUSB_ERROR_ACCESS` | Another handle, udev, wrong WinUSB driver | After Interface: retry twice; then `nullInterface`. Autobind / None: `nullInterface` |
+| ISSD `LIBUSB_ERROR_TIMEOUT` | EVK4 control write during bring-up; often WAITING `getDeviceList` on WinUSB | Fail open; `nullInterface` (do not retry every 2 s) |
 | `LIBUSB_ERROR_BUSY` / `NOT_SUPPORTED` | Driver or exclusive owner | Same; Windows hint in `libUsbOpenHint` |
 | Open worker still alive after 8 s / 45 s | Native control/bulk never returned | Unbind; do not `close()` the hung instance |
-| Interface menu / EDT freeze | USB scan or `toString()`/`getStringDescriptors` while closed | Must not happen; scan stays off EDT |
+| Interface menu / EDT freeze | Cache read waited on factory lock while `getDeviceList` hung (NRV unplug) | Snapshot reads; WAITING uses `requestBackgroundScan`; NRV skips string descriptors |
 | Ghost CypressFX3 after failed open | Menu skip by `toString()` equality | Skip by `UsbIds.samePhysicalDevice` |
 
 Unplug does not unblock a thread already inside a hung WinUSB transfer; kill the

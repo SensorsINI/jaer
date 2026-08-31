@@ -20,6 +20,7 @@ import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 
 /**
  * Enumerates NRV DVS cameras (Cypress 0x04B4:0x00F0 and 0x04B4:0x00F1).
@@ -68,18 +69,9 @@ public class NRVHardwareInterfaceFactory implements HardwareInterfaceFactoryInte
 
     private void refreshCompatibleDevicesList() {
         final List<Device> tmpDrain = new ArrayList<>(buildCompatibleDevicesList());
-        final List<Device> removals = new ArrayList<>();
-        for (final Device element : compatibleDevicesList) {
-            if (tmpDrain.contains(element)) {
-                tmpDrain.remove(element);
-            } else {
-                removals.add(element);
-                LibUsb.unrefDevice(element);
-            }
-        }
-        compatibleDevicesList.removeAll(removals);
-        compatibleDevicesList.addAll(tmpDrain);
-        tmpDrain.clear();
+        // Device.equals is native-pointer identity; match bus/addr or a rescan
+        // unrefs the Device a LIVE NRV still holds (same bug as FX3/Prophesee).
+        UsbIds.mergeLibUsbDeviceScan(compatibleDevicesList, tmpDrain);
     }
 
     private List<Device> buildCompatibleDevicesList() {
@@ -110,7 +102,6 @@ public class NRVHardwareInterfaceFactory implements HardwareInterfaceFactoryInte
 
     @Override
     synchronized public USBInterface getInterface(final int n) {
-        refreshCompatibleDevicesList();
         final int numAvailable = compatibleDevicesList.size();
         if (n > numAvailable - 1) {
             if (numAvailable == 0) {

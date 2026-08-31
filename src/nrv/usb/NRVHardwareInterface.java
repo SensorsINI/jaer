@@ -246,18 +246,21 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             acquireDevice();
             selectI2CTransport(deviceDescriptor.idProduct());
 
-            try {
-                for (int i = 0; i < stringDescriptors.length; i++) {
-                    stringDescriptors[i] = LibUsb.getStringDescriptor(deviceHandle, (byte) (i + 1));
-                }
-            } catch (Exception e) {
-                log.warning("Could not read all USB string descriptors: " + e.getMessage());
+            // Never issue USB string-descriptor control transfers during open.
+            // On Windows WinUSB, LibUsb.getStringDescriptor has no timeout and
+            // can hang jaer-aemon-open (same class as CypressFX3 / Prophesee).
+            stringDescriptors[0] = "NRV";
+            stringDescriptors[1] = getTypeName();
+            if (device != null) {
+                stringDescriptors[2] = String.format("bus%d-addr%d",
+                        LibUsb.getBusNumber(device), LibUsb.getDeviceAddress(device));
             }
+            log.info("NRV device opened VID:PID="
+                    + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct())
+                    + " (skipping USB string descriptors)");
 
             usbTransferFailed = false;
             isOpened = true;
-            log.info("NRV device opened VID:PID="
-                    + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
             LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
         } catch (HardwareInterfaceException | RuntimeException e) {
             closePartialOpen();
@@ -311,13 +314,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
         usbTransferFailed = true;
         log.warning("NRV USB disconnected: " + LibUsb.errorName(transferStatus));
-        new Thread(() -> {
-            synchronized (NRVHardwareInterface.this) {
-                if (isOpen()) {
-                    close();
-                }
-            }
-        }, "NRV-USB-disconnect").start();
+        // Do not hold this monitor across close(): AEReader stop + LibUsb.close
+        // join would block synchronized open() / ViewLoop for the whole teardown.
+        new Thread(this::close, "NRV-USB-disconnect").start();
     }
 
     void recoverFailedBufferReconfig(Exception cause) {
@@ -419,6 +418,12 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public void close() {
+        final NRVAEReader currentReader = aeReader;
+        if (currentReader != null && currentReader.isTransferThread()) {
+            log.warning("NRV close() from AEReader; deferring off that thread so join can succeed");
+            UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(this::close);
+            return;
+        }
         final NRVAEReader reader;
         final DeviceHandle handle;
         boolean readerDead = true;

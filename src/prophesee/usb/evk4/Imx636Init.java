@@ -2,6 +2,7 @@ package prophesee.usb.evk4;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import org.usb4java.DeviceHandle;
@@ -112,10 +113,22 @@ public final class Imx636Init {
 
     public static InitResult initialize(DeviceHandle handle, PropheseeBiases biases)
             throws HardwareInterfaceException {
+        return initialize(handle, biases, null);
+    }
+
+    /**
+     * ISSD Stop → Destroy → Init (streaming is {@link #startStreaming}).
+     * {@code progress} is called before each phase (including ISSD sleeps) so
+     * the Opening overlay can show the current step.
+     */
+    public static InitResult initialize(DeviceHandle handle, PropheseeBiases biases,
+            Consumer<String> progress) throws HardwareInterfaceException {
         long t0 = System.currentTimeMillis();
         log.fine("Prophesee IMX636 init: begin " + UsbLog.t());
+        beginPhase(progress, "Reading firmware", t0);
         Evk4BoardCommand.readFirmwareInfo(handle);
         fineStep("firmware info", t0);
+        beginPhase(progress, "Handshake", t0);
         final String serial = Evk4BoardCommand.runDeviceDiscoveryHandshake(handle);
         fineStep("handshake serial=" + serial, t0);
 
@@ -124,29 +137,44 @@ public final class Imx636Init {
         }
 
         // neuromorphic-drivers reads chip biases for metadata only (before ISSD stop).
+        beginPhase(progress, "Reading chip biases", t0);
         final PropheseeBiases chipBiases = readDefaultBiases(handle);
         fineStep("read chip biases", t0);
 
+        beginPhase(progress, "ISSD Stop", t0);
         issdStop(handle);
         abortIfInterrupted();
         fineStep("issdStop", t0);
+        beginPhase(progress, "ISSD Destroy", t0);
         issdDestroy(handle);
         abortIfInterrupted();
         fineStep("issdDestroy", t0);
-        issdInit(handle);
+        beginPhase(progress, "ISSD Init", t0);
+        issdInit(handle, progress, t0);
         abortIfInterrupted();
         fineStep("issdInit", t0);
+        beginPhase(progress, "Flushing event endpoint", t0);
         final int flushed = Evk4BoardCommand.flushEventEndpoint(handle);
         fineStep("flush 0x81 flushedBytes=" + flushed, t0);
         Evk4BoardCommand.request(handle, new byte[] { 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
         fineStep("post-flush 0x72", t0);
+        beginPhase(progress, "Applying biases", t0);
         applyBiases(handle, biases);
         fineStep("apply DEFAULT biases", t0);
+        beginPhase(progress, "Applying ROI", t0);
         applyDefaultRoiAndMasks(handle);
         fineStep("apply ROI/masks", t0);
         log.info(String.format("Prophesee IMX636 init: complete in %dms serial=%s (streaming not started)",
                 System.currentTimeMillis() - t0, serial));
         return new InitResult(serial, chipBiases);
+    }
+
+    private static void beginPhase(Consumer<String> progress, String name, long t0) {
+        log.fine(String.format("Prophesee IMX636 init: begin %s (+%dms) %s", name,
+                System.currentTimeMillis() - t0, UsbLog.t()));
+        if (progress != null) {
+            progress.accept(name);
+        }
     }
 
     private static void abortIfInterrupted() throws HardwareInterfaceException {
@@ -195,6 +223,7 @@ public final class Imx636Init {
     }
 
     private static void issdStop(DeviceHandle handle) throws HardwareInterfaceException {
+        log.fine("Prophesee ISSD Stop begin " + UsbLog.t());
         Evk4BoardCommand.writeRegister(handle, 0x0004, packRoiCtrl(1, 0, 1, 0, 0x1e000a));
         Evk4BoardCommand.writeRegister(handle, 0x002C, 0x0022c324);
         Evk4BoardCommand.writeRegister(handle, 0x9028, packRoCtrl(0, 1, 0));
@@ -205,6 +234,7 @@ public final class Imx636Init {
     }
 
     private static void issdDestroy(DeviceHandle handle) throws HardwareInterfaceException {
+        log.fine("Prophesee ISSD Destroy begin " + UsbLog.t());
         Evk4BoardCommand.writeRegister(handle, 0x0070, 0x00400008);
         Evk4BoardCommand.writeRegister(handle, 0x006C, 0x0ee47114);
         sleepUs(500);
@@ -234,14 +264,20 @@ public final class Imx636Init {
         Evk4BoardCommand.writeRegister(handle, 0xB07C, 0x00000000);
     }
 
-    private static void issdInit(DeviceHandle handle) throws HardwareInterfaceException {
+    private static void issdInit(DeviceHandle handle, Consumer<String> progress, long t0)
+            throws HardwareInterfaceException {
+        log.fine("Prophesee ISSD Init begin " + UsbLog.t());
         Evk4BoardCommand.writeRegister(handle, 0x001C, 0x00000001);
         Evk4BoardCommand.writeRegister(handle, 0x400004, 0x00000001);
+        beginPhase(progress, "ISSD Init — waiting 1 s", t0);
         sleepSec(1);
         Evk4BoardCommand.writeRegister(handle, 0x400004, 0x00000000);
+        beginPhase(progress, "ISSD Init — waiting 0.5 s", t0);
         sleepMs(500);
         Evk4BoardCommand.writeRegister(handle, 0xB000, 0x00000158);
+        beginPhase(progress, "ISSD Init — waiting 1 s", t0);
         sleepSec(1);
+        beginPhase(progress, "ISSD Init", t0);
         Evk4BoardCommand.writeRegister(handle, 0xB044, 0x00000000);
         sleepUs(300);
         Evk4BoardCommand.writeRegister(handle, 0xB004, 0x0000000a);
@@ -439,6 +475,7 @@ public final class Imx636Init {
     }
 
     private static void issdStart(DeviceHandle handle) throws HardwareInterfaceException {
+        log.fine("Prophesee ISSD Start begin " + UsbLog.t());
         Evk4BoardCommand.writeRegister(handle, 0xB000, 0x000002f9);
         Evk4BoardCommand.writeRegister(handle, 0x9028, packRoCtrl(0, 0, 0));
         Evk4BoardCommand.writeRegister(handle, 0x9008, packTimeBaseCtrl(1, 0, 1, 0, 0x64));

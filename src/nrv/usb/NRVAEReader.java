@@ -153,7 +153,9 @@ public class NRVAEReader {
                 LibUsb.TRANSFER_TYPE_BULK,
                 new ProcessAEData(generation),
                 getNumBuffers(),
-                getFifoSize());
+                getFifoSize(),
+                null, null,
+                () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
         usbTransfer.setName("NRVAEReaderThread");
         // Daemon so a stuck deallocateTransfers/handleEventsTimeout cannot keep the JVM alive on exit.
         usbTransfer.setDaemon(true);
@@ -178,6 +180,10 @@ public class NRVAEReader {
         if (status != LibUsb.SUCCESS && status != LibUsb.ERROR_NOT_FOUND) {
             log.fine("NRV clearHalt 0x81: " + LibUsb.errorName(status));
         }
+    }
+
+    boolean isTransferThread() {
+        return usbTransfer == Thread.currentThread();
     }
 
     public boolean stopThread() {

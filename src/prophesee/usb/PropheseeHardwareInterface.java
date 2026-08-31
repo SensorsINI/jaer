@@ -9,6 +9,7 @@ import java.awt.datatransfer.StringSelection;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -37,6 +38,7 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import prophesee.chip.PropheseeConfig;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PacketBundle;
@@ -406,6 +408,10 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         try {
             log.info("Prophesee EVK4 open: LibUsb.open + claim (ISSD init follows, often several seconds)");
             log.fine("Prophesee open() begin " + UsbLog.t());
+            final Consumer<String> progress = openingProgress();
+            if (progress != null) {
+                progress.accept("Claiming USB");
+            }
             deviceHandle = new DeviceHandle();
             int status = LibUsb.open(device, deviceHandle);
             log.fine("Prophesee LibUsb.open status=" + status + " " + UsbLog.t());
@@ -440,7 +446,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             checkOpenAbort();
             log.info("Prophesee open: ISSD init (includes ~2.5s sleep)");
             log.fine("Prophesee Imx636Init.initialize() enter " + UsbLog.t());
-            final Imx636Init.InitResult initResult = Imx636Init.initialize(deviceHandle, biases);
+            final Imx636Init.InitResult initResult = Imx636Init.initialize(deviceHandle, biases, progress);
             log.fine("Prophesee Imx636Init.initialize() returned " + UsbLog.t());
             checkOpenAbort();
             serial = initResult.serial;
@@ -860,9 +866,23 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         if (sensorStreaming || deviceHandle == null || closing) {
             return;
         }
+        Consumer<String> progress = openingProgress();
+        if (progress != null) {
+            progress.accept("ISSD Start");
+        }
         Imx636Init.startStreaming(deviceHandle);
         sensorStreaming = true;
         log.info("Prophesee ISSD streaming started (events on 0x81)");
+    }
+
+    /** Opening overlay on the bound AEViewer, or {@code null} if none. */
+    private Consumer<String> openingProgress() {
+        AEChip c = chip;
+        if (c == null) {
+            return null;
+        }
+        AEViewer v = c.getAeViewer();
+        return v == null ? null : v::updateOpeningCameraStatus;
     }
 
     void persistUsbFifoSize(int fifoSize) {

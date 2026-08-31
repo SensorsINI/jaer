@@ -723,6 +723,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     synchronized public void close() {
+        final AEReader reader = getAeReader();
+        if (reader != null && reader.usbTransfer == Thread.currentThread()) {
+            CypressFX2.log.warning("CypressFX2.close() from AEReader; deferring off that thread so join can succeed");
+            UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(this::close);
+            return;
+        }
         try {
             if (isOpen()) {
                 boolean readerDead = true;
@@ -1090,12 +1096,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             final long gen = bufferLifecycle.adoptExternalStart(new Config(fifoSize, numBuffers));
             readerActive = true;
             usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
-                    new ProcessAEData(gen), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
-                @Override
-                public void run() {
-                    monitor.close();
-                }
-            });
+                    new ProcessAEData(gen), getNumBuffers(), getFifoSize(), null, null,
+                    () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
             usbTransfer.setName("AEReaderThread");
             usbTransfer.start();
 
@@ -1483,7 +1485,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
                 numBuffers = requested.numBuffers;
                 readerActive = true;
                 usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
-                        new ProcessAEData(generation), getNumBuffers(), getFifoSize(), null, null, () -> monitor.close());
+                        new ProcessAEData(generation), getNumBuffers(), getFifoSize(), null, null,
+                        () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
                 usbTransfer.setName("AEReaderThread");
                 usbTransfer.start();
                 getSupport().firePropertyChange("readerStarted", false, true);

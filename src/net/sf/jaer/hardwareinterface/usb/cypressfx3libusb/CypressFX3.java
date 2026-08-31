@@ -742,6 +742,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     synchronized public void close() {
+        final AEReader reader = getAeReader();
+        if (reader != null && reader.usbTransfer == Thread.currentThread()) {
+            log.warning("CypressFX3.close() from AEReader; deferring off that thread so join can succeed");
+            UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(this::close);
+            return;
+        }
         if (!isOpen()) {
             log.info("close(): not open, not doing anything");
             return;
@@ -1235,16 +1241,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         private void startBulkTransferThreadOnce(long generation) throws HardwareInterfaceException {
             usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
                     LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(generation), getNumBuffers(), getFifoSize(),
-                    null, null, () -> {
-                        final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
-                            @Override
-                            public Void doInBackground() {
-                                monitor.close();
-                                return null;
-                            }
-                        };
-                        shutdownWorker.execute();
-                    });
+                    null, null, () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
             usbTransfer.setName("AEReaderThread");
             final AtomicReference<Throwable> startError = new AtomicReference<>();
             final AtomicBoolean running = new AtomicBoolean(false);

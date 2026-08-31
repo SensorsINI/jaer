@@ -34,12 +34,15 @@ public final class UsbEnumerationSafetyDemo {
         testHotplugUnplugDoesNotBlockReplug();
         testChipSwitchKeepsHotplugListener();
         testNrvClaimAfterHotplug();
+        testFactoryCacheDoesNotWaitForScan();
         testWindowsUsbPollSchedule();
         testRememberLastInterfaceMap();
         testUsbOpenSerializer();
         testSessionCameraOpenCoordinator();
         testDvxClassicVsMicroTypes();
         testUsbResetClosesAllInterfaces();
+        testFx2AeReaderClosesOffReaderThread();
+        testCtrlWAbortsActivityNotViewer();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
     }
@@ -105,7 +108,7 @@ public final class UsbEnumerationSafetyDemo {
                 StandardCharsets.UTF_8);
         require(!src.contains("openSelectedHardwareInterfaceOffEdt("),
                 "Interface selection must not abandon chip chooser off the EDT");
-        require(src.contains("Stop WAITING from rebinding the same ghost device"),
+        require(src.contains("Stop WAITING from rebinding"),
                 "USB open ACCESS must stop auto-rebind (None until user picks Interface)");
         require(!src.contains("openSelectedHardwareInterfaceOffEdt"),
                 "no off-EDT selector that abandons the AEChip chooser");
@@ -235,9 +238,14 @@ public final class UsbEnumerationSafetyDemo {
         Path fx3 = Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
 
-        String none = methodBody(viewer,
+        String noneRadio = methodBody(viewer,
                 "JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem(\"None\")",
                 "noneInterfaceButton.setSelected(!interfaceAlreadyOpen)");
+        require(noneRadio.contains("selectNoneInterface()"),
+                "Interface → None radio delegates to selectNoneInterface");
+        String none = methodBody(viewer,
+                "public void selectNoneInterface() {",
+                "public void closeOrAbortCurrentActivity() {");
         require(none.contains("clearOpeningCameraOverlay()"),
                 "None restores idle Welcome overlay");
         require(none.contains("chip.setHardwareInterface(null)"),
@@ -246,6 +254,8 @@ public final class UsbEnumerationSafetyDemo {
                 "None clears aemon so WAITING does not acquire the closed Davis");
         require(none.contains("nullInterface = true"),
                 "None blocks auto-rebind until the user picks a device");
+        require(none.contains("requestOpenAbort()"),
+                "None aborts an in-flight Prophesee ISSD open");
         require(none.contains("setPlayMode(PlayMode.WAITING)"),
                 "None leaves LIVE so the next Davis select starts from WAITING");
         require(none.contains("closeHardwareInterfaceWithTimeout("),
@@ -351,6 +361,26 @@ public final class UsbEnumerationSafetyDemo {
                 "Welcome.opening names the camera");
         require(!String.join("\n", opening).contains("Plug in a device"),
                 "opening overlay does not tell the user to plug in a camera");
+        require(String.join("\n", opening).contains("USB setup can take several seconds"),
+                "opening overlay without a phase uses the generic USB hint");
+        String[] issd = net.sf.jaer.Welcome.opening(null, "EVK4", "ISSD Init");
+        require(String.join("\n", issd).contains("ISSD Init"),
+                "opening overlay shows the current ISSD phase");
+        require(!String.join("\n", issd).contains("USB setup can take several seconds"),
+                "live ISSD phase replaces the generic USB hint");
+        Path imx = Paths.get("src", "prophesee", "usb", "evk4", "Imx636Init.java");
+        String imxSrc = Files.readString(imx, StandardCharsets.UTF_8);
+        require(imxSrc.contains("beginPhase(progress, \"ISSD Stop\""),
+                "ISSD Stop is reported to the overlay before the register writes");
+        require(imxSrc.contains("beginPhase(progress, \"ISSD Destroy\""),
+                "ISSD Destroy is reported to the overlay before the register writes");
+        require(imxSrc.contains("ISSD Init — waiting 1 s"),
+                "ISSD Init sleeps are named on the overlay");
+        require(imxSrc.contains("Prophesee ISSD Stop begin"),
+                "issdStop logs FINE at entry (close path too)");
+        String viewerOpen = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(viewerOpen.contains("updateOpeningCameraStatus"),
+                "AEViewer paints ISSD phase on the opening overlay");
         String skip = methodBody(
                 Paths.get("src", "net", "sf", "jaer", "graphics", "ChipCanvas.java"),
                 "private boolean shouldSkipChipDisplay() {",
@@ -382,11 +412,17 @@ public final class UsbEnumerationSafetyDemo {
                 "openAEMonitor drops a closed wrapper instead of reopening devicePointer-null");
         require(open.contains("isUsbDeviceGone(e)"),
                 "failed open of an unplugged device is distinguished from ACCESS");
+        require(open.contains("isTransientUsbAccess(e)"),
+                "ISSD TIMEOUT is not retried as USB ACCESS");
+        require(open.contains("Interface → None: not reopening closed wrapper"),
+                "None must not reopen the closed wrapper on the next WAITING tick");
+        require(open.contains("MAX_USB_ACCESS_OPEN_RETRIES"),
+                "ACCESS after Interface is retry-capped");
         require(open.contains("nullInterface = false"),
                 "device-gone open failure must not block the next plug");
         String gone = methodBody(viewer,
                 "private static boolean isUsbDeviceGone(Throwable t) {",
-                "private void stopLiveAcquisitionForExit()");
+                "private static boolean isTransientUsbAccess(Throwable t) {");
         require(gone.contains("devicePointer"),
                 "devicePointer-not-initialized is treated as USB device gone");
         require(gone.contains("LIBUSB_ERROR_NO_DEVICE"),
@@ -397,6 +433,17 @@ public final class UsbEnumerationSafetyDemo {
                 "SPI/control LIBUSB_ERROR_IO on unplug mid-open is treated as USB device gone");
         require(gone.contains("LIBUSB_ERROR_PIPE"),
                 "LIBUSB_ERROR_PIPE is treated as USB device gone");
+        require(!gone.contains("LIBUSB_ERROR_TIMEOUT"),
+                "ISSD TIMEOUT is not treated as device-gone (that retried forever)");
+        String access = methodBody(viewer,
+                "private static boolean isTransientUsbAccess(Throwable t) {",
+                "private void stopLiveAcquisitionForExit()");
+        require(access.contains("LIBUSB_ERROR_ACCESS"),
+                "only ACCESS/BUSY are retried after Interface select");
+        require(access.contains("LIBUSB_ERROR_BUSY"),
+                "BUSY is a transient USB ACCESS");
+        require(!access.contains("LIBUSB_ERROR_TIMEOUT"),
+                "TIMEOUT is not transient ACCESS");
         String welcome = methodBody(viewer,
                 "public void showWelcomeOverlay() {",
                 "public void showOpeningCameraOverlay(HardwareInterface hw) {");
@@ -457,6 +504,17 @@ public final class UsbEnumerationSafetyDemo {
                 "private void closePartialOpen() {");
         require(open.contains("closePartialOpen()"),
                 "failed NRV open closes the libusb handle before the next try");
+        require(open.contains("skipping USB string descriptors"),
+                "NRV open must not issue USB string-descriptor transfers");
+        require(!open.contains("getStringDescriptor("),
+                "NRV open must not call LibUsb.getStringDescriptor (WinUSB hang)");
+        String disconnect = methodBody(nrv,
+                "void markUsbDisconnected(int transferStatus) {",
+                "void recoverFailedBufferReconfig(Exception cause) {");
+        require(!disconnect.contains("synchronized (NRVHardwareInterface.this)"),
+                "NRV disconnect closer must not hold the HI monitor across close()");
+        require(disconnect.contains("NRV-USB-disconnect"),
+                "NRV unplug still closes off the transfer thread");
         String cfg = methodBody(
                 Paths.get("src", "nrv", "chip", "NRVConfig.java"),
                 "public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {",
@@ -465,6 +523,66 @@ public final class UsbEnumerationSafetyDemo {
                 "NRV bind must not open USB on the EDT");
         require(cfg.contains("tryEnsureSettingsParsedFromPreferences()"),
                 "NRV bind still pre-parses settings without opening");
+        String nrvFactory = Files.readString(
+                Paths.get("src", "nrv", "usb", "NRVHardwareInterfaceFactory.java"),
+                StandardCharsets.UTF_8);
+        require(nrvFactory.contains("UsbIds.mergeLibUsbDeviceScan("),
+                "NRV factory refresh must keep Device refs by bus/addr, not Device.equals");
+    }
+
+    /**
+     * WAITING ViewLoop in {@code getNumInterfacesAvailable} held the factory
+     * monitor during a hung WinUSB {@code getDeviceList} after NRV unplug;
+     * Interface menu {@code getCachedNumInterfacesAvailable} then froze the EDT
+     * (AEViewer #6, 2026-08-31). Cache reads must not share that lock.
+     */
+    private static void testFactoryCacheDoesNotWaitForScan() throws Exception {
+        Path factory = Paths.get("src", "net", "sf", "jaer", "hardwareinterface",
+                "HardwareInterfaceFactory.java");
+        String cached = methodBody(factory,
+                "public int getCachedNumInterfacesAvailable() {",
+                "public void requestBackgroundScan() {");
+        require(!cached.contains("synchronized"),
+                "getCachedNumInterfacesAvailable must not wait on the USB scan monitor");
+        require(cached.contains("interfaceSnapshot"),
+                "Interface menu reads the last completed scan snapshot");
+        String getIf = methodBody(factory,
+                "public HardwareInterface getInterface(final int n) {",
+                "public static UsbIds.Pair getUsbVidPid(HardwareInterface hw) {");
+        require(getIf.contains("interfaceSnapshot"),
+                "getInterface reads the snapshot, not an in-flight scan list");
+        require(!getIf.contains("buildInterfaceList"),
+                "getInterface must not scan USB");
+        String build = methodBody(factory,
+                "synchronized public void buildInterfaceList() {",
+                "public void markUsbEnumerationDirty() {");
+        require(build.contains("List.copyOf(built)"),
+                "scan publishes the snapshot only after factories finish");
+        require(!build.substring(0, Math.min(200, build.length())).contains("interfaceList.clear();"),
+                "must not clear the published list at the start of a scan");
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String poll = methodBody(viewer,
+                "private void openHardwareIfNonambiguous() {",
+                "private static String usbDeviceFingerprint(int ninterfaces) {");
+        require(poll.contains("requestBackgroundScan()"),
+                "WAITING must not block ViewLoop on getNumInterfacesAvailable");
+        require(poll.contains("getCachedNumInterfacesAvailable()"),
+                "WAITING binds from the last completed scan");
+        require(!poll.contains("getNumInterfacesAvailable()"),
+                "WAITING poll must not call blocking getNumInterfacesAvailable");
+        require(poll.contains("USB_OPEN_SERIAL_LOCK.isLocked()"),
+                "WAITING must not getDeviceList during another camera's native open");
+        String factorySrc = Files.readString(factory, StandardCharsets.UTF_8);
+        require(factorySrc.contains("usbNativeOpenCount"),
+                "factory tracks native open so background scan can skip getDeviceList");
+        require(factorySrc.contains("awaitBackgroundScanIdle("),
+                "open waits for an in-flight jaer-usb-scan before ISSD/I2C");
+        Path viewerSrcPath = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String viewerOpen = Files.readString(viewerSrcPath, StandardCharsets.UTF_8);
+        require(viewerOpen.contains("noteUsbNativeOpenBegin()"),
+                "USB_OPEN_SERIAL_LOCK acquire marks native open for scan skip");
+        require(viewerOpen.contains("awaitBackgroundScanIdle(2000)"),
+                "open worker waits for background scan before aemon.open");
     }
 
     /**
@@ -614,6 +732,21 @@ public final class UsbEnumerationSafetyDemo {
                 "new AEViewer listens to siblings for Remember last interface");
         require(jvSync.contains("removePropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE"),
                 "closed AEViewer is removed from Remember last interface listeners");
+        require(src.contains("EVENT_SYNC_ENABLED"),
+                "Synchronized recording/playback is a PropertyChange so all AEViewers stay in sync");
+        require(jvSync.contains("EVENT_SYNC_ENABLED, viewer"),
+                "new AEViewer listens to siblings for synchronized recording");
+        require(jvSync.contains("if (this.syncEnabled == syncEnabled)"),
+                "setSyncEnabled no-ops when unchanged (no PropertyChange loop)");
+        require(jvSync.contains("node(\"AEViewer\").putBoolean(\"syncEnabled\""),
+                "sync enabled is stored on the shared AEViewer prefs node");
+        require(!src.contains("no effect here - this event is handled by jAERViewer"),
+                "File menu Synchronized recording/playback must call setSyncEnabled");
+        String syncMenu = methodBody(viewer,
+                "private void syncEnabledCheckBoxMenuItemActionPerformed",
+                "private void openBlockingQueueInputMenuItemActionPerformed");
+        require(syncMenu.contains("setSyncEnabled(syncEnabledCheckBoxMenuItem.isSelected())"),
+                "File menu checkbox writes the selected state, not a warning");
         require(src.contains("ViewerInterfaceBindingMap"),
                 "last camera is stored in the tmpdir map, not Preferences");
         require(src.contains("bindRememberedInterfaceIfPossible"),
@@ -913,6 +1046,76 @@ public final class UsbEnumerationSafetyDemo {
         Path chip = Paths.get("src", "eu", "seebetter", "ini", "chips", "davis", "DavisBaseCamera.java");
         require(Files.readString(chip, StandardCharsets.UTF_8).contains("resetUsbApsAssembler()"),
                 "chip extractor assembler is reset with the USB reader");
+    }
+
+    /**
+     * DVS128 AEReader exceptional-shutdown used to {@code close()} on the
+     * transfer thread. {@code interruptAndJoin} then interrupted+joined itself,
+     * returned immediately, and {@code abandonNativeHandle} left WinUSB
+     * holding the device ({@code LIBUSB_ERROR_ACCESS} on Interface rebind).
+     */
+    private static void testFx2AeReaderClosesOffReaderThread() throws Exception {
+        Path lifecycle = Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "UsbAsyncBulkReaderLifecycle.java");
+        String life = Files.readString(lifecycle, StandardCharsets.UTF_8);
+        require(life.contains("closeHostOffReaderThread("),
+                "AEReader close is scheduled off the transfer thread");
+        require(life.contains("thread == Thread.currentThread()"),
+                "interruptAndJoin must not join the current (AEReader) thread");
+        Path fx2 = Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx2libusb", "CypressFX2.java");
+        String fx2Src = Files.readString(fx2, StandardCharsets.UTF_8);
+        require(fx2Src.contains("closeHostOffReaderThread(monitor::close)"),
+                "FX2 AEReader exceptional shutdown must not close() on AEReader");
+        require(fx2Src.contains("CypressFX2.close() from AEReader; deferring off that thread"),
+                "FX2 close() defers when invoked from AEReader");
+        require(!fx2Src.contains("() -> monitor.close()"),
+                "FX2 must not pass monitor.close as the USBTransferThread shutdown callback");
+        Path fx3 = Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
+        String fx3Src = Files.readString(fx3, StandardCharsets.UTF_8);
+        require(fx3Src.contains("closeHostOffReaderThread(monitor::close)"),
+                "FX3 AEReader exceptional shutdown must not close() on AEReader");
+        Path nrv = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
+        String nrvSrc = Files.readString(nrv, StandardCharsets.UTF_8);
+        require(nrvSrc.contains("closeHostOffReaderThread(monitor::close)"),
+                "NRV AEReader exceptional shutdown must not close() on AEReader");
+    }
+
+    /**
+     * Ctrl+W / File → Close abort recording, playback, or Interface → None.
+     * Must not {@code stopMe()} (that kills ViewLoop on LIVE). The menu item
+     * stays enabled in LIVE so the accelerator fires.
+     */
+    private static void testCtrlWAbortsActivityNotViewer() throws Exception {
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String src = Files.readString(viewer, StandardCharsets.UTF_8);
+        String closeItem = methodBody(viewer,
+                "private void closeMenuItemActionPerformed",
+                "private void exportVideoMenuItemActionPerformed");
+        require(closeItem.contains("closeOrAbortCurrentActivity()"),
+                "File → Close / Ctrl+W must abort activity, not stopMe()");
+        require(!closeItem.contains("stopMe()"),
+                "File → Close must not stop ViewLoop");
+        String abort = methodBody(viewer,
+                "public void closeOrAbortCurrentActivity() {",
+                "public boolean isRememberLastInterface()");
+        int rec = abort.indexOf("isRecordingEnabled()");
+        int play = abort.indexOf("PlayMode.PLAYBACK");
+        int none = abort.indexOf("selectNoneInterface()");
+        require(rec >= 0 && play > rec && none > play,
+                "Ctrl+W priority: stop recording, then close playback, then Interface → None");
+        require(!abort.contains("startRecording()"),
+                "Ctrl+W must not start a recording");
+        require(src.contains("closeMenuItem.setEnabled(true)"),
+                "Ctrl+W menu item stays enabled in LIVE so the accelerator fires");
+        require(src.contains("VK_W"),
+                "Ctrl+W remains the File → Close accelerator");
+        String noneRadio = methodBody(viewer,
+                "noneInterfaceButton.addActionListener(new ActionListener() {",
+                "noneInterfaceButton.setSelected(!interfaceAlreadyOpen)");
+        require(noneRadio.contains("selectNoneInterface()"),
+                "Interface → None radio uses the same unbind as Ctrl+W");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {
