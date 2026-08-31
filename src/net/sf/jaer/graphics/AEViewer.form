@@ -722,17 +722,17 @@
         </Menu>
         <Menu class="javax.swing.JMenu" name="deviceMenu">
           <Properties>
-            <Property name="mnemonic" type="int" value="97"/>
-            <Property name="text" type="java.lang.String" value="AEChip"/>
-            <Property name="toolTipText" type="java.lang.String" value="Specifies which AEChip class is used either for playback or live interfacnig to a device"/>
+            <Property name="mnemonic" type="int" value="115"/>
+            <Property name="text" type="java.lang.String" value="Sensor"/>
+            <Property name="toolTipText" type="java.lang.String" value="Sensor class (event camera type or silicon cochlea) - formerly AEChip"/>
           </Properties>
           <SubComponents>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator3">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="renewChipMI">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Renew AEChip"/>
-                <Property name="toolTipText" type="java.lang.String" value="Construct new instance of selected AEChip"/>
+                <Property name="text" type="java.lang.String" value="Renew Sensor"/>
+                <Property name="toolTipText" type="java.lang.String" value="Construct new instance of selected Sensor (AEChip class)"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="renewChipMIActionPerformed"/>
@@ -743,8 +743,8 @@
             <MenuItem class="javax.swing.JMenuItem" name="customizeDevicesMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="67"/>
-                <Property name="text" type="java.lang.String" value="Customize AEChip Menu..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Let&apos;s you customize which AEChip&apos;s are available. If your device does not appear, then find it and add it using this option."/>
+                <Property name="text" type="java.lang.String" value="Customize Sensor Menu..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Customize which Sensor (AEChip) classes are listed. If your device does not appear, add it here."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="customizeDevicesMenuItemActionPerformed"/>

@@ -1,11 +1,9 @@
 /*
  * AEChip.java
  *
- * Created on October 5, 2005, 11:33 AM
+ * In the AEViewer UI this class is selected from the Sensor menu (formerly labeled AEChip).
  *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
+ * Created on October 5, 2005, 11:33 AM
  */
 package net.sf.jaer.chip;
 
@@ -62,7 +60,10 @@ import org.apache.commons.io.FilenameUtils;
  * classes like its renderer, its rendering paint surface, file input and output
  * event streams, and the event filters that can operate on its output. A
  * subclass can add it's own default EventFilters so that users need not
- * customize the FilterChain.\
+ * customize the FilterChain.
+ * <p>
+ * In the AEViewer UI this class is selected from the <b>Sensor</b> menu
+ * (formerly labeled AEChip). The Java type name remains {@code AEChip}.
  * <p>
  * The {@link #onRegistration()} and {@link #onDeregistration() } allows
  * arbitrary actions after the chip is constructed and registered in the

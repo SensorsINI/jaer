@@ -3,6 +3,8 @@
  *
  * This is the "main" jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run()
  *
+ * The AEChip class is labeled Sensor in the AEViewer menu bar (Sensor menu).
+ *
  * Created on December 24, 2005, 1:58 PM
  */
 package net.sf.jaer.graphics;
@@ -234,7 +236,8 @@ import org.opencv.core.Core;
  * This is the main jAER interface to the user. The main event loop "ViewLoop"
  * is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for
  * controlling view and recording and playing back events from files and network
- * connections.
+ * connections. The {@link net.sf.jaer.chip.AEChip} class is selected from the
+ * Sensor menu (formerly labeled AEChip).
  * <p>
  * AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on
  * the following events:
@@ -1631,7 +1634,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     putChipClassPrefs();
                 }
             } else {
-                log.warning("Building list of default AEChip devices - this can takes some time. To reduce startup time, use AEChip/Customize to specify desired devices");
+                log.warning("Building list of default Sensor (AEChip) devices - this can takes some time. To reduce startup time, use Sensor/Customize to specify desired devices");
                 makeDefaultChipClassNames();
                 storeMergedDefaultChipClassNames();
             }
@@ -7470,13 +7473,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         menuBar.add(playbackMenu);
 
-        deviceMenu.setMnemonic('a');
-        deviceMenu.setText("AEChip");
-        deviceMenu.setToolTipText("Specifies which AEChip class is used either for playback or live interfacnig to a device");
+        deviceMenu.setMnemonic('s');
+        deviceMenu.setText("Sensor");
+        deviceMenu.setToolTipText("Sensor class (event camera type or silicon cochlea) - formerly AEChip");
         deviceMenu.add(jSeparator3);
 
-        renewChipMI.setText("Renew AEChip");
-        renewChipMI.setToolTipText("Construct new instance of selected AEChip");
+        renewChipMI.setText("Renew Sensor");
+        renewChipMI.setToolTipText("Construct new instance of selected Sensor (AEChip class)");
         renewChipMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 renewChipMIActionPerformed(evt);
@@ -7486,8 +7489,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         deviceMenu.add(deviceMenuSpparator);
 
         customizeDevicesMenuItem.setMnemonic('C');
-        customizeDevicesMenuItem.setText("Customize AEChip Menu...");
-        customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available. If your device does not appear, then find it and add it using this option.");
+        customizeDevicesMenuItem.setText("Customize Sensor Menu...");
+        customizeDevicesMenuItem.setToolTipText("Customize which Sensor (AEChip) classes are listed. If your device does not appear, add it here.");
         customizeDevicesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 customizeDevicesMenuItemActionPerformed(evt);
@@ -7836,15 +7839,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         setCursor(new Cursor(Cursor.WAIT_CURSOR));
                         clearRememberedLiveChipSelections();
                         setAeChipClass(cl);
-                        log.info(String.format("Set AEChip to last one added which is %s", cn));
+                        log.info(String.format("Set Sensor (AEChip) to last one added which is %s", cn));
                         JOptionPane.showMessageDialog(this,
-                                String.format("Set AEChip to  %s", cn),
-                                "AEChip error", JOptionPane.INFORMATION_MESSAGE);
+                                String.format("Set Sensor to %s", cn),
+                                "Sensor", JOptionPane.INFORMATION_MESSAGE);
 
                     } catch (Exception e) {
                         JOptionPane.showMessageDialog(this,
-                                String.format("Error setting AEChip to  %s: got exception %s", cn, e.toString()),
-                                "AEChip error", JOptionPane.ERROR_MESSAGE);
+                                String.format("Error setting Sensor to %s: got exception %s", cn, e.toString()),
+                                "Sensor error", JOptionPane.ERROR_MESSAGE);
                     } finally {
                         setCursor(Cursor.getDefaultCursor());
                     }
