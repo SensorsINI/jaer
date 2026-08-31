@@ -975,9 +975,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             helpMenu.insert(quickHelpMenuItem, userGuideIndex < 0 ? 1 : userGuideIndex + 1);
             addHelpURLItem(JaerConstants.HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
-            addHelpURLItem(JaerConstants.JAER_ISSUES, "Give feedback/File issue...",
-                    "Opens the jAER GitHub Issues page to give feedback or file a bug");
-            addHelpURLItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home", "jAER project home on Github");
+            addHelpItem(new JSeparator());
+            addHelpURLItem(JaerConstants.HELP_URL_FEEDBACK_FORM, "Give feedback...",
+                    "Opens a short Google Form for comments (no GitHub account needed)");
+            addHelpURLItem(JaerConstants.JAER_ISSUES, "File Issue on Github",
+                    "Opens the jAER GitHub Issues page to file a bug");
 //            addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
 //            addHelpItem(new JSeparator());
@@ -1014,6 +1016,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     "DAVIS346 (346×260) + DVXplorer (640×480) muxed in one AEDAT-4 for comparing resolutions (Ghosh et al.); recordings on Figshare, linked from the README"));
             addHelpItem(sampleDataMenu);
             addHelpItem(new JSeparator());
+            int aboutIdx = helpMenu.getPopupMenu().getComponentIndex(aboutMenuItem);
+            helpMenu.insert(makeHelpURLMenuItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home",
+                    "jAER project home on Github"), aboutIdx < 0 ? helpMenu.getMenuComponentCount() : aboutIdx);
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
         }
@@ -7967,7 +7972,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         helpMenu.add(releaseNotesMenuItem);
 
-        checkForUpdatesMenuItem.setText("Check for release updates...");
+        checkForUpdatesMenuItem.setText("Check for New Releases....");
         checkForUpdatesMenuItem.setToolTipText("Checks if there is a newer release of jAER installer on github");
         checkForUpdatesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -10273,7 +10278,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        return url.toString();
 //    }
     /**
-     * Adds item above separator/about
+     * Adds item above Check for New Releases / About (dynamic Help links).
      *
      * @param menuItem item to appendCopyOfEventReferences
      * @see #removeHelpItem(javax.swing.JMenuItem)
@@ -10282,14 +10287,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @return the component that you added, for later removal
      */
     public JComponent addHelpItem(JComponent menuItem) {
-        int n = helpMenu.getItemCount();
-        final int NUM_STATIC_HELP_ITEMS = 6;
-        if (n <= NUM_STATIC_HELP_ITEMS) { // TODO NOTE adjust when adding new helpMenu items
-            n = 0;
-        } else {
-            n = n - NUM_STATIC_HELP_ITEMS;
+        int idx = helpMenu.getPopupMenu().getComponentIndex(checkForUpdatesMenuItem);
+        if (idx < 0) {
+            idx = helpMenu.getPopupMenu().getComponentIndex(aboutMenuItem);
         }
-        helpMenu.add(menuItem, n);
+        if (idx < 0) {
+            helpMenu.add(menuItem);
+        } else {
+            helpMenu.add(menuItem, idx);
+        }
         return menuItem;
     }
 

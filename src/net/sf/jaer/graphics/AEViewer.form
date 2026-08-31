@@ -915,7 +915,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="checkForUpdatesMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Check for release updates..."/>
+                <Property name="text" type="java.lang.String" value="Check for New Releases...."/>
                 <Property name="toolTipText" type="java.lang.String" value="Checks if there is a newer release of jAER installer on github"/>
               </Properties>
               <Events>
