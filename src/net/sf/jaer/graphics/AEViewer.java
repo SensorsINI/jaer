@@ -2366,7 +2366,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * If the recording's chip (from filename, then header) differs from the
      * current {@link AEChip}, ask to switch before opening. For multi-camera
-     * AEDAT-4 files, also let the user pick which EVTS stream to play.
+     * AEDAT-4 files, show an EVTS list with all cameras selected; OK plays each
+     * in its own viewer (existing windows reused when the chip matches).
      * Returns false if the user cancels open.
      */
     public boolean ensureChipCompatibleWithRecording(File file) {
@@ -2626,15 +2627,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         list.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         list.setSelectionInterval(0, labels.length - 1);
         list.setVisibleRowCount(Math.min(8, labels.length));
+        int n = eventStreams.size();
         int choice = JOptionPane.showConfirmDialog(
                 this,
                 new Object[]{
-                    "<html>This AEDAT-4 file contains <b>" + eventStreams.size()
-                    + "</b> event camera streams.<br>"
-                    + "Select one stream for this viewer, or several to open extra viewers.<br><br></html>",
+                    "<html>This AEDAT-4 file has <b>" + n + "</b> event camera"
+                    + (n == 1 ? "" : "s") + " (all selected).<br>"
+                    + "<b>OK</b> plays each selected camera in its own viewer.<br>"
+                    + "Existing AEViewer windows are reused when the chip matches;<br>"
+                    + "otherwise a new window is opened. Ctrl-click to play only some cameras."
+                    + "</html>",
                     new javax.swing.JScrollPane(list)
                 },
-                "Select AEDAT-4 camera stream(s) — " + file.getName(),
+                "Play AEDAT-4 cameras — " + file.getName(),
                 JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (choice != JOptionPane.OK_OPTION) {
