@@ -38,6 +38,9 @@ public class FlyEyeRenderer extends DavisRenderer implements FrameAnnotater {
             super.updateEventMaps(e);
             return;
         }
+        if (fe.isSpecial()) {
+            return;
+        }
         final int index = getIndex(e);
         float[] map = dvsEventsMap.array();
         if ((index < 0) || (index >= map.length)) {

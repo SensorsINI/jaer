@@ -22,10 +22,10 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FlyEyeEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FlyEyeRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.stereopsis.StereoChipInterface;
 import net.sf.jaer.stereopsis.Stereopsis;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
@@ -259,12 +259,63 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
 
     /**
      * Raw / playback path: DVS128 decode at 128-wide, camera from stereo bit,
-     * panoramic remap.
+     * panoramic remap. AEDAT-4 stores panoramic {@code x}; {@link #getAddressFromCell}
+     * must inverse-map that (dummy 128-wide {@code flipx} made right-eye
+     * addresses negative so playback skipped them).
      */
     public class Extractor extends DVS128.Extractor {
 
         public Extractor(FlyEye chip) {
-            super(new DVS128());
+            super(chip);
+        }
+
+        /**
+         * Pack panoramic display {@code x} into a DVS128 raw address plus stereo
+         * bit. {@code right} is required in the overlap band; AEDAT-4 pack
+         * infers unique-right as {@code panoX >= 128}.
+         *
+         * @return raw address, or -1 if out of range (AEDAT-4 skips those)
+         */
+        static int packPanoramicAddress(int panoX, int y, int onNotOff, boolean right,
+                int overlapPixels, boolean flipX) {
+            int ov = FlyEyeGeometry.clampOverlap(overlapPixels);
+            int sizeX = FlyEyeGeometry.panoramicWidth(ov);
+            if (panoX < 0 || panoX >= sizeX || y < 0 || y >= FlyEyeGeometry.NATIVE_H) {
+                return -1;
+            }
+            int nativeX = FlyEyeGeometry.toNativeX(panoX, right, flipX, ov);
+            if (nativeX < 0 || nativeX >= FlyEyeGeometry.NATIVE_W) {
+                return -1;
+            }
+            // DVS128 fliptype: On (1) is raw bit 0 = 0. flipx: addrX = 127 - nativeX.
+            int polBit = (onNotOff & 1) == 1 ? 0 : 1;
+            int addrX = (FlyEyeGeometry.NATIVE_W - 1) - nativeX;
+            int addr = (addrX << 1) | (y << 8) | polBit;
+            if (right) {
+                addr |= Stereopsis.MASK_RIGHT_ADDR;
+            }
+            return addr;
+        }
+
+        @Override
+        public int getAddressFromCell(int x, int y, int type) {
+            boolean right = x >= FlyEyeGeometry.NATIVE_W;
+            boolean flip = right ? isFlipRightX() : isFlipLeftX();
+            return packPanoramicAddress(x, y, type, right, getOverlapPixels(), flip);
+        }
+
+        @Override
+        public int reconstructRawAddressFromEvent(TypedEvent e) {
+            if (e instanceof FlyEyeEvent fe) {
+                if (fe.isSpecial()) {
+                    return fe.address;
+                }
+                int type = fe.polarity == PolarityEvent.Polarity.On ? 1 : 0;
+                boolean right = fe.camera == FlyEyeEvent.Camera.RIGHT;
+                boolean flip = right ? isFlipRightX() : isFlipLeftX();
+                return packPanoramicAddress(fe.x, fe.y, type, right, getOverlapPixels(), flip);
+            }
+            return super.reconstructRawAddressFromEvent(e);
         }
 
         @Override
@@ -306,8 +357,10 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
                 e.timestamp = timestamps[i];
                 e.camera = Stereopsis.isRightRawAddress(addr)
                         ? FlyEyeEvent.Camera.RIGHT : FlyEyeEvent.Camera.LEFT;
-                if ((addr & (CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK
-                        | net.sf.jaer.event.BasicEvent.SPECIAL_EVENT_BIT_MASK)) != 0) {
+                // Bit 15 is the stereo right-eye flag (same numeric value as the
+                // single-camera DVS128 sync flag). Treating it as special made every
+                // right-eye playback event x=-1 (DavisRenderer OOB, jAER 18:58:52).
+                if ((addr & net.sf.jaer.event.BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
                     e.setSpecial(true);
                     e.x = -1;
                     e.y = -1;

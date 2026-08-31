@@ -9828,8 +9828,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordingMenuItem.setText("Start recording data");
             log.info("stopped recording at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + recordingFile);
                 final boolean wasAedat4 = aedat4RecordingOutputStream != null;
-                final boolean muxedConfirm = wasAedat4 && aedat4RecordingOwnsClose
-                        && aedat4RecordingOutputStream.getTrackCount() > 1;
                 final boolean wasAedz = aedzRecordingOutputStream != null;
                 final String preferredSaveExt = wasAedat4
                         ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4
@@ -9878,9 +9876,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     JOptionPane.showMessageDialog(this, autoStopMessage, "Recording stopped",
                             JOptionPane.WARNING_MESSAGE);
                 }
-                // if jaer viewer is recording synchronized data files, then just save the file where it was recorded originally
+                // Caller already sets confirmFilename false for multi-file .aeidx
+                // (stopSynchronizedRecording). Do not also require !isSyncEnabled:
+                // a single FlyEye window with File→Synchronize on skipped Save As
+                // (jAER-0.log 18:30:37).
 
-                if (confirmFilename && (!jaerViewer.isSyncEnabled() || muxedConfirm)) {
+                if (confirmFilename) {
                     // Pause live acquisition/rendering while the modal save UI is up so
                     // USB packets are not cooked/rendered into unbounded memory.
                     final boolean wasPausedForSaveDialog = isPaused();

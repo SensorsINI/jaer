@@ -1,8 +1,11 @@
 package ch.unizh.ini.jaer.chip.flyeye;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+
+import net.sf.jaer.stereopsis.Stereopsis;
 
 /**
  * DVS128 panoramic remap is bijective per camera, including overlap and flipX.
@@ -36,5 +39,26 @@ public class FlyEyeGeometryTest {
                 FlyEyeGeometry.toPanoramicX(w - 1, false, false, ov));
         assertEquals(FlyEyeGeometry.overlapRight(ov) - 1,
                 FlyEyeGeometry.toPanoramicX(ov - 1, true, false, ov));
+    }
+
+    @Test
+    public void panoramicPackRoundTripsUniqueColumns() {
+        int ov = FlyEyeGeometry.DEFAULT_OVERLAP;
+        for (boolean right : new boolean[] {false, true}) {
+            for (int nx = 0; nx < FlyEyeGeometry.NATIVE_W; nx++) {
+                int pano = FlyEyeGeometry.toPanoramicX(nx, right, false, ov);
+                int addr = FlyEye.Extractor.packPanoramicAddress(pano, 40, 1, right, ov, false);
+                assertTrue("addr>=0 pano=" + pano + " right=" + right, addr >= 0);
+                boolean decodedRight = (addr & Stereopsis.MASK_RIGHT_ADDR) != 0;
+                assertEquals(right, decodedRight);
+                int addrX = (addr & 0xfe) >>> 1;
+                int nativeX = (FlyEyeGeometry.NATIVE_W - 1) - addrX;
+                assertEquals(nx, nativeX);
+                assertEquals(0, addr & 1); // On polarity, DVS128 fliptype
+                assertEquals(40, (addr & 0x7f00) >>> 8);
+            }
+        }
+        assertEquals(-1, FlyEye.Extractor.packPanoramicAddress(240, 0, 1, true, ov, false));
+        assertEquals(-1, FlyEye.Extractor.packPanoramicAddress(0, 128, 1, false, ov, false));
     }
 }

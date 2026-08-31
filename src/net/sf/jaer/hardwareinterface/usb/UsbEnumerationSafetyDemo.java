@@ -108,6 +108,24 @@ public final class UsbEnumerationSafetyDemo {
                 "claimed-but-closed FlyEye pair must stay until ViewLoop opens it");
         require(flyHw.contains("isUnusableAfterUnplug"),
                 "FlyEye drops a pair only after a child lost IN, not because !isOpen()");
+        require(flyChip.contains("packPanoramicAddress"),
+                "AEDAT-4 playback must pack panoramic x back to DVS128+stereo (not dummy 128 flipx)");
+        String flyRen = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics",
+                "FlyEyeRenderer.java"), StandardCharsets.UTF_8);
+        require(flyRen.contains("if (fe.isSpecial())"),
+                "FlyEyeRenderer must not pixmap-index special events (x=-1 OOB)");
+        require(flyChip.contains("super(chip)"),
+                "FlyEye extractor is bound to the panoramic chip, not a dummy DVS128");
+        require(!flyChip.contains("SYNC_EVENT_BITMASK"),
+                "FlyEye extract must not treat stereo bit 15 as DVS128 sync (right eye x=-1 OOB)");
+        String stopRec = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics",
+                "AEViewer.java"),
+                "synchronized public File stopRecording(boolean confirmFilename, String autoStopMessage) {",
+                "private File relocateRecordingFile(File dest) {");
+        require(stopRec.contains("if (confirmFilename) {"),
+                "single-viewer recording with File sync on must still show Save As");
+        require(!stopRec.contains("!jaerViewer.isSyncEnabled()"),
+                "isSyncEnabled must not hide the Save As dialog");
         String dvsUpdate = methodBody(Paths.get("src", "ch", "unizh", "ini", "jaer",
                 "chip", "retina", "DVS128.java"),
                 "public void update(Observable o, Object arg) {",
