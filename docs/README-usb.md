@@ -34,11 +34,13 @@ is a singleton. Registered factories (`HardwareInterfaceFactory.factories`):
 | `LibUsb3HardwareInterfaceFactory` | DAVIS346, SciDVS (same PID), DVXplorer FX3 vs Mini/Micro CX3 (`bcdDevice`), Cochlea FX3 |
 | `NRVHardwareInterfaceFactory` | NRV DELTA01 FX20/CX3 |
 | `PropheseeHardwareInterfaceFactory` | EVK4 HD |
-| `UDPInterfaceFactory`, `OpalKellyFX3Factory` | non-libusb or special |
+| `UDPInterfaceFactory` | UDP AE |
 
 Thesycon USBIO factories are **not** in this list.
-`eDVS128_InterfaceFactory` and `SpiNNaker_InterfaceFactory` are currently
-unregistered (sources remain); they would otherwise add Interface-menu choosers.
+`eDVS128_InterfaceFactory`, `SpiNNaker_InterfaceFactory`, and
+`OpalKellyFX3Factory` are currently unregistered (sources remain). OpalKelly
+needs FrontPanel `okjFrontPanel.jar` on the classpath and the native
+`okjFrontPanel` library on `java.library.path` if re-enabled.
 
 `buildInterfaceList()` walks every factory. It is expensive. The Interface menu
 uses `getCachedNumInterfacesAvailable()` on the EDT so a live camera is not

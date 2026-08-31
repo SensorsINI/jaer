@@ -30,7 +30,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfa
 import nrv.usb.NRVHardwareInterfaceFactory;
 import prophesee.usb.PropheseeHardwareInterfaceFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
-import es.us.atc.jaer.hardwareinterface.OpalKellyFX3Factory;
+// import es.us.atc.jaer.hardwareinterface.OpalKellyFX3Factory;
 import java.util.logging.Level;
 
 /**
@@ -41,8 +41,11 @@ import java.util.logging.Level;
  * <p>
  * Thesycon USBIO factories ({@code USBIOHardwareInterfaceFactory}, {@code SiLabs_USBIO_C8051F3xxFactory})
  * are intentionally not registered; see {@code docs/WIP-USBIO-purge.md}. Sources remain for libusb porting.
- * {@code eDVS128_InterfaceFactory} and {@code SpiNNaker_InterfaceFactory} are also unregistered for now
- * (sources remain). They would otherwise appear as Interface-menu chooser dialogs.
+ * {@code eDVS128_InterfaceFactory}, {@code SpiNNaker_InterfaceFactory}, and
+ * {@code OpalKellyFX3Factory} are also unregistered for now (sources remain).
+ * They would otherwise appear as Interface-menu chooser dialogs. OpalKelly’s
+ * {@code <clinit>} calls {@code System.loadLibrary("okjFrontPanel")} and warns
+ * when that native library is missing.
  *
  * @author tobi
  */
@@ -72,7 +75,15 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		// eDVS / SpiNNaker chooser factories unregistered for now (sources remain)
 		// eDVS128_InterfaceFactory.class,
 		// SpiNNaker_InterfaceFactory.class,
-                OpalKellyFX3Factory.class,
+		// OpalKelly (University of Seville) unregistered: class init loads native okjFrontPanel
+		// and logs "no okjFrontPanel in java.library.path" on every start.
+		// To re-enable: uncomment the import and OpalKellyFX3Factory.class below, then
+		// put OpalKelly FrontPanel Java + JNI on the runtime path:
+		//   classpath: okjFrontPanel.jar (com.opalkelly.frontpanel.okFrontPanel) in jars/
+		//   java.library.path: native okjFrontPanel (okjFrontPanel.dll / libokjFrontPanel.so
+		//   / libokjFrontPanel.dylib) matching the JVM bitness, typically next to that jar
+		//   or on PATH. SDK: https://docs.opalkelly.com/frontpanel-sdk-examples/java/
+		// OpalKellyFX3Factory.class,
 	};
 	private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 
