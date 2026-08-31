@@ -192,6 +192,10 @@ still in `open()`. A map miss does not set `nullInterface`.
 `AEViewer.openAEMonitor()` uses thread `jaer-aemon-open` and
 `USB_OPEN_SERIAL_LOCK`. Bind uses `HARDWARE_CLAIM_LOCK` (chooser is not held).
 The per-camera open timeout starts **after** this serializer is acquired.
+After open+config the holder sleeps {@code USB_OPEN_SERIAL_GAP_MS} (1.5 s)
+before unlock so the next camera’s control transfers do not start in the same
+WinUSB window (classic DVX FPGA logic 0 / SPI size 0x0 at 10:54:56). Skip the
+gap on ViewLoop stop.
 AEReader starts on ViewLoop after PlayMode LIVE. Closing a viewer joins
 `aemon.close()` so leftover windows do not get `LIBUSB_ERROR_ACCESS`.
 

@@ -432,7 +432,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
                 return;
             }
             // Mark closed first so ViewLoop / acquire stop using this interface
-            // even if USB teardown blocks in native code.
+            // even if USB teardown blocks in native code. CX3/FX20 have no
+            // chip-reset I2C command in this tree (resetTimestamps is software).
+            log.info("NRV close: no hardware chip-reset on CX3/FX20; stopping AEReader only");
             isOpened = false;
             eventAcquisitionEnabled = false;
             reader = aeReader;

@@ -243,6 +243,8 @@ public final class UsbEnumerationSafetyDemo {
                 "noneInterfaceButton.setSelected(!interfaceAlreadyOpen)");
         require(noneRadio.contains("selectNoneInterface()"),
                 "Interface → None radio delegates to selectNoneInterface");
+        require(noneRadio.contains("VK_W"),
+                "Interface → None shows the Ctrl+W accelerator");
         String none = methodBody(viewer,
                 "public void selectNoneInterface() {",
                 "public void closeOrAbortCurrentActivity() {");
@@ -316,6 +318,11 @@ public final class UsbEnumerationSafetyDemo {
                 "handle is released only after the AEReader is stopped");
         require(fx3Close.contains("abandonNativeHandle(readerDead"),
                 "FX3 must not LibUsb.close while AEReader is still in native USB");
+        require(fx3Close.contains("quiesceSensorOnClose()"),
+                "FX3 close offers a sensor-stop hook before USB abandon");
+        require(fx3Close.indexOf("quiesceSensorOnClose()")
+                < fx3Close.indexOf("abandonNativeHandle"),
+                "sensor quiesce runs before abandoning a hung reader handle");
         require(Files.readString(fx3, StandardCharsets.UTF_8).contains("not starting USB-recover"),
                 "failed AEReader join during close must not start a second LibUsb.close");
 
@@ -848,6 +855,10 @@ public final class UsbEnumerationSafetyDemo {
                 "classic DVX must not USB-reset on close (takes down sibling cameras)");
         require(dvxHi.contains("classicSpiBlockedBySiblingReaders"),
                 "classic FX3 HI skips 4-byte SPI when sibling event loops are LIVE");
+        require(dvxHi.contains("allowClassicSpiOnClose")
+                && dvxHi.contains("quiesceSensorOnClose()")
+                && dvxHi.contains("chip.dvxDataStop()"),
+                "DVX close best-attempt DVS_RUN=0 even when sibling SPI skip is active");
         require(dvxHi.contains("using 640x480 (sibling SPI skip or failed read)"),
                 "classic DVX AEReader must not start at 0x0 when SPI IN is skipped");
         String fx3 = Files.readString(Paths.get("src", "net", "sf", "jaer",
@@ -870,6 +881,15 @@ public final class UsbEnumerationSafetyDemo {
                 "serializer wait is interruptible in 100 ms slices");
         require(acquire.contains("PlayMode.PLAYBACK"),
                 "file open aborts the serializer wait");
+        String release = methodBody(viewer,
+                "private void releaseUsbOpenSerialLock() {",
+                "private void openAEMonitor() {");
+        require(src.contains("USB_OPEN_SERIAL_GAP_MS"),
+                "serialized opens leave a settle gap after each camera");
+        require(release.contains("Thread.sleep(USB_OPEN_SERIAL_GAP_MS)"),
+                "gap is held on the serializer so the next camera cannot start early");
+        require(release.contains("viewLoop.stop"),
+                "exit does not sleep the USB open gap");
     }
 
     /**
@@ -1085,7 +1105,8 @@ public final class UsbEnumerationSafetyDemo {
     /**
      * Ctrl+W / File → Close abort recording, playback, or Interface → None.
      * Must not {@code stopMe()} (that kills ViewLoop on LIVE). The menu item
-     * stays enabled in LIVE so the accelerator fires.
+     * stays enabled in LIVE so the accelerator fires. Recording stops without
+     * unbinding the camera; None is only when LIVE or opening and not recording.
      */
     private static void testCtrlWAbortsActivityNotViewer() throws Exception {
         Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
@@ -1105,8 +1126,18 @@ public final class UsbEnumerationSafetyDemo {
         int none = abort.indexOf("selectNoneInterface()");
         require(rec >= 0 && play > rec && none > play,
                 "Ctrl+W priority: stop recording, then close playback, then Interface → None");
+        require(abort.contains("stopSynchronizedRecording()"),
+                "Ctrl+W stops all recordings when synchronized");
+        require(abort.contains("stopRecording(true)"),
+                "Ctrl+W stops this viewer's recording without toggling start");
+        require(!abort.contains("toggleRecording()"),
+                "Ctrl+W must not toggle recording (that can start a file)");
         require(!abort.contains("startRecording()"),
                 "Ctrl+W must not start a recording");
+        require(abort.contains("PlayMode.LIVE"),
+                "Ctrl+W closes the camera only when LIVE (or opening)");
+        require(!abort.contains("hw.isOpen()"),
+                "Ctrl+W must not close leftover USB while WAITING");
         require(src.contains("closeMenuItem.setEnabled(true)"),
                 "Ctrl+W menu item stays enabled in LIVE so the accelerator fires");
         require(src.contains("VK_W"),
@@ -1115,7 +1146,20 @@ public final class UsbEnumerationSafetyDemo {
                 "noneInterfaceButton.addActionListener(new ActionListener() {",
                 "noneInterfaceButton.setSelected(!interfaceAlreadyOpen)");
         require(noneRadio.contains("selectNoneInterface()"),
-                "Interface → None radio uses the same unbind as Ctrl+W");
+                "Interface → None radio still unbinds (click is not Ctrl+W while recording)");
+        require(src.contains("bindCtrlWAbortToRootPane()"),
+                "Ctrl+W on Interface → None does not steal abort-from-recording");
+
+        Path prophesee = Paths.get("src", "prophesee", "usb", "PropheseeHardwareInterface.java");
+        String pClose = methodBody(prophesee, "public void close() {", "public boolean isOpen()");
+        int shut = pClose.indexOf("Imx636Init.shutdown");
+        int abandon = pClose.indexOf("abandonNativeHandle");
+        require(shut >= 0 && abandon > shut,
+                "Prophesee close best-attempt ISSD Stop/Destroy before abandoning the handle");
+        Path nrv = Paths.get("src", "nrv", "usb", "NRVHardwareInterface.java");
+        String nrvClose = methodBody(nrv, "public void close() {", "public boolean isOpen()");
+        require(nrvClose.contains("no hardware chip-reset"),
+                "NRV close logs that CX3/FX20 has no chip-reset I2C command");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

@@ -632,6 +632,10 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             }
             eventAcquisitionEnabled = false;
             sensorStreaming = false;
+            if (deviceHandle != null) {
+                log.info("Prophesee close: best-attempt ISSD Stop/Destroy before USB teardown");
+                Imx636Init.shutdown(deviceHandle);
+            }
             if (UsbAsyncBulkReaderLifecycle.abandonNativeHandle(readerDead, log, "Prophesee")) {
                 deviceHandle = null;
                 deviceDescriptor = null;
@@ -640,9 +644,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                 isOpened = false;
                 openInProgress = false;
                 return;
-            }
-            if (deviceHandle != null) {
-                Imx636Init.shutdown(deviceHandle);
             }
             try {
                 releaseDevice();

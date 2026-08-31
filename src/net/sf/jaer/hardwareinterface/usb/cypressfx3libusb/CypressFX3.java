@@ -779,6 +779,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         } catch (final HardwareInterfaceException | IllegalStateException e) {
             log.warning(String.format("Error stopping event aquisition: %s", e.toString()));
         }
+        try {
+            quiesceSensorOnClose();
+        } catch (RuntimeException e) {
+            log.warning("quiesceSensorOnClose: " + e.toString());
+        }
         isOpened = false;
 
         if (deviceHandle != null) {
@@ -810,6 +815,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             }
         }
 
+    }
+
+    /**
+     * Best-attempt sensor stop/reset after the AEReader is joined (or timed
+     * out) and before {@code abandonNativeHandle} / {@code LibUsb.close}.
+     * Classic DVX sends {@code DVS_RUN=0} here even when sibling SPI skip
+     * blocked that write during open.
+     */
+    protected void quiesceSensorOnClose() {
     }
 
     // not really necessary to stop this thread, i believe, because close will

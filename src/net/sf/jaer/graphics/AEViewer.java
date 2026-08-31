@@ -95,6 +95,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
@@ -710,6 +711,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        bindCtrlWAbortToRootPane();
         updateExitMenuTooltip();
         initRosOutputRemoteMenu();
         initDnnSharedMemoryRemoteMenu();
@@ -1325,6 +1327,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * only blocks USB during UI restore; this lock is the open serializer.
      */
     private static final ReentrantLock USB_OPEN_SERIAL_LOCK = new ReentrantLock(true);
+    /**
+     * After one camera's open+config, hold the serializer this long so WinUSB
+     * can settle before the next camera's control transfers (classic DVX SPI
+     * read 0 / FPGA logic 0 when siblings go LIVE in the same second).
+     */
+    private static final long USB_OPEN_SERIAL_GAP_MS = 1500L;
     /** LIVE ticks where aemon was not open; drop to WAITING only after several. */
     private int liveOpenMisses;
     private static volatile String usbOpenSerialHolder;
@@ -3358,7 +3366,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // make a 'none' item (only there is no interface) // TOTO tobi changed to always make one
         JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem("None");
-        noneInterfaceButton.setToolTipText("Close hardware interface if it is open");
+        noneInterfaceButton.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK));
+        noneInterfaceButton.setToolTipText("Unbind this camera. Ctrl+W only does this when LIVE or opening and not recording; while recording it stops the file (all cameras if synchronized).");
         noneInterfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
         interfaceMenu.add(new JSeparator());
         interfaceMenu.add(noneInterfaceButton);
@@ -3411,6 +3420,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         snapshotInterfaceMenuDevices();
         showWelcomeOverlay();
+        bindCtrlWAbortToRootPane();
     }
 
     /**
@@ -3458,12 +3468,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Ctrl+W / File → Close: abort the current activity without closing this
      * window. Window close still uses the title-bar X ({@link #stopMe()}).
-     * Priority: stop recording, then close playback, then Interface → None.
+     * If a recording is in progress, only stop it (all viewers when
+     * synchronized). Close the camera only when LIVE or opening and not
+     * recording. Playback still closes the file.
      */
     public void closeOrAbortCurrentActivity() {
-        if (isRecordingEnabled()) {
+        if (isRecordingEnabled() || (jaerViewer != null && jaerViewer.recordingEnabled)) {
             log.info("Ctrl+W: stopping recording");
-            toggleRecording();
+            if (jaerViewer != null && jaerViewer.isSyncEnabled()) {
+                jaerViewer.stopSynchronizedRecording();
+            } else if (isRecordingEnabled()) {
+                stopRecording(true);
+            } else {
+                jaerViewer.stopSynchronizedRecording();
+            }
             showActionText("Stopped recording");
             return;
         }
@@ -3473,19 +3491,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showActionText("Closed file");
             return;
         }
-        final HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
         final boolean opening = hardwareOpenTarget != null;
         final boolean liveUsb = getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING;
-        final boolean usbOpen = hw != null && (hw.isOpen()
-                || (hw instanceof PropheseeHardwareInterface
-                && ((PropheseeHardwareInterface) hw).isOpenInProgress()));
-        if (opening || liveUsb || usbOpen) {
+        if (opening || liveUsb) {
             log.info("Ctrl+W: Interface → None");
             selectNoneInterface();
             showActionText("Interface None");
             return;
         }
-        log.fine("Ctrl+W: nothing to abort (WAITING, no device)");
+        log.fine("Ctrl+W: nothing to abort (not recording, not LIVE, not opening)");
+    }
+
+    /**
+     * File → Close and Interface → None both show Ctrl+W. Menu rebuild would
+     * otherwise steal the stroke for {@link #selectNoneInterface} only.
+     * Root-pane binding keeps {@link #closeOrAbortCurrentActivity}.
+     */
+    private void bindCtrlWAbortToRootPane() {
+        JRootPane rp = getRootPane();
+        if (rp == null) {
+            return;
+        }
+        KeyStroke ks = KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK);
+        rp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(ks, "closeOrAbortCurrentActivity");
+        rp.getActionMap().put("closeOrAbortCurrentActivity", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                closeOrAbortCurrentActivity();
+            }
+        });
     }
 
     /**
@@ -4291,6 +4325,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void releaseUsbOpenSerialLock() {
         if (!USB_OPEN_SERIAL_LOCK.isHeldByCurrentThread()) {
             return;
+        }
+        boolean stopping = viewLoop != null && viewLoop.stop;
+        if (!stopping && USB_OPEN_SERIAL_GAP_MS > 0) {
+            log.info("USB open serializer: " + USB_OPEN_SERIAL_GAP_MS
+                    + " ms gap before next camera (" + usbOpenSerialHolder + ")");
+            try {
+                Thread.sleep(USB_OPEN_SERIAL_GAP_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         log.fine("USB open serializer: released " + usbOpenSerialHolder);
         UsbOpenTrace.event("release", "next camera may open",
@@ -7153,7 +7197,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         closeMenuItem.setMnemonic('C');
         closeMenuItem.setText("Close");
-        closeMenuItem.setToolTipText("Ctrl+W: stop recording, close a playing file, or Interface → None if a camera is open/opening. Window close still uses the title-bar X.");
+        closeMenuItem.setToolTipText("Ctrl+W: stop recording (all cameras if synchronized); if not recording, close a playing file, or Interface → None when LIVE or opening. Window close still uses the title-bar X.");
         closeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeMenuItemActionPerformed(evt);

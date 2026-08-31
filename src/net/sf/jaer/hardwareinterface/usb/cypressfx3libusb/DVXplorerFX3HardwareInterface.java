@@ -151,6 +151,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     }
 
     private boolean classicSpiSkipLogged;
+    /** Close path must send {@code DVS_RUN=0} even if siblings would skip SPI. */
+    private volatile boolean allowClassicSpiOnClose;
 
     /**
      * Classic 4-byte {@code VR_FPGA_CONFIG} deadlocks in native WinUSB when
@@ -159,10 +161,29 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
      * The 500 ms timeout never returns. Sole-camera open still sends SPI.
      */
     public boolean classicSpiBlockedBySiblingReaders() {
+        if (allowClassicSpiOnClose) {
+            return false;
+        }
         if (isMipiCX3Device()) {
             return false;
         }
         return LibUsbAsyncReaderRegistry.siblingEventLoopsLive(isAeReaderTransferAlive());
+    }
+
+    @Override
+    protected void quiesceSensorOnClose() {
+        if (!(getChip() instanceof DVXplorer chip)) {
+            return;
+        }
+        allowClassicSpiOnClose = true;
+        try {
+            CypressFX3.log.info("DVX close: best-attempt sensor stop (DVS_RUN=0 / classic MUX_RUN_CHIP reset)");
+            chip.dvxDataStop();
+        } catch (RuntimeException e) {
+            CypressFX3.log.warning("DVX close sensor stop: " + e);
+        } finally {
+            allowClassicSpiOnClose = false;
+        }
     }
 
     private void logClassicSpiSkip(String dir, short moduleAddr, short paramAddr) {
