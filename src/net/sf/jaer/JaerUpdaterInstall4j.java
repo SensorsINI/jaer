@@ -28,6 +28,7 @@ import com.install4j.api.update.UpdateDescriptorEntry;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JFrame;
@@ -64,8 +65,17 @@ public class JaerUpdaterInstall4j {
         }
     }
     public final String LAST_CHECK_TIME_KEY = "lastInstall4jCheckTime", CHECK_FREQ_KEY = "install4jCheckFreqKey";
+    /** One periodic check per JVM; each AEViewer used to fire this on WINDOW_OPENED. */
+    private static final AtomicBoolean periodicCheckStarted = new AtomicBoolean(false);
 
+    /**
+     * Automatic check when an AEViewer opens. Only the first window in the
+     * process runs it (last-session restore can open several viewers).
+     */
     public void maybeDoPeriodicUpdateCheck(JFrame parent) {
+        if (!periodicCheckStarted.compareAndSet(false, true)) {
+            return;
+        }
         CheckFreq checkFreq = getPreferredCheckFrequency();
         if (checkFreq == CheckFreq.Never) {
             log.info("Not checking (CheckFreq is set to Never)");
