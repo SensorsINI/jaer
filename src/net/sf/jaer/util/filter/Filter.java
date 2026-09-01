@@ -23,6 +23,9 @@ public abstract class Filter{
     
     /** The filter time constant in ms. Default value is 100ms. */
     protected float tauMs=100;
+
+    /** {@link #tauMs} as microseconds, updated only in {@link #setTauMs(float)}. */
+    protected int tauUs=100_000;
     
     /** The last timestamp used */
     protected int lastTime=0;
@@ -50,7 +53,21 @@ public abstract class Filter{
     public void setTauMs(float tauMs) {
         if(tauMs<0) tauMs=0;
         this.tauMs = tauMs;
-//        System.out.println("tauMs="+tauMs);
+        this.tauUs = Math.round(tauMs * TICK_PER_MS);
+    }
+
+    /** Time constant in microseconds (same value as {@link #getTauMs()} × 1000). */
+    public int getTauUs() {
+        return tauUs;
+    }
+
+    /** Sets the time constant from microseconds; updates {@link #tauMs} as well. */
+    public void setTauUs(int tauUs) {
+        if (tauUs < 0) {
+            tauUs = 0;
+        }
+        this.tauUs = tauUs;
+        this.tauMs = tauUs / (float) TICK_PER_MS;
     }
     
     final static float PI2=(float)(Math.PI*2);

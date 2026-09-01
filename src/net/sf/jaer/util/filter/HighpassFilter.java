@@ -72,6 +72,12 @@ public class HighpassFilter extends Filter {
     }
 
     @Override
+    public void setTauUs(int tauUs) {
+        super.setTauUs(tauUs);
+        lpFilter.setTauUs(tauUs);
+    }
+
+    @Override
     public float getTauMs() {
         return lpFilter.getTauMs();
     }

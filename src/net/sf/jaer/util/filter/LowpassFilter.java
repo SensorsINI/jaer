@@ -46,7 +46,8 @@ public class LowpassFilter extends Filter {
 
     /**
      * Same as {@link #filter(float, int)} with a 64-bit microsecond timestamp.
-     * {@code tauMs} is applied as {@code fac = dtUs / tauMs / 1000}.
+     * Uses cached {@code tauUs} ({@code fac = dtUs / tauUs}); {@code tauMs} is
+     * converted only in {@link #setTauMs(float)}.
      */
     public float filter(float val, long timeUs) {
         if (!initialized) {
@@ -57,7 +58,7 @@ public class LowpassFilter extends Filter {
             initialized = true;
             return val;
         }
-        if (tauMs == 0) {
+        if (tauUs == 0) {
             lpVal = val;
             lastVal = val;
             return lpVal;
@@ -68,7 +69,7 @@ public class LowpassFilter extends Filter {
         }
         lastTimeUs = timeUs;
         lastTime = (int) timeUs;
-        float fac = dt / tauMs / TICK_PER_MS;
+        float fac = dt / (float) tauUs;
         if (fac > 1) {
             fac = 1;
         }
