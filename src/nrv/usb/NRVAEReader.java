@@ -155,7 +155,8 @@ public class NRVAEReader {
                 getNumBuffers(),
                 getFifoSize(),
                 null, null,
-                () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
+                () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThreadUnlessExclusivePause(
+                        monitor::close, log, "NRV AEReader"));
         usbTransfer.setName("NRVAEReaderThread");
         // Daemon so a stuck deallocateTransfers/handleEventsTimeout cannot keep the JVM alive on exit.
         usbTransfer.setDaemon(true);

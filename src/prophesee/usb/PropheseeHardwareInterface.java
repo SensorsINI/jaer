@@ -24,6 +24,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
+import java.nio.IntBuffer;
+
+import org.usb4java.BufferUtils;
 import org.usb4java.Context;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
@@ -83,6 +86,9 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     /** Pref kill-switch for USB→PacketBundle polarity demux. */
     public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
     public static final String PREF_LIVE_DISPLAY_EVENT_CAP = "liveDisplayEventCap";
+
+    /** After a failed ISSD, WinUSB often leaves the EVK4 at config 0 (claim NOT_FOUND). */
+    private static final long CLAIM_RETRY_MS = 2000L;
 
     /** Shown at most once per JVM; ViewLoop retries open every few hundred ms. */
     private static final AtomicBoolean LINUX_UDEV_DIALOG_SHOWN = new AtomicBoolean();
@@ -181,10 +187,12 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         log.fine("Prophesee releasePartialOpen " + UsbLog.t());
         try {
             if (deviceHandle != null) {
-                try {
-                    Imx636Init.shutdown(deviceHandle);
-                } catch (Exception e) {
-                    log.fine("shutdown during abort: " + e.getMessage());
+                if (deviceInitialized) {
+                    try {
+                        Imx636Init.shutdown(deviceHandle);
+                    } catch (Exception e) {
+                        log.fine("shutdown during abort: " + e.getMessage());
+                    }
                 }
                 try {
                     releaseDevice();
@@ -597,9 +605,60 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                 log.warning("detachKernelDriver: " + LibUsb.errorName(detach));
             }
         }
-        final int status = LibUsb.claimInterface(deviceHandle, 0);
-        if (status != LibUsb.SUCCESS) {
-            throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status));
+        ensureUsbConfiguration();
+        int status = LibUsb.ERROR_OTHER;
+        int attempt = 0;
+        final long deadline = System.currentTimeMillis() + CLAIM_RETRY_MS;
+        while (System.currentTimeMillis() < deadline) {
+            status = LibUsb.claimInterface(deviceHandle, 0);
+            if (status == LibUsb.SUCCESS) {
+                if (attempt > 0) {
+                    log.info("Prophesee claimInterface succeeded after " + attempt + " retries");
+                }
+                return;
+            }
+            if (status != LibUsb.ERROR_NOT_FOUND && status != LibUsb.ERROR_BUSY
+                    && status != LibUsb.ERROR_NO_DEVICE) {
+                break;
+            }
+            attempt++;
+            log.info("Prophesee claimInterface " + LibUsb.errorName(status)
+                    + " attempt " + attempt + "; setting config 1 and retrying");
+            ensureUsbConfiguration();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        String hint = (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY)
+                ? " Another process may hold the EVK4, or the driver is not WinUSB."
+                : (status == LibUsb.ERROR_NOT_FOUND
+                        ? " Device is enumerated but has no interface 0 (USB config 0 after a failed ISSD); not already claimed."
+                        : "");
+        throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status) + hint);
+    }
+
+    /** EVK4 after failed ISSD / hotplug is often still config 0; claim iface 0 then returns NOT_FOUND. */
+    private void ensureUsbConfiguration() {
+        final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
+        try {
+            final int rc = LibUsb.getConfiguration(deviceHandle, activeConfig);
+            if (rc == LibUsb.SUCCESS && activeConfig.get() == 1) {
+                return;
+            }
+            if (rc != LibUsb.SUCCESS) {
+                log.fine("Prophesee getConfiguration: " + LibUsb.errorName(rc));
+            }
+        } catch (Exception e) {
+            log.fine("Prophesee getConfiguration: " + e.getMessage());
+        }
+        final int set = LibUsb.setConfiguration(deviceHandle, 1);
+        if (set != LibUsb.SUCCESS) {
+            log.warning("Prophesee setConfiguration(1): " + LibUsb.errorName(set));
+        } else {
+            log.info("Prophesee set USB configuration 1");
         }
     }
 

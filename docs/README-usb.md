@@ -214,24 +214,27 @@ still in `open()`. A map miss does not set `nullInterface`.
 `AEViewer.openAEMonitor()` uses thread `jaer-aemon-open` and
 `USB_OPEN_SERIAL_LOCK`. Bind uses `HARDWARE_CLAIM_LOCK` (chooser is not held).
 The per-camera open timeout starts **after** this serializer is acquired.
-After open+config the holder sleeps {@code USB_OPEN_SERIAL_GAP_MS} (1.5 s)
-before unlock so the next camera’s control transfers do not start in the same
-WinUSB window (classic DVX FPGA logic 0 / SPI size 0x0 at 10:54:56). Skip the
-gap on ViewLoop stop.
+The next camera waits {@code USB_OPEN_SERIAL_GAP_MS} (1.5 s) after the previous
+open+config before its own control transfers (classic DVX FPGA logic 0 / SPI
+size 0x0 at 10:54:56). The camera that just opened unlocks immediately and can
+go LIVE; first open in the process and later Interface clicks skip the wait.
+Skip the wait on ViewLoop stop.
 AEReader starts on ViewLoop after PlayMode LIVE. Closing a viewer joins
 `aemon.close()` so leftover windows do not get `LIBUSB_ERROR_ACCESS`.
 
-On timeout, unbind that camera and release the serializer. Classic FX3 DVX
-is autobound **last** (after Mini / DVS / Davis are LIVE) so a WinUSB SPI
-`controlTransfer` hang cannot stall siblings. Interface may open it immediately.
-Classic DVX still skips SPI **IN** size/orientation when siblings are LIVE
-(defaults 640×480). SPI **OUT** (opening / default / DVS_RUN) is sent so the
-sensor produces events when it is the only camera. Classic DVX does not
-{@code LibUsb.resetDevice} on open/close (that reset took down sibling cameras
-on Interface → None). A hung classic SPI unbinds **that** wrapper only — do
-not {@code close()} it (same monitor as the stuck native call). The next
-camera’s `open()` does **not** join a closer for a **different** bus/addr
-(that 20 s wait delayed DVS128 after a hung DVX).
+On timeout, unbind that camera and release the serializer. Session autobind
+order on WinUSB: **EVK4 first** (`shouldDeferUntilEvk4Open`), then Mini / DVS /
+Davis / NRV, then classic FX3 DVX **last** (`shouldDeferClassicDvxOpen`). EVK4
+Treuzell ISSD bulk (`0x79`) times out while any other WinUSB device is claimed
+even after sibling AEReaders are paused (jAER 13:04). Interface may open any
+camera immediately. Classic DVX still skips SPI **IN** size/orientation when
+siblings are LIVE (defaults 640×480). SPI **OUT** (opening / default / DVS_RUN)
+runs after sibling AEReaders are paused so the sensor produces events. Classic
+DVX does not {@code LibUsb.resetDevice} on open/close (that reset took down
+sibling cameras on Interface → None). A hung classic SPI unbinds **that**
+wrapper only — do not {@code close()} it (same monitor as the stuck native
+call). The next camera’s `open()` does **not** join a closer for a **different**
+bus/addr (that 20 s wait delayed DVS128 after a hung DVX).
 
 Session trace: `${java.io.tmpdir}/jaer/usb-open-trace.log` (`UsbOpenTrace`).
 
@@ -257,6 +260,22 @@ Prophesee open and will not reopen a closed wrapper.
 `sendConfiguration` / DVX `dvxConfig` runs on **the same opener thread** after
 `open()` returns, **before** PlayMode LIVE. There is no parallel `jaer-send-biases`
 thread.
+
+EVK4 ISSD Treuzell bulk (`Evk4BoardCommand`, first `0x79` firmware read) times
+out on WinUSB while another camera is already claimed, even with sibling
+`USBTransferThread`s paused out of `handleEventsTimeout` (claim succeeds; jAER
+12:46:45 pause, 13:04 still timeout). Session restore therefore opens EVK4
+**before** other autobind cameras. The opener also pauses sibling event
+acquisition whenever any sibling loop is live (classic DVX SPI OUT as well as
+ISSD), **clears the pause flag**, then resumes those AEReaders (resuming while
+the flag was still set deadlocked Davis `enable IN` for 20 s and held
+`USB_OPEN_SERIAL_LOCK`, so classic DVX never left defer; jAER 12:59:51).
+Stopping one sibling `USBTransferThread` on the shared libusb context empties
+other cameras' URBs (`LIBUSB_TRANSFER_ERROR`); that must not `close()` the live
+camera (Davis dropped while opening EVK4, jAER 14:58:42). A failed firmware
+handshake does not run ISSD Stop/Destroy on `releasePartialOpen`.
+Interface-selected EVK4 while others are already LIVE may still time out on
+WinUSB; open EVK4 first or unplug siblings if that happens.
 
 `CypressFX3Biasgen.open()` does not send biases; that is the opener’s job.
 
@@ -374,13 +393,20 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 ### Prophesee EVK4 HD — VID:PID `04b4:00f5`
 
 - No `LibUsb.getStringDescriptor` on open (serial comes from ISSD).
+- Interface menu lists every enumerated VID:PID; it does not claim. “Already
+  open” is only another jAER window with `isOpen()`. `LIBUSB_ERROR_NOT_FOUND`
+  on `claimInterface` is USB **config 0** (no interface 0), not a busy handle
+  (`ACCESS`). After a failed ISSD, set configuration 1 and retry claim (same
+  as NRV / CypressFX3).
 - After claim, `Imx636Init` + `Evk4BoardCommand.bulkTransfer` (synchronous
   Treuzell). `requestOpenAbort()` cannot cancel an in-flight native
   `LibUsb.bulkTransfer`. ViewLoop waits **45 s** then abandons.
-- ISSD first command (`0x79`) is a 1 s bulk OUT. A WAITING sibling
+- ISSD first command (`0x79`) is a bulk OUT (5 s timeout). A WAITING sibling
   `getDeviceList` during that write is `LIBUSB_ERROR_TIMEOUT`; AEViewer then
   sets `nullInterface` and shows the device list again (jAER 10:14:08 after
   Interface → None on every other camera). Do not scan USB during native open.
+  Session restore opens EVK4 before other cameras so ISSD is not racing a
+  claimed sibling WinUSB device.
 - Event path is async `USBTransferThread` on bulk IN `0x81`. Control path is
   sync bulk. Both use a **dedicated libusb `Context`** (`PropheseeLibUsb`)
   so ISSD and the 2 MiB event reader do not `handleEvents` on the default

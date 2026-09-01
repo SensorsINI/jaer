@@ -233,13 +233,44 @@ public final class UsbIds {
 
     /**
      * Stable enumeration identity for last-interface mapping: class simple name
-     * plus VID:PID and bus/addr. Does not {@code LibUsb.open}.
+     * plus VID:PID and bus/addr. Does not {@code LibUsb.open}. Too long for
+     * {@link java.util.prefs.Preferences} keys on Windows (max 80).
      */
     public static String enumerationKey(HardwareInterface hw) {
         if (hw == null) {
             return "";
         }
         return unopenedLabel(hw, hw.getClass().getSimpleName());
+    }
+
+    /**
+     * Compact identity for Java Preferences: {@code vid:pid.Type.bNaM}. Strips
+     * a trailing {@code HardwareInterface} so DVX Micro vs classic stay distinct
+     * under {@link java.util.prefs.Preferences#MAX_KEY_LENGTH}. Does not
+     * {@code LibUsb.open}.
+     */
+    public static String prefsKey(HardwareInterface hw) {
+        if (hw == null) {
+            return "";
+        }
+        Pair ids = hw instanceof USBInterface ? peek(hw) : new Pair((short) 0, (short) 0);
+        String type = hw.getClass().getSimpleName();
+        final String hi = "HardwareInterface";
+        if (type.endsWith(hi)) {
+            type = type.substring(0, type.length() - hi.length());
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(ids.isKnown() ? ids.key() : "0000:0000");
+        sb.append('.').append(type);
+        Device d = libUsbDevice(hw);
+        if (d != null) {
+            try {
+                sb.append(".b").append(LibUsb.getBusNumber(d) & 0xff)
+                        .append('a').append(LibUsb.getDeviceAddress(d) & 0xff);
+            } catch (RuntimeException ignored) {
+            }
+        }
+        return sb.toString();
     }
 
     /**

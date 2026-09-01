@@ -21,9 +21,10 @@ import net.sf.jaer.util.ViewerInterfaceBindingMap;
  * Interface. Native {@code open()} is serialized by
  * {@code AEViewer.USB_OPEN_SERIAL_LOCK}, not by a second token machine.
  *
- * <p>Classic FX3 DVXplorer is autobound last (after Mini / DVS / Davis are
- * LIVE) so its WinUSB SPI cannot stall siblings. Interface may open it
- * immediately. A hung classic SPI unbinds that wrapper only.
+ * <p>Session autobind order on WinUSB: EVK4 ISSD first (Treuzell bulk times
+ * out while any other camera is claimed), then Mini / DVS / Davis / NRV,
+ * then classic FX3 DVXplorer last (SPI). Interface may open immediately.
+ * A hung classic SPI unbinds that wrapper only.
  */
 public final class SessionCameraOpenCoordinator {
 
@@ -47,6 +48,9 @@ public final class SessionCameraOpenCoordinator {
             new java.util.IdentityHashMap<>());
     /** One INFO per restore that classic DVX is waiting for siblings. */
     private static final Set<AEViewer> classicDeferLogged = java.util.Collections.newSetFromMap(
+            new java.util.IdentityHashMap<>());
+    /** One INFO per restore that a non-EVK4 viewer is waiting for ISSD. */
+    private static final Set<AEViewer> evk4DeferLogged = java.util.Collections.newSetFromMap(
             new java.util.IdentityHashMap<>());
 
     private SessionCameraOpenCoordinator() {
@@ -100,6 +104,7 @@ public final class SessionCameraOpenCoordinator {
             restorePending.clear();
             emptyScans.clear();
             classicDeferLogged.clear();
+            evk4DeferLogged.clear();
         }
         UsbOpenTrace.event("ui-restore", "no USB until WindowSaver places all AEViewers",
                 jv == null ? "null" : "JAERViewer");
@@ -108,7 +113,7 @@ public final class SessionCameraOpenCoordinator {
 
     /**
      * WindowSaver has applied bounds. Off-EDT pre-scan, then RUNNING so
-     * session viewers can autobind (classic FX3 DVX last).
+     * session viewers can autobind (EVK4 first, classic FX3 DVX last).
      */
     public static void uiRestoreComplete(JAERViewer jv) {
         Thread t = new Thread(() -> {
@@ -132,6 +137,7 @@ public final class SessionCameraOpenCoordinator {
             restorePending.clear();
             emptyScans.clear();
             classicDeferLogged.clear();
+            evk4DeferLogged.clear();
             for (AEViewer v : snapshot) {
                 if (v != null && v.isAutobindOnWaiting()) {
                     restorePending.add(v);
@@ -139,7 +145,7 @@ public final class SessionCameraOpenCoordinator {
             }
             phase = Phase.RUNNING;
         }
-        UsbOpenTrace.event("running", "session viewers may autobind; classic DVX last; USB_OPEN_SERIAL_LOCK",
+        UsbOpenTrace.event("running", "session viewers may autobind; EVK4 first, classic DVX last; USB_OPEN_SERIAL_LOCK",
                 snapshot.size() + " viewers pending=" + restorePending.size());
         log.info("USB session: running — " + snapshot.size() + " viewers, "
                 + restorePending.size() + " autobind");
@@ -190,6 +196,50 @@ public final class SessionCameraOpenCoordinator {
     }
 
     /**
+     * EVK4 / Prophesee window. Chip class or remembered VID:PID; does not
+     * {@code LibUsb.open}.
+     */
+    public static boolean isPropheseeViewer(AEViewer v) {
+        if (v == null) {
+            return false;
+        }
+        HardwareInterface bound = v.getChip() == null ? null : v.getChip().getHardwareInterface();
+        if (bound instanceof prophesee.usb.PropheseeHardwareInterface) {
+            return true;
+        }
+        Class<?> chipClass = v.getAeChipClass();
+        if (chipClass != null && chipClass.getName().toLowerCase().contains("prophesee")) {
+            return true;
+        }
+        ViewerInterfaceBindingMap.Binding b = ViewerInterfaceBindingMap.get(v.getViewerInstanceIndex());
+        return b != null && "04b4:00f5".equals(b.vidPid());
+    }
+
+    /**
+     * Non-EVK4 autobind waits until a restore-pending Prophesee viewer has
+     * opened or given up. Treuzell ISSD bulk times out on WinUSB while any
+     * other camera is claimed (pause-AEReader is not enough; jAER 13:04).
+     * Interface grant opens immediately.
+     */
+    public static boolean shouldDeferUntilEvk4Open(AEViewer v) {
+        if (v == null || isPropheseeViewer(v)) {
+            return false;
+        }
+        synchronized (LOCK) {
+            if (userGrant == v) {
+                return false;
+            }
+            pruneRestorePendingLocked();
+            for (AEViewer other : restorePending) {
+                if (other != null && other != v && isPropheseeViewer(other)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Classic FX3 DVX waits until other session cameras have bound+opened or
      * given up, so Mini / DVS / Davis reach LIVE first. Interface grant
      * opens immediately.
@@ -202,6 +252,7 @@ public final class SessionCameraOpenCoordinator {
             if (userGrant == v) {
                 return false;
             }
+            pruneRestorePendingLocked();
             for (AEViewer other : restorePending) {
                 if (other != null && other != v && !isClassicDvxViewer(other)) {
                     return true;
@@ -209,6 +260,16 @@ public final class SessionCameraOpenCoordinator {
             }
         }
         return false;
+    }
+
+    private static void pruneRestorePendingLocked() {
+        JAERViewer jv = sessionViewer;
+        if (jv == null) {
+            restorePending.clear();
+            return;
+        }
+        java.util.Collection<AEViewer> live = jv.getViewers();
+        restorePending.removeIf(o -> o == null || !live.contains(o));
     }
 
     /**
@@ -245,6 +306,15 @@ public final class SessionCameraOpenCoordinator {
             if (phase == Phase.UI_RESTORE) {
                 return "Waiting for windows to finish restoring…";
             }
+        }
+        if (shouldDeferUntilEvk4Open(v)) {
+            synchronized (LOCK) {
+                if (evk4DeferLogged.add(v)) {
+                    log.info(label(v) + " will open after EVK4 ISSD");
+                    UsbOpenTrace.event("evk4-first-defer", "wait for EVK4 ISSD before this camera", label(v));
+                }
+            }
+            return "Waiting for EVK4 ISSD before other cameras…";
         }
         if (shouldDeferClassicDvxOpen(v)) {
             synchronized (LOCK) {
@@ -291,6 +361,7 @@ public final class SessionCameraOpenCoordinator {
             emptyScans.remove(v);
             acquiringLogged.remove(v);
             classicDeferLogged.remove(v);
+            evk4DeferLogged.remove(v);
         }
         UsbOpenTrace.event("user-none", "Interface → None", v.getViewerWindowLabel());
     }
@@ -303,7 +374,7 @@ public final class SessionCameraOpenCoordinator {
     /**
      * No bindable camera this tick. Does <em>not</em> set {@code nullInterface}.
      * After several empty scans this viewer is no longer “restore pending”
-     * so classic DVX can proceed.
+     * so EVK4-first and classic DVX can proceed.
      *
      * @return always {@code false} (keep WAITING polling)
      */
@@ -327,30 +398,49 @@ public final class SessionCameraOpenCoordinator {
     }
 
     /**
-     * This viewer's open attempt is done. Clears Interface grant. Idempotent.
+     * This viewer's open attempt is done. Duplicate LIVE ticks must not clear
+     * an Interface grant (jAER 11:14:08: Micro LIVE tick wiped the click, then
+     * classic DVX deferred forever).
      */
     public static void viewerFinishedOpenAttempt(AEViewer v, String outcome) {
         if (v == null) {
             return;
         }
         synchronized (LOCK) {
-            if (userGrant == v) {
-                userGrant = null;
-            }
             restorePending.remove(v);
             emptyScans.remove(v);
             classicDeferLogged.remove(v);
+            evk4DeferLogged.remove(v);
             if ("live-acquiring".equals(outcome)) {
                 if (!acquiringLogged.add(v)) {
                     return;
                 }
             } else {
                 acquiringLogged.remove(v);
+                if (userGrant == v) {
+                    userGrant = null;
+                }
             }
         }
-        // TODO comment out once USB session restore is stable (LIVE called this every tick).
         UsbOpenTrace.event("open-done", outcome, v.getViewerWindowLabel());
         log.fine("USB session: " + v.getViewerWindowLabel() + " " + outcome);
+    }
+
+    /** Window closed; drop restore-pending so classic DVX is not deferred forever. */
+    public static void viewerClosed(AEViewer v) {
+        if (v == null) {
+            return;
+        }
+        synchronized (LOCK) {
+            restorePending.remove(v);
+            emptyScans.remove(v);
+            acquiringLogged.remove(v);
+            classicDeferLogged.remove(v);
+            evk4DeferLogged.remove(v);
+            if (userGrant == v) {
+                userGrant = null;
+            }
+        }
     }
 
     /** Kept for WAITING callers; no token watchdog. */

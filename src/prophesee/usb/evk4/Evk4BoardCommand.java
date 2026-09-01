@@ -25,7 +25,7 @@ public final class Evk4BoardCommand {
     public static final byte EP_CONTROL_IN = (byte) 0x82;
     public static final byte EP_EVENTS_IN = (byte) 0x81;
 
-    private static final int TIMEOUT_MS = 1000;
+    private static final int TIMEOUT_MS = 5000;
     private static final int MAX_RESPONSE = 1024;
 
     private Evk4BoardCommand() {

@@ -300,6 +300,14 @@ public final class UsbEnumerationSafetyDemo {
                 "Cancel on the AEChip chooser must not re-show on the next WAITING poll");
         require(ensure.contains("UsbIds.enumerationKey(hw)"),
                 "AEChip chooser shows VID/PID and bus/addr");
+        require(ensure.contains("liveChipPrefStorageKey("),
+                "remembered AEChip prefs must clamp keys to Preferences.MAX_KEY_LENGTH");
+        String promptKey = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics",
+                "AEViewer.java"),
+                "private String liveDevicePromptKey(HardwareInterface hw, UsbIds.Pair ids)",
+                "private void addChipClassesToMenu");
+        require(promptKey.contains("UsbIds.prefsKey(hw)"),
+                "liveDevicePromptKey must not store enumerationKey in Java Preferences");
         require(src.contains("SciDVS.class.getName()"),
                 "SciDVS is a default AEChip for the shared Davis346 VID/PID");
         require(src.contains("jaer-aemon-open"),
@@ -808,6 +816,39 @@ public final class UsbEnumerationSafetyDemo {
         Path propheseeFactory = Paths.get("src", "prophesee", "usb", "PropheseeHardwareInterfaceFactory.java");
         require(Files.readString(propheseeFactory, StandardCharsets.UTF_8).contains("PropheseeLibUsb.context()"),
                 "Prophesee factory enumerates on the dedicated libusb context");
+        String aeViewerOpen = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics",
+                "AEViewer.java"),
+                "private void openAEMonitor() {",
+                "private void showUsbLinkOverlayAfterOpen()");
+        require(aeViewerOpen.contains("pauseSiblingEventAcquisition()"),
+                "exclusive USB open pauses sibling USB AEReaders (WinUSB bulk/SPI timeout)");
+        require(aeViewerOpen.contains("LibUsbAsyncReaderRegistry.beginPauseEventLoops()"),
+                "sibling acquire must not restart AEReaders during exclusive USB");
+        require(aeViewerOpen.contains("siblingEventLoopsLive(false)"),
+                "pause whenever any sibling USBTransferThread is LIVE, not only EVK4");
+        require(aeViewerOpen.contains("shouldDeferUntilEvk4Open(this)"),
+                "ViewLoop defers non-EVK4 open until ISSD finishes");
+        require(aeViewerOpen.indexOf("endPauseEventLoops()")
+                        < aeViewerOpen.indexOf("resumeSiblingEventAcquisition("),
+                "clear the ISSD pause flag before resuming sibling AEReaders (self-deadlock)");
+        String releasePartial = methodBody(Paths.get("src", "prophesee", "usb",
+                "PropheseeHardwareInterface.java"),
+                "private void releasePartialOpen() {",
+                "boolean isUsbTypedDemuxActive()");
+        require(releasePartial.contains("if (deviceInitialized)"),
+                "failed firmware handshake must not ISSD shutdown (extra bulk timeouts)");
+        String propheseeClaim = methodBody(Paths.get("src", "prophesee", "usb",
+                "PropheseeHardwareInterface.java"),
+                "private void acquireDevice() throws HardwareInterfaceException {",
+                "private void ensureUsbConfiguration() {");
+        require(propheseeClaim.contains("ensureUsbConfiguration()"),
+                "EVK4 claim sets USB configuration 1 (config 0 is NOT_FOUND, not already-open)");
+        require(propheseeClaim.contains("CLAIM_RETRY_MS"),
+                "EVK4 retries claimInterface after NOT_FOUND like NRV");
+        String evkCmd = Files.readString(Paths.get("src", "prophesee", "usb", "evk4",
+                "Evk4BoardCommand.java"), StandardCharsets.UTF_8);
+        require(evkCmd.contains("TIMEOUT_MS = 5000"),
+                "EVK4 Treuzell bulk timeout is 5 s (sibling handleEvents is 1 s)");
         Path nrv = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
         require(Files.readString(nrv, StandardCharsets.UTF_8).contains("UsbTransferSubmit.awaitQueued"),
                 "NRV AEReader uses the same queued-URB handshake");
@@ -1026,6 +1067,12 @@ public final class UsbEnumerationSafetyDemo {
                 "logic revision 0 is unreadable SPI, not a Flashy mismatch");
         require(fx3.contains("SwingUtilities.invokeLater(show)"),
                 "firmware dialog is shown on the EDT, not SwingWorker.doInBackground");
+        require(fx3.contains("CONTROL_TRANSFER_FINE_EVERY"),
+                "vendor controlTransfer FINE logs are throttled (DVX SPI open)");
+        require(fx3.contains("isLoggable(Level.FINEST)"),
+                "per-transfer controlTransfer detail is FINEST, not every FINE");
+        require(!fx3.contains("log.fine(String.format(\"controlTransfer OUT req"),
+                "must not format every vendor controlTransfer at FINE");
         Path registry = Paths.get("src", "net", "sf", "jaer", "hardwareinterface", "usb",
                 "LibUsbAsyncReaderRegistry.java");
         require(Files.readString(registry, StandardCharsets.UTF_8).contains("siblingEventLoopsLive"),
@@ -1034,20 +1081,29 @@ public final class UsbEnumerationSafetyDemo {
                 "hung classic open must not nullInterface a newly selected camera");
         String acquire = methodBody(viewer,
                 "private boolean acquireUsbOpenSerialLock(AEMonitorInterface opening) {",
-                "private void releaseUsbOpenSerialLock() {");
+                "private boolean waitUsbOpenSerialGapAfterPrevious() {");
         require(acquire.contains("tryLock(100, TimeUnit.MILLISECONDS)"),
                 "serializer wait is interruptible in 100 ms slices");
         require(acquire.contains("PlayMode.PLAYBACK"),
                 "file open aborts the serializer wait");
+        require(acquire.contains("waitUsbOpenSerialGapAfterPrevious()"),
+                "next camera waits for WinUSB settle after the previous open");
+        String gapWait = methodBody(viewer,
+                "private boolean waitUsbOpenSerialGapAfterPrevious() {",
+                "private void releaseUsbOpenSerialLock() {");
+        require(gapWait.contains("lastUsbOpenSerialReleaseMs <= 0"),
+                "first USB open in the process does not wait 1.5 s");
+        require(gapWait.contains("USB_OPEN_SERIAL_GAP_MS"),
+                "serialized sibling opens leave a settle gap");
+        require(gapWait.contains("viewLoop.stop"),
+                "exit does not sleep the USB open gap");
         String release = methodBody(viewer,
                 "private void releaseUsbOpenSerialLock() {",
                 "private void openAEMonitor() {");
+        require(!release.contains("Thread.sleep("),
+                "the camera that just opened must not sleep 1.5 s before LIVE");
         require(src.contains("USB_OPEN_SERIAL_GAP_MS"),
                 "serialized opens leave a settle gap after each camera");
-        require(release.contains("Thread.sleep(USB_OPEN_SERIAL_GAP_MS)"),
-                "gap is held on the serializer so the next camera cannot start early");
-        require(release.contains("viewLoop.stop"),
-                "exit does not sleep the USB open gap");
     }
 
     /**
@@ -1067,10 +1123,20 @@ public final class UsbEnumerationSafetyDemo {
                 "coordinator has RUNNING (not STEADY-disables-autobind)");
         require(!src.contains("serial-skip"),
                 "classic DVX is not skipped forever at session start");
-        require(src.contains("shouldDeferClassicDvxOpen("),
-                "classic FX3 DVX opens last so other cameras reach LIVE first");
+        require(src.contains("viewerClosed("),
+                "closed AEViewers are dropped from restorePending");
+        require(src.contains("pruneRestorePendingLocked"),
+                "classic DVX defer ignores windows that were closed");
+        require(src.contains("live-acquiring") && src.contains("must not clear"),
+                "LIVE ticks do not clear an Interface grant");
         require(src.contains("isClassicDvxHardware("),
                 "classic FX3 DVX is identified without LibUsb.open");
+        require(src.contains("shouldDeferUntilEvk4Open("),
+                "session autobind opens EVK4 ISSD before other cameras");
+        require(src.contains("isPropheseeViewer("),
+                "EVK4 defer uses chip class / remembered VID:PID, not LibUsb.open");
+        require(src.contains("evk4-first-defer"),
+                "usb-open-trace logs EVK4-first wait");
         require(src.contains("DVXplorerMicroFX3HardwareInterface"),
                 "classic vs Mini/Micro are different HardwareInterface types");
         require(src.contains("userRequestedOpen("),
@@ -1105,7 +1171,7 @@ public final class UsbEnumerationSafetyDemo {
         require(v.contains("leftover same-family"),
                 "restore leftover bind is same AEChip family only");
         require(v.contains("SessionCameraOpenCoordinator.waitReason(AEViewer.this)"),
-                "WAITING shows UI restore / classic-DVX defer");
+                "WAITING shows UI restore / EVK4-first / classic-DVX defer");
         require(v.contains("SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this)"),
                 "LIVE acquire is traced");
         require(v.contains("liveOpenMisses"),
@@ -1114,8 +1180,8 @@ public final class UsbEnumerationSafetyDemo {
                 "ACCESS after Interface on a still-enumerated device is retried");
         require(!v.contains("skipClassicDvxAutobind("),
                 "classic FX3 DVX is autobound last, not skipped");
-        require(v.contains("shouldDeferClassicDvxOpen("),
-                "classic FX3 DVX open waits until other session cameras are LIVE");
+        require(v.contains("UsbIds.samePhysicalDevice(byIndex, hw)"),
+                "Interface click binds the clicked camera, not a shifted factory index");
         require(v.contains("not waiting for close of"),
                 "ViewLoop does not join a hung closer for a different camera");
         require(v.contains("keepInterfaceGrant"),
@@ -1175,6 +1241,19 @@ public final class UsbEnumerationSafetyDemo {
         require(DVXplorerFX3HardwareInterface.hardwareClassForBcdDevice(0x0308)
                         == DVXplorerFX3HardwareInterface.class,
                 "type 3 constructs DVXplorerFX3HardwareInterface");
+        String crashKey = "AEViewer.liveChipOffer.chip."
+                + "DVXplorerMicroFX3HardwareInterface 152a:8419 bus1-addr4";
+        require(crashKey.length() > java.util.prefs.Preferences.MAX_KEY_LENGTH,
+                "enumerationKey after live-chip prefix exceeds Windows Preferences max");
+        String compact = "AEViewer.liveChipOffer.default.152a:8419.DVXplorerMicroFX3.b1a4";
+        require(compact.length() <= java.util.prefs.Preferences.MAX_KEY_LENGTH,
+                "compact DVX Micro prefs key must fit Windows Preferences.MAX_KEY_LENGTH");
+        String usbIds = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "hardwareinterface", "usb", "UsbIds.java"), StandardCharsets.UTF_8);
+        require(usbIds.contains("public static String prefsKey("),
+                "UsbIds.prefsKey is the compact Preferences identity");
+        require(usbIds.contains("HardwareInterface"),
+                "prefsKey strips HardwareInterface so Micro vs classic stay distinct");
     }
 
     /**
@@ -1236,14 +1315,17 @@ public final class UsbEnumerationSafetyDemo {
         Path lifecycle = Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "UsbAsyncBulkReaderLifecycle.java");
         String life = Files.readString(lifecycle, StandardCharsets.UTF_8);
-        require(life.contains("closeHostOffReaderThread("),
-                "AEReader close is scheduled off the transfer thread");
+        require(life.contains("closeHostOffReaderThreadUnlessExclusivePause"),
+                "exceptional AEReader exit during EVK4 pause must not close() siblings");
         require(life.contains("thread == Thread.currentThread()"),
                 "interruptAndJoin must not join the current (AEReader) thread");
         Path fx2 = Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx2libusb", "CypressFX2.java");
         String fx2Src = Files.readString(fx2, StandardCharsets.UTF_8);
-        require(fx2Src.contains("closeHostOffReaderThread(monitor::close)"),
+        require(fx2Src.contains("closeHostOffReaderThreadUnlessExclusivePause"),
+                "FX2 AEReader exceptional shutdown must not close() a sibling paused for EVK4");
+        require(fx2Src.contains("closeHostOffReaderThread(monitor::close)")
+                        || fx2Src.contains("closeHostOffReaderThreadUnlessExclusivePause("),
                 "FX2 AEReader exceptional shutdown must not close() on AEReader");
         require(fx2Src.contains("CypressFX2.close() from AEReader; deferring off that thread"),
                 "FX2 close() defers when invoked from AEReader");
@@ -1252,12 +1334,12 @@ public final class UsbEnumerationSafetyDemo {
         Path fx3 = Paths.get("src", "net", "sf", "jaer",
                 "hardwareinterface", "usb", "cypressfx3libusb", "CypressFX3.java");
         String fx3Src = Files.readString(fx3, StandardCharsets.UTF_8);
-        require(fx3Src.contains("closeHostOffReaderThread(monitor::close)"),
-                "FX3 AEReader exceptional shutdown must not close() on AEReader");
+        require(fx3Src.contains("closeHostOffReaderThreadUnlessExclusivePause"),
+                "FX3 AEReader must not close() when EVK4 pause empties sibling URBs");
         Path nrv = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
         String nrvSrc = Files.readString(nrv, StandardCharsets.UTF_8);
-        require(nrvSrc.contains("closeHostOffReaderThread(monitor::close)"),
-                "NRV AEReader exceptional shutdown must not close() on AEReader");
+        require(nrvSrc.contains("closeHostOffReaderThreadUnlessExclusivePause"),
+                "NRV AEReader exceptional shutdown must not close() a sibling paused for EVK4");
     }
 
     /**

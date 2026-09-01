@@ -51,6 +51,7 @@ import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
+import net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry;
 import net.sf.jaer.hardwareinterface.usb.LibUsbStringDescriptors;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
@@ -185,6 +186,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     public static long NO_AE_REOPEN_TIMEOUT = 3000;
     /** Vendor control-transfer timeout. 0 means wait forever and hangs WinUSB after an Interface switch. */
     private static final long VENDOR_REQUEST_TIMEOUT_MS = 500L;
+    /** FINE logs one vendor controlTransfer in this many (DVX SPI open is hundreds). */
+    private static final int CONTROL_TRANSFER_FINE_EVERY = 50;
+    /** Successful controlTransfer slower than this is logged at INFO (hang breadcrumb). */
+    private static final long CONTROL_TRANSFER_SLOW_MS = 100L;
+    private int controlTransferFineCount;
     /**
      * Time in us of each timestamp count here on host, could be different on
      * board.
@@ -500,6 +506,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         // make sure event acquisition is running
         if (!inEndpointEnabled) {
+            if (LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
+                return lastEventsAcquired;
+            }
             try {
                 setEventAcquisitionEnabled(true);
             } catch (final HardwareInterfaceException e) {
@@ -1257,7 +1266,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         private void startBulkTransferThreadOnce(long generation) throws HardwareInterfaceException {
             usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
                     LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(generation), getNumBuffers(), getFifoSize(),
-                    null, null, () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
+                    null, null, () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThreadUnlessExclusivePause(
+                            monitor::close, CypressFX3.log, "CypressFX3 AEReader"));
             usbTransfer.setName("AEReaderThread");
             final AtomicReference<Throwable> startError = new AtomicReference<>();
             final AtomicBoolean running = new AtomicBoolean(false);
@@ -1849,7 +1859,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         final long tOpen = System.currentTimeMillis();
-        CypressFX3.log.info("open(): begin " + UsbIds.unopenedLabel(this, friendlyUnopenedTypeName()));
+        CypressFX3.log.info("**** Opening " + UsbIds.unopenedLabel(this, friendlyUnopenedTypeName()));
         usbLinkDead.set(false);
         int status;
         boolean completed = false;
@@ -2196,6 +2206,44 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         return lastEventsAcquired;
     }
 
+    private void logControlTransferStart(boolean in, byte request, short value, short index, int len) {
+        if (log.isLoggable(Level.FINEST)) {
+            log.finest(formatControlTransferStart(in, request, value, index, len));
+            return;
+        }
+        if (!log.isLoggable(Level.FINE)) {
+            return;
+        }
+        int n = ++controlTransferFineCount;
+        if (n != 1 && (n % CONTROL_TRANSFER_FINE_EVERY) != 0) {
+            return;
+        }
+        String extra = n == 1
+                ? " (further at FINEST; FINE every " + CONTROL_TRANSFER_FINE_EVERY + ")"
+                : String.format(" (#%d)", n);
+        log.fine(formatControlTransferStart(in, request, value, index, len) + extra);
+    }
+
+    private void logControlTransferDone(boolean in, int status, long startNs) {
+        long ms = (System.nanoTime() - startNs) / 1_000_000L;
+        if (status < LibUsb.SUCCESS || ms >= CONTROL_TRANSFER_SLOW_MS) {
+            log.log(status < LibUsb.SUCCESS ? Level.WARNING : Level.INFO, String.format(
+                    "controlTransfer %s done status=%d %d ms %s",
+                    in ? "IN" : "OUT", status, ms, UsbLog.t()));
+            return;
+        }
+        if (log.isLoggable(Level.FINEST)) {
+            log.finest(String.format("controlTransfer %s done status=%d %s",
+                    in ? "IN" : "OUT", status, UsbLog.t()));
+        }
+    }
+
+    private static String formatControlTransferStart(boolean in, byte request, short value, short index, int len) {
+        return String.format("controlTransfer %s req=0x%x value=0x%x index=0x%x len=%d timeout=%d %s",
+                in ? "IN" : "OUT", request & 0xff, value & 0xffff, index & 0xffff, len,
+                VENDOR_REQUEST_TIMEOUT_MS, UsbLog.t());
+    }
+
     /**
      * Sends a vendor request without any data packet, value and index are set
      * to zero. This is a blocking method.
@@ -2283,12 +2331,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // dataBuffer.limit()));
         final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
-        log.fine(String.format("controlTransfer OUT req=0x%x value=0x%x index=0x%x len=%d timeout=%d %s",
-                request & 0xff, value & 0xffff, index & 0xffff, dataBuffer.capacity(),
-                VENDOR_REQUEST_TIMEOUT_MS, UsbLog.t()));
+        LibUsbAsyncReaderRegistry.awaitEventLoopsUnpaused(20_000L);
+        logControlTransferStart(false, request, value, index, dataBuffer.capacity());
+        final long t0 = System.nanoTime();
         final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer,
                 VENDOR_REQUEST_TIMEOUT_MS);
-        log.fine(String.format("controlTransfer OUT done status=%d %s", status, UsbLog.t()));
+        logControlTransferDone(false, status, t0);
         if (status < LibUsb.SUCCESS) {
             noteUsbControlStatus(status);
             throw new HardwareInterfaceException(
@@ -2330,12 +2378,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (deviceHandle == null) {
             throw new HardwareInterfaceException(String.format("deviceHandle is null for %s which should not occur", this.toString()));
         }
-        log.fine(String.format("controlTransfer IN req=0x%x value=0x%x index=0x%x len=%d timeout=%d %s",
-                request & 0xff, value & 0xffff, index & 0xffff, dataLength,
-                VENDOR_REQUEST_TIMEOUT_MS, UsbLog.t()));
+        LibUsbAsyncReaderRegistry.awaitEventLoopsUnpaused(20_000L);
+        logControlTransferStart(true, request, value, index, dataLength);
+        final long t0 = System.nanoTime();
         final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer,
                 VENDOR_REQUEST_TIMEOUT_MS);
-        log.fine(String.format("controlTransfer IN done status=%d %s", status, UsbLog.t()));
+        logControlTransferDone(true, status, t0);
         if (status < LibUsb.SUCCESS) {
             noteUsbControlStatus(status);
             throw new HardwareInterfaceException(

@@ -189,6 +189,7 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
 import net.sf.jaer.hardwareinterface.usb.LiveDeviceChipDetector;
@@ -1415,11 +1416,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private static final ReentrantLock USB_OPEN_SERIAL_LOCK = new ReentrantLock(true);
     /**
-     * After one camera's open+config, hold the serializer this long so WinUSB
-     * can settle before the next camera's control transfers (classic DVX SPI
-     * read 0 / FPGA logic 0 when siblings go LIVE in the same second).
+     * The next camera waits this long after the previous open+config so WinUSB
+     * can settle (classic DVX SPI read 0 / FPGA logic 0 when siblings open in
+     * the same second). The camera that just opened does not sleep; first open
+     * in the process and later Interface clicks skip this wait.
      */
     private static final long USB_OPEN_SERIAL_GAP_MS = 1500L;
+    /** {@code 0} until the first USB open+config in this process finishes. */
+    private static volatile long lastUsbOpenSerialReleaseMs;
     /** LIVE ticks where aemon was not open; drop to WAITING only after several. */
     private int liveOpenMisses;
     private static volatile String usbOpenSerialHolder;
@@ -2189,7 +2193,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (matches.size() == 1 && !currentIsMatch) {
             Class<? extends AEChip> suggested = matches.get(0);
             liveChipOfferPromptedKeys.add(deviceKey);
-            prefs.put(LIVE_CHIP_REMEMBERED_PREF_PREFIX + deviceKey, suggested.getName());
+            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_REMEMBERED_PREF_PREFIX, deviceKey),
+                    suggested.getName());
             log.info("Switching AEChip from "
                     + (current == null ? "(none)" : current.getSimpleName())
                     + " to " + suggested.getSimpleName()
@@ -2295,9 +2300,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if (chosenHolder[0] != null) {
             // OK and Remember both store the dialog default for next prompt.
-            prefs.put(LIVE_CHIP_DEFAULT_PREF_PREFIX + deviceKey, chosenHolder[0].getName());
+            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_DEFAULT_PREF_PREFIX, deviceKey),
+                    chosenHolder[0].getName());
             if (rememberHolder[0]) {
-                prefs.put(LIVE_CHIP_REMEMBERED_PREF_PREFIX + deviceKey, chosenHolder[0].getName());
+                prefs.put(liveChipPrefStorageKey(LIVE_CHIP_REMEMBERED_PREF_PREFIX, deviceKey),
+                        chosenHolder[0].getName());
                 log.info("Remembered AEChip " + chosenHolder[0].getSimpleName()
                         + " for USB device " + deviceKey + " (auto-open)");
             } else {
@@ -2338,7 +2345,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private Class<? extends AEChip> loadLiveChipPref(String prefix, String deviceKey,
             java.util.List<Class<? extends AEChip>> matches, boolean forgetStale) {
-        String fqcn = prefs.get(prefix + deviceKey, null);
+        String fqcn = prefs.get(liveChipPrefStorageKey(prefix, deviceKey), null);
         if (fqcn == null || fqcn.isEmpty()) {
             return null;
         }
@@ -2350,7 +2357,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (forgetStale) {
             log.info("Forgetting stale live AEChip pref " + fqcn + " for " + deviceKey
                     + " (no longer in menu matches)");
-            prefs.remove(prefix + deviceKey);
+            prefs.remove(liveChipPrefStorageKey(prefix, deviceKey));
         }
         return null;
     }
@@ -2379,6 +2386,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         liveChipOfferDeclinedKeys.clear();
     }
 
+    /**
+     * Windows Java Preferences keys are at most {@link Preferences#MAX_KEY_LENGTH}
+     * (80). {@link UsbIds#enumerationKey} for DVX Micro exceeds that after the
+     * live-chip prefix.
+     */
+    private static String liveChipPrefStorageKey(String prefix, String deviceKey) {
+        String raw = prefix + (deviceKey == null ? "" : deviceKey);
+        int max = Preferences.MAX_KEY_LENGTH;
+        if (raw.length() <= max) {
+            return raw;
+        }
+        String hash = Integer.toUnsignedString(
+                (deviceKey == null ? "" : deviceKey).hashCode(), 16);
+        int keep = max - 1 - hash.length();
+        if (keep < 1) {
+            return raw.substring(0, max);
+        }
+        return raw.substring(0, keep) + "_" + hash;
+    }
+
     private String liveDevicePromptKey(HardwareInterface hw, UsbIds.Pair ids) {
         String serial = "";
         if (hw instanceof USBInterface && hw.isOpen()) {
@@ -2391,10 +2418,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // serial optional
             }
         }
-        if (serial.isEmpty()) {
-            return ids.key();
+        if (!serial.isEmpty()) {
+            return ids.key() + "#" + serial;
         }
-        return ids.key() + "#" + serial;
+        String compact = UsbIds.prefsKey(hw);
+        if (compact != null && !compact.isBlank()) {
+            return compact;
+        }
+        return ids.key();
     }
 
     /**
@@ -3442,9 +3473,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             // wrong AEChip bound (see jAER log: Not binding … to Prophesee…).
                             ensureChipCompatibleWithLiveDevice(hw);
                             if (chip.getHardwareInterface() == null) {
-                                HardwareInterface bind = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
-                                if (bind == null) {
-                                    bind = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                                HardwareInterface bind = hw;
+                                HardwareInterface byIndex = HardwareInterfaceFactory.instance()
+                                        .getInterface(interfaceNumber);
+                                if (byIndex != null && UsbIds.samePhysicalDevice(byIndex, hw)) {
+                                    bind = byIndex;
                                 }
                                 bindLiveHardwareIfCompatible(bind, "selected interface " + evt.getActionCommand()
                                         + " with HardwareInterface number" + interfaceNumber + " which is ");
@@ -4467,6 +4500,80 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Stop sibling USB AEReaders before exclusive sync USB (EVK4 Treuzell
+     * bulk or classic DVX SPI). WinUSB times those out while other cameras
+     * sit in {@code handleEventsTimeout}.
+     */
+    private java.util.List<AEMonitorInterface> pauseSiblingEventAcquisition() {
+        java.util.ArrayList<AEMonitorInterface> paused = new java.util.ArrayList<>();
+        if (jaerViewer == null) {
+            return paused;
+        }
+        for (AEViewer other : jaerViewer.getViewers()) {
+            if (other == this) {
+                continue;
+            }
+            AEMonitorInterface m = other.aemon;
+            if (m == null || !m.isOpen()) {
+                continue;
+            }
+            try {
+                if (m instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3 fx3) {
+                    if (fx3.getAeReader() == null) {
+                        continue;
+                    }
+                    fx3.stopAEReader();
+                    paused.add(m);
+                    log.info("paused sibling USB reader for exclusive open: " + m);
+                    continue;
+                }
+                if (!m.isEventAcquisitionEnabled()) {
+                    continue;
+                }
+                m.setEventAcquisitionEnabled(false);
+                paused.add(m);
+                log.info("paused sibling USB reader for exclusive open: " + m);
+            } catch (Exception e) {
+                log.warning("could not pause sibling " + m + ": " + e);
+            }
+        }
+        return paused;
+    }
+
+    private void resumeSiblingEventAcquisition(java.util.List<AEMonitorInterface> paused) {
+        if (paused == null) {
+            return;
+        }
+        for (AEMonitorInterface m : paused) {
+            try {
+                if (m != null && m.isOpen()) {
+                    m.setEventAcquisitionEnabled(true);
+                    log.info("resumed sibling USB reader after exclusive open: " + m);
+                }
+            } catch (Exception e) {
+                log.warning("could not resume sibling " + m + ": " + e);
+            }
+        }
+    }
+
+    private static void waitForSiblingEventLoopsToStop(long timeoutMs) {
+        long end = System.currentTimeMillis() + Math.max(0L, timeoutMs);
+        while (LibUsbAsyncReaderRegistry.liveEventLoopCount() > 0
+                && System.currentTimeMillis() < end) {
+            try {
+                Thread.sleep(20L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        int left = LibUsbAsyncReaderRegistry.liveEventLoopCount();
+        if (left > 0) {
+            log.warning("exclusive USB open: " + left + " USB event loops still live");
+        }
+    }
+
+    /**
      * Wait for {@link #USB_OPEN_SERIAL_LOCK} without starting this camera's
      * open timeout. Returns false if ViewLoop is stopping, playback won, or
      * the bind vanished.
@@ -4489,6 +4596,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (USB_OPEN_SERIAL_LOCK.tryLock(100, TimeUnit.MILLISECONDS)) {
                     usbOpenSerialHolder = getViewerWindowLabel() + " " + UsbIds.enumerationKey(opening);
                     HardwareInterfaceFactory.instance().noteUsbNativeOpenBegin();
+                    if (!waitUsbOpenSerialGapAfterPrevious()) {
+                        usbOpenSerialHolder = null;
+                        HardwareInterfaceFactory.instance().noteUsbNativeOpenEnd();
+                        USB_OPEN_SERIAL_LOCK.unlock();
+                        return false;
+                    }
                     log.info("USB open serializer: " + usbOpenSerialHolder);
                     UsbOpenTrace.event("hold", "one open+config", usbOpenSerialHolder);
                     return true;
@@ -4516,20 +4629,53 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /**
+     * If another camera finished open+config recently, sleep here (holding the
+     * serializer) so this camera's control transfers wait. First open and
+     * opens more than {@link #USB_OPEN_SERIAL_GAP_MS} later return immediately.
+     */
+    private boolean waitUsbOpenSerialGapAfterPrevious() {
+        if (USB_OPEN_SERIAL_GAP_MS <= 0 || lastUsbOpenSerialReleaseMs <= 0) {
+            return true;
+        }
+        long wait = USB_OPEN_SERIAL_GAP_MS
+                - (System.currentTimeMillis() - lastUsbOpenSerialReleaseMs);
+        if (wait <= 0) {
+            return true;
+        }
+        log.info("USB open serializer: " + wait
+                + " ms after previous camera before " + usbOpenSerialHolder);
+        UsbOpenTrace.event("gap", "WinUSB settle after previous open", wait + " ms");
+        long end = System.currentTimeMillis() + wait;
+        while (true) {
+            if (viewLoop != null && viewLoop.stop) {
+                return false;
+            }
+            if (hardwareSwitchInProgress || suppressHardwareOpen
+                    || getPlayMode() == PlayMode.PLAYBACK
+                    || getPlayMode() == PlayMode.FILTER_INPUT) {
+                return false;
+            }
+            long left = end - System.currentTimeMillis();
+            if (left <= 0) {
+                return true;
+            }
+            try {
+                Thread.sleep(Math.min(100L, left));
+            } catch (InterruptedException e) {
+                if (viewLoop != null && viewLoop.stop) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+        }
+    }
+
     private void releaseUsbOpenSerialLock() {
         if (!USB_OPEN_SERIAL_LOCK.isHeldByCurrentThread()) {
             return;
         }
-        boolean stopping = viewLoop != null && viewLoop.stop;
-        if (!stopping && USB_OPEN_SERIAL_GAP_MS > 0) {
-            log.info("USB open serializer: " + USB_OPEN_SERIAL_GAP_MS
-                    + " ms gap before next camera (" + usbOpenSerialHolder + ")");
-            try {
-                Thread.sleep(USB_OPEN_SERIAL_GAP_MS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+        lastUsbOpenSerialReleaseMs = System.currentTimeMillis();
         log.fine("USB open serializer: released " + usbOpenSerialHolder);
         UsbOpenTrace.event("release", "next camera may open",
                 usbOpenSerialHolder == null ? "none" : usbOpenSerialHolder);
@@ -4570,6 +4716,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // chip. Reopening that instance throws devicePointer-not-initialized and
                 // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
                 if (bound != null && aemon == bound && !bound.isOpen()) {
+                    if (LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
+                        log.fine("USB closed during exclusive sibling pause; keeping wrapper " + bound);
+                        return;
+                    }
                     if (nullInterface) {
                         log.info("Interface → None: not reopening closed wrapper " + bound);
                         nullifyHardware();
@@ -4610,6 +4760,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 if (chip.getHardwareInterface() == null) {
                     SessionCameraOpenCoordinator.noteEmptyBind(this);
+                    return;
+                }
+                if (SessionCameraOpenCoordinator.shouldDeferUntilEvk4Open(this)) {
+                    log.fine(getViewerWindowLabel() + " defer USB open until EVK4 ISSD finishes");
                     return;
                 }
                 if (SessionCameraOpenCoordinator.shouldDeferClassicDvxOpen(this)) {
@@ -4654,7 +4808,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     final AEChip chipForOpen = chip;
                     Thread opener = new Thread(() -> {
                         log.fine("openAEMonitor worker begin open() of " + opening + " " + UsbLog.t());
+                        java.util.List<AEMonitorInterface> pausedSiblings = java.util.List.of();
+                        boolean pausedLoops = LibUsbAsyncReaderRegistry.siblingEventLoopsLive(false);
                         try {
+                            if (pausedLoops) {
+                                LibUsbAsyncReaderRegistry.beginPauseEventLoops();
+                                pausedSiblings = pauseSiblingEventAcquisition();
+                                waitForSiblingEventLoopsToStop(2000L);
+                                try {
+                                    Thread.sleep(300L);
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            }
                             HardwareInterfaceFactory.instance().awaitBackgroundScanIdle(2000);
                             opening.open();
                             log.fine("openAEMonitor worker open() returned " + opening + " " + UsbLog.t());
@@ -4683,6 +4849,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             openError.set(t);
                             log.fine("openAEMonitor worker open() threw " + t + " " + UsbLog.t());
                         } finally {
+                            if (pausedLoops) {
+                                LibUsbAsyncReaderRegistry.endPauseEventLoops();
+                                resumeSiblingEventAcquisition(pausedSiblings);
+                            }
                             openDone.countDown();
                         }
                     }, "jaer-aemon-open");
@@ -4913,7 +5083,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 nullifyHardware();
 
             } catch (Exception e) {
-                log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
+                String msg = e.getMessage();
+                if (msg != null && (msg.contains("ACCESS") || msg.contains("BUSY"))) {
+                    log.warning(msg + " (Could some other process have the device open, e.g. flashy or caer?)");
+                } else {
+                    log.warning(String.valueOf(msg));
+                }
                 UsbOpenTrace.event("open-failed", "open succeeds or ACCESS after hung sibling",
                         String.valueOf(e.getMessage()));
                 log.log(Level.FINE, e.toString(), e);
@@ -8668,6 +8843,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private void closeThisViewerOnly(boolean removeFromViewerList) {
             log.info("closing this AEViewer; other windows remain");
             try {
+                SessionCameraOpenCoordinator.viewerClosed(AEViewer.this);
                 stopViewLoopForExit();
                 LibUsbHotplug.removeListener(usbHotplugListener);
                 cleanup(true);

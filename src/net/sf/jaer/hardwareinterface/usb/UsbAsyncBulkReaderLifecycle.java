@@ -408,6 +408,29 @@ public final class UsbAsyncBulkReaderLifecycle {
      * not {@code close()} there: {@link #interruptAndJoin} on the current
      * thread fails immediately and the host abandons the native handle
      * ({@code LIBUSB_ERROR_ACCESS} on the next open).
+     *
+     * <p>Stopping a sibling {@code USBTransferThread} on the shared libusb
+     * context (EVK4 ISSD pause) completes other cameras' URBs with
+     * {@code LIBUSB_TRANSFER_ERROR} / empty transfer list. That must not
+     * {@code close()} the live camera (Davis dropped while opening EVK4,
+     * jAER 14:58:42).
+     */
+    public static void closeHostOffReaderThreadUnlessExclusivePause(Runnable close,
+            Logger log, String label) {
+        if (LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
+            if (log != null) {
+                log.info(label + ": AEReader exited during exclusive USB pause; leaving device open");
+            }
+            return;
+        }
+        closeHostOffReaderThread(close);
+    }
+
+    /**
+     * USBTransferThread exceptional-shutdown runs on the AEReader. Hosts must
+     * not {@code close()} there: {@link #interruptAndJoin} on the current
+     * thread fails immediately and the host abandons the native handle
+     * ({@code LIBUSB_ERROR_ACCESS} on the next open).
      */
     public static void closeHostOffReaderThread(Runnable close) {
         if (close == null) {

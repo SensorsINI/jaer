@@ -551,6 +551,15 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             return aePacketRawPool.readBuffer();
         }
         if (!eventAcquisitionEnabled) {
+            if (net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
+                synchronized (aePacketRawPool) {
+                    aePacketRawPool.swap();
+                    packetBundlePool.swap();
+                    lastPacketBundle = packetBundlePool.readBuffer();
+                    eventCounter = 0;
+                }
+                return aePacketRawPool.readBuffer();
+            }
             setEventAcquisitionEnabled(true);
         }
         final AEPacketRaw lastEventsAcquired;

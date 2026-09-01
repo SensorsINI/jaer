@@ -1227,7 +1227,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             readerActive = true;
             usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
                     new ProcessAEData(gen), getNumBuffers(), getFifoSize(), null, null,
-                    () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
+                    () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThreadUnlessExclusivePause(
+                            monitor::close, CypressFX2.log, "CypressFX2 AEReader"));
             usbTransfer.setName("AEReaderThread");
             usbTransfer.start();
 
@@ -1618,7 +1619,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
                 readerActive = true;
                 usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
                         new ProcessAEData(generation), getNumBuffers(), getFifoSize(), null, null,
-                        () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(monitor::close));
+                        () -> UsbAsyncBulkReaderLifecycle.closeHostOffReaderThreadUnlessExclusivePause(
+                                monitor::close, CypressFX2.log, "CypressFX2 AEReader"));
                 usbTransfer.setName("AEReaderThread");
                 usbTransfer.start();
                 getSupport().firePropertyChange("readerStarted", false, true);
