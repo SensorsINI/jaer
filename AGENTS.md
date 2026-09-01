@@ -21,7 +21,7 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 
 ## Logs
 
-`ant run` / console is **INFO** (`conf/Logging.properties`). USB and ViewLoop detail is **FINE** in the rotating file `%t/jaer/jAER-%g.log` (`java.io.tmpdir/jaer/`; on Windows `%TEMP%\jaer\`). If the console cannot explain a hang, missed hotplug, or USB open failure, read the newest **`jAER-0.log`** there (not `jaer/logs/` in the repo).
+`ant run` / console is **INFO** (`conf/Logging.properties`). USB and ViewLoop detail is **FINE** in the rotating file `%t/jaer/jAER-%g.log` (`java.io.tmpdir/jaer/`; on Windows `%TEMP%\jaer\`). If the console cannot explain a hang, missed hotplug, or USB open failure, read the newest **`jAER-0.log`** there (not `jaer/logs/` in the repo). For USB open/close/multicamera failures, check tmpdir usb-open-trace.log. 
 
 ## Build
 
