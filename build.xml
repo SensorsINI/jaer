@@ -66,6 +66,10 @@ Releases
   generate-splash         VERSION.txt overlay on splash PNGs (1024/256 icons, 800 splash)
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
   upload-release-notes    GitHub Release body from release-notes/ (needs gh)
+  count-asset-downloads   GitHub Release asset download counts (needs gh auth)
+                          One tag: -Djaer.asset.downloads.tag=3.3.0
+                          More rows: -Djaer.asset.downloads.limit=20
+                          All files: -Djaer.asset.downloads.all=true
   split-opencv-natives    per-OS slim OpenCV jars for install4j
   jaer-runtime-archive    zip a runtime tree (legacy; prefer install4j)
 
@@ -862,6 +866,37 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <target name="copy-updates-xml" depends="-load-version"
             description="Copy currentInstallers/VERSION/updates.xml to repo root (run when the release is ready to publish).">
         <jaer-copy-updates-xml/>
+    </target>
+
+    <property name="jaer.asset.downloads.tag" value=""/>
+    <property name="jaer.asset.downloads.limit" value="50"/>
+    <property name="jaer.asset.downloads.all" value="false"/>
+
+    <target name="count-asset-downloads" depends="checkos"
+            description="Print GitHub Release asset download counts (needs gh auth).">
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/count-asset-downloads.ps1"/>
+            <arg value="-Tag"/>
+            <arg value="${jaer.asset.downloads.tag}"/>
+            <arg value="-Limit"/>
+            <arg value="${jaer.asset.downloads.limit}"/>
+            <arg value="-AllAssets"/>
+            <arg value="${jaer.asset.downloads.all}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/count-asset-downloads.sh"/>
+            <arg value="--tag"/>
+            <arg value="${jaer.asset.downloads.tag}"/>
+            <arg value="--limit"/>
+            <arg value="${jaer.asset.downloads.limit}"/>
+            <arg value="--all=${jaer.asset.downloads.all}"/>
+        </exec>
     </target>
 
     <target name="upload-release-notes" depends="-load-version"

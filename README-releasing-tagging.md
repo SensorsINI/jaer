@@ -34,6 +34,15 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 4. When the release is ready to publish: `ant copy-updates-xml` (overwrites repo-root `updates.xml` and sets `baseUrl` to GitHub `/latest/download/`). Commit and push `updates.xml`. Installed copies only see `master`.
 5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
 6. Optional later: SignPath-signed Windows exe, winget/Homebrew, prune old assets.
+7. Download counts (GitHub per-asset `download_count`; needs `gh auth`):
+
+       ant count-asset-downloads
+       ant count-asset-downloads -Djaer.asset.downloads.tag=3.3.0
+       powershell -File scripts/count-asset-downloads.ps1
+       bash scripts/count-asset-downloads.sh --tag 3.3.0
+
+   Default is installer media (`jAER_*.exe` / `.dmg` / `.sh`) on the newest 50 published releases.
+   All files: `-Djaer.asset.downloads.all=true` or `--all`. Limit: `-Djaer.asset.downloads.limit=20`.
 
 After a rebuild, hashes in `updates.xml` change. Repeat `ant copy-updates-xml`, upload, and push `updates.xml` or the updater will checksum-fail.
 
