@@ -1,4 +1,4 @@
-# jAER-#
+# jAER-3
 
 **Welcome to the jAER Desktop Application for Event Sensors**
 
@@ -96,11 +96,17 @@ in International Symposium on Secure-Life Electronics, University of Tokyo,
 Mar. 2008, pp. 21–26. 
 doi: 10.5167/uzh-17620. Available: http://dx.doi.org/10.5167/uzh-17620
 
+We gratefully acknowledge contributions from [inilabs](https://inilabs.com), [iniVation](https://inivation.com/), and [NRV](https://www.nrv.kr/), for their technical support and gifts of prototype cameras.
+
+
 jAER relies on many open source projects, including:
 
 - [Eclipse Temurin (Adoptium)](https://adoptium.net/) – OpenJDK Java runtime bundled in installers.
 - [JOGL (Java OpenGL)](https://jogamp.org/jogl/www/) – Java OpenGL bindings for visualization and display.
 - [libusb](https://libusb.info/) – User space USB library for cross-platform device access.
+- [usb4java](https://github.com/usb4java/usb4java) - excellent Java wrapper of libusb.
+- [USBTransferThread](https://github.com/SensorsINI/USBTransferThread) - Luca Longinotti's efficient thread wrapper of usb4java
+- [Neuromorphic Drivers](https://github.com/neuromorphicsystems/neuromorphic-drivers) - guiding interfacing to Propehsee caneras.
 - [Apache Ant](https://ant.apache.org/) – Java-based build tool.
 - [Apache Ivy](https://ant.apache.org/ivy/) – Dependency manager integrated with Ant.
 - [JNA (Java Native Access)](https://github.com/java-native-access/jna) – Java wrapper for native libraries.
@@ -110,7 +116,7 @@ jAER relies on many open source projects, including:
 - [Guava](https://github.com/google/guava) – Google core Java libraries.
 - and many more.
 
-We thank the developers and contributors to these and other open source projects that make jAER possible.
+We thank the developers of these and other open source projects that make jAER possible.
 
 ### jAER applications
 jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors),
@@ -175,7 +181,7 @@ Windows installers submitted for signing are built from this repository on GitHu
 
 ## Support
 
-Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list forum to ask questions.
+Please use the GitHub issue tracker to report issues and bugs, or our Google Groups mailing list forum to ask questions.
 
 * **USER GUIDE:** [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing)
 * **VIDEO TUTORIALS:** https://www.youtube.com/playlist?list=PLVtZ8f-q0U5hD9KOM4OZ1lixhwupj9uOm
