@@ -165,6 +165,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private long lastReadT1;
     private int frameCursor;
     private int imuCursor;
+    private boolean loggedImuOffsetFallback;
 
     /** Last decompressed polarity packet (sequential playback reuse). */
     private int cachedEventPacketIndex = -1;
@@ -1065,6 +1066,21 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return (int) (packet.elements(local).timestamp() - baseUnixUs + eventRefs[pi].wrapOffset);
     }
 
+    /** First IMU packet at or after {@code payloadOffset} (file order). */
+    private int findImuRefAtOrAfterOffset(long payloadOffset) {
+        int lo = 0;
+        int hi = imuRefs.length;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (imuRefs[mid].payloadOffset < payloadOffset) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        return lo;
+    }
+
     /** Binary search packet containing global event index. */
     private int findEventPacket(long eventIndex) {
         int lo = 0;
@@ -1221,6 +1237,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private void collectTypedForWindow(long t0, long t1) throws IOException {
+        collectTypedForWindow(t0, t1, -1, -1);
+    }
+
+    private void collectTypedForWindow(long t0, long t1, long eventStart, long eventEnd) throws IOException {
         pendingFrames.clear();
         pendingImu.clear();
         // Backward jog/seek can move earlier than the last window — rewind typed cursors.
@@ -1246,15 +1266,74 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             fi++;
         }
-        while (imuCursor < imuRefs.length && imuRefs[imuCursor].unixEnd < t0) {
+        while (imuCursor < imuRefs.length && packetHi(imuRefs[imuCursor]) < t0) {
             imuCursor++;
         }
         int ii = imuCursor;
-        while (ii < imuRefs.length && imuRefs[ii].unixStart <= t1) {
-            if (imuRefs[ii].unixEnd >= t0) {
-                pendingImu.add(decodeImu(imuRefs[ii]));
+        int afterWindow = 0;
+        while (ii < imuRefs.length) {
+            PacketRef r = imuRefs[ii];
+            long lo = packetLo(r);
+            long hi = packetHi(r);
+            if (lo <= t1 && hi >= t0) {
+                ImuPacket decoded = decodeImu(r, t0, t1);
+                if (decoded.getSize() > 0) {
+                    pendingImu.add(decoded);
+                }
+                afterWindow = 0;
+            } else if (lo > t1) {
+                afterWindow++;
+                if (afterWindow >= 8) {
+                    break;
+                }
             }
             ii++;
+        }
+        if (pendingImu.isEmpty() && eventStart >= 0 && eventEnd > eventStart
+                && Aedat4FileOutputStream.imuHostStamped(chip)) {
+            collectImuByEventFileRange(eventStart, eventEnd);
+        }
+    }
+
+    private static long packetLo(PacketRef r) {
+        return Math.min(r.unixStart, r.unixEnd);
+    }
+
+    private static long packetHi(PacketRef r) {
+        return Math.max(r.unixStart, r.unixEnd);
+    }
+
+    /**
+     * Mini/Micro host-clock IMU that still does not overlap DVS after record-time
+     * rebase: attach IMU packets written beside the EVTS packets (ViewLoop writes
+     * polarity then IMU each slice). Not used for Davis — those clocks already
+     * share 1 µs ticks; file-order attach poisons Steadicam dt.
+     */
+    private void collectImuByEventFileRange(long eventStart, long eventEnd) throws IOException {
+        if (eventRefs.length == 0 || imuRefs.length == 0 || eventEnd <= eventStart) {
+            return;
+        }
+        int p0 = findEventPacket(eventStart);
+        int p1 = findEventPacket(eventEnd - 1);
+        long off0 = eventRefs[p0].payloadOffset;
+        long off1;
+        if (p1 + 1 < eventRefs.length) {
+            off1 = eventRefs[p1 + 1].payloadOffset;
+        } else {
+            off1 = Long.MAX_VALUE;
+        }
+        int added = 0;
+        int i = findImuRefAtOrAfterOffset(off0);
+        while (i < imuRefs.length && imuRefs[i].payloadOffset < off1) {
+            pendingImu.add(decodeImu(imuRefs[i]));
+            added++;
+            i++;
+        }
+        if (added > 0 && !loggedImuOffsetFallback) {
+            loggedImuOffsetFallback = true;
+            log.info(String.format(
+                    "AEDAT-4 Mini/Micro IMU timestamps do not overlap DVS; attaching %d IMU packet(s) by file order so overlay/Steadicam still see gyros",
+                    added));
         }
     }
 
@@ -1382,6 +1461,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private ImuPacket decodeImu(PacketRef ref) throws IOException {
+        return decodeImu(ref, Long.MIN_VALUE, Long.MAX_VALUE);
+    }
+
+    /**
+     * @param t0 inclusive relative-µs window start; {@link Long#MIN_VALUE} keeps all
+     * @param t1 inclusive relative-µs window end; {@link Long#MAX_VALUE} keeps all
+     */
+    private ImuPacket decodeImu(PacketRef ref, long t0, long t1) throws IOException {
         ByteBuffer payload = readPayload(ref);
         IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(payload);
         int n = packet.elementsLength();
@@ -1389,6 +1476,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         for (int i = 0; i < n; i++) {
             IMU imu = packet.elements(i);
             int ts = (int) (imu.timestamp() - baseUnixUs + ref.wrapOffset);
+            if ((long) ts < t0 || (long) ts > t1) {
+                continue;
+            }
             IMUSample sample = out.nextOutput();
             sample.setFromPhysicalUnits(ts,
                     imu.accelerometerX(), imu.accelerometerY(), imu.accelerometerZ(),
@@ -1676,7 +1766,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             long tStart = timestampApproxLong(start);
             currentStartTimestamp = (int) tStart;
             long tEnd = timestampApproxLong(Math.max(start, end - 1));
-            collectTypedForWindow(tStart, tEnd);
+            collectTypedForWindow(tStart, tEnd, start, end);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
             if (log.isLoggable(Level.FINE)) {
@@ -1696,7 +1786,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long t0 = timestampApproxLong(start);
         long t1 = timestampApproxLong(Math.max(start, end - 1));
         currentStartTimestamp = (int) t0;
-        collectTypedForWindow(t0, t1);
+        collectTypedForWindow(t0, t1, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
         if (log.isLoggable(Level.FINE)) {
@@ -1740,7 +1830,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             position = end;
             currentStartTimestamp = (int) tStart;
             long tEnd = timestampApproxLong(Math.max(start, end - 1));
-            collectTypedForWindow(tStart, tEnd);
+            collectTypedForWindow(tStart, tEnd, start, end);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
             if (log.isLoggable(Level.FINE)) {
@@ -1774,7 +1864,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         position = start;
         long t0 = timestampApproxLong(start);
         currentStartTimestamp = (int) t0;
-        collectTypedForWindow(t0, tEnd);
+        collectTypedForWindow(t0, tEnd, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
         if (log.isLoggable(Level.FINE)) {

@@ -100,6 +100,56 @@ public interface AEDataFile {
                 || lower.endsWith(DATA_FILE_EXTENSION)
                 || lower.endsWith(OLD_DATA_FILE_EXTENSION);
     }
+
+    /**
+     * Known data-file extension of {@code name} including the leading dot
+     * ({@code .aedat4}), or empty if none.
+     */
+    public static String dataFileExtensionOf(String name) {
+        if (name == null) {
+            return "";
+        }
+        String lower = name.toLowerCase();
+        String[] known = {
+            DATA_FILE_EXTENSION_AEDAT4,
+            DATA_FILE_EXTENSION_AEDAT2,
+            DATA_FILE_EXTENSION_AEDZ,
+            DATA_FILE_EXTENSION,
+            OLD_DATA_FILE_EXTENSION
+        };
+        for (String ext : known) {
+            if (lower.endsWith(ext)) {
+                return ext;
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Save-dialog title that names the format, e.g. {@code Save .aedat4 recorded data}.
+     *
+     * @param extension with or without a leading dot; empty falls back to
+     *                  {@code Save recorded data}
+     */
+    public static String saveRecordedDataTitle(String extension) {
+        return saveRecordedDataTitle(extension, null);
+    }
+
+    /**
+     * @param extra optional parenthetical, e.g. {@code restored default filename}
+     */
+    public static String saveRecordedDataTitle(String extension, String extra) {
+        String ext = extension == null ? "" : extension.trim();
+        if (!ext.isEmpty() && !ext.startsWith(".")) {
+            ext = "." + ext;
+        }
+        String title = ext.isEmpty() ? "Save recorded data" : "Save " + ext + " recorded data";
+        if (extra != null && !extra.isEmpty()) {
+            return title + " (" + extra + ")";
+        }
+        return title;
+    }
+
     /** The date/time/timezone format for filenames */
     static final String YYYY_M_MDD_TH_HMMSS_Z = "yyyy-MM-dd'T'HH-mm-ssZ";
     /** Format used for log file names */

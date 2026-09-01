@@ -118,6 +118,7 @@ import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
 import prophesee.usb.PropheseeHardwareInterface;
 import com.google.common.collect.EvictingQueue;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.Container;
 import java.awt.event.InputEvent;
@@ -9471,6 +9472,126 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Live USB typed demux keeps IMU samples and APS frames in the
+     * {@link PacketBundle}, not in {@link AEPacketRaw}. AEDZ writes raw AEs
+     * only, so those streams would be missing. True for {@link DavisChip}
+     * (APS + IMU) and {@link DVXplorer} (IMU, including Mini/Micro).
+     */
+    public static boolean aedzOmitsImuOrFrames(AEChip chip) {
+        return chip instanceof DavisChip || chip instanceof DVXplorer;
+    }
+
+    static String aedzMissingStreamsLabel(AEChip chip) {
+        if (chip instanceof DavisChip) {
+            return "IMU samples and APS frames";
+        }
+        if (chip instanceof DVXplorer) {
+            return "IMU samples";
+        }
+        return "IMU or frames";
+    }
+
+    static String chipLabel(AEChip chip) {
+        if (chip == null) {
+            return "this sensor";
+        }
+        String name = chip.getName();
+        if (name != null && !name.isEmpty()) {
+            return name;
+        }
+        return chip.getClass().getSimpleName();
+    }
+
+    /**
+     * Rewrite a resolved AEDZ path so AEDAT-4 writer selection and the
+     * {@code .aedat4} extension stay consistent.
+     */
+    static String toAedat4RecordingFilename(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return filename;
+        }
+        String lower = filename.toLowerCase(Locale.ROOT);
+        String[] known = {
+            AEDataFile.DATA_FILE_EXTENSION_AEDZ,
+            AEDataFile.DATA_FILE_EXTENSION_AEDAT4,
+            AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
+            AEDataFile.DATA_FILE_EXTENSION,
+            AEDataFile.OLD_DATA_FILE_EXTENSION
+        };
+        for (String ext : known) {
+            if (lower.endsWith(ext)) {
+                return filename.substring(0, filename.length() - ext.length())
+                        + AEDataFile.DATA_FILE_EXTENSION_AEDAT4;
+            }
+        }
+        return filename + AEDataFile.DATA_FILE_EXTENSION_AEDAT4;
+    }
+
+    /**
+     * If AEDZ was requested for a chip whose IMU/frames would not be stored,
+     * offer AEDAT-4 at the current compression (or auto-switch off the EDT).
+     *
+     * @return the format to use, or {@code null} if recording should not start
+     */
+    RecordingFormatChoice maybeRedirectAedzForImuOrFrames(RecordingFormatChoice choice) {
+        if (choice == null || !AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(choice.version)) {
+            return choice;
+        }
+        if (!aedzOmitsImuOrFrames(chip)) {
+            return choice;
+        }
+        if (!confirmSwitchAedzToAedat4()) {
+            return null;
+        }
+        setRecordingDataFileVersion(AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
+        String aedat4Name = toAedat4RecordingFilename(choice.filename);
+        File candidate = new File(aedat4Name);
+        if (candidate.isFile()) {
+            String name = candidate.getName();
+            String ext = AEDataFile.DATA_FILE_EXTENSION_AEDAT4;
+            String base = name.endsWith(ext) ? name.substring(0, name.length() - ext.length()) : name;
+            aedat4Name = RecordingFilename.uniqueFile(candidate.getParentFile(), base, ext).getAbsolutePath();
+        }
+        log.info("Switching recording from AEDZ to AEDAT-4 ("
+                + Aedat4Compression.nameOf(getAedat4Compression()) + "): " + aedat4Name);
+        return resolveRecordingFormat(aedat4Name, AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
+    }
+
+    /**
+     * Warning dialog (EDT) offering AEDAT-4 instead of AEDZ. Off the EDT or
+     * headless, auto-accepts the switch so remote/headless recording still
+     * captures IMU/frames rather than writing a polarity-only .aedz.
+     *
+     * @return {@code true} to record as AEDAT-4, {@code false} to cancel
+     */
+    public boolean confirmSwitchAedzToAedat4() {
+        String compression = Aedat4Compression.nameOf(getAedat4Compression());
+        String missing = aedzMissingStreamsLabel(chip);
+        String sensor = chipLabel(chip);
+        if (GraphicsEnvironment.isHeadless() || !SwingUtilities.isEventDispatchThread()) {
+            log.warning(String.format(
+                    "AEDZ does not store %s from %s; switching to AEDAT-4 (%s)",
+                    missing, sensor, compression));
+            return true;
+        }
+        Object[] options = {"Record as AEDAT-4 (" + compression + ")", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(
+                this,
+                String.format(
+                        "<html>AEDZ (<code>.aedz</code>) records polarity events only.<br>"
+                        + "<b>%s</b> also produces <b>%s</b>, which AEDZ does not store.<br><br>"
+                        + "Record as AEDAT-4 with the current compression (<b>%s</b>) instead?</html>",
+                        sensor, missing, compression),
+                "AEDZ cannot record IMU/frames",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                options,
+                options[0]);
+        return choice == 0;
+    }
+
+    /**
      * Starts recording AE data to a file.
      *
      * @param filename the filename to record to, including all path information.
@@ -9495,6 +9616,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return recordingFile;
         }
         RecordingFormatChoice choice = resolveRecordingFormat(filename, dataFileVersionNum);
+        choice = maybeRedirectAedzForImuOrFrames(choice);
+        if (choice == null) {
+            log.warning("AEDZ recording not started: " + aedzMissingStreamsLabel(chip)
+                    + " from " + chipLabel(chip) + " are not stored in .aedz");
+            return null;
+        }
         boolean aedz = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(choice.version);
         boolean aedat4 = !aedz && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(choice.version);
         if (!choice.filename.equals(filename)) {
@@ -10131,7 +10258,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     JFileChooser chooser = new JFileChooser();
                     chooser.setCurrentDirectory(lastRecordingFolder);
                     chooser.setFileFilter(new DATFileFilter());
-                    chooser.setDialogTitle("Save recorded data");
+                    chooser.setDialogTitle(AEDataFile.saveRecordedDataTitle(preferredSaveExt));
 
                     String fn
                             = recordingFile.getName();
@@ -10178,7 +10305,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             File selected = chooser.getSelectedFile();
                             if (selected == null || RecordingSaveDialogGuard.isStrayRecordingShortcutFilename(selected.getName())) {
                                 RecordingSaveDialogGuard.restoreSelectedFilename(chooser, base);
-                                chooser.setDialogTitle("Save recorded data (restored default filename)");
+                                chooser.setDialogTitle(AEDataFile.saveRecordedDataTitle(preferredSaveExt,
+                                        "restored default filename"));
                                 continue;
                             }
                             File newFile = resolveLoggingSaveDestination(chooser, preferredSaveExt);

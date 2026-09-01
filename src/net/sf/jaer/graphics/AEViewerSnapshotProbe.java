@@ -44,6 +44,9 @@ import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
  *       snapshot;</li>
  *   <li>the recording-format preference round-trips (index↔version), accepting
  *       "aedz"/"4.0"/"2.0" and defaulting anything else to AEDAT-4.</li>
+ *   <li>AEDZ is refused for Davis/DVXplorer (IMU/frames live in PacketBundle);
+ *       the filename rewrite to {@code .aedat4} is the switch the warning
+ *       dialog applies.</li>
  * </ul>
  *
  * <p>Each check throws {@link AssertionError} on mismatch (non-zero exit) and
@@ -69,6 +72,8 @@ public class AEViewerSnapshotProbe {
         testActiveSnapshotReleasePreservesReplacement();
         testWriterConstructionFailurePreservesReplacementSnapshot();
         testResolveRecordingFormatSelectsAedzWriter();
+        testAedzRedirectsImuOrFrameChips();
+        testSaveRecordedDataTitle();
         testNormalizeRecordingDataFileVersion();
         testPreferenceIndexRoundTrip();
         testAedzWriterPathConstructsWriter();
@@ -553,6 +558,41 @@ public class AEViewerSnapshotProbe {
                 "version '2.0' selects AEDAT-2 and appends .aedat2");
 
         System.out.println("PASS testResolveRecordingFormatSelectsAedzWriter");
+    }
+
+    /** AEDZ drops IMU/frames on Davis and DVXplorer; filename rewrite keeps .aedat4. */
+    private static void testAedzRedirectsImuOrFrameChips() {
+        assertTrue(!AEViewer.aedzOmitsImuOrFrames(null), "null chip is not an IMU/frame sensor");
+        assertTrue(!AEViewer.aedzOmitsImuOrFrames(bareChip()), "bare AEChip does not omit IMU/frames");
+        AEChip davis = new org.objenesis.ObjenesisStd().newInstance(
+                eu.seebetter.ini.chips.davis.Davis346blue.class);
+        assertTrue(AEViewer.aedzOmitsImuOrFrames(davis), "Davis346blue omits IMU/frames under AEDZ");
+        AEChip dvx = new org.objenesis.ObjenesisStd().newInstance(
+                ch.unizh.ini.jaer.chip.retina.DVXplorerMicro.class);
+        assertTrue(AEViewer.aedzOmitsImuOrFrames(dvx), "DVXplorerMicro omits IMU under AEDZ");
+        assertTrue("rec.aedat4".equals(AEViewer.toAedat4RecordingFilename("rec.aedz")),
+                ".aedz rewrites to .aedat4");
+        assertTrue("rec.aedat4".equals(AEViewer.toAedat4RecordingFilename("rec.AEDZ")),
+                "uppercase .AEDZ rewrites to .aedat4");
+        assertTrue("/tmp/foo.aedat4".equals(AEViewer.toAedat4RecordingFilename("/tmp/foo.aedat")),
+                "legacy .aedat rewrites to .aedat4");
+        assertTrue("rec.aedat4".equals(AEViewer.toAedat4RecordingFilename("rec")),
+                "no extension appends .aedat4");
+        System.out.println("PASS testAedzRedirectsImuOrFrameChips");
+    }
+
+    private static void testSaveRecordedDataTitle() {
+        assertTrue("Save .aedat4 recorded data".equals(AEDataFile.saveRecordedDataTitle(".aedat4")),
+                "AEDAT-4 save title");
+        assertTrue("Save .aedz recorded data".equals(AEDataFile.saveRecordedDataTitle("aedz")),
+                "AEDZ save title accepts extension without dot");
+        assertTrue("Save .aedat2 recorded data (restored default filename)".equals(
+                        AEDataFile.saveRecordedDataTitle(AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
+                                "restored default filename")),
+                "save title extra parenthetical");
+        assertTrue(".aedat4".equals(AEDataFile.dataFileExtensionOf("foo.aedat4")),
+                "dataFileExtensionOf aedat4");
+        System.out.println("PASS testSaveRecordedDataTitle");
     }
 
     /** normalizeRecordingDataFileVersion accepts aedz/4.0/2.0 and defaults any other value to AEDAT-4. */

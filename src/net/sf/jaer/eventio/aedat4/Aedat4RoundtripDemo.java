@@ -9,9 +9,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 /** Minimal AEDAT-4 write/decode smoke test. */
 public class Aedat4RoundtripDemo {
@@ -42,6 +46,7 @@ public class Aedat4RoundtripDemo {
         }
         verifyUncompressedSizeFromHeaders();
         verifyOwnedConstructorClosesOnInitializationFailure();
+        verifyImuRebaseOnlyForHostClock();
 
         verifyDvFileDataTable(file);
         int decoded = decodeFirstEventPacketLength(file);
@@ -286,6 +291,95 @@ public class Aedat4RoundtripDemo {
             if (channel.read(buffer) < 0) {
                 throw new java.io.EOFException();
             }
+        }
+    }
+
+    /**
+     * Davis shares the DVS 1 µs clock — keep IMU Unix times. Mini/Micro is
+     * host-stamped and must rebase onto the polarity window.
+     */
+    private static void verifyImuRebaseOnlyForHostClock() throws Exception {
+        if (Aedat4FileOutputStream.imuHostStamped(null)) {
+            throw new IllegalStateException("null chip must not look Mini/Micro host-stamped");
+        }
+        AEChip micro = new org.objenesis.ObjenesisStd()
+                .newInstance(ch.unizh.ini.jaer.chip.retina.DVXplorerMicro.class);
+        AEChip davis = new org.objenesis.ObjenesisStd()
+                .newInstance(eu.seebetter.ini.chips.davis.Davis346blue.class);
+        if (!Aedat4FileOutputStream.imuHostStamped(micro)) {
+            throw new IllegalStateException("DVXplorerMicro must be host-stamped");
+        }
+        if (Aedat4FileOutputStream.imuHostStamped(davis)) {
+            throw new IllegalStateException("Davis346blue must not rebase IMU onto DVS");
+        }
+        long davisOff = imuMinusEvtsStartUs(writeImuOffsetFile(davis));
+        long microOff = imuMinusEvtsStartUs(writeImuOffsetFile(micro));
+        if (Math.abs(davisOff - 999_000L) > 5_000L) {
+            throw new IllegalStateException("Davis IMU must keep ~999 ms offset from DVS, got " + davisOff + " us");
+        }
+        if (Math.abs(microOff) > 5_000L) {
+            throw new IllegalStateException("Mini/Micro IMU must rebase onto DVS, got offset " + microOff + " us");
+        }
+        System.out.println("PASS IMU rebase gated Davis offset=" + davisOff + "us Micro offset=" + microOff + "us");
+    }
+
+    private static File writeImuOffsetFile(AEChip chip) throws Exception {
+        File file = File.createTempFile("jaer-aedat4-imu-rebase-", ".aedat4");
+        PacketBundle bundle = new PacketBundle();
+        net.sf.jaer.event.EventPacket<PolarityEvent> events = new net.sf.jaer.event.EventPacket<>(PolarityEvent.class);
+        OutputEventIterator<PolarityEvent> out = events.outputIterator();
+        for (int i = 0; i < 4; i++) {
+            PolarityEvent event = out.nextOutput();
+            event.timestamp = 1000 + i;
+            event.x = (short) (10 + i);
+            event.y = (short) (20 + i);
+            event.setPolarity((i & 1) == 0 ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off);
+        }
+        ImuPacket imu = new ImuPacket(3);
+        for (int i = 0; i < 3; i++) {
+            IMUSample sample = imu.nextOutput();
+            sample.setFromPhysicalUnits(1_000_000 + i * 1000, 0, 0, 1, 0, 0, 0, 25);
+        }
+        bundle.add(events);
+        bundle.add(imu);
+        try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(new FileOutputStream(file), chip,
+                net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4,
+                RecordingConfigurationSnapshot.captureFromChip(null))) {
+            output.writeBundle(bundle);
+        }
+        return file;
+    }
+
+    private static long imuMinusEvtsStartUs(File file) throws Exception {
+        try (FileInputStream input = new FileInputStream(file); FileChannel channel = input.getChannel()) {
+            channel.position(Aedat4FileOutputStream.VERSION_LINE.length);
+            ByteBuffer headerBuffer = readSizePrefixed(channel);
+            net.sf.jaer.eventio.aedat4.dv.IOHeader header =
+                    net.sf.jaer.eventio.aedat4.dv.IOHeader.getSizePrefixedRootAsIOHeader(headerBuffer);
+            int compression = Aedat4Compression.clamp(header.compression());
+            long tablePosition = header.dataTablePosition();
+            channel.position(tablePosition);
+            ByteBuffer encoded = ByteBuffer.allocate((int) (channel.size() - tablePosition));
+            readFully(channel, encoded);
+            byte[] flat = Aedat4Compression.decompress(encoded.array(), compression);
+            net.sf.jaer.eventio.aedat4.dv.FileDataTable table =
+                    net.sf.jaer.eventio.aedat4.dv.FileDataTable.getSizePrefixedRootAsFileDataTable(
+                            ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN));
+            Long evtsStart = null;
+            Long imuStart = null;
+            for (int i = 0; i < table.tableLength(); i++) {
+                net.sf.jaer.eventio.aedat4.dv.FileDataDefinition def = table.table(i);
+                int streamId = def.packetInfoStreamID();
+                if (streamId == Aedat4FileOutputStream.STREAM_EVENTS && evtsStart == null) {
+                    evtsStart = def.timestampStart();
+                } else if (streamId == Aedat4FileOutputStream.STREAM_IMU && imuStart == null) {
+                    imuStart = def.timestampStart();
+                }
+            }
+            if (evtsStart == null || imuStart == null) {
+                throw new IllegalStateException("Missing EVTS/IMUS table entries in " + file);
+            }
+            return imuStart - evtsStart;
         }
     }
 }

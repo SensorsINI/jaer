@@ -285,7 +285,8 @@ public class DataLogger extends EventFilter2D {
                 JFileChooser chooser = new JFileChooser();
                 chooser.setCurrentDirectory(new File(recordingFolder));
                 chooser.setFileFilter(new DATFileFilter());
-                chooser.setDialogTitle("Save recorded data");
+                chooser.setDialogTitle(AEDataFile.saveRecordedDataTitle(
+                        AEDataFile.dataFileExtensionOf(recordingFile != null ? recordingFile.getName() : null)));
 
                 String fn =
                         recordingFile.getName();
@@ -311,7 +312,9 @@ public class DataLogger extends EventFilter2D {
                         File newFile = chooser.getSelectedFile();
                         if (RecordingSaveDialogGuard.isStrayRecordingShortcutFilename(newFile.getName())) {
                             RecordingSaveDialogGuard.restoreSelectedFilename(chooser, base);
-                            chooser.setDialogTitle("Save recorded data (restored default filename)");
+                            chooser.setDialogTitle(AEDataFile.saveRecordedDataTitle(
+                                    AEDataFile.dataFileExtensionOf(recordingFile != null ? recordingFile.getName() : null),
+                                    "restored default filename"));
                             continue;
                         }
                         if (!AEDataFile.hasDataFileExtension(newFile.getName())) {

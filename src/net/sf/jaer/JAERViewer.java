@@ -811,6 +811,36 @@ public class JAERViewer {
             return;
         }
 
+        boolean aedzBlocked = false;
+        for (AEViewer v : rec) {
+            if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDZ.equals(v.getRecordingDataFileVersion())
+                    && AEViewer.aedzOmitsImuOrFrames(v.getChip())) {
+                aedzBlocked = true;
+                break;
+            }
+        }
+        if (aedzBlocked) {
+            AEViewer dialogHost = rec.get(0);
+            for (AEViewer v : rec) {
+                if (AEViewer.aedzOmitsImuOrFrames(v.getChip())) {
+                    dialogHost = v;
+                    break;
+                }
+            }
+            if (!dialogHost.confirmSwitchAedzToAedat4()) {
+                log.warning("synchronized AEDZ recording canceled: IMU/frames would not be stored");
+                for (AEViewer v : viewers) {
+                    v.setPaused(false);
+                }
+                recordingEnabled = false;
+                return;
+            }
+            for (AEViewer v : rec) {
+                v.setRecordingDataFileVersion(AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
+            }
+            log.info("synchronized recording switched from AEDZ to AEDAT-4 so IMU/frames are stored");
+        }
+
         boolean muxAedat4 = rec.size() > 1
                 && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(rec.get(0).getRecordingDataFileVersion());
         if (muxAedat4) {

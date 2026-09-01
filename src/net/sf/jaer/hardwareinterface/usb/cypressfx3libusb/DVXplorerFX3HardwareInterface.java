@@ -956,6 +956,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private long cx3ImuLastTimestamp;
         private long cx3ImuLastHostNs;
         private int cx3ImuDropped;
+        private boolean loggedCx3ImuResync;
+        /** Restamp Mini/Micro IMU from DVS if host integration drifted this far (µs). */
+        private static final int CX3_IMU_RESYNC_US = 500_000;
 
         // DVXplorer specific
         private final boolean dvsDualBinning = false;
@@ -1136,6 +1139,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             mipiReferenceOverflow = 0;
             cx3ImuLastTimestamp = 0;
             cx3ImuLastHostNs = 0;
+            loggedCx3ImuResync = false;
             imuCount = 0;
             imuType = 0;
             imuTmpData = 0;
@@ -1801,10 +1805,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                 dtUs = 1250;
             }
             cx3ImuLastHostNs = nowNs;
-            int ts = cx3ImuLastTimestamp == 0
-                    ? (currentTimestamp > 0 ? currentTimestamp : dtUs)
-                    : (int) (cx3ImuLastTimestamp + dtUs);
-            cx3ImuLastTimestamp = ts;
+            int ts = nextCx3ImuTimestamp(dtUs);
             // Direct ImuPacket (no AEPacketRaw round-trip): use the tracked
             // constructor so updateStatistics fills deltaTimeUs (952cfae41e).
             // fromRawUntracked is only for encode-then-constructFromAEPacketRaw.
@@ -1816,6 +1817,49 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                         cx3ImuPackets, cx3ImuDropped, flags, gyroScale, rawGx, rawGy, rawGz,
                         rawGx / gyroScale, rawGy / gyroScale, rawGz / gyroScale));
             }
+        }
+
+        /**
+         * Mini/Micro IMU has no device timestamp; samples are stamped from
+         * {@code nanoTime} deltas. If that clock never seeds from DVS
+         * {@link #currentTimestamp} (or later drifts), AEDAT-4 playback cannot
+         * attach IMU to the event window. Resync when the 32-bit µs circle
+         * distance exceeds {@link #CX3_IMU_RESYNC_US}.
+         */
+        private int nextCx3ImuTimestamp(int dtUs) {
+            final int dvs = currentTimestamp;
+            if (cx3ImuLastTimestamp == 0) {
+                int ts = dvs > 0 ? dvs : dtUs;
+                cx3ImuLastTimestamp = ts & 0xFFFFFFFFL;
+                return ts;
+            }
+            if (dvs != 0) {
+                long delta = unsignedCircularDeltaUs(dvs, (int) cx3ImuLastTimestamp);
+                if (delta > CX3_IMU_RESYNC_US) {
+                    if (!loggedCx3ImuResync) {
+                        loggedCx3ImuResync = true;
+                        CypressFX3.log.info(String.format(
+                                "Mini/Micro IMU timestamp resync to DVS (offset %.3fs); host IMU clock had drifted from device time",
+                                delta / 1e6));
+                    }
+                    cx3ImuLastTimestamp = dvs & 0xFFFFFFFFL;
+                    return dvs;
+                }
+            }
+            int ts = (int) (cx3ImuLastTimestamp + dtUs);
+            cx3ImuLastTimestamp = ts & 0xFFFFFFFFL;
+            return ts;
+        }
+
+        /** Smallest distance on the 32-bit µs timestamp circle. */
+        private static long unsignedCircularDeltaUs(int a, int b) {
+            long ua = a & 0xFFFFFFFFL;
+            long ub = b & 0xFFFFFFFFL;
+            long d = Math.abs(ua - ub);
+            if (d > 0x80000000L) {
+                d = 0x100000000L - d;
+            }
+            return d;
         }
 
         private static short le16(final ByteBuffer b, final int offset) {

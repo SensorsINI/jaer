@@ -37,6 +37,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -489,7 +490,14 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         optionsHost.revalidate();
         optionsHost.repaint();
         updateHvsUi();
+        updateWindowTitle();
         packDialog();
+    }
+
+    private void updateWindowTitle() {
+        SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
+        String ext = f != null ? f.extension : "aedat4";
+        setTitle(AEDataFile.saveRecordedDataTitle(ext));
     }
 
     private void updateHvsUi() {

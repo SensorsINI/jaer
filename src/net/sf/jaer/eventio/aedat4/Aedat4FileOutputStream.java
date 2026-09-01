@@ -10,8 +10,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -71,6 +74,11 @@ public class Aedat4FileOutputStream implements Closeable {
     private boolean[] evPolarities;
     private FlatBufferBuilder eventBuilder;
     private final ByteBuffer packetHeader;
+    /** Polarity Unix-µs range of the bundle currently being written (for IMU align). */
+    private long bundlePolarityUnix0;
+    private long bundlePolarityUnix1;
+    private boolean bundleHasPolarityTimes;
+    private boolean loggedImuTimestampRebase;
 
     public Aedat4FileOutputStream(File file, AEChip chip) throws IOException {
         this(new FileOutputStream(file), chip, CompressionType.LZ4,
@@ -272,6 +280,7 @@ public class Aedat4FileOutputStream implements Closeable {
                     + " out of range 0.." + (tracks.size() - 1));
         }
         currentTrack = tracks.get(trackIndex);
+        bundleHasPolarityTimes = false;
         for (TypedDataPacket packet : bundle) {
             if (packet == null || packet.isEmpty()) {
                 continue;
@@ -322,6 +331,24 @@ public class Aedat4FileOutputStream implements Closeable {
         eventBuilder.finishSizePrefixed(root, "EVTS");
         byte[] payload = eventBuilder.sizedByteArray();
         writePacket(currentTrack.eventsStreamId(), payload, n, evTimestamps[0], evTimestamps[n - 1]);
+        noteBundlePolarityUnix(evTimestamps[0], evTimestamps[n - 1]);
+    }
+
+    private void noteBundlePolarityUnix(long t0, long t1) {
+        long lo = Math.min(t0, t1);
+        long hi = Math.max(t0, t1);
+        if (!bundleHasPolarityTimes) {
+            bundlePolarityUnix0 = lo;
+            bundlePolarityUnix1 = hi;
+            bundleHasPolarityTimes = true;
+            return;
+        }
+        if (lo < bundlePolarityUnix0) {
+            bundlePolarityUnix0 = lo;
+        }
+        if (hi > bundlePolarityUnix1) {
+            bundlePolarityUnix1 = hi;
+        }
     }
 
     private int appendPolarityEvent(BasicEvent event, long[] timestamps, short[] xs, short[] ys,
@@ -369,17 +396,24 @@ public class Aedat4FileOutputStream implements Closeable {
     private void writeImuPacket(ImuPacket packet) throws IOException {
         int n = packet.getSize();
         int[] offsets = new int[n];
-        long first = 0;
-        long last = 0;
         FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, n * 96));
+        long[] unix = new long[n];
         for (int i = 0; i < n; i++) {
+            unix[i] = toUnixUs(packet.get(i).getTimestampUs());
+        }
+        rebaseImuUnixOntoPolarity(unix);
+        Integer[] order = new Integer[n];
+        for (int i = 0; i < n; i++) {
+            order[i] = i;
+        }
+        Arrays.sort(order, Comparator.comparingLong(i -> unix[i]));
+        long first = unix[order[0]];
+        long last = unix[order[n - 1]];
+        for (int k = 0; k < n; k++) {
+            int i = order[k];
             IMUSample sample = packet.get(i);
-            long timestamp = toUnixUs(sample.getTimestampUs());
-            if (i == 0) {
-                first = timestamp;
-            }
-            last = timestamp;
-            offsets[i] = IMU.createIMU(builder, timestamp, sample.getTemperature(),
+            long timestamp = unix[i];
+            offsets[k] = IMU.createIMU(builder, timestamp, sample.getTemperature(),
                     sample.getAccelX(), sample.getAccelY(), sample.getAccelZ(),
                     sample.getGyroTiltX(), sample.getGyroYawY(), sample.getGyroRollZ(),
                     0, 0, 0);
@@ -388,6 +422,53 @@ public class Aedat4FileOutputStream implements Closeable {
         int root = IMUPacket.createIMUPacket(builder, vector);
         builder.finishSizePrefixed(root, "IMUS");
         writePacket(currentTrack.imuStreamId(), builder.sizedByteArray(), n, first, last);
+    }
+
+    /**
+     * Mini/Micro IMU is host-stamped (no device µs). Davis and classic
+     * DVXplorer timestamp IMU on the same 1 µs tick as DVS — do not rebase.
+     */
+    static boolean imuHostStamped(AEChip chip) {
+        return chip instanceof ch.unizh.ini.jaer.chip.retina.DVXplorerMicro;
+    }
+
+    /**
+     * Mini/Micro IMU host timestamps can drift from DVS device time. Playback
+     * only attaches IMU whose Unix times overlap the event window, so a
+     * multi-minute offset looks like a frozen/missing IMU. Shift this packet
+     * onto the polarity range, keeping inter-sample dt.
+     */
+    private void rebaseImuUnixOntoPolarity(long[] unix) {
+        AEChip trackChip = currentTrack != null ? currentTrack.chip : chip;
+        if (!imuHostStamped(trackChip) || !bundleHasPolarityTimes || unix == null || unix.length == 0) {
+            return;
+        }
+        long imuLo = unix[0];
+        long imuHi = unix[0];
+        for (long t : unix) {
+            if (t < imuLo) {
+                imuLo = t;
+            }
+            if (t > imuHi) {
+                imuHi = t;
+            }
+        }
+        boolean overlap = imuLo <= bundlePolarityUnix1 && imuHi >= bundlePolarityUnix0;
+        if (overlap) {
+            return;
+        }
+        long shift = bundlePolarityUnix0 - imuLo;
+        for (int i = 0; i < unix.length; i++) {
+            unix[i] += shift;
+        }
+        if (!loggedImuTimestampRebase) {
+            loggedImuTimestampRebase = true;
+            log.info(String.format(
+                    "AEDAT-4 Mini/Micro IMU timestamps did not overlap DVS (offset %.3fs); aligning IMU to event time for playback",
+                    shift / 1e6));
+        } else if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format("AEDAT-4 IMU timestamp rebase shift=%d us", shift));
+        }
     }
 
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {

@@ -20,7 +20,11 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareIn
  * DVXplorer Mini / Micro (CX3 MIPI, 640×480). Same USB VID/PID as classic
  * {@link DVXplorer}; the factory binds {@code DVXplorerMicroFX3HardwareInterface}
  * from {@code bcdDevice} type 4. Users can also pick this AEChip from Customize
- * (Davis346 / SciDVS pattern).
+ * (Davis346 / SciDVS pattern). Note: This is the same Samsung sensor  DVXplorer, 
+ * but with different simplified camera electronics. 
+ * The Micro does not timestamp individual events in the cameras,
+ * but instead on the host computer, 
+ * by packet bundles.
  */
 @Description("DVXplorer Mini/Micro, 640x480, CX3 MIPI (iniVation); same VID/PID as DVXplorer")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)

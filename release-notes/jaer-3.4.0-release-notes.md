@@ -195,6 +195,7 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 * **DVXplorer Mini / Micro**
   * Detected from USB `bcdDevice` (not a separate AEChip). Live DVS + IMU; gyro zero works. IMU samples stay off the DVS raw packet (`ADDRESS_TYPE_IMU`).
   * AEDAT-4 playback Y flip matches live Mini/Micro orientation.
+  * Mini/Micro IMU is host-stamped; if those times drift from DVS, recordings used to play back with a frozen IMU overlay. Writer rebases Mini/Micro IMU Unix times onto the event window (not Davis — same 1 µs tick as DVS); playback also attaches Mini/Micro IMU by file order. USB restamps IMU from DVS when the clocks diverge by more than 0.5 s.
   * USB link speed is shown on ChipCanvas and the Interface menu. Hardware Configuration documents DVXplorer ReadoutFPS modes.
 
 * **Steadicam** — IMU derotation; `hemisphereViewEnabled` paints a 180° world-fixed inpaint view (pinhole / lensFOV; verified on DVXplorer Micro). Disabled on chips without IMU.
@@ -224,7 +225,7 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 
 * **SciDVS / AEDZ**
   * **SciDVS** (Experimental) is in the Sensor table; `SciDVS.xml` is the first-use default bias profile. Shared-PID hotplug with Davis is autodetected.
-  * Compressed **AEDZ** (`.aedz`) record/replay is wired through AEViewer preferences (Experimental). Live configuration snapshots are frozen into AEDAT-4 / AEDZ / legacy writers.
+  * Compressed **AEDZ** (`.aedz`) record/replay is wired through AEViewer preferences (Experimental). Live configuration snapshots are frozen into AEDAT-4 / AEDZ / legacy writers. AEDZ does not store IMU or APS frames (live typed demux); starting a recording on Davis / DVXplorer offers to switch to AEDAT-4 at the current compression.
 
 * **Developer / packaging**
   * install4j project, icon, and localization live under `install4j/` (Ant, `replace-installed-jar`, and releasing docs updated). Unused `build.cmd`, Dropbox-hardcoded `jaer.desktop`, and Eclipse `.classpath`/`.project` removed from git.
@@ -235,7 +236,7 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 
 * Fixed **Intel Arc crash** when opening a recent folder in the file dialog (`ChipDataFilePreview` no longer constructs a second `GLCanvas` beside the live viewer; `DrawGL` disables TextRenderer vertex arrays, matching `ChipCanvas`).
 * Fixed **Y flip** in playback of DVXplorer Mini/Micro recordings.
-* **DVXplorer Mini/Micro IMU**: CX3 debug endpoint no longer completes at USB poll rate (~100 kHz); one URB is resubmitted at ~800 Hz and samples go to a side queue.
+* **DVXplorer Mini/Micro IMU**: CX3 debug endpoint no longer completes at USB poll rate (~100 kHz); one URB is resubmitted at ~800 Hz and samples go to a side queue. Host-synthesized Mini/Micro IMU timestamps that do not overlap DVS are rebased at record time and attached by file order on playback (Steadicam-on-record files no longer look IMU-frozen). Davis IMU is not rebased (device clock). Playback clips IMU samples to the event window so Steadicam does not integrate gyros from neighboring slices.
 * **Davis346Blue** APS frames that tore after a good start: SOF abandons a stuck half-frame; USB reset closes every open interface first. After three short frames, unplug/replug is suggested.
 * **ROS2/Foxglove** enable no longer re-enters the FilterPanel setter (property-change loop); sinks restart only when a sink flag actually changes.
 * **DNN TCP** control server rebinds when `controlPort` changes while enabled.

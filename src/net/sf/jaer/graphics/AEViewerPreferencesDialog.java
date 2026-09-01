@@ -663,7 +663,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
         p.add(new JLabel("Recording format:"), gbcLabel(y));
         recordingFormatCB = new JComboBox<>(new String[]{"AEDAT-4 (.aedat4)", "AEDAT-2 (.aedat2)", "AEDZ compressed AEDAT-2 (.aedz)"});
-        recordingFormatCB.setToolTipText("File format used when starting recording with the button or 'l' key");
+        recordingFormatCB.setToolTipText("<html>File format used when starting recording with the button or 'l' key.<br>"
+                + "AEDZ stores polarity events only. Starting AEDZ on a camera with IMU or APS frames<br>"
+                + "offers to switch to AEDAT-4 at the compression selected below.");
         recordingFormatCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
