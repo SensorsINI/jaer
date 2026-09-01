@@ -39,6 +39,8 @@ Everyday (git checkout)
   replace-installed-jar   copy dist/jAER.jar onto the install4j install (Windows UAC).
                           Example:  ant jar-fast replace-installed-jar
                           Override: -Djaer.install.dir=C:\Program Files\jAER
+  install                 launch the current-OS installer from currentInstallers/VERSION/
+                          Does not compile media. Build first: ant install4j  (or ant release)
   install-jaer-run-shortcut  once per computer: Ctrl+F5 in Cursor runs jAER: ant run
                           VS Code too: -Djaer.shortcut.editor=both
   clean                   delete build/ products (not lib/)
@@ -473,6 +475,14 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
                 </or>
             </and>
         </condition>
+        <condition property="isLinux" value="true">
+            <and>
+                <os family="unix" />
+                <not>
+                    <os family="mac" />
+                </not>
+            </and>
+        </condition>
     </target>
 
     <!-- Apple Silicon libusb4java JNI wrapper links Homebrew libusb (not bundled).
@@ -814,7 +824,72 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
         <echo message="Did not regenerate splash, clean, or jar. Full pipeline: ant release"/>
+        <echo message="To try the installer on this machine: ant install"/>
     </target>
+
+    <!-- Launch the already-built media for this OS. Does not run install4jc.
+         Filenames match install4j defaults + media id 39 (Apple Silicon). -->
+    <target name="-resolve-local-installer" depends="checkos,-load-version">
+        <loadresource property="jaer.version.underscores">
+            <propertyresource name="jaer.version"/>
+            <filterchain>
+                <tokenfilter>
+                    <replacestring from="." to="_"/>
+                </tokenfilter>
+            </filterchain>
+        </loadresource>
+        <property name="jaer.installers.dir" value="${basedir}/currentInstallers/${jaer.version}"/>
+        <condition property="jaer.installer.file"
+                   value="${jaer.installers.dir}/jAER_windows-x64_${jaer.version.underscores}.exe">
+            <isset property="isWindows"/>
+        </condition>
+        <condition property="jaer.installer.file"
+                   value="${jaer.installers.dir}/jAER_macos_aarch64_${jaer.version.underscores}.dmg">
+            <isset property="macos.aarch64"/>
+        </condition>
+        <condition property="jaer.installer.file"
+                   value="${jaer.installers.dir}/jAER_macos_${jaer.version.underscores}.dmg">
+            <and>
+                <isset property="isMac"/>
+                <not>
+                    <isset property="macos.aarch64"/>
+                </not>
+            </and>
+        </condition>
+        <condition property="jaer.installer.file"
+                   value="${jaer.installers.dir}/jAER_unix_${jaer.version.underscores}.sh">
+            <isset property="isLinux"/>
+        </condition>
+        <fail unless="jaer.installer.file"
+              message="ant install: no installer mapping for os.name=${os.name} os.arch=${os.arch}"/>
+        <available file="${jaer.installer.file}" property="jaer.installer.exists"/>
+        <fail unless="jaer.installer.exists"><![CDATA[
+Missing installer: ${jaer.installer.file}
+Build media first:  ant install4j    or    ant release
+Then re-run:        ant install
+]]></fail>
+        <echo message="Launching ${jaer.installer.file}"/>
+    </target>
+
+    <target name="-run-local-installer-windows" if="isWindows">
+        <exec executable="${jaer.installer.file}" failonerror="true" dir="${basedir}"/>
+    </target>
+
+    <target name="-run-local-installer-mac" if="isMac">
+        <exec executable="open" failonerror="true" dir="${basedir}">
+            <arg file="${jaer.installer.file}"/>
+        </exec>
+        <echo message="Mounted the DMG. Run the installer app from the volume (Finder)."/>
+    </target>
+
+    <target name="-run-local-installer-linux" if="isLinux">
+        <exec executable="sh" failonerror="true" dir="${basedir}">
+            <arg file="${jaer.installer.file}"/>
+        </exec>
+    </target>
+
+    <target name="install" depends="-resolve-local-installer,-run-local-installer-windows,-run-local-installer-mac,-run-local-installer-linux"
+            description="Launch the current-OS installer from currentInstallers/VERSION/ (does not compile media)."/>
 
     <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
     <target name="-run-install4jc-windows-with-license"
