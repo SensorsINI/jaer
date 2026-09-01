@@ -324,6 +324,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** ACCESS/BUSY retries after Interface select (sibling closer). ISSD TIMEOUT is not retried. */
     private int usbAccessOpenRetries;
     private static final int MAX_USB_ACCESS_OPEN_RETRIES = 2;
+    /** Wall time of last live USB drop; NOT_SUPPORTED right after resume is WinUSB not ready. */
+    private volatile long lastUsbLiveDropMs;
+    private static final long USB_NOT_SUPPORTED_GRACE_MS = 30_000L;
 
     //    volatile boolean stop=false; // volatile because multiple threads will access
     int renderCount = 0;
@@ -478,6 +481,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private OpenCVOutput openCvOutputMenuBoundFilter;
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private volatile long recordingTimeLimit = 0, recordingStartTime = System.currentTimeMillis();
+    /** Last successful recordPacket wall time; used when USB dies after sleep so duration excludes the gap. */
+    private volatile long recordingLastActivityWallMs;
+    /**
+     * ViewLoop wall/monotonic stamps for sleep-resume detection while
+     * recording. {@link System#nanoTime()} typically pauses across sleep;
+     * {@link System#currentTimeMillis()} does not.
+     */
+    private volatile long viewLoopWatchWallMs;
+    private volatile long viewLoopWatchNano;
+    /** Wall jump beyond monotonic time that counts as sleep/suspend (lid close can be short). */
+    static final long SLEEP_RESUME_MIN_MS = 5_000L;
+    /**
+     * On Windows 11, {@code nanoTime} often jumps with wall clock across sleep
+     * (jAER-0.log 23:07:35→23:09:10, ~95 s, no nano slack). Longer than USB
+     * open timeout (25 s) so a hung {@code openAEMonitor} is not treated as sleep.
+     */
+    static final long SLEEP_RESUME_WALL_ONLY_MS = 30_000L;
     private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
     private static final String[] RECORDING_TIME_LIMIT_PRESETS = {
         RECORDING_TIME_LIMIT_NO_LIMIT,
@@ -4735,7 +4755,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (retrySame) {
                         log.info("retrying Interface-selected closed wrapper: " + bound);
                     } else {
+                        lastUsbLiveDropMs = System.currentTimeMillis();
                         log.info("dropping closed hardware wrapper so unplug can re-enumerate: " + bound);
+                        stopRecordingBecauseLiveSourceEnded("USB unplug or sleep");
                         nullifyHardware();
                         if (stillPlugged) {
                             // Same-tick map-autobind was a close/open loop. Permanent
@@ -5096,7 +5118,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (aemon instanceof PropheseeHardwareInterface) {
                     PropheseeHardwareInterface.maybeShowLinuxUdevAccessDialog(this, e);
                 }
-                WinUsbDriverHelp.maybeShowDialog(this, aemon, e);
+                if (!isNotSupportedDuringUsbResettle(e)) {
+                    WinUsbDriverHelp.maybeShowDialog(this, aemon, e);
+                }
                 MacosLibusbHelp.maybeShowDialog(this, e);
                 HardwareInterface failed = aemon;
                 boolean stillPlugged = factoryCacheHasPhysicalDevice(failed);
@@ -5123,8 +5147,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.info("FlyEye open failed; dropped pair so WAITING can claim current DVS128s");
                         nullInterface = false;
                         HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
-                    } else if (isUsbDeviceGone(e)) {
-                        log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
+                    } else if (isUsbDeviceGone(e) || isNotSupportedDuringUsbResettle(e)) {
+                        if (isNotSupportedDuringUsbResettle(e)) {
+                            log.info("USB NOT_SUPPORTED after live drop (WinUSB not ready yet); WAITING will retry");
+                        } else {
+                            log.info("USB device gone; WAITING will scan again on plug (not blocking auto-open)");
+                        }
                         nullInterface = false;
                         sessionDeviceGone = true;
                         HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
@@ -5814,11 +5842,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 boolean skipRendering = false;
                 viewLoopUsedHwTypedBundle = false;
                 setTitleAccordingToState();
+                boolean skipSleepDetect = isPaused() || viewLoopSuspendedForOfflineExport;
                 pauseIdleWaitIfNeeded();
                 if (stop) {
                     log.info("breaking out of view loop after pauseIdleWaitIfNeeded() because stop=true");
                     break;
                 }
+                maybeStopRecordingAfterSleepResume(!skipSleepDetect);
                 if (viewLoopSuspendedForOfflineExport) {
                     // Still owned by Save As (spurious wakeup). Do not grabInput/render.
                     continue;
@@ -6340,6 +6370,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (aemon != null) {
                             aemon.close(); // TODO check if this is OK -tobi
                         }
+                        lastUsbLiveDropMs = System.currentTimeMillis();
+                        stopRecordingBecauseLiveSourceEnded("USB unplug or sleep");
                         nullifyHardware();
                         showWelcomeOverlay();
                         SessionCameraOpenCoordinator.viewerFinishedOpenAttempt(AEViewer.this, "acquire-failed");
@@ -6539,6 +6571,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } catch (IOException e) {
                     writeFailure = e;
                 }
+            }
+            if (writeFailure == null) {
+                recordingLastActivityWallMs = System.currentTimeMillis();
             }
             if (writeFailure != null) {
                 log.log(Level.SEVERE, writeFailure.toString(), writeFailure);
@@ -9370,33 +9405,57 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         SwingUtilities.invokeLater(new Runnable() { // made this a runnable to run later to fix possible race problems - tobi
             @Override
             public void run() {//        System.out.println("fixing recording controls, recordingEnabled="+recordingEnabled);
-                if ((getPlayMode() != PlayMode.REMOTE) && ((aemon == null) || ((aemon != null) && !aemon.isOpen())) && (getPlayMode() != PlayMode.PLAYBACK)) {
-                    // we can record from live input or from playing file (e.g. after refiltering it) or we can record network data
-                    // TODO: not ideal logic here, too confusing
-                    recordingButton.setEnabled(false);
-                    recordingMenuItem.setEnabled(false);
+                final boolean recording = isRecordingEnabled();
+                // Start needs a source. Stop must stay enabled after USB sleep/unplug:
+                // WAITING with a closed aemon used to disable the shared Action (toolbar,
+                // File menu, L) while the AEDAT-4 file was still open (jAER-0.log
+                // 2026-09-01 22:36 after laptop resume).
+                final boolean canStart = (getPlayMode() == PlayMode.REMOTE)
+                        || (getPlayMode() == PlayMode.PLAYBACK)
+                        || (aemon != null && aemon.isOpen());
+                if (!recording && !canStart) {
+                    setRecordingControlsEnabled(false);
+                    applyRecordingControlLabels(false, false);
                     return;
-
-                } else {
-                    recordingButton.setEnabled(true);
-                    recordingMenuItem.setEnabled(true);
                 }
-
-                if (!isRecordingEnabled() && (getPlayMode() == PlayMode.PLAYBACK)) {
-                    recordingButton.setText("Start re-recording");
-                    recordingMenuItem.setText("Start re-recording data");
-                } else if (isRecordingEnabled()) {
-                    recordingButton.setText("Stop recording");
-                    recordingButton.setSelected(true);
-                    recordingMenuItem.setText("Stop recording data");
-                } else {
-                    recordingButton.setText("Start recording");
-                    recordingButton.setSelected(false);
-                    recordingMenuItem.setText("Start recording data");
-                }
+                setRecordingControlsEnabled(true);
+                applyRecordingControlLabels(recording, getPlayMode() == PlayMode.PLAYBACK);
             }
         });
 
+    }
+
+    private void setRecordingControlsEnabled(boolean enabled) {
+        recordingButton.setEnabled(enabled);
+        recordingMenuItem.setEnabled(enabled);
+        Action recAction = recordingButton.getAction();
+        if (recAction != null) {
+            recAction.setEnabled(enabled);
+        }
+    }
+
+    private void applyRecordingControlLabels(boolean recording, boolean playback) {
+        final String name;
+        final String menu;
+        if (recording) {
+            name = "Stop recording";
+            menu = "Stop recording data";
+            recordingButton.setSelected(true);
+        } else if (playback) {
+            name = "Start re-recording";
+            menu = "Start re-recording data";
+            recordingButton.setSelected(false);
+        } else {
+            name = "Start recording";
+            menu = "Start recording data";
+            recordingButton.setSelected(false);
+        }
+        Action recAction = recordingButton.getAction();
+        if (recAction != null) {
+            recAction.putValue(Action.NAME, name);
+        }
+        recordingButton.setText(name);
+        recordingMenuItem.setText(menu);
     }
 
     public void openRecordingFolderWindow() {
@@ -9706,6 +9765,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fixRecordingControls();
 
             recordingStartTime = System.currentTimeMillis();
+            recordingLastActivityWallMs = recordingStartTime;
             recordingTimeLimitOverlayText = null;
             recordingTimeLimitOverlayLastMs = 0;
             recordingFreeSpaceBytes = -1L;
@@ -9752,6 +9812,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setRecordingEnabled(true);
         fixRecordingControls();
         recordingStartTime = System.currentTimeMillis();
+        recordingLastActivityWallMs = recordingStartTime;
         recordingTimeLimitOverlayText = null;
         recordingTimeLimitOverlayLastMs = 0;
         log.info("sharing AEDAT-4 mux " + file + " track=" + trackIndex + " ownsClose=" + ownsClose);
@@ -10616,12 +10677,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param durationMs duration in milliseconds
      * @return padded hours, minutes, and seconds
      */
-    private static String formatRecordingDurationHms(long durationMs) {
+    public static String formatRecordingDurationHms(long durationMs) {
         long totalSec = Math.max(0L, durationMs) / 1000L;
         long h = totalSec / 3600L;
         long m = (totalSec % 3600L) / 60L;
         long s = totalSec % 60L;
         return String.format("%02dh%02dm%02ds", h, m, s);
+    }
+
+    /**
+     * Spoken duration plus {@code XXhYYmZZs}, e.g. {@code 5 minutes 12 seconds (00h05m12s)}.
+     */
+    public static String formatRecordingDurationSpoken(long durationMs) {
+        long totalSec = Math.max(0L, durationMs) / 1000L;
+        long h = totalSec / 3600L;
+        long m = (totalSec % 3600L) / 60L;
+        long s = totalSec % 60L;
+        StringBuilder spoken = new StringBuilder();
+        if (h > 0) {
+            spoken.append(h).append(h == 1L ? " hour " : " hours ");
+        }
+        if (m > 0 || h > 0) {
+            spoken.append(m).append(m == 1L ? " minute " : " minutes ");
+        }
+        spoken.append(s).append(s == 1L ? " second" : " seconds");
+        return spoken.toString().trim() + " (" + formatRecordingDurationHms(durationMs) + ")";
+    }
+
+    /**
+     * True when wall time jumped by at least {@link #SLEEP_RESUME_MIN_MS} more
+     * than {@link System#nanoTime()} — typical of OS sleep/hibernate.
+     * A USB hang of the same length advances both clocks together.
+     */
+    public static boolean looksLikeSleepResume(long wallGapMs, long nanoGapMs) {
+        if (wallGapMs < SLEEP_RESUME_MIN_MS) {
+            return false;
+        }
+        if ((wallGapMs - nanoGapMs) >= SLEEP_RESUME_MIN_MS) {
+            return true;
+        }
+        return wallGapMs >= SLEEP_RESUME_WALL_ONLY_MS;
     }
 
     private String recordingArsOverlayLine() {
@@ -10996,6 +11091,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     || m.contains("NO_DEVICE") || m.contains("not initialized")
                     || m.contains("LIBUSB_ERROR_NOT_FOUND")
                     || m.contains("LIBUSB_ERROR_IO") || m.contains("LIBUSB_ERROR_PIPE")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * After sleep/unplug, Windows often lists the camera before WinUSB is
+     * bound; {@code LIBUSB_ERROR_NOT_SUPPORTED} is not a missing Zadig install.
+     */
+    private boolean isNotSupportedDuringUsbResettle(Throwable t) {
+        if (t == null) {
+            return false;
+        }
+        long drop = lastUsbLiveDropMs;
+        if (drop <= 0L || (System.currentTimeMillis() - drop) > USB_NOT_SUPPORTED_GRACE_MS) {
+            return false;
+        }
+        for (; t != null; t = t.getCause()) {
+            String m = t.getMessage();
+            if (m != null && m.contains("LIBUSB_ERROR_NOT_SUPPORTED")) {
                 return true;
             }
         }
@@ -11944,6 +12060,113 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordedBytes = 0L;
         }
         return RecordingDiskSpace.overlayLine(recordingFreeSpaceBytes, recordedBytes, recordingElapsedMs());
+    }
+
+    /**
+     * If ViewLoop was frozen across OS sleep while a file was open, stop
+     * recording and offer Save As. Duration is time captured before the gap
+     * (sleep is not counted as recorded time).
+     */
+    private void maybeStopRecordingAfterSleepResume(boolean detect) {
+        long wall = System.currentTimeMillis();
+        long nano = System.nanoTime();
+        long prevWall = viewLoopWatchWallMs;
+        long prevNano = viewLoopWatchNano;
+        viewLoopWatchWallMs = wall;
+        viewLoopWatchNano = nano;
+        if (!detect || prevWall <= 0L || prevNano <= 0L) {
+            return;
+        }
+        if (!isRecordingEnabled()) {
+            return;
+        }
+        long wallGap = wall - prevWall;
+        long nanoGap = (nano - prevNano) / 1_000_000L;
+        if (!looksLikeSleepResume(wallGap, nanoGap)) {
+            if (wallGap >= SLEEP_RESUME_MIN_MS) {
+                log.fine("sleep-resume check skipped: wallGap=" + wallGap + " ms nanoGap=" + nanoGap
+                        + " ms (need nano slack " + SLEEP_RESUME_MIN_MS + " ms or wall "
+                        + SLEEP_RESUME_WALL_ONLY_MS + " ms)");
+            }
+            return;
+        }
+        long capturedMs = Math.max(0L, prevWall - recordingStartTime);
+        log.info("sleep/resume while recording: wallGap=" + wallGap + " ms nanoGap=" + nanoGap
+                + " ms captured=" + formatRecordingDurationSpoken(capturedMs));
+        stopRecordingBecauseLiveSourceEnded("computer sleep or suspend");
+    }
+
+    /**
+     * USB unplug and laptop sleep both empty the live transfer list and close
+     * the camera. Stop the file and offer Save As. Duration is last successful
+     * write, not wall time that includes sleep.
+     */
+    private void stopRecordingBecauseLiveSourceEnded(String cause) {
+        if (!isRecordingEnabled() && (jaerViewer == null || !jaerViewer.recordingEnabled)) {
+            return;
+        }
+        long activity = recordingLastActivityWallMs > 0L ? recordingLastActivityWallMs : recordingStartTime;
+        long capturedMs = Math.max(0L, activity - recordingStartTime);
+        String spoken = formatRecordingDurationSpoken(capturedMs);
+        log.info("live source ended (" + cause + "); recording captured " + spoken);
+        String reason = "<html>Live camera connection was lost (USB unplug or computer sleep).<br>"
+                + "Recording ended after <b>" + spoken + "</b> of captured data.<br><br>"
+                + "Save the recording that was written?</html>";
+        if (GraphicsEnvironment.isHeadless()) {
+            if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.recordingEnabled) {
+                jaerViewer.stopSynchronizedRecording();
+            } else if (isRecordingEnabled()) {
+                stopRecording(false);
+            }
+            return;
+        }
+        Runnable stop = () -> {
+            if (!isRecordingEnabled() && (jaerViewer == null || !jaerViewer.recordingEnabled)) {
+                return;
+            }
+            boolean save = confirmSaveOrDiscardRecording(reason);
+            if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.recordingEnabled) {
+                jaerViewer.stopSynchronizedRecording(save);
+            } else if (isRecordingEnabled()) {
+                if (save) {
+                    stopRecording(true);
+                } else {
+                    discardClosedRecording(stopRecording(false));
+                }
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            stop.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(stop);
+            } catch (Exception e) {
+                log.log(Level.SEVERE, "Exception stopping recording after live USB loss: " + e.toString(), e);
+            }
+        }
+    }
+
+    /**
+     * Two-button prompt after USB unplug or sleep. Closing the window keeps the
+     * file (same as Yes, save).
+     */
+    private boolean confirmSaveOrDiscardRecording(String reason) {
+        Object[] options = {"Yes, save", "No, discard"};
+        int n = JOptionPane.showOptionDialog(this, reason, "Recording stopped",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        return n != JOptionPane.NO_OPTION;
+    }
+
+    /** Deletes the closed temp recording after the user chose No, discard. */
+    private void discardClosedRecording(File f) {
+        if (f == null || !f.exists()) {
+            return;
+        }
+        if (f.delete()) {
+            log.info("Discarded recording " + f);
+        } else {
+            log.warning("Couldn't delete discarded recording " + f);
+        }
     }
 
     /**

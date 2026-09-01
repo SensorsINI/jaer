@@ -233,6 +233,119 @@ public final class JaerIssueReporter {
         }
     }
 
+    /**
+     * One-line command (and optional command line) for the live-PID dialog.
+     */
+    public static String processSummary(long pid) {
+        try {
+            return ProcessHandle.of(pid).map(ph -> {
+                ProcessHandle.Info info = ph.info();
+                String cmd = info.command().orElse("");
+                String cl = info.commandLine().orElse("");
+                if (cmd.isEmpty() && cl.isEmpty()) {
+                    return "(OS did not report the program name)";
+                }
+                String s = cmd.isEmpty() ? cl : cmd;
+                if (!cl.isEmpty() && !cl.equals(cmd) && cl.length() < 400) {
+                    s = cl;
+                }
+                if (s.length() > 400) {
+                    s = s.substring(0, 397) + "...";
+                }
+                return s;
+            }).orElse("(process gone)");
+        } catch (Exception e) {
+            return "(could not inspect PID: " + e.getMessage() + ")";
+        }
+    }
+
+    /**
+     * True when {@code pid} is still a JVM/jAER launcher that likely wrote the
+     * semaphore (not a reused PID). Never true for this starting process.
+     */
+    public static boolean looksLikeJaerProcess(long pid, long semaphoreMtimeMs) {
+        if (pid == ProcessHandle.current().pid()) {
+            return false;
+        }
+        try {
+            return ProcessHandle.of(pid).map(ph -> looksLikeJaerProcess(ph, semaphoreMtimeMs)).orElse(false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    static boolean looksLikeJaerProcess(ProcessHandle ph, long semaphoreMtimeMs) {
+        if (!ph.isAlive() || ph.pid() == ProcessHandle.current().pid()) {
+            return false;
+        }
+        ProcessHandle.Info info = ph.info();
+        String cmd = info.command().orElse("").toLowerCase(Locale.ROOT);
+        String cl = info.commandLine().orElse("").toLowerCase(Locale.ROOT);
+        String blob = cmd + " " + cl;
+        boolean javaOrLauncher = blob.contains("java") || blob.contains("javaw")
+                || blob.contains("jaer") || blob.contains("install4j");
+        if (!javaOrLauncher) {
+            return false;
+        }
+        if (semaphoreMtimeMs > 0 && info.startInstant().isPresent()) {
+            long started = info.startInstant().get().toEpochMilli();
+            // Reused PID: process started well after the semaphore was written.
+            if (started > semaphoreMtimeMs + 60_000L) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Politely destroy, then {@link ProcessHandle#destroyForcibly()} if needed.
+     * Does not destroy this JVM. Returns true when the PID is gone.
+     */
+    public static boolean forceQuitPid(long pid) {
+        if (pid == ProcessHandle.current().pid()) {
+            return false;
+        }
+        ProcessHandle ph;
+        try {
+            ph = ProcessHandle.of(pid).orElse(null);
+        } catch (Exception e) {
+            return false;
+        }
+        if (ph == null || !ph.isAlive()) {
+            return true;
+        }
+        try {
+            ph.destroy();
+        } catch (Exception e) {
+            log.warning("destroy PID " + pid + ": " + e);
+        }
+        if (waitUntilDead(ph, 5000L)) {
+            return true;
+        }
+        try {
+            ph.destroyForcibly();
+        } catch (Exception e) {
+            log.warning("destroyForcibly PID " + pid + ": " + e);
+        }
+        return waitUntilDead(ph, 3000L);
+    }
+
+    private static boolean waitUntilDead(ProcessHandle ph, long timeoutMs) {
+        long end = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < end) {
+            if (!ph.isAlive()) {
+                return true;
+            }
+            try {
+                Thread.sleep(100L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return !ph.isAlive();
+            }
+        }
+        return !ph.isAlive();
+    }
+
     /** In-app console text from visible {@link AEViewer} windows. */
     public static String collectOpenConsoleText() {
         StringBuilder sb = new StringBuilder();

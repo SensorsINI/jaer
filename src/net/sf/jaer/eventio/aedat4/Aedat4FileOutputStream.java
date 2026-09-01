@@ -638,7 +638,7 @@ public class Aedat4FileOutputStream implements Closeable {
             }
         }
         EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
+        eng.setPrecision(1);
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples",
                 Aedat4Compression.nameOf(compression),
@@ -656,13 +656,22 @@ public class Aedat4FileOutputStream implements Closeable {
             }
         }
         if (tMax > tMin && tMin != Long.MAX_VALUE) {
-            sb.append(", duration=").append(eng.format((tMax - tMin) * 1e-6).trim()).append("s");
+            sb.append(", duration=").append(formatDurationHms((tMax - tMin) / 1000L));
         }
         if (uncompressedPayloadBytes > 0) {
             sb.append("; ").append(Aedat4Compression.formatPayloadCompression(
                     compression, uncompressedPayloadBytes, compressedPayloadBytes));
         }
         return sb.toString();
+    }
+
+    /** {@code 00h11m05s} from a duration in milliseconds. */
+    private static String formatDurationHms(long durationMs) {
+        long totalSec = Math.max(0L, durationMs) / 1000L;
+        long h = totalSec / 3600L;
+        long m = (totalSec % 3600L) / 60L;
+        long s = totalSec % 60L;
+        return String.format("%02dh%02dm%02ds", h, m, s);
     }
 
     private static long[] ensureLongs(long[] a, int n) {

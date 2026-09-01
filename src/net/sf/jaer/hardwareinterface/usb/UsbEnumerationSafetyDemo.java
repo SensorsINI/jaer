@@ -43,6 +43,9 @@ public final class UsbEnumerationSafetyDemo {
         testUsbResetClosesAllInterfaces();
         testFx2AeReaderClosesOffReaderThread();
         testCtrlWAbortsActivityNotViewer();
+        testRecordingStopStaysEnabledWithoutOpenCamera();
+        testRecordingSleepResumeOffersSave();
+        testLiveSemaphoreOffersForceQuit();
         testFlyEyePairClaimDoesNotOpenUsb();
         System.out.println("USB_ENUMERATION_SAFETY ASSERTIONS=" + assertions);
         System.out.println("USB_ENUMERATION_SAFETY PASS");
@@ -1405,6 +1408,29 @@ public final class UsbEnumerationSafetyDemo {
                 "Interface → None radio still unbinds (click is not Ctrl+W while recording)");
         require(src.contains("bindCtrlWAbortToRootPane()"),
                 "Ctrl+W on Interface → None does not steal abort-from-recording");
+    }
+
+    /**
+     * After laptop sleep the camera is WAITING and aemon is closed, but the
+     * recording file is still open. Disabling the shared ToggleRecordingAction
+     * then made Stop (toolbar, File menu, L) a no-op.
+     */
+    private static void testRecordingStopStaysEnabledWithoutOpenCamera() throws Exception {
+        String fix = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
+                "void fixRecordingControls() {",
+                "private void setRecordingControlsEnabled");
+        require(fix.contains("isRecordingEnabled()"),
+                "fixRecordingControls checks whether a recording is already open");
+        require(fix.contains("canStart"),
+                "fixRecordingControls distinguishes start (needs a source) from stop");
+        require(!fix.contains("recordingButton.setEnabled(false);\n                    recordingMenuItem.setEnabled(false);\n                    return;"),
+                "fixRecordingControls must not disable Stop solely because aemon is closed");
+        Path viewer = Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java");
+        String src = Files.readString(viewer, StandardCharsets.UTF_8);
+        require(src.contains("setRecordingControlsEnabled(true)"),
+                "an in-progress recording keeps the Stop action enabled");
+        require(src.contains("Stop recording"),
+                "Stop recording remains the in-progress label");
 
         Path prophesee = Paths.get("src", "prophesee", "usb", "PropheseeHardwareInterface.java");
         String pClose = methodBody(prophesee, "public void close() {", "public boolean isOpen()");
@@ -1416,6 +1442,69 @@ public final class UsbEnumerationSafetyDemo {
         String nrvClose = methodBody(nrv, "public void close() {", "public boolean isOpen()");
         require(nrvClose.contains("no hardware chip-reset"),
                 "NRV close logs that CX3/FX20 has no chip-reset I2C command");
+    }
+
+    /**
+     * Laptop sleep while recording must stop the file and offer Save As, using
+     * captured duration (not wall time that includes sleep).
+     */
+    private static void testRecordingSleepResumeOffersSave() throws Exception {
+        require(net.sf.jaer.graphics.AEViewer.looksLikeSleepResume(30_000L, 1_000L),
+                "30 s wall vs 1 s nano is sleep/resume");
+        require(!net.sf.jaer.graphics.AEViewer.looksLikeSleepResume(25_000L, 25_000L),
+                "USB hang of 25 s (wall==nano) is not sleep");
+        require(net.sf.jaer.graphics.AEViewer.looksLikeSleepResume(95_000L, 95_000L),
+                "Windows QPC jump of 95 s (wall==nano) is sleep");
+        require(!net.sf.jaer.graphics.AEViewer.looksLikeSleepResume(2_000L, 0L),
+                "2 s pause is not sleep");
+        require("00h05m12s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationHms(5 * 60_000L + 12_000L)),
+                "hhmmss padding");
+        require(net.sf.jaer.graphics.AEViewer.formatRecordingDurationSpoken(5 * 60_000L + 12_000L)
+                .contains("5 minutes 12 seconds"),
+                "spoken duration");
+        String src = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics", "AEViewer.java"),
+                StandardCharsets.UTF_8);
+        require(src.contains("stopRecordingBecauseLiveSourceEnded"),
+                "USB unplug and sleep share the recording-ended save path");
+        require(src.contains("dropping closed hardware wrapper"),
+                "closed live wrapper (unplug or sleep) stops recording");
+        require(src.contains("Live camera connection was lost"),
+                "resume/unplug dialog names USB unplug or sleep");
+        require(src.contains("Yes, save"),
+                "resume/unplug dialog offers Yes, save");
+        require(src.contains("No, discard"),
+                "resume/unplug dialog offers No, discard");
+        require(src.contains("confirmSaveOrDiscardRecording"),
+                "resume/unplug uses a two-button save/discard prompt");
+    }
+
+    /**
+     * Leftover JAERViewerRunning.txt with a live PID must offer force-quit via
+     * {@link ProcessHandle} (not taskkill/kill). Never destroy this JVM.
+     */
+    private static void testLiveSemaphoreOffersForceQuit() throws Exception {
+        long self = ProcessHandle.current().pid();
+        require(!net.sf.jaer.util.JaerIssueReporter.looksLikeJaerProcess(self, System.currentTimeMillis()),
+                "the starting JVM is not treated as a leftover jAER");
+        require(!net.sf.jaer.util.JaerIssueReporter.forceQuitPid(self),
+                "forceQuitPid refuses to destroy this process");
+        require(net.sf.jaer.util.JaerIssueReporter.forceQuitPid(1_000_000_000_000L)
+                || !net.sf.jaer.util.JaerIssueReporter.isPidAlive(1_000_000_000_000L),
+                "forceQuitPid on a missing PID is not an error");
+        String viewer = Files.readString(Paths.get("src", "net", "sf", "jaer", "JAERViewer.java"),
+                StandardCharsets.UTF_8);
+        require(viewer.contains("Force quit previous"),
+                "live-semaphore dialog offers Force quit previous");
+        require(viewer.contains("JaerIssueReporter.forceQuitPid"),
+                "live-semaphore Force quit uses ProcessHandle destroy");
+        require(viewer.contains("looksLikeJaerProcess"),
+                "Force quit is refused when the PID does not look like jAER");
+        String reporter = Files.readString(Paths.get("src", "net", "sf", "jaer", "util", "JaerIssueReporter.java"),
+                StandardCharsets.UTF_8);
+        require(reporter.contains("destroyForcibly()"),
+                "force quit escalates to destroyForcibly");
+        require(reporter.contains("ProcessHandle.of"),
+                "PID liveness uses ProcessHandle (OS independent)");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

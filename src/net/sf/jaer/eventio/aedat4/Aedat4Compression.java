@@ -201,7 +201,7 @@ public final class Aedat4Compression {
      */
     public static String formatPayloadCompression(int compression, long uncompressedBytes, long compressedBytes) {
         EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
+        eng.setPrecision(1);
         String name = nameOf(compression);
         if (uncompressedBytes <= 0 && compressedBytes <= 0) {
             return "";

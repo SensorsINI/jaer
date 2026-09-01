@@ -298,15 +298,50 @@ public class JAERViewer {
         boolean alive = pid != null && JaerIssueReporter.isPidAlive(pid);
         Logger logger = log != null ? log : Logger.getLogger("net.sf.jaer");
         if (alive) {
-            String msg = "<html>jAER may already be running (PID " + pid + ").<br><br>"
+            String summary = JaerIssueReporter.processSummary(pid);
+            boolean jaerLike = JaerIssueReporter.looksLikeJaerProcess(pid, semaphore.lastModified());
+            String msg = "<html>jAER may already be running (PID " + pid + ").<br>"
+                    + "<code>" + escapeHtml(summary) + "</code><br><br>"
                     + "Semaphore file:<br><code>" + escapeHtml(semaphore.getAbsolutePath()) + "</code>"
                     + (detail.isEmpty() ? "" : "<br><br>" + escapeHtml(detail).replace("\n", "<br>"))
-                    + "<br><br>Starting another instance can conflict over cameras and preferences.<br>"
-                    + "Start jAER anyway?</html>";
-            Object[] options = {"Start anyhow", "Cancel"};
+                    + "<br><br>A leftover instance can keep the camera (LIBUSB_ERROR_ACCESS) "
+                    + "and block this start.<br>";
+            Object[] options;
+            if (jaerLike) {
+                msg += "Force-quit that process, start anyway, or cancel?</html>";
+                options = new Object[]{"Force quit previous", "Start anyhow", "Cancel"};
+            } else {
+                msg += "That PID is alive but does not look like jAER (possible PID reuse). "
+                        + "jAER will not kill it.<br>Start anyway, or cancel?</html>";
+                options = new Object[]{"Start anyhow", "Cancel"};
+            }
             int choice = JOptionPane.showOptionDialog(null, msg, "jAER may already be running",
-                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
-            boolean start = choice == 0;
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE, null, options,
+                    options[options.length - 1]);
+            if (jaerLike && choice == 0) {
+                logger.warning("Force-quitting previous jAER PID " + pid + " (" + summary + ")");
+                boolean gone = JaerIssueReporter.forceQuitPid(pid);
+                if (!gone && JaerIssueReporter.isPidAlive(pid)) {
+                    JOptionPane.showMessageDialog(null,
+                            "<html>Could not stop PID " + pid + ".<br>"
+                                    + "Quit that jAER window, or end the process in Task Manager / Activity Monitor, "
+                                    + "then start again.</html>",
+                            "Force quit failed", JOptionPane.ERROR_MESSAGE);
+                    logger.warning("Force quit of PID " + pid + " failed; startup cancelled");
+                    return false;
+                }
+                logger.info("Previous jAER PID " + pid + " is no longer running");
+                try {
+                    if (semaphore.isFile() && !semaphore.delete()) {
+                        logger.warning("Could not delete semaphore after force quit: "
+                                + semaphore.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    logger.warning("Could not delete semaphore after force quit: " + e);
+                }
+                return true;
+            }
+            boolean start = jaerLike ? choice == 1 : choice == 0;
             if (start) {
                 logger.warning("Starting despite live semaphore PID " + pid + " " + semaphore.getAbsolutePath());
             } else {
@@ -909,7 +944,14 @@ public class JAERViewer {
     }
 
     public void stopSynchronizedRecording() {
-        log.info("stopping synchronized recording");
+        stopSynchronizedRecording(true);
+    }
+
+    /**
+     * @param offerSave true shows Save As; false closes and deletes temp files
+     */
+    public void stopSynchronizedRecording(boolean offerSave) {
+        log.info("stopping synchronized recording" + (offerSave ? "" : " (discard)"));
         if (!viewers.isEmpty()) {
             viewers.get(0).aePlayer.pause();
         }
@@ -923,10 +965,14 @@ public class JAERViewer {
                     v.detachSharedAedat4RecordingWithoutClose();
                 }
             }
-            File f = owner.stopRecording(true);
+            File f = owner.stopRecording(offerSave);
             muxedAedat4OutputStream = null;
             muxedRecordingViewers = new ArrayList<>();
-            if (f != null && f.exists()) {
+            if (!offerSave && f != null && f.exists()) {
+                if (!f.delete()) {
+                    log.warning("Couldn't delete discarded muxed recording " + f);
+                }
+            } else if (f != null && f.exists()) {
                 for (AEViewer v : viewers) {
                     v.getRecentFiles().addFile(f);
                 }
@@ -946,12 +992,18 @@ public class JAERViewer {
                 rec = viewers;
             }
             for (AEViewer v : rec) {
-                File f = v.stopRecording(rec.size() == 1); // only confirm filename if there is only a single viewer
+                File f = v.stopRecording(offerSave && rec.size() == 1); // only confirm filename if there is only a single viewer
                 if (f == null) {
                     log.warning("something is wrong; the recording file is null when you tried to stop recording data. Ignoring this AEViewer instance. \nYou may be trying to do synchronized recording when using only a single AEViewer. \n Disable this functionality from the menu File/Synchronize AEViewer recording/playback");
                     continue;
                 }
                 log.info("Stopped recording to file " + f);
+                if (!offerSave) {
+                    if (f.exists() && !f.delete()) {
+                        log.warning("Couldn't delete discarded recording " + f);
+                    }
+                    continue;
+                }
                 if (f.exists()) { // if not cancelled
                     if (rec.size() > 1) {
 
