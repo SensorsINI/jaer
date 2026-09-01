@@ -6,31 +6,32 @@
 
 ![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
-**Why use proprietary vendor camera software?** jAER is a full-featured 2026 cross-platform (Linux, Windows, MacOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
+**Why use proprietary vendor camera software?** jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
 
 (You get plug-and-play, "it just works" for all the cameras above.) 
 
-<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). </b> 
+<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
 
 It [efficiently](docs/README-jaer3.md) and ergonomically
  * captures USB event camera output from [most devices](#device-hardware-support), 
  * denoises -- with fast and accurate algorithms
- * displays -- with a variety of color and 2d/3d options
+ * displays -- with a variety of color and 2D/3D options
  * records -- in a high-speed compressed format (AEDAT-4)
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
  * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
 
-Use it to setup your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote** to
+Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote** to
  * your favorite DNN over **super efficient shared memory** ([`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
- * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java))); on linux Zoom/Google Meet.
+ * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java)); on Linux Zoom/Google Meet.
  * or to a robot as a **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** publisher.
 
 You can also
 * [Export your data](docs/README-file-formats.md) in CSV, hdf5, or save data to quick compressed AEDAT-4 with **File → Save As...** \
-* Creat mp4 videos with **File → Export video...** 
+* Create MP4 videos with **File → Export video...** 
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
-*What it looks like to interact with jAER*
+
+*Interacting with jAER*
 
 
 ## Installation
@@ -39,13 +40,13 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
 **Installers are GitHub Release assets** (~250 MB each for release 3.3+, with bundled [Eclipse Temurin](https://adoptium.net/) JRE). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
 
- * **Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu. Official apt is not provided (USB cameras need an unsandboxed install); optional `.deb` notes are in [`packaging/deb`](packaging/deb).
+ * **Linux:** Run the installer with `sh <installer>.sh`. Then you can run *jaer* from the installation directory or GNOME menu. Official apt is not provided (USB cameras need an unsandboxed install).
 
- * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
+ * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*.
 
- * **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
+ * **macOS:** See [opening unsigned dmg on macOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend installing to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present.
 
-Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…. 
+Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates… 
 
 * install4j installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. A git clone needs [JDK 25+](https://adoptium.net/) to compile (`javac` target 25) and to `ant run`. See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
 * you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
@@ -76,7 +77,7 @@ Live USB cameras selectable in the AEViewer **AEChip** menu (default list and re
 | **EVK4 HD** | [Prophesee](https://www.prophesee.ai/) | Sony IMX636 DVS 1280×720 | USB 3 (Cypress) | `PropheseeIMX636HD` | Stable ([notes](src/prophesee/README.md)); also Metavision `.raw` EVT3 playback |
 | **DELTA01** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3 (FX20/CX3) | `NRVS5KRC1S` | Stable ([notes](src/nrv/README.md)) |
 | **CDAVIS** | [SensorsINI](https://sensors.ini.ch) / [iniVation](https://inivation.com/) | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Experimental |
-| **SciDVS** | [SensorsINI](https://sensors.ini.ch) | Sensitive 100x114 DVS / Basic APS  | USB 3 | `SciDVS` | Experimental |
+| **SciDVS** | [SensorsINI](https://sensors.ini.ch) | Sensitive 100×114 DVS / Basic APS  | USB 3 | `SciDVS` | Experimental |
 | **CochleaAMS / CochleaLP** | [SensorsINI](https://sensors.ini.ch) / [inilabs](https://inilabs.com/) | Silicon cochlea (audio AER) | USB 2/3 | `CochleaAMS1c`, `CochleaLP`, … | Stable (`CochleaAMS1c`); Experimental (`CochleaLP`) |
 | Generic DVS viewers | — | 640×480, 1280×720 | Playback / viz | `DVS640`, `DVS1280x720SD` | Stable |
 
@@ -106,7 +107,7 @@ jAER relies on many open source projects, including:
 - [libusb](https://libusb.info/) – User space USB library for cross-platform device access.
 - [usb4java](https://github.com/usb4java/usb4java) - excellent Java wrapper of libusb.
 - [USBTransferThread](https://github.com/SensorsINI/USBTransferThread) - Luca Longinotti's efficient thread wrapper of usb4java
-- [Neuromorphic Drivers](https://github.com/neuromorphicsystems/neuromorphic-drivers) - guiding interfacing to Propehsee caneras.
+- [Neuromorphic Drivers](https://github.com/neuromorphicsystems/neuromorphic-drivers) - guiding interfacing to Prophesee cameras.
 - [Apache Ant](https://ant.apache.org/) – Java-based build tool.
 - [Apache Ivy](https://ant.apache.org/ivy/) – Dependency manager integrated with Ant.
 - [JNA (Java Native Access)](https://github.com/java-native-access/jna) – Java wrapper for native libraries.
@@ -119,7 +120,7 @@ jAER relies on many open source projects, including:
 We thank the developers of these and other open source projects that make jAER possible.
 
 ### jAER applications
-jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors),
+jAER originally targeted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors),
 but has also been used to build many robots:
 
 1. [robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/Goalie.java))
@@ -142,7 +143,7 @@ jAER was also used to develop many event camera algorithms, including:
 
 ## Developing with jAER
 
-To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing), or the [Developing with jAER](#developing-with-jaer) section above for setup and build instructions.
+To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing).
 
 ### Developing in an LLM AI client (Cursor, VS Code, …)
 
@@ -193,4 +194,4 @@ See also
 
 ![CapoCaccia Neuromorphic workshop 2021 Hotel dei Pini Hotel bar scene with DAVIS240C](/images/HotelBarDavis.png) 
  
-*A snapshot of 2011 CapoCaccia Neuromorphic Workshop hotel bar activity, showing a frame with its exposure histogram, some colored events from moving people, and an event rate trace over time. Grab [this 37MB AEDAT-4 recording](https://drive.google.com/file/d/1aSuNESuf5KkmQ1HiYGYrzc-jty_zqMGu/view?usp=drive_link) from the [DAVIS24](https://sites.google.com/view/davis24-davis-sample-data/home) dataset. It has about 700k events and 700 frames over the 900s (15m) duration.*
+*A snapshot of CapoCaccia Neuromorphic Workshop hotel bar activity, showing a frame with its exposure histogram, some colored events from moving people, and an event rate trace over time. Grab [this 37MB AEDAT-4 recording](https://drive.google.com/file/d/1aSuNESuf5KkmQ1HiYGYrzc-jty_zqMGu/view?usp=drive_link) from the [DAVIS24](https://sites.google.com/view/davis24-davis-sample-data/home) dataset. It has about 700k events and 700 frames over the 900s (15m) duration.*
