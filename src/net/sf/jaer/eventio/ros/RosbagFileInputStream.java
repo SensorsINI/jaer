@@ -1600,17 +1600,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private String messageIndexesCacheFileName() {
-        return net.sf.jaer.util.JaerTmpdir.file(getFile().getName() + ".rosbagidx").getAbsolutePath();
+        return net.sf.jaer.util.JaerTmpdir.aeidxFile(getFile().getName() + ".rosbagidx").getAbsolutePath();
     }
 
-    /** Prefer {@link net.sf.jaer.util.JaerTmpdir}; fall back to legacy system-temp root. */
+    /** Prefer {@code jaer/aeidx}; then {@code jaer/}; then the system-temp root. */
     private File resolveMessageIndexesCacheFile() {
-        File preferred = new File(messageIndexesCacheFileName());
-        if (preferred.isFile()) {
-            return preferred;
-        }
-        File legacy = new File(net.sf.jaer.util.JaerTmpdir.systemTmp(), preferred.getName());
-        return legacy.isFile() ? legacy : preferred;
+        return net.sf.jaer.util.JaerTmpdir.resolveAeidx(getFile().getName() + ".rosbagidx");
     }
 
     private int lastAeFifoTimestampPopped = Integer.MIN_VALUE; // to check for nonmonotonic in popping events

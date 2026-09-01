@@ -41,8 +41,8 @@ import prophesee.usb.evt3.Evt3Parser;
  * {@link Evt3Parser} (same path as live EVK4 USB).
  * <p>
  * First open builds a sparse seek index; a small cache under
- * {@link net.sf.jaer.util.JaerTmpdir} (like AEDAT-4) makes subsequent opens effectively
- * instant until the source file size/mtime changes.
+ * {@link net.sf.jaer.util.JaerTmpdir#aeidx()} (like AEDAT-4) makes subsequent opens
+ * effectively instant until the source file size/mtime changes.
  *
  * @see <a href="https://docs.prophesee.ai/stable/data/file_formats/raw.html">RAW File Format</a>
  */
@@ -207,20 +207,18 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
         return height;
     }
 
-    private File indexCacheFile() {
-        String name = String.format("%s.%d.%d.metavisionrawidx",
+    private String indexCacheFileName() {
+        return String.format("%s.%d.%d.metavisionrawidx",
                 file.getName(), fileLength, file.lastModified());
-        return net.sf.jaer.util.JaerTmpdir.file(name);
     }
 
-    /** Prefer {@link net.sf.jaer.util.JaerTmpdir}; fall back to legacy system-temp root. */
+    private File indexCacheFile() {
+        return net.sf.jaer.util.JaerTmpdir.aeidxFile(indexCacheFileName());
+    }
+
+    /** Prefer {@code jaer/aeidx}; then {@code jaer/}; then the system-temp root. */
     private File resolveIndexCacheFile() {
-        File preferred = indexCacheFile();
-        if (preferred.isFile()) {
-            return preferred;
-        }
-        File legacy = new File(net.sf.jaer.util.JaerTmpdir.systemTmp(), preferred.getName());
-        return legacy.isFile() ? legacy : preferred;
+        return net.sf.jaer.util.JaerTmpdir.resolveAeidx(indexCacheFileName());
     }
 
     private boolean maybeLoadCachedIndex(ProgressMonitor progressMonitor) {

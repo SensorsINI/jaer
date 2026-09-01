@@ -125,7 +125,7 @@ Legacy paths under `ch/unizh/ini/jaer/chip/prophesee` and the old hardware packa
 
 Open Prophesee / Metavision native **`.raw` EVT3** recordings (File → Open, or drag-drop).
 jAER parses the ASCII `%` header, indexes CD events, and decodes with the same `Evt3Parser` as live USB.
-A sparse seek index is cached under `${java.io.tmpdir}/jaer/` (`*.metavisionrawidx`, keyed by name/size/mtime) so reopen is fast.
+A sparse seek index is cached under `${java.io.tmpdir}/jaer/aeidx/` (`*.metavisionrawidx`, keyed by name/size/mtime) so reopen is fast.
 
 - Supported: RAW EVT3 (EVK4 IMX636 / Gen4.1 HD samples such as `laser.raw`)
 - Not yet: RAW EVT2, HDF5, DAT
