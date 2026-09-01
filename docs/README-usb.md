@@ -282,7 +282,10 @@ WinUSB; open EVK4 first or unplug siblings if that happens.
 FX3 `close()` must stop the AEReader and `setInEndpointEnabled(false)` **while
 `isOpen()` is still true**, then set `isOpened = false`. Clearing `isOpened` first
 made `setEventAcquisitionEnabled(false)` a no-op; leftover bulk URBs then hung
-the next open (None → Davis). `isOpen()` is not synchronized (`volatile isOpened`)
+the next open (None → Davis). `setEventAcquisitionEnabled(false)` itself must
+`stopAEReader()` **before** `setInEndpointEnabled(false)`: cutting IN first
+truncated in-flight DVX IMU samples and flooded SEVERE `invalid IMU update
+sequence` (jAER 19:46:58 window close). `isOpen()` is not synchronized (`volatile isOpened`)
 so EDT paint / Interface menu does not wait on a hung USB monitor. CypressFX2
 libusb uses the same contract: after a DVS128 unplug, `disableINEndpoint` sets
 `inEndpointLost` so acquire does not retry `setEventAcquisitionEnabled` (that

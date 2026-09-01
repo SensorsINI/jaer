@@ -889,7 +889,7 @@ public class DVXplorer extends AETemporalConstastRetina {
             return true;
         }
         spiConfigSend(fx3, moduleAddr, paramAddr, param);
-        if (isNextGenFirmware()) {
+        if (isNextGenFirmware() || fx3.skipSpiReadbackOnClose()) {
             return true;
         }
         final int ret = spiConfigReceive(fx3, moduleAddr, paramAddr);

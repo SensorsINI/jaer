@@ -155,6 +155,14 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
     private volatile boolean allowClassicSpiOnClose;
 
     /**
+     * Quiesce readback of {@code DVS_RUN=0} often returns {@code 0xff};
+     * that is shutdown, not a live SPI config error.
+     */
+    public boolean skipSpiReadbackOnClose() {
+        return allowClassicSpiOnClose;
+    }
+
+    /**
      * Classic 4-byte {@code VR_FPGA_CONFIG} deadlocks in native WinUSB when
      * another {@code USBTransferThread} is in {@code handleEvents} on the
      * shared libusb context (DVS128 LIVE + classic open, jAER 11:57:37).
@@ -984,6 +992,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         private boolean imuLoggedFirstStart;
         private long lastImuDecodeLogNs;
         private int rangeErrorLogged;
+        private int imuParseIssueLogs;
         private int imuLogStarts;
         private int imuLogScale;
         private int imuLogData;
@@ -1085,6 +1094,22 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
         }
 
         /**
+         * Truncated IMU on stop/unplug is not a device fault. First WARNING,
+         * then FINE. Silent once the AEReader is already stopping.
+         */
+        private void logImuParseIssue(String msg) {
+            if (!isReaderActive()) {
+                return;
+            }
+            imuParseIssueLogs++;
+            if (imuParseIssueLogs == 1) {
+                CypressFX3.log.warning(msg + " (truncated USB on stop/unplug; further at FINE)");
+            } else {
+                CypressFX3.log.fine(msg + " n=" + imuParseIssueLogs);
+            }
+        }
+
+        /**
          * Per-sample IMU Start/Scale/End/Data is chatter at FINE. Log the first
          * Start at FINE (issue reports), then a 1 Hz FINER count summary.
          */
@@ -1144,6 +1169,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             imuType = 0;
             imuTmpData = 0;
             imuIgnoreEvents = true;
+            imuParseIssueLogs = 0;
         }
 
         private void checkMonotonicTimestamp() {
@@ -1212,6 +1238,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
 
         @Override
         protected void translateEvents(final ByteBuffer b) {
+            if (!isReaderActive()) {
+                return;
+            }
             if (mipiCx3) {
                 translateMipiCx3Events(b);
                 return;
@@ -1293,8 +1322,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                             }
                                         }
                                         else {
-                                            CypressFX3.log.info(
-                                                String.format("IMU End: failed to validate IMU sample count (%d), discarding samples.", imuCount));
+                                            logImuParseIssue(String.format(
+                                                "IMU End: failed to validate IMU sample count (%d), discarding samples.", imuCount));
                                         }
                                         break;
                                         
@@ -1481,7 +1510,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                                 break;
                                                 
                                             default:
-                                                CypressFX3.log.severe("Got invalid IMU update sequence.");
+                                                logImuParseIssue("Got invalid IMU update sequence.");
                                                 break;
                                         }
 

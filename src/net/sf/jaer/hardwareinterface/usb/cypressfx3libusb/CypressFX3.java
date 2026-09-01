@@ -1185,6 +1185,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         private final UsbAsyncBulkReaderLifecycle bufferLifecycle;
         private volatile boolean readerActive;
 
+        protected final boolean isReaderActive() {
+            return readerActive;
+        }
+
         public AEReader(final CypressFX3 m) throws HardwareInterfaceException {
             monitor = m;
             fifoSize = monitor.aeReaderFifoSize;
@@ -1715,9 +1719,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             return;
         }
         log.info(String.format("Setting event acquisition = %s",enable));
-        // Start reader before sending data enable commands.
-        setInEndpointEnabled(enable);
         if (enable) {
+            setInEndpointEnabled(true);
             try {
                 startAEReader();
             } catch (final HardwareInterfaceException e) {
@@ -1730,8 +1733,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 throw e;
             }
         } else {
+            // Stop the reader before disable-IN. Cutting the endpoint first
+            // truncated in-flight DVX IMU samples and flooded SEVERE
+            // "invalid IMU update sequence" (jAER 19:46:58 window close).
             log.info("stopping AEReader");
             stopAEReader();
+            if (inEndpointEnabled) {
+                setInEndpointEnabled(false);
+            }
         }
 
     }

@@ -463,6 +463,22 @@ public final class UsbEnumerationSafetyDemo {
                 "setEventAcquisitionEnabled no-ops when isOpened is already false");
         require(stopAcq.indexOf("if (!isOpen())") < stopAcq.indexOf("stopAEReader()"),
                 "clearing isOpened before close() skips AEReader stop");
+        String disableAcq = stopAcq.substring(stopAcq.indexOf("} else {"));
+        require(disableAcq.indexOf("stopAEReader()") < disableAcq.indexOf("setInEndpointEnabled(false)"),
+                "disable acquisition stops AEReader before cutting IN (DVX IMU storm)");
+
+        String dvxHi = Files.readString(Paths.get("src", "net", "sf", "jaer", "hardwareinterface",
+                "usb", "cypressfx3libusb", "DVXplorerFX3HardwareInterface.java"), StandardCharsets.UTF_8);
+        require(dvxHi.contains("private void logImuParseIssue"),
+                "DVX IMU parse issues are throttled, not SEVERE per word");
+        require(dvxHi.contains("if (!isReaderActive())"),
+                "DVX translateEvents returns after AEReader stop");
+        require(dvxHi.contains("skipSpiReadbackOnClose()"),
+                "classic DVX close skips SPI readback that returns 0xff");
+        String dvxChip = Files.readString(Paths.get("src", "ch", "unizh", "ini", "jaer",
+                "chip", "retina", "DVXplorer.java"), StandardCharsets.UTF_8);
+        require(dvxChip.contains("skipSpiReadbackOnClose()"),
+                "spiConfigSendAndCheck does not SEVERE DVS_RUN=0 readback on close");
 
         String fx3Close = methodBody(fx3,
                 "synchronized public void close() {",
