@@ -325,6 +325,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 log.warning(String.format("Could not close existing file: %s", e.toString()));
             }
         }
+        // Drop leftover IN/OUT slider labels from the previous file immediately;
+        // restored marks for *this* file are applied after the stream is open.
+        clearPlayerControlMarks();
         log.info("starting playback with file=" + file);
         clearIgnoreRecordingToggleKey();
         inputFile = file;
@@ -618,11 +621,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     /**
      * After open, push restored IN/OUT/other marks onto the slider on the EDT.
+     * Always clears leftover slider labels from the previous file first.
      * {@link AEFileInputStreamInterface#marksInitialize()} may have loaded them
      * on a worker thread before property listeners were attached.
      */
     private void applyRestoredMarksToPlayerControls(AEFileInputStreamInterface stream) {
-        if (stream == null || viewer.getPlayerControls() == null) {
+        if (viewer.getPlayerControls() == null) {
+            return;
+        }
+        clearPlayerControlMarks();
+        if (stream == null) {
             return;
         }
         Marks restored = null;
@@ -645,8 +653,20 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             if (stream.isMarkOutSet()) {
                 getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, stream.getMarkOutPosition());
             }
+        }
+    }
+
+    /** Erase IN/OUT/other labels on the AEPlayer slider (EDT-safe). */
+    private void clearPlayerControlMarks() {
+        AePlayerAdvancedControlsPanel controls = viewer.getPlayerControls();
+        if (controls == null) {
+            return;
+        }
+        Runnable r = controls::clearSliderMarks;
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
         } else {
-            getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, false, true);
+            SwingUtilities.invokeLater(r);
         }
     }
 
@@ -704,6 +724,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         } catch (IOException ignore) {
             ignore.printStackTrace();
         }
+        clearPlayerControlMarks();
         clearIgnoreRecordingToggleKey();
         viewer.setTitleAccordingToState();
     }

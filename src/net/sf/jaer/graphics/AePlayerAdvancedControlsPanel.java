@@ -202,16 +202,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                         playerSlider.repaint();
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_CLEARED)) {
-                    playerSlider.setPaintLabels(false);
-                    marksTable.clear();
-                    markInPosition = null;
-                    markOutPosition = null;
-                    playerSlider.repaint();
+                    clearSliderMarks();
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_LOADED)) {
                     AEFileInputStream.Marks marks = (Marks) evt.getNewValue();
                     setMarks(marks);
                     playerSlider.repaint();
                 }
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_CLEARED)) {
+                // SyncPlayer (and other AbstractAEPlayer sources) are not AEFileInputStreamInterface
+                clearSliderMarks();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
                 timesliceSpinner.setValue(aePlayer.getTimesliceUs());
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PACKETSIZEEVENTS)) {
@@ -291,24 +290,47 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
     }
 
+    /**
+     * Remove IN/OUT/other mark labels from the playback slider. Call when
+     * opening a different file or stopping playback so leftover markers from
+     * the previous recording are not shown.
+     */
+    public void clearSliderMarks() {
+        marksTable.clear();
+        markInPosition = null;
+        markOutPosition = null;
+        markPosition = null;
+        playerSlider.setLabelTable(marksTable);
+        playerSlider.setPaintLabels(false);
+        playerSlider.repaint();
+    }
+
     public void setMarks(Marks marks) {
         if (marks == null) {
+            clearSliderMarks();
             return;
         }
-        if (aePlayer.getAEInputStream() == null || aePlayer.getAEInputStream().size() <= 0) {
+        AEFileInputStreamInterface stream = aePlayer.getAEInputStream();
+        if (stream == null || stream.size() <= 0) {
             log.fine("setMarks deferred/skipped: AEInputStream not ready");
             return;
         }
         marksTable.clear();
         markInPosition = null;
         markOutPosition = null;
-        markInPosition = convertToSlider(marks.markIn);
-        markOutPosition = convertToSlider(marks.markOut);
-        if (markOutPosition != null) {
-            marksTable.put(markOutPosition, markOutLabel);
+        boolean inSet = stream.isMarkInSet();
+        boolean outSet = stream.isMarkOutSet();
+        if (inSet) {
+            markInPosition = convertToSlider(marks.markIn);
+            if (markInPosition != null) {
+                marksTable.put(markInPosition, markInLabel);
+            }
         }
-        if (markInPosition != null) {
-            marksTable.put(markInPosition, markInLabel);
+        if (outSet) {
+            markOutPosition = convertToSlider(marks.markOut);
+            if (markOutPosition != null) {
+                marksTable.put(markOutPosition, markOutLabel);
+            }
         }
         if (marks.otherMarks != null) {
             for (long pos : marks.otherMarks) {
@@ -319,7 +341,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             }
         }
         playerSlider.setLabelTable(marksTable);
-        playerSlider.setPaintLabels(true);
+        playerSlider.setPaintLabels(!marksTable.isEmpty());
+        playerSlider.repaint();
     }
 
     private Integer convertToSlider(long pos) {
