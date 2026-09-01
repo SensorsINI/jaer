@@ -754,7 +754,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             log.info("close(): not open, not doing anything");
             return;
         }
-        log.info(String.format("Closing %s", this.toString()));
+        log.info(String.format("**** Closing %s", this.toString()));
 
         // Stop bulk AEReader WHILE isOpen() is still true. Setting isOpened=false
         // first made setEventAcquisitionEnabled(false) a no-op (it returns when
