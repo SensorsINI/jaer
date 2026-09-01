@@ -97,8 +97,9 @@ in International Symposium on Secure-Life Electronics, University of Tokyo,
 Mar. 2008, pp. 21–26. 
 doi: 10.5167/uzh-17620. Available: http://dx.doi.org/10.5167/uzh-17620
 
-We gratefully acknowledge contributions from [inilabs](https://inilabs.com), [iniVation](https://inivation.com/), and [NRV](https://www.nrv.kr/), for their technical support and gifts of prototype cameras.
+We gratefully acknowledge contributions from [inilabs](https://inilabs.com), [iniVation](https://inivation.com/), and [NRV](https://www.nrv.kr/), for their technical support and gifts of prototype cameras. A special thanks to Luca Longinotti and Eric Ryu.
 
+Key contributers to jAER from [Sensors Group people](https://sensors.ini.ch/people) include Shih-Chii Liu, Patrick Lichtsteiner, Raphael Berner, Christian Brandli, Rui Graca, Minhao Yang, Chenghan Li, Gemnma Taverni, Min Liu, Diederick Moeys, Yuhuang Hu, Matthias Oster, Bodo Rueckauer, Antonio Rios, Alejandro Linares-Barranco, Junhaeng Lee, Asude Aydin, Iulia Lungu, Damien Joubert, Germain Haessig, and Shasha Guo.
 
 jAER relies on many open source projects, including:
 
