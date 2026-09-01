@@ -33,6 +33,7 @@ import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.util.StartupProfiler;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.CellStatsProber;
@@ -159,11 +160,14 @@ public class AEChip extends Chip2D {
      * Creates a new instance of AEChip
      */
     public AEChip() {
+        StartupProfiler.mark("AEChip ctor start");
 //        setName("unnamed AEChip");
         setRenderer(new AEChipRenderer(this));
+        StartupProfiler.mark("AEChip after renderer");
 
         // add canvas before filters so that filters have a canvas to add annotator to
         setCanvas(new ChipCanvas(this)); // note that we need to do this again even though Chip2D did it, because the AEChipRenderer here shadows the Chip2D renderer and the renderer will be returned null, preventing installation of mouse listeners
+        StartupProfiler.mark("AEChip after ChipCanvas");
         // instancing there display methods does NOT add them to the menu automatically
 
         getCanvas().addDisplayMethod(new ChipRendererDisplayMethod(getCanvas()));
@@ -206,9 +210,11 @@ public class AEChip extends Chip2D {
         addDefaultEventFilter(DNNOutputViaSharedMemory.class);
         addDefaultEventFilter(ROSOutput.class);
         addDefaultEventFilter(OpenCVOutput.class);
+        StartupProfiler.mark("AEChip after addDefaultEventFilter list");
 
         filterChain = new FilterChain(this);
         filterChain.contructPreferredFilters();
+        StartupProfiler.mark("AEChip after contructPreferredFilters");
         ROSOutput.ensurePresent(this);
         ROSOutput ros = ROSOutput.find(this);
         if (ros != null) {
@@ -225,6 +231,7 @@ public class AEChip extends Chip2D {
             opencv.setPreferredEnabledState();
         }
         Steadicam.ensurePresent(this);
+        StartupProfiler.mark("AEChip ctor end");
     }
 
     /**

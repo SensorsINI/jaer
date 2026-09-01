@@ -71,6 +71,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
     /**
+     * File-dialog preview: index at most this many EVTS packets when FileDataTable
+     * and the {@code *.aedat4idx} cache are missing (avoids a full linear scan).
+     */
+    public static final int PREVIEW_INDEX_EVTS_PACKETS = 30;
+    /**
      * Max polarity events returned from one {@code readPacketBy*}. Prevents OOM / multi-second
      * hangs when on-demand decode would otherwise walk millions of FlatBuffer events.
      */
@@ -116,6 +121,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private long eventCount;
     private long frameCount;
     private long imuSampleCount;
+    /**
+     * True when the sparse index covers the whole recording (cache or FileDataTable
+     * or a full packet scan). False for a truncated preview scan.
+     */
+    private boolean indexComplete;
     /**
      * Sum of on-disk packet payload sizes. {@code -1} until {@link #ensurePayloadCompressionStats()}.
      */
@@ -173,13 +183,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     public Aedat4FileInputStream(File file, AEChip chip, ProgressMonitor progressMonitor,
             Integer eventStreamId) throws IOException {
+        this(file, chip, progressMonitor, eventStreamId, true);
+    }
+
+    /**
+     * @param allowLinearIndexScan if false, skip a full packet scan when the
+     *        FileDataTable and index cache are missing; index only
+     *        {@link #PREVIEW_INDEX_EVTS_PACKETS} EVTS packets for a file-dialog preview
+     */
+    public Aedat4FileInputStream(File file, AEChip chip, ProgressMonitor progressMonitor,
+            Integer eventStreamId, boolean allowLinearIndexScan) throws IOException {
         this.file = file;
         this.chip = chip;
         this.requestedEventStreamId = eventStreamId;
         this.randomAccessFile = new RandomAccessFile(file, "r");
         this.channel = randomAccessFile.getChannel();
         try {
-            log.fine("Aedat4FileInputStream open begin: " + file + " requestedEventStreamId=" + eventStreamId);
+            log.fine("Aedat4FileInputStream open begin: " + file + " requestedEventStreamId=" + eventStreamId
+                    + " allowLinearIndexScan=" + allowLinearIndexScan);
             readHeaderAndResolveStreams();
             log.fine("header compression=" + Aedat4Compression.nameOf(compression)
                     + " eventStreamId=" + this.eventStreamId
@@ -188,11 +209,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     + " source=" + selectedSource);
             if (!maybeLoadCachedIndex(progressMonitor)) {
                 log.fine("no usable cache; indexing " + file.getName());
-                indexFile(progressMonitor); // FileDataTable first, else linear scan
-                log.fine("index complete; writing cache");
-                cacheIndex(progressMonitor);
-                log.fine("cache write complete");
+                indexFile(progressMonitor, allowLinearIndexScan);
+                if (indexComplete) {
+                    log.fine("index complete; writing cache");
+                    cacheIndex(progressMonitor);
+                    log.fine("cache write complete");
+                } else {
+                    log.fine("preview index is partial; not writing cache");
+                }
             } else {
+                indexComplete = true;
                 log.fine("loaded index from cache");
             }
             throwIfCanceled(progressMonitor, "AEDAT-4 open");
@@ -236,6 +262,19 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     public String getSelectedSource() {
         return selectedSource;
+    }
+
+    /** Whole-file sparse index (cache, FileDataTable, or full scan), not a preview prefix. */
+    public boolean isIndexComplete() {
+        return indexComplete;
+    }
+
+    public long getFrameCount() {
+        return frameCount;
+    }
+
+    public long getImuSampleCount() {
+        return imuSampleCount;
     }
 
     /**
@@ -537,13 +576,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     /**
      * Build the sparse packet index. Prefers the trailing FileDataTable and
-     * falls back to a full packet scan when the table is missing or invalid.
+     * falls back to a packet scan when the table is missing or invalid.
      */
-    private void indexFile(ProgressMonitor progressMonitor) throws IOException {
+    private void indexFile(ProgressMonitor progressMonitor, boolean allowLinearScan) throws IOException {
         if (tryIndexFromFileDataTable(progressMonitor)) {
+            indexComplete = true;
             return;
         }
-        indexFileByScanningPackets(progressMonitor);
+        int maxEvts = allowLinearScan ? Integer.MAX_VALUE : PREVIEW_INDEX_EVTS_PACKETS;
+        indexFileByScanningPackets(progressMonitor, maxEvts);
+        indexComplete = allowLinearScan;
     }
 
     /**
@@ -734,8 +776,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 && byteOffset + 8L + payloadSize > dataEnd;
     }
 
-    /** Slow path: decompress every packet to recover counts/timestamps. */
-    private void indexFileByScanningPackets(ProgressMonitor progressMonitor) throws IOException {
+    /** Slow path: decompress packets to recover counts/timestamps. */
+    private void indexFileByScanningPackets(ProgressMonitor progressMonitor, int maxEventPackets) throws IOException {
         ArrayList<PacketRef> events = new ArrayList<>();
         ArrayList<PacketRef> frames = new ArrayList<>();
         ArrayList<PacketRef> imus = new ArrayList<>();
@@ -816,6 +858,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
                 events.add(new PacketRef(payloadOffset, payloadSize, start, end, num, cumEvents));
                 cumEvents += num;
+                if (maxEventPackets < Integer.MAX_VALUE && events.size() >= maxEventPackets) {
+                    log.info("AEDAT-4 preview index stopping after " + events.size() + " EVTS packets");
+                    break;
+                }
             } else if (streamId == frameStreamId) {
                 Frame frame = Frame.getSizePrefixedRootAsFrame(flat);
                 long start = frame.timestampStartOfFrame() != 0 ? frame.timestampStartOfFrame() : frame.timestamp();

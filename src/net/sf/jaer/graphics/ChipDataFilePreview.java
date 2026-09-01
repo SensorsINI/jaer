@@ -8,11 +8,11 @@ package net.sf.jaer.graphics;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
@@ -22,10 +22,20 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
@@ -35,11 +45,13 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.JaerAllowedSubclasses;
 import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
@@ -54,21 +66,32 @@ import prophesee.eventio.MetavisionRawFileInputStream;
  */
 public class ChipDataFilePreview extends JPanel implements PropertyChangeListener {
 
+    private static final int PREVIEW_BUNDLES = 30;
+    private static final int EVENTS_PER_BUNDLE = 20_000;
+    private static final int PLAY_PERIOD_MS = 40;
+    private static final float OVERLAY_FONT_PT = 12f;
+
     JFileChooser chooser;
     EventExtractor2D extractor;
+    /** Dedicated renderer so the live viewer pixmap is not overwritten. */
     AEChipRenderer renderer;
+    /** Chip used for extract/render (may be a headless copy of the recording chip). */
     AEChip chip;
+    /** Viewer chip when the dialog opened; never replaced on the live viewer. */
+    private final AEChip viewerChip;
+    private final Map<Class<? extends AEChip>, AEChip> previewChipCache = new HashMap<>();
+    private String chipNote = "";
     volatile boolean indexFileEnabled = false;
     Logger log = Logger.getLogger("net.sf.jaer");
-    /**
-     * The time in us of packets by default
-     */
-    public int packetTimeUs = 40000;
     private File currentFile;
-    private boolean newFileSelected = false;
+    private final AtomicInteger generation = new AtomicInteger();
+    private volatile Thread loader;
+    private final Timer playTimer;
+    private int bundlesShown;
     /** True when the accessory should play events/frames, not only overlay text. */
     private volatile boolean videoPreview = false;
     private BufferedImage previewImage;
+    private final Object previewLock = new Object();
 
     /**
      * Creates new form ChipDataFilePreview
@@ -77,29 +100,142 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      * @param chip the AEChip to preview.
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
+        this.viewerChip = chip;
         this.chip = chip;
         this.chooser = jfc;
         extractor = chip.getEventExtractor();
-        renderer = chip.getRenderer();
+        renderer = createPreviewRenderer(chip);
+        if (renderer instanceof DavisRenderer davisR) {
+            davisR.setDisplayEvents(true);
+            davisR.setDisplayFrames(true);
+        }
         setLayout(new BorderLayout());
         setBackground(Color.BLACK);
         setOpaque(true);
         setPreferredSize(new Dimension(300, 300));
         setFocusable(true);
-        addKeyListener(new KeyAdapter() {
+        playTimer = new Timer(PLAY_PERIOD_MS, this::playTick);
+        playTimer.setRepeats(true);
+    }
 
-            @Override
-            public void keyReleased(KeyEvent e) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_S:
-                        packetTimeUs /= 2;
-                        break;
-                    case KeyEvent.VK_F:
-                        packetTimeUs *= 2;
-                        break;
+    private static AEChipRenderer createPreviewRenderer(AEChip chip) {
+        AEChipRenderer live = chip.getRenderer();
+        if (live != null) {
+            try {
+                Constructor<?> ctor = live.getClass().getConstructor(AEChip.class);
+                Object created = ctor.newInstance(chip);
+                if (created instanceof AEChipRenderer r) {
+                    return r;
+                }
+            } catch (Exception e) {
+                // fall through
+            }
+            if (live instanceof DavisRenderer) {
+                return new DavisRenderer(chip);
+            }
+        }
+        return new AEChipRenderer(chip);
+    }
+
+    /**
+     * Use a headless instance of the recording's AEChip for extract/render.
+     * Does not call {@link AEViewer#setAeChipClass}. On any failure, keep the
+     * viewer chip and note it in the overlay.
+     */
+    private void prepareChipForFile(File file) {
+        chipNote = "";
+        Class<? extends AEChip> suggested = null;
+        try {
+            suggested = RecordingChipDetector.detect(file, previewChipClassNames());
+        } catch (Throwable t) {
+            log.log(Level.WARNING, "Could not detect AEChip for preview of " + file.getName(), t);
+        }
+        Class<? extends AEChip> viewerClass = viewerChip != null ? viewerChip.getClass() : null;
+        if (suggested == null || viewerClass == null
+                || suggested.equals(viewerClass)
+                || suggested.getSimpleName().equalsIgnoreCase(viewerClass.getSimpleName())) {
+            applyPreviewChip(viewerChip);
+            return;
+        }
+        try {
+            AEChip instance = previewChipCache.get(suggested);
+            if (instance == null) {
+                instance = constructHeadlessChip(suggested);
+                if (instance == null || instance.getSizeX() <= 0 || instance.getEventExtractor() == null) {
+                    throw new IllegalStateException("headless " + suggested.getSimpleName()
+                            + " has no size or event extractor");
+                }
+                previewChipCache.put(suggested, instance);
+            }
+            applyPreviewChip(instance);
+        } catch (Throwable t) {
+            log.log(Level.WARNING, String.format(
+                    "Preview could not switch to %s for %s; using %s",
+                    suggested.getSimpleName(), file.getName(), viewerClass.getSimpleName()), t);
+            chipNote = "using " + viewerClass.getSimpleName()
+                    + " (could not load " + suggested.getSimpleName() + ")";
+            applyPreviewChip(viewerChip);
+        }
+    }
+
+    private void applyPreviewChip(AEChip c) {
+        chip = c != null ? c : viewerChip;
+        extractor = chip != null ? chip.getEventExtractor() : null;
+        if (chip == viewerChip) {
+            renderer = createPreviewRenderer(chip);
+        } else {
+            AEChipRenderer r = chip.getRenderer();
+            renderer = r != null ? r : createPreviewRenderer(chip);
+        }
+        if (renderer instanceof DavisRenderer davisR) {
+            try {
+                davisR.setDisplayEvents(true);
+                davisR.setDisplayFrames(true);
+            } catch (Exception e) {
+                log.fine("preview renderer display flags: " + e);
+            }
+        }
+    }
+
+    private AEChip constructHeadlessChip(Class<? extends AEChip> clazz) throws Exception {
+        ChipCanvas.beginPreviewHeadless();
+        try {
+            Constructor<? extends AEChip> ctor = clazz.getConstructor();
+            return ctor.newInstance();
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            if (cause instanceof Exception ex) {
+                throw ex;
+            }
+            throw e;
+        } finally {
+            ChipCanvas.endPreviewHeadless();
+        }
+    }
+
+    private List<String> previewChipClassNames() {
+        try {
+            if (viewerChip != null && viewerChip.getAeViewer() != null) {
+                List<String> names = viewerChip.getAeViewer().getChipClassNames();
+                if (names != null && !names.isEmpty()) {
+                    return names;
                 }
             }
-        });
+        } catch (Exception e) {
+            log.fine("preview chip names from viewer: " + e);
+        }
+        try {
+            Set<String> allowed = JaerAllowedSubclasses.namesOrNullIfMissing(AEChip.class);
+            if (allowed != null && !allowed.isEmpty()) {
+                return new ArrayList<>(allowed);
+            }
+        } catch (Exception e) {
+            log.fine("preview chip names from allowlist: " + e);
+        }
+        if (viewerChip != null) {
+            return List.of(viewerChip.getClass().getName());
+        }
+        return List.of();
     }
 
     boolean isIndexFile(File f) {
@@ -113,111 +249,280 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         }
     }
 
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         String prop = evt.getPropertyName();
         if (JFileChooser.DIRECTORY_CHANGED_PROPERTY.equals(prop)) {
             showFile(null);
         } else if (JFileChooser.SELECTED_FILE_CHANGED_PROPERTY.equals(prop)) {
-            showFile(chooser.getSelectedFile()); // starts showing selectedFile
+            showFile(chooser.getSelectedFile());
         }
     }
     AEFileInputStreamInterface ais;
-    volatile boolean deleteIt = false;
 
     public void deleteCurrentFile() {
         if (indexFileEnabled) {
             log.warning("won't try to delete this index file");
             return;
         }
-        deleteIt = true;
+        abortPreviewWork();
+        File f = getCurrentFile();
+        if (f != null && f.isFile()) {
+            boolean deleted = f.delete();
+            if (deleted) {
+                log.info("succesfully deleted " + f);
+                chooser.rescanCurrentDirectory();
+            } else {
+                log.warning("couldn't delete file " + f);
+            }
+        }
     }
 
     public void renameCurrentFile() {
         log.warning("renaming not implemented yet for " + getCurrentFile());
 
     }
-    volatile boolean stop = false;
 
     /**
-     * Shows the file.
+     * Shows the file. Open and index run off the EDT so arrow-key scrolling can
+     * abort the previous selection.
      *
      * @param file the file to show
      */
-    public void showFile(File file) { //  gets called on property change, possibly with null file
+    public void showFile(File file) {
+        int gen = generation.incrementAndGet();
+        abortPreviewWork();
+        setCurrentFile(file);
+        fileSizeString = "";
+        indexFileString = "";
+        indexFileEnabled = isIndexFile(file);
+        clearPreviewImage();
+        repaint();
+        if (file == null || !file.isFile()) {
+            return;
+        }
+        final File toOpen = file;
+        Thread t = new Thread(() -> loadPreview(toOpen, gen), "jaer-file-preview");
+        t.setDaemon(true);
+        loader = t;
+        t.start();
+    }
+
+    private void abortPreviewWork() {
+        playTimer.stop();
+        videoPreview = false;
+        Thread t = loader;
+        loader = null;
+        if (t != null && t.isAlive()) {
+            t.interrupt();
+        }
+        closePreviewStream();
+        bundlesShown = 0;
+    }
+
+    private void loadPreview(File file, int gen) {
+        if (obsolete(gen)) {
+            return;
+        }
         try {
-            if (file == null) {
-                stop = true;
+            if (indexFileEnabled) {
+                String idx = getIndexFileCount(file);
+                if (obsolete(gen)) {
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    if (obsolete(gen)) {
+                        return;
+                    }
+                    indexFileString = idx;
+                    fileSizeString = idx;
+                    repaint();
+                });
                 return;
             }
-            setCurrentFile(file);
-            indexFileEnabled = isIndexFile(file);
-            videoPreview = false;
-            if (!indexFileEnabled) {
-                closePreviewStream();
-                clearPreviewImage();
-                System.gc(); // try to make memory mapped file GC'ed so that user can delete it
-                try {
-                    String lower = file.getName().toLowerCase();
-                    if (lower.endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
-                        // Full RAW index is slow; preview shows header only.
-                        MetavisionRawFileInputStream.HeaderInfo hi
-                                = MetavisionRawFileInputStream.peekHeader(file);
-                        if (hi != null && hi.evt3) {
-                            fileSizeString = String.format("Metavision RAW EVT3 %dx%d (open to index)",
-                                    hi.width, hi.height);
-                        } else {
-                            fileSizeString = "Metavision RAW (not EVT3 or unreadable header)";
-                        }
-                    } else if (lower.endsWith("." + MetavisionDatFileInputStream.DATA_FILE_EXTENSION)
-                            && MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
-                        MetavisionDatFileInputStream.HeaderInfo hi
-                                = MetavisionDatFileInputStream.peekHeader(file);
-                        if (hi != null) {
-                            fileSizeString = String.format("Metavision DAT %dx%d type=%d (open to play)",
-                                    hi.width, hi.height, hi.eventType);
-                        } else {
-                            fileSizeString = "Metavision DAT (unreadable header)";
-                        }
-                    } else if (lower.endsWith("." + TextFileInputStream.FILE_EXTENSION_CSV)
-                            || lower.endsWith("." + TextFileInputStream.FILE_EXTENSION_TXT)) {
-                        fileSizeString = summaryFromOpen(new TextFileInputStream(file, chip, null));
-                    } else if (lower.endsWith("." + RosbagFileInputStream.DATA_FILE_EXTENSION)) {
-                        fileSizeString = summaryFromOpen(new RosbagFileInputStream(file, chip, null));
-                    } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
-                            && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
-                        fileSizeString = summaryFromOpen(new DsecHdf5AEInputStream(file, chip, null));
-                    } else if (lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)) {
-                        ais = new Aedat4FileInputStream(file, chip);
-                        ais.rewind();
-                        fileSizeString = overlayText(ais);
-                        videoPreview = true;
-                    } else {
-                        ais = new AEFileInputStream(file, chip);
-                        ais.rewind();
-                        fileSizeString = overlayText(ais);
-                        videoPreview = true;
-                    }
-                } catch (Exception e) {
-                    log.warning("Caught " + e.toString() + " trying to open file " + file);
-                    fileSizeString = e.getMessage() != null ? e.getMessage() : e.toString();
-                    closePreviewStream();
-                    videoPreview = false;
+            String lower = file.getName().toLowerCase();
+            prepareChipForFile(file);
+            if (lower.endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
+                MetavisionRawFileInputStream.HeaderInfo hi
+                        = MetavisionRawFileInputStream.peekHeader(file);
+                String text;
+                if (hi != null && hi.evt3) {
+                    text = String.format("Metavision RAW EVT3 %dx%d (open to index)",
+                            hi.width, hi.height);
+                } else {
+                    text = "Metavision RAW (not EVT3 or unreadable header)";
                 }
-            } else {
-                closePreviewStream();
-                clearPreviewImage();
-                indexFileString = getIndexFileCount(file);
+                finishTextOnly(gen, text);
+                return;
             }
-            stop = false;
-            requestFocusInWindow();
-            repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
+            if (lower.endsWith("." + MetavisionDatFileInputStream.DATA_FILE_EXTENSION)
+                    && MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
+                MetavisionDatFileInputStream.HeaderInfo hi
+                        = MetavisionDatFileInputStream.peekHeader(file);
+                String text;
+                if (hi != null) {
+                    text = String.format("Metavision DAT %dx%d type=%d (open to play)",
+                            hi.width, hi.height, hi.eventType);
+                } else {
+                    text = "Metavision DAT (unreadable header)";
+                }
+                finishTextOnly(gen, text);
+                return;
+            }
+            if (lower.endsWith("." + TextFileInputStream.FILE_EXTENSION_CSV)
+                    || lower.endsWith("." + TextFileInputStream.FILE_EXTENSION_TXT)) {
+                String text = TextFileInputStream.peekPreviewOverlay(file);
+                if (chip != null) {
+                    text = text + "\n" + chip.getClass().getSimpleName();
+                }
+                if (chipNote != null && !chipNote.isEmpty()) {
+                    text = text + "\n" + chipNote;
+                }
+                finishTextOnly(gen, text);
+                return;
+            }
+            AEFileInputStreamInterface stream;
+            String overlay;
+            boolean play;
+            if (lower.endsWith("." + RosbagFileInputStream.DATA_FILE_EXTENSION)) {
+                stream = new RosbagFileInputStream(file, chip, null);
+                overlay = compactSummary(file, stream, false);
+                play = false;
+            } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
+                    && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
+                stream = new DsecHdf5AEInputStream(file, chip, null);
+                overlay = compactSummary(file, stream, false);
+                play = false;
+            } else if (lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)) {
+                Aedat4FileInputStream a4 = new Aedat4FileInputStream(file, chip, null, null, false);
+                stream = a4;
+                overlay = a4.isIndexComplete() ? compactSummary(file, a4, true) : "";
+                play = true;
+            } else {
+                stream = new AEFileInputStream(file, chip);
+                overlay = compactSummary(file, stream, false);
+                play = true;
+            }
+            if (obsolete(gen)) {
+                try {
+                    stream.close();
+                } catch (Exception ignore) {
+                }
+                return;
+            }
+            try {
+                stream.rewind();
+            } catch (IOException e) {
+                log.fine("preview rewind: " + e);
+            }
+            final AEFileInputStreamInterface opened = stream;
+            final String overlayText = overlay;
+            final boolean playVideo = play;
+            SwingUtilities.invokeLater(() -> {
+                if (obsolete(gen)) {
+                    try {
+                        opened.close();
+                    } catch (Exception ignore) {
+                    }
+                    return;
+                }
+                ais = opened;
+                fileSizeString = overlayText;
+                videoPreview = playVideo;
+                bundlesShown = 0;
+                if (playVideo) {
+                    playTimer.start();
+                } else {
+                    try {
+                        opened.close();
+                    } catch (Exception e) {
+                        log.fine("preview summary close: " + e);
+                    }
+                    ais = null;
+                }
+                repaint();
+            });
         } catch (Exception e) {
-            log.warning(e.toString());
+            if (obsolete(gen) || Thread.currentThread().isInterrupted()) {
+                return;
+            }
+            if (e.getMessage() != null && e.getMessage().contains("canceled")) {
+                return;
+            }
+            log.warning("Caught " + e.toString() + " trying to open file " + file);
+            String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+            finishTextOnly(gen, msg);
         }
     }
-    File indexFile = null;
-    AEPacketRaw aeRaw;
-    EventPacket ae;
+
+    private boolean obsolete(int gen) {
+        return gen != generation.get() || Thread.currentThread().isInterrupted();
+    }
+
+    private void finishTextOnly(int gen, String text) {
+        SwingUtilities.invokeLater(() -> {
+            if (obsolete(gen)) {
+                return;
+            }
+            fileSizeString = text;
+            videoPreview = false;
+            repaint();
+        });
+    }
+
+    private void playTick(ActionEvent e) {
+        synchronized (previewLock) {
+            if (!videoPreview || ais == null) {
+                return;
+            }
+            try {
+                if (bundlesShown >= PREVIEW_BUNDLES) {
+                    ais.rewind();
+                    bundlesShown = 0;
+                    if (renderer != null) {
+                        renderer.resetFrame(renderer.getGrayValue());
+                    }
+                }
+                AEPacketRaw aeRaw = ais.readPacketByNumber(EVENTS_PER_BUNDLE);
+                extractor = chip != null ? chip.getEventExtractor() : null;
+                PacketBundle bundle = extractor != null ? extractor.extractBundle(aeRaw) : null;
+                if (ais instanceof Aedat4FileInputStream a4) {
+                    if (bundle == null) {
+                        bundle = new PacketBundle();
+                    }
+                    a4.appendTypedPackets(bundle);
+                }
+                if (renderer != null) {
+                    synchronized (renderer) {
+                        if (bundle != null && !bundle.isEmpty()) {
+                            renderer.render(bundle);
+                        } else if (aeRaw != null && extractor != null) {
+                            EventPacket ae = extractor.extractPacket(aeRaw);
+                            if (ae != null) {
+                                renderer.render(ae);
+                            }
+                        }
+                        blitRendererToPreviewImage();
+                    }
+                }
+                bundlesShown++;
+            } catch (EOFException ex) {
+                try {
+                    ais.rewind();
+                    bundlesShown = 0;
+                } catch (IOException ioe) {
+                    log.warning("IOException on rewind from EOF: " + ioe.getMessage());
+                    playTimer.stop();
+                    closePreviewStream();
+                }
+            } catch (Exception ex) {
+                log.warning("preview read failed: " + ex);
+                playTimer.stop();
+                closePreviewStream();
+            }
+        }
+        repaint();
+    }
 
     /**
      * Paints the file preview from the chip pixmap using AWT, not OpenGL.
@@ -227,86 +532,18 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (stop || deleteIt) {
-            try {
-                if (ais != null) {
-                    closePreviewStream();
-                    System.gc();
-                    Thread.sleep(200);
-                }
-                if (deleteIt) {
-                    deleteIt = false;
-                    if (getCurrentFile() != null && getCurrentFile().isFile()) {
-                        boolean deleted = getCurrentFile().delete();
-                        if (deleted) {
-                            log.info("succesfully deleted " + getCurrentFile());
-                            chooser.rescanCurrentDirectory();
-                        } else {
-                            log.warning("couldn't delete file " + getCurrentFile());
-                        }
-                    }
-                }
-            } catch (InterruptedException ex) {
-
-            }
-            return;
-        }
         Graphics2D g2 = (Graphics2D) g;
-        if (newFileSelected) { // erases old text, otherwise draws over it
-            newFileSelected = false;
-            clearPreviewImage();
-        }
-
-        if (!indexFileEnabled) {
-            if (videoPreview && ais != null) {
-                try {
-                    aeRaw = ais.readPacketByTime(packetTimeUs);
-                    extractor = chip.getEventExtractor();
-                    PacketBundle bundle = extractor.extractBundle(aeRaw);
-                    if (ais instanceof Aedat4FileInputStream a4) {
-                        if (bundle == null) {
-                            bundle = new PacketBundle();
-                        }
-                        a4.appendTypedPackets(bundle);
-                    }
-                    if (bundle != null && !bundle.isEmpty()) {
-                        renderer.render(bundle);
-                    } else if (aeRaw != null) {
-                        ae = extractor.extractPacket(aeRaw);
-                        if (ae != null) {
-                            renderer.render(ae);
-                        }
-                    }
-                    blitRendererToPreviewImage();
-                } catch (EOFException e) {
-                    try {
-                        if (ais != null) {
-                            ais.rewind();
-                        }
-                    } catch (IOException ioe) {
-                        log.warning("IOException on rewind from EOF: " + ioe.getMessage());
-                        closePreviewStream();
-                    }
-                } catch (Exception e) {
-                    log.warning("preview read failed: " + e);
-                    closePreviewStream();
-                    videoPreview = false;
-                }
-            }
-        } else {
-            fileSizeString = indexFileString;
-            previewImage = null;
-        }
-        if (previewImage != null) {
+        BufferedImage img = previewImage;
+        if (img != null) {
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            g2.drawImage(previewImage, 0, 0, getWidth(), getHeight(), this);
+            int pw = getWidth();
+            int ph = getHeight();
+            int side = Math.min(pw, ph);
+            int x = (pw - side) / 2;
+            int y = (ph - side) / 2;
+            g2.drawImage(img, x, y, side, side, this);
         }
         drawOverlay(g2);
-        try {
-            Thread.sleep(15);
-        } catch (InterruptedException e) {
-        }
-        repaint(); // recurse
     }
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
@@ -352,9 +589,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      * concurrent paint cannot keep reading a closed mapped file.
      */
     private void closePreviewStream() {
-        AEFileInputStreamInterface toClose = ais;
-        ais = null;
-        videoPreview = false;
+        AEFileInputStreamInterface toClose;
+        synchronized (previewLock) {
+            toClose = ais;
+            ais = null;
+            videoPreview = false;
+        }
         if (toClose != null) {
             try {
                 toClose.close();
@@ -369,12 +609,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      * previous file's last frame.
      */
     private void clearPreviewImage() {
-        ae = null;
-        aeRaw = null;
         previewImage = null;
         try {
             if (renderer != null) {
-                renderer.resetFrame(renderer.getGrayValue());
+                synchronized (renderer) {
+                    renderer.resetFrame(renderer.getGrayValue());
+                }
             }
         } catch (Exception e) {
             log.fine("preview frame reset: " + e);
@@ -382,8 +622,9 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     }
 
     /**
-     * Copies the chip renderer pixmap into {@link #previewImage} (AWT, y-up
-     * chip coords flipped to image coords).
+     * Copies the chip renderer into a square-cropped {@link #previewImage}.
+     * Davis DVS lives in {@code dvsEventsMap} (alpha-tested over APS pixmap),
+     * not in {@link AEChipRenderer#getPixmapArray()}.
      */
     private void blitRendererToPreviewImage() {
         if (renderer == null || chip == null) {
@@ -402,22 +643,49 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             previewImage = null;
             return;
         }
-        final boolean rgba = renderer instanceof DavisRenderer;
-        final int stride = rgba ? 4 : 3;
+        final boolean davis = renderer instanceof DavisRenderer;
+        final DavisRenderer davisR = davis ? (DavisRenderer) renderer : null;
+        final float[] dvs = davisR != null ? davisR.getDvsEventsMap().array() : null;
+        final boolean displayFrames = davisR == null || davisR.isDisplayFrames();
+        final boolean displayEvents = davisR == null || davisR.isDisplayEvents();
+        final int stride = davis ? 4 : 3;
         final int rowWidth = Math.max(1, renderer.getWidth());
-        if (previewImage == null || previewImage.getWidth() != sx || previewImage.getHeight() != sy) {
-            previewImage = new BufferedImage(sx, sy, BufferedImage.TYPE_INT_RGB);
+        final int side = Math.min(sx, sy);
+        final int x0 = (sx - side) / 2;
+        final int y0 = (sy - side) / 2;
+        if (previewImage == null || previewImage.getWidth() != side || previewImage.getHeight() != side) {
+            previewImage = new BufferedImage(side, side, BufferedImage.TYPE_INT_RGB);
         }
         int[] out = ((DataBufferInt) previewImage.getRaster().getDataBuffer()).getData();
-        for (int y = 0; y < sy; y++) {
-            int dstRow = (sy - 1 - y) * sx;
-            int srcRow = y * rowWidth;
-            for (int x = 0; x < sx; x++) {
-                int idx = stride * (srcRow + x);
+        for (int y = 0; y < side; y++) {
+            int chipY = y0 + y;
+            int dstRow = (side - 1 - y) * side;
+            for (int x = 0; x < side; x++) {
+                int chipX = x0 + x;
+                int idx = stride * (chipY * rowWidth + chipX);
                 if (idx + 2 >= pix.length) {
                     break;
                 }
-                out[dstRow + x] = packRgb(pix[idx], pix[idx + 1], pix[idx + 2]);
+                float r;
+                float g;
+                float b;
+                if (displayFrames) {
+                    r = pix[idx];
+                    g = pix[idx + 1];
+                    b = pix[idx + 2];
+                } else {
+                    r = g = b = renderer.getGrayValue();
+                }
+                if (displayEvents && dvs != null && idx + 3 < dvs.length && dvs[idx + 3] > 0f) {
+                    r = dvs[idx];
+                    g = dvs[idx + 1];
+                    b = dvs[idx + 2];
+                } else if (!davis && displayEvents) {
+                    r = pix[idx];
+                    g = pix[idx + 1];
+                    b = pix[idx + 2];
+                }
+                out[dstRow + x] = packRgb(r, g, b);
             }
         }
     }
@@ -444,24 +712,30 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         return (r << 16) | (g << 8) | b;
     }
 
-    private String overlayText(AEFileInputStreamInterface stream) {
-        String info = stream.getFileInfo();
-        if (info != null && !info.isBlank()) {
-            return info;
+    private String compactSummary(File file, AEFileInputStreamInterface stream, boolean aedat4) {
+        fmt.setPrecision(1);
+        StringBuilder sb = new StringBuilder();
+        sb.append(fmt.format((double) file.length()).trim()).append("B");
+        double durS;
+        if (stream instanceof Aedat4FileInputStream a4) {
+            durS = a4.getDurationUsLong() * 1e-6;
+        } else {
+            durS = stream.getDurationUs() / 1e6;
         }
-        return fmt.format(stream.size()) + " events " + fmt.format(stream.getDurationUs() / 1e6f) + " s";
-    }
-
-    private String summaryFromOpen(AEFileInputStreamInterface stream) {
-        try {
-            return overlayText(stream);
-        } finally {
-            try {
-                stream.close();
-            } catch (Exception e) {
-                log.fine("preview summary close: " + e);
-            }
+        sb.append("  ").append(fmt.format(durS).trim()).append("s\n");
+        sb.append(fmt.format((double) stream.size()).trim()).append(" ev");
+        if (aedat4 && stream instanceof Aedat4FileInputStream a4) {
+            sb.append("  ").append(fmt.format((double) a4.getFrameCount()).trim()).append(" fra");
+            sb.append("  ").append(fmt.format((double) a4.getImuSampleCount()).trim()).append(" IMU");
         }
+        sb.append('\n');
+        if (chip != null) {
+            sb.append(chip.getClass().getSimpleName());
+        }
+        if (chipNote != null && !chipNote.isEmpty()) {
+            sb.append('\n').append(chipNote);
+        }
+        return sb.toString();
     }
 
     private void drawOverlay(Graphics2D g2) {
@@ -469,17 +743,23 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             return;
         }
         g2.setColor(Color.red);
-        g2.setFont(g2.getFont().deriveFont(14f));
-        int y = 24;
+        g2.setFont(g2.getFont().deriveFont(OVERLAY_FONT_PT));
+        FontMetrics fm = g2.getFontMetrics();
+        int y = fm.getAscent() + 4;
         int lines = 0;
+        int maxW = Math.max(8, getWidth() - 8);
         for (String line : fileSizeString.split("\\r?\\n")) {
             if (line.isEmpty()) {
-                y += 16;
+                y += fm.getHeight();
                 continue;
             }
-            g2.drawString(line, 10f, y);
-            y += 16;
-            if (++lines >= 14) {
+            String draw = line;
+            while (fm.stringWidth(draw) > maxW && draw.length() > 4) {
+                draw = draw.substring(0, draw.length() - 1);
+            }
+            g2.drawString(draw, 4f, y);
+            y += fm.getHeight();
+            if (++lines >= 6) {
                 break;
             }
         }
@@ -490,6 +770,5 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     void setCurrentFile(File currentFile) {
         this.currentFile = currentFile;
-        newFileSelected = true;
     }
 }

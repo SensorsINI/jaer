@@ -45,6 +45,7 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.StartupProfiler;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -218,6 +219,25 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
+     * When true, {@link ChipCanvas} skips creating a {@code GLCanvas}. Used by
+     * file-dialog preview to instantiate a matching {@link AEChip} without a
+     * second OpenGL context (Intel Arc {@code SetPixelFormat} crash).
+     */
+    private static final ThreadLocal<Boolean> PREVIEW_HEADLESS = new ThreadLocal<>();
+
+    public static void beginPreviewHeadless() {
+        PREVIEW_HEADLESS.set(Boolean.TRUE);
+    }
+
+    public static void endPreviewHeadless() {
+        PREVIEW_HEADLESS.remove();
+    }
+
+    public static boolean isPreviewHeadless() {
+        return Boolean.TRUE.equals(PREVIEW_HEADLESS.get());
+    }
+
+    /**
      * Creates a new instance of ChipCanvas
      */
     public ChipCanvas(final Chip2D chip) {
@@ -230,6 +250,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
         updateSpikeMarkerScale();
+
+        if (isPreviewHeadless()) {
+            glCanvas = null;
+            chip.addObserver(this);
+            return;
+        }
 
         final boolean reusedGlCanvas;
         // make the glCanvas (or reuse one from AEChip switch — never create a second)
@@ -256,11 +282,15 @@ public class ChipCanvas implements GLEventListener, Observer {
                       If this throws access violation outside the JVM (atio6axx.dll / igxelpgicd64.dll), it may be your GPU driver.
                       If you are running dual display on laptop, try starting with only main laptop display.
                       Try to enable use of discrete Nvidia GPU.""");
+            StartupProfiler.mark("ChipCanvas GLProfile.getDefault start");
             final GLProfile glp = GLProfile.getDefault();
+            StartupProfiler.mark("ChipCanvas GLProfile.getDefault end");
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
             caps.setDoubleBuffered(true);
+            StartupProfiler.mark("ChipCanvas new GLCanvas start");
             glCanvas = new GLCanvas(caps);
+            StartupProfiler.mark("ChipCanvas new GLCanvas end");
             glCanvas.setAutoSwapBufferMode(true);
             }
 

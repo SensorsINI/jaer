@@ -28,6 +28,7 @@ import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.JaerAllowedSubclasses;
+import net.sf.jaer.util.StartupProfiler;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 
 /**
@@ -476,6 +477,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      */
     @SuppressWarnings("unchecked")
     synchronized public void contructPreferredFilters() {
+        StartupProfiler.mark("FilterChain.contructPreferredFilters start");
         clear();
         ArrayList<String> classNames;
         Preferences prefs = chip.getPrefs(); 
@@ -539,7 +541,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         } catch (Exception e) {
             log.warning(e.getMessage());
         }
-//        initFilters(); // not a good place to call initFilters(), becauses subclases have not yet set their sizes or other needed information for most filters.
+        StartupProfiler.mark("FilterChain.contructPreferredFilters end size=" + size());
     }
 
     /**

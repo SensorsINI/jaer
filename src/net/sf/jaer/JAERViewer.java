@@ -62,6 +62,7 @@ import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.SplashStartupAbort;
+import net.sf.jaer.util.StartupProfiler;
 import net.sf.jaer.util.UiInteractionLog;
 import net.sf.jaer.hardwareinterface.usb.SessionCameraOpenCoordinator;
 import net.sf.jaer.hardwareinterface.usb.USBRebindTester;
@@ -69,7 +70,6 @@ import net.sf.jaer.util.JaerWindowGroupRaiser;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.JoglVersion;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
@@ -166,7 +166,7 @@ public class JAERViewer {
 //        final boolean createNewDevice = true; // use 'own' display device!
 //        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
 //        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
-        log.fine("JOGL version information: " + JoglVersion.getInstance().toString());
+        StartupProfiler.mark("JAERViewer ctor: WindowSaver");
 
         windowSaver = new WindowSaver(this, prefs);
         UiInteractionLog.syncFromPrefs();
@@ -175,6 +175,7 @@ public class JAERViewer {
         JaerWindowGroupRaiser.install();
 
         SwingUtilities.invokeLater(new RunningThread());
+        StartupProfiler.mark("JAERViewer ctor: queued RunningThread");
 
         USBRebindTester.start(this);
 
@@ -192,7 +193,9 @@ public class JAERViewer {
 
                             ArrayList<String> viewerChipClassNames = new ArrayList<String>();
                             for (AEViewer v : viewers) {
-                                viewerChipClassNames.add(v.getChip().getClass().getName());
+                                if (v.getChip() != null) {
+                                    viewerChipClassNames.add(v.getChip().getClass().getName());
+                                }
                             }
                             // Serialize to a byte array
                             ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -448,6 +451,7 @@ public class JAERViewer {
 
         @Override
         public void run() {
+            StartupProfiler.mark("RunningThread start");
 
             // try to load a list of previous chip classes that running in viewers and then reOGloopen them
             ArrayList<String> classNames = null;
@@ -468,9 +472,12 @@ public class JAERViewer {
             try {
                 if (classNames == null) {
                     AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+                    StartupProfiler.mark("after new AEViewer");
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
                     v.setVisible(true);
+                    StartupProfiler.mark("AEViewer.setVisible(true)");
+                    StartupProfiler.scheduleExitAfterVisible();
                     firstViewer = v;
                     //                splashThread.interrupt();
                 } else {
@@ -478,9 +485,12 @@ public class JAERViewer {
                         // check to make sure cla
                         AEViewer v;
                         v = new AEViewer(JAERViewer.this, s);
+                        StartupProfiler.mark("after new AEViewer " + s);
                         v.setVisible(true);
+                        StartupProfiler.mark("AEViewer.setVisible(true) " + s);
                         if (firstViewer == null) {
                             firstViewer = v;
+                            StartupProfiler.scheduleExitAfterVisible();
                         }
                     }
                 }
@@ -1171,9 +1181,11 @@ public class JAERViewer {
      * app args instead of JVM args — common with unquoted {@code -D} in PowerShell)
      */
     public static void main(String[] args) {
+        StartupProfiler.mark("main");
         final String[] fileArgs = applyLauncherArgsAsSystemProperties(args);
         // Before first Logger (and FileHandler): ensure ${java.io.tmpdir}/jaer exists.
         net.sf.jaer.util.JaerTmpdir.get();
+        StartupProfiler.mark("after JaerTmpdir");
 
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
@@ -1204,11 +1216,18 @@ public class JAERViewer {
             log.info("Java splash present; log overlay off (-Djaer.splashLogOverlay=true to enable)");
         }
         log.info("jAERViewer starting up");
+        StartupProfiler.mark("after Logger init / splash");
         if (!confirmStartIfPossiblyAlreadyRunning()) {
             System.exit(0);
         }
+        StartupProfiler.mark("after confirmStartIfPossiblyAlreadyRunning");
         SplashStartupAbort.install();
-        net.sf.jaer.util.TensorFlowNativeSupport.installDownloadedJarsOnClasspath();
+        Thread tfClasspath = new Thread(
+                net.sf.jaer.util.TensorFlowNativeSupport::installDownloadedJarsOnClasspath,
+                "jaer-tf-classpath");
+        tfClasspath.setDaemon(true);
+        tfClasspath.start();
+        StartupProfiler.mark("after TensorFlowNativeSupport classpath queued");
         log.info("java.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
         net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
@@ -1273,11 +1292,14 @@ public class JAERViewer {
             }
         } else {
             log.info("starting with no file arguments in working directory=" + System.getProperty("user.dir"));
+            StartupProfiler.mark("queue JAERViewer on EDT");
             SwingUtilities.invokeLater(new Runnable() {
 
                 @Override
                 public void run() {
+                    StartupProfiler.mark("EDT JAERViewer ctor");
                     new JAERViewer();
+                    StartupProfiler.mark("EDT JAERViewer ctor returned");
                 }
             });
         }

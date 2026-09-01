@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import net.sf.jaer.UsbDevices;
+import net.sf.jaer.util.StartupProfiler;
 import net.sf.jaer.chip.Chip;
 // import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory;
 // import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
@@ -126,6 +127,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	 * @see #getNumInterfacesAvailable()
 	 */
 	synchronized public void buildInterfaceList() {
+		StartupProfiler.mark("HardwareInterfaceFactory.buildInterfaceList start");
 		final ArrayList<HardwareInterface> built = new ArrayList<>();
 		HardwareInterface u;
 		// System.out.println("****** HardwareInterfaceFactory.building interface list");
@@ -167,6 +169,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		interfaceList.clear();
 		interfaceList.addAll(built);
 		interfaceSnapshot = List.copyOf(built);
+		StartupProfiler.mark("HardwareInterfaceFactory.buildInterfaceList end n=" + built.size());
 	}
 
 	/**

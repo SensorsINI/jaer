@@ -28,7 +28,9 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.io.Serializable;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -62,6 +64,65 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     public static final String FILE_EXTENSION_TXT = "txt", FILE_EXTENSION_CSV = "csv";
+    private static final int PREVIEW_HEADER_LINES = 10;
+    private static final int PREVIEW_SAMPLE_DATA_LINES = 8;
+
+    /**
+     * File-dialog preview for CSV/TXT. Comment lines ({@code #} / {@code %}) are
+     * optional (jAER exports have them; many third-party files do not). Event
+     * count is {@code fileSize / mean sample-line bytes}. Does not open the
+     * format dialog or scan the whole file.
+     */
+    public static String peekPreviewOverlay(File file) throws IOException {
+        StringBuilder header = new StringBuilder();
+        int headerKept = 0;
+        long sampleBytes = 0;
+        int sampleLines = 0;
+        String sampleLine = null;
+        try (BufferedReader r = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8), 8192)) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                String t = line.trim();
+                if (t.isEmpty()) {
+                    continue;
+                }
+                if (t.startsWith("#") || t.startsWith("%")) {
+                    if (headerKept < PREVIEW_HEADER_LINES) {
+                        if (header.length() > 0) {
+                            header.append('\n');
+                        }
+                        header.append(t);
+                        headerKept++;
+                    }
+                    continue;
+                }
+                if (sampleLine == null) {
+                    sampleLine = t.length() > 80 ? t.substring(0, 80) + "…" : t;
+                }
+                sampleBytes += t.getBytes(StandardCharsets.UTF_8).length + 1;
+                sampleLines++;
+                if (sampleLines >= PREVIEW_SAMPLE_DATA_LINES) {
+                    break;
+                }
+            }
+        }
+        EngineeringFormat fmt = new EngineeringFormat();
+        fmt.setPrecision(1);
+        StringBuilder sb = new StringBuilder();
+        sb.append(fmt.format((double) file.length()).trim()).append("B");
+        if (sampleLines > 0 && sampleBytes > 0) {
+            double bytesPerLine = sampleBytes / (double) sampleLines;
+            long est = (long) (file.length() / bytesPerLine);
+            sb.append("  ~").append(fmt.format((double) est).trim()).append(" ev");
+        }
+        if (header.length() > 0) {
+            sb.append('\n').append(header);
+        } else if (sampleLine != null) {
+            sb.append("\n").append(sampleLine);
+        }
+        return sb.toString();
+    }
     /**
      * BufferedRandomAccessFile buffer size in bytes
      */

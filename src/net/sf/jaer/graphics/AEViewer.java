@@ -218,6 +218,7 @@ import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
 import net.sf.jaer.util.RecordingDiskSpace;
+import net.sf.jaer.util.StartupProfiler;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -650,6 +651,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Extra same-file AEDAT-4 viewers skip the LZ4 re-record dialog (origin already chose). */
     private boolean skipAedat4Lz4Offer;
     private boolean suppressAdaptiveRenderSkipMenuSync;
+    /** Chip + ViewLoop run after first paint; USB scan is off the EDT. */
+    private final AtomicBoolean livePathStarted = new AtomicBoolean(false);
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
     /** How long File → Remote HTML tooltips stay visible while the pointer is over the item. */
@@ -676,6 +679,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param chipClassName the AEChip to use
      */
     public AEViewer(JAERViewer jaerViewer, String chipClassName) {
+        StartupProfiler.mark("AEViewer ctor start");
         loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
         loggingHandler.getSupport().addPropertyChangeListener(this); // logs to Console handler in AEViewer
         Logger.getLogger("").addHandler(loggingHandler);
@@ -723,6 +727,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        StartupProfiler.mark("AEViewer after initComponents");
         bindCtrlWAbortToRootPane();
         updateExitMenuTooltip();
         initRosOutputRemoteMenu();
@@ -914,6 +919,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // exists()/isDirectory() can stall for minutes on a wedged Dropbox/NFS path.
         FileAccessTimeout.Kind recordingKind = FileAccessTimeout.kind(lastRecordingFolder);
+        StartupProfiler.mark("AEViewer after lastRecordingFolder FileAccessTimeout");
         if (recordingKind != FileAccessTimeout.Kind.DIRECTORY) {
             log.warning("lastRecordingFolder " + lastRecordingFolder + " no good (" + recordingKind
                     + " within " + FileAccessTimeout.timeoutMs() + " ms), defaulting to " + defaultRecordingFolderName);
@@ -1029,49 +1035,104 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("could register help item: " + e.toString());
         }
 
-        // Do not rescan USB when other viewers are already LIVE (WinUSB getDeviceList
-        // can stall streaming). First window of a session fills the cache.
-        if (HardwareInterfaceFactory.instance().getCachedNumInterfacesAvailable() == 0) {
-            HardwareInterfaceFactory.instance().buildInterfaceList();
-        }
-        buildInterfaceMenu();
         buildDeviceMenu();
-        // Prefer remembered live AEChip before first GLCanvas so ViewLoop does not
-        // immediately recreate/reparent OpenGL (crashes some Intel Arc drivers).
-        maybeUseRememberedLiveChipAtStartup();
-        // we need to do this after building device menu so that proper menu item radio button can be selected
-//        cleanup(); // close sockets if they are open
-        setAeChipClass(aeChipClass);
+        StartupProfiler.mark("AEViewer after buildDeviceMenu");
 
         playerControlPanel.setVisible(false);
         setFocusable(true);
         requestFocus();
-
         fixRecordingControls();
-
-        myDraggedFileDropTarget = new DropTarget(getImagePanel(), this); // add support for dragged file onto display, lost somehow. AEViewer is the listener via drag events
-
-        // init menu items that are checkboxes to correct initial state
+        myDraggedFileDropTarget = new DropTarget(getImagePanel(), this);
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
         recordingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isRecordingPlaybackImmediatelyEnabled());
-        if (getRenderer() == null) {
-            throw new NullPointerException("getRenderer() returns null for this AEChip " + chip);
-        }
-        acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
-//        autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
-        pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
+        pauseRenderingCheckBoxMenuItem.setSelected(false);
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         recordFilteredEventsCheckBoxMenuItem.setSelected(recordFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
         setJogNCount.setText("Set forward/reverse jog packet count N... (currently " + getAePlayer().getJogPacketCount() + ")");
-
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
-        syncAdaptiveRenderSkipMenuFromRenderer();
+        setTitleAccordingToState();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                StartupProfiler.mark("AEViewer.windowOpened");
+                StartupProfiler.dump();
+            }
+        });
+        showViewerFrameEarly();
+        StartupProfiler.mark("AEViewer ctor end (chip/OpenGL deferred)");
+        scheduleFinishLivePath();
+    }
 
-        viewLoop = new ViewLoop();
-        LibUsbHotplug.addListener(usbHotplugListener);
-        viewLoop.start();
+    /**
+     * Show the JFrame before USB enumeration and JOGL {@code GLProfile} so the
+     * EDT can paint chrome. ChipCanvas still constructed on the EDT afterward
+     * (Intel Arc must not create a GLCanvas off-EDT).
+     */
+    private void showViewerFrameEarly() {
+        if (isVisible()) {
+            return;
+        }
+        setStatusMessage("Starting sensor / OpenGL…");
+        setVisible(true);
+        StartupProfiler.mark("AEViewer.setVisible(true) early");
+    }
 
+    /**
+     * First USB {@code getDeviceList} off the EDT, then chip + ViewLoop on a
+     * later EDT turn so this frame can paint first.
+     */
+    private void scheduleFinishLivePath() {
+        Thread t = new Thread(() -> {
+            try {
+                HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+                if (factory.getCachedNumInterfacesAvailable() == 0) {
+                    StartupProfiler.mark("AEViewer USB buildInterfaceList start");
+                    factory.buildInterfaceList();
+                    StartupProfiler.mark("AEViewer USB buildInterfaceList end");
+                }
+            } catch (Throwable e) {
+                log.log(Level.WARNING, "Startup USB scan failed: " + e, e);
+            }
+            SwingUtilities.invokeLater(this::finishLivePath);
+        }, "jaer-startup-usb");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Chip, OpenGL canvas, and ViewLoop after the window is showing. */
+    private void finishLivePath() {
+        if (!livePathStarted.compareAndSet(false, true)) {
+            return;
+        }
+        StartupProfiler.mark("AEViewer finishLivePath start");
+        try {
+            buildInterfaceMenu();
+            maybeUseRememberedLiveChipAtStartup();
+            StartupProfiler.mark("AEViewer after maybeUseRememberedLiveChipAtStartup");
+            setAeChipClass(aeChipClass);
+            StartupProfiler.mark("AEViewer after setAeChipClass");
+            if (getRenderer() == null) {
+                throw new NullPointerException("getRenderer() returns null for this AEChip " + chip);
+            }
+            acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
+            syncAdaptiveRenderSkipMenuFromRenderer();
+            viewLoop = new ViewLoop();
+            LibUsbHotplug.addListener(usbHotplugListener);
+            viewLoop.start();
+            StartupProfiler.mark("AEViewer after ViewLoop.start");
+            startRemoteControlIfEnabled();
+            setTitleAccordingToState(true);
+            setStatusMessage(null);
+        } catch (Throwable t) {
+            log.log(Level.SEVERE, "Deferred AEViewer chip / OpenGL startup failed", t);
+            setStatusMessage("Startup failed: " + t.getMessage());
+        }
+        StartupProfiler.mark("AEViewer finishLivePath end");
+        StartupProfiler.dump();
+    }
+
+    private void startRemoteControlIfEnabled() {
         if (RemoteControl.isEnabledPref()) {
             try {
                 int remoteControlPort = RemoteControl.getViewerPortPref();
@@ -1107,8 +1168,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else {
             log.fine("AEViewer RemoteControl disabled (Preferences " + RemoteControl.PREF_ENABLED + "=false)");
         }
-        setTitleAccordingToState();
-
     }
 
     private void handleAEChipClassNotAvailable() {
@@ -2899,6 +2958,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 ChipCanvas.setGlCanvasToAdopt(reusableGlCanvas);
             }
             try {
+                StartupProfiler.mark("setAeChipClass constructChip start");
                 if (getChip() == null) { // handle initial case
                     constructChip(constructor);
                 } else {
@@ -2914,6 +2974,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } finally {
                 ChipCanvas.setGlCanvasToAdopt(null); // clear if constructChip failed
             }
+            StartupProfiler.mark("setAeChipClass constructChip end");
             if (chip == null) {
                 log.warning("null chip, not continuing");
                 return;
@@ -2952,6 +3013,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             makeCanvas();
+            StartupProfiler.mark("setAeChipClass after makeCanvas");
             Component[] devMenuComps = deviceMenu.getMenuComponents();
             for (Component devMenuComp : devMenuComps) {
                 if (devMenuComp instanceof JRadioButtonMenuItem) {
@@ -2979,6 +3041,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 
             showFilters(enableFiltersOnStartup);
+            StartupProfiler.mark("setAeChipClass after showFilters(" + enableFiltersOnStartup + ")");
             if (enableFiltersOnStartup) {
                 getFilterFrame().setState(Frame.ICONIFIED); // set the filter frame iconified at first (but open) so that it doesn't obscure view
             }            // fix selected radio button for chip class
@@ -10557,8 +10620,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * re-rendering of the data.
      */
     public void interruptViewloop() {
-//        log.info("interrupting ViewLoop");
-        viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
+        if (viewLoop != null) {
+            viewLoop.interrupt();
+        }
     }
 
     private void onLibUsbHotplug(boolean arrived, int vid, int pid) {
