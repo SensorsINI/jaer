@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
@@ -48,6 +49,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
@@ -56,7 +58,9 @@ import net.sf.jaer.util.filter.HighpassFilter;
  * counter-transformed from integrated, high-pass-filtered pan/tilt/roll.
  * <p>
  * jAER 3.0 typed path: {@link #processImu} updates the transform;
- * {@link #processPolarity} warps DVS events. Legacy mixed
+ * {@link #processPolarity} warps DVS events. {@code processImu} only
+ * <em>reads</em> samples and must return the same {@link ImuPacket}: live
+ * AEDAT-4 recording writes that instance after the filter chain. Legacy mixed
  * {@link ApsDvsEventPacket} still supports {@code imuLagMs&gt;0} via an event FIFO.
  *
  * @author tobi
@@ -85,11 +89,12 @@ clears the offset.</li>
 <li>Set <code>lensFocalLengthMm</code> to your lens so rotation maps to the correct number
 of pixels.</li>
 <li>Check <b>Enabled</b> and <code>electronicStabilizationEnabled</code>. Use
+<code>showOverlay</code> for a green Steadicam ON/OFF label;
 <code>showGrid</code> / <code>showTransformRectangle</code> to judge residual motion.</li>
 </ol>
 <h3>Tuning</h3>
 <ul>
-<li><code>highpassTauMsTranslation</code> / <code>highpassTauMsRotation</code> &mdash;
+<li><code>transformHighpassFilterTimeconstantUs</code> &mdash;
 relax the transform back to identity (longer keeps more of a slow pan).</li>
 <li><code>disableTranslation</code> / <code>disableRotation</code> &mdash; stabilize only
 one component.</li>
@@ -100,7 +105,7 @@ packet are unchanged).</li>
 <li><code>transformResetLimitDegrees</code> &mdash; snap the transform to zero if pan/tilt
 grow too large. Hemisphere view raises this to at least 110&deg; and restores
 the previous value when disabled.</li>
-<li><code>hemisphereViewEnabled</code> &mdash; open a world-fixed
+<li><code>hemisphereViewEnabled</code> &mdash; (Experimental) open a world-fixed
 <code>ImageDisplay</code> painted from DVS events. <code>hemisphereHorizontalFovDeg</code>
 (default 120&deg;) is the map width, from the camera HFOV (pinhole:
 focal length, pixel pitch, array width) up to 360&deg;. Vertical span
@@ -139,10 +144,11 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
     HighpassFilter rollFilter = new HighpassFilter();
+    private static final int DEFAULT_TRANSFORM_HIGHPASS_TAU_US = 2_500_000;
     @Preferred
-    private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 2500);
-    @Preferred
-    private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 2500);
+    private int transformHighpassFilterTimeconstantUs = getInt("transformHighpassFilterTimeconstantUs",
+            Math.round(1000f * getFloat("highpassTauMsTranslation",
+                    getFloat("highpassTauMsRotation", DEFAULT_TRANSFORM_HIGHPASS_TAU_US / 1000f))));
     float radPerPixel;
     private volatile boolean resetCalled = false;
     private int lastTransformUpdateTimestamp = 0;
@@ -150,6 +156,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private long hpTimeUs = 0;
     private boolean initialized = false;
     private static final int HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG = 110;
+    @Preferred
     private int transformResetLimitDegrees = getInt("transformResetLimitDegrees", 75);
     /** Prefs/user value restored when hemisphere view is turned off. */
     private int transformResetLimitDegreesBeforeHemisphere = transformResetLimitDegrees;
@@ -165,6 +172,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
     @Preferred
     private boolean showGrid = getBoolean("showGrid", true);
+    private boolean showOverlay = getBoolean("showOverlay", true);
     public boolean disableTranslation = getBoolean("disableTranslation", false);
     public boolean disableRotation = getBoolean("disableRotation", false);
     private int sxm1;
@@ -175,20 +183,17 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     protected float imuLagMs = getFloat("imuLagMs", 0);
     @Preferred
     private boolean hemisphereViewEnabled = getBoolean("hemisphereViewEnabled", false);
-    @Preferred
     private float hemisphereHorizontalFovDeg = getFloat("hemisphereHorizontalFovDeg", 120);
     @Preferred
     private float hemisphereFadeTauMs = getFloat("hemisphereFadeTauMs", 2000);
     public enum HemisphereColorMode {
         Gray, RedGreen
     }
-    @Preferred
     private HemisphereColorMode hemisphereColorMode = HemisphereColorMode.valueOf(getString("hemisphereColorMode", HemisphereColorMode.Gray.name()));
     @Preferred
     private int colorScale = getInt("colorScale", 16);
     @Preferred
     private boolean useHighpassedTransform = getBoolean("useHighpassedTransform", true);
-    @Preferred
     private boolean dontRenderMainDisplay = getBoolean("dontRenderMainDisplay", true);
     /** Overlay text while {@link #dontRenderMainDisplay} skips AEViewer chip rendering. */
     private static final String SKIP_MAIN_DISPLAY_OVERLAY
@@ -204,20 +209,21 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     public Steadicam(AEChip chip) {
         super(chip);
         initFilter();
-        String transform = "Transform", display = "Display", imu = "IMU", inpaint = "Hemisphere Inpainting";
+        String transform = "2. Transform", display = "3. Display", imu = "4. IMU", inpaint = "5. Hemisphere Inpainting", steadicam_section = "1. Steadicam";
 
-        setPropertyTooltip("electronicStabilizationEnabled", "stabilize by shifting events according to IMU gyros");
+        setPropertyTooltip(steadicam_section, "electronicStabilizationEnabled", "stabilize by shifting events according to IMU gyros");
         setPropertyTooltip(display, "flipContrast", "flips contrast of output events depending on direction of motion");
         setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output; keep sensor still for 1–2 s");
         setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
         setPropertyTooltip(imu, "numCalibrationSamples", "Number of IMU samples to average for offset correction");
         setPropertyTooltip(transform, "transformImageEnabled", "Warps APS image rendering (display only; APS data unchanged)");
-        setPropertyTooltip(transform, "highpassTauMsTranslation", "highpass time constant (ms) relaxing pan/tilt transform to zero");
-        setPropertyTooltip(transform, "highpassTauMsRotation", "highpass time constant (ms) relaxing roll transform to zero");
+        setPropertyTooltip(transform, "transformHighpassFilterTimeconstantUs",
+                "highpass time constant (µs) relaxing pan/tilt/roll transform to zero");
         setPropertyTooltip(transform, "lensFocalLengthMm", "lens focal length (mm) for scaling rotation to pixels");
         setPropertyTooltip(transform, "transformResetLimitDegrees", "reset transform to 0 if pan/tilt exceed this many degrees (hemisphere view forces at least 110° and restores the previous value when disabled)");
         setPropertyTooltip(display, "showTransformRectangle", "show the red transform rectangle and cross hairs");
         setPropertyTooltip(display, "showGrid", "show a grid to judge stabilization");
+        setPropertyTooltip(display, "showOverlay", "show green Steadicam ON/OFF overlay");
         setPropertyTooltip(transform, "disableRotation", "disable rotational part of transform");
         setPropertyTooltip(transform, "disableTranslation", "disable translational part of transform");
         setPropertyTooltip(transform, "selectCenterOfRotation", "click on the image to set center of rotation");
@@ -232,9 +238,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         setPropertyTooltip(inpaint, "clearHemisphere", "clear the hemisphere inpaint map to the background");
         setPropertyTooltip(inpaint, "dontRenderMainDisplay", "skip all AEViewer chip rendering (APS/DVS/IMU/markers) while the hemisphere is painted; blank canvas overlay names this filter");
 
-        rollFilter.setTauMs(highpassTauMsRotation);
-        panTranslationFilter.setTauMs(highpassTauMsTranslation);
-        tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
+        applyTransformHighpassTau();
         panCalibrator = new CalibrationFilter();
         tiltCalibrator = new CalibrationFilter();
         rollCalibrator = new CalibrationFilter();
@@ -256,6 +260,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     @Override
+    /** Reads gyros; does not rewrite sample timestamps or replace the packet. */
     synchronized public ImuPacket processImu(ImuPacket in) {
         if ((!electronicStabilizationEnabled && !hemisphereViewEnabled) || in == null) {
             return in;
@@ -655,8 +660,13 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             imuTextRenderer.end3DRendering();
         }
 
+        if (showOverlay) {
+            String overlay = electronicStabilizationEnabled ? "Steadicam ON" : "Steadicam OFF";
+            DrawGL.drawStringDropShadow(14, chip.getSizeX() / 2f, chip.getSizeY() - 16, 0.5f, Color.GREEN, overlay);
+        }
+
         GL2 gl = null;
-        if (showGrid || showTransformRectangle) {
+        if (showGrid || showTransformRectangle || centerOfRotation != null) {
             gl = drawable.getGL().getGL2();
         }
         if (gl == null) {
@@ -865,25 +875,22 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         putBoolean("electronicStabilizationEnabled", electronicStabilizationEnabled);
     }
 
-    public float getHighpassTauMsTranslation() {
-        return highpassTauMsTranslation;
+    public int getTransformHighpassFilterTimeconstantUs() {
+        return transformHighpassFilterTimeconstantUs;
     }
 
-    public void setHighpassTauMsTranslation(float highpassTauMs) {
-        this.highpassTauMsTranslation = highpassTauMs;
-        putFloat("highpassTauMsTranslation", highpassTauMs);
-        panTranslationFilter.setTauMs(highpassTauMs);
-        tiltTranslationFilter.setTauMs(highpassTauMs);
+    public void setTransformHighpassFilterTimeconstantUs(int transformHighpassFilterTimeconstantUs) {
+        int tauUs = Math.max(1, transformHighpassFilterTimeconstantUs);
+        this.transformHighpassFilterTimeconstantUs = tauUs;
+        putInt("transformHighpassFilterTimeconstantUs", tauUs);
+        applyTransformHighpassTau();
     }
 
-    public float getHighpassTauMsRotation() {
-        return highpassTauMsRotation;
-    }
-
-    public void setHighpassTauMsRotation(float highpassTauMs) {
-        this.highpassTauMsRotation = highpassTauMs;
-        putFloat("highpassTauMsRotation", highpassTauMs);
-        rollFilter.setTauMs(highpassTauMs);
+    private void applyTransformHighpassTau() {
+        float tauMs = transformHighpassFilterTimeconstantUs / 1000f;
+        panTranslationFilter.setTauMs(tauMs);
+        tiltTranslationFilter.setTauMs(tauMs);
+        rollFilter.setTauMs(tauMs);
     }
 
     public float getLensFocalLengthMm() {
@@ -1012,6 +1019,15 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     public void setShowGrid(boolean showGrid) {
         this.showGrid = showGrid;
         putBoolean("showGrid", showGrid);
+    }
+
+    public boolean isShowOverlay() {
+        return showOverlay;
+    }
+
+    public void setShowOverlay(boolean showOverlay) {
+        this.showOverlay = showOverlay;
+        putBoolean("showOverlay", showOverlay);
     }
 
     public float getImuLagMs() {
