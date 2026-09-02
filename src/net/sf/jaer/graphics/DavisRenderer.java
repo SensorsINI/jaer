@@ -252,6 +252,8 @@ public class DavisRenderer extends AEChipRenderer {
      * interval to print warning messages
      */
     protected static int WARNING_INTERVAL = 100;
+    private static final long APPLY_FRAME_OK_FINE_INTERVAL_MS = 2000L;
+    private long lastApplyFrameOkFineMs;
 
     @Override
     public synchronized void render(final EventPacket pkt) {
@@ -457,10 +459,14 @@ public class DavisRenderer extends AEChipRenderer {
             ((DavisChip) chip).controlExposure();
         }
         if (log.isLoggable(Level.FINE)) {
-            log.log(Level.FINE,
-                    "applyFramePacket OK {0} rgb={1} min={2} max={3} written={4} clipped={5} sizeX={6} sizeY={7} pixmapLen={8}",
-                    new Object[]{frame, rgb, (int) minValue, (int) maxValue, written, clipped, sizeX, sizeY,
-                        buf == null ? -1 : buf.length});
+            long now = System.currentTimeMillis();
+            if (now - lastApplyFrameOkFineMs >= APPLY_FRAME_OK_FINE_INTERVAL_MS) {
+                lastApplyFrameOkFineMs = now;
+                log.log(Level.FINE,
+                        "applyFramePacket OK {0} rgb={1} min={2} max={3} written={4} clipped={5} sizeX={6} sizeY={7} pixmapLen={8}",
+                        new Object[]{frame, rgb, (int) minValue, (int) maxValue, written, clipped, sizeX, sizeY,
+                            buf == null ? -1 : buf.length});
+            }
         }
     }
 

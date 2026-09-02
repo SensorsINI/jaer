@@ -161,6 +161,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private static final long SKIPPED_EVENT_WARNING_INTERVAL_MS = 1000L;
     private long lastSkippedEventWarningMs;
     private long skippedEventsSinceWarning;
+    /** Steady-state read/append FINE is once per this interval; anomalies stay unthrottled. */
+    private static final long PLAYBACK_FINE_INTERVAL_MS = 2000L;
+    private long lastPlaybackFineLogMs;
+    private int lastLoggedDecodeKey = Integer.MIN_VALUE;
 
     /** Typed packets for the most recent readPacketBy* time window. */
     private final List<FramePacket> pendingFrames = new ArrayList<>();
@@ -504,10 +508,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
             }
         }
-        if (nFrames > 0 || log.isLoggable(Level.FINER)) {
-            log.log(nFrames > 0 ? Level.FINE : Level.FINER,
-                    String.format("AEDAT-4 appendTypedPackets window=[%d,%d] frames=%d imuPkts=%d (indexed frames=%d)",
-                            lastReadT0, lastReadT1, nFrames, nImu, frameRefs.length));
+        if ((nFrames > 0 || nImu > 0) && shouldLogPlaybackFine()) {
+            log.fine(String.format("AEDAT-4 appendTypedPackets window=[%d,%d] frames=%d imuPkts=%d (indexed frames=%d)",
+                    lastReadT0, lastReadT1, nFrames, nImu, frameRefs.length));
         }
         pendingFrames.clear();
         pendingImu.clear();
@@ -1433,10 +1436,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (frameRefs[fi].unixEnd >= t0) {
                 FramePacket decoded = decodeFrame(frameRefs[fi]);
                 pendingFrames.add(decoded);
-                if (log.isLoggable(Level.FINE)) {
+                if (decoded.isEmpty() && log.isLoggable(Level.FINE)) {
                     log.fine(String.format(
-                            "AEDAT-4 collectTyped frameRef[%d] relTs=[%d,%d] -> %s empty=%s",
-                            fi, frameRefs[fi].unixStart, frameRefs[fi].unixEnd, decoded, decoded.isEmpty()));
+                            "AEDAT-4 collectTyped empty frameRef[%d] relTs=[%d,%d] -> %s",
+                            fi, frameRefs[fi].unixStart, frameRefs[fi].unixEnd, decoded));
                 }
             }
             fi++;
@@ -1570,7 +1573,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
             }
         }
-        if (log.isLoggable(Level.FINE)) {
+        int decodeKey = (fmt & 0xff) ^ (w << 8) ^ (h << 20) ^ nbytes ^ (layout.colorMode.ordinal() << 4)
+                ^ (layout.u16 ? 1 : 0) ^ (layout.opencvBgr ? 2 : 0) ^ (dvOpenCvCoordinates ? 4 : 0);
+        if (decodeKey != lastLoggedDecodeKey && log.isLoggable(Level.FINE)) {
+            lastLoggedDecodeKey = decodeKey;
             log.fine(String.format(
                     "AEDAT-4 decodeFrame fmt=%d %dx%d nbytes=%d -> %s u16=%s bgr=%s dvOpenCv=%s",
                     fmt & 0xff, w, h, nbytes, layout.colorMode, layout.u16, layout.opencvBgr, dvOpenCvCoordinates));
@@ -1944,10 +1950,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             collectTypedForWindow(tStart, tEnd, start, end);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(String.format("readPacketByNumber n=%d pos %d->%d [%d,%d) events=%d",
-                        n, pos0, position, start, end, pkt.getNumEvents()));
-            }
+            logPlaybackRead("readPacketByNumber n=%d pos %d->%d [%d,%d) events=%d",
+                    n, pos0, position, start, end, pkt.getNumEvents());
             return pkt;
         }
         // Backwards: events in [start, position), then move position to start.
@@ -1964,10 +1968,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         collectTypedForWindow(t0, t1, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
-        if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("readPacketByNumber n=%d (back) pos %d->%d [%d,%d) events=%d",
-                    n, pos0, position, start, end, pkt.getNumEvents()));
-        }
+        logPlaybackRead("readPacketByNumber n=%d (back) pos %d->%d [%d,%d) events=%d",
+                n, pos0, position, start, end, pkt.getNumEvents());
         return pkt;
     }
 
@@ -2008,10 +2010,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             collectTypedForWindow(tStart, tEnd, start, end);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(String.format("readPacketByTime dt=%d pos %d->%d [%d,%d) t=%d..%d events=%d",
-                        dt, pos0, position, start, end, tStart, tEnd, pkt.getNumEvents()));
-            }
+            logPlaybackRead("readPacketByTime dt=%d pos %d->%d [%d,%d) t=%d..%d events=%d",
+                    dt, pos0, position, start, end, tStart, tEnd, pkt.getNumEvents());
             return pkt;
         }
         // Backwards: exclusive end is current position; find start with ts >= target.
@@ -2042,10 +2042,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         collectTypedForWindow(t0, tEnd, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
-        if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("readPacketByTime dt=%d (back) pos %d->%d [%d,%d) t=%d..%d target=%d events=%d",
-                    dt, pos0, position, start, end, t0, tEnd, target, pkt.getNumEvents()));
-        }
+        logPlaybackRead("readPacketByTime dt=%d (back) pos %d->%d [%d,%d) t=%d..%d target=%d events=%d",
+                dt, pos0, position, start, end, t0, tEnd, target, pkt.getNumEvents());
         return pkt;
     }
 
@@ -2169,6 +2167,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private long effectiveMarkOut() {
         return Math.min(markOut, playableSize());
+    }
+
+    private boolean shouldLogPlaybackFine() {
+        if (!log.isLoggable(Level.FINE)) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastPlaybackFineLogMs < PLAYBACK_FINE_INTERVAL_MS) {
+            return false;
+        }
+        lastPlaybackFineLogMs = now;
+        return true;
+    }
+
+    private void logPlaybackRead(String fmt, Object... args) {
+        if (shouldLogPlaybackFine()) {
+            log.fine(String.format(fmt, args));
+        }
     }
 
     private void firePosition() {
