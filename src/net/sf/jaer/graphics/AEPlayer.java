@@ -35,6 +35,7 @@ import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
+import net.sf.jaer.util.NameFilteringFileChooser;
 
 /**
  * Handles file input of AEs to control the number of events/sample or period of
@@ -85,7 +86,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public void openAEInputFileDialog() {
 //        try{Thread.currentThread().sleep(200);}catch(InterruptedException e){}
-        fileChooser = new JFileChooser();
+        fileChooser = new NameFilteringFileChooser();
         ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, viewer.getChip());
         // from book swing hacks
         new FileDeleter(fileChooser, preview);
@@ -267,6 +268,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 //            System.out.println("");
 //            System.out.println("comp="+comp);
 //            if (comp.getClass() == sun.swing.FilePane.class) return comp;
+            if (comp instanceof javax.swing.text.JTextComponent
+                    || comp instanceof javax.swing.AbstractButton) {
+                return null;
+            }
             if (comp instanceof Container) {
 //                System.out.println(comp+"\n");
 //                comp.addMouseListener(new MouseAdapter(){

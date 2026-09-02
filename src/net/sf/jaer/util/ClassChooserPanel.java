@@ -443,17 +443,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             if (onlyStable && ((filterString == null) || filterString.equals(""))) {
                 passAllStable = true; // pass all stable filters 
             }
-            boolean useCamelCase = false;
-            for (int i = 0; i < filterString.length(); i++) {
-                if (Character.isUpperCase(filterString.charAt(i))) {
-                    useCamelCase = true;
-                    break;
-                }
-            }
 
             boolean includeExperimental = includeExperimentalCB.isSelected();
 
-//            filterString = filterString.toLowerCase(); // camelcase search
             resetList();
 
             Vector v = new Vector();  // list to prune out
@@ -482,22 +474,12 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         continue;
                     }
                     if (includeDescriptionCB.isSelected()) {
-                        str = (cn.toString() + cn.getDescription()); // camelcase search// .toLowerCase();
+                        str = (cn.toString() + cn.getDescription());
                     } else {
                         str = cn.toString();
                     }
-                    // if filterString (that user types into box) contains any uppercase chars, then search
-                    // by CamelCase, otherwise match all by lowercase
-                    if (useCamelCase) {
-                        String match = CamelCaseSearch.matchCamelCase(filterString, str);
-                        if (match == null || (!isStable && onlyStable)) { // no match or should not be in list, so remove from list
-                            v.add(o);
-                        }
-                    } else {
-                        int ind = str.toLowerCase().indexOf(filterString);
-                        if (ind == -1 || (!isStable && onlyStable)) {
-                            v.add(o);
-                        }
+                    if (!CamelCaseSearch.matches(str, filterString) || (!isStable && onlyStable)) {
+                        v.add(o);
                     }
                 }
             }

@@ -25,7 +25,48 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-class CamelCaseSearch {
+/**
+ * Substring and CamelCase matching used by {@link ClassChooserPanel} and
+ * {@link NameFilteringFileChooser}.
+ */
+public final class CamelCaseSearch {
+
+    private CamelCaseSearch() {
+    }
+
+    /**
+     * True when {@code query} contains an uppercase letter, the ClassChooser
+     * cue to switch from substring to CamelCase matching.
+     */
+    public static boolean usesCamelCase(String query) {
+        if (query == null) {
+            return false;
+        }
+        for (int i = 0; i < query.length(); i++) {
+            if (Character.isUpperCase(query.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * ClassChooser rule: empty query matches everything; any uppercase in
+     * {@code query} uses {@link #matchCamelCase}; otherwise case-insensitive
+     * substring.
+     */
+    public static boolean matches(String haystack, String query) {
+        if (query == null || query.isEmpty()) {
+            return true;
+        }
+        if (haystack == null) {
+            return false;
+        }
+        if (usesCamelCase(query)) {
+            return matchCamelCase(query, haystack) != null;
+        }
+        return haystack.toLowerCase().indexOf(query.toLowerCase()) >= 0;
+    }
 
     /**
      * Static method to search by CamelCase for a string in list of strings.

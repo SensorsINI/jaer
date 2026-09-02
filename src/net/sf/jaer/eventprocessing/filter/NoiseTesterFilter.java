@@ -94,6 +94,7 @@ import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.ClassNameWithDescriptionAndDevelopmentStatus;
 import net.sf.jaer.util.DATFileFilter;
+import net.sf.jaer.util.NameFilteringFileChooser;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
@@ -1938,7 +1939,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     synchronized public void doToggleOnUseNoiseRecording() {
-        JFileChooser fileChooser = new JFileChooser();
+        JFileChooser fileChooser = new NameFilteringFileChooser();
         ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, getChip());
         // from book swing hacks
         fileChooser.addPropertyChangeListener(preview);

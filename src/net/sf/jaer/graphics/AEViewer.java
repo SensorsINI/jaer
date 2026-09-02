@@ -214,6 +214,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.ClassChooserDialog;
 import net.sf.jaer.util.DATFileFilter;
+import net.sf.jaer.util.NameFilteringFileChooser;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.FileAccessTimeout;
@@ -8700,7 +8701,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 }
 
-                JFileChooser fileChooser = new JFileChooser();
+                JFileChooser fileChooser = new NameFilteringFileChooser();
                 ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, chip); // from book swing hacks
                 fileChooser.addPropertyChangeListener(preview);
                 fileChooser.setAccessory(preview);
