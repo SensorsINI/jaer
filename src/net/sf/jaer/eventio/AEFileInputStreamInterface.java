@@ -191,6 +191,55 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
         setFractionalPosition((float) frac);
     }
 
+    /**
+     * True when the AEPlayer slider should map 0–1 to recording time rather than
+     * event count. Default false (AEDAT-2 and other formats).
+     */
+    default boolean usesTimeMappedSlider() {
+        return false;
+    }
+
+    /**
+     * Fractional playback-slider position. Default is {@link #getFractionalPosition()}
+     * (event count). Indexed AEDAT-4 uses elapsed time.
+     */
+    default float getPlaybackSliderFraction() {
+        return getFractionalPosition();
+    }
+
+    /**
+     * Seek from a playback-slider fraction. Default is {@link #setFractionalPosition(float)}.
+     */
+    default void setPlaybackSliderFraction(float frac) {
+        setFractionalPosition(frac);
+    }
+
+    /**
+     * Map an event-index mark onto the playback slider.
+     */
+    default int eventPositionToSliderValue(long eventPos, int sliderMax) {
+        long n = size();
+        if (n <= 0 || sliderMax <= 0) {
+            return 0;
+        }
+        return Math.round((float) eventPos / n * sliderMax);
+    }
+
+    /**
+     * Log-relative event rate vs time, bins in 0–1, or {@code null} if unavailable.
+     * Packet-table estimate; not a decompressed rate trace.
+     */
+    default float[] getLogRelativeEventRateByTime() {
+        return null;
+    }
+
+    /**
+     * Approx timestamp at the current read position, unwrapped µs from file time base.
+     */
+    default long getPositionTimestampUs() {
+        return getMostRecentTimestamp() & 0xffffffffL;
+    }
+
     /** Adds or removes a marker at current position() of AEFileInputStream.
      * 
      * @return true if marker added, false if one is removed.

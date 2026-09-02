@@ -81,6 +81,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * hangs when on-demand decode would otherwise walk millions of FlatBuffer events.
      */
     private static final int MAX_EVENTS_PER_READ = 100_000;
+    /** Equal-time bins for the AEPlayer log event-rate sparkline (packet-table estimate). */
+    private static final int EVENT_RATE_BINS = 1024;
+    /** Floor (Hz) so log scale stays defined for quiet bins. */
+    private static final double EVENT_RATE_LOG_FLOOR_HZ = 1.0;
 
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -171,6 +175,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private int cachedEventPacketIndex = -1;
     private ByteBuffer cachedEventFlat;
 
+    /**
+     * Log10(rate)/log10(max) per equal-time bin, or {@code null}. Built from the
+     * sparse packet table (no decompress).
+     */
+    private float[] logRelativeEventRateByTime;
+
     public Aedat4FileInputStream(File file, AEChip chip) throws IOException {
         this(file, chip, null, null);
     }
@@ -240,6 +250,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw e;
         }
         clearMarks();
+        buildLogRelativeEventRateBins();
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         log.info(String.format(
@@ -269,6 +280,59 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** Whole-file sparse index (cache, FileDataTable, or full scan), not a preview prefix. */
     public boolean isIndexComplete() {
         return indexComplete;
+    }
+
+    @Override
+    public boolean usesTimeMappedSlider() {
+        return indexComplete && eventRefs.length > 0 && getDurationUsLong() > 0;
+    }
+
+    @Override
+    public float getPlaybackSliderFraction() {
+        return usesTimeMappedSlider() ? getFractionalTimePosition() : getFractionalPosition();
+    }
+
+    @Override
+    public void setPlaybackSliderFraction(float frac) {
+        if (usesTimeMappedSlider()) {
+            setFractionalTimePosition(frac);
+        } else {
+            setFractionalPosition(frac);
+        }
+    }
+
+    @Override
+    public int eventPositionToSliderValue(long eventPos, int sliderMax) {
+        if (!usesTimeMappedSlider() || sliderMax <= 0) {
+            return AEFileInputStreamInterface.super.eventPositionToSliderValue(eventPos, sliderMax);
+        }
+        long dur = getDurationUsLong();
+        long n = playableSize();
+        if (dur <= 0 || n <= 0) {
+            return 0;
+        }
+        long idx = Math.max(0, Math.min(eventPos, n - 1));
+        float f = (float) ((timestampApproxLong(idx) - eventRefs[0].unixStart) / (double) dur);
+        if (f < 0) {
+            f = 0;
+        } else if (f > 1) {
+            f = 1;
+        }
+        return Math.round(f * sliderMax);
+    }
+
+    @Override
+    public float[] getLogRelativeEventRateByTime() {
+        return logRelativeEventRateByTime;
+    }
+
+    @Override
+    public long getPositionTimestampUs() {
+        if (!hasPolarity() || playableSize() == 0) {
+            return getMostRecentTimestamp() & 0xffffffffL;
+        }
+        long index = Math.max(0, Math.min(position == 0 ? 0 : position - 1, playableSize() - 1));
+        return timestampApproxLong(index);
     }
 
     public long getFrameCount() {
@@ -927,6 +991,117 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         markOut = playableSize();
         cachedEventPacketIndex = -1;
         cachedEventFlat = null;
+    }
+
+    /**
+     * Packet-mean event rate in equal-time bins, then log-relative to the file max.
+     * Quiet bins map to 0. No file I/O.
+     */
+    private void buildLogRelativeEventRateBins() {
+        logRelativeEventRateByTime = null;
+        if (!hasPolarity() || eventRefs.length == 0) {
+            return;
+        }
+        long t0 = eventRefs[0].unixStart;
+        long dur = getDurationUsLong();
+        if (dur <= 0) {
+            return;
+        }
+        int nBins = EVENT_RATE_BINS;
+        double[] counts = new double[nBins];
+        for (PacketRef r : eventRefs) {
+            if (r.numElements <= 0) {
+                continue;
+            }
+            long s = r.unixStart - t0;
+            long e = r.unixEnd - t0;
+            if (e <= s) {
+                e = s + 1;
+            }
+            int b0 = (int) Math.min(nBins - 1, Math.max(0, s * nBins / dur));
+            int b1 = (int) Math.min(nBins - 1, Math.max(0, (e - 1) * nBins / dur));
+            if (b1 < b0) {
+                b1 = b0;
+            }
+            double perBin = r.numElements / (double) (b1 - b0 + 1);
+            for (int b = b0; b <= b1; b++) {
+                counts[b] += perBin;
+            }
+        }
+        double binS = (dur * 1e-6) / nBins;
+        if (binS <= 0) {
+            return;
+        }
+        double maxHz = 0;
+        double[] hz = new double[nBins];
+        for (int i = 0; i < nBins; i++) {
+            hz[i] = counts[i] / binS;
+            if (hz[i] > maxHz) {
+                maxHz = hz[i];
+            }
+        }
+        if (maxHz <= 0) {
+            log.fine("AEDAT-4 event-rate sparkline skipped: maxHz=0");
+            return;
+        }
+        // Log-rate mapped from 5th–98th percentile so baseline activity is near zero height
+        // and a few hot packets do not flatten the rest.
+        int nLog = 0;
+        double[] logs = new double[nBins];
+        for (int i = 0; i < nBins; i++) {
+            if (hz[i] > 0) {
+                logs[nLog++] = Math.log10(Math.max(hz[i], EVENT_RATE_LOG_FLOOR_HZ));
+            }
+        }
+        if (nLog == 0) {
+            return;
+        }
+        Arrays.sort(logs, 0, nLog);
+        int pLow = Math.min(nLog - 1, Math.max(0, (int) (0.05 * nLog)));
+        int pHigh = Math.min(nLog - 1, Math.max(pLow + 1, (int) Math.ceil(0.98 * nLog) - 1));
+        double logMin = logs[pLow];
+        double logMax = logs[pHigh];
+        if (logMax <= logMin) {
+            logMin = 0;
+            logMax = Math.log10(Math.max(maxHz, EVENT_RATE_LOG_FLOOR_HZ));
+        }
+        if (logMax <= logMin) {
+            return;
+        }
+        double span = logMax - logMin;
+        float[] out = new float[nBins];
+        for (int i = 0; i < nBins; i++) {
+            if (hz[i] <= 0) {
+                out[i] = 0;
+            } else {
+                float v = (float) ((Math.log10(Math.max(hz[i], EVENT_RATE_LOG_FLOOR_HZ)) - logMin) / span);
+                if (v < 0f) {
+                    v = 0f;
+                } else if (v > 1f) {
+                    v = 1f;
+                }
+                out[i] = v;
+            }
+        }
+        logRelativeEventRateByTime = out;
+        if (log.isLoggable(Level.FINE)) {
+            int nz = 0;
+            float minP = 1, maxP = 0;
+            for (float v : out) {
+                if (v > 0) {
+                    nz++;
+                }
+                if (v < minP) {
+                    minP = v;
+                }
+                if (v > maxP) {
+                    maxP = v;
+                }
+            }
+            log.fine(String.format(
+                    "AEDAT-4 event-rate sparkline: %d bins, %d nonzero, maxHz=%.3g, logRel min=%.3f max=%.3f, packets=%d durationUs=%d",
+                    out.length, nz, maxHz, minP, maxP, eventRefs.length, dur));
+        }
     }
 
     private void synthesizeTimelineFromTypedStreams(List<PacketRef> frames, List<PacketRef> imus) {
@@ -2194,6 +2369,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
+     * Packet-table seek using unwrapped relative µs (not truncated to 32-bit).
+     */
+    public synchronized void setPositionFromTimestampUs(long timestampUs) {
+        position(eventIndexNearestTimestamp(timestampUs));
+    }
+
+    /**
      * Nearest playable event index for relative timestamp {@code t} using only
      * the sparse packet table (or timeline). No file I/O.
      */
@@ -2307,6 +2489,46 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public float getFractionalPosition() {
         long n = playableSize();
         return n == 0 ? 0 : (float) position / n;
+    }
+
+    /**
+     * Fraction of unwrapped recording duration at {@link #position()}.
+     */
+    public float getFractionalTimePosition() {
+        long dur = getDurationUsLong();
+        if (dur <= 0 || eventRefs.length == 0) {
+            return getFractionalPosition();
+        }
+        long n = playableSize();
+        if (position <= 0) {
+            return 0;
+        }
+        if (n > 0 && position >= n) {
+            return 1;
+        }
+        float f = (float) ((timestampApproxLong(Math.min(position, Math.max(0, n - 1)))
+                - eventRefs[0].unixStart) / (double) dur);
+        if (f < 0) {
+            return 0;
+        }
+        if (f > 1) {
+            return 1;
+        }
+        return f;
+    }
+
+    /**
+     * Seek to the packet-table event nearest {@code frac} of recording duration.
+     */
+    public void setFractionalTimePosition(float frac) {
+        frac = Math.max(0, Math.min(1, frac));
+        long dur = getDurationUsLong();
+        if (dur <= 0 || eventRefs.length == 0) {
+            setFractionalPosition(frac);
+            return;
+        }
+        long t = eventRefs[0].unixStart + (long) (frac * dur);
+        position(eventIndexNearestTimestamp(t));
     }
 
     @Override

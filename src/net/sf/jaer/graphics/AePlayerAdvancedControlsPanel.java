@@ -18,6 +18,7 @@ import java.awt.event.MouseWheelEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Hashtable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -126,6 +127,14 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 //        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARKS_CLEARED, this);
 //        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_POSITION, this);
         is.getSupport().addPropertyChangeListener(this);
+        bindSliderToStream(is);
+    }
+
+    /**
+     * Attach the log event-rate sparkline to the current file (EDT).
+     */
+    public void bindEventRateSparkline(AEFileInputStreamInterface stream) {
+        bindSliderToStream(stream);
     }
 
     /**
@@ -147,7 +156,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     sliderDontProcess = true;
                     // note this cool semaphore/flag trick to avoid processing the
                     // event generated when we programmatically set the slider position here
-                    playerSlider.setValue(Math.round(getFractionalPosition() * playerSlider.getMaximum()));
+                    playerSlider.setValue(Math.round(getPlaybackSliderFraction() * playerSlider.getMaximum()));
                     if (moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null) {
                         eventField.setText(Long.toString(aeViewer.aePlayer.position()));
                         timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
@@ -160,7 +169,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                         if (evt.getSource() instanceof AEPlayer) {
                             sliderDontProcess = true;
                             long pos = (long) evt.getNewValue();
-                            playerSlider.setValue(Math.round((float) pos / aePlayer.getAEInputStream().size() * playerSlider.getMaximum()));
+                            playerSlider.setValue(convertToSlider(pos));
 
                         }
                         {
@@ -179,7 +188,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                         if (evt.getSource() instanceof AEPlayer) {
                             sliderDontProcess = true;
                             long pos = (long) evt.getNewValue();
-                            playerSlider.setValue(Math.round((float) pos / aePlayer.getAEInputStream().size() * playerSlider.getMaximum()));
+                            playerSlider.setValue(convertToSlider(pos));
                         }
                         markOutPosition = playerSlider.getValue();
                         marksTable.put(markOutPosition, markOutLabel);
@@ -207,6 +216,10 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     AEFileInputStream.Marks marks = (Marks) evt.getNewValue();
                     setMarks(marks);
                     playerSlider.repaint();
+                } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
+                    if (evt.getSource() instanceof AEFileInputStreamInterface stream) {
+                        bindSliderToStream(stream);
+                    }
                 }
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_CLEARED)) {
                 // SyncPlayer (and other AbstractAEPlayer sources) are not AEFileInputStreamInterface
@@ -231,13 +244,37 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         return syncPlaybackCheckBox;
     }
 
-    private float getFractionalPosition() {
-        if (aeViewer.aePlayer.getAEInputStream() == null) {
-            log.warning("AEViewer.AEPlayer.getFractionalPosition: null fileAEInputStream, returning 0");
+    private float getPlaybackSliderFraction() {
+        AEFileInputStreamInterface stream = aeViewer.aePlayer.getAEInputStream();
+        if (stream == null) {
+            log.warning("AEViewer.AEPlayer.getPlaybackSliderFraction: null fileAEInputStream, returning 0");
             return 0;
         }
-        float fracPos = aeViewer.aePlayer.getAEInputStream().getFractionalPosition();
-        return fracPos;
+        return stream.getPlaybackSliderFraction();
+    }
+
+    private void bindSliderToStream(AEFileInputStreamInterface stream) {
+        float[] rates = stream != null ? stream.getLogRelativeEventRateByTime() : null;
+        boolean timeMapped = stream != null && stream.usesTimeMappedSlider();
+        playerSlider.setLogRelativeRates(timeMapped ? rates : null);
+        if (timeMapped) {
+            playerSlider.setToolTipText(
+                    "Playback position in recording time. Overlay is log event rate vs time (5th–98th percentile).");
+        } else {
+            playerSlider.setToolTipText("Shows and controls playback position (in events, not time)");
+        }
+        if (log.isLoggable(Level.FINE) || timeMapped) {
+            String msg = String.format(
+                    "AEPlayer sparkline bind: stream=%s timeMapped=%s rates=%s",
+                    stream == null ? "null" : stream.getClass().getSimpleName(),
+                    timeMapped,
+                    rates == null ? "null" : Integer.toString(rates.length));
+            if (timeMapped) {
+                log.info(msg);
+            } else {
+                log.fine(msg);
+            }
+        }
     }
 
     /**
@@ -350,11 +387,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         if (stream == null) {
             return null;
         }
-        long size = stream.size();
-        if (size <= 0) {
-            return 0;
-        }
-        return Math.round((float) pos / size * playerSlider.getMaximum());
+        return stream.eventPositionToSliderValue(pos, playerSlider.getMaximum());
     }
 
     /**
@@ -389,7 +422,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         buttonGroup1 = new javax.swing.ButtonGroup();
         controlsPanel = new javax.swing.JPanel();
         sliderPanel = new javax.swing.JPanel();
-        playerSlider = new javax.swing.JSlider();
+        playerSlider = new PlaybackPositionSlider();
         showMoreControlsButton = new javax.swing.JButton();
         moreControlsPanel = new javax.swing.JPanel();
         playerControlPanel = new javax.swing.JPanel();
@@ -813,11 +846,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         synchronized (aePlayer) {
             try {
-                aeViewer.aePlayer.setFractionalPosition(fracPos);
+                aeViewer.aePlayer.setPlaybackSliderFraction(fracPos);
                 AEFileInputStreamInterface stream = aeViewer.aePlayer.getAEInputStream();
                 int time = stream.getMostRecentTimestamp();
                 stream.setCurrentStartTimestamp(time);
-                String s = String.format("%8.3f s, %10d position", time * 1e-6f, stream.position());
+                String s = String.format("%8.3f s, %10d position",
+                        stream.getPositionTimestampUs() * 1e-6, stream.position());
                 aeViewer.setStatusMessage(s);
                 JAERViewer jv = aeViewer.getJaerViewer();
                 if (jv != null && jv.isSyncEnabled() && jv.getViewers().size() > 1) {
@@ -897,7 +931,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JButton playSlowerButton;
     private javax.swing.JPanel playbackModePanel;
     private javax.swing.JPanel playerControlPanel;
-    private javax.swing.JSlider playerSlider;
+    private PlaybackPositionSlider playerSlider;
     private javax.swing.JPanel playerStatusPanel;
     private javax.swing.JRadioButton realtimeButton;
     private javax.swing.JToggleButton repeatPlaybackButton;

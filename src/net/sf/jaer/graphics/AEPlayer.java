@@ -559,6 +559,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     }
                     log.fine("done(): applying restored marks to player controls");
                     applyRestoredMarksToPlayerControls(aeInputStream);
+                    viewer.getPlayerControls().bindEventRateSparkline(aeInputStream);
                     if (viewer.getChip().getRenderer() != null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)) {
                         log.fine("done(): showRenderingModeTextOnAeViewer");
                         AEChipRenderer renderer = (AEChipRenderer) viewer.getChip().getRenderer();
@@ -990,6 +991,21 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         aeInputStream.setFractionalPosition(frac);
+        resetPlaybackView();
+    }
+
+    /**
+     * Slider seek: time fraction on indexed AEDAT-4, event fraction otherwise.
+     */
+    public void setPlaybackSliderFraction(float frac) {
+        if (aeInputStream == null) {
+            return;
+        }
+        aeInputStream.setPlaybackSliderFraction(frac);
+        resetPlaybackView();
+    }
+
+    private void resetPlaybackView() {
         if (viewer != null) {
             viewer.filterChain.reset(); // already done in aePlayer
             viewer.getRenderer().resetAccumulation();

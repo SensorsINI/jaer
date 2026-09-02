@@ -41,7 +41,7 @@
 
           <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBoxLayout"/>
           <SubComponents>
-            <Component class="javax.swing.JSlider" name="playerSlider">
+            <Component class="net.sf.jaer.graphics.PlaybackPositionSlider" name="playerSlider">
               <Properties>
                 <Property name="maximum" type="int" value="1000"/>
                 <Property name="toolTipText" type="java.lang.String" value="Shows and controls playback position (in events, not time)"/>
