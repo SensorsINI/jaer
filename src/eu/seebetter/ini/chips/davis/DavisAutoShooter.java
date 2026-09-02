@@ -15,6 +15,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -31,7 +32,105 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author Tobi
  */
 @Description("Triggers snapshots of DAVIS APS frames based on DVS data stream")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Help("""
+<html>
+<body>
+<h2>DavisAutoShooter</h2>
+<p>Triggers DAVIS <b>APS intensity frames</b> from the live DVS event stream so you
+do not need a fixed frame rate. 
+Typical uses: Boring survelliance or observation of bursty activity scenss 
+like human or animal sleep, human spaces, wildlife. 
+Requires a DAVIS chip 
+(<code>DavisChip</code> / <code>DavisBaseCamera</code>).
+(And later, newer HVS like CDAVIS or recent ISSCC publications from
+Sony or Omnivision)</p>
+<p>Enclosed filters: <code>EventRateEstimator</code> (rate and event count)
+and <code>RectangularClusterTracker</code> (optional motion trigger).</p>
+<hr>
+<h3>Operating modes</h3>
+<p>Two mutually exclusive styles of capture:</p>
+<ol>
+<li><b>Snapshot mode</b> (default) &mdash; calls
+<code>DavisChip.takeSnapshot()</code> when any enabled criterion fires.
+Criteria are OR&rsquo;d. The first packet after reset always shoots
+(<code>uninitialized</code>).</li>
+<li><b>Quiet-scene continuous capture</b> &mdash; if
+<code>shootFramesWhenDVSEventRateBelowThreshold</code> is on, the other
+triggers are ignored. APS capture and APS display are enabled only while
+the filtered DVS rate is <i>below</i> <code>eventRateThresholdHz</code>
+(scene is still). Above that rate, frames are turned off.</li>
+</ol>
+<h3>Snapshot trigger criteria</h3>
+<p>Enable any combination. A snapshot fires when <b>any</b> enabled
+condition is true:</p>
+<ul>
+<li><code>useEventRateThreshold</code> &mdash; two complementary rate
+rules:
+<ul>
+<li><b>Activity window:</b> shoot while the filtered rate is
+<i>above</i> <code>eventRateThresholdHz</code> and <i>below</i>
+<code>blurEventRateThresholdHz</code> (enough motion to be interesting,
+not so much that the APS exposure would blur).</li>
+<li><b>Settle after blur:</b> if the rate exceeds
+<code>blurEventRateThresholdHz</code>, an internal flag is set and
+shooting is delayed; a snapshot is taken once the rate later drops
+<i>below</i> <code>eventRateThresholdHz</code>.</li>
+</ul>
+</li>
+<li><code>useEventCount</code> &mdash; shoot every
+<code>eventCountThresholdKEvents</code> thousand DVS events
+(threshold is in kevents; the filter counts raw events,
+<code>&times; 1024</code>).</li>
+<li><code>useTracker</code> &mdash; shoot when the enclosed
+<code>RectangularClusterTracker</code> finds a <b>new</b> visible
+cluster, or when an existing cluster has moved at least
+<code>trackerMovementPixelsForNewFrame</code> pixels since the last
+comparison.</li>
+</ul>
+<h3>Parameters</h3>
+<ul>
+<li><code>eventRateThresholdHz</code> &mdash; lower rate gate (default
+50&nbsp;kHz). In snapshot mode, start of the activity window (and
+end of the settle-after-blur wait). In quiet-scene mode, APS is on
+only below this rate.</li>
+<li><code>blurEventRateThresholdHz</code> &mdash; upper rate gate
+(default 100&nbsp;kHz). Above this, snapshots are postponed until
+activity falls again.</li>
+<li><code>eventCountThresholdKEvents</code> &mdash; kevents between
+count-triggered snapshots (default 100).</li>
+<li><code>trackerMovementPixelsForNewFrame</code> &mdash; cluster
+travel (pixels) that counts as &ldquo;moved enough&rdquo; (default 5).</li>
+<li><code>showAnnotation</code> &mdash; overlay: a bar for accumulated
+events vs. the count threshold, a bar for rate vs.
+<code>eventRateThresholdHz</code>, and text
+(<code>kevents accum.</code>, rate in keps, whether a snapshot was
+just triggered).</li>
+</ul>
+<h3>How to use</h3>
+<ol>
+<li>Select a DAVIS chip and open the camera (APS must be available).</li>
+<li>Add <b>DavisAutoShooter</b> and enable it. Leave
+<code>shootFramesWhenDVSEventRateBelowThreshold</code> off unless you
+want continuous frames only when the DVS is quiet.</li>
+<li>Pick criteria: rate window, event count, and/or tracker. Turn off
+the ones you do not want so they do not fire extra shots.</li>
+<li>Tune <code>eventRateThresholdHz</code> /
+<code>blurEventRateThresholdHz</code> against the on-screen rate bar
+and the keps readout. Raise the blur threshold if shots never fire
+because the scene is always &ldquo;too busy&rdquo;; lower it if frames
+are smeared.</li>
+<li>For object-driven capture, enable <code>useTracker</code> and
+adjust the enclosed tracker (cluster size, threshold, etc.) as well
+as <code>trackerMovementPixelsForNewFrame</code>.</li>
+</ol>
+<p>This filter does not process or rewrite events; the input packet is
+passed through. It only decides when to trigger an APS frame capture.</p>
+<p> Note that autoexposure may not work well 
+with this filter, because it will be triggered by the bursty activity.</p>
+</body>
+</html>
+""")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     private final EventRateEstimator eventRateEstimator = new EventRateEstimator(chip);

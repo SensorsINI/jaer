@@ -11,6 +11,7 @@ import eu.seebetter.ini.chips.davis.AutoExposureController;
 import eu.seebetter.ini.chips.davis.DavisAutoShooter;
 import net.sf.jaer.eventio.FlexTimePlayer;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
+import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 
@@ -79,10 +80,15 @@ abstract public class DavisChip extends AETemporalConstastRetina {
     public static String PROPERTY_CENTER_WEIGHTED="PROPERTY_CENTER_WEIGHTED";
 
     public DavisChip() {
+        int afterDenoisers = defaultEventFilters.indexOf(RefractoryFilter.class);
+        if (afterDenoisers >= 0) {
+            defaultEventFilters.add(afterDenoisers + 1, DavisAutoShooter.class);
+        } else {
+            addDefaultEventFilter(DavisAutoShooter.class);
+        }
         addDefaultEventFilter(ApsDvsEventFilter.class);
         addDefaultEventFilter(ApsFrameExtractor.class);
 //		addDefaultEventFilter(FlexTimePlayer.class);
-//		addDefaultEventFilter(DavisAutoShooter.class);
         addDefaultEventFilter(DavisFrameAviWriter.class);
         removeDefaultEventFilter(JaerAviWriter.class);
         addDefaultEventFilter(JaerAviWriter.class);
