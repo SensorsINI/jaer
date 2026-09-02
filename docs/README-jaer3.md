@@ -267,6 +267,12 @@ bounds + event counts), not a full per-event RAM dump. Polarity is decoded
 on demand for the current timeslice; FRME/IMUS are injected via
 `appendTypedPackets`.
 
+Muxed multi-camera AEDAT-4: each selected EVTS stream is bound to the first
+open AEViewer whose AEChip matches. USB serial / bus-addr is used only when
+two streams are the same chip. Unmatched windows are reused (chip switched);
+new windows open only if needed. Soft cap is 8 viewers unless the file has
+more cameras (`Aedat4PlaybackAssignment`).
+
 ---
 
 ## Sources of input (PlayMode)

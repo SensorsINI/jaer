@@ -623,6 +623,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         drawRecordingOverlayIfNeeded(drawable);
         drawRemoteOutputOverlaysIfNeeded(drawable);
+        drawSliderSeekTimeOverlayIfNeeded(drawable);
         drawSkipChipRenderingOverlayIfNeeded(drawable);
         drawWelcomeOverlayIfNeeded(drawable);
         drawUsbLinkOverlayIfNeeded(drawable);
@@ -641,6 +642,12 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     /** Semi-transparent red for the Recording overlay. */
     private static final Color RECORDING_OVERLAY_COLOR = new Color(1f, 0.12f, 0.12f, 0.55f);
+
+    /**
+     * Pale blue matching {@link PlaybackPositionSlider} rate fill
+     * ({@code 30,110,200}), for the press-slide time overlay.
+     */
+    private static final Color SLIDER_SEEK_OVERLAY_COLOR = new Color(0.55f, 0.80f, 1f);
 
     /**
      * Overlay while recording: transparent red {@code Recording}, Apply Filters
@@ -690,6 +697,33 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
+
+    /**
+     * While the playback slider is held and dragged, pale-blue time near the
+     * bottom of the chip view (relative or absolute; see
+     * {@link AEViewer#isSliderTimeOverlayAbsolute()}).
+     */
+    private void drawSliderSeekTimeOverlayIfNeeded(final GLAutoDrawable drawable) {
+        AEViewer viewer = resolveAeViewer();
+        if (viewer == null) {
+            return;
+        }
+        String text = viewer.getSliderSeekOverlayText();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        try {
+            drawable.getGL().getGL2();
+            float maxW = chip.getSizeX() * 0.92f;
+            int fontsize = Math.max(8, Math.round(16 * (chip.getSizeX() / 346f)));
+            fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{text}, maxW);
+            float xpos = chip.getSizeX() / 2f;
+            float y = chip.getSizeY() * 0.07f;
+            DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, SLIDER_SEEK_OVERLAY_COLOR, text);
+        } catch (GLException e) {
+            log.log(Level.FINE, "slider seek overlay: {0}", e.toString());
         }
     }
 

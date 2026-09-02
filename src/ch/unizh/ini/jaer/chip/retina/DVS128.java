@@ -893,7 +893,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         @Override
         public void setDisplayFrames(boolean displayFrames) {
-            throw new UnsupportedOperationException("Not supported for DVS camera."); //To change body of generated methods, choose Tools | Templates.
+            // DVS128 has no APS frames; ignore so DavisRenderer callers do not throw.
         }
 
         @Override
@@ -903,7 +903,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         @Override
         public void setDisplayEvents(boolean displayEvents) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            // Events are always displayed.
         }
 
         @Override
@@ -913,37 +913,33 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         @Override
         public void setUseAutoContrast(boolean useAutoContrast) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
         @Override
         public float getContrast() {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            return 1f;
         }
 
         @Override
         public void setContrast(float contrast) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
         @Override
         public float getBrightness() {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            return 0f;
         }
 
         @Override
         public void setBrightness(float brightness) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
         @Override
         public float getGamma() {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            return 1f;
         }
 
         @Override
         public void setGamma(float gamma) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
         /**

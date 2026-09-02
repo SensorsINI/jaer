@@ -19,9 +19,11 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.RecordingSaveDialogGuard;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.RecentFoldersComboAccessory;
 
 /**
  * Records event data to disk according to various criteria.
@@ -305,6 +307,12 @@ public class DataLogger extends EventFilter2D {
                 chooser.setSelectedFile(new File(base));
                 chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                 chooser.setMultiSelectionEnabled(false);
+                AEViewer viewer = chip.getAeViewer();
+                if (viewer != null && viewer.getRecentFiles() != null) {
+                    final String filenameBase = base;
+                    chooser.setAccessory(new RecentFoldersComboAccessory(viewer.getRecentFiles(), chooser,
+                            () -> RecordingSaveDialogGuard.restoreSelectedFilename(chooser, filenameBase)));
+                }
                 boolean savedIt = false;
                 do {
                     retValue = RecordingSaveDialogGuard.showSaveDialog(chooser, chip.getAeViewer(), base);

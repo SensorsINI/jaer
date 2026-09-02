@@ -356,6 +356,12 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         final File playFile = lz4Plan.fileToOpen;
         final File rerecordFrom = lz4Plan.rerecordFrom;
         inputFile = playFile;
+        if (viewer.consumeSkipOriginAedat4Open()) {
+            viewer.spawnPendingExtraAedat4Streams(playFile);
+            viewer.endFilePlaybackOpen();
+            setPaused(false);
+            return;
+        }
         // idea is that we set open the file and set playback mode and the ViewLoop.run
         // loop will then render from the file.
         String ext = "." + IndexFileFilter.getExtension(playFile); // TODO change to use of a new static method in AEDataFile for determining file type

@@ -138,6 +138,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
+    private JRadioButton sliderTimeRelativeRB;
+    private JRadioButton sliderTimeAbsoluteRB;
 
     private JCheckBox exitCompletelyWithXCB;
     private JCheckBox rememberLastInterfaceCB;
@@ -1145,6 +1147,30 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
+        p.add(new JLabel("Playback slider time overlay:"), gbc(y++));
+        sliderTimeRelativeRB = new JRadioButton("Relative to start of recording");
+        sliderTimeRelativeRB.setToolTipText(
+                "While press-sliding the playback slider, show elapsed time from the start of the recording on the chip view");
+        sliderTimeAbsoluteRB = new JRadioButton("Absolute date/time");
+        sliderTimeAbsoluteRB.setToolTipText(
+                "While press-sliding the playback slider, show wall-clock date/time from the recording start on the chip view");
+        ButtonGroup sliderTimeGroup = new ButtonGroup();
+        sliderTimeGroup.add(sliderTimeRelativeRB);
+        sliderTimeGroup.add(sliderTimeAbsoluteRB);
+        ActionListener sliderTimeListener = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setSliderTimeOverlayAbsolute(sliderTimeAbsoluteRB.isSelected());
+            }
+        };
+        sliderTimeRelativeRB.addActionListener(sliderTimeListener);
+        sliderTimeAbsoluteRB.addActionListener(sliderTimeListener);
+        p.add(sliderTimeRelativeRB, gbc(y++));
+        p.add(sliderTimeAbsoluteRB, gbc(y++));
+
         return p;
     }
 
@@ -1410,6 +1436,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 repeatPlaybackCB.setSelected(player.isRepeat());
                 jogPacketCountSpinner.setValue(Math.max(1, player.getJogPacketCount()));
             }
+            boolean absTime = viewer.isSliderTimeOverlayAbsolute();
+            sliderTimeRelativeRB.setSelected(!absTime);
+            sliderTimeAbsoluteRB.setSelected(absTime);
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
             if (exitCompletelyWithXCB != null) {

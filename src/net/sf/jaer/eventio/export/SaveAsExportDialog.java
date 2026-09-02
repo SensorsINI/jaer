@@ -43,6 +43,10 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
+import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.RecentFoldersComboAccessory;
+import net.sf.jaer.util.RecentFoldersJumpCombo;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.textio.DavisTextEventFormatter;
@@ -65,6 +69,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     private SaveAsExporter exporter;
 
     private final JTextField pathField = new JTextField(18);
+    private RecentFoldersJumpCombo recentFolderCombo;
     private final JComboBox<SaveAsOptions.Format> formatCombo = new JComboBox<>(SaveAsOptions.Format.values());
     private final JCheckBox useMarkersCb = new JCheckBox("Use IN and OUT markers", true);
     private final JCheckBox applyFiltersCb = new JCheckBox("Apply EventFilters", true);
@@ -201,6 +206,22 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         row++;
         c.gridx = 0;
         c.gridy = row;
+        c.weightx = 0;
+        form.add(new JLabel("Recent folder:"), c);
+        c.gridx = 1;
+        c.gridwidth = 2;
+        c.weightx = 1;
+        recentFolderCombo = new RecentFoldersJumpCombo(viewer.getRecentFiles(),
+                this::parentOfPathField, this::setOutputFolder);
+        recentFolderCombo.setToolTipText(
+                "Jump the output file to a folder from File → recent folders");
+        form.add(recentFolderCombo, c);
+        c.gridwidth = 1;
+
+        row++;
+        c.gridx = 0;
+        c.gridy = row;
+        c.weightx = 0;
         form.add(new JLabel("Format:"), c);
         c.gridx = 1;
         c.gridwidth = 2;
@@ -421,6 +442,9 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
      */
     private void syncToOpenRecording() {
         pathField.setText(defaultOutputPath());
+        if (recentFolderCombo != null) {
+            recentFolderCombo.refresh();
+        }
         updateHvsUi();
         bindFilterEnabledListeners();
         updateFilterSummary();
@@ -630,9 +654,41 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         return dot > 0 ? name.substring(0, dot) : name;
     }
 
+    private File parentOfPathField() {
+        String path = pathField.getText().trim();
+        if (path.isEmpty()) {
+            return null;
+        }
+        File parent = new File(path).getParentFile();
+        return parent != null ? parent : null;
+    }
+
+    /** Keep the current basename and move it into {@code folder}. */
+    private void setOutputFolder(File folder) {
+        if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
+            return;
+        }
+        File current = new File(pathField.getText().trim());
+        String name = current.getName();
+        if (name == null || name.isEmpty()) {
+            SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
+            name = "jAER-export." + (f != null ? f.extension : "aedat4");
+        }
+        pathField.setText(new File(folder, name).getAbsolutePath());
+        updatePathExtension();
+        if (recentFolderCombo != null) {
+            recentFolderCombo.syncSelection(folder);
+        }
+    }
+
     private void browse(ActionEvent e) {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
-        JFileChooser chooser = new JFileChooser(pathField.getText());
+        File current = new File(pathField.getText().trim());
+        JFileChooser chooser = new JFileChooser();
+        File parent = current.getParentFile();
+        if (parent != null && FileAccessTimeout.isDirectory(parent)) {
+            chooser.setCurrentDirectory(parent);
+        }
         if (f == SaveAsOptions.Format.AEDAT4) {
             chooser.setFileFilter(new FileNameExtensionFilter("AEDAT-4 (*.aedat4)", "aedat4"));
         } else if (f == SaveAsOptions.Format.DSEC_H5) {
@@ -640,10 +696,24 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         } else {
             chooser.setFileFilter(new FileNameExtensionFilter("CSV / text (*.csv, *.txt)", "csv", "txt"));
         }
-        chooser.setSelectedFile(new File(pathField.getText()));
+        chooser.setSelectedFile(current);
+        chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+        RecentFiles recent = viewer.getRecentFiles();
+        if (recent != null) {
+            final String proposedName = current.getName();
+            chooser.setAccessory(new RecentFoldersComboAccessory(recent, chooser, () -> {
+                File dir = chooser.getCurrentDirectory();
+                if (dir != null && proposedName != null && !proposedName.isEmpty()) {
+                    chooser.setSelectedFile(new File(dir, proposedName));
+                }
+            }));
+        }
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             pathField.setText(chooser.getSelectedFile().getAbsolutePath());
             updatePathExtension();
+            if (recentFolderCombo != null) {
+                recentFolderCombo.refresh();
+            }
         }
     }
 
@@ -704,6 +774,9 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         cancelButton.setEnabled(running);
         formatCombo.setEnabled(!running);
         pathField.setEnabled(!running);
+        if (recentFolderCombo != null) {
+            recentFolderCombo.setEnabled(!running && recentFolderCombo.getItemCount() > 0);
+        }
         aedat4CompressionCombo.setEnabled(!running);
         applyFiltersCb.setEnabled(!running);
         useMarkersCb.setEnabled(!running);

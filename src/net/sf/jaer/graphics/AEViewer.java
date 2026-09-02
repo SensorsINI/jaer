@@ -60,6 +60,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.net.URI;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -166,6 +170,7 @@ import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.RecordingFilename;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
@@ -464,6 +469,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private File draggedFile;
     private boolean recordingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
+    /** False: slider overlay is elapsed from recording start; true: wall-clock date/time. */
+    private boolean sliderTimeOverlayAbsolute = prefs.getBoolean("AEViewer.sliderTimeOverlayAbsolute", false);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
     private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
     private boolean showOpenCvOutputOverlay = prefs.getBoolean("AEViewer.showOpenCvOutputOverlay", true);
@@ -503,6 +510,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         RECORDING_TIME_LIMIT_NO_LIMIT,
         "1m", "10m", "30m", "1h", "3h", "12h", "24h", "1d", "7d", "14d", "30d"
     };
+    private static final DateTimeFormatter SLIDER_SEEK_ABSOLUTE_FORMAT
+            = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z");
     private static final PeriodFormatter RECORDING_TIME_LIMIT_FORMATTER = new PeriodFormatterBuilder()
             .appendDays().appendSuffix("d")
             .appendSeparator(" ")
@@ -670,6 +679,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private Integer pendingAedat4EventStreamId;
     private List<RecordingChipDetector.StreamHint> pendingExtraAedat4EventStreams;
+    private List<Aedat4PlaybackAssignment.Binding> pendingAedat4PlaybackPlan;
+    /** True when this window opened the chooser but is not assigned a stream. */
+    private boolean pendingSkipOriginAedat4Open;
     /** Extra same-file AEDAT-4 viewers skip the LZ4 re-record dialog (origin already chose). */
     private boolean skipAedat4Lz4Offer;
     private boolean suppressAdaptiveRenderSkipMenuSync;
@@ -844,8 +856,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
-        // Windows has no libusb hotplug: clicking the viewer restarts 1 s WAITING
-        // USB scans so a camera plugged in while jAER was in the background is found.
+        // Windows has no libusb hotplug: clicking the viewer while WAITING
+        // restarts 1 s USB scans so a camera plugged in while jAER was in the
+        // background is found. PLAYBACK does not scan.
         addWindowFocusListener(new WindowAdapter() {
             @Override
             public void windowGainedFocus(WindowEvent e) {
@@ -1399,17 +1412,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Clicking back to the viewer (no Windows libusb hotplug) restarts 1 s
      * WAITING scans so a newly plugged camera is found without waiting 15 s.
-     * USB enumeration stays off the EDT.
+     * PLAYBACK does not enumerate USB. An in-flight {@code jaer-usb-scan} is
+     * left running. USB enumeration stays off the EDT.
      */
     private void onViewerWindowGainedFocus() {
         if (LibUsbHotplug.isSupported()) {
             return;
         }
+        if (getPlayMode() != PlayMode.WAITING) {
+            return;
+        }
         if (!SessionCameraOpenCoordinator.mayOpenUsb(this)) {
             return;
         }
+        HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
+        if (factory.isBackgroundScanQueued()) {
+            log.fine("window focus gained; USB scan already running, not interrupting");
+            return;
+        }
         resetWindowsUsbPoll("window focus gained");
-        if (viewLoop != null && getPlayMode() == PlayMode.WAITING) {
+        factory.requestBackgroundScan();
+        if (viewLoop != null) {
             interruptViewloop();
         }
     }
@@ -2543,10 +2566,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Serial or USB bus/addr for matching muxed streams when two cameras are
+     * the same AEChip. Empty if this window has no remembered USB identity.
+     */
+    public String playbackDeviceIdentity() {
+        String ser = RecordingFilename.usbSerialAlnum(chip);
+        if (ser != null && !ser.isEmpty()) {
+            return ser;
+        }
+        if (rememberLastInterfaceSerial != null && !rememberLastInterfaceSerial.isBlank()) {
+            return rememberLastInterfaceSerial;
+        }
+        HardwareInterface hw = chip == null ? null : chip.getAssignedHardwareInterface();
+        if (hw != null) {
+            String key = UsbIds.enumerationKey(hw);
+            if (key != null && !key.isEmpty()) {
+                return key;
+            }
+        }
+        return rememberLastInterfaceDeviceID == null ? "" : rememberLastInterfaceDeviceID;
+    }
+
+    /**
      * If the recording's chip (from filename, then header) differs from the
      * current {@link AEChip}, ask to switch before opening. For multi-camera
-     * AEDAT-4 files, show an EVTS list with all cameras selected; OK plays each
-     * in its own viewer (existing windows reused when the chip matches).
+     * AEDAT-4 files, show an EVTS list; each selected stream is bound to the
+     * first matching AEViewer (USB identity only when two streams share a chip).
+     * Unmatched open viewers are reused; new windows only if needed (soft cap 8).
      * Returns false if the user cancels open.
      */
     public boolean ensureChipCompatibleWithRecording(File file) {
@@ -2568,29 +2614,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         chosen = eventStreams.get(0);
                         pendingAedat4EventStreamId = chosen.streamId;
                     }
-                } else {
-                    List<RecordingChipDetector.StreamHint> selected
-                            = chooseAedat4EventStreams(file, eventStreams);
-                    if (selected == null || selected.isEmpty()) {
-                        log.info("Playback open canceled (AEDAT-4 stream selection)");
-                        pendingAedat4EventStreamId = null;
-                        pendingExtraAedat4EventStreams = null;
-                        return false;
+                    suggested = RecordingChipDetector.resolve(chosen.toChipHint(),
+                            loadChipClasses(chipClassNames));
+                    if (suggested != null && !chipClassMatches(getAeChipClass(), suggested)) {
+                        log.info("AEDAT-4 extra stream: switching AEChip to " + suggested.getSimpleName()
+                                + " for " + chosen.displayLabel());
+                        setAeChipClass(suggested);
                     }
-                    chosen = selected.get(0);
-                    pendingAedat4EventStreamId = chosen.streamId;
-                    if (selected.size() > 1 && jaerViewer != null) {
-                        pendingExtraAedat4EventStreams = new ArrayList<>(
-                                selected.subList(1, selected.size()));
-                        if (!jaerViewer.isSyncEnabled()) {
-                            log.info("enabling synchronized recording/playback for "
-                                    + selected.size() + " AEDAT-4 cameras");
-                            jaerViewer.setSyncEnabled(true);
-                        }
-                    } else {
-                        pendingExtraAedat4EventStreams = null;
-                    }
+                    log.info("AEDAT-4 stream selected: " + chosen.displayLabel()
+                            + (suggested == null ? "" : " -> " + suggested.getSimpleName()));
+                    return true;
                 }
+                List<RecordingChipDetector.StreamHint> selected
+                        = chooseAedat4EventStreams(file, eventStreams);
+                if (selected == null || selected.isEmpty()) {
+                    log.info("Playback open canceled (AEDAT-4 stream selection)");
+                    clearPendingAedat4Playback();
+                    return false;
+                }
+                if (jaerViewer != null && selected.size() > 1 && !jaerViewer.isSyncEnabled()) {
+                    log.info("enabling synchronized recording/playback for "
+                            + selected.size() + " AEDAT-4 cameras");
+                    jaerViewer.setSyncEnabled(true);
+                }
+                if (selected.size() > 1 && jaerViewer != null) {
+                    applyAedat4PlaybackPlan(selected);
+                    Aedat4PlaybackAssignment.Binding mine
+                            = Aedat4PlaybackAssignment.bindingForViewer(
+                                    pendingAedat4PlaybackPlan, jaerViewer.getViewers().indexOf(this));
+                    if (mine == null) {
+                        pendingSkipOriginAedat4Open = true;
+                        pendingAedat4EventStreamId = null;
+                        log.info("AEDAT-4 open: this viewer has no matching stream; other windows will play");
+                        return true;
+                    }
+                    chosen = mine.stream;
+                    pendingAedat4EventStreamId = chosen.streamId;
+                    suggested = mine.chip;
+                    if (suggested != null && !chipClassMatches(getAeChipClass(), suggested)) {
+                        log.info("AEDAT-4 assignment: switching this viewer to "
+                                + suggested.getSimpleName() + " for " + chosen.displayLabel());
+                        setAeChipClass(suggested);
+                    }
+                    log.info("AEDAT-4 stream selected: " + chosen.displayLabel()
+                            + (suggested == null ? "" : " -> " + suggested.getSimpleName()));
+                    return true;
+                }
+                chosen = selected.get(0);
+                pendingAedat4EventStreamId = chosen.streamId;
+                pendingExtraAedat4EventStreams = null;
+                pendingAedat4PlaybackPlan = null;
                 suggested = RecordingChipDetector.resolve(chosen.toChipHint(),
                         loadChipClasses(chipClassNames));
                 log.info("AEDAT-4 stream selected: " + chosen.displayLabel()
@@ -2624,8 +2697,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 JOptionPane.WARNING_MESSAGE);
         if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
             log.info("Playback open canceled (AEChip mismatch dialog)");
-            pendingAedat4EventStreamId = null;
-            pendingExtraAedat4EventStreams = null;
+            clearPendingAedat4Playback();
             return false;
         }
         if (choice == JOptionPane.YES_OPTION) {
@@ -2658,9 +2730,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** After this viewer has opened the file, spawn extra same-file EVTS viewers. */
     public void spawnPendingExtraAedat4Streams(File file) {
+        List<Aedat4PlaybackAssignment.Binding> plan = pendingAedat4PlaybackPlan;
+        pendingAedat4PlaybackPlan = null;
         List<RecordingChipDetector.StreamHint> extra = pendingExtraAedat4EventStreams;
         pendingExtraAedat4EventStreams = null;
-        if (file == null || extra == null || extra.isEmpty() || jaerViewer == null) {
+        if (file == null || jaerViewer == null) {
+            return;
+        }
+        if (plan != null && !plan.isEmpty()) {
+            if (!jaerViewer.isSyncEnabled()) {
+                jaerViewer.setSyncEnabled(true);
+            }
+            jaerViewer.getSyncPlayer().startAssignedAedat4Streams(file, plan, this);
+            return;
+        }
+        if (extra == null || extra.isEmpty()) {
             return;
         }
         if (!jaerViewer.isSyncEnabled()) {
@@ -2669,8 +2753,51 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jaerViewer.getSyncPlayer().startAdditionalAedat4Streams(file, extra, this);
     }
 
+    public boolean consumeSkipOriginAedat4Open() {
+        boolean skip = pendingSkipOriginAedat4Open;
+        pendingSkipOriginAedat4Open = false;
+        return skip;
+    }
+
     public void clearPendingExtraAedat4Streams() {
+        clearPendingAedat4Playback();
+    }
+
+    private void clearPendingAedat4Playback() {
+        pendingAedat4EventStreamId = null;
         pendingExtraAedat4EventStreams = null;
+        pendingAedat4PlaybackPlan = null;
+        pendingSkipOriginAedat4Open = false;
+    }
+
+    private void applyAedat4PlaybackPlan(List<RecordingChipDetector.StreamHint> selected) {
+        List<Aedat4PlaybackAssignment.ViewerSlot> slots = new ArrayList<>();
+        List<AEViewer> vs = jaerViewer.getViewers();
+        for (int i = 0; i < vs.size(); i++) {
+            AEViewer v = vs.get(i);
+            Class<?> c = v.getAeChipClass();
+            slots.add(new Aedat4PlaybackAssignment.ViewerSlot(
+                    i, c == null ? null : c.getSimpleName(), v.playbackDeviceIdentity()));
+        }
+        pendingAedat4PlaybackPlan = Aedat4PlaybackAssignment.assign(
+                selected, slots, loadChipClasses(chipClassNames));
+        pendingExtraAedat4EventStreams = new ArrayList<>();
+        int origin = vs.indexOf(this);
+        for (Aedat4PlaybackAssignment.Binding b : pendingAedat4PlaybackPlan) {
+            if (b.createNew || b.viewerIndex != origin) {
+                pendingExtraAedat4EventStreams.add(b.stream);
+            }
+            log.info("AEDAT-4 assign: " + b.stream.displayLabel()
+                    + (b.createNew ? " -> new viewer"
+                    : (" -> AEViewer-" + vs.get(b.viewerIndex).getViewerInstanceIndex()
+                    + (b.changeChip ? " (change chip)" : ""))));
+        }
+    }
+
+    private static boolean chipClassMatches(Class<?> current, Class<? extends AEChip> suggested) {
+        return current != null && suggested != null
+                && (current.equals(suggested)
+                || current.getSimpleName().equalsIgnoreCase(suggested.getSimpleName()));
     }
 
     public List<Class<? extends AEChip>> loadedAeChipClasses() {
@@ -2817,9 +2944,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 new Object[]{
                     "<html>This AEDAT-4 file has <b>" + n + "</b> event camera"
                     + (n == 1 ? "" : "s") + " (all selected).<br>"
-                    + "<b>OK</b> plays each selected camera in its own viewer.<br>"
-                    + "Existing AEViewer windows are reused when the chip matches;<br>"
-                    + "otherwise a new window is opened. Ctrl-click to play only some cameras."
+                    + "<b>OK</b> plays each selected camera in a viewer.<br>"
+                    + "Existing windows are reused when the AEChip matches<br>"
+                    + "(USB identity only if two cameras are the same chip).<br>"
+                    + "Unmatched open viewers are switched to leftover streams;<br>"
+                    + "new windows open only if needed (at most "
+                    + Aedat4PlaybackAssignment.SOFT_MAX_VIEWERS
+                    + " unless this file has more cameras).<br>"
+                    + "Ctrl-click to play only some cameras."
                     + "</html>",
                     new javax.swing.JScrollPane(list)
                 },
@@ -10686,6 +10818,78 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Chip-view overlay while the playback slider is held and dragged. Relative
+     * elapsed time from the recording start (default) or absolute date/time from
+     * {@link AEFileInputStreamInterface#getAbsoluteStartingTimeMs()}.
+     *
+     * @return overlay text, or {@code null} when the slider is not being adjusted
+     */
+    public String getSliderSeekOverlayText() {
+        AePlayerAdvancedControlsPanel controls = getPlayerControls();
+        if (controls == null || !controls.isSliderBeingAdjusted()) {
+            return null;
+        }
+        AEFileInputStreamInterface stream = getAeFileInputStream();
+        if (stream == null) {
+            AbstractAEPlayer player = getAePlayer();
+            if (player != null) {
+                stream = player.getAEInputStream();
+            }
+        }
+        if (stream == null) {
+            return null;
+        }
+        long posUs = stream.getPositionTimestampUs();
+        long firstUs = stream.getFirstTimestamp() & 0xffffffffL;
+        long elapsedUs = posUs - firstUs;
+        if (elapsedUs < 0) {
+            elapsedUs = posUs;
+        }
+        if (isSliderTimeOverlayAbsolute()) {
+            long startMs = stream.getAbsoluteStartingTimeMs();
+            if (startMs > 0) {
+                ZoneId zone = stream.getZoneId();
+                if (zone == null) {
+                    zone = ZoneId.systemDefault();
+                }
+                ZonedDateTime zdt = Instant.ofEpochMilli(startMs + elapsedUs / 1000L).atZone(zone);
+                return zdt.format(SLIDER_SEEK_ABSOLUTE_FORMAT);
+            }
+            return formatSliderSeekRelative(elapsedUs) + " (no recording date)";
+        }
+        return formatSliderSeekRelative(elapsedUs);
+    }
+
+    /**
+     * Formats elapsed recording time for the slider overlay, e.g. {@code +05:12.345}
+     * or {@code +1:23:45.678}.
+     */
+    static String formatSliderSeekRelative(long elapsedUs) {
+        long ms = Math.max(0L, elapsedUs) / 1000L;
+        long h = ms / 3_600_000L;
+        long m = (ms % 3_600_000L) / 60_000L;
+        long s = (ms % 60_000L) / 1000L;
+        long frac = ms % 1000L;
+        if (h > 0) {
+            return String.format("+%d:%02d:%02d.%03d", h, m, s, frac);
+        }
+        return String.format("+%02d:%02d.%03d", m, s, frac);
+    }
+
+    public boolean isSliderTimeOverlayAbsolute() {
+        return sliderTimeOverlayAbsolute;
+    }
+
+    /**
+     * Playback-slider chip overlay: relative to recording start (false, default)
+     * or absolute date/time (true).
+     */
+    public void setSliderTimeOverlayAbsolute(boolean sliderTimeOverlayAbsolute) {
+        this.sliderTimeOverlayAbsolute = sliderTimeOverlayAbsolute;
+        prefs.putBoolean("AEViewer.sliderTimeOverlayAbsolute", sliderTimeOverlayAbsolute);
+    }
+
+    /**
      * Spoken duration plus {@code XXhYYmZZs}, e.g. {@code 5 minutes 12 seconds (00h05m12s)}.
      */
     public static String formatRecordingDurationSpoken(long durationMs) {
@@ -12441,6 +12645,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
 	private void newViewerMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newViewerMenuItemActionPerformed
+            if (jaerViewer != null && !jaerViewer.canCreateViewer(0)) {
+                JOptionPane.showMessageDialog(this,
+                        "At most " + JAERViewer.SOFT_MAX_VIEWERS + " AEViewer windows.\n"
+                        + "Close one, or open a recording with more than "
+                        + JAERViewer.SOFT_MAX_VIEWERS + " cameras.",
+                        "Viewer limit",
+                        JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
             new AEViewer(jaerViewer).setVisible(true);
 	}//GEN-LAST:event_newViewerMenuItemActionPerformed
 

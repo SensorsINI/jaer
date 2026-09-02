@@ -232,6 +232,15 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		t.start();
 	}
 
+	/**
+	 * True from the moment a {@code jaer-usb-scan} is accepted until that
+	 * thread's {@code finally}. Callers must not start another scan (or
+	 * interrupt ViewLoop to force one) while this is true.
+	 */
+	public boolean isBackgroundScanQueued() {
+		return backgroundScanQueued.get();
+	}
+
 	/** {@code AEViewer} holds {@code USB_OPEN_SERIAL_LOCK} around native open+config. */
 	public void noteUsbNativeOpenBegin() {
 		usbNativeOpenCount.incrementAndGet();

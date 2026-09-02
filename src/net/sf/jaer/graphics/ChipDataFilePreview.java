@@ -105,10 +105,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         this.chooser = jfc;
         extractor = chip.getEventExtractor();
         renderer = createPreviewRenderer(chip);
-        if (renderer instanceof DavisRenderer davisR) {
-            davisR.setDisplayEvents(true);
-            davisR.setDisplayFrames(true);
-        }
+        enablePreviewDisplayModes(renderer);
         setLayout(new BorderLayout());
         setBackground(Color.BLACK);
         setOpaque(true);
@@ -187,13 +184,22 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             AEChipRenderer r = chip.getRenderer();
             renderer = r != null ? r : createPreviewRenderer(chip);
         }
-        if (renderer instanceof DavisRenderer davisR) {
-            try {
-                davisR.setDisplayEvents(true);
-                davisR.setDisplayFrames(true);
-            } catch (Exception e) {
-                log.fine("preview renderer display flags: " + e);
-            }
+        enablePreviewDisplayModes(renderer);
+    }
+
+    /**
+     * DAVIS preview wants events and APS frames. DVS-only configs (e.g.
+     * {@code DVS128}) keep events on and frames off; their setters may throw.
+     */
+    private void enablePreviewDisplayModes(AEChipRenderer r) {
+        if (!(r instanceof DavisRenderer davisR)) {
+            return;
+        }
+        try {
+            davisR.setDisplayEvents(true);
+            davisR.setDisplayFrames(true);
+        } catch (RuntimeException e) {
+            log.fine("preview renderer display flags: " + e);
         }
     }
 

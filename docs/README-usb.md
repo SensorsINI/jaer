@@ -54,11 +54,13 @@ enumerates off the EDT (`getNumInterfacesAvailable()`). WAITING kicks
 avoid a full `getDeviceList` on every poll when hotplug is supported (Linux/macOS).
 libusb in bundled libusb 1.0.22 has no hotplug, so WAITING uses
 [`WindowsUsbPollSchedule`](../src/net/sf/jaer/hardwareinterface/usb/WindowsUsbPollSchedule.java):
-scan every **1 s** for the first minute after startup, window focus, or any
+scan every **1 s** for the first minute after startup, WAITING window focus, or any
 enumerated-device change (plug/unplug), then every **3 s** for 10 minutes, then
-every **15 s**. A device-list change or AEViewer focus restarts that decay
-(WAITING is interrupted so the next scan is immediate). Phase changes are
-logged at INFO. USB enumeration stays off the EDT.
+every **15 s**. A device-list change or AEViewer focus **while WAITING** restarts
+that decay and kicks an immediate `requestBackgroundScan` (ViewLoop is interrupted
+so bind can follow). Focus during PLAYBACK does not scan. A second focus does not
+interrupt an in-flight `jaer-usb-scan`. Phase changes are logged at INFO. USB
+enumeration stays off the EDT.
 
 Unplugging one DVS128 of a FlyEye pair must not
 `LibUsb.controlTransfer` / `LibUsb.close` while the other camera’s

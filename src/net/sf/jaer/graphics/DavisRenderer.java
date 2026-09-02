@@ -643,7 +643,9 @@ public class DavisRenderer extends AEChipRenderer {
 
         Iterable<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
         for (EventPacket p : packets) {
-            final Iterator itr = p.inputIterator();
+            // Dedicated iterator: do not share EventPacket.inputIterator() with the GL thread
+            // (ChipCanvas annotate / DisplayMethod) or next() throws NoSuchElementException.
+            final Iterator itr = p.iterator();
             while (itr.hasNext()) {
                 // The iterator only iterates over the DVS events
                 final PolarityEvent e = (PolarityEvent) itr.next();

@@ -934,8 +934,17 @@ public final class UsbEnumerationSafetyDemo {
                 "AEViewer focus gained restarts Windows 1 s USB scans");
         require(src.contains("onViewerWindowGainedFocus()"),
                 "focus-gained handler is wired");
-        require(src.contains("resetWindowsUsbPoll(\"window focus gained\")"),
-                "focus gained resets the Windows USB poll to 1 s");
+        String focus = methodBody(viewer,
+                "private void onViewerWindowGainedFocus() {",
+                "public static void runWithHardwareClaim(Runnable action) {");
+        require(focus.contains("getPlayMode() != PlayMode.WAITING"),
+                "focus USB scan runs only while WAITING, not during PLAYBACK");
+        require(focus.contains("isBackgroundScanQueued()"),
+                "focus must not interrupt an in-flight jaer-usb-scan");
+        require(focus.contains("requestBackgroundScan()"),
+                "WAITING focus kicks an immediate background USB scan");
+        require(focus.contains("resetWindowsUsbPoll(\"window focus gained\")"),
+                "WAITING focus resets the Windows USB poll to 1 s");
         require(src.contains("lastInterfaceCheckTime = 0"),
                 "focus gained forces the next WAITING tick to scan immediately");
     }

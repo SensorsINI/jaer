@@ -6,7 +6,7 @@ import java.util.logging.Logger;
  * Decaying USB bus-scan interval for platforms without libusb hotplug
  * (Windows WinUSB in bundled libusb 1.0.22).
  * <p>
- * After startup, window focus, or any enumerated-device change: scan every
+ * After startup, WAITING window focus, or any enumerated-device change: scan every
  * {@link #FAST_INTERVAL_MS} for {@link #FAST_DURATION_MS}, then every
  * {@link #MEDIUM_INTERVAL_MS} for {@link #MEDIUM_DURATION_MS}, then every
  * {@link #SLOW_INTERVAL_MS}. Linux/macOS use {@link LibUsbHotplug} instead.
@@ -93,7 +93,7 @@ public final class WindowsUsbPollSchedule {
 
     /**
      * Restart the decay (startup is the constructor; also unplug, device-gone,
-     * or AEViewer window focus).
+     * or AEViewer window focus while WAITING).
      */
     public synchronized void reset(String reason, long nowMs, Logger log) {
         boolean alreadyFast = intervalMs(nowMs) == FAST_INTERVAL_MS;

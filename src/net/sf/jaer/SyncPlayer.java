@@ -29,6 +29,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.RecordingChipDetector;
+import net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.IndexFileFilter;
@@ -246,9 +247,12 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 // if there is no acceptable window, create a new AEViewer for this file
                 if (vToUse == null) {
                     log.info("no AEViewer found for " + filename + ", making new one");
-                    vToUse = new AEViewer(outer);
+                    vToUse = outer.createViewerForPlayback(dontUseAgain.size() + 1);
+                    if (vToUse == null) {
+                        log.warning("viewer cap reached; skipping " + filename);
+                        continue;
+                    }
                     dontUseAgain.add(vToUse);
-                    vToUse.setVisible(true);
                     vToUse.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                 }
                 map.put(file, vToUse);
@@ -292,11 +296,31 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     /**
      * Open additional EVTS streams of the same AEDAT-4 in extra viewers.
-     * {@code origin} is already opening {@code file} as the first selected stream.
+     * {@code origin} is already opening {@code file} as its assigned stream.
      */
     public void startAdditionalAedat4Streams(File file, List<RecordingChipDetector.StreamHint> streams,
             AEViewer origin) {
         if (file == null || streams == null || streams.isEmpty() || origin == null) {
+            return;
+        }
+        List<AEViewer> viewers = outer.getViewers();
+        boolean[] used = new boolean[viewers.size()];
+        int originIndex = viewers.indexOf(origin);
+        if (originIndex >= 0) {
+            used[originIndex] = true;
+        }
+        List<Aedat4PlaybackAssignment.ViewerSlot> slots = playbackSlots(viewers);
+        List<Aedat4PlaybackAssignment.Binding> plan = Aedat4PlaybackAssignment.assign(
+                streams, slots, origin.loadedAeChipClasses(), used);
+        startAssignedAedat4Streams(file, plan, origin);
+    }
+
+    /**
+     * Open leftover bindings from {@link Aedat4PlaybackAssignment} (origin already playing).
+     */
+    public void startAssignedAedat4Streams(File file, List<Aedat4PlaybackAssignment.Binding> plan,
+            AEViewer origin) {
+        if (file == null || plan == null || plan.isEmpty() || origin == null) {
             return;
         }
         if (!outer.isSyncEnabled()) {
@@ -304,36 +328,38 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             outer.setSyncEnabled(true);
         }
         getPlayingViewers().clear();
-        getPlayingViewers().add(origin);
-        ArrayList<AEViewer> used = new ArrayList<AEViewer>();
-        used.add(origin);
-        List<Class<? extends AEChip>> loaded = origin.loadedAeChipClasses();
-        for (RecordingChipDetector.StreamHint s : streams) {
-            Class<? extends AEChip> want = RecordingChipDetector.resolve(s.toChipHint(), loaded);
+        List<AEViewer> viewers = outer.getViewers();
+        int originIndex = viewers.indexOf(origin);
+        boolean originPlaying = origin.aePlayer != null && origin.aePlayer.getAEInputStream() != null;
+        if (originPlaying) {
+            getPlayingViewers().add(origin);
+        }
+        int deviceCount = plan.size();
+        if (originPlaying && Aedat4PlaybackAssignment.bindingForViewer(plan, originIndex) == null) {
+            deviceCount++;
+        }
+        for (Aedat4PlaybackAssignment.Binding b : plan) {
+            if (!b.createNew && b.viewerIndex == originIndex) {
+                continue;
+            }
             AEViewer vToUse = null;
-            for (AEViewer v : outer.getViewers()) {
-                if (used.contains(v)) {
+            if (!b.createNew && b.viewerIndex >= 0 && b.viewerIndex < viewers.size()) {
+                vToUse = viewers.get(b.viewerIndex);
+            }
+            if (vToUse == null || vToUse == origin) {
+                log.info("no AEViewer for AEDAT-4 stream " + b.stream.displayLabel() + ", making new one");
+                vToUse = outer.createViewerForPlayback(deviceCount);
+                if (vToUse == null) {
+                    log.warning("viewer cap reached; skipping " + b.stream.displayLabel());
                     continue;
                 }
-                if (want == null || (v.getAeChipClass() != null
-                        && (v.getAeChipClass().equals(want)
-                        || v.getAeChipClass().getSimpleName().equalsIgnoreCase(want.getSimpleName())))) {
-                    vToUse = v;
-                    used.add(v);
-                    break;
-                }
-            }
-            if (vToUse == null) {
-                log.info("no AEViewer for AEDAT-4 stream " + s.displayLabel() + ", making new one");
-                vToUse = new AEViewer(outer);
-                used.add(vToUse);
-                vToUse.setVisible(true);
                 vToUse.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                viewers = outer.getViewers();
             }
-            if (want != null) {
-                vToUse.setAeChipClass(want);
+            if (b.chip != null) {
+                vToUse.setAeChipClass(b.chip);
             }
-            vToUse.setPendingAedat4EventStreamId(s.streamId);
+            vToUse.setPendingAedat4EventStreamId(b.stream.streamId);
             vToUse.setSkipAedat4Lz4Offer(true);
             try {
                 vToUse.aePlayer.stopPlayback();
@@ -343,7 +369,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                             .addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 }
             } catch (IOException | InterruptedException e) {
-                log.warning("opening AEDAT-4 stream " + s.displayLabel() + ": " + e);
+                log.warning("opening AEDAT-4 stream " + b.stream.displayLabel() + ": " + e);
             }
             getPlayingViewers().add(vToUse);
         }
@@ -355,6 +381,17 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         for (AEViewer v : getPlayingViewers()) {
             v.setCursor(Cursor.getDefaultCursor());
         }
+    }
+
+    private static List<Aedat4PlaybackAssignment.ViewerSlot> playbackSlots(List<AEViewer> viewers) {
+        List<Aedat4PlaybackAssignment.ViewerSlot> slots = new ArrayList<>();
+        for (int i = 0; i < viewers.size(); i++) {
+            AEViewer v = viewers.get(i);
+            Class<?> c = v.getAeChipClass();
+            slots.add(new Aedat4PlaybackAssignment.ViewerSlot(
+                    i, c == null ? null : c.getSimpleName(), v.playbackDeviceIdentity()));
+        }
+        return slots;
     }
 
     /**
@@ -371,16 +408,31 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             log.info("enabling synchronized recording/playback for multi-stream AEDAT-4");
             outer.setSyncEnabled(true);
         }
-        AEViewer first = outer.getViewers().isEmpty() ? new AEViewer(outer) : outer.getViewers().get(0);
-        first.setPendingAedat4EventStreamId(streams.get(0).streamId);
-        Class<? extends AEChip> firstChip = RecordingChipDetector.resolve(streams.get(0).toChipHint(),
-                first.loadedAeChipClasses());
-        if (firstChip != null) {
-            first.setAeChipClass(firstChip);
+        List<AEViewer> viewers = outer.getViewers();
+        if (viewers.isEmpty()) {
+            AEViewer created = outer.createViewerForPlayback(streams.size());
+            if (created == null) {
+                created = new AEViewer(outer);
+                created.setVisible(true);
+            }
+            viewers = outer.getViewers();
+        }
+        List<Aedat4PlaybackAssignment.Binding> plan = Aedat4PlaybackAssignment.assign(
+                streams, playbackSlots(viewers), viewers.get(0).loadedAeChipClasses());
+        Aedat4PlaybackAssignment.Binding firstBind = plan.isEmpty() ? null : plan.get(0);
+        AEViewer first = firstBind != null && !firstBind.createNew && firstBind.viewerIndex >= 0
+                ? viewers.get(firstBind.viewerIndex) : viewers.get(0);
+        if (firstBind != null) {
+            first.setPendingAedat4EventStreamId(firstBind.stream.streamId);
+            if (firstBind.chip != null) {
+                first.setAeChipClass(firstBind.chip);
+            }
+        } else {
+            first.setPendingAedat4EventStreamId(streams.get(0).streamId);
         }
         first.aePlayer.startPlayback(aedat4);
         if (streams.size() > 1) {
-            startAdditionalAedat4Streams(aedat4, streams.subList(1, streams.size()), first);
+            startAssignedAedat4Streams(aedat4, plan, first);
         } else {
             getPlayingViewers().clear();
             getPlayingViewers().add(first);

@@ -85,6 +85,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private static final int EVENT_RATE_BINS = 1024;
     /** Floor (Hz) so log scale stays defined for quiet bins. */
     private static final double EVENT_RATE_LOG_FLOOR_HZ = 1.0;
+    /**
+     * Scan actual event timestamps for timeslices when EVTS packet durations
+     * differ by at least this factor (2 orders of magnitude).
+     */
+    private static final long TIMESLICE_SCAN_DURATION_RATIO = 100;
 
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -184,6 +189,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * sparse packet table (no decompress).
      */
     private float[] logRelativeEventRateByTime;
+    /**
+     * True when EVTS packet durations vary by {@link #TIMESLICE_SCAN_DURATION_RATIO}
+     * or some packets have inverted/zero span — linear interpolation then mis-slices.
+     */
+    private boolean scanTimesliceInPacket;
 
     public Aedat4FileInputStream(File file, AEChip chip) throws IOException {
         this(file, chip, null, null);
@@ -255,6 +265,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         clearMarks();
         buildLogRelativeEventRateBins();
+        chooseTimesliceEstimator();
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         log.info(String.format(
@@ -994,6 +1005,49 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         markOut = playableSize();
         cachedEventPacketIndex = -1;
         cachedEventFlat = null;
+    }
+
+    /**
+     * Prefer packet-table interpolation for timeslices. Scan FlatBuffer timestamps
+     * only when packet durations vary by {@link #TIMESLICE_SCAN_DURATION_RATIO}
+     * (sparse Save-As packets) or some packets have inverted/zero span.
+     */
+    private void chooseTimesliceEstimator() {
+        scanTimesliceInPacket = false;
+        if (eventRefs.length == 0) {
+            return;
+        }
+        long minSpan = Long.MAX_VALUE;
+        long maxSpan = 0;
+        int inverted = 0;
+        for (PacketRef r : eventRefs) {
+            if (r.numElements <= 0) {
+                continue;
+            }
+            long span = r.unixEnd - r.unixStart;
+            if (span <= 0) {
+                inverted++;
+                continue;
+            }
+            if (span < minSpan) {
+                minSpan = span;
+            }
+            if (span > maxSpan) {
+                maxSpan = span;
+            }
+        }
+        long ratio = 0;
+        if (inverted > 0) {
+            scanTimesliceInPacket = true;
+        } else if (minSpan > 0 && minSpan != Long.MAX_VALUE) {
+            ratio = maxSpan / minSpan;
+            scanTimesliceInPacket = ratio >= TIMESLICE_SCAN_DURATION_RATIO;
+        }
+        if (scanTimesliceInPacket) {
+            log.info(String.format(
+                    "AEDAT-4 timeslice: scanning event timestamps (packet duration ratio %s, inverted/zero-span packets=%d)",
+                    ratio > 0 ? Long.toString(ratio) : "n/a", inverted));
+        }
     }
 
     /**
@@ -2049,14 +2103,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     /**
      * Exclusive end index for events with relative timestamp &lt;= {@code target},
-     * at least {@code start + 1}, capped by {@code limit}.
-     * <p>
-     * Uses <b>only</b> the sparse packet table (no decompress / FlatBuffer access).
-     * Within a packet, end is linearly interpolated from unixStart/unixEnd.
+     * at least {@code start + 1}, capped by {@code limit}. Packet-table
+     * interpolation unless {@link #scanTimesliceInPacket}.
      */
-    private long findEndIndexByTime(long start, long target, long limit) {
+    private long findEndIndexByTime(long start, long target, long limit) throws IOException {
         if (start >= limit) {
             return start;
+        }
+        if (scanTimesliceInPacket) {
+            long dt = target - timestampApproxLong(start);
+            return scanEndIndexByActualTime(start, dt, limit);
         }
         long end = start + 1; // at least one event
         int pi = findEventPacket(start);
@@ -2072,7 +2128,6 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 pi++;
                 continue;
             }
-            // Target inside this packet — interpolate (no I/O).
             if (ref.unixEnd <= ref.unixStart || ref.numElements <= 0) {
                 return Math.min(limit, Math.max(end, start + 1));
             }
@@ -2084,10 +2139,57 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             long estExclusive = ref.firstEventIndex + 1
                     + (long) Math.round(frac * Math.max(0, ref.numElements - 1));
-            estExclusive = Math.max(start + 1, Math.min(pktEnd, estExclusive));
-            return estExclusive;
+            return Math.max(start + 1, Math.min(pktEnd, estExclusive));
         }
         return Math.min(limit, end);
+    }
+
+    /**
+     * Walk actual event timestamps from {@code start} until {@code origin+dt}.
+     * Uses the first event's own clock so packet-table Unix vs FlatBuffer Unix
+     * mismatches cannot collapse the slice to one event.
+     */
+    private long scanEndIndexByActualTime(long start, long dt, long limit) throws IOException {
+        long goalDelta = Math.max(1L, dt);
+        long i = start;
+        long origin = Long.MIN_VALUE;
+        long wrap = 0;
+        long lastTs = Long.MIN_VALUE;
+        int pi = -1;
+        EventPacket packet = null;
+        int nEl = 0;
+        PacketRef ref = null;
+        while (i < limit) {
+            int p = findEventPacket(i);
+            if (p != pi) {
+                pi = p;
+                ref = eventRefs[pi];
+                packet = eventPacketAt(pi);
+                nEl = packet.elementsLength();
+                wrap = ref.wrapOffset;
+                lastTs = Long.MIN_VALUE;
+            }
+            int local = (int) (i - ref.firstEventIndex);
+            if (local < 0 || local >= nEl) {
+                i = ref.firstEventIndex + Math.max(1, ref.numElements);
+                continue;
+            }
+            long ts = packet.elements(local).timestamp() - baseUnixUs + wrap;
+            if (lastTs != Long.MIN_VALUE && ts < lastTs
+                    && lastTs - ts > TimestampUnwrapper.WRAP_DETECT_US) {
+                wrap += TimestampUnwrapper.UINT32_US;
+                ts += TimestampUnwrapper.UINT32_US;
+            }
+            lastTs = ts;
+            if (origin == Long.MIN_VALUE) {
+                origin = ts;
+            }
+            if (ts - origin > goalDelta) {
+                return Math.max(start + 1, i);
+            }
+            i++;
+        }
+        return Math.max(start + 1, Math.min(limit, i));
     }
 
     /**
@@ -2095,9 +2197,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * covering events with approx timestamp &gt;= {@code target}, floored by {@code limitIn}.
      * At least one event when {@code end > limitIn}.
      */
-    private long findStartIndexByTime(long end, long target, long limitIn) {
+    private long findStartIndexByTime(long end, long target, long limitIn) throws IOException {
         if (end <= limitIn) {
             return limitIn;
+        }
+        if (scanTimesliceInPacket) {
+            long dt = target - timestampApproxLong(Math.max(limitIn, end - 1));
+            return scanStartIndexByActualTime(end, dt, limitIn);
         }
         long start = end - 1; // at least one event
         int pi = findEventPacket(end - 1);
@@ -2111,17 +2217,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 pi--;
                 continue;
             }
-            // Entire packet older than target — stop; keep start from newer packets.
             if (ref.unixEnd < target) {
                 return start;
             }
-            // Entire packet at/after target — include and keep walking back.
             if (ref.unixStart >= target) {
                 start = segStart;
                 pi--;
                 continue;
             }
-            // Target inside this packet — interpolate (no I/O).
             if (ref.unixEnd <= ref.unixStart || ref.numElements <= 0) {
                 return Math.max(limitIn, Math.min(start, segStart));
             }
@@ -2136,6 +2239,56 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return Math.max(segStart, Math.min(segEnd - 1, estInclusive));
         }
         return Math.max(limitIn, start);
+    }
+
+    /**
+     * Walk actual event timestamps backward from exclusive {@code end} until
+     * {@code origin+dt} ({@code dt} is negative). Origin is the last event
+     * before {@code end}.
+     */
+    private long scanStartIndexByActualTime(long end, long dt, long limitIn) throws IOException {
+        long i = end - 1;
+        if (i < limitIn) {
+            return limitIn;
+        }
+        long origin = Long.MIN_VALUE;
+        long wrap = 0;
+        long lastTs = Long.MIN_VALUE;
+        int pi = -1;
+        EventPacket packet = null;
+        int nEl = 0;
+        PacketRef ref = null;
+        while (i >= limitIn) {
+            int p = findEventPacket(i);
+            if (p != pi) {
+                pi = p;
+                ref = eventRefs[pi];
+                packet = eventPacketAt(pi);
+                nEl = packet.elementsLength();
+                wrap = ref.wrapOffset;
+                lastTs = Long.MIN_VALUE;
+            }
+            int local = (int) (i - ref.firstEventIndex);
+            if (local < 0 || local >= nEl) {
+                i = ref.firstEventIndex - 1;
+                continue;
+            }
+            long ts = packet.elements(local).timestamp() - baseUnixUs + wrap;
+            if (lastTs != Long.MIN_VALUE && ts > lastTs
+                    && ts - lastTs > TimestampUnwrapper.WRAP_DETECT_US) {
+                wrap -= TimestampUnwrapper.UINT32_US;
+                ts -= TimestampUnwrapper.UINT32_US;
+            }
+            lastTs = ts;
+            if (origin == Long.MIN_VALUE) {
+                origin = ts;
+            }
+            if (origin - ts > Math.max(1L, -dt)) {
+                return Math.max(limitIn, Math.min(end - 1, i + 1));
+            }
+            i--;
+        }
+        return Math.max(limitIn, i + 1);
     }
 
     private void ensureReadableOrThrow(boolean forwards) throws EOFException {

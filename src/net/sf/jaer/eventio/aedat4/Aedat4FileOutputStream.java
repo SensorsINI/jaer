@@ -319,6 +319,17 @@ public class Aedat4FileOutputStream implements Closeable {
         if (n == 0) {
             return;
         }
+        long tMin = evTimestamps[0];
+        long tMax = evTimestamps[0];
+        for (int i = 1; i < n; i++) {
+            long t = evTimestamps[i];
+            if (t < tMin) {
+                tMin = t;
+            }
+            if (t > tMax) {
+                tMax = t;
+            }
+        }
         int minCap = Math.max(1024, n * 16 + 64);
         if (eventBuilder == null) {
             eventBuilder = new FlatBufferBuilder(minCap);
@@ -330,8 +341,8 @@ public class Aedat4FileOutputStream implements Closeable {
         int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(eventBuilder, vector);
         eventBuilder.finishSizePrefixed(root, "EVTS");
         byte[] payload = eventBuilder.sizedByteArray();
-        writePacket(currentTrack.eventsStreamId(), payload, n, evTimestamps[0], evTimestamps[n - 1]);
-        noteBundlePolarityUnix(evTimestamps[0], evTimestamps[n - 1]);
+        writePacket(currentTrack.eventsStreamId(), payload, n, tMin, tMax);
+        noteBundlePolarityUnix(tMin, tMax);
     }
 
     private void noteBundlePolarityUnix(long t0, long t1) {

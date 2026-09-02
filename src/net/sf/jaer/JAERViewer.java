@@ -135,6 +135,8 @@ public class JAERViewer {
      * machine. Used to detect the first run of a new release.
      */
     public static final String LAST_RELEASE_RUN_KEY = "JAERViewer.lastReleaseRun";
+    /** File → New cap; muxed playback may exceed this when the file has more cameras. */
+    public static final int SOFT_MAX_VIEWERS = net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment.SOFT_MAX_VIEWERS;
 
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
@@ -774,6 +776,30 @@ public class JAERViewer {
 
     public int getNumViewers() {
         return viewers.size();
+    }
+
+    public int maxViewersForRecording(int deviceCount) {
+        return net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment.maxViewers(deviceCount);
+    }
+
+    /** File → New uses {@code deviceCount} 0 (cap {@link #SOFT_MAX_VIEWERS}). */
+    public boolean canCreateViewer(int recordingDeviceCount) {
+        return viewers.size() < maxViewersForRecording(recordingDeviceCount);
+    }
+
+    /**
+     * New window for leftover muxed streams. Returns null at the soft cap
+     * unless {@code recordingDeviceCount} is larger.
+     */
+    public AEViewer createViewerForPlayback(int recordingDeviceCount) {
+        if (!canCreateViewer(recordingDeviceCount)) {
+            log.warning("not opening another AEViewer (have " + viewers.size()
+                    + ", max " + maxViewersForRecording(recordingDeviceCount) + ")");
+            return null;
+        }
+        AEViewer v = new AEViewer(this);
+        v.setVisible(true);
+        return v;
     }
     File indexFile = null;
     Aedat4FileOutputStream muxedAedat4OutputStream = null;
