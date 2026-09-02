@@ -30,7 +30,7 @@ public class MultilineAnnotationTextRenderer {
     private static TextRenderer renderer;
     private static float yshift = 0;
     private static float xposition = 1;
-    private static float lineShiftMultiplier = 1.15f;
+    private static float lineShiftMultiplier = DrawGL.DEFAULT_LINE_SPACING;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static Color color = Color.WHITE;
     private static int fontSize = 5; // OK for Davis346
@@ -87,8 +87,7 @@ public class MultilineAnnotationTextRenderer {
                     continue;
                 }
                 r = DrawGL.drawString(fontSize, xposition, yshift, 0, color, l);
-                float h = (r != null && r.getHeight() > 0) ? (float) r.getHeight() : DrawGL.lineHeight(fontSize);
-                yshift -= h * lineShiftMultiplier;
+                yshift -= DrawGL.lineAdvance(fontSize, lineShiftMultiplier);
                 l = "  " + l;
             }
         } catch (GLException e) {

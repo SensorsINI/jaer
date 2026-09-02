@@ -17,6 +17,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -42,6 +43,9 @@ this is a display helper (constant-count or constant-time &ldquo;frames&rdquo;).
 <code>numDvsEventsToResetAccumulation</code> events.</li>
 <li><code>method</code> <b>TimeInterval</b> resets after
 <code>timeIntervalToResetAccumulationUs</code>.</li>
+<li><code>method</code> <b>AreaEventCount</b> resets when any cell of the
+enclosed <code>AreaEventCountExposer</code> reaches its count (default
+32 areas, 1000 events).</li>
 </ol>
 <p><code>showEventsAccumulatedBar</code> / <code>showTimeElapsedText</code> overlay progress.
 Special events are ignored in the count.</p>
@@ -52,7 +56,7 @@ Special events are ignored in the count.</p>
 public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnnotater {
 
     public enum Method {
-        EventCount, TimeInterval
+        EventCount, TimeInterval, AreaEventCount
     }
 
     private Method method = Method.valueOf(getString("method", Method.EventCount.toString()));
@@ -61,14 +65,21 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
     private int timeIntervalToResetAccumulationUs = getInt("timeIntervalToResetAccumulationUs", 100000);
     private boolean showEventsAccumulatedBar = getBoolean("showEventsAccumulatedBar", true);
     private boolean showTimeElapsedText = getBoolean("showTimeElapsedText", true);
+    private final AreaEventCountExposer areaEventCountExposer;
 
     public AccumulateAndResetFilter(AEChip chip) {
         super(chip);
+        areaEventCountExposer = new AreaEventCountExposer(chip);
+        areaEventCountExposer.setEventExposureMode(AreaEventCountExposer.EventExposureMode.AreaEventCount);
+        FilterChain chain = new FilterChain(chip);
+        chain.add(areaEventCountExposer);
+        setEnclosedFilterChain(chain);
+        areaEventCountExposer.setFilterEnabled(method == Method.AreaEventCount);
         setPropertyTooltip("numDvsEventsToResetAccumulation", "sets number of dvs events to reset accumulation of image");
         setPropertyTooltip("timeIntervalToResetAccumulationUs", "sets time interval in us to reset accumulation of image");
         setPropertyTooltip("showEventsAccumulatedBar", "shows a bar for num events accumulated");
         setPropertyTooltip("showTimeElapsedText", "shows text for time elapsed since last accumulation resst");
-        setPropertyTooltip("method", "method to reset accumulation");
+        setPropertyTooltip("method", "method to reset accumulation: EventCount, TimeInterval, or AreaEventCount");
     }
 
     private int numEventsAccumulated = 0;
@@ -102,6 +113,14 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
                         lastResetTimestampUs = currentTimestamp;
                     }
                     break;
+                case AreaEventCount:
+                    if (areaEventCountExposer.addEvent(e)) {
+                        renderer.resetFrame(renderer.getGrayValue());
+                        numEventsAccumulated = 0;
+                        lastResetTimestampUs = currentTimestamp;
+                        areaEventCountExposer.resetAccumulation();
+                    }
+                    break;
 
             }
         }
@@ -113,6 +132,9 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
     public void resetFilter() {
         numEventsAccumulated = getNumDvsEventsToResetAccumulation();
         lastResetTimestampUs=0;
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.resetAccumulation();
+        }
     }
 
     @Override
@@ -214,6 +236,10 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
     public void setMethod(Method method) {
         this.method = method;
         putString("method", method.toString());
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.setFilterEnabled(method == Method.AreaEventCount);
+            areaEventCountExposer.resetAccumulation();
+        }
     }
 
     /**

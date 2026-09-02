@@ -50,7 +50,9 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterFrame;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import static net.sf.jaer.graphics.AbstractAEPlayer.EVENT_FILEOPEN;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -95,6 +97,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     // for logging concole messages
     private BufferedReader dvsReader = null;
     private int lastTimestampRead = 0, lastPacketLastTimestamp = 0;
+    private short lastParsedX = -1, lastParsedY = -1;
     private boolean noEventsReadYet = true; // set false when new file is opened
     private int numEventsThisPacket = 0, numEventsInFile = 0;
     private ApsDvsEventPacket outputPacket = null;
@@ -386,9 +389,15 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         if (dvsReader == null) {
             return outputPacket;
         }
-        boolean flextime = getChip().getAeViewer().getAePlayer().isFlexTimeEnabled();
-        int durationUs = getChip().getAeViewer().getAePlayer().getTimesliceUs(); // TODO handle flex time (constant count)
-        int eventCount = getChip().getAeViewer().getAePlayer().getPacketSizeEvents();
+        AbstractAEPlayer player = getChip().getAeViewer().getAePlayer();
+        boolean area = player.isAreaEventCountEnabled();
+        boolean flextime = !area && player.isFlexTimeEnabled();
+        int durationUs = player.getTimesliceUs();
+        int eventCount = player.getPacketSizeEvents();
+        AreaEventCountExposer exposer = area ? player.getAreaEventCountExposer() : null;
+        if (exposer != null) {
+            exposer.resetAccumulation();
+        }
         OutputEventIterator outItr = outputPacket.outputIterator();
 //        lastTimestampRead = lastPacketLastTimestamp;
         String line = null;
@@ -397,8 +406,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         boolean noEventsInThisPacket = true;
         numEventsThisPacket = 0;
         while (dvsReader != null && (noEventsReadYet || noEventsInThisPacket)
-                || (!flextime && lastTimestampRead < lastPacketLastTimestamp + durationUs)
-                || (flextime && numEventsThisPacket < eventCount)) {
+                || (area && exposer != null && !exposer.isExposed())
+                || (!area && !flextime && lastTimestampRead < lastPacketLastTimestamp + durationUs)
+                || (!area && flextime && numEventsThisPacket < eventCount)) {
             try {
                 line = dvsReader.readLine();
                 if (line == null) {
@@ -417,6 +427,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 parseEvent(line, outItr);
                 noEventsInThisPacket = false;
                 numEventsThisPacket++;
+                if (exposer != null && lastParsedX >= 0) {
+                    exposer.addEvent(lastParsedX, lastParsedY, lastTimestampRead);
+                }
             } catch (EOFException eof) {
                 log.info("EOF (end of file)");
                 doCloseFile();
@@ -478,6 +491,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             previousTimestamp = lastTimestampRead;
             short x = Short.parseShort(split[ix]);
             short y = Short.parseShort(split[iy]);
+            lastParsedX = x;
+            lastParsedY = y;
             byte pol = Byte.parseByte(split[ip]);
 
             if (x < 0 || x >= maxX || y < 0 || y >= maxY) {

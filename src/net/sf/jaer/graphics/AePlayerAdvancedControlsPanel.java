@@ -227,7 +227,30 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
                 timesliceSpinner.setValue(aePlayer.getTimesliceUs());
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PACKETSIZEEVENTS)) {
-                packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
+                if (!aePlayer.isAreaEventCountEnabled()) {
+                    packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
+                }
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_AREA_EVENT_COUNT)) {
+                packetSizeSpinner.setValue(evt.getNewValue());
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PLAYBACKMODE)) {
+                switch (aePlayer.getPlaybackMode()) {
+                    case FixedPacketSize:
+                        fixedPacketSizeButton.setSelected(true);
+                        packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
+                        break;
+                    case FixedTimeSlice:
+                        fixedTimeSliceButton.setSelected(true);
+                        break;
+                    case AreaEventCount:
+                        areaEventCountButton.setSelected(true);
+                        if (aePlayer.getAreaEventCountExposer() != null) {
+                            packetSizeSpinner.setValue(aePlayer.getAreaEventCountExposer().getEventCount());
+                        }
+                        break;
+                    case RealTime:
+                        realtimeButton.setSelected(true);
+                        break;
+                }
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PAUSED)) {
                 aePlayer.pausePlayAction.setPlayAction();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
@@ -303,11 +326,18 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             case FixedTimeSlice:
                 fixedTimeSliceButton.setSelected(true);
                 break;
+            case AreaEventCount:
+                areaEventCountButton.setSelected(true);
+                break;
             case RealTime:
                 realtimeButton.setSelected(true);
         }
         timesliceSpinner.setValue(aePlayer.getTimesliceUs());
-        packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
+        if (aePlayer.isAreaEventCountEnabled() && aePlayer.getAreaEventCountExposer() != null) {
+            packetSizeSpinner.setValue(aePlayer.getAreaEventCountExposer().getEventCount());
+        } else {
+            packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
+        }
 
         pauseButton.setAction(aePlayer.pausePlayAction);
         playForwardsButton.setAction(aePlayer.playAction);
@@ -450,6 +480,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playbackModePanel = new javax.swing.JPanel();
         fixedTimeSliceButton = new javax.swing.JRadioButton();
         fixedPacketSizeButton = new javax.swing.JRadioButton();
+        areaEventCountButton = new javax.swing.JRadioButton();
         realtimeButton = new javax.swing.JRadioButton();
         timesliceSpinner = new javax.swing.JSpinner();
         msLabel = new javax.swing.JLabel();
@@ -697,6 +728,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             }
         });
 
+        buttonGroup1.add(areaEventCountButton);
+        areaEventCountButton.setText("Area event count");
+        areaEventCountButton.setToolTipText("Accumulate until any spatial area reaches N events (f/s changes N). Set # areas in File → Preferences → Playback.");
+        areaEventCountButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                areaEventCountButtonActionPerformed(evt);
+            }
+        });
+
         buttonGroup1.add(realtimeButton);
         realtimeButton.setText("Real time playback");
         realtimeButton.setToolTipText("Continually modifies the time slice or event number so that the playback is close to real time, given current rendering rate");
@@ -742,7 +782,9 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
                         .addComponent(fixedTimeSliceButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(fixedPacketSizeButton)))
+                        .addComponent(fixedPacketSizeButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(areaEventCountButton)))
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
                         .addGap(2, 2, 2)
@@ -759,6 +801,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(fixedTimeSliceButton)
                     .addComponent(fixedPacketSizeButton)
+                    .addComponent(areaEventCountButton)
                     .addComponent(realtimeButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -793,6 +836,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         aePlayer.setPlaybackMode(PlaybackMode.FixedPacketSize);
 }//GEN-LAST:event_fixedPacketSizeButtonActionPerformed
 
+    private void areaEventCountButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        aePlayer.setPlaybackMode(PlaybackMode.AreaEventCount);
+        if (aePlayer.getAreaEventCountExposer() != null) {
+            packetSizeSpinner.setValue(aePlayer.getAreaEventCountExposer().getEventCount());
+        }
+    }
+
     private void realtimeButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_realtimeButtonActionPerformed
         aePlayer.setPlaybackMode(PlaybackMode.RealTime);
 }//GEN-LAST:event_realtimeButtonActionPerformed
@@ -807,6 +857,10 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
     private void packetSizeSpinnerStateChanged (javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_packetSizeSpinnerStateChanged
         try {
+            if (aePlayer.isAreaEventCountEnabled() && aePlayer.getAreaEventCountExposer() != null) {
+                aePlayer.getAreaEventCountExposer().setEventCount((Integer) packetSizeSpinner.getValue());
+                return;
+            }
             aePlayer.setPacketSizeEvents((Integer) (packetSizeSpinner.getValue()));
         } catch (Exception e) {
             log.warning(e.toString());
@@ -917,6 +971,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JTextField eventField;
     private javax.swing.JLabel eventFieldLabel;
     private javax.swing.JLabel eventsLabel;
+    private javax.swing.JRadioButton areaEventCountButton;
     private javax.swing.JRadioButton fixedPacketSizeButton;
     private javax.swing.JRadioButton fixedTimeSliceButton;
     private javax.swing.JPanel jPanel2;

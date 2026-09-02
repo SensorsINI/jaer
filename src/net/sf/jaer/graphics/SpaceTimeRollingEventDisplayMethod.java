@@ -1011,6 +1011,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 case FixedTimeSlice:
                     int us = player.getTimesliceUs();
                     s = String.format("DVS frames of %ss", engFmt.format(us * 1e-6f));
+                    break;
+                case AreaEventCount:
+                    var exposer = player.getAreaEventCountExposer();
+                    int ec = exposer != null ? exposer.getEventCount() : 1000;
+                    int na = exposer != null ? exposer.getAllocatedAreaCount() : 32;
+                    s = String.format("DVS frames: any of %d areas ≥ %sev", na, engFmt.format(ec));
+                    break;
+                default:
+                    break;
             }
             drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax, 90);
 

@@ -5,6 +5,8 @@
 package eu.seebetter.ini.chips.davis;
 
 import java.awt.Font;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -21,6 +23,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
@@ -44,8 +47,11 @@ Requires a DAVIS chip
 (<code>DavisChip</code> / <code>DavisBaseCamera</code>).
 (And later, newer HVS like CDAVIS or recent ISSCC publications from
 Sony or Omnivision)</p>
-<p>Enclosed filters: <code>EventRateEstimator</code> (rate and event count)
-and <code>RectangularClusterTracker</code> (optional motion trigger).</p>
+<p>Enclosed filters: <code>EventRateEstimator</code> (rate and event count),
+<code>RectangularClusterTracker</code> (optional motion trigger), and
+<code>AreaEventCountExposer</code> (kept visible; enable via
+<code>useAreaEventCount</code>, then set numAreas / eventCount / showAreas
+on the enclosed filter).</p>
 <hr>
 <h3>Operating modes</h3>
 <p>Two mutually exclusive styles of capture:</p>
@@ -81,6 +87,9 @@ shooting is delayed; a snapshot is taken once the rate later drops
 <code>eventCountThresholdKEvents</code> thousand DVS events
 (threshold is in kevents; the filter counts raw events,
 <code>&times; 1024</code>).</li>
+<li><code>useAreaEventCount</code> &mdash; shoot when any of the
+enclosed <code>AreaEventCountExposer</code> spatial cells reaches
+its event count (default 32 areas, 1000 events).</li>
 <li><code>useTracker</code> &mdash; shoot when the enclosed
 <code>RectangularClusterTracker</code> finds a <b>new</b> visible
 cluster, or when an existing cluster has moved at least
@@ -135,6 +144,7 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     private final EventRateEstimator eventRateEstimator = new EventRateEstimator(chip);
     private final RectangularClusterTracker tracker = new RectangularClusterTracker(chip);
+    private final AreaEventCountExposer areaEventCountExposer = new AreaEventCountExposer(chip);
     private TextRenderer textRenderer = null;
     private float eventRateThresholdHz = getFloat("eventRateThresholdHz", 50000);
     private float blurEventRateThresholdHz = getFloat("blurEventRateThresholdHz", 100000);
@@ -146,6 +156,9 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
     private boolean activityFlag = false;
     private boolean useTracker = getBoolean("useTracker", false);
     private boolean useEventCount = getBoolean("useEventCount", true);
+    private boolean useAreaEventCount = getBoolean("useAreaEventCount", false);
+    /** Guards useAreaEventCount ↔ enclosed exposer filterEnabled so the two setters do not recurse. */
+    private boolean linkingAreaEventCountEnable;
     private boolean useEventRateThreshold = getBoolean("useEventRateThreshold", true);
     private int trackerMovementPixelsForNewFrame = getInt("trackerMovementPixelsForNewFrame", 5);
     private boolean shootFramesWhenDVSEventRateBelowThreshold = getBoolean("shootFramesWhenDVSEventRateBelowThreshold", false);
@@ -159,11 +172,29 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
         final FilterChain chain = new FilterChain(chip);
         chain.add(eventRateEstimator);
         chain.add(tracker);
+        chain.add(areaEventCountExposer);
         setEnclosedFilterChain(chain);
-        final String count = "Event Count", rate = "Event Rate", track = "Tracker";
+        setHideNonEnabledEnclosedFilters(false); // keep AreaEventCountExposer visible so its parameters can be edited
+        areaEventCountExposer.setEventExposureMode(AreaEventCountExposer.EventExposureMode.AreaEventCount);
+        areaEventCountExposer.setFilterEnabled(useAreaEventCount);
+        areaEventCountExposer.getSupport().addPropertyChangeListener("filterEnabled", new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                if (linkingAreaEventCountEnable) {
+                    return;
+                }
+                Object nv = evt.getNewValue();
+                if (nv instanceof Boolean && useAreaEventCount != (Boolean) nv) {
+                    setUseAreaEventCount((Boolean) nv);
+                }
+            }
+        });
+        final String count = "Event Count", rate = "Event Rate", track = "Tracker", area = "Area Event Count";
         setPropertyTooltip("showAnnotation", "draws the bars to show frame capture status");
         setPropertyTooltip(count, "eventCountThresholdKEvents", "shots are triggered every this many thousand DVS events");
         setPropertyTooltip(count, "useEventCount", "use an accumulated event count criteria");
+        setPropertyTooltip(area, "useAreaEventCount",
+                "shoot when any spatial area in the enclosed AreaEventCountExposer reaches its event count (enables that enclosed filter; expand it for numAreas, eventCount, showAreas)");
         setPropertyTooltip(rate, "eventRateThresholdHz", "shots are triggered whenever the DVS event rate in Hz is above this value");
         setPropertyTooltip(rate, "blurEventRateThresholdHz", "shots are delayed whenever the DVS event rate in Hz is above this value");
         setPropertyTooltip(rate, "useEventRateThreshold", "use an event rate criteria");
@@ -185,6 +216,11 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
         gl.glRectf(0, 0, x1, 2);
         final float x2 = (chip.getSizeX() * ((eventRateEstimator.getFilteredEventRate()))) / eventRateThresholdHz;
         gl.glRectf(0, 4, x2, 6);
+        if (useAreaEventCount && areaEventCountExposer.getEventCount() > 0) {
+            gl.glColor3f(0, 0.6f, 0);
+            final float x3 = (chip.getSizeX() * ((float) areaEventCountExposer.getMaxAreaCount())) / areaEventCountExposer.getEventCount();
+            gl.glRectf(0, 8, x3, 10);
+        }
 
         textRenderer=new TextRenderer(new Font("Monospaced", Font.BOLD, 24));
         textRenderer.setColor(1, 1, 1, 0.4f); // rgba
@@ -229,10 +265,12 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
         } else if (uninitialized || (useEventRateThreshold && (eventRateEstimator.getFilteredEventRate() < eventRateThresholdHz) && activityFlag)
                 || (useEventRateThreshold && (eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz)
                 && (eventRateEstimator.getFilteredEventRate() < blurEventRateThresholdHz))
-                || (useEventCount && (eventsSinceLastShot > (eventCountThresholdKEvents << 10))) || (newClusterFound)
+                || (useEventCount && (eventsSinceLastShot > (eventCountThresholdKEvents << 10)))
+                || (useAreaEventCount && areaEventCountExposer.isExposed()) || (newClusterFound)
                 || (maxDistance > getTrackerMovementPixelsForNewFrame())) {
             // trigger shot
             eventsSinceLastShot = 0;
+            areaEventCountExposer.resetAccumulation();
             snapshotTriggered = true;
             ((DavisChip) chip).takeSnapshot();
             uninitialized = false;
@@ -248,6 +286,7 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
     @Override
     public void resetFilter() {
         eventRateEstimator.resetFilter();
+        areaEventCountExposer.resetFilter();
         eventsSinceLastShot = 0;
         uninitialized = true;
     }
@@ -360,6 +399,28 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
         putBoolean("useEventCount", useEventCount);
     }
 
+    public boolean isUseAreaEventCount() {
+        return useAreaEventCount;
+    }
+
+    public void setUseAreaEventCount(final boolean useAreaEventCount) {
+        boolean old = this.useAreaEventCount;
+        this.useAreaEventCount = useAreaEventCount;
+        putBoolean("useAreaEventCount", useAreaEventCount);
+        if (areaEventCountExposer != null && !linkingAreaEventCountEnable) {
+            linkingAreaEventCountEnable = true;
+            try {
+                areaEventCountExposer.setFilterEnabled(useAreaEventCount);
+                if (!useAreaEventCount) {
+                    areaEventCountExposer.resetAccumulation();
+                }
+            } finally {
+                linkingAreaEventCountEnable = false;
+            }
+        }
+        getSupport().firePropertyChange("useAreaEventCount", old, this.useAreaEventCount);
+    }
+
     /**
      * @return the useEventRateThreshold
      */
@@ -377,9 +438,18 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public synchronized void setFilterEnabled(final boolean yes) {
-        super.setFilterEnabled(yes);
-        // TODO reenable fixed frame rate capture here
-
+        linkingAreaEventCountEnable = true;
+        try {
+            super.setFilterEnabled(yes);
+            if (areaEventCountExposer != null) {
+                areaEventCountExposer.setFilterEnabled(yes && useAreaEventCount);
+            }
+            if (tracker != null) {
+                tracker.setFilterEnabled(yes && useTracker);
+            }
+        } finally {
+            linkingAreaEventCountEnable = false;
+        }
     }
 
     /**

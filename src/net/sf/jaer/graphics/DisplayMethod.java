@@ -198,7 +198,7 @@ public abstract class DisplayMethod implements PropertyChangeListener {
             return;
         }
         long now = System.currentTimeMillis();
-        final int WRAP_LEN = 24;
+        final int WRAP_LEN = 40;
         if ((now - statusChangeStartTimeMillis) > getStatusChangeDisplayTimeMillis() * (1 + (statusChangeString.length() / WRAP_LEN))) {
             statusChangeString = null;
             return;
@@ -208,47 +208,39 @@ public abstract class DisplayMethod implements PropertyChangeListener {
             s = WordUtils.wrap(s, WRAP_LEN);
         }
         String[] ss = s.split("\n");
-        int nlines = ss.length;
-        int maxlenidx = Integer.MIN_VALUE;
-        int idx = 0;
-        for (String sss : ss) {
-            if (sss.length() > maxlenidx) {
-                maxlenidx = idx;
-                idx++;
+        int nlines = 0;
+        for (String line : ss) {
+            if (line != null && !line.isEmpty()) {
+                nlines++;
             }
+        }
+        if (nlines == 0) {
+            return;
         }
 
-        int fontsize = Math.round(8 * (chip.getSizeX() / 346f)); // heuristic to scale font based on empirical estimate for DAVIS346
-        // if font is too small, then make a larger one and scale all the drawing
-        float scale = 1;
-        if (fontsize < 10) {
-            fontsize *= 2;
-            scale = .5f;
+        int fontsize = Math.max(8, Math.round(8 * (chip.getSizeX() / 346f)));
+        float adv = DrawGL.lineAdvance(fontsize);
+        float ht = adv * nlines;
+        float ypos = (chip.getSizeY() / 2f) + (ht / 2f);
+        float xpos = chip.getSizeX() / 2f;
+        DrawGL.drawLinesDropShadow(fontsize, xpos, ypos, .5f, Color.white, ss);
+    }
+
+    /**
+     * True while a {@link #showActionText(String)} overlay is still within its display time.
+     */
+    public boolean isActionTextShowing() {
+        if (statusChangeString == null || statusChangeDisplayTimeMillis <= 0) {
+            return false;
         }
-//        log.fine(String.format("Chose fontsize=%d and scale=%f for chip with %d horizontal pixels",fontsize,scale,chip.getSizeX()));
-        GL2 gl = drawable.getGL().getGL2();
-        // we want status display to fill about 1/2 of width of chip area, so choose font size appropriately.
-        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontsize), true, true);
-        try {
-            gl.glPushMatrix();
-            gl.glScalef(scale, scale, scale); // everything is scaled (maybe) down by this, e.g. 0.5 for DVS128
-            Rectangle2D r = renderer.getBounds(ss[maxlenidx]); // get bounds of max width string
-            float h1 = (float) (r.getHeight() * scale); // height of this line
-            final float linespace = (float) (h1 * 1.5f); // line spacing as factor of line height
-            float ht = (float) h1 * nlines; // total height of multiline string
-            float w = (float) (r.getWidth() * scale); // width of widest line
-            float ypos = (float) (chip.getSizeY() / 2 / scale) + (ht / 2);
-            float xpos = (float) (chip.getSizeX() / 2) / scale; // xpos is center because alignment is 0.5 below
-//            log.info(String.format("ypos=%.1f",ypos));
-            float y = ypos;
-            for (String sss : ss) {
-                DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
-                y -= linespace;
-            }
-            gl.glPopMatrix();
-        } catch (GLException e) {
-            log.warning("caught " + e + " when trying to render text into the current OpenGL context");
-        }
+        final int WRAP_LEN = 40;
+        long now = System.currentTimeMillis();
+        return (now - statusChangeStartTimeMillis) <= getStatusChangeDisplayTimeMillis() * (1 + (statusChangeString.length() / WRAP_LEN));
+    }
+
+    /** Drops the centered action overlay immediately. */
+    public void clearActionText() {
+        statusChangeString = null;
     }
 
     /**

@@ -27,7 +27,9 @@ import java.io.File;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import org.apache.commons.io.FilenameUtils;
 
 /**
@@ -98,6 +100,8 @@ public abstract class AbstractAEPlayer {
      */
     public static final String EVENT_PLAYBACKMODE = "playbackMode", EVENT_TIMESLICE_US = "timesliceUs",
             EVENT_PACKETSIZEEVENTS = "packetSizeEvents",
+            EVENT_AREA_EVENT_COUNT = "areaEventCount",
+            EVENT_NUM_AREAS = "numAreas",
             EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen", EVENT_REPEAT = "repeat"; // TODO not used yet in code
 
     /**
@@ -114,6 +118,11 @@ public abstract class AbstractAEPlayer {
         support.addPropertyChangeListener(viewer);
         repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
         jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 100);
+        try {
+            playbackMode = PlaybackMode.valueOf(prefs.get("AbstractAEPlayer.playbackMode", PlaybackMode.FixedTimeSlice.name()));
+        } catch (IllegalArgumentException e) {
+            playbackMode = PlaybackMode.FixedTimeSlice;
+        }
     }
 
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -181,7 +190,13 @@ public abstract class AbstractAEPlayer {
 
     public enum PlaybackMode {
 
-        FixedTimeSlice, FixedPacketSize, RealTime
+        /** CountDuration: accumulate a fixed time slice. */
+        FixedTimeSlice,
+        /** ConstantCount: accumulate a fixed number of events. */
+        FixedPacketSize,
+        RealTime,
+        /** AreaEventCount: accumulate until any spatial area reaches N events. */
+        AreaEventCount
     }
 
     public enum PlaybackDirection {
@@ -192,6 +207,9 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
+    /** Leftover raw events after an AreaEventCount cut in the middle of a read chunk. */
+    protected AEPacketRaw areaEventLeftover = null;
+    private AreaEventCountExposer areaEventCountExposer = null;
     protected int jogPacketCount = 20;
     /** Remaining jog steps; written from EDT (Esc cancel) and read on ViewLoop — must be volatile. */
     volatile protected int jogPacketsLeft = 0;
@@ -215,7 +233,12 @@ public abstract class AbstractAEPlayer {
      *
      */
     public void speedUp() {
-        if (isFlexTimeEnabled()) {
+        if (isAreaEventCountEnabled()) {
+            AreaEventCountExposer exposer = getAreaEventCountExposer();
+            if (exposer != null) {
+                exposer.scaleEventCount(SPEED_UP_SLOW_DOWN_FACTOR);
+            }
+        } else if (isFlexTimeEnabled()) {
             int newCount = (int) Math.round(getPacketSizeEvents() * SPEED_UP_SLOW_DOWN_FACTOR);
             if (newCount == getPacketSizeEvents()) {
                 newCount += 1; // make sure we don't get stuck at 1
@@ -237,7 +260,12 @@ public abstract class AbstractAEPlayer {
      *
      */
     public void slowDown() {
-        if (isFlexTimeEnabled()) {
+        if (isAreaEventCountEnabled()) {
+            AreaEventCountExposer exposer = getAreaEventCountExposer();
+            if (exposer != null) {
+                exposer.scaleEventCount(1.0 / SPEED_UP_SLOW_DOWN_FACTOR);
+            }
+        } else if (isFlexTimeEnabled()) {
             setPacketSizeEvents((int) Math.round(getPacketSizeEvents() / SPEED_UP_SLOW_DOWN_FACTOR));
             if (getPacketSizeEvents() == 0) {
                 setPacketSizeEvents(1);
@@ -349,7 +377,69 @@ public abstract class AbstractAEPlayer {
     public void setPlaybackMode(PlaybackMode playbackMode) {
         PlaybackMode old = this.playbackMode;
         this.playbackMode = playbackMode;
+        prefs.put("AbstractAEPlayer.playbackMode", playbackMode.name());
         support.firePropertyChange(EVENT_PLAYBACKMODE, old, playbackMode);
+    }
+
+    /**
+     * AEViewer-owned exposer used for {@link PlaybackMode#AreaEventCount}.
+     * Prefs for count and area number are stored on the AEViewer node.
+     */
+    public synchronized AreaEventCountExposer getAreaEventCountExposer() {
+        AEChip chip = viewer != null ? viewer.getChip() : null;
+        if (chip == null) {
+            return areaEventCountExposer;
+        }
+        if (areaEventCountExposer == null || areaEventCountExposer.getChip() != chip) {
+            areaEventCountExposer = new AreaEventCountExposer(chip);
+            areaEventCountExposer.setEventExposureMode(AreaEventCountExposer.EventExposureMode.AreaEventCount);
+            areaEventCountExposer.setEventCount(prefs.getInt("AbstractAEPlayer.areaEventCount", AreaEventCountExposer.EVENT_COUNT_DEFAULT));
+            areaEventCountExposer.setNumAreas(prefs.getInt("AbstractAEPlayer.numAreas", AreaEventCountExposer.NUM_AREAS_DEFAULT));
+            areaEventCountExposer.getSupport().addPropertyChangeListener(evt -> {
+                if (AreaEventCountExposer.EVENT_EVENT_COUNT.equals(evt.getPropertyName())) {
+                    prefs.putInt("AbstractAEPlayer.areaEventCount", areaEventCountExposer.getEventCount());
+                    support.firePropertyChange(EVENT_AREA_EVENT_COUNT, evt.getOldValue(), evt.getNewValue());
+                } else if (AreaEventCountExposer.EVENT_NUM_AREAS.equals(evt.getPropertyName())) {
+                    prefs.putInt("AbstractAEPlayer.numAreas", areaEventCountExposer.getNumAreas());
+                    support.firePropertyChange(EVENT_NUM_AREAS, evt.getOldValue(), evt.getNewValue());
+                }
+            });
+        }
+        return areaEventCountExposer;
+    }
+
+    public boolean isAreaEventCountEnabled() {
+        return playbackMode == PlaybackMode.AreaEventCount;
+    }
+
+    public void setAreaEventCountEnabled() {
+        setPlaybackMode(PlaybackMode.AreaEventCount);
+    }
+
+    public int getNumAreas() {
+        if (areaEventCountExposer != null) {
+            return areaEventCountExposer.getNumAreas();
+        }
+        return prefs.getInt("AbstractAEPlayer.numAreas", AreaEventCountExposer.NUM_AREAS_DEFAULT);
+    }
+
+    public int getAreaEventCount() {
+        if (areaEventCountExposer != null) {
+            return areaEventCountExposer.getEventCount();
+        }
+        return prefs.getInt("AbstractAEPlayer.areaEventCount", AreaEventCountExposer.EVENT_COUNT_DEFAULT);
+    }
+
+    public void setNumAreas(int numAreas) {
+        getAreaEventCountExposer().setNumAreas(numAreas);
+    }
+
+    public void clearAreaEventLeftover() {
+        areaEventLeftover = null;
+        AreaEventCountExposer exposer = areaEventCountExposer;
+        if (exposer != null) {
+            exposer.resetAccumulation();
+        }
     }
 
     public AEFileInputStreamInterface getAEInputStream() {
@@ -547,17 +637,42 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
-     * Toggles between fixed packet size and fixed time slice. If mode is
-     * RealTime, has no effect.
-     *
+     * Overlay text for the current {@link PlaybackMode} / EventExposureMode.
+     */
+    public void showPlaybackModeAction() {
+        String s;
+        if (isAreaEventCountEnabled()) {
+            AreaEventCountExposer exposer = getAreaEventCountExposer();
+            int n = exposer != null ? exposer.getEventCount() : AreaEventCountExposer.EVENT_COUNT_DEFAULT;
+            int areas = exposer != null ? exposer.getAllocatedAreaCount() : AreaEventCountExposer.NUM_AREAS_DEFAULT;
+            s = String.format("AreaEventCount: expose when any of %d areas reaches %d events", areas, n);
+        } else if (isFlexTimeEnabled()) {
+            s = String.format("ConstantCount: %d events/frame", getPacketSizeEvents());
+        } else if (isRealtimeEnabled()) {
+            s = "RealTime playback";
+        } else {
+            s = String.format("CountDuration: %ss/frame", engFmt.format(getTimesliceUs() * 1e-6f));
+        }
+        if (viewer != null) {
+            viewer.showActionText(s);
+        }
+    }
+
+    /**
+     * Cycles CountDuration → ConstantCount → AreaEventCount → CountDuration.
+     * If mode is RealTime, has no effect.
      */
     void toggleFlexTime() {
-        if (playbackMode == PlaybackMode.FixedPacketSize) {
-            setFixedTimesliceEnabled();
-        } else if (playbackMode == PlaybackMode.FixedTimeSlice) {
-            setFlexTimeEnabled();
-        } else {
+        if (playbackMode == PlaybackMode.RealTime) {
             log.warning("cannot toggle flex time since we are in RealTime playback mode now");
+            return;
+        }
+        if (playbackMode == PlaybackMode.FixedTimeSlice) {
+            setFlexTimeEnabled();
+        } else if (playbackMode == PlaybackMode.FixedPacketSize) {
+            setAreaEventCountEnabled();
+        } else {
+            setFixedTimesliceEnabled();
         }
     }
 
@@ -573,6 +688,9 @@ public abstract class AbstractAEPlayer {
         PlaybackDirection old = playbackDirection;
 
         this.playbackDirection = direction;
+        if (old != direction) {
+            areaEventLeftover = null;
+        }
         support.firePropertyChange(EVENT_PLAYBACKDIRECTION, old, this.playbackDirection);
     }
 
@@ -980,6 +1098,13 @@ public abstract class AbstractAEPlayer {
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private final String speedText(boolean faster) {
+        if (isAreaEventCountEnabled()) {
+            AreaEventCountExposer exposer = getAreaEventCountExposer();
+            int n = exposer != null ? exposer.getEventCount() : AreaEventCountExposer.EVENT_COUNT_DEFAULT;
+            int areas = exposer != null ? exposer.getAllocatedAreaCount() : AreaEventCountExposer.NUM_AREAS_DEFAULT;
+            return String.format("DVS accumulation %s to %d events/area (%d areas)",
+                    faster ? "increased" : "reduced", n, areas);
+        }
         String fpsStr = isFlexTimeEnabled() ? "" : String.format(" (%sFPS)", engFmt.format(1e6f / getTimesliceUs()));
         return String.format("DVS accumulation %s to %s%s%s", faster ? "increased" : "reduced",
                 isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f * getTimesliceUs()),
@@ -1101,21 +1226,15 @@ public abstract class AbstractAEPlayer {
     final public class ToggleFlextimeAction extends MyAction {
 
         public ToggleFlextimeAction() {
-            super("ToggleFlextimeAction", null);
+            super("Cycle accumulation method", null);
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_T, 0));
-            putValue(Action.SHORT_DESCRIPTION, "Toggles between constant-duration frames and constant-event-count frames");
+            putValue(Action.SHORT_DESCRIPTION, "Cycles CountDuration, ConstantCount, and AreaEventCount accumulation (T)");
         }
 
         public void actionPerformed(ActionEvent e) {
             toggleFlexTime();
-            String s = null;
-            if (isFlexTimeEnabled()) {
-                s = String.format("Flextime: Constant-count DVS frames with %d events/frame", getPacketSizeEvents());
-            } else {
-                s = String.format("Flextime: Flextime: Constant-duration DVS frames with %ss/frame", engFmt.format(getTimesliceUs() * 1e-6f));
-            }
-            showAction(s);
-            putValue(Action.SELECTED_KEY, isFlexTimeEnabled());
+            showPlaybackModeAction();
+            putValue(Action.SELECTED_KEY, isFlexTimeEnabled() || isAreaEventCountEnabled());
         }
     }
 
@@ -1135,8 +1254,10 @@ public abstract class AbstractAEPlayer {
 //    }
     @Override
     public String toString() {
-        return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d ",
-                paused, repeat, playbackDirection, playbackMode, timesliceUs, packetSizeEvents);
+        AreaEventCountExposer exposer = areaEventCountExposer;
+        return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d areaEventCount=%s",
+                paused, repeat, playbackDirection, playbackMode, timesliceUs, packetSizeEvents,
+                exposer != null ? Integer.toString(exposer.getEventCount()) : "n/a");
     }
 
     /**

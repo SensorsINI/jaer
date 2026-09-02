@@ -548,6 +548,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private String lastSaveAsSourceFileInfo;
     /** Nonmodal File/Preferences dialog; reused while this viewer is open. */
     private AEViewerPreferencesDialog preferencesDialog;
+    /** Playback menu: choose EventExposureMode-equivalent packet slicing (not a boolean). */
+    private JMenu playbackModeMenu;
+    private final HashMap<AbstractAEPlayer.PlaybackMode, JRadioButtonMenuItem> playbackModeMenuItems = new HashMap<>();
+    /** True while Tab View/Playback overlay is the current action text. */
+    private boolean tabOverlayVisible;
     /** Nonmodal Help → Quick help / Shortcuts window (F1). */
     private AEViewerQuickHelpFrame quickHelpFrame;
 
@@ -763,6 +768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         initComponents();
         StartupProfiler.mark("AEViewer after initComponents");
+        installPlaybackModeMenu();
         bindCtrlWAbortToRootPane();
         updateExitMenuTooltip();
         initRosOutputRemoteMenu();
@@ -857,6 +863,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
+        // Tab: View/Playback overlay. Menu accelerators miss this key because Swing
+        // uses it for focus traversal, and the GL canvas often has focus.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_TAB
+                        || e.getModifiersEx() != 0) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focus instanceof JTextField || focus instanceof JTextArea) {
+                    return false;
+                }
+                showViewAndPlaybackOverlay();
+                e.consume();
+                return true;
+            }
+        });
         // Windows has no libusb hotplug: clicking the viewer while WAITING
         // restarts 1 s USB scans so a camera plugged in while jAER was in the
         // background is found. PLAYBACK does not scan.
@@ -868,7 +896,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         JaerWindowGroupRaiser.install();
         setupAdaptiveRenderSkippingMenu();
-        setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
+        setFocusTraversalKeysEnabled(false); // Tab is View/Playback overlay; KeyEventDispatcher handles it
 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
 
@@ -3315,6 +3343,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             chipCanvas = chip.getCanvas();
             Component glComp = chipCanvas.getCanvas();
+            if (glComp != null) {
+                glComp.setFocusTraversalKeysEnabled(false);
+            }
             // Only add if not already parented — never remove/re-add (new HWND → SetPixelFormat crash on Intel Arc).
             if (glComp != null && glComp.getParent() != getImagePanel()) {
                 getImagePanel().add(glComp, BorderLayout.CENTER);
@@ -5900,6 +5931,126 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return viewLoopSuspendedForOfflineExport;
     }
 
+    /**
+     * Replaces the generated Flextime checkbox with a menu that chooses
+     * {@link AbstractAEPlayer.PlaybackMode} (T still cycles duration / count / area).
+     */
+    private void installPlaybackModeMenu() {
+        flextimePlaybackEnabledCheckBoxMenuItem.setVisible(false);
+        flextimePlaybackEnabledCheckBoxMenuItem.setAccelerator(null);
+        flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(false);
+
+        playbackModeMenu = new JMenu("Accumulation method");
+        playbackModeMenu.setToolTipText("<html>How playback packets are sliced.<br>T cycles CountDuration, ConstantCount, and AreaEventCount.");
+        playbackModeMenu.setEnabled(false);
+
+        JMenuItem cycleItem = new JMenuItem(aePlayer.toggleFlextimeAction);
+        cycleItem.setText("Cycle method");
+        cycleItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, 0));
+        playbackModeMenu.add(cycleItem);
+        playbackModeMenu.addSeparator();
+
+        ButtonGroup group = new ButtonGroup();
+        addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.FixedTimeSlice, "Fixed duration (CountDuration)",
+                "Accumulate a fixed time slice");
+        addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.FixedPacketSize, "Fixed event count (ConstantCount)",
+                "Accumulate a fixed number of events (flextime)");
+        addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.AreaEventCount, "Area event count (AreaEventCount)",
+                "Expose when any spatial area reaches N events (f/s changes N). Set # areas in File → Preferences → Playback.");
+        addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.RealTime, "Real time",
+                "Play at recorded real time (T does not cycle this)");
+
+        int idx = -1;
+        for (int i = 0; i < playbackMenu.getItemCount(); i++) {
+            if (playbackMenu.getItem(i) == flextimePlaybackEnabledCheckBoxMenuItem) {
+                idx = i;
+                break;
+            }
+        }
+        playbackMenu.remove(flextimePlaybackEnabledCheckBoxMenuItem);
+        if (idx >= 0) {
+            playbackMenu.insert(playbackModeMenu, idx);
+        } else {
+            playbackMenu.add(playbackModeMenu);
+        }
+
+        aePlayer.getSupport().addPropertyChangeListener(AbstractAEPlayer.EVENT_PLAYBACKMODE, evt -> updatePlaybackModeMenuSelection());
+        updatePlaybackModeMenuSelection();
+
+        showRenderingModeMI.setText("Show View and Playback modes");
+        showRenderingModeMI.setToolTipText("Momentarily overlay the current display method, color/contrast, and playback accumulation method");
+    }
+
+    private void addPlaybackModeMenuItem(ButtonGroup group, AbstractAEPlayer.PlaybackMode mode, String label, String tip) {
+        JRadioButtonMenuItem item = new JRadioButtonMenuItem(label);
+        item.setToolTipText(tip);
+        item.addActionListener(e -> {
+            if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.getViewers().size() > 1
+                    && mode != AbstractAEPlayer.PlaybackMode.FixedTimeSlice) {
+                JOptionPane.showMessageDialog(this, "Flextime / area-count playback doesn't make sense for synchronized viewing");
+                updatePlaybackModeMenuSelection();
+                return;
+            }
+            aePlayer.setPlaybackMode(mode);
+            aePlayer.showPlaybackModeAction();
+        });
+        group.add(item);
+        playbackModeMenu.add(item);
+        playbackModeMenuItems.put(mode, item);
+    }
+
+    private void updatePlaybackModeMenuSelection() {
+        if (aePlayer == null) {
+            return;
+        }
+        JRadioButtonMenuItem item = playbackModeMenuItems.get(aePlayer.getPlaybackMode());
+        if (item != null) {
+            item.setSelected(true);
+        }
+    }
+
+    /**
+     * Current View (display / color / accumulate) and Playback (play mode + EventExposureMode).
+     */
+    private String formatViewAndPlaybackStatus() {
+        StringBuilder sb = new StringBuilder(128);
+        sb.append("View: ");
+        if (chipCanvas != null && chipCanvas.getDisplayMethod() != null) {
+            sb.append(chipCanvas.getDisplayMethod().getClass().getSimpleName());
+        }
+        AEChipRenderer renderer = getRenderer();
+        if (renderer != null) {
+            sb.append('\n').append(renderer.getColorMode().name());
+            sb.append(" FS=").append(renderer.getColorScale());
+            sb.append(" accumulate=").append(renderer.isAccumulateEnabled());
+            if (renderer.isFadingEnabled()) {
+                sb.append(" fading");
+            }
+            if (renderer.isSlidingWindowEnabled()) {
+                sb.append(" sliding");
+            }
+        }
+        sb.append("\nPlayback: ").append(getPlayMode());
+        AbstractAEPlayer player = getAePlayer();
+        if (player != null) {
+            sb.append("  ").append(player.getPlaybackMode());
+            switch (player.getPlaybackMode()) {
+                case FixedTimeSlice:
+                    sb.append(String.format("  %ss", new EngineeringFormat().format(player.getTimesliceUs() * 1e-6f)));
+                    break;
+                case FixedPacketSize:
+                    sb.append(String.format("  %d events", player.getPacketSizeEvents()));
+                    break;
+                case AreaEventCount:
+                    sb.append(String.format("  %d areas, %d ev/area", player.getNumAreas(), player.getAreaEventCount()));
+                    break;
+                default:
+                    break;
+            }
+        }
+        return sb.toString();
+    }
+
     void setPlaybackControlsEnabledState(boolean yes) {
         //        log.info("*****************************************************       setting playback controls enabled = "+yes);
         recordingButton.setEnabled(!yes);
@@ -5919,6 +6070,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreasePlaybackSpeedMenuItem.setEnabled(yes);
         rewindPlaybackMenuItem.setEnabled(yes);
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes);
+        if (playbackModeMenu != null) {
+            playbackModeMenu.setEnabled(yes);
+        }
         togglePlaybackDirectionMenuItem.setEnabled(yes);
         clearMarksMI.setEnabled(yes);
         setMarkInMI.setEnabled(yes);
@@ -7058,8 +7212,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param text
      */
     public void showActionText(String s) {
-        if (chip.getCanvas().getDisplayMethod() != null) {
+        tabOverlayVisible = false;
+        if (chip != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() != null) {
             chip.getCanvas().getDisplayMethod().showActionText(s);
+            chip.getCanvas().repaint();
         }
     }
 
@@ -12823,9 +12979,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_cyclePreviousColorRenderingMethodMenuItemActionPerformed
 
+    private void showViewAndPlaybackOverlay() {
+        if (chip == null || chip.getCanvas() == null || chip.getCanvas().getDisplayMethod() == null) {
+            return;
+        }
+        DisplayMethod dm = chip.getCanvas().getDisplayMethod();
+        if (tabOverlayVisible && dm.isActionTextShowing()) {
+            dm.clearActionText();
+            tabOverlayVisible = false;
+            chip.getCanvas().repaint();
+            return;
+        }
+        String s = formatViewAndPlaybackStatus();
+        log.info(s.replace('\n', ' '));
+        dm.showActionText(s);
+        chip.getCanvas().repaint();
+        tabOverlayVisible = true;
+    }
+
     private void showRenderingModeMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showRenderingModeMIActionPerformed
-        log.info(getRenderer().getDescription());
-        showActionText(getRenderer().getDescription());
+        showViewAndPlaybackOverlay();
     }//GEN-LAST:event_showRenderingModeMIActionPerformed
 
     private void renewChipMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_renewChipMIActionPerformed

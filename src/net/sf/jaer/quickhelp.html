@@ -55,7 +55,7 @@ Menu names match the AEViewer menus. Chip classes that add a menu
   <tr><td>Ctrl+P</td><td>Fading accumulation; then mouse wheel scrolls time</td></tr>
   <tr><td>Ctrl+Alt+P</td><td>Sliding accumulation; then mouse scrolls rendering packets</td></tr>
   <tr><td>Space</td><td>Pause / resume the view loop</td></tr>
-  <tr><td>Tab</td><td>Show current rendering mode briefly</td></tr>
+  <tr><td>Tab</td><td>Show current <b>View</b> and <b>Playback</b> modes briefly (display method, color/contrast, accumulation method)</td></tr>
 </table>
 
 <h3>Hardware / interface</h3>
@@ -114,7 +114,10 @@ these accelerators. Open that menu to see what it offers.</p>
   <tr><td>. (period)</td><td>Step forward one packet</td></tr>
   <tr><td>R</td><td>Rewind to start</td></tr>
   <tr><td>Space</td><td>Pause / play</td></tr>
-  <tr><td>T</td><td>Toggle Flextime (fixed duration vs fixed event count)</td></tr>
+  <tr><td>T</td><td>Cycle accumulation method: fixed duration, fixed event count, then area event count
+    (expose when any spatial cell reaches N events; default 32 areas / 1000 events; f/s changes N).
+    File → Preferences has <b># areas</b>.
+    See paper <a href="https://bmva-archive.org.uk/bmvc/2018/contents/papers/0280.pdf">Figs. 3–4</a>.</td></tr>
 </table>
 
 <h3>Jog and speed</h3>

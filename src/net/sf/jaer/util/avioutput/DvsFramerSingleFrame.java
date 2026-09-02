@@ -71,6 +71,12 @@ public class DvsFramerSingleFrame extends DvsFramer {
         if (e instanceof ApsDvsEvent && !((ApsDvsEvent) e).isDVSEvent()) {
             return;
         }
+        if (getTimeSliceMethod() == TimeSliceMethod.AreaEvent && areaEventCountExposer != null) {
+            if (dvsFrame.isFilled()) {
+                areaEventCountExposer.resetAccumulation();
+            }
+            areaEventCountExposer.addEvent(e.x, e.y, e.timestamp);
+        }
         int srcWidth = chip.getSizeX(), srcHeight = chip.getSizeY();
         initialize(e);
         int x = e.x, y = e.y;

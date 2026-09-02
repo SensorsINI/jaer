@@ -35,6 +35,8 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -83,6 +85,7 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     private TimeSliceMethod timeSliceMethod = null; // init in construction with try catch
+    protected AreaEventCountExposer areaEventCountExposer;
 
     /**
      * Global flag to show that the entire DvsFramer has been cleared
@@ -132,11 +135,20 @@ abstract public class DvsFramer extends EventFilter2D {
     public DvsFramer(AEChip chip) {
         super(chip);
         dvsGrayScaleRecip = 1f / dvsGrayScale;
+        areaEventCountExposer = new AreaEventCountExposer(chip);
+        areaEventCountExposer.setEventExposureMode(AreaEventCountExposer.EventExposureMode.AreaEventCount);
+        FilterChain chain = new FilterChain(chip);
+        chain.add(areaEventCountExposer);
+        setEnclosedFilterChain(chain);
+        areaEventCountExposer.setFilterEnabled(false);
         try {
             timeSliceMethod = TimeSliceMethod.valueOf(getString("timeSliceMethod", TimeSliceMethod.EventCount.toString()));
         } catch (IllegalArgumentException e) {
             log.warning("Unknown preference for timeSliceMethod; reverting to default Eventcount: " + e.toString());
             timeSliceMethod = TimeSliceMethod.EventCount;
+        }
+        if (timeSliceMethod == TimeSliceMethod.AreaEvent) {
+            areaEventCountExposer.setFilterEnabled(true);
         }
         setPropertyTooltip("dvsEventsPerFrame", "Used with timeSliceMethod TimeInterval: number of DVS events accumulated to subsampled ROI to fill the frame");
         setPropertyTooltip("showFrames", "shows the fully exposed (accumulated with events) frames in a separate window");
@@ -150,7 +162,7 @@ abstract public class DvsFramer extends EventFilter2D {
         setPropertyTooltip("frameCutLeft", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip("frameCutRight", "frame cut is the pixels we cut from the original image, it follows [[top, bottom], [left, right]]");
         setPropertyTooltip("normalizeFrame", "normalizes DVS frames according to DvsFramer.DvsFrame.normalizeFrame(), to have zero mean and range 0-1 using 3-sigma values");
-        setPropertyTooltip("timeSliceMethod", "Either EventCount or TimeInterval can be chosen to expose DVS frames");
+        setPropertyTooltip("timeSliceMethod", "EventCount, TimeIntervalUs, or AreaEvent (any spatial cell of enclosed AreaEventCountExposer reaches its count)");
         setPropertyTooltip("timeDurationUsPerFrame", "Used with timeSliceMethod TimeInterval: time interval for DVS frames");
         setPropertyTooltip("setOutputImageToFullFrame", "Set output image AVI frame size to full chip size");
     }
@@ -572,6 +584,11 @@ abstract public class DvsFramer extends EventFilter2D {
                         filled = true;
                     }
                     break;
+                case AreaEvent:
+                    if (areaEventCountExposer != null && areaEventCountExposer.isExposed()) {
+                        filled = true;
+                    }
+                    break;
                 default:
                     setFilterEnabled(false);
                     log.warning("method " + timeSliceMethod + " not yet implemented, disabled filter");
@@ -977,13 +994,14 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param timeSliceMethod the timeSliceMethod to set
      */
     public void setTimeSliceMethod(TimeSliceMethod timeSliceMethod) {
-        if (timeSliceMethod == TimeSliceMethod.AreaEvent) {
-            showWarningDialogInSwingThread("DvsFramer method " + timeSliceMethod + " not yet implemented, ignoring", "DvsFramer");
-            getSupport().firePropertyChange("timeSliceMethod", timeSliceMethod, this.timeSliceMethod);
-            return;
-        }
+        TimeSliceMethod old = this.timeSliceMethod;
         this.timeSliceMethod = timeSliceMethod;
         putString("timeSliceMethod", timeSliceMethod.toString());
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.setFilterEnabled(timeSliceMethod == TimeSliceMethod.AreaEvent);
+            areaEventCountExposer.resetAccumulation();
+        }
+        getSupport().firePropertyChange("timeSliceMethod", old, this.timeSliceMethod);
     }
 
     /**

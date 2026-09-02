@@ -24,7 +24,10 @@ import java.time.ZoneId;
 import java.util.logging.Level;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.NonMonotonicTimeException;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -733,6 +736,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 aeInputStream.close();
                 aeInputStream = null;
             }
+            clearAreaEventLeftover();
         } catch (IOException ignore) {
             ignore.printStackTrace();
         }
@@ -749,6 +753,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         try {
             aeInputStream.rewind();
+            clearAreaEventLeftover();
             if (viewer != null) {
                 viewer.filterChain.reset(); // already done in aePlayer
                 viewer.getRenderer().resetAccumulation();
@@ -778,13 +783,18 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
 
         try {
-            boolean flex = viewer.aePlayer.isFlexTimeEnabled();
+            boolean area = viewer.aePlayer.isAreaEventCountEnabled();
+            boolean flex = !area && viewer.aePlayer.isFlexTimeEnabled();
             if (!jogOccuring || jogPacketsLeft == 0) {
-                int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
-                if (!flex) {
-                    aeRaw = aeInputStream.readPacketByTime(slice);
+                if (area) {
+                    aeRaw = readPacketByAreaEventCount();
                 } else {
-                    aeRaw = aeInputStream.readPacketByNumber(slice);
+                    int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
+                    if (!flex) {
+                        aeRaw = aeInputStream.readPacketByTime(slice);
+                    } else {
+                        aeRaw = aeInputStream.readPacketByNumber(slice);
+                    }
                 }
             } else {
                 // Must re-read slice AFTER setDirection* — previously slice was captured once
@@ -801,9 +811,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 while (jogOccuring && jogPacketsLeft != 0) {
                     boolean forwards = jogPacketsLeft >= 0;
                     setDirectionForwards(forwards);
-                    int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
                     long posBefore = aeInputStream.position();
-                    if (!flex) {
+                    int slice = area ? 0 : (flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs());
+                    if (area) {
+                        aeRaw = readPacketByAreaEventCount();
+                    } else if (!flex) {
                         aeRaw = aeInputStream.readPacketByTime(slice);
                     } else {
                         aeRaw = aeInputStream.readPacketByNumber(slice);
@@ -871,6 +883,67 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             return new AEPacketRaw(0);
         }
+    }
+
+    /**
+     * Reads raw events until {@link AreaEventCountExposer} says any spatial area
+     * is full. Leftover events after the cut are kept for the next call.
+     */
+    private AEPacketRaw readPacketByAreaEventCount() throws IOException {
+        AreaEventCountExposer exposer = getAreaEventCountExposer();
+        if (exposer == null || viewer.getChip() == null || viewer.getChip().getEventExtractor() == null) {
+            return aeInputStream.readPacketByNumber(getPacketSizeEvents());
+        }
+        EventExtractor2D extractor = viewer.getChip().getEventExtractor();
+        exposer.resetAccumulation();
+        AEPacketRaw out = new AEPacketRaw(0);
+        final int chunk = 256;
+        final int direction = isPlayingForwards() ? 1 : -1;
+        int guard = 0;
+        while (!exposer.isExposed() && guard++ < 20_000) {
+            AEPacketRaw chunkPkt;
+            if (areaEventLeftover != null && areaEventLeftover.getNumEvents() > 0) {
+                chunkPkt = areaEventLeftover;
+                areaEventLeftover = null;
+            } else {
+                chunkPkt = aeInputStream.readPacketByNumber(direction * chunk);
+            }
+            if (chunkPkt == null || chunkPkt.getNumEvents() == 0) {
+                break;
+            }
+            int n = chunkPkt.getNumEvents();
+            int cut = exposer.addRawEvents(chunkPkt.getAddresses(), chunkPkt.getTimestamps(), n, extractor);
+            if (cut < 0) {
+                try {
+                    out.append(chunkPkt);
+                } catch (NonMonotonicTimeException e) {
+                    out = new AEPacketRaw(out, chunkPkt);
+                }
+            } else {
+                int used = cut + 1;
+                try {
+                    out.append(copyRawRange(chunkPkt, 0, used));
+                } catch (NonMonotonicTimeException e) {
+                    out = new AEPacketRaw(out, copyRawRange(chunkPkt, 0, used));
+                }
+                if (used < n) {
+                    areaEventLeftover = copyRawRange(chunkPkt, used, n - used);
+                }
+                break;
+            }
+        }
+        return out;
+    }
+
+    private static AEPacketRaw copyRawRange(AEPacketRaw src, int from, int len) {
+        if (src == null || len <= 0) {
+            return new AEPacketRaw(0);
+        }
+        AEPacketRaw dest = new AEPacketRaw(len);
+        System.arraycopy(src.getAddresses(), from, dest.getAddresses(), 0, len);
+        System.arraycopy(src.getTimestamps(), from, dest.getTimestamps(), 0, len);
+        dest.setNumEvents(len);
+        return dest;
     }
 
     private long lastGetNextPacketWarnMs;

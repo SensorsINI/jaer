@@ -55,6 +55,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
@@ -138,6 +139,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
+    private JSpinner numAreasSpinner;
     private JRadioButton sliderTimeRelativeRB;
     private JRadioButton sliderTimeAbsoluteRB;
 
@@ -1147,6 +1149,23 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
+        p.add(new JLabel("# areas (AreaEventCount):"), gbcLabel(y));
+        numAreasSpinner = new JSpinner(new SpinnerNumberModel(AreaEventCountExposer.NUM_AREAS_DEFAULT, 1, 1024, 1));
+        numAreasSpinner.setToolTipText("Target number of spatial cells for AreaEventCount playback (T method). Changing this briefly shows the grid.");
+        numAreasSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                AbstractAEPlayer player = viewer.getAePlayer();
+                if (player != null) {
+                    player.setNumAreas(((Number) numAreasSpinner.getValue()).intValue());
+                }
+            }
+        });
+        p.add(numAreasSpinner, gbcField(y++));
+
         p.add(new JLabel("Playback slider time overlay:"), gbc(y++));
         sliderTimeRelativeRB = new JRadioButton("Relative to start of recording");
         sliderTimeRelativeRB.setToolTipText(
@@ -1435,6 +1454,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             if (player != null) {
                 repeatPlaybackCB.setSelected(player.isRepeat());
                 jogPacketCountSpinner.setValue(Math.max(1, player.getJogPacketCount()));
+                numAreasSpinner.setValue(Math.max(1, player.getNumAreas()));
             }
             boolean absTime = viewer.isSliderTimeOverlayAbsolute();
             sliderTimeRelativeRB.setSelected(!absTime);

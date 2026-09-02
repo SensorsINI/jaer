@@ -516,23 +516,64 @@ public final class DrawGL {
 
 
     /**
-     * Draws a string with drop shadow effect using TextRenderer.draw using
-     * native GL coordinates, usually setup to represent pixels on AEChip
+     * Standard leading for stacked overlay lines (CSS-style 1.5).
+     * {@link #drawString} does not wrap on {@code \n}; use
+     * {@link #lineAdvance(int)} between lines.
+     */
+    public static final float DEFAULT_LINE_SPACING = 1.5f;
+
+    /**
+     * Chip-pixel Y step between baselines for multiline text:
+     * {@link #lineHeight(int)} times {@link #DEFAULT_LINE_SPACING}.
+     */
+    public static float lineAdvance(int fontSize) {
+        return lineAdvance(fontSize, DEFAULT_LINE_SPACING);
+    }
+
+    /**
+     * Chip-pixel Y step between baselines: {@link #lineHeight(int)} times
+     * {@code spacing} (1.5 is conventional).
+     */
+    public static float lineAdvance(int fontSize, float spacing) {
+        return lineHeight(fontSize) * spacing;
+    }
+
+    /**
+     * Draws {@code lines} top-down with drop shadow. {@code yTop} is the
+     * baseline of the first line. Returns the bounds of the last line drawn.
      *
-     * @param gl the rendering context surface (not actually used)
-     * @param fontSize typically 12 to 36
-     * @param x x position (0 at left)
-     * @param y y position (0 at bottom)
-     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
-     * @param color, e.g. Color.red
-     * @param s the string to draw
-     * @return the bounds of the text
-     * @deprecated use the method that does not take GL object since it is not needed
+     * @param spacing multiplier of {@link #lineHeight}; use
+     * {@link #DEFAULT_LINE_SPACING} for 1.5.
+     */
+    public static Rectangle2D drawLinesDropShadow(int fontSize, float x, float yTop, float alignmentX,
+            Color color, String[] lines, float spacing) {
+        Rectangle2D last = null;
+        if (lines == null) {
+            return null;
+        }
+        float y = yTop;
+        float adv = lineAdvance(fontSize, spacing);
+        for (String line : lines) {
+            if (line == null) {
+                continue;
+            }
+            last = drawStringDropShadow(fontSize, x, y, alignmentX, color, line);
+            y -= adv;
+        }
+        return last;
+    }
+
+    public static Rectangle2D drawLinesDropShadow(int fontSize, float x, float yTop, float alignmentX,
+            Color color, String[] lines) {
+        return drawLinesDropShadow(fontSize, x, yTop, alignmentX, color, lines, DEFAULT_LINE_SPACING);
+    }
+
+    /**
+     * @deprecated use {@link #drawStringDropShadow(int, float, float, float, Color, String)}
      */
     @Deprecated
     public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        Rectangle2D r = drawStringDropShadow(fontSize, x, y, alignmentX, color, s);
-        return r;
+        return drawStringDropShadow(fontSize, x, y, alignmentX, color, s);
     }
 
 }

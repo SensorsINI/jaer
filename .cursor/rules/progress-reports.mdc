@@ -1,0 +1,53 @@
+---
+description: Write substantial debug/feature handoff notes to jaer/.cursor/progress-reports for Dropbox multi-box work
+alwaysApply: true
+---
+
+# jAER progress reports
+
+Canonical handoff notes live in the **jAER repo**:
+
+`.cursor/progress-reports/<short_name>.md`
+
+(e.g. `usb_open_hang.md`). That folder Dropbox-syncs across machines. Gitignores those `*.md` files; that is fine.
+
+Plans (`.cursor/plans/*.plan.md`) are the intended design. Progress reports are **where we left off** after messy, multi-file, human-in-the-loop work. Do not substitute one for the other.
+
+## When to write
+
+Write or update a report when **all** of these hold:
+
+- Substantial debugging, or implementing a new feature
+- Many files (or a wide live path: USB, ViewLoop, filters, render, chips)
+- Needs the user's interaction, log inspection, or manual testing (`ant run`, hardware, UI)
+
+Skip one-file fixes, compile errors, Q&A, and work that finishes in the same turn.
+
+## When to read
+
+At the start of a session, if this folder has a report that matches the current task, **read it before** searching or editing. Prefer the report over guessing from chat (chat does not Dropbox-sync).
+
+## What to put in the file
+
+Keep it short and current. Overwrite stale sections; do not append a diary.
+
+- **Aim** — what we are trying to fix or ship
+- **Status** — done / in progress / blocked
+- **Touched** — key files, not a dump
+- **How to test** — what the user was running, logs to check (`jAER-0.log`, usb-open-trace)
+- **Next** — the immediate next step on this or another box
+- **Blockers** — waiting on hardware, a log, a decision
+
+Update after each substantial turn, and **before stopping** so the other machine has a complete handoff.
+
+## Do
+
+- One file per task; descriptive name (`usb_autobind_restore.md`), not a timestamp-only name
+- Create `.cursor/progress-reports/` if it is missing
+- If a Dropbox conflicted copy appears, merge into the canonical filename and delete the conflict file
+
+## Do not
+
+- Write these notes only in chat, `~/.cursor/`, or `%USERPROFILE%\.cursor\`
+- Scatter reports under `docs/`, `/tmp`, or random paths unless the user asks
+- Create a report for trivial work
