@@ -116,6 +116,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private boolean updatingUi;
 
     private JCheckBox recordingPlaybackImmediatelyCB;
+    private JCheckBox autoSwitchAeChipForPlaybackCB;
     private JCheckBox recordFilteredEventsCB;
     private JCheckBox showRecordingOverlayCB;
     private JCheckBox showRosOutputOverlayCB;
@@ -749,6 +750,21 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
         });
         p.add(recordingPlaybackImmediatelyCB, gbc(y++));
+
+        autoSwitchAeChipForPlaybackCB = new JCheckBox("Auto-switch AEChip to match recording");
+        autoSwitchAeChipForPlaybackCB.setToolTipText(
+                "When opening a file whose chip differs from this viewer, switch AEChip without asking. "
+                + "Also set by Always on the AEChip mismatch dialog.");
+        autoSwitchAeChipForPlaybackCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setAutoSwitchAeChipForPlayback(autoSwitchAeChipForPlaybackCB.isSelected());
+            }
+        });
+        p.add(autoSwitchAeChipForPlaybackCB, gbc(y++));
 
         recordFilteredEventsCB = new JCheckBox("Enable filtering of recorded or network output events");
         recordFilteredEventsCB.setToolTipText("Recording or network writes apply active filters first");
@@ -1402,6 +1418,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         updatingUi = true;
         try {
             recordingPlaybackImmediatelyCB.setSelected(viewer.isRecordingPlaybackImmediatelyEnabled());
+            autoSwitchAeChipForPlaybackCB.setSelected(viewer.isAutoSwitchAeChipForPlayback());
             recordFilteredEventsCB.setSelected(viewer.isRecordFilteredEventsEnabled());
             showRecordingOverlayCB.setSelected(viewer.isShowRecordingOverlay());
             showRosOutputOverlayCB.setSelected(viewer.isShowRosOutputOverlay());
