@@ -223,6 +223,7 @@ import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.MenuScroller;
+import net.sf.jaer.util.SampleDataSupport;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
 import net.sf.jaer.util.RecordingDiskSpace;
@@ -469,6 +470,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DropTarget myDraggedFileDropTarget = null; // added back after losing somehow
     private File draggedFile;
     private boolean recordingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
+    /**
+     * When true, opening a recording whose chip differs from the viewer
+     * switches {@link AEChip} without asking. Default false.
+     */
+    private boolean autoSwitchAeChipForPlayback = prefs.getBoolean("AEViewer.autoSwitchAeChipForPlayback", false);
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     /** False: slider overlay is elapsed from recording start; true: wall-clock date/time. */
     private boolean sliderTimeOverlayAbsolute = prefs.getBoolean("AEViewer.sliderTimeOverlayAbsolute", false);
@@ -1071,7 +1077,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             addHelpURLItem(JaerConstants.HELP_URL_EVENT_BASED_VISION_RESOURCES, "Event-Based Vision Resources",
                     "Community list of papers, workshops, datasets, code, and videos for event-based vision");
             JMenu sampleDataMenu = new JMenu("Sample data");
-            sampleDataMenu.setToolTipText("Links to publicly available event camera sample recordings");
+            sampleDataMenu.setToolTipText("Download curated recordings, or open public dataset links");
+            JMenuItem downloadSamples = new JMenuItem("Download jAER sample recordings...");
+            downloadSamples.setToolTipText("Download the curated zip from GitHub Latest into sampleData/");
+            downloadSamples.addActionListener(e -> SampleDataSupport.maybeDownload(AEViewer.this, true));
+            sampleDataMenu.add(downloadSamples);
+            sampleDataMenu.addSeparator();
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_DVS128_SAMPLE_DATA,
                     "DVS09 / DVS128 sample data",
                     "DVS09 DVS128 sample data files (Google Doc with download links)"));
@@ -2618,7 +2629,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * If the recording's chip (from filename, then header) differs from the
-     * current {@link AEChip}, ask to switch before opening. For multi-camera
+     * current {@link AEChip}, ask to switch before opening (Yes / No / Always /
+     * Cancel). Always and {@link #isAutoSwitchAeChipForPlayback()} skip later
+     * prompts. For multi-camera
      * AEDAT-4 files, show an EVTS list; each selected stream is bound to the
      * first matching AEViewer (USB identity only when two streams share a chip).
      * Unmatched open viewers are reused; new windows only if needed (soft cap 8).
@@ -2713,25 +2726,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return true;
         }
         String currentName = current == null ? "(none)" : current.getSimpleName();
+        if (isAutoSwitchAeChipForPlayback()) {
+            log.info("Auto-switching AEChip from " + currentName + " to " + suggested.getSimpleName()
+                    + " for recording " + file.getName());
+            setAeChipClass(suggested);
+            return true;
+        }
         String msg = String.format(
                 "<html>This recording appears to use chip <b>%s</b>,<br>"
                 + "but the viewer is set to <b>%s</b>.<br><br>"
-                + "Switch to <b>%s</b> before opening?</html>",
+                + "Switch to <b>%s</b> before opening?<br>"
+                + "<b>Always</b> also remembers this in File → Preferences.</html>",
                 suggested.getSimpleName(), currentName, suggested.getSimpleName());
-        int choice = JOptionPane.showConfirmDialog(
+        Object[] options = {"Yes", "No", "Always", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(
                 this,
                 msg,
                 "AEChip mismatch",
-                JOptionPane.YES_NO_CANCEL_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-        if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                options,
+                options[0]);
+        if (choice == 3 || choice == JOptionPane.CLOSED_OPTION) {
             log.info("Playback open canceled (AEChip mismatch dialog)");
             clearPendingAedat4Playback();
             return false;
         }
-        if (choice == JOptionPane.YES_OPTION) {
-            log.info("Switching AEChip from " + currentName + " to " + suggested.getSimpleName()
-                    + " for recording " + file.getName());
+        if (choice == 0 || choice == 2) {
+            if (choice == 2) {
+                setAutoSwitchAeChipForPlayback(true);
+                log.info("Enabled autoSwitchAeChipForPlayback; switching AEChip from "
+                        + currentName + " to " + suggested.getSimpleName()
+                        + " for recording " + file.getName());
+            } else {
+                log.info("Switching AEChip from " + currentName + " to " + suggested.getSimpleName()
+                        + " for recording " + file.getName());
+            }
             setAeChipClass(suggested);
         } else {
             log.info("Keeping AEChip " + currentName + " despite recording hint "
@@ -13242,6 +13273,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     public boolean isRecordingPlaybackImmediatelyEnabled() {
         return recordingPlaybackImmediatelyEnabled;
+    }
+
+    /**
+     * When true, a recording whose chip differs from the viewer switches
+     * {@link AEChip} without the mismatch dialog.
+     */
+    public boolean isAutoSwitchAeChipForPlayback() {
+        return autoSwitchAeChipForPlayback;
+    }
+
+    /**
+     * Enable or disable automatic AEChip switch when opening a recording.
+     * Stored as {@code AEViewer.autoSwitchAeChipForPlayback} (default false).
+     */
+    public void setAutoSwitchAeChipForPlayback(boolean autoSwitchAeChipForPlayback) {
+        this.autoSwitchAeChipForPlayback = autoSwitchAeChipForPlayback;
+        prefs.putBoolean("AEViewer.autoSwitchAeChipForPlayback", autoSwitchAeChipForPlayback);
     }
 
     public void setRecordingPlaybackImmediatelyEnabled(boolean recordingPlaybackImmediatelyEnabled) {

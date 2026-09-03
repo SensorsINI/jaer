@@ -12,6 +12,10 @@
       </modules>
     </jreBundles>
   </application>
+  <compilerVariables>
+    <variable name="jaer.sampleDataZipMiB" value="0" />
+    <variable name="jaer.sampleDataUnpackedMiB" value="0" />
+  </compilerVariables>
   <files>
     <!-- Per-OS OpenCV slim jars (ant split-opencv-natives). Fat lib/opencv-4.8.1-0.jar
          is excluded below; each media keeps one fileset so calibration works offline. -->
@@ -175,12 +179,16 @@
           <entry location="lib/scalatest-shouldmatchers_2.13-3.2.17.jar" />
           <entry location="lib/scalatest-wordspec_2.13-3.2.17.jar" />
           <entry location="lib/test-interface-1.0.jar" />
+          <!-- Recordings stay out of media; README + SIZE are fileEntries below. -->
+          <entry location="sampleData" />
         </exclude>
       </dirEntry>
       <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 800w
            next to the exe for the native launcher splash. 256h/1024w are compile-time only
            (iconImageFiles); fileEntry.subDirectory does not relocate them. -->
       <fileEntry mountPoint="24" file="../images/800w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <fileEntry mountPoint="24" file="../sampleData/README.md" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer/sampleData" />
+      <fileEntry mountPoint="24" file="../sampleData/SIZE.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer/sampleData" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
       <dirEntry mountPoint="9021" file="../build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
       <dirEntry mountPoint="9022" file="../build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
@@ -234,6 +242,9 @@
           </property>
           <property name="useCustomIcon" type="boolean" value="true" />
         </serializedBean>
+        <variables>
+          <variable name="downloadSampleData" value="true" valueClass="boolean" />
+        </variables>
         <startup>
           <screen id="1" beanClass="com.install4j.runtime.beans.screens.StartupScreen" rollbackBarrierExitCode="0">
             <actions>
@@ -279,6 +290,42 @@ return console.askOkCancel(message, true);
                 <externalParametrizationPropertyNames>
                   <propertyName>streamlinedInstallationStrategy</propertyName>
                 </externalParametrizationPropertyNames>
+              </formComponent>
+              <formComponent id="9201" beanClass="com.install4j.runtime.beans.formcomponents.CheckboxComponent">
+                <serializedBean>
+                  <property name="checkboxText" type="string">Download sample recordings (${compiler:jaer.sampleDataZipMiB} MB download, ${compiler:jaer.sampleDataUnpackedMiB} MB on disk)</property>
+                  <property name="initiallySelected" type="boolean" value="true" />
+                  <property name="variableName" type="string">downloadSampleData</property>
+                </serializedBean>
+                <visibilityScript>File install = context.getInstallationDirectory();
+File a = new File(install, "sampleData");
+File b = new File(install, "jaer/sampleData");
+boolean has = false;
+File[] dirs = new File[] { a, b };
+for (int i = 0; i &lt; dirs.length; i++) {
+    File dir = dirs[i];
+    if (dir == null || !dir.isDirectory()) {
+        continue;
+    }
+    File[] listed = dir.listFiles();
+    if (listed == null) {
+        continue;
+    }
+    for (int j = 0; j &lt; listed.length; j++) {
+        String n = listed[j].getName();
+        if (n.equals("README.md") || n.equals("SIZE.txt") || n.equals(".gitignore") || n.equals(".gitattributes")) {
+            continue;
+        }
+        if (listed[j].isFile()) {
+            has = true;
+            break;
+        }
+    }
+}
+if (has) {
+    context.setVariable("downloadSampleData", Boolean.FALSE);
+}
+return !has;</visibilityScript>
               </formComponent>
               <formComponent id="6" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent" insetTop="20">
                 <serializedBean>
@@ -535,6 +582,118 @@ return true;
                     </object>
                   </property>
                 </serializedBean>
+              </action>
+              <action name="Download sample recordings" id="9202" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="continue" errorMessage="Could not download sample recordings. Use File → Open in jAER to try again.">
+                <serializedBean>
+                  <property name="script">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">if (!context.getBooleanVariable("downloadSampleData")) {
+    return true;
+}
+File install = context.getInstallationDirectory();
+File dest = new File(install, "sampleData");
+File nested = new File(install, "jaer/sampleData");
+if (new File(nested, "README.md").isFile() || new File(install, "jaer/lib").isDirectory()) {
+    dest = nested;
+} else if (new File(install, "lib").isDirectory() || new File(install, "dist").isDirectory()) {
+    dest = new File(install, "sampleData");
+} else if (new File(install, "jaer").isDirectory()) {
+    dest = nested;
+}
+if (!dest.isDirectory()) {
+    dest.mkdirs();
+}
+String urlString = "https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip";
+File zip = new File(dest, "jaer-sample-data.zip.partial");
+try {
+    context.getProgressInterface().setStatusMessage("Downloading sample recordings...");
+    java.net.URL url = new java.net.URI(urlString).toURL();
+    java.net.HttpURLConnection conn = null;
+    for (int hop = 0; hop &lt; 8; hop++) {
+        conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setConnectTimeout(30000);
+        conn.setReadTimeout(300000);
+        conn.setInstanceFollowRedirects(false);
+        conn.connect();
+        int code = conn.getResponseCode();
+        if (code == 200) {
+            break;
+        }
+        if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+            String loc = conn.getHeaderField("Location");
+            conn.disconnect();
+            if (loc == null || loc.isEmpty()) {
+                throw new Exception("Redirect without Location");
+            }
+            url = new java.net.URI(url.toString()).resolve(loc).toURL();
+            conn = null;
+            continue;
+        }
+        throw new Exception("HTTP " + code + " for " + url);
+    }
+    if (conn == null) {
+        throw new Exception("Could not open " + urlString);
+    }
+    long total = conn.getContentLengthLong();
+    try (java.io.InputStream in = new java.io.BufferedInputStream(conn.getInputStream());
+            java.io.OutputStream out = new java.io.BufferedOutputStream(new java.io.FileOutputStream(zip))) {
+        byte[] buf = new byte[65536];
+        long read = 0;
+        int n;
+        while ((n = in.read(buf)) &gt;= 0) {
+            out.write(buf, 0, n);
+            read += n;
+            if (total &gt; 0) {
+                int pct = (int) Math.min(100, (read * 100) / total);
+                context.getProgressInterface().setPercentCompleted(pct);
+            }
+        }
+    } finally {
+        conn.disconnect();
+    }
+    context.getProgressInterface().setStatusMessage("Unpacking sample recordings...");
+    java.nio.file.Path destPath = dest.toPath().toAbsolutePath().normalize();
+    try (java.util.zip.ZipInputStream zin = new java.util.zip.ZipInputStream(new java.io.BufferedInputStream(new java.io.FileInputStream(zip)))) {
+        java.util.zip.ZipEntry entry;
+        byte[] buf = new byte[65536];
+        while ((entry = zin.getNextEntry()) != null) {
+            String name = entry.getName();
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            java.nio.file.Path out = destPath.resolve(name).normalize();
+            if (!out.startsWith(destPath)) {
+                throw new Exception("Refusing zip path " + name);
+            }
+            if (entry.isDirectory()) {
+                java.nio.file.Files.createDirectories(out);
+                continue;
+            }
+            java.nio.file.Files.createDirectories(out.getParent());
+            try (java.io.OutputStream os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out.toFile()))) {
+                int n;
+                while ((n = zin.read(buf)) &gt;= 0) {
+                    os.write(buf, 0, n);
+                }
+            }
+        }
+    }
+    com.install4j.api.Util.logInfo(context, "Unpacked sample recordings into " + dest.getAbsolutePath());
+} catch (Exception ex) {
+    com.install4j.api.Util.logError(context, "Sample data download failed: " + ex);
+    com.install4j.api.Util.showErrorMessage("Could not download sample recordings:\n" + ex.getMessage()
+        + "\n\nYou can download them later from File → Open or Help → Sample data in jAER.");
+} finally {
+    if (zip.isFile()) {
+        zip.delete();
+    }
+}
+return true;
+</property>
+                    </object>
+                  </property>
+                </serializedBean>
+                <condition>context.getBooleanVariable("downloadSampleData")</condition>
               </action>
               <action id="18" beanClass="com.install4j.runtime.beans.actions.desktop.CreateDefaultStartMenuEntriesAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
                 <serializedBean>

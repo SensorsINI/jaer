@@ -73,6 +73,7 @@ Releases
                           More rows: -Djaer.asset.downloads.limit=20
                           All files: -Djaer.asset.downloads.all=true
   split-opencv-natives    per-OS slim OpenCV jars for install4j
+  pack-sample-data        zip sampleData recordings, write SIZE.txt (needs recordings)
   jaer-runtime-archive    zip a runtime tree (legacy; prefer install4j)
 
 Scripts (not Ant)
@@ -788,12 +789,61 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         <echo message="OpenCV slim jars in ${opencv.slim.dir} (fat ${opencv.fat.jar} left in lib/ for ant run)."/>
     </target>
 
+    <target name="-detect-sample-data">
+        <available file="${basedir}/sampleData" type="dir" property="jaer.sampleData.dir"/>
+        <condition property="jaer.sampleData.hasRecordings">
+            <and>
+                <isset property="jaer.sampleData.dir"/>
+                <resourcecount when="greater" count="0">
+                    <fileset dir="${basedir}/sampleData" includes="**/*"
+                             excludes="README.md,SIZE.txt,.gitignore,.gitattributes"/>
+                </resourcecount>
+            </and>
+        </condition>
+    </target>
+
+    <target name="pack-sample-data" depends="-load-version"
+            description="Zip sampleData recordings and write SIZE.txt (zip + unpacked MiB).">
+        <fail unless="jaer.version" message="VERSION.txt empty"/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/pack-sample-data.ps1"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/pack-sample-data.sh"/>
+        </exec>
+        <property file="${basedir}/sampleData/SIZE.txt"/>
+        <echo message="sampleData zip ${zipMiB} MB download, ${unpackedMiB} MB unpacked"/>
+    </target>
+
+    <target name="-maybe-pack-sample-data" depends="-detect-sample-data" if="jaer.sampleData.hasRecordings">
+        <antcall target="pack-sample-data"/>
+    </target>
+
+    <target name="-maybe-pack-sample-data-skip" depends="-detect-sample-data" unless="jaer.sampleData.hasRecordings">
+        <echo message="No recordings in sampleData/; skipping pack. Installer checkbox sizes stay ${zipMiB} MB / ${unpackedMiB} MB from SIZE.txt if present."/>
+    </target>
+
+    <target name="-load-sample-data-size">
+        <property file="${basedir}/sampleData/SIZE.txt"/>
+        <property name="zipMiB" value="0"/>
+        <property name="unpackedMiB" value="0"/>
+        <echo message="install4j sample-data sizes: zipMiB=${zipMiB} unpackedMiB=${unpackedMiB}"/>
+    </target>
+
     <target name="-run-install4jc-with-license"
             depends="-require-install4j-project,-load-version,-load-install4j-license-local"
             if="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
+            <arg value="-Djaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-Djaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
             <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
@@ -803,12 +853,14 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
+            <arg value="-Djaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-Djaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
             <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
     <target name="-run-install4jc"
-            depends="split-opencv-natives,-run-install4jc-with-license,-run-install4jc-without-license"/>
+            depends="split-opencv-natives,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"/>
 
     <target name="-require-opencv-slim">
         <available type="dir" file="${opencv.slim.dir}" property="opencv.slim.dir.exists"/>
@@ -819,7 +871,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <!-- Public name: Ant treats CLI args starting with "-" as options, so
          ant -run-install4jc-with-license does not work. -->
     <target name="install4j"
-            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-run-install4jc-with-license,-run-install4jc-without-license"
+            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
             description="Run install4jc only (existing dist/jAER.jar; no splash/clean/jar).">
         <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
@@ -899,6 +951,8 @@ Then re-run:        ant install
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
+            <arg value="-Djaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-Djaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
             <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
@@ -909,12 +963,14 @@ Then re-run:        ant install
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
+            <arg value="-Djaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-Djaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
             <arg value="${jaer.install4j.project}"/>
         </exec>
     </target>
 
     <target name="-run-install4jc-windows"
-            depends="split-opencv-natives,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
+            depends="split-opencv-natives,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
     <!-- Copy install4j updates.xml from currentInstallers/<version>/ to repo root (auto-update descriptor). -->
     <macrodef name="jaer-copy-updates-xml">
@@ -998,6 +1054,7 @@ Then re-run:        ant install
         <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
         <echo message="When ready: ant copy-updates-xml, git tag ${jaer.version}, create the GitHub release,"/>
         <echo message="and upload installers (scripts/upload-github-release-installers.ps1)."/>
+        <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
         <echo message="See README-releasing-tagging.md"/>
     </target>
 

@@ -16,13 +16,14 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 1. Set `VERSION.txt` (e.g. `3.2.0`).
 2. `ant release` -- Enter accepts the default `y` (type `n` to cancel). Does **not** copy repo-root `updates.xml`.
    - Media lands in `currentInstallers/<VERSION.txt>/`. Historical Dropbox copies stay in `jaer-older-installers/` (same share URL as the old `installers/` folder).
+   - If `sampleData/` has recordings, this also runs `pack-sample-data`: writes `sampleData/SIZE.txt` (zip download MiB + unpacked disk MiB) and `currentInstallers/<version>/jaer-sample-data.zip`. Drop recordings in `sampleData/` first (gitignored). Standalone: `ant pack-sample-data`.
 3. Upload binaries (creates the GitHub Release for that tag if it is missing):
 
        powershell -File scripts/upload-github-release-installers.ps1
        bash scripts/upload-github-release-installers.sh
 
    Dry run: `-WhatIf` (PowerShell and bash) or `--what-if` (bash).
-   Re-upload after a rebuild: same command (`--clobber`).
+   Re-upload after a rebuild: same command (`--clobber`). Also uploads `jaer-sample-data.zip` when that file is in `currentInstallers/<VERSION>/` so `/releases/latest/download/jaer-sample-data.zip` works. The Welcome checkbox and File → Open use that URL.
    Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`).
    Put the download table and concise OS notes at the **top** (see 3.2.0 notes). GitHub
    always appends **Assets** at the bottom of the Release page — do not duplicate a long
@@ -85,6 +86,8 @@ TensorFlow for MLPNoiseFilter (two layers):
   lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
 - Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/ (tmp alone can be hundreds of MB
   of local scratch and must not ship in installers).
+- Sample recordings: `sampleData/` is excluded from media except `README.md` and `SIZE.txt`.
+  Optional download is a Welcome checkbox; zip is the GitHub Latest asset `jaer-sample-data.zip`.
 - OpenCV: Ivy keeps the openpnp fat jar (`opencv-4.8.1-0.jar`, ~102MB, all OS natives) in
   `lib/` for compile and `ant run`. `ant release` runs `split-opencv-natives` and each
   install4j media fileset packs only that OS's slim jar (same filename under `lib/`).

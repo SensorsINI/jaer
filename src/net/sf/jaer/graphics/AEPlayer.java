@@ -39,6 +39,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
 import net.sf.jaer.util.NameFilteringFileChooser;
+import net.sf.jaer.util.SampleDataSupport;
 
 /**
  * Handles file input of AEs to control the number of events/sample or period of
@@ -95,9 +96,13 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         new FileDeleter(fileChooser, preview);
         fileChooser.addPropertyChangeListener(preview);
         fileChooser.setAccessory(preview);
+        SampleDataSupport.maybeDownload(viewer, false);
         String lastFilePath = this.viewer.prefs.get("AEViewer.lastFile", "");
         // get the last folder
         viewer.lastFile = new File(lastFilePath);
+        if (lastFilePath == null || lastFilePath.isBlank() || !viewer.lastFile.exists()) {
+            viewer.lastFile = SampleDataSupport.defaultOpenFolder();
+        }
         DATFileFilter.installOpenDialogFilters(fileChooser, null);
         fileChooser.setCurrentDirectory(viewer.lastFile);
         // sets the working directory of the chooser

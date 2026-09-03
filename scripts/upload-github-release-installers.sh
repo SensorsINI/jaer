@@ -64,10 +64,16 @@ if [ ! -d "$DIR" ]; then
   exit 1
 fi
 shopt -s nullglob
-files=("$DIR"/jAER_windows-x64_*.exe "$DIR"/jAER_macos_*.dmg "$DIR"/jAER_unix_*.sh)
-if [ ${#files[@]} -eq 0 ]; then
+installers=("$DIR"/jAER_windows-x64_*.exe "$DIR"/jAER_macos_*.dmg "$DIR"/jAER_unix_*.sh)
+if [ ${#installers[@]} -eq 0 ]; then
   echo "No installer media under $DIR" >&2
   exit 1
+fi
+files=("${installers[@]}")
+if [ -f "$DIR/jaer-sample-data.zip" ]; then
+  files+=("$DIR/jaer-sample-data.zip")
+else
+  echo "WARNING: $DIR/jaer-sample-data.zip missing — run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset." >&2
 fi
 
 size_mb() {

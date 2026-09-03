@@ -22,10 +22,17 @@ if (-not $Tag) { throw "VERSION.txt is empty and -Tag was not set" }
 $dir = Join-Path $root "currentInstallers\$Tag"
 if (-not (Test-Path $dir)) { throw "Missing $dir -- run ant release first" }
 
-$files = Get-ChildItem -Path $dir -File | Where-Object {
+$installers = @(Get-ChildItem -Path $dir -File | Where-Object {
     $_.Name -match '^jAER_(windows-x64|macos|unix)_.*\.(exe|dmg|sh)$'
+})
+if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jAER_unix_*.sh under $dir" }
+$sampleZip = Join-Path $dir "jaer-sample-data.zip"
+$files = @($installers)
+if (Test-Path -LiteralPath $sampleZip) {
+    $files += Get-Item -LiteralPath $sampleZip
+} else {
+    Write-Host "WARNING: $sampleZip missing — run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset."
 }
-if (-not $files) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jAER_unix_*.sh under $dir" }
 
 Write-Host "Release tag: $Tag"
 $files | ForEach-Object { Write-Host ("  {0} ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB)) }

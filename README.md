@@ -48,12 +48,19 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
 Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates… 
 
+Optional **sample recordings** are not in the basic installer. The Welcome screen offers a download
+(`jaer-sample-data.zip` from the GitHub Latest release) when `sampleData/` has no recordings
+(new install or upgrade from 3.3.x). File → Open and Help → Sample data can download the same zip
+into `sampleData/` (next to `dist/` / `lib/`). Sizes on the checkbox are the zip download size and
+the unpacked disk size. See [`sampleData/README.md`](sampleData/README.md). 
+
 * install4j installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. A git clone needs [JDK 25+](https://adoptium.net/) to compile (`javac` target 25) and to `ant run`. See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
 * you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 
 
 ## Quick start sample data
 
+* The installer can download curated files into `sampleData/`. From git: `ant pack-sample-data` after dropping recordings there; or Help → Sample data → Download jAER sample recordings…
 * Download [DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
 drop them onto the jAER window to play them with the *DVS128* *AEChip*.
 * Download [DAVIS346 sample data files from the DAVIS24 dataset](https://sites.google.com/view/davis24-davis-sample-data/home) and

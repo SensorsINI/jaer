@@ -73,14 +73,17 @@ Classpath copy: `ant jar` target `jaer-copySplashImage` puts `images/800w/Splash
 
 ## Media fileset vs splash
 
-The main `dirEntry` packs the repo root into `jaer/` and **excludes** `images/` (large art / demos). Splash is re-added as a single `fileEntry` so it sits next to the exe as `SplashScreen.png` for `install4j.exeDir` and the Swing fallback. Do not add a second `SplashScreen.png` from `256h` or `1024w`.
+The main `dirEntry` packs the repo root into `jaer/` and **excludes** `images/` (large art / demos) and `sampleData/` recordings. Splash is re-added as a single `fileEntry` so it sits next to the exe as `SplashScreen.png`. `sampleData/README.md` and `SIZE.txt` are fileEntries under `jaer/sampleData`. Do not add a second `SplashScreen.png` from `256h` or `1024w`.
+
+Welcome has an optional **Download sample recordings** checkbox (`downloadSampleData`), default on when the destination `sampleData` has no recordings. After InstallFiles the installer downloads `https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip` and unpacks it. Failure does not abort the install. Sizes on the checkbox come from `ant pack-sample-data` (`-Djaer.sampleDataZipMiB` / `jaer.sampleDataUnpackedMiB`).
 
 ## Related Ant targets
 
 | Target | What it does |
 |--------|----------------|
 | `generate-splash` | Overlay `VERSION.txt` → `images/800w`, `1024w`, `256h` |
-| `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, `install4jc --release=…` |
+| `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, pack sample data if present, `install4jc --release=…` |
+| `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
 | `install4j` | `install4jc` only (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
 | `replace-installed-jar` | Copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
 
