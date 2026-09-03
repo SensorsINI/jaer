@@ -293,7 +293,8 @@ return console.askOkCancel(message, true);
               </formComponent>
               <formComponent id="9201" beanClass="com.install4j.runtime.beans.formcomponents.CheckboxComponent">
                 <serializedBean>
-                  <property name="checkboxText" type="string">Download sample recordings (${compiler:jaer.sampleDataZipMiB} MB download, ${compiler:jaer.sampleDataUnpackedMiB} MB on disk)</property>
+                  <property name="checkboxText" type="string">Download sample recordings (${compiler:jaer.sampleDataZipMiB} MB download,
+${compiler:jaer.sampleDataUnpackedMiB} MB on disk)</property>
                   <property name="initiallySelected" type="boolean" value="true" />
                   <property name="variableName" type="string">downloadSampleData</property>
                 </serializedBean>

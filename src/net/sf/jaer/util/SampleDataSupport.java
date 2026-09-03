@@ -197,7 +197,12 @@ public final class SampleDataSupport {
         return dir;
     }
 
-    static void downloadAndUnpack(Component parent) throws Exception {
+    /**
+     * Download and unpack the curated sample recordings into {@code sampleData/}.
+     * <p>
+     * Used by UI actions; progress UI is created on the Swing EDT.
+     */
+    public static void downloadAndUnpack(Component parent) throws Exception {
         File dir = folder();
         Files.createDirectories(dir.toPath());
         File zip = new File(dir, "jaer-sample-data.zip.partial");
@@ -211,18 +216,40 @@ public final class SampleDataSupport {
     }
 
     private static void downloadTo(Component parent, String urlString, File dest) throws Exception {
-        JProgressBar bar = new JProgressBar(0, 100);
-        bar.setStringPainted(true);
-        JLabel label = new JLabel("Downloading jaer-sample-data.zip …");
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.add(label, BorderLayout.NORTH);
-        panel.add(bar, BorderLayout.CENTER);
-        panel.setPreferredSize(new Dimension(420, 70));
-        JOptionPane pane = new JOptionPane(panel, JOptionPane.INFORMATION_MESSAGE,
-                JOptionPane.DEFAULT_OPTION, null, new Object[]{}, null);
-        final javax.swing.JDialog dialog = pane.createDialog(parent, "Downloading sample recordings");
-        dialog.setModal(false);
-        dialog.setDefaultCloseOperation(javax.swing.JDialog.DO_NOTHING_ON_CLOSE);
+        final JProgressBar[] barHolder = new JProgressBar[1];
+        final javax.swing.JDialog[] dialogHolder = new javax.swing.JDialog[1];
+        Runnable initUi = () -> {
+            JProgressBar bar = new JProgressBar(0, 100);
+            bar.setStringPainted(true);
+            barHolder[0] = bar;
+
+            JLabel label = new JLabel("Downloading jaer-sample-data.zip …");
+            JPanel panel = new JPanel(new BorderLayout(8, 8));
+            panel.add(label, BorderLayout.NORTH);
+            panel.add(bar, BorderLayout.CENTER);
+            panel.setPreferredSize(new Dimension(420, 70));
+
+            JOptionPane pane = new JOptionPane(panel, JOptionPane.INFORMATION_MESSAGE,
+                    JOptionPane.DEFAULT_OPTION, null, new Object[]{}, null);
+            javax.swing.JDialog dialog = pane.createDialog(parent, "Downloading sample recordings");
+            dialog.setModal(false);
+            dialog.setDefaultCloseOperation(javax.swing.JDialog.DO_NOTHING_ON_CLOSE);
+            dialogHolder[0] = dialog;
+            dialog.setVisible(true);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            initUi.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(initUi);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new Exception("Interrupted while opening download dialog", ie);
+            }
+        }
+
+        final JProgressBar bar = barHolder[0];
+        final javax.swing.JDialog dialog = dialogHolder[0];
 
         Exception[] error = new Exception[1];
         Thread worker = new Thread(() -> {
@@ -265,7 +292,6 @@ public final class SampleDataSupport {
         }, "jaer-sample-data-download");
         worker.setDaemon(true);
         worker.start();
-        dialog.setVisible(true);
         try {
             worker.join();
         } catch (InterruptedException ie) {

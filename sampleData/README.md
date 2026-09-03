@@ -31,17 +31,19 @@ Re-run pack after renaming or truncating recordings.
 
 <!-- SAMPLE-DATA-CONTENTS -->
 
-(Sizes below are unpacked file sizes. Zip size is in `SIZE.txt` after `ant pack-sample-data`.)
 
-| File | Size | Source |
-|------|------|--------|
-| `DAVIS240C CapoCaccia 2016 Hotel dei Pini bar.aedat4` | 35.9 MB | jAER recording, CapoCaccia 2016 |
-| `DAVIS346 MVSEC UPenn indoor_flying3.aedat4` | 95.3 MB | [MVSEC](https://daniilidis-group.github.io/mvsec/download/) indoor flying 3 (UPenn) |
-| `DAVIS346-DVXplorer EvDownsampling Pevensey corridor.aedat4` | 182.6 MB | [EvDownsampling](https://github.com/anindyaghosh/EvDownsampling) Pevensey corridor (DAVIS346 + DVXplorer mux) |
-| `Davis346blue Steadicam 2026 LR UD CW CCW.aedat4` | 883.7 MB | jAER recording (to be truncated) |
-| `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` | 14.6 MB | [MISTLab RoboCup soccer](https://github.com/MISTLab/event_based_data) (`ball_approaching_air`) |
-| `PropheseeIMX636HD 2026 short heavily filtered.aedat4` | 37.5 MB | jAER recording |
-| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB | [Prophesee Metavision](https://docs.prophesee.ai/stable/datasets.html) `driving_sample` (Gen4.1 / IMX636) |
-| `Tmpdiff128 DVS09 2006 mouse behavior over 3 days.aedat4` | 86.3 MB | [DVS09 / DVS128 samples](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?tab=t.0) |
+Download **755 MB**, about **774 MB** on disk.
 
-<!-- /SAMPLE-DATA-CONTENTS -->
+| File | Size |
+|------|------|
+| `DAVIS240C 2016  Tobi juggling.aedat4` | 6.4 MB |
+| `DAVIS240C CapoCaccia 2016 Hotel dei Pini bar-export.aedat4` | 12.5 MB |
+| `Davis346blue 2026 Steadicam test 6mm lens.aedat4` | 140.8 MB |
+| `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` | 14.6 MB |
+| `DDD20 rec1501953155 San Marino drive clipped.aedat4` | 70.6 MB |
+| `DVS128 DVS09 2006 crosshatch and single bar` | 10.2 MB |
+| `DVS128 DVS09 2006 mouse behavior over 3 days.aedat4` | 86.3 MB |
+| `DVS128 DVS09 2006 Patrick Lichtstieiner juggling.aedat4` | 13.9 MB |
+| `NRV DELTA01 2026 humming birds squabbling.aedat4` | 10.4 MB |
+| `PropheseeIMX636HD 2026 short heavily filtered.aedat4` | 37.5 MB |
+| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |<!-- /SAMPLE-DATA-CONTENTS -->

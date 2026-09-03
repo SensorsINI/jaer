@@ -1079,9 +1079,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     "Community list of papers, workshops, datasets, code, and videos for event-based vision");
             JMenu sampleDataMenu = new JMenu("Sample data");
             sampleDataMenu.setToolTipText("Download curated recordings, or open public dataset links");
-            JMenuItem downloadSamples = new JMenuItem("Download jAER sample recordings...");
-            downloadSamples.setToolTipText("Download the curated zip from GitHub Latest into sampleData/");
-            downloadSamples.addActionListener(e -> SampleDataSupport.maybeDownload(AEViewer.this, true));
+            JMenuItem downloadSamples = new JMenuItem("Download jAER sample data");
+            downloadSamples.setToolTipText("Downloads a selection of data files to jaer/sampleData for newbies  to play with");
+            downloadSamples.addActionListener(e -> {
+                Thread worker = new Thread(() -> {
+                    try {
+                        // Deterministic action: no confirm dialog; just download (or no-op if already present).
+                        if (!SampleDataSupport.hasRecordings()) {
+                            SampleDataSupport.downloadAndUnpack(AEViewer.this);
+                        }
+                        SwingUtilities.invokeLater(() -> {
+                            if (getPlayMode() == PlayMode.WAITING) {
+                                try {
+                                    openAedatInputFile(SampleDataSupport.folder());
+                                } catch (Exception ex) {
+                                    log.log(Level.WARNING, "Could not open sampleData folder", ex);
+                                }
+                            }
+                        });
+                    } catch (Exception ex) {
+                        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this,
+                                "<html>Download failed:<br>" + ex.getMessage()
+                                        + "<br><br>Manual: <code>" + SampleDataSupport.DOWNLOAD_URL + "</code>",
+                                "Sample data download failed",
+                                JOptionPane.ERROR_MESSAGE));
+                    }
+                }, "jaer-sample-data-download");
+                worker.setDaemon(true);
+                worker.start();
+            });
             sampleDataMenu.add(downloadSamples);
             sampleDataMenu.addSeparator();
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_DVS128_SAMPLE_DATA,
