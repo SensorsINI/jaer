@@ -29,6 +29,8 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import ch.unizh.ini.jaer.chip.retina.DVS1280x720SD;
 import ch.unizh.ini.jaer.chip.retina.DVS640;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
+import net.sf.jaer.eventio.ddd.DddHdf5;
+import eu.seebetter.ini.chips.davis.Davis346red;
 import prophesee.chip.PropheseeIMX636HD;
 import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
@@ -273,7 +275,11 @@ public final class RecordingChipDetector {
             }
         }
         if (name.endsWith(".h5") || name.endsWith(".hdf5")) {
-            return fromDsecHdf5(file);
+            Hint dsec = fromDsecHdf5(file);
+            if (dsec != null) {
+                return dsec;
+            }
+            return fromDddHdf5(file);
         }
         if (AEDataFile.hasDataFileExtension(file.getName())) {
             return fromAedat2AsciiHeader(file);
@@ -295,6 +301,14 @@ public final class RecordingChipDetector {
         String chipName = preferredDsecChipName(w, h);
         String origin = size != null ? "dsec-hdf5/" + size.origin : "dsec-hdf5/default";
         return new Hint(chipName, w, h, origin);
+    }
+
+    /** DDD17/DDD20 cAER HDF5 is DAVIS346 346×260. */
+    static Hint fromDddHdf5(File file) {
+        if (!DddHdf5.isDddRecording(file)) {
+            return null;
+        }
+        return new Hint(Davis346red.class.getSimpleName(), DddHdf5.WIDTH, DddHdf5.HEIGHT, "ddd-hdf5");
     }
 
     /**
@@ -510,16 +524,85 @@ public final class RecordingChipDetector {
 
     /**
      * Resolve hint against loaded chips by name (exact, family+color, then unique soft match).
-     * Size alone is not used — many chips share resolution (e.g. Davis346*).
+     * Size alone is not used for named DV/jAER cameras (many chips share resolution).
+     * Generic sources such as {@code ROS-Subscriber} fall back to well-known sizes
+     * ({@code 346×260} → {@code Davis346red}, {@code 240×180} → Davis240).
      */
     public static Class<? extends AEChip> resolve(Hint hint, List<Class<? extends AEChip>> loaded) {
         if (hint == null || loaded == null || loaded.isEmpty()) {
             return null;
         }
-        if (hint.name == null || hint.name.isEmpty()) {
+        if (hint.name != null && !hint.name.isEmpty()) {
+            Class<? extends AEChip> byName = matchByName(hint, loaded);
+            if (byName != null) {
+                return byName;
+            }
+        }
+        if (isGenericStreamSource(hint.name)) {
+            Class<? extends AEChip> bySize = resolveByKnownSize(hint, loaded);
+            if (bySize != null) {
+                log.info("Recording chip from generic source size "
+                        + hint.sizeX + "x" + hint.sizeY + " -> " + bySize.getSimpleName()
+                        + " (" + hint + ")");
+                return bySize;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * DV ROS import modules and other non-camera {@code source} strings that
+     * should not be matched as an AEChip name.
+     */
+    static boolean isGenericStreamSource(String name) {
+        if (name == null || name.isEmpty()) {
+            return true;
+        }
+        String n = normalize(name);
+        return n.equals("rossubscriber") || n.equals("rospublisher")
+                || n.equals("unknown") || n.equals("camera")
+                || (n.startsWith("ros") && n.contains("subscriber"));
+    }
+
+    /**
+     * Unique-enough AEDAT-4 geometries when {@code source} is not a camera name.
+     */
+    static Class<? extends AEChip> resolveByKnownSize(Hint hint, List<Class<? extends AEChip>> loaded) {
+        if (hint == null || hint.sizeX == null || hint.sizeY == null || loaded == null) {
             return null;
         }
-        return matchByName(hint, loaded);
+        int w = hint.sizeX;
+        int h = hint.sizeY;
+        String prefer;
+        String family;
+        if (w == 346 && h == 260) {
+            prefer = "davis346red";
+            family = "davis346";
+        } else if (w == 240 && h == 180) {
+            prefer = "davis240c";
+            family = "davis240";
+        } else {
+            return null;
+        }
+        Class<? extends AEChip> exact = null;
+        List<Class<? extends AEChip>> familyMatches = new ArrayList<>();
+        for (Class<? extends AEChip> c : loaded) {
+            String n = normalize(c.getSimpleName());
+            if (n.equals(prefer)) {
+                exact = c;
+                break;
+            }
+            if (n.startsWith(family)) {
+                familyMatches.add(c);
+            }
+        }
+        if (exact != null) {
+            return exact;
+        }
+        if (familyMatches.size() == 1) {
+            return familyMatches.get(0);
+        }
+        return preferCommonDvChip(familyMatches, family);
     }
 
     /**

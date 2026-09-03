@@ -43,8 +43,12 @@ import net.sf.jaer.util.EngineeringFormat;
 public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, String> {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    /** Events per {@code readPacketByNumber} slice (not render timeslice). */
-    private static final int SLICE_EVENTS = 250_000;
+    /**
+     * Events per {@code readPacketByNumber} slice (not render timeslice).
+     * Keep this well below {@link Aedat4FileInputStream}'s mega-packet scan
+     * threshold so a marked IN/OUT export stays event/frame interpolated.
+     */
+    private static final int SLICE_EVENTS = 8_192;
 
     public static final String PROP_PROGRESS = "saveAsProgress";
     public static final String PROP_STATUS = "saveAsStatus";

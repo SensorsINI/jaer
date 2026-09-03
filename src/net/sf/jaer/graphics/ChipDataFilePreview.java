@@ -49,6 +49,7 @@ import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
+import net.sf.jaer.eventio.ddd.DddHdf5;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.JaerAllowedSubclasses;
@@ -394,6 +395,11 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 stream = new RosbagFileInputStream(file, chip, null);
                 overlay = compactSummary(file, stream, false);
                 play = false;
+            } else if (DddHdf5.isDddRecording(file)) {
+                DddHdf5.Summary sum = DddHdf5.peek(file);
+                finishTextOnly(gen, sum != null ? sum.overlayText(file)
+                        : "DDD17/DDD20 HDF5 (open to convert to AEDAT-4)");
+                return;
             } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
                     && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
                 stream = new DsecHdf5AEInputStream(file, chip, null);

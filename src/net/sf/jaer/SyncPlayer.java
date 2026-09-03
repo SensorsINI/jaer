@@ -356,6 +356,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 vToUse.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                 viewers = outer.getViewers();
             }
+            vToUse.ensureLivePathFinished();
             if (b.chip != null) {
                 vToUse.setAeChipClass(b.chip);
             }
@@ -691,11 +692,13 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     public void seekAllToTimestamp(int timeUs, AEViewer origin) {
         currentTime = timeUs;
         List<AEViewer> group = getPlayingViewers().isEmpty() ? outer.getViewers() : getPlayingViewers();
+        boolean resetFilters = origin == null || origin.getPlayerControls() == null
+                || !origin.getPlayerControls().isSliderBeingAdjusted();
         for (AEViewer v : group) {
             if (v == origin || v.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
                 continue;
             }
-            v.aePlayer.seekToTimestamp(timeUs);
+            v.aePlayer.seekToTimestamp(timeUs, resetFilters);
         }
     }
 

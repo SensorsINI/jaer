@@ -20,6 +20,7 @@ public final class Aedat4PlaybackAssignmentDemo {
         testReuseUnmatchedThenCreate();
         testSoftCapUnlessMoreDevices();
         testIdentityTokens();
+        testRosSubscriber346ResolvesDavis346();
         System.out.println("AEDAT4_PLAYBACK_ASSIGNMENT PASS");
     }
 
@@ -117,6 +118,26 @@ public final class Aedat4PlaybackAssignmentDemo {
                 "underscore DV serial");
     }
 
+    private static void testRosSubscriber346ResolvesDavis346() {
+        RecordingChipDetector.Hint hint = new RecordingChipDetector.Hint(
+                "ROS-Subscriber", 346, 260, "aedat4-stream-0");
+        Class<? extends AEChip> chip = RecordingChipDetector.resolve(hint, loaded());
+        assertTrue(chip == eu.seebetter.ini.chips.davis.Davis346red.class,
+                "ROS-Subscriber 346x260 -> Davis346red, got " + chip);
+        List<RecordingChipDetector.StreamHint> streams = List.of(
+                evts(0, "ROS-Subscriber", 346, 260),
+                evts(1, "ROS-Subscriber", 346, 260));
+        List<ViewerSlot> viewers = List.of(new ViewerSlot(0, "DVXplorerMicro", ""));
+        List<Binding> plan = Aedat4PlaybackAssignment.assign(streams, viewers, loaded());
+        assertTrue(plan.size() == 2, "two ROS streams");
+        assertTrue(plan.get(0).chip == eu.seebetter.ini.chips.davis.Davis346red.class
+                && plan.get(1).chip == eu.seebetter.ini.chips.davis.Davis346red.class,
+                "both ROS streams resolve to Davis346red");
+        assertTrue(!plan.get(0).createNew && plan.get(0).changeChip,
+                "first ROS stream reuses leftover viewer");
+        assertTrue(plan.get(1).createNew, "second ROS stream opens a new viewer");
+    }
+
     private static RecordingChipDetector.StreamHint evts(int id, String source, int sx, int sy) {
         return new RecordingChipDetector.StreamHint(id, "EVTS", source, sx, sy, null, "events");
     }
@@ -125,6 +146,7 @@ public final class Aedat4PlaybackAssignmentDemo {
         List<Class<? extends AEChip>> loaded = new ArrayList<>();
         loaded.add(ch.unizh.ini.jaer.chip.retina.DVS128.class);
         loaded.add(ch.unizh.ini.jaer.chip.retina.DVXplorer.class);
+        loaded.add(eu.seebetter.ini.chips.davis.Davis346red.class);
         return loaded;
     }
 

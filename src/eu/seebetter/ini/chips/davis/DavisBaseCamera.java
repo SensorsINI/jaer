@@ -64,6 +64,7 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.graphics.Chip2DRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DavisRenderer;
@@ -129,6 +130,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
      * The DAVIS menu in AEViewer
      */
     protected JMenu davisMenu = null;
+    private CaptureShowEventsAction captureShowEventsAction;
+    private CaptureShowFramesAction captureShowFramesAction;
+    private ToggleIMU toggleImuAction;
 
     /**
      * These points are the first and last pixel APS read out from the array.
@@ -196,6 +200,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getAeViewer().removeMenu(davisMenu);
             davisMenu = null;
         }
+        captureShowEventsAction = null;
+        captureShowFramesAction = null;
+        toggleImuAction = null;
     }
 
     @Override
@@ -210,8 +217,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //        helpMenuItem3 = getAeViewer().
 
         davisMenu = new JMenu("DAVIS");
-        davisMenu.add(new JCheckBoxMenuItem(new CaptureShowEventsAction()));
-        davisMenu.add(new JCheckBoxMenuItem(new CaptureShowFramesAction()));
+        captureShowEventsAction = new CaptureShowEventsAction();
+        captureShowFramesAction = new CaptureShowFramesAction();
+        davisMenu.add(new JCheckBoxMenuItem(captureShowEventsAction));
+        davisMenu.add(new JCheckBoxMenuItem(captureShowFramesAction));
         davisMenu.add(new JSeparator());
         davisMenu.add(new JCheckBoxMenuItem(new ShowAPSHistogramAction()));
         davisMenu.add(new JSeparator());
@@ -228,9 +237,51 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new IncreaseFrameRateAction()));
         davisMenu.add(new JMenuItem(new DecreaseFrameRateAction()));
         davisMenu.add(new JSeparator());
-        davisMenu.add(new JCheckBoxMenuItem(new ToggleIMU()));
+        toggleImuAction = new ToggleIMU();
+        davisMenu.add(new JCheckBoxMenuItem(toggleImuAction));
         davisMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         getAeViewer().addMenu(davisMenu);
+    }
+
+    /**
+     * File playback: show every stream present in the recording (events, APS
+     * frames, IMU), even if the user had turned them off for live capture.
+     * Shift+F still toggles capture and display together afterward.
+     */
+    public void enableDisplayForOpenRecording(AEFileInputStreamInterface stream) {
+        DavisConfig cfg = getDavisConfig();
+        if (cfg == null) {
+            return;
+        }
+        boolean frames = !(stream instanceof Aedat4FileInputStream)
+                || ((Aedat4FileInputStream) stream).hasFramePackets();
+        boolean imu = stream instanceof Aedat4FileInputStream
+                && ((Aedat4FileInputStream) stream).hasImuPackets();
+        cfg.setDisplayEvents(true);
+        if (frames) {
+            cfg.setDisplayFrames(true);
+            if (getRenderer() instanceof DavisRenderer dr) {
+                dr.setDisplayFrames(true);
+            }
+        }
+        if (imu) {
+            cfg.setImuEnabled(true);
+            cfg.setDisplayImu(true);
+        }
+        if (getCanvas() != null && davisDisplayMethod != null) {
+            getCanvas().setDisplayMethod(davisDisplayMethod);
+        }
+        if (captureShowEventsAction != null) {
+            captureShowEventsAction.putValue(Action.SELECTED_KEY, cfg.isDisplayEvents());
+        }
+        if (captureShowFramesAction != null) {
+            captureShowFramesAction.putValue(Action.SELECTED_KEY, cfg.isDisplayFrames());
+        }
+        if (toggleImuAction != null) {
+            toggleImuAction.putValue(Action.SELECTED_KEY, cfg.isImuEnabled());
+        }
+        log.info("DAVIS file playback display: events=true frames=" + cfg.isDisplayFrames()
+                + " imu=" + cfg.isDisplayImu());
     }
 
     /**
@@ -1815,7 +1866,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public CaptureShowFramesAction() {
             super("Capture&Show Frames", "Toggle DAVIS frame capture and display", "ToggleFrames");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-            putValue(Action.SELECTED_KEY, getDavisConfig().isCaptureFramesEnabled());
+            putValue(Action.SELECTED_KEY, getDavisConfig().isDisplayFrames());
         }
 
         @Override
@@ -1824,9 +1875,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
             ((DavisRenderer) getRenderer()).setDisplayFrames(!old);
-            log.info("capturing and displaying frames = " + getDavisConfig().isCaptureFramesEnabled());
-            davisDisplayMethod.showActionText("frames=" + getDavisConfig().isCaptureFramesEnabled());
-            putValue(Action.SELECTED_KEY, getDavisConfig().isCaptureFramesEnabled());
+            log.info("capturing and displaying frames: capture="
+                    + getDavisConfig().isCaptureFramesEnabled()
+                    + " display=" + getDavisConfig().isDisplayFrames());
+            davisDisplayMethod.showActionText("frames=" + getDavisConfig().isDisplayFrames());
+            putValue(Action.SELECTED_KEY, getDavisConfig().isDisplayFrames());
         }
     }
 
@@ -1838,7 +1891,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         public CaptureShowEventsAction() {
             super("Capture&Show Events", "Toggle DAVIS event capture and display", "ToggleEvents");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-            putValue(Action.SELECTED_KEY, getDavisConfig().isCaptureEventsEnabled());
+            putValue(Action.SELECTED_KEY, getDavisConfig().isDisplayEvents());
         }
 
         @Override
@@ -1846,9 +1899,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isDisplayEvents();
             getDavisConfig().setCaptureEvents(!old);
             getDavisConfig().setDisplayEvents(!old);
-            log.info("capturing and displaying events = " + getDavisConfig().isCaptureEventsEnabled());
-            davisDisplayMethod.showActionText("events=" + getDavisConfig().isCaptureEventsEnabled());
-            putValue(Action.SELECTED_KEY, getDavisConfig().isCaptureEventsEnabled());
+            log.info("capturing and displaying events: capture="
+                    + getDavisConfig().isCaptureEventsEnabled()
+                    + " display=" + getDavisConfig().isDisplayEvents());
+            davisDisplayMethod.showActionText("events=" + getDavisConfig().isDisplayEvents());
+            putValue(Action.SELECTED_KEY, getDavisConfig().isDisplayEvents());
         }
     }
 

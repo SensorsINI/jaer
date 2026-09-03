@@ -264,7 +264,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     @Override
     /** Reads gyros; does not rewrite sample timestamps or replace the packet. */
     synchronized public ImuPacket processImu(ImuPacket in) {
-        if ((!electronicStabilizationEnabled && !hemisphereViewEnabled) || in == null) {
+        if (!isFilterEnabled() || (!electronicStabilizationEnabled && !hemisphereViewEnabled) || in == null) {
             return in;
         }
         for (int i = 0; i < in.getSize(); i++) {
@@ -324,7 +324,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         sxm1 = chip.getSizeX() - 1;
         sym1 = chip.getSizeY() - 1;
 
-        if (hemisphereViewEnabled) {
+        if (hemisphereActive()) {
             paintHemisphere(in, corx, cory);
         }
 
@@ -343,7 +343,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     }
 
     private void paintHemisphere(EventPacket in, int corx, int cory) {
-        if (in == null) {
+        if (!hemisphereActive() || in == null) {
             return;
         }
         ensureHemisphereView();
@@ -383,7 +383,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         if (outputPacket == null) {
             outputPacket = new ApsDvsEventPacket(in.getEventClass());
         }
-        if (!electronicStabilizationEnabled && !hemisphereViewEnabled) {
+        if (!isFilterEnabled() || (!electronicStabilizationEnabled && !hemisphereViewEnabled)) {
             return in;
         }
         sx2 = chip.getSizeX() / 2;
@@ -393,7 +393,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         sxm1 = chip.getSizeX() - 1;
         sym1 = chip.getSizeY() - 1;
 
-        if (hemisphereViewEnabled) {
+        if (hemisphereActive()) {
             ensureHemisphereView();
             hemisphereView.setCenterOfRotation(corx, cory);
             setHemispherePose();
@@ -414,7 +414,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             if (ev.isImuSample()) {
                 lastTransform = updateTransform(ev.getImuSample());
                 maybeApplyImageTransform();
-                if (hemisphereViewEnabled) {
+                if (hemisphereActive()) {
                     setHemispherePose();
                 }
             }
@@ -423,7 +423,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
                 be = popEvent();
                 if (!be.isImuSample()) {
-                    if (hemisphereViewEnabled) {
+                    if (hemisphereActive()) {
                         hemisphereView.paint(be);
                     }
                     if (electronicStabilizationEnabled && lastTransform != null) {
@@ -436,7 +436,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
                 outItr.nextOutput().copyFrom(be);
             }
         }
-        if (hemisphereViewEnabled) {
+        if (hemisphereActive()) {
             hemisphereView.displayRepaint();
         }
         if (rewindFlg) {
@@ -618,9 +618,14 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         return rollRate - rollOffset;
     }
 
+    /** Hemisphere map/window only while this filter is enabled. */
+    private boolean hemisphereActive() {
+        return isFilterEnabled() && hemisphereViewEnabled;
+    }
+
     /** True when AEViewer should skip all chip rendering (hemisphere is the live view). */
     public boolean shouldSkipMainDisplayRender() {
-        return isFilterEnabled() && hemisphereViewEnabled && dontRenderMainDisplay;
+        return hemisphereActive() && dontRenderMainDisplay;
     }
 
     private void updateSkipMainDisplay() {
@@ -746,28 +751,25 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         initialized = false;
         eventQueue.clear();
         rewindFlg = true;
-        if (hemisphereView != null) {
-            hemisphereView.resizeFromOptics(lensFocalLengthMm, hemisphereHorizontalFovDeg);
+        if (hemisphereActive() && hemisphereView != null) {
             hemisphereView.reset();
         }
     }
 
     @Override
     public void initFilter() {
+        maybeAddListeners(chip);
         hemisphereHorizontalFovDeg = clampHemisphereHorizontalFovDeg(hemisphereHorizontalFovDeg);
         resetFilter();
-        if (hemisphereViewEnabled) {
+        if (hemisphereActive()) {
             ensureHemisphereView();
-        }
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().getSupport().addPropertyChangeListener(this);
         }
         updateSkipMainDisplay();
     }
 
     /** Construct the hemisphere display from the current {@link AEChip} once. */
     private synchronized void ensureHemisphereView() {
-        if (hemisphereView != null) {
+        if (!hemisphereActive() || hemisphereView != null) {
             return;
         }
         hemisphereView = new SteadicamHemisphereView(this, getChip());
@@ -856,9 +858,13 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             }
         } else {
             resetFilter();
+            if (hemisphereViewEnabled) {
+                ensureHemisphereView();
+            }
         }
         updateHemisphereVisibility();
         updateSkipMainDisplay();
+        applyHemisphereTransformLimit();
     }
 
     /**
@@ -930,6 +936,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if (!isFilterEnabled()) {
+            return;
+        }
         if (evt.getPropertyName() == AEViewer.EVENT_TIMESTAMPS_RESET) {
             resetFilter();
             flushCounter = FLUSH_COUNT;
@@ -954,7 +963,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
     public void setTransformResetLimitDegrees(int transformResetLimitDegrees) {
         // FilterPanel may echo a programmatic raise to 110°; keep the saved restore value.
-        boolean echoClamp = hemisphereViewEnabled
+        boolean echoClamp = hemisphereActive()
                 && transformResetLimitDegrees == HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG
                 && this.transformResetLimitDegrees == HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG
                 && transformResetLimitDegreesBeforeHemisphere != transformResetLimitDegrees;
@@ -963,7 +972,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
             putInt("transformResetLimitDegrees", transformResetLimitDegrees);
         }
         int live = transformResetLimitDegrees;
-        if (hemisphereViewEnabled && live < HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG) {
+        if (hemisphereActive() && live < HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG) {
             live = HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG;
         }
         int old = this.transformResetLimitDegrees;
@@ -1075,7 +1084,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         boolean old = this.hemisphereViewEnabled;
         this.hemisphereViewEnabled = hemisphereViewEnabled;
         putBoolean("hemisphereViewEnabled", hemisphereViewEnabled);
-        if (hemisphereViewEnabled) {
+        if (hemisphereActive()) {
             ensureHemisphereView();
         }
         updateHemisphereVisibility();
@@ -1095,7 +1104,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         float old = this.hemisphereHorizontalFovDeg;
         this.hemisphereHorizontalFovDeg = clamped;
         putFloat("hemisphereHorizontalFovDeg", clamped);
-        if (hemisphereView != null) {
+        if (hemisphereActive() && hemisphereView != null) {
             hemisphereView.resizeFromOptics(lensFocalLengthMm, clamped);
         }
         if (old != clamped) {
@@ -1145,7 +1154,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
      * value when hemisphere is disabled.
      */
     private void applyHemisphereTransformLimit() {
-        if (hemisphereViewEnabled) {
+        if (hemisphereActive()) {
             if (transformResetLimitDegrees < HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG) {
                 int old = transformResetLimitDegrees;
                 transformResetLimitDegrees = HEMISPHERE_MIN_TRANSFORM_RESET_LIMIT_DEG;

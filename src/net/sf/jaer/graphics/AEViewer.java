@@ -174,6 +174,7 @@ import net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
+import net.sf.jaer.eventio.ddd.DddHdf5;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventio.ros2.ROSOutput;
 import net.sf.jaer.eventio.ros2.ROSOutputDialog;
@@ -1169,10 +1170,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (Throwable e) {
                 log.log(Level.WARNING, "Startup USB scan failed: " + e, e);
             }
-            SwingUtilities.invokeLater(this::finishLivePath);
+            SwingUtilities.invokeLater(() -> {
+                finishLivePath();
+                // USB scan may finish after a playback window already ran finishLivePath.
+                buildInterfaceMenu();
+            });
         }, "jaer-startup-usb");
         t.setDaemon(true);
         t.start();
+    }
+
+    /**
+     * Completes deferred chip / OpenGL / ViewLoop startup if it has not run yet.
+     * Extra playback windows must call this on the EDT before {@code startPlayback};
+     * sleeping while waiting for {@link #getChip()} blocks this work.
+     */
+    public void ensureLivePathFinished() {
+        if (SwingUtilities.isEventDispatchThread()) {
+            finishLivePath();
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(this::finishLivePath);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warning("Interrupted while finishing AEViewer live path");
+        } catch (InvocationTargetException e) {
+            log.log(Level.SEVERE, "AEViewer live path on EDT failed",
+                    e.getCause() != null ? e.getCause() : e);
+        }
     }
 
     /** Chip, OpenGL canvas, and ViewLoop after the window is showing. */
@@ -1183,19 +1209,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         StartupProfiler.mark("AEViewer finishLivePath start");
         try {
             buildInterfaceMenu();
-            maybeUseRememberedLiveChipAtStartup();
-            StartupProfiler.mark("AEViewer after maybeUseRememberedLiveChipAtStartup");
-            setAeChipClass(aeChipClass);
-            StartupProfiler.mark("AEViewer after setAeChipClass");
+            if (getChip() == null) {
+                maybeUseRememberedLiveChipAtStartup();
+                StartupProfiler.mark("AEViewer after maybeUseRememberedLiveChipAtStartup");
+                setAeChipClass(aeChipClass);
+                StartupProfiler.mark("AEViewer after setAeChipClass");
+            }
             if (getRenderer() == null) {
                 throw new NullPointerException("getRenderer() returns null for this AEChip " + chip);
             }
             acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
             syncAdaptiveRenderSkipMenuFromRenderer();
-            viewLoop = new ViewLoop();
-            LibUsbHotplug.addListener(usbHotplugListener);
-            viewLoop.start();
-            StartupProfiler.mark("AEViewer after ViewLoop.start");
+            if (viewLoop == null || !viewLoop.isAlive()) {
+                viewLoop = new ViewLoop();
+                LibUsbHotplug.addListener(usbHotplugListener);
+                viewLoop.start();
+                StartupProfiler.mark("AEViewer after ViewLoop.start");
+            }
             startRemoteControlIfEnabled();
             setTitleAccordingToState(true);
             setStatusMessage(null);
@@ -2871,6 +2901,99 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return s;
             }
         }
+        return null;
+    }
+
+    /**
+     * DDD17/DDD20 cAER HDF5 cannot be played directly. Offer a sibling AEDAT-4
+     * conversion (events + APS frames + IMU). OpenXC/CAN groups are not converted.
+     *
+     * @return open plan, or {@code null} if the user canceled playback
+     */
+    public DddHdf5.OpenPlan offerDddHdf5Convert(File file) {
+        if (file == null || !file.isFile() || !DddHdf5.isDddRecording(file)) {
+            return new DddHdf5.OpenPlan(file, null);
+        }
+        File sibling = DddHdf5.aedat4Sibling(file);
+        File parent = sibling.getParentFile();
+        boolean canWrite = parent != null && parent.isDirectory() && parent.canWrite();
+        DddHdf5.Summary sum = DddHdf5.peek(file);
+        String channels = sum == null ? "?" : sum.vehiclePreview(6);
+        String rows = sum == null ? "?" : String.format("%,d", sum.dvsRows);
+        if (sibling.isFile()) {
+            Object[] options = {
+                "Open converted AEDAT-4",
+                "Re-convert",
+                "Cancel"
+            };
+            int choice = JOptionPane.showOptionDialog(
+                    this,
+                    String.format(
+                            "<html>This is a <b>DDD17/DDD20</b> recording (cAER HDF5 from "
+                            + "<a href=\"https://github.com/SensorsINI/ddd20-utils\">ddd20-utils</a>),<br>"
+                            + "not DSEC events.h5. jAER cannot play the original file.<br><br>"
+                            + "A converted AEDAT-4 already exists:<br><code>%s</code><br><br>"
+                            + "OpenXC / car CAN channels were <b>not</b> copied "
+                            + "(steering, speed, GPS, …).<br>"
+                            + "Those streams: %s<br>"
+                            + "A future jAER overlay may support them; "
+                            + "<code>FordVIVisualizer</code> only reads a separate JSON log.</html>",
+                            sibling.getName(), channels),
+                    "DDD17/DDD20 HDF5 — " + file.getName(),
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            if (choice == 0) {
+                log.info("Opening existing DDD AEDAT-4 convert: " + sibling.getName());
+                return new DddHdf5.OpenPlan(sibling, null);
+            }
+            if (choice == 1) {
+                if (!canWrite) {
+                    JOptionPane.showMessageDialog(this,
+                            "Cannot write converted AEDAT-4 in:\n" + parent,
+                            "DDD convert failed",
+                            JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+                log.info("Re-converting DDD HDF5 to AEDAT-4: " + sibling.getName());
+                return new DddHdf5.OpenPlan(sibling, file);
+            }
+            log.info("Playback open canceled (DDD HDF5 convert dialog)");
+            return null;
+        }
+        if (!canWrite) {
+            JOptionPane.showMessageDialog(this,
+                    String.format(
+                            "<html>This is a DDD17/DDD20 cAER+OpenXC HDF5 file.<br>"
+                            + "jAER cannot play it directly, and cannot write<br>"
+                            + "<code>%s</code> (folder not writable).</html>",
+                            sibling.getName()),
+                    "DDD17/DDD20 HDF5",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        int create = JOptionPane.showConfirmDialog(
+                this,
+                String.format(
+                        "<html>This is a <b>DDD17/DDD20</b> recording (cAER HDF5 + OpenXC vehicle bus),<br>"
+                        + "not a DSEC/jAER HDF5 file. jAER cannot play it as-is.<br><br>"
+                        + "Convert <b>events, APS frames, and IMU</b> to AEDAT-4?<br>"
+                        + "<code>%s</code><br>"
+                        + "(%s DVS packets; DAVIS346 %d×%d)<br><br>"
+                        + "OpenXC / CAN channels are <b>not</b> converted: %s<br>"
+                        + "We can add a jAER overlay later. "
+                        + "<code>FordVIVisualizer</code> does not read this HDF5.</html>",
+                        sibling.getName(), rows, DddHdf5.WIDTH, DddHdf5.HEIGHT, channels),
+                "DDD17/DDD20 — convert to AEDAT-4?",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (create == JOptionPane.OK_OPTION) {
+            log.info("Will convert DDD HDF5 to AEDAT-4: " + sibling.getName());
+            return new DddHdf5.OpenPlan(sibling, file);
+        }
+        log.info("Playback open canceled (DDD HDF5 convert dialog)");
         return null;
     }
 
@@ -6278,7 +6401,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isRecordFilteredEventsEnabled();
                         // Never skip rendering while writing synchronized AVI frames — every packet must paint.
-                        if (!isPaused() && !isJaerAviRecordingActive() && getRenderer().isPacketLevelRenderSkipping()) {
+                        // AEDAT-4 FRME: packet skip would grabInput (fill pendingFrames) then continue
+                        // without appendTypedPackets, so APS frames never reach DavisRenderer.
+                        final boolean aedat4HasFrames = getAePlayer() != null
+                                && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream a4
+                                && a4.hasFramePackets();
+                        if (!aedat4HasFrames && !isPaused() && !isJaerAviRecordingActive()
+                                && getRenderer().isPacketLevelRenderSkipping()) {
                             skipRendering = getRenderer().advanceSkipRenderSlot();
                         }
                         if (skipRendering && !filtersNeeded) {

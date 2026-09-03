@@ -102,9 +102,13 @@ class SteadicamHemisphereView {
             w = Math.max(1, Math.round(w * s));
             h = Math.max(1, Math.round(h * s));
         }
+        boolean same = display != null && w == hemiW && h == hemiH;
         hemiW = w;
         hemiH = h;
         elSpanRad = azSpanRad * hemiH / (float) hemiW;
+        if (same) {
+            return;
+        }
         ensureDisplay();
         display.setImageSize(hemiW, hemiH);
         display.resetFrame(background);

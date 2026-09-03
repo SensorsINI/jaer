@@ -29,6 +29,7 @@ import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
+import net.sf.jaer.eventio.ddd.DddHdf5;
 import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -553,6 +554,9 @@ public class AEChip extends Chip2D {
                 && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
             log.info(String.format("Opening file %s as DSEC HDF5 events", file));
             aeInputStream = new DsecHdf5AEInputStream(file, this, progressMonitor);
+        } else if (DddHdf5.isHdf5Extension(file) && DddHdf5.isDddRecording(file)) {
+            throw new FileNotFoundException("file " + file
+                    + " is a DDD17/DDD20 cAER+OpenXC HDF5 recording; open it in the File dialog to convert events and frames to AEDAT-4");
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))
                 && MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
             log.info(String.format("Opening file %s as Metavision DAT", file));
@@ -562,7 +566,7 @@ public class AEChip extends Chip2D {
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);
         } else {
-            throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5 (DSEC), or .bag files are currently supported");
+            throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5/.hdf5 (DSEC or DDD17/DDD20), or .bag files are currently supported");
         }
         return aeInputStream;
     }

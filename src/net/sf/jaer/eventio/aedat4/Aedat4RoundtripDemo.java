@@ -47,6 +47,7 @@ public class Aedat4RoundtripDemo {
         verifyUncompressedSizeFromHeaders();
         verifyOwnedConstructorClosesOnInitializationFailure();
         verifyImuRebaseOnlyForHostClock();
+        verifyMegaPacketFramesMatchActualEventTime();
 
         verifyDvFileDataTable(file);
         int decoded = decodeFirstEventPacketLength(file);
@@ -292,6 +293,67 @@ public class Aedat4RoundtripDemo {
                 throw new java.io.EOFException();
             }
         }
+    }
+
+    /**
+     * Save-As mega-packets interpolate a later clock than the events they
+     * contain. APS frames must attach to the extracted events' timestamps, not
+     * that interpolation (otherwise frames run ahead of DVS).
+     */
+    private static void verifyMegaPacketFramesMatchActualEventTime() throws Exception {
+        File file = File.createTempFile("jaer-aedat4-megapacket-frames", ".aedat4");
+        PacketBundle bundle = new PacketBundle();
+        net.sf.jaer.event.EventPacket<PolarityEvent> events = new net.sf.jaer.event.EventPacket<>(PolarityEvent.class);
+        OutputEventIterator<PolarityEvent> out = events.outputIterator();
+        final int n = 5000;
+        final int lastTs = 400_000;
+        for (int i = 0; i < n; i++) {
+            PolarityEvent event = out.nextOutput();
+            if (i < 4000) {
+                event.timestamp = i;
+            } else {
+                event.timestamp = 4000 + (int) ((i - 4000) * (long) (lastTs - 4000) / 999);
+            }
+            event.x = 1;
+            event.y = 1;
+            event.setPolarity(PolarityEvent.Polarity.On);
+        }
+        bundle.add(events);
+        net.sf.jaer.event.FramePacket frame = new net.sf.jaer.event.FramePacket(8, 8,
+                net.sf.jaer.event.FramePacket.ColorMode.GRAYSCALE);
+        frame.setTimestampStartUs(50_000);
+        frame.setTimestampEndUs(50_100);
+        frame.setExposureUs(100);
+        bundle.add(frame);
+        AEChip chip = new org.objenesis.ObjenesisStd()
+                .newInstance(eu.seebetter.ini.chips.davis.Davis346blue.class);
+        try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(new FileOutputStream(file), chip,
+                net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, 1_000_000L)) {
+            output.writeBundle(bundle);
+        }
+        Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip);
+        try {
+            in.readPacketByTime(100_000);
+            PacketBundle typed = new PacketBundle();
+            in.appendTypedPackets(typed);
+            int frames = 0;
+            for (net.sf.jaer.event.TypedDataPacket p : typed) {
+                if (p instanceof net.sf.jaer.event.FramePacket) {
+                    frames++;
+                }
+            }
+            if (frames != 0) {
+                throw new IllegalStateException(
+                        "Interpolated 100 ms window must not attach the 50 ms frame to the first ~1 ms of events, got frames="
+                                + frames);
+            }
+        } finally {
+            in.close();
+        }
+        if (!file.delete()) {
+            file.deleteOnExit();
+        }
+        System.out.println("PASS mega-packet APS frames follow actual event time");
     }
 
     /**

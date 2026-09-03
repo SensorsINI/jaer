@@ -34,6 +34,8 @@ import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
+import net.sf.jaer.eventio.ddd.DddHdf5;
+import net.sf.jaer.eventio.ddd.DddHdf5ToAedat4;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
@@ -352,14 +354,25 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // (seen with NRV plugged in). Known race: ViewLoop openAEMonitor() can set LIVE.
         viewer.beginFilePlaybackOpen();
         setPaused(true);
+        // Extra windows construct the chip on a later EDT turn; do that now so
+        // we never sleep on the EDT waiting for getChip() (that blocks finishLivePath).
+        viewer.ensureLivePathFinished();
         // Filename / header / multi-stream check (may switch AEChip or cancel).
         if (!viewer.ensureChipCompatibleWithRecording(file)) {
             viewer.endFilePlaybackOpen();
             setPaused(false);
             return;
         }
+        final DddHdf5.OpenPlan dddPlan = viewer.offerDddHdf5Convert(file);
+        if (dddPlan == null || dddPlan.fileToOpen == null) {
+            viewer.endFilePlaybackOpen();
+            viewer.setPaused(false);
+            viewer.clearPendingExtraAedat4Streams();
+            return;
+        }
+        File afterDdd = dddPlan.fileToOpen;
         // Dependent-block LZ4 DV files: offer sibling *-rerecord.aedat4 for fast playback.
-        final Aedat4Lz4Rerecorder.OpenPlan lz4Plan = viewer.offerAedat4Lz4Rerecord(file);
+        final Aedat4Lz4Rerecorder.OpenPlan lz4Plan = viewer.offerAedat4Lz4Rerecord(afterDdd);
         if (lz4Plan == null || lz4Plan.fileToOpen == null) {
             viewer.endFilePlaybackOpen();
             viewer.setPaused(false);
@@ -368,6 +381,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         final File playFile = lz4Plan.fileToOpen;
         final File rerecordFrom = lz4Plan.rerecordFrom;
+        final File dddConvertFrom = dddPlan.convertFrom;
         inputFile = playFile;
         if (viewer.consumeSkipOriginAedat4Open()) {
             viewer.spawnPendingExtraAedat4Streams(playFile);
@@ -390,22 +404,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
 
-        int tries = 20;
-        while ((viewer.getChip() == null) && (tries-- > 0)) {
-            log.info("null AEChip in AEViewer, waiting... " + tries);
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException ex) {
-                break;
-            }
-        }
         if (viewer.getChip() == null) {
             viewer.endFilePlaybackOpen();
             setPaused(false);
-            throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
+            throw new IOException("chip is not set in AEViewer so we cannot construct the file input stream for it");
         }
         final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + playFile,
-                rerecordFrom != null ? "Re-recording LZ4 for faster playback" : "Generating or loading cache of events",
+                dddConvertFrom != null ? "Converting DDD HDF5 to AEDAT-4"
+                        : (rerecordFrom != null ? "Re-recording LZ4 for faster playback" : "Generating or loading cache of events"),
                 0, 100);
         progressMonitor.setMillisToPopup(300);
         progressMonitor.setMillisToDecideToPopup(300);
@@ -425,6 +431,24 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     // Do not set WAIT_CURSOR for the whole open — ProgressMonitor is enough.
                     // A stuck wait cursor was left behind when open hung or cancel raced.
                     progressMonitor.setProgress(0);
+                    if (dddConvertFrom != null) {
+                        progressMonitor.setNote("Converting DDD17/DDD20 HDF5 to AEDAT-4…");
+                        try {
+                            DddHdf5ToAedat4.convert(dddConvertFrom, playFile, viewer.getChip(), progressMonitor);
+                        } catch (InterruptedException ie) {
+                            log.info("DDD HDF5 convert canceled: " + dddConvertFrom.getName());
+                            return null;
+                        } catch (Exception e) {
+                            exception = e;
+                            log.warning("DDD HDF5 convert failed: " + e);
+                            e.printStackTrace();
+                            return null;
+                        }
+                        if (isCancelled() || progressMonitor.isCanceled()) {
+                            log.info("File open canceled after DDD convert: " + playFile.getName());
+                            return null;
+                        }
+                    }
                     if (rerecordFrom != null) {
                         progressMonitor.setNote("Re-recording LZ4 (independent blocks)…");
                         try {
@@ -570,6 +594,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     viewer.setPlaybackControlsEnabledState(true);
                     log.fine("done(): fixRecordingControls");
                     viewer.fixRecordingControls();
+                    if (viewer.getChip() instanceof eu.seebetter.ini.chips.davis.DavisBaseCamera davis) {
+                        davis.enableDisplayForOpenRecording(aeInputStream);
+                    }
                     try {
                         log.fine("done(): renderer.resetFrame");
                         viewer.getChip().getRenderer().resetFrame(0);
@@ -591,7 +618,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         log.log(Level.WARNING, "EVENT_FILEOPEN listener failed (continuing open): " + e, e);
                     }
                     log.fine("done(): setInputFile");
-                    viewer.setInputFile(file);
+                    viewer.setInputFile(playFile);
                     log.fine("done(): endFilePlaybackOpen + setPaused(false)");
                     viewer.endFilePlaybackOpen();
                     viewer.setPaused(false);
@@ -1080,25 +1107,41 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         aeInputStream.setFractionalPosition(frac);
-        resetPlaybackView();
+        resetPlaybackView(true);
     }
 
     /**
      * Slider seek: time fraction on indexed AEDAT-4, event fraction otherwise.
+     * Filter-chain reset is deferred while the slider is dragged ({@code valueIsAdjusting});
+     * ViewLoop already skips filtering then. Accumulation still resets so the preview is the new packet.
      */
     public void setPlaybackSliderFraction(float frac) {
         if (aeInputStream == null) {
             return;
         }
         aeInputStream.setPlaybackSliderFraction(frac);
-        resetPlaybackView();
+        resetPlaybackView(!isPlaybackSliderDragging());
     }
 
+    private boolean isPlaybackSliderDragging() {
+        return viewer != null && viewer.getPlayerControls() != null
+                && viewer.getPlayerControls().isSliderBeingAdjusted();
+    }
+
+    /** Reset renderer accumulation; reset filters unless the playback slider is mid-drag. */
     private void resetPlaybackView() {
-        if (viewer != null) {
-            viewer.filterChain.reset(); // already done in aePlayer
+        resetPlaybackView(!isPlaybackSliderDragging());
+    }
+
+    private void resetPlaybackView(boolean resetFilters) {
+        if (viewer == null) {
+            return;
+        }
+        if (resetFilters && viewer.filterChain != null) {
+            viewer.filterChain.reset();
+        }
+        if (viewer.getRenderer() != null) {
             viewer.getRenderer().resetAccumulation();
-//            viewer.interruptViewloop(); // causes havoc in AEFileInputStream with the mapped FileChannel being ClosedByInterrupt exceptions
         }
     }
 
@@ -1113,21 +1156,21 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     /**
      * Seek this player's stream to the packet nearest {@code timestampUs} and
-     * reset filters/accumulation so the next frame matches.
+     * reset accumulation. Filter reset follows the playback-slider drag rule.
      */
     public void seekToTimestamp(int timestampUs) {
+        seekToTimestamp(timestampUs, !isPlaybackSliderDragging());
+    }
+
+    /**
+     * @param resetFilters false while the origin playback slider is dragged
+     */
+    public void seekToTimestamp(int timestampUs, boolean resetFilters) {
         if (aeInputStream == null) {
             return;
         }
         aeInputStream.setPositionFromTimestamp(timestampUs);
-        if (viewer != null) {
-            if (viewer.filterChain != null) {
-                viewer.filterChain.reset();
-            }
-            if (viewer.getRenderer() != null) {
-                viewer.getRenderer().resetAccumulation();
-            }
-        }
+        resetPlaybackView(resetFilters);
     }
 
     @Override
