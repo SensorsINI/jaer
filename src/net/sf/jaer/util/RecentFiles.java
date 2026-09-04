@@ -287,6 +287,23 @@ public class RecentFiles {
         }
     }
     
+    /**
+     * Add a directory to the recent-folders list without adding its parent.
+     * No-op if {@code dir} is null or not a directory.
+     */
+    public void addFolder(File dir) {
+        if (dir == null || !dir.isDirectory()) {
+            log.warning("RecentFiles.addFolder(): not a directory: " + dir);
+            return;
+        }
+        File abs = dir.getAbsoluteFile();
+        fileList.removeIf(x -> x != null && samePath(x, abs));
+        fileList.add(0, abs);
+        pruneList();
+        putPrefs();
+        buildMenu();
+    }
+
     /** adds files and their containing folders to list of recent files. List is pruned if too long.
      @param f a file to add
      */

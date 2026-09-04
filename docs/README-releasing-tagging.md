@@ -16,7 +16,7 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 1. Set `VERSION.txt` (e.g. `3.2.0`).
 2. `ant release` -- Enter accepts the default `y` (type `n` to cancel). Does **not** copy repo-root `updates.xml`.
    - Media lands in `currentInstallers/<VERSION.txt>/`. Historical Dropbox copies stay in `jaer-older-installers/` (same share URL as the old `installers/` folder).
-   - If `sampleData/` has recordings, this also runs `pack-sample-data`: writes `sampleData/SIZE.txt` (zip download MiB + unpacked disk MiB) and `currentInstallers/<version>/jaer-sample-data.zip`. Drop recordings in `sampleData/` first (gitignored). Standalone: `ant pack-sample-data`.
+   - If `sampleData/` has recordings, this also runs `pack-sample-data`. Details: [`README-sample-data.md`](README-sample-data.md).
 3. Upload binaries (creates the GitHub Release for that tag if it is missing):
 
        powershell -File scripts/upload-github-release-installers.ps1
@@ -86,8 +86,7 @@ TensorFlow for MLPNoiseFilter (two layers):
   lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
 - Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/ (tmp alone can be hundreds of MB
   of local scratch and must not ship in installers).
-- Sample recordings: `sampleData/` is excluded from media except `README.md` and `SIZE.txt`.
-  Optional download is a Welcome checkbox; zip is the GitHub Latest asset `jaer-sample-data.zip`.
+- Sample recordings: see [`README-sample-data.md`](README-sample-data.md). `sampleData/` is excluded from media except `README.md` and `SIZE.txt`.
 - OpenCV: Ivy keeps the openpnp fat jar (`opencv-4.8.1-0.jar`, ~102MB, all OS natives) in
   `lib/` for compile and `ant run`. `ant release` runs `split-opencv-natives` and each
   install4j media fileset packs only that OS's slim jar (same filename under `lib/`).

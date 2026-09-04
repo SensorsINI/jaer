@@ -154,7 +154,7 @@ public final class Welcome {
      * @return hint line
      */
     public static String sampleData(AEViewer viewer) {
-        return "Get sample data via Help / Sample data";
+        return "Help → Sample data → Download jAER sample data";
     }
 
     /**

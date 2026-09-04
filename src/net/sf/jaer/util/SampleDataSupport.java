@@ -10,6 +10,7 @@ package net.sf.jaer.util;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -48,6 +49,8 @@ public final class SampleDataSupport {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     public static final String DOWNLOAD_URL = JaerConstants.SAMPLE_DATA_DOWNLOAD_URL;
+
+    public static final String README_URL = JaerConstants.SAMPLE_DATA_README_URL;
 
     public static final String PREF_DECLINED = "AEViewer.sampleDataDownloadDeclined";
 
@@ -197,12 +200,75 @@ public final class SampleDataSupport {
         return dir;
     }
 
+    /** Open {@link #README_URL} in the default browser (safe off the EDT). */
+    public static void browseReadmeUrl() {
+        Runnable r = () -> {
+            try {
+                if (!Desktop.isDesktopSupported()) {
+                    log.warning("No Desktop support, cannot open " + README_URL);
+                    return;
+                }
+                Desktop.getDesktop().browse(URI.create(README_URL));
+            } catch (Exception ex) {
+                log.log(Level.WARNING, "Could not open sample-data README URL: " + ex, ex);
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
+     * Open the local {@code sampleData} folder in the file manager and open
+     * {@code README.md} if present (else the GitHub README URL).
+     */
+    public static void openFolderAndReadme() {
+        Runnable r = () -> {
+            File dir = folder();
+            if (!dir.isDirectory()) {
+                dir.mkdirs();
+            }
+            try {
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().open(dir);
+                    File readme = new File(dir, "README.md");
+                    if (readme.isFile()) {
+                        Desktop.getDesktop().open(readme);
+                    } else {
+                        browseReadmeUrl();
+                    }
+                }
+            } catch (Exception ex) {
+                log.log(Level.WARNING, "Could not open sampleData folder or README: " + ex, ex);
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /** Put {@code sampleData/} on the File menu recent-folders list. */
+    public static void rememberFolder(RecentFiles recentFiles) {
+        if (recentFiles == null) {
+            return;
+        }
+        File dir = folder();
+        if (dir.isDirectory()) {
+            recentFiles.addFolder(dir);
+        }
+    }
+
     /**
      * Download and unpack the curated sample recordings into {@code sampleData/}.
      * <p>
      * Used by UI actions; progress UI is created on the Swing EDT.
      */
     public static void downloadAndUnpack(Component parent) throws Exception {
+        browseReadmeUrl();
         File dir = folder();
         Files.createDirectories(dir.toPath());
         File zip = new File(dir, "jaer-sample-data.zip.partial");

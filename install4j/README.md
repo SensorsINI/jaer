@@ -75,7 +75,7 @@ Classpath copy: `ant jar` target `jaer-copySplashImage` puts `images/800w/Splash
 
 The main `dirEntry` packs the repo root into `jaer/` and **excludes** `images/` (large art / demos) and `sampleData/` recordings. Splash is re-added as a single `fileEntry` so it sits next to the exe as `SplashScreen.png`. `sampleData/README.md` and `SIZE.txt` are fileEntries under `jaer/sampleData`. Do not add a second `SplashScreen.png` from `256h` or `1024w`.
 
-Welcome has an optional **Download sample recordings** checkbox (`downloadSampleData`), default on when the destination `sampleData` has no recordings. After InstallFiles the installer downloads `https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip` and unpacks it. Failure does not abort the install. Sizes on the checkbox come from `ant pack-sample-data` (`-Djaer.sampleDataZipMiB` / `jaer.sampleDataUnpackedMiB`).
+Welcome has an optional **Download sample recordings** checkbox (`downloadSampleData`), default off when the destination `sampleData` has no recordings. After InstallFiles the installer can download `jaer-sample-data.zip`. See [`docs/README-sample-data.md`](../docs/README-sample-data.md).
 
 ## Related Ant targets
 
