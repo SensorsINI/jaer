@@ -1,5 +1,6 @@
 # Upload install4j media from currentInstallers/<VERSION.txt>/ to the GitHub Release for that tag.
 # Requires: gh auth, VERSION.txt, media built by `ant release`.
+# Creates a *draft* GitHub Release if the tag has none (not Latest until published).
 # Usage (repo root):
 #   powershell -File scripts/upload-github-release-installers.ps1
 #   powershell -File scripts/upload-github-release-installers.ps1 -Tag 3.2.0
@@ -53,11 +54,11 @@ $releaseMissing = ($LASTEXITCODE -ne 0)
 $ErrorActionPreference = $prevEap
 $notesFile = Join-Path $root "release-notes\jaer-$Tag-release-notes.md"
 if ($releaseMissing) {
-    Write-Host "Creating GitHub release $Tag"
+    Write-Host "Creating GitHub draft release $Tag (publish later; not Latest)"
     if (Test-Path $notesFile) {
-        gh release create $Tag --title "jaer-$Tag" --notes-file $notesFile
+        gh release create $Tag --draft --latest=false --title "jaer-$Tag" --notes-file $notesFile
     } else {
-        gh release create $Tag --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
+        gh release create $Tag --draft --latest=false --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
     }
 } elseif (Test-Path $notesFile) {
     Write-Host "Updating GitHub release notes from $notesFile"

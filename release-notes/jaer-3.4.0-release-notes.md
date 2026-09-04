@@ -17,20 +17,23 @@
     <img src="https://github.com/user-attachments/assets/<uuid>" alt="…" width="80%" />
   Until then leave the comment as a placeholder. Do not upload the source mp4s.
   Encode locally (800px, ~15 fps, few seconds, -loop 0, <10 MB), e.g.:
-    ffmpeg -y -i "release-notes/3.4.0/8-cams-startup-cellphone-video.mp4" -t 5 -vf "scale=800:-2:flags=lanczos,fps=15" -loop 0 -an -q:v 60 "release-notes/3.4.0/8-cams-startup.webp"
+    ffmpeg -y -i "release-notes/3.4.0/8-cams-startup-cellphone-video.mp4" -t 8 -vf "scale='min(800,iw)':-2:flags=lanczos,fps=15" -loop 0 -an -q:v 60 "release-notes/3.4.0/8-cams-startup.webp"
+
   firenet.webp is already committed (raw.githubusercontent.com); do not gitignore it.
 
-  Encode from Dropbox-only mp4s:
-    8-cams-startup-cellphone-video.mp4 → 8-cams-startup.webp          (prove-clip)
-    8-event-cams-startup.mp4            → 8-event-cams-startup.webp     (optional desktop take)
-    8-event-cams-12pc-cpu-load.mp4      → 8-event-cams-12pc-cpu-load.webp
-    dvxplorer-micro-steadicam.mp4       → dvxplorer-micro-steadicam.webp
-    jaer-zoom-2026-08-28_11.17.56.mp4   → jaer-zoom.webp
+  Encoded from Dropbox-only mp4s (all looping, <10 MB):
+    8-cams-startup-cellphone-video.mp4 → 8-cams-startup.webp               (~8 s, 800×450)
+    8-event-cams-12pc-cpu-load.mp4      → 8-event-cams-12pc-cpu-load.webp   (~6 s from t=18)
+    dvxplorer-micro-steadicam.mp4       → dvxplorer-micro-steadicam.webp    (~8 s)
+    jaer-zoom-2026-08-28_11.17.56.mp4   → jaer-zoom.webp                    (~8 s)
+    hotel-bar-activity-histogram.mp4    → hotel-bar-activity-histogram.webp (~8 s from t=10)
+    recording-preview.mp4               → recording-preview.webp            (~8 s)
+    adapitive-render-skipping-speedup.mp4 → adaptive-render-skipping.webp (~18 s; source filename has the extra i)
     firenet.mp4                         → already firenet.webp
+    8-event-cams-startup.mp4            — source not present; skip
 
   Still screenshots to capture into release-notes/3.4.0/:
-    SplashScreen.png, dnnoutput-menu.png, OpenCV Remote dialog,
-    muxed AEDAT-4 multi-viewer, DVXplorer Mini/Micro live + IMU, file-dialog preview,
+    SplashScreen.png, muxed AEDAT-4 multi-viewer, DVXplorer Mini/Micro live + IMU
 -->
 
 **jAER 3.4.0** is a big feature release after **3.3.0**. See [Highlights](#highlights) below.
@@ -44,11 +47,13 @@
 | macOS | Intel | [jAER_macos_3_4_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.4.0/jAER_macos_3_4_0.dmg) |
 | Linux | x64 | [jAER_unix_3_4_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.4.0/jAER_unix_3_4_0.sh) |
 
-Each installer is ~200 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.3.0) — you do not install Java yourself. OpenCV and JOGL natives are per-OS in the installer (the fat jar stays in git clones for `ant run`). GitHub lists the same files again under **Assets** at the bottom of this page. To clone and `ant run`, install [Adoptium JDK 25+](https://adoptium.net/) (`javac` target 25).
+Each installer is <250 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.3.0) — you do not install Java yourself. OpenCV and JOGL natives are per-OS in the installer (the fat jar stays in git clones for `ant run`). GitHub lists the same files again under **Assets** at the bottom of this page. To clone and `ant run`, install [Adoptium JDK 25+](https://adoptium.net/) (`javac` target 25).
 
 Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY) (also covers *git clone* and rebuild from master).
 
 Installers are GitHub Release assets (since 3.2.0) and jAER can self-update (Help → Check for release updates… → **Download and install**). Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0).
+
+The installers now offer a **sample recordings** download (~796 MB). The checkbox is off by default. You can also fetch them later from Help → **Sample data**.
 
 ### Linux
 
@@ -79,11 +84,14 @@ Open the DMG and run the installer. The build is unsigned; if macOS blocks it, [
 ### Highlights
 
 * [Robust multicamera USB autobinding, recording, and playback](#eight-usb-cameras) — mixed-set autobind and hotplug
-* [Quicker startup](#quicker-startup) — 3.5X quicker startup
+* [Quicker startup](#quicker-startup) — >3X quicker window, AWT file-dialog preview
+* [Sample recordings](#sample-recordings) — Help → Sample data (~796 MB of AEDAT-4 clips)
+* [AEDAT-4 playback](#aedat-4-playback) — time slider with event-rate histogram, ARS, IN/OUT
+* [AreaEventCount](#area-event-count) — great flextime playback for viewing bursty recordings with varying object sizes
 * [F1 Quick help](#f1-quick-help) — searchable shortcuts
 * [Save As](#save-as) — parked export with filters, IN/OUT, and stats
 * [Give Feedback](#give-feedback) — anonymous feedback for new features and camera support, bugs/annoyances, praise
-* [DVXplorer Mini / Micro](#dvxplorer-mini-micro) — 6480x480 inivation/Samsung DVS, Micro with IMU for low-latency derotation
+* [DVXplorer Mini / Micro](#dvxplorer-mini-micro) — 640×480 inivation/Samsung DVS, Micro with IMU for low-latency derotation
 * [DNN shared memory](#dnn-shared-memory) — File → Remote mmap to Roshambo / FireNet
 * [ROS2 / Foxglove](#ros2-foxglove) — DVS frames, no ROS2 install
 * [OpenCV camera output](#opencv-camera-output) — HTTP MJPEG; Linux Zoom / Cheese webcam
@@ -92,23 +100,45 @@ Open the DMG and run the installer. The build is unsigned; if macOS blocks it, [
 
 <h4 id="eight-usb-cameras">Robust multicamera USB autobinding, recording, and playback</h4>
 
-Autobind and hotplug were rebuilt so a mixed set (DVS128, DAVIS240/346, DVXplorer classic + Micro, EVK4, NRV DELTA01) can come up together. **Ctrl+Shift+U** refreshes USB and auto-opens a sole camera; Interface → **Refresh** finds a second camera while one is already open. Windows discovery decays 1 s → 3 s → 15 s after the last plug/unplug. The AEChip menu is now **Sensor**.
+Autobind and hotplug were rebuilt so a mixed set (DVS128, DAVIS240/346, DVXplorer classic + Micro, EVK4, NRV DELTA01) can come up together. **Ctrl+Shift+U** refreshes USB and auto-opens a sole camera; Interface → **Refresh** finds a second camera while one is already open. Windows discovery decays 1 s → 3 s → 15 s after the last plug/unplug. The AEChip menu is now **Sensor**. Windows USB scans run only while waiting for a camera (not during playback); focusing the window kicks an immediate scan.
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/8-cams-devmgmt.png" alt="Windows Device Manager: eight event cameras bound as WinUSB" width="50%" />
 
 <!-- webp: 3.4.0/8-cams-startup.webp -->
-<!-- encode from 8-cams-startup-cellphone-video.mp4 (prove-clip); optional desktop take: 8-event-cams-startup.webp -->
 
 <!-- webp: 3.4.0/8-event-cams-12pc-cpu-load.webp -->
-<!-- encode from 8-event-cams-12pc-cpu-load.mp4 -->
 
 <h4 id="quicker-startup">Quicker startup</h4>
 
-jAER (at least on Window 11) starts up 3.5X quicker. The viewer window paints before USB enumeration and JOGL (`windowOpened` 0.75 s vs 2.62 s idle). Status reads “Starting sensor / OpenGL…” until the chip is ready. Open-file accessory now plays a short AWT preview of AEDAT-4/2 (no second `GLCanvas`; Intel Arc-safe) and aborts the previous file when you scroll.
+jAER starts up >3X quicker. The viewer window paints before USB enumeration and JOGL (`windowOpened` 0.75 s vs 2.62 s idle). Status reads “Starting sensor / OpenGL…” until the chip is ready. Open-file accessory now plays a short AWT preview of AEDAT-4/2 (no second `GLCanvas`; Intel Arc-safe) and aborts the previous file when you scroll. The chooser has a ClassChooser-style name filter (substring, or CamelCase if you type a capital). If a leftover `JAERViewerRunning.txt` points at another jAER process, you can **Force quit previous** so the camera is not stuck with `LIBUSB_ERROR_ACCESS`.
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/3x-quicker-startup.png" alt="Startup profile: windowOpened 0.75 s vs 2.62 s" width="80%" />
 
-<!-- file-dialog preview screenshot -->
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/recording-preview.png" alt="Open-file dialog AWT preview of an AEDAT-4 recording" width="80%" />
+
+<!-- webp: 3.4.0/recording-preview.webp -->
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/force-quit-previous-jaer.png" alt="Force quit previous jAER if a leftover instance holds the camera" width="50%" />
+
+<h4 id="sample-recordings">Sample recordings</h4>
+
+Help → **Sample data** downloads about **796 MB** of short AEDAT-4 clips (DVS128, DAVIS240/346, NRV DELTA01, Prophesee IMX636, a DDD20 driving clip, Steadicam) into `sampleData/` next to the install. If the folder is already there, the item becomes **Show jAER sample data folder and README**. The installer can offer the same zip (off by default). See [sampleData/README.md](https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md). Opening a [DDD20](https://sites.google.com/view/davis-driving-dataset-2017/datasets) `.h5` / `.hdf5` in File → Open converts events and frames to AEDAT-4.
+
+<h4 id="aedat-4-playback">AEDAT-4 playback</h4>
+
+Indexed AEDAT-4 files map the player slider by **recording time** (not event count) and paint a log **event-rate histogram** on the track so busy/quiet stretches are easy to find. IN/OUT marks follow that time axis. Seek and reverse can leave the marked region so you can set new markers; Rewind and reaching OUT still return to IN. CountDuration, ConstantCount, and AreaEventCount slices (including single-step, rewind, and IN/OUT) now cut at the intended packet boundaries.
+
+**View → Adaptive render skipping** (**Ctrl+Shift+A**, also in F1) thins polarity events on forward playback from loop load so large event packets from modern megapixel cameras stay closer to realtime. Reverse, Save As, filters, and recording stay unthinned.
+
+**T** cycles event exposure: CountDuration / ConstantCount / [AreaEventCount](#area-event-count). ConstantCount’s default is nearest power of two of pixels/64 (256 on DVS128, 16k on EVK4 / IMX636) and is remembered per chip class; **f** / **s** still changes N.
+
+<!-- webp: 3.4.0/adaptive-render-skipping.webp -->
+
+<!-- webp: 3.4.0/hotel-bar-activity-histogram.webp -->
+
+<h4 id="area-event-count">AreaEventCount</h4>
+
+Playback → **Event exposure** now includes **AreaEventCount**: the slice ends when any aspect-matched spatial cell reaches N events (default 32 areas, 1000 events/area; optional min/max duration). **T** cycles CountDuration → ConstantCount → AreaEventCount. **f** / **s** scales the per-area count. File → Preferences sets the number of areas; the grid can flash like PatchMatchFlow. Same exposer is used by `DavisAutoShooter` (`useAreaEventCount`), DvsFramer **TimeSliceMethod.AreaEvent**, and AccumulateAndResetFilter. See [BMVC 2018 Figs. 3–4](https://bmva-archive.org.uk/bmvc/2018/contents/papers/0280.pdf).
 
 <h4 id="f1-quick-help">F1 Quick help</h4>
 
@@ -118,7 +148,7 @@ Help → **Quick help/Shortcuts** (F1) opens a searchable shortcuts page (type t
 
 <h4 id="save-as">Save As</h4>
 
-**File → Save As…** exports recordings as various other formats or lets you compress them by applying offline denoising and IN and OUT points. It now parks the ViewLoop so it no longer races playback. The dialog lists enabled EventFilters from FilterFrame (**Open Filters…**); the recording overlay shows Apply Filters on/off. When finished, a confirmation shows original vs saved stats (events, duration, size, compression) with **Show folder**, **Playback**, and **OK**.
+**File → Save As…** exports recordings as various other formats or lets you compress them by applying offline denoising and IN and OUT points. It now parks the ViewLoop so it no longer races playback. The dialog lists enabled EventFilters from FilterFrame (**Open Filters…**); the recording overlay shows Apply Filters on/off. When finished, a confirmation shows original vs saved stats (events, duration, size, compression) with **Show folder**, **Playback**, and **OK**. Save As / Browse reuse Recent Files folders.
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/save-as-progress-filters-applied.png" alt="Save As with Apply EventFilters and export progress" width="50%" />
 
@@ -132,12 +162,11 @@ Help → **Give feedback…** opens an anonymous Google Form (no account needed)
 
 <h4 id="dvxplorer-mini-micro">DVXplorer Mini / Micro</h4>
 
-Among the smallest event cameras, with a usable IMU. Live USB on the same `DVXplorer` chip class as the FX3 DVXplorer. MIPI DVS on EP 0x82, BMI160 IMU on EP 0x81 (rate-limited, demuxed to `ImuPacket` for AEDAT-4 and Steadicam). Next-gen SPI and bias sliders. Firmware ≥10 keeps device IMU defaults. Playback Y-orientation matches live capture. Classic FX3 and CX3 Micro are split for USB so both can be open at once.
+Among the smallest event cameras, with a usable IMU. Live USB on the same `DVXplorer` chip class as the FX3 DVXplorer. MIPI DVS on EP 0x82, BMI160 IMU on EP 0x81 (rate-limited, demuxed to `ImuPacket` for AEDAT-4 and *Steadicam*). Next-gen SPI and bias sliders. Firmware ≥10 keeps device IMU defaults. Playback Y-orientation matches live capture. Classic FX3 and CX3 Micro are split for USB so both can be open at once. Try *Steadicam* with your DVXplorer (or any other sensor like DAVIS346) that has an IMU.
 
 <!-- DVXplorer Mini/Micro live + IMU screenshot -->
 
 <!-- webp: 3.4.0/dvxplorer-micro-steadicam.webp -->
-<!-- encode from dvxplorer-micro-steadicam.mp4 -->
 
 <h4 id="dnn-shared-memory">DNN shared memory</h4>
 
@@ -148,7 +177,7 @@ Among the smallest event cameras, with a usable IMU. Live USB on the same `DVXpl
 
 Enable is a bold toggle at the top of the dialog (the Remote menu item only opens it). A canvas overlay shows mmap output while it is running. Default `flipY` is on for EventWindows (jAER lower-left → Python upper-left).
 
-<!-- dnnoutput-menu.png — File → Remote → DNN shared memory output -->
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/dnn-shared-memory-output.png" alt="File → Remote → DNN shared memory output" width="80%" />
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/firenet.webp" alt="FireNet live reconstruction from jAER EventWindows mmap" width="80%" />
 
@@ -164,14 +193,13 @@ Enable is a bold toggle at the top of the dialog (the Remote menu item only open
 
 **File → Remote → OpenCV camera output…** — `OpenCVOutput` publishes the chip view as HTTP MJPEG (`cv2.VideoCapture("http://127.0.0.1:8090/video.mjpg")`). On Linux, **publishV4l2** (VGA MJPEG on `/dev/video10`) makes Cheese, Zoom, and Google Meet see a **jAER** webcam; use [`scripts/cheese-jaer.sh`](https://github.com/SensorsINI/jaer/blob/master/scripts/cheese-jaer.sh) (stock Cheese PipeWire will not negotiate). Overlay must show `/dev/video10 open MJPEG`. Experimental.
 
-<!-- OpenCV Remote dialog screenshot -->
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/opencv-output.png" alt="File → Remote → OpenCV camera output" width="80%" />
 
 <!-- webp: 3.4.0/jaer-zoom.webp -->
-<!-- encode from jaer-zoom-2026-08-28_11.17.56.mp4 -->
 
 <h4 id="muxed-aedat-4">Muxed AEDAT-4</h4>
 
-Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams per camera (basenames from chip class + USB serial). Opening that file in several AEViewers turns File sync on; the slider scrubs every player to the nearest packet timestamp. AEDAT-2/AEDZ sync still uses `.aeidx`. **Ctrl+W** only stops recording (stop-all when synchronized) and no longer unbinds cameras mid-record. Opening such AEDAT-4 recording offers to open all necessary viewr windows.
+Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams per camera (basenames from chip class + USB serial). Opening that file in several AEViewers turns File sync on; the slider scrubs every player to the nearest packet timestamp. AEDAT-2/AEDZ sync still uses `.aeidx`. **Ctrl+W** only stops recording (stop-all when synchronized) and no longer unbinds cameras mid-record. Opening such an AEDAT-4 recording offers to open all necessary viewer windows. If the Sensor (AEChip) does not match the file, you can switch for this open or **Always switch**.
 
 <!-- muxed AEDAT-4 multi-viewer screenshot -->
 
@@ -208,6 +236,9 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 * **Recording**
   * Overlay shows free space / remaining time; autoclose is robust. Low space offers a new location. File → Preferences sets the recording folder.
   * First **x** with several windows stores *Exit completely with x* in Preferences. **Ctrl+W** aborts recording only.
+  * Stop recording stays enabled after the camera closes (sleep or unplug). Live loss stops the file and asks Yes, save / No, discard; duration is last successful write, not wall time across sleep.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.4.0/long-recordings.png" alt="Recording overlay: free space and time until auto-stop" width="80%" />
 
 * **Multi-viewer**
   * Focusing any jAER window raises the others (File → Preferences → **Raise all windows**, on by default). Minimized windows and popups are skipped.
@@ -218,19 +249,24 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 
 * **Help menu**
   * See [Give Feedback](#give-feedback). **File Issue on Github** stays on GitHub (version, OS, logs; **Show folder**).
+  * **Sample data** — download or show the curated recordings (see [Sample recordings](#sample-recordings)).
 
 * **Menus and shortcuts**
   * **Sensor** menu (formerly AEChip). Recent files/folders header; reset-to-defaults moved to Preferences. Recording/Filtering separator.
   * **Ctrl+Shift+P** opens File → Preferences (also when the chip canvas has focus). **Ctrl+Alt+P** toggles sliding-window persistence. **P** accumulate, **Shift+P** reset, **Ctrl+P** fading.
+  * **Ctrl+Shift+A** toggles Adaptive render skipping. **T** cycles event-exposure method.
 
 * **SciDVS / AEDZ**
   * **SciDVS** (Experimental) is in the Sensor table; `SciDVS.xml` is the first-use default bias profile. Shared-PID hotplug with Davis is autodetected.
   * Compressed **AEDZ** (`.aedz`) record/replay is wired through AEViewer preferences (Experimental). Live configuration snapshots are frozen into AEDAT-4 / AEDZ / legacy writers. AEDZ does not store IMU or APS frames (live typed demux); starting a recording on Davis / DVXplorer offers to switch to AEDAT-4 at the current compression.
 
+* **DavisAutoShooter** — Help text, marked Stable, and on the default DAVIS filter list. Optional `useAreaEventCount` shoots when any spatial cell of the enclosed exposer reaches its count.
+
 * **Developer / packaging**
   * install4j project, icon, and localization live under `install4j/` (Ant, `replace-installed-jar`, and releasing docs updated). Unused `build.cmd`, Dropbox-hardcoded `jaer.desktop`, and Eclipse `.classpath`/`.project` removed from git.
-  * SignPath CI: updated test-signing cert and [remote signing workflow](../docs/README-releasing-tagging.md); Linux GitHub Release uploader fix. WIP macOS Developer ID for signed `.dmg`.
+  * SignPath CI: updated test-signing cert and [remote signing workflow](../docs/README-releasing-tagging.md); Linux GitHub Release uploader fix. WIP macOS Developer ID for signed `.dmg`. Releasing docs and SignPath config live under `docs/` and `packaging/signpath/`.
   * 800×800 install4j launcher splash so the status line fits. eDVS, SpiNNaker, and OpalKelly factories are unregistered (sources remain).
+  * Sample-data zip is packed uncompressed; installer sample-data checkbox defaults off.
 
 ### Bug fixes and minor improvements
 
@@ -238,13 +274,16 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 * Fixed **Y flip** in playback of DVXplorer Mini/Micro recordings.
 * **DVXplorer Mini/Micro IMU**: CX3 debug endpoint no longer completes at USB poll rate (~100 kHz); one URB is resubmitted at ~800 Hz and samples go to a side queue. Host-synthesized Mini/Micro IMU timestamps that do not overlap DVS are rebased at record time and attached by file order on playback (Steadicam-on-record files no longer look IMU-frozen). Davis IMU is not rebased (device clock). Playback clips IMU samples to the event window so Steadicam does not integrate gyros from neighboring slices.
 * **Davis346Blue** APS frames that tore after a good start: SOF abandons a stuck half-frame; USB reset closes every open interface first. After three short frames, unplug/replug is suggested.
+* **AEDAT-2 Save As** no longer writes torn APS frames: only complete frames are emitted on SOF. The Davis assembler is reset on close, rewind, file open, and Save As.
 * **ROS2/Foxglove** enable no longer re-enters the FilterPanel setter (property-change loop); sinks restart only when a sink flag actually changes.
 * **DNN TCP** control server rebinds when `controlPort` changes while enabled.
 * EventCountFrames preview window is disposed when switching to EventWindows.
 * **3D viewer** `ArrayIndexOutOfBoundsException` when ViewLoop and OpenGL shared an `EventPacket`.
-* USB readers no longer close on themselves; EVK4 ISSD phases are reported. Close best-attempts DVX `dvxDataStop` and Prophesee ISSD shutdown before abandon.
+* USB readers no longer close on themselves; EVK4 ISSD phases are reported. Close best-attempts DVX `dvxDataStop` and Prophesee ISSD shutdown before abandon. Skip the Zadig dialog for `LIBUSB_ERROR_NOT_SUPPORTED` for 30 s after a live USB drop (WinUSB not ready).
 * WindowSaver no longer stretches packed tool windows. Overlapping Info overlay text on DVX fixed.
 * File info shows compression ratio. Open-file dialog has extension filters.
-* Update check runs once per JVM. Reduced FilterPanel / USB / version-info log chatter.
+* File Open no longer throws on DVS128 (ChipDataFilePreview and Biasgen display stubs). Sparse AEDAT-4 EVTS packets scan actual timestamps when packet durations vary by 100×.
+* **AEDAT-4 playback slicing**: ConstantCount default scales with chip resolution (256 on DVS128, 16k on EVK4) and is remembered per chip. Slices, single-step, rewind, and IN/OUT keep the intended packet boundaries.
+* Update check runs once per JVM. Reduced FilterPanel / USB / version-info / per-packet AEDAT-4 FINE log chatter.
 
 **Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.3.0...3.4.0

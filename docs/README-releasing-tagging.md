@@ -17,7 +17,8 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 2. `ant release` -- Enter accepts the default `y` (type `n` to cancel). Does **not** copy repo-root `updates.xml`.
    - Media lands in `currentInstallers/<VERSION.txt>/`. Historical Dropbox copies stay in `jaer-older-installers/` (same share URL as the old `installers/` folder).
    - If `sampleData/` has recordings, this also runs `pack-sample-data`. Details: [`README-sample-data.md`](README-sample-data.md).
-3. Upload binaries (creates the GitHub Release for that tag if it is missing):
+   - After install4jc it tags `HEAD` as `<VERSION.txt>`, pushes that tag, and creates a **draft** GitHub Release (not Latest, not public until you publish). Needs `gh auth login`. Media-only: `ant release -Dskip.github.draft=true`. Tag/draft without rebuild: `ant create-draft-release`.
+3. Upload binaries onto that draft (creates a **draft** Release if the tag has none yet):
 
        powershell -File scripts/upload-github-release-installers.ps1
        bash scripts/upload-github-release-installers.sh
@@ -32,10 +33,9 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
        ant upload-release-notes
        gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
-4. When the release is ready to publish: `ant copy-updates-xml` (overwrites repo-root `updates.xml` and sets `baseUrl` to GitHub `/latest/download/`). Commit and push `updates.xml`. Installed copies only see `master`.
-5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
-6. Optional later: SignPath-signed Windows exe, winget/Homebrew, prune old assets.
-7. Download counts (GitHub per-asset `download_count`; needs `gh auth`):
+4. On GitHub, open the draft and **Publish release** (or `gh release edit <VERSION.txt> --draft=false`). That is when it can become Latest. Then `ant copy-updates-xml` (overwrites repo-root `updates.xml` and sets `baseUrl` to GitHub `/latest/download/`). Commit and push `updates.xml`. Installed copies only see `master`.
+5. Optional later: SignPath-signed Windows exe, winget/Homebrew, prune old assets.
+6. Download counts (GitHub per-asset `download_count`; needs `gh auth`):
 
        ant count-asset-downloads
        ant count-asset-downloads -Djaer.asset.downloads.tag=3.3.0
@@ -68,7 +68,7 @@ Prerequisites:
 
     ant release
 
-On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w`, `images/256h`, `images/800w`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
+On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w`, `images/256h`, `images/800w`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`, then tags `HEAD` and creates a GitHub **draft** Release. It does not copy repo-root `updates.xml`; publish the GitHub draft, then run `ant copy-updates-xml`.
 
 Splash only: `ant generate-splash`. The install4j launcher splash is the **800×800** PNG (`images/800w`). Keep **256h** for Windows / wizard icons and **1024w** for macOS icns. Details: [`install4j/README.md`](../install4j/README.md).
 
@@ -111,7 +111,9 @@ Use the install4j IDE when you change installer options other than version
 
 ## Tagging
 
-The upload script creates a GitHub Release for tag `<VERSION.txt>` if that Release is missing. The git tag itself is separate: if `3.2.0` already points at an old commit, recreate it after the release source is on `master`.
+`ant release` (and `ant create-draft-release`) create an annotated git tag `<VERSION.txt>` on `HEAD`, push it, and open a **draft** GitHub Release. Drafts are not Latest and are not the public release page until you publish. The upload script also creates a **draft** if the Release is missing.
+
+If the tag already points at an older commit, delete and recreate it after the release source is on `master` (do not `--force` from Ant):
 
     git tag <VERSION.txt>
     git push origin <VERSION.txt>

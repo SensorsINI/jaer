@@ -60,7 +60,10 @@ macOS
 Releases
   See docs/README-releasing-tagging.md. Local ant release is unsigned.
   Windows Authenticode is GitHub Actions + SignPath (not a local Ant sign).
-  release                 confirm VERSION.txt, splash, clean/jar, then install4jc
+  release                 confirm VERSION.txt, splash, clean/jar, install4jc,
+                          then git tag + GitHub draft Release (needs gh).
+                          Skip draft: -Dskip.github.draft=true
+  create-draft-release    git tag VERSION.txt, push, GitHub draft (no install4jc)
   release-windows-ci      Windows-only media, no confirm (used by GitHub Actions)
   signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
                           Policy: -Dsignpath.policy=test-signing2|release-signing
@@ -690,7 +693,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     </target>
 
     <target name="-confirm-release" depends="-load-version">
-        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, and install4jc? [Y/n]"
+        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, install4jc, git tag, and GitHub draft release? [Y/n]"
                addproperty="jaer.release.confirm"
                defaultvalue="y"/>
         <condition property="jaer.release.confirmed">
@@ -1062,6 +1065,28 @@ Then re-run:        ant install
         </exec>
     </target>
 
+    <target name="create-draft-release" depends="checkos,-load-version"
+            unless="skip.github.draft"
+            description="git tag VERSION.txt at HEAD, push, GitHub draft Release (needs gh). Skip: -Dskip.github.draft=true">
+        <echo message="Creating git tag ${jaer.version} and GitHub draft Release (not Latest until published)."/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/create-draft-github-release.ps1"/>
+            <arg value="-Tag"/>
+            <arg value="${jaer.version}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/create-draft-github-release.sh"/>
+            <arg value="--tag"/>
+            <arg value="${jaer.version}"/>
+        </exec>
+    </target>
+
     <target name="upload-release-notes" depends="-load-version"
             description="Set GitHub Release body from release-notes/jaer-VERSION-release-notes.md (gh).">
         <property name="jaer.release.notes.file"
@@ -1081,12 +1106,14 @@ Then re-run:        ant install
 
     <target name="release"
             depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
-            description="Confirm VERSION.txt (default y), generate splash PNGs, sync install4j, clean/jar, run install4jc.">
+            description="Confirm VERSION.txt (default y), splash, clean/jar, install4jc, then git tag + GitHub draft.">
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
         <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
-        <echo message="When ready: ant copy-updates-xml, git tag ${jaer.version}, create the GitHub release,"/>
-        <echo message="and upload installers (scripts/upload-github-release-installers.ps1)."/>
+        <antcall target="create-draft-release"/>
+        <echo message="Upload installers to the draft: scripts/upload-github-release-installers.ps1"/>
         <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
+        <echo message="Publish on GitHub when ready (or: gh release edit ${jaer.version} --draft=false),"/>
+        <echo message="then ant copy-updates-xml. Skip the draft step: ant release -Dskip.github.draft=true"/>
         <echo message="See docs/README-releasing-tagging.md"/>
     </target>
 

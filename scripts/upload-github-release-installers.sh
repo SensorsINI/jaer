@@ -97,10 +97,11 @@ fi
 
 NOTES="$ROOT/release-notes/jaer-${TAG}-release-notes.md"
 if ! gh release view "$TAG" >/dev/null 2>&1; then
+  echo "Creating GitHub draft release $TAG (publish later; not Latest)"
   if [ -f "$NOTES" ]; then
-    gh release create "$TAG" --title "jaer-$TAG" --notes-file "$NOTES"
+    gh release create "$TAG" --draft --latest=false --title "jaer-$TAG" --notes-file "$NOTES"
   else
-    gh release create "$TAG" --title "jaer-$TAG" --notes "jAER $TAG installers. See release-notes/."
+    gh release create "$TAG" --draft --latest=false --title "jaer-$TAG" --notes "jAER $TAG installers. See release-notes/."
   fi
 elif [ -f "$NOTES" ]; then
   echo "Updating GitHub release notes from $NOTES"
