@@ -410,6 +410,21 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="unzoomMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator29">
+            </MenuItem>
+            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableCheckBoxMenuItem" name="skipPacketsRenderingCheckBoxMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Shift+Ctrl+A"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Adaptive render skipping"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Click the checkbox to enable/disable (Ctrl+Shift+A).&lt;br&gt;Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.&lt;br&gt;Raw .aedat recording is unaffected. Recording turns ARS on automatically if it was off.&lt;br&gt;Status bar shows ARS current/max and loop load (ld)."/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="skipPacketsRenderingCheckBoxMenuItemStateChanged"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="skipPacketsRenderingCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <Menu class="javax.swing.JMenu" name="graphicsSubMenu">
               <Properties>
                 <Property name="mnemonic" type="int" value="103"/>
@@ -446,16 +461,6 @@
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setFrameRateMenuItemActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableCheckBoxMenuItem" name="skipPacketsRenderingCheckBoxMenuItem">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Adaptive render skipping"/>
-                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Click the checkbox to enable/disable.&lt;br&gt;Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.&lt;br&gt;Raw .aedat recording is unaffected.&lt;br&gt;Status bar shows ARS current/max and loop load (ld)."/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="skipPacketsRenderingCheckBoxMenuItemStateChanged"/>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="skipPacketsRenderingCheckBoxMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="setBorderSpaceMenuItem">

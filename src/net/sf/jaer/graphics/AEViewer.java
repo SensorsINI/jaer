@@ -7862,12 +7862,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         zoomInMenuItem = new javax.swing.JMenuItem();
         zoomOutMenuItem = new javax.swing.JMenuItem();
         unzoomMenuItem = new javax.swing.JMenuItem();
+        jSeparator29 = new javax.swing.JPopupMenu.Separator();
+        skipPacketsRenderingCheckBoxMenuItem = new ScrollWheelTunableCheckBoxMenuItem();
         graphicsSubMenu = new javax.swing.JMenu();
         viewActiveRenderingEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         setFrameRateMenuItem = new javax.swing.JMenuItem();
-        skipPacketsRenderingCheckBoxMenuItem = new ScrollWheelTunableCheckBoxMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
         enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         playbackMenu = new javax.swing.JMenu();
@@ -8418,6 +8419,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(unzoomMenuItem);
+        viewMenu.add(jSeparator29);
+
+        skipPacketsRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable (Ctrl+Shift+A).<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat recording is unaffected. Recording turns ARS on automatically if it was off.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
+            }
+        });
+        skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(skipPacketsRenderingCheckBoxMenuItem);
 
         graphicsSubMenu.setMnemonic('g');
         graphicsSubMenu.setText("View options");
@@ -8450,20 +8467,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         graphicsSubMenu.add(setFrameRateMenuItem);
-
-        skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat recording is unaffected. Recording turns ARS on automatically if it was off.<br>Status bar shows ARS current/max and loop load (ld).");
-        skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
-            }
-        });
-        skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(skipPacketsRenderingCheckBoxMenuItem);
 
         setBorderSpaceMenuItem.setText("Set border space...");
         setBorderSpaceMenuItem.setToolTipText("Set the border space around the chip canvas in pixels");
@@ -9610,7 +9613,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void setupAdaptiveRenderSkippingMenu() {
-        ScrollWheelTunableMenuItem.installPopupWheelHandler(graphicsSubMenu);
+        ScrollWheelTunableMenuItem.installPopupWheelHandler(viewMenu);
         skipPacketsRenderingCheckBoxMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
             private static final int MIN_SKIP = 1;
             private static final int MAX_SKIP = 1000;
@@ -9654,7 +9657,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showAdaptiveRenderSkippingOverlay();
         });
 
-        graphicsSubMenu.addMenuListener(new MenuListener() {
+        viewMenu.addMenuListener(new MenuListener() {
             @Override
             public void menuSelected(MenuEvent e) {
                 syncAdaptiveRenderSkipMenuFromRenderer();
@@ -14287,6 +14290,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JPopupMenu.Separator jSeparator26;
     private javax.swing.JPopupMenu.Separator jSeparator28;
+    private javax.swing.JPopupMenu.Separator jSeparator29;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
