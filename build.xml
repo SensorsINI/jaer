@@ -2,7 +2,7 @@
 <!-- You may freely edit this file. See commented blocks below for -->
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
-<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant" xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3">
+<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant" xmlns:if="ant:if" xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3">
     
 
     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
@@ -65,6 +65,8 @@ Releases
   signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
                           Policy: -Dsignpath.policy=test-signing2|release-signing
   install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
+                          Local: compression 5 + --faster (no LZMA). Release stays 9+LZMA.
+                          Override: -Djaer.install4j.compression=7 -Djaer.install4j.faster=false
   generate-splash         VERSION.txt overlay on splash PNGs (1024/256 icons, 800 splash)
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
   upload-release-notes    GitHub Release body from release-notes/ (needs gh)
@@ -73,7 +75,7 @@ Releases
                           More rows: -Djaer.asset.downloads.limit=20
                           All files: -Djaer.asset.downloads.all=true
   split-opencv-natives    per-OS slim OpenCV jars for install4j
-  pack-sample-data        zip sampleData recordings, write SIZE.txt (needs recordings)
+  pack-sample-data        zip sampleData recordings, write SIZE.txt (skips if zip+name/size stamp match)
   jaer-runtime-archive    zip a runtime tree (legacy; prefer install4j)
 
 Scripts (not Ant)
@@ -658,6 +660,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <!-- install4j project lives in install4j/; media still goes to currentInstallers/. -->
     <property name="jaer.install4j.dir" value="${basedir}/install4j"/>
     <property name="jaer.install4j.project" value="${jaer.install4j.dir}/jaer.install4j"/>
+    <property name="jaer.install4j.project.effective" value="${jaer.install4j.dir}/jaer-build.install4j"/>
     <property name="jaer.install4j.license.primary" value="${jaer.install4j.dir}/license.txt"/>
     <property name="jaer.install4j.license.signpath" value="${basedir}/packaging/signpath/install4j-license.txt"/>
 
@@ -667,6 +670,23 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
                        replace="\1${jaer.version}\2"
                        byline="true"/>
         <echo message="Synced install4j/jaer.install4j application version to ${jaer.version}"/>
+    </target>
+
+    <!-- ant install4j (dev): gzip 5 + skip LZMA. ant release / CI: project file stays compression 9 + LZMA. -->
+    <target name="-install4j-local-media-options">
+        <property name="jaer.install4j.compression" value="5"/>
+        <property name="jaer.install4j.faster" value="true"/>
+    </target>
+
+    <target name="-apply-install4j-media-options" depends="-require-install4j-project">
+        <property name="jaer.install4j.compression" value="9"/>
+        <property name="jaer.install4j.faster" value="false"/>
+        <copy file="${jaer.install4j.project}" tofile="${jaer.install4j.project.effective}" overwrite="true"/>
+        <replaceregexp file="${jaer.install4j.project.effective}"
+                       match='compression="[0-9]"'
+                       replace='compression="${jaer.install4j.compression}"'
+                       byline="true"/>
+        <echo message="install4j media compression=${jaer.install4j.compression}; --faster=${jaer.install4j.faster} (unset = LZMA from project)"/>
     </target>
 
     <target name="-confirm-release" depends="-load-version">
@@ -803,7 +823,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     </target>
 
     <target name="pack-sample-data" depends="-load-version"
-            description="Zip sampleData recordings and write SIZE.txt (zip + unpacked MiB).">
+            description="Zip sampleData recordings and write SIZE.txt (skip if zip exists and recording name+size unchanged).">
         <fail unless="jaer.version" message="VERSION.txt empty"/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">
@@ -837,29 +857,31 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     </target>
 
     <target name="-run-install4jc-with-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
             if="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="${jaer.install4j.project}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
 
     <target name="-run-install4jc-without-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="${jaer.install4j.project}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
 
@@ -875,8 +897,8 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <!-- Public name: Ant treats CLI args starting with "-" as options, so
          ant -run-install4jc-with-license does not work. -->
     <target name="install4j"
-            depends="-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
-            description="Run install4jc only (existing dist/jAER.jar; no splash/clean/jar).">
+            depends="-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="Run install4jc only (existing dist/jAER.jar; local compression 5, no LZMA).">
         <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
         <echo message="Did not regenerate splash, clean, or jar. Full pipeline: ant release"/>
@@ -949,31 +971,33 @@ Then re-run:        ant install
 
     <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
     <target name="-run-install4jc-windows-with-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
             if="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="${jaer.install4j.project}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
 
     <target name="-run-install4jc-windows-without-license"
-            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
             unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="${jaer.install4j.project}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
 

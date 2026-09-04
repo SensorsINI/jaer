@@ -1,7 +1,9 @@
 # Zip curated sampleData recordings and write SIZE.txt (zip + unpacked bytes).
-# Usage (repo root): powershell -File scripts/pack-sample-data.ps1
+# Usage (repo root): powershell -File scripts/pack-sample-data.ps1 [-Force] [-WhatIf]
+# Skip zipping when jaer-sample-data.zip exists and a name+size stamp of recordings matches.
 param(
-    [switch]$WhatIf
+    [switch]$WhatIf,
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +42,36 @@ function Format-Mib([long]$bytes) {
     return [int][Math]::Round($bytes / 1MB)
 }
 
+function Get-ContentsStamp {
+    $names = New-Object System.Collections.Generic.List[string]
+    foreach ($f in $recordings) {
+        [void]$names.Add(("{0}`t{1}" -f $f.Name, $f.Length))
+    }
+    $arr = $names.ToArray()
+    if ($arr.Length -gt 1) {
+        [Array]::Sort($arr, [StringComparer]::Ordinal)
+    }
+    return ("store`n" + ($arr -join "`n") + "`n")
+}
+
+function Read-ContentsStamp([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) { return $null }
+    $t = [IO.File]::ReadAllText($path)
+    return ($t -replace "`r`n", "`n" -replace "`r", "`n")
+}
+
+$stampPath = $zipPath + ".contents"
+$stamp = Get-ContentsStamp
+$zipExists = Test-Path -LiteralPath $zipPath
+if (-not $Force -and $zipExists -and ((Read-ContentsStamp $stampPath) -eq $stamp)) {
+    if ($WhatIf) {
+        Write-Host ("WhatIf: would skip zip; sampleData name+size unchanged -> {0}" -f $zipPath)
+        return
+    }
+    Write-Host ("sampleData unchanged (name+size); keeping {0}" -f $zipPath)
+    return
+}
+
 $staging = Join-Path $root ("build\sample-data-zip-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $staging | Out-Null
 try {
@@ -52,8 +84,13 @@ try {
         return
     }
     if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
+    Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($staging, $zipPath)
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $staging,
+        $zipPath,
+        [System.IO.Compression.CompressionLevel]::NoCompression,
+        $false)
 } finally {
     Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
 }
@@ -89,5 +126,8 @@ if ($i0 -ge 0 -and $i1 -gt $i0) {
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($readme, $newReadme.TrimEnd() + $nl, $utf8)
 }
+
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[IO.File]::WriteAllText($stampPath, $stamp, $utf8NoBom)
 
 Write-Host ("Packed {0} recording(s): {1} MB download, {2} MB unpacked -> {3}" -f $recordings.Count, $zipMiB, $unpackedMiB, $zipPath)

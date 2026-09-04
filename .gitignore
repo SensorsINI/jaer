@@ -25,6 +25,7 @@ nbproject/build-native.xml~
 # install4j license key (never commit). Prefer install4j/license.txt; old Dropbox filename kept ignored.
 /install4j/license.txt
 /install4j/license*.txt
+/install4j/jaer-build.install4j
 /install4j License key  2024-01-02 0834.txt
 exe*.tmp
 /JAERViewerRunning.txt
@@ -111,9 +112,7 @@ docs/Tobi_home_PC_USB Host_Controllers.md
 release-notes/3.4.0/recording-preview.mp4
 release-notes/3.4.0/hotel-bar-activity-histogram.mp4
 
-# Curated sample recordings (Dropbox / local). README + SIZE stay in git.
+# Curated sample recordings (Dropbox / local). README stays in git; SIZE.txt is pack-sample-data output.
 /sampleData/**
 !/sampleData/
 !/sampleData/README.md
-!/sampleData/SIZE.txt
-sampleData/SIZE.txt

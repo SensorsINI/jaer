@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 # Zip curated sampleData recordings and write SIZE.txt (zip + unpacked bytes).
-# Usage (repo root): bash scripts/pack-sample-data.sh
+# Usage (repo root): bash scripts/pack-sample-data.sh [--force]
+# Skip zipping when jaer-sample-data.zip exists and a name+size stamp of recordings matches.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+FORCE=0
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=1 ;;
+  esac
+done
 
 SAMPLE="$ROOT/sampleData"
 if [ ! -d "$SAMPLE" ]; then
@@ -45,6 +53,23 @@ file_bytes() {
   wc -c < "$1" | tr -d '[:space:]'
 }
 
+contents_stamp() {
+  printf 'store\n'
+  for n in "${FILES[@]}"; do
+    printf '%s\t%s\n' "$n" "$(file_bytes "$SAMPLE/$n")"
+  done | LC_ALL=C sort
+}
+
+STAMP="$ZIP.contents"
+STAMP_NOW=$(contents_stamp)
+if [ "$FORCE" -eq 0 ] && [ -f "$ZIP" ] && [ -f "$STAMP" ]; then
+  STAMP_PREV=$(tr -d '\r' < "$STAMP")
+  if [ "$STAMP_PREV" = "$STAMP_NOW" ]; then
+    echo "sampleData unchanged (name+size); keeping $ZIP"
+    exit 0
+  fi
+fi
+
 unpacked=0
 for n in "${FILES[@]}"; do
   unpacked=$((unpacked + $(file_bytes "$SAMPLE/$n")))
@@ -67,7 +92,7 @@ for n in "${FILES[@]}"; do
   cp "$SAMPLE/$n" "$STAGING/"
 done
 rm -f "$ZIP"
-(cd "$STAGING" && zip -q -r "$ZIP" .)
+(cd "$STAGING" && zip -0 -q -r "$ZIP" .)
 
 zip_bytes=$(file_bytes "$ZIP")
 zip_mib=$(mib "$zip_bytes")
@@ -100,5 +125,7 @@ if grep -q "$START" "$README" && grep -q "$END" "$README"; then
   ' "$README" > "$README.tmp"
   mv "$README.tmp" "$README"
 fi
+
+printf '%s\n' "$STAMP_NOW" > "$STAMP"
 
 echo "Packed ${#FILES[@]} recording(s): ${zip_mib} MB download, ${unpacked_mib} MB unpacked -> $ZIP"

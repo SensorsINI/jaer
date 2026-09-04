@@ -1,4 +1,4 @@
-﻿# jAER sample recordings
+# jAER sample recordings
 
 These recordings are **not** stored in git and are **not** in the basic installer
 (they are too large). This folder sits next to `dist/` and `lib/` in a git
@@ -23,16 +23,15 @@ Public dataset links also live in **Help -> Sample data**.
 
 ## Size
 
-`SIZE.txt` is written by `ant pack-sample-data` from the local folder and zip.
-It is the download size (zip) and the unpacked disk size. Do not hand-edit it.
-Re-run pack after renaming or truncating recordings.
+`SIZE.txt` is written by `ant pack-sample-data` from the local folder and zip
+(not in git). It is the download size (zip) and the unpacked disk size. Do not
+hand-edit it. Re-run pack after renaming or truncating recordings.
 
 ## Contents
 
 <!-- SAMPLE-DATA-CONTENTS -->
 
-
-Download **755 MB**, about **774 MB** on disk.
+Download **774 MB**, about **774 MB** on disk.
 
 | File | Size |
 |------|------|
@@ -46,4 +45,6 @@ Download **755 MB**, about **774 MB** on disk.
 | `DVS128 DVS09 2006 Patrick Lichtstieiner juggling.aedat4` | 13.9 MB |
 | `NRV DELTA01 2026 humming birds squabbling.aedat4` | 10.4 MB |
 | `PropheseeIMX636HD 2026 short heavily filtered.aedat4` | 37.5 MB |
-| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |<!-- /SAMPLE-DATA-CONTENTS -->
+| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |
+
+<!-- /SAMPLE-DATA-CONTENTS -->

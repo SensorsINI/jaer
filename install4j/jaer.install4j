@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
   <directoryPresets config="../images/800w" />
-  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.4.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
+  <!-- shrinkRuntime=false: skip "Shrinking runtime" (unused i4jruntime classes) on every media. Saves minutes; installer is a few MB larger. -->
+  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="false" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.4.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
@@ -243,7 +244,7 @@
           <property name="useCustomIcon" type="boolean" value="true" />
         </serializedBean>
         <variables>
-          <variable name="downloadSampleData" value="true" valueClass="boolean" />
+          <variable name="downloadSampleData" value="false" valueClass="boolean" />
         </variables>
         <startup>
           <screen id="1" beanClass="com.install4j.runtime.beans.screens.StartupScreen" rollbackBarrierExitCode="0">
@@ -293,9 +294,8 @@ return console.askOkCancel(message, true);
               </formComponent>
               <formComponent id="9201" beanClass="com.install4j.runtime.beans.formcomponents.CheckboxComponent">
                 <serializedBean>
-                  <property name="checkboxText" type="string">Download sample recordings (${compiler:jaer.sampleDataZipMiB} MB download,
-${compiler:jaer.sampleDataUnpackedMiB} MB on disk)</property>
-                  <property name="initiallySelected" type="boolean" value="true" />
+                  <property name="checkboxText" type="string">&lt;html&gt;&lt;div width="480"&gt;Download sample recordings&lt;br&gt;(${compiler:jaer.sampleDataZipMiB} MB download, ${compiler:jaer.sampleDataUnpackedMiB} MB on disk)&lt;br&gt;You can download later from Help → Sample data&lt;/div&gt;&lt;/html&gt;</property>
+                  <property name="initiallySelected" type="boolean" value="false" />
                   <property name="variableName" type="string">downloadSampleData</property>
                 </serializedBean>
                 <visibilityScript>File install = context.getInstallationDirectory();
