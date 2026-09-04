@@ -25,6 +25,7 @@ import java.util.logging.Level;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.EventExtractor2D;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.NonMonotonicTimeException;
 import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
@@ -744,6 +745,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // cleanup() used to close the device then call stopPlayback(), and open() can hang
         // the EDT in native USB (NRV LibUsb.getStringDescriptorAscii while the reader thread
         // is stuck in deallocateTransfers/handleEventsTimeout).
+        resetDavisApsAssembler();
         if (resumeLive && viewer.aemon != null && viewer.aemon.isOpen()) {
             try {
                 viewer.aemon.setEventAcquisitionEnabled(true);
@@ -777,6 +779,13 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         viewer.setTitleAccordingToState();
     }
 
+    /** Abort in-flight Davis APS assembly so File → Close does not keep logging SignalReads. */
+    private void resetDavisApsAssembler() {
+        if (viewer != null && viewer.getChip() instanceof DavisBaseCamera) {
+            ((DavisBaseCamera) viewer.getChip()).resetUsbApsAssembler();
+        }
+    }
+
     @Override
     public void rewind() {
         cancelJog();
@@ -785,6 +794,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         try {
             aeInputStream.rewind();
+            resetDavisApsAssembler();
             clearAreaEventLeftover();
             if (viewer != null) {
                 viewer.filterChain.reset(); // already done in aePlayer

@@ -6408,10 +6408,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 continue;
                             }
                         } else {
+                            PlayMode playModeBeforeGrab = getPlayMode();
                             try {
                                 rawPacket = grabInput();
                             } catch (RuntimeException e) {
                                 log.log(Level.WARNING, "grabInput failed; ViewLoop continues", e);
+                                getFrameRater().takeAfter();
+                                paceViewLoopFrame();
+                                continue;
+                            }
+                            if (playModeBeforeGrab == PlayMode.PLAYBACK && getPlayMode() != PlayMode.PLAYBACK) {
+                                // Ctrl+W / File → Close during a large slice: do not keep assembling APS.
                                 getFrameRater().takeAfter();
                                 paceViewLoopFrame();
                                 continue;

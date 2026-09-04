@@ -511,6 +511,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     @Override
     public AEFileInputStreamInterface constuctFileInputStream(final File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
         frameCount = 0;
+        resetUsbApsAssembler();
 
         return (super.constuctFileInputStream(file, progressMonitor));
     }
@@ -557,9 +558,20 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
         }
 
+        private volatile boolean abortExtract;
+
+        /**
+         * Drop in-progress APS assembly. Sets {@link #abortExtract} first so a
+         * ViewLoop still inside {@link #extractBundleTyped} can stop feeding
+         * leftover SignalReads after File → Close.
+         */
         void resetApsAssembler() {
-            if (frameAssembler != null) {
-                frameAssembler.reset();
+            abortExtract = true;
+            synchronized (this) {
+                if (frameAssembler != null) {
+                    frameAssembler.reset();
+                }
+                abortExtract = false;
             }
         }
 
@@ -835,6 +847,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             ActiveKind active = ActiveKind.NONE;
 
             for (int i = 0; i < n; i++) {
+                if (abortExtract) {
+                    break;
+                }
                 final int data = datas[i];
 
                 if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {

@@ -98,6 +98,16 @@ public final class DavisExtractBundleDemo {
             System.out.println("FAIL: expected complete frame after SOF resync");
             System.exit(1);
         }
+
+        // File ResetRead SOF must not emit an incomplete frame (Save As scrub).
+        DavisFrameAssembler asm5 = new DavisFrameAssembler(w, h, 1000);
+        asm5.process(200, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.ResetRead, true, false, false);
+        asm5.process(50, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.SignalRead, true, false, false);
+        FramePacket torn = asm5.process(200, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.ResetRead, true, false, false);
+        if (torn != null) {
+            System.out.println("FAIL: incomplete ResetRead SOF must not emit a torn frame");
+            System.exit(1);
+        }
         FramePacket eofIncomplete = new DavisFrameAssembler(w, h, 1000).onUsbFrameEnd(t++);
         DavisFrameAssembler asm4 = new DavisFrameAssembler(w, h, 1000);
         asm4.onUsbFrameStart(t++);

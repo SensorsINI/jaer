@@ -182,10 +182,20 @@ public class DavisFrameAssembler {
 
         if (readoutType == ApsDvsEvent.ReadoutType.ResetRead) {
             FramePacket completed = null;
-            // New SOF while previous frame still open (missed exact end): emit what we have
+            // New SOF while previous frame still open (dropped column / missed EOF).
+            // Match onUsbFrameStart: only emit a complete W*H frame; otherwise discard
+            // so File → Save As and AEDAT-2 playback do not keep torn APS frames.
             if (inFrame && pixFirst && signalCount > 0) {
-                timestampEofUs = timestamp;
-                completed = finishFrame();
+                if (signalCount >= nPixels()) {
+                    timestampEofUs = timestamp;
+                    completed = finishFrame();
+                } else {
+                    if ((warningCount++ % 30) == 0) {
+                        log.warning("APS ResetRead SOF while previous frame incomplete (" + signalCount + "/"
+                                + nPixels() + " signal samples); discarding and resyncing");
+                    }
+                    reset();
+                }
             }
             if (pixFirst || !inFrame) {
                 startFrame(w, h, timestamp);

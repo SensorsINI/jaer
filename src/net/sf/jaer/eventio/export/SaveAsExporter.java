@@ -136,6 +136,10 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 end = Long.MAX_VALUE;
             }
             stream.position(start);
+            // Do not merge leftover playback APS into the export (torn frames / SignalRead spam).
+            if (chip instanceof DavisBaseCamera) {
+                ((DavisBaseCamera) chip).resetUsbApsAssembler();
+            }
             // Only AEFileInputStream uses these as timestamp state. Other streams
             // (notably rosbag) treat setCurrentStartTimestamp as a seek.
             if (stream instanceof AEFileInputStream) {
@@ -323,6 +327,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             stream.setNonMonotonicTimeExceptionsChecked(wasMono);
             if (chip.getEventExtractor() != null) {
                 chip.getEventExtractor().setSubsamplingEnabled(subSaved);
+            }
+            if (chip instanceof DavisBaseCamera) {
+                ((DavisBaseCamera) chip).resetUsbApsAssembler();
             }
             viewer.resumeViewLoopAfterOfflineExport(wasPaused);
         }
