@@ -1003,7 +1003,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         p.add(desiredFpsSpinner, gbcField(y++));
 
         adaptiveRenderSkippingCB = new JCheckBox("Adaptive render skipping");
-        adaptiveRenderSkippingCB.setToolTipText("Skip packets when rendering cannot keep up; raw recording is unaffected");
+        adaptiveRenderSkippingCB.setToolTipText("Skip packets when rendering cannot keep up (live and forward playback); raw recording is unaffected");
         adaptiveRenderSkippingCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

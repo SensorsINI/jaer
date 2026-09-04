@@ -1838,11 +1838,15 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             skipFrameRenderingNumberCurrent = 0;
             return;
         }
-        if (chip.getAeViewer() != null
-                && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+        final AEViewer viewer = chip.getAeViewer();
+        if (viewer == null || viewer.isPaused()) {
             return;
         }
-        if (chip.getAeViewer() == null || chip.getAeViewer().isPaused()) {
+        // Reverse playback is for inspection; do not skip packets.
+        if (viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                && (viewer.getAePlayer() == null || !viewer.getAePlayer().isPlayingForwards())) {
+            skipFrameRenderingNumberCurrent = 0;
+            skipFramesCounter = 0;
             return;
         }
         if (skipFrameRenderingLPFilter == null) {
@@ -1851,7 +1855,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         int oldSkip = getSkipFrameRenderingNumberCurrent();
         int newSkip = oldSkip;
 
-        final AEViewer viewer = chip.getAeViewer();
         final float loopLoad = viewer.getFrameRater().getLastLoopLoad();
         if (!viewer.getFrameRater().isPeriodFilterInitialized()) {
             return;
@@ -1890,8 +1893,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * Returns the persistent ARS maximum, including while ARS is disabled or
-     * temporarily disabled during playback.
+     * Returns the persistent ARS maximum, including while ARS is disabled.
      */
     public int getConfiguredSkipFrameRenderingNumberMax() {
         return configuredSkipFrameRenderingNumberMax;
@@ -1962,7 +1964,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     /**
      * @param skipFrameRenderingNumberMax the skipFrameRenderingNumberMax to set
-     * @param persist when false, only changes runtime state (e.g. temporary off during playback)
+     * @param persist when false, only changes runtime state (e.g. temporary on for recording)
      */
     public void setSkipFrameRenderingNumberMax(int skipFrameRenderingNumberMax, boolean persist) {
         if (persist) {

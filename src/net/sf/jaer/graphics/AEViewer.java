@@ -638,8 +638,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
     private AePlayerAdvancedControlsPanel playerControls;
     private static boolean showedSkippedPacketsRenderingWarning = false;
-    /** Live ARS max saved when entering file playback; restored when leaving PLAYBACK. */
-    private int adaptiveRenderSkipMaxBeforePlayback = -1;
     /** True when this recording temporarily enabled ARS (was off). Restored on stop. */
     private boolean arsForcedOnForRecording;
     /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
@@ -8423,7 +8421,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         skipPacketsRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
         skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable (Ctrl+Shift+A).<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat recording is unaffected. Recording turns ARS on automatically if it was off.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable (Ctrl+Shift+A).<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Skips pixmap rendering when ViewLoop is overloaded (live capture and forward playback).<br>Reverse playback always renders. Raw recording is unaffected. Recording turns ARS on automatically if it was off.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -8944,22 +8942,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * ARS is for live overload; disable while playing back a file unless the user turns it on.
+     * Keep the ARS menu checkbox aligned after play-mode changes. Skip
+     * adaptation itself runs in {@link AEChipRenderer#adaptRenderSkipping()}
+     * for live and forward playback.
      */
     private void updateAdaptiveRenderSkippingForPlayMode(PlayMode oldMode, PlayMode newMode) {
-        // Avoid getRenderer() here: it throws if chip is still null during startup.
         if (chip == null || chip.getRenderer() == null) {
             return;
         }
-        if (newMode == PlayMode.PLAYBACK && oldMode != PlayMode.PLAYBACK) {
-            adaptiveRenderSkipMaxBeforePlayback = getRenderer().getSkipFrameRenderingNumberMax();
-            getRenderer().setSkipFrameRenderingNumberMax(0, false);
+        if (newMode == PlayMode.PLAYBACK || oldMode == PlayMode.PLAYBACK) {
             getRenderer().clearPacketRenderSkipDecision();
-        } else if (oldMode == PlayMode.PLAYBACK && newMode != PlayMode.PLAYBACK) {
-            if (adaptiveRenderSkipMaxBeforePlayback >= 0) {
-                getRenderer().setSkipFrameRenderingNumberMax(adaptiveRenderSkipMaxBeforePlayback, true);
-                adaptiveRenderSkipMaxBeforePlayback = -1;
-            }
         }
         syncAdaptiveRenderSkipMenuFromRenderer();
     }
@@ -9633,9 +9625,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return;
                 }
                 chip.getRenderer().setConfiguredSkipFrameRenderingNumberMax(value);
-                if (getPlayMode() == PlayMode.PLAYBACK && adaptiveRenderSkipMaxBeforePlayback > 0) {
-                    adaptiveRenderSkipMaxBeforePlayback = value;
-                }
             }
 
             @Override
@@ -13054,10 +13043,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         chip.getRenderer().setAdaptiveRenderSkippingEnabled(
                 skipPacketsRenderingCheckBoxMenuItem.isSelected());
         arsForcedOnForRecording = false;
-        if (getPlayMode() == PlayMode.PLAYBACK) {
-            // A user choice during playback supersedes the temporary saved state.
-            adaptiveRenderSkipMaxBeforePlayback = -1;
-        }
         syncAdaptiveRenderSkipMenuFromRenderer();
         showAdaptiveRenderSkippingOverlay();
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed

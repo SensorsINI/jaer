@@ -418,7 +418,7 @@
                   <KeyStroke key="Shift+Ctrl+A"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Adaptive render skipping"/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Click the checkbox to enable/disable (Ctrl+Shift+A).&lt;br&gt;Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.&lt;br&gt;Raw .aedat recording is unaffected. Recording turns ARS on automatically if it was off.&lt;br&gt;Status bar shows ARS current/max and loop load (ld)."/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Click the checkbox to enable/disable (Ctrl+Shift+A).&lt;br&gt;Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.&lt;br&gt;Skips pixmap rendering when ViewLoop is overloaded (live capture and forward playback).&lt;br&gt;Reverse playback always renders. Raw recording is unaffected. Recording turns ARS on automatically if it was off.&lt;br&gt;Status bar shows ARS current/max and loop load (ld)."/>
               </Properties>
               <Events>
                 <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="skipPacketsRenderingCheckBoxMenuItemStateChanged"/>
