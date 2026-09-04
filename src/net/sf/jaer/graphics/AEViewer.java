@@ -1079,27 +1079,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     "Community list of papers, workshops, datasets, code, and videos for event-based vision");
             JMenu sampleDataMenu = new JMenu("Sample data");
             sampleDataMenu.setToolTipText("Download curated recordings, or open public dataset links");
-            JMenuItem downloadSamples = new JMenuItem("Download jAER sample data");
-            downloadSamples.setToolTipText(
-                    "If sampleData is empty, downloads recordings and opens the folder README; if files are already there, opens the folder");
-            downloadSamples.addActionListener(e -> {
-                if (SampleDataSupport.hasRecordings()) {
+            sampleDataPrimaryItem = new JMenuItem(SampleDataSupport.helpMenuLabel());
+            sampleDataPrimaryItem.setToolTipText(SampleDataSupport.helpMenuToolTip());
+            sampleDataPrimaryItem.addActionListener(e -> {
+                File sampleDir = SampleDataSupport.folder();
+                boolean show = SampleDataSupport.useShowHelpItem();
+                log.info("Help > Sample data: " + sampleDataPrimaryItem.getText()
+                        + " sampleData=" + sampleDir.getAbsolutePath()
+                        + " folderExists=" + SampleDataSupport.folderExists()
+                        + " recordingsPresent=" + SampleDataSupport.hasRecordings());
+                if (show) {
                     SampleDataSupport.openFolderAndReadme();
                     SampleDataSupport.rememberFolder(recentFiles);
                     return;
                 }
+                log.info("Help > Sample data: starting zip download from "
+                        + SampleDataSupport.DOWNLOAD_URL);
                 Thread worker = new Thread(() -> {
                     try {
                         SampleDataSupport.downloadAndUnpack(AEViewer.this);
+                        log.info("Help > Sample data: unpack finished, switching menu to Show");
                         SwingUtilities.invokeLater(() -> {
+                            refreshSampleDataHelpMenu();
                             SampleDataSupport.openFolderAndReadme();
                             SampleDataSupport.rememberFolder(recentFiles);
                         });
                     } catch (Exception ex) {
+                        SampleDataSupport.logDownloadFailure(ex);
                         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this,
-                                "<html>Download failed:<br>" + ex.getMessage()
-                                        + "<br><br>Manual: <code>" + SampleDataSupport.DOWNLOAD_URL + "</code>"
-                                        + "<br>README: <code>" + SampleDataSupport.README_URL + "</code>",
+                                SampleDataSupport.formatDownloadFailureHtml(ex),
                                 "Sample data download failed",
                                 JOptionPane.ERROR_MESSAGE));
                     }
@@ -1107,7 +1115,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 worker.setDaemon(true);
                 worker.start();
             });
-            sampleDataMenu.add(downloadSamples);
+            sampleDataMenu.add(sampleDataPrimaryItem);
             sampleDataMenu.addSeparator();
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_DVS128_SAMPLE_DATA,
                     "DVS09 / DVS128 sample data",
@@ -11497,6 +11505,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /** Update Help > Sample data primary item after a download or on demand. */
+    public void refreshSampleDataHelpMenu() {
+        if (sampleDataPrimaryItem == null) {
+            return;
+        }
+        sampleDataPrimaryItem.setText(SampleDataSupport.helpMenuLabel());
+        sampleDataPrimaryItem.setToolTipText(SampleDataSupport.helpMenuToolTip());
+        log.info("Help > Sample data menu now: " + sampleDataPrimaryItem.getText());
+    }
+
     /**
      * Unregisters an item from the Help menu.
      *
@@ -14297,6 +14315,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem gitUpdateMenuItem;
     private javax.swing.JMenu graphicsSubMenu;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JMenuItem sampleDataPrimaryItem;
     private javax.swing.JPanel imagePanel;
     private javax.swing.JMenuItem importMarksMI;
     private javax.swing.JMenuItem increaseContrastMenuItem;

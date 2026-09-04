@@ -29,6 +29,8 @@ import java.util.Locale;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -36,6 +38,8 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import net.sf.jaer.JaerConstants;
@@ -53,6 +57,10 @@ public final class SampleDataSupport {
     public static final String README_URL = JaerConstants.SAMPLE_DATA_README_URL;
 
     public static final String PREF_DECLINED = "AEViewer.sampleDataDownloadDeclined";
+
+    public static final String HELP_MENU_DOWNLOAD = "Download jAER sample data";
+
+    public static final String HELP_MENU_SHOW = "Show jAER sample data folder and README";
 
     private static final String[] META_NAMES = { "README.md", "SIZE.txt", ".gitignore", ".gitattributes" };
 
@@ -85,6 +93,27 @@ public final class SampleDataSupport {
             return nested;
         }
         return cwd;
+    }
+
+    /** True if {@link #folder()} exists as a directory (installer README tree or a download). */
+    public static boolean folderExists() {
+        return folder().isDirectory();
+    }
+
+    /** Help menu uses Show (folder+README) when the folder is already there. */
+    public static boolean useShowHelpItem() {
+        return folderExists() || hasRecordings();
+    }
+
+    public static String helpMenuLabel() {
+        return useShowHelpItem() ? HELP_MENU_SHOW : HELP_MENU_DOWNLOAD;
+    }
+
+    public static String helpMenuToolTip() {
+        if (useShowHelpItem()) {
+            return "Opens the sampleData folder and the GitHub README (in-app README if offline)";
+        }
+        return "Downloads curated recordings into sampleData, then opens the folder and README";
     }
 
     public static File sizeFile() {
@@ -155,13 +184,16 @@ public final class SampleDataSupport {
      */
     public static boolean maybeDownload(Component parent, boolean force) {
         if (hasRecordings()) {
+            log.info("File > Open: sampleData already has recordings at " + folder().getAbsolutePath());
             return true;
         }
         if (!force && JaerConstants.PREFS_ROOT.getBoolean(PREF_DECLINED, false)) {
+            log.info("File > Open: sample-data download previously declined");
             return false;
         }
         Sizes sizes = readSizes();
         String sizeLine = sizeOfferText(sizes);
+        log.info("File > Open: offering sample-data download (" + sizeLine + ")");
         int choice = JOptionPane.showConfirmDialog(parent,
                 "<html>jAER sample recordings are not in this <code>sampleData</code> folder.<br><br>"
                         + sizeLine + ".<br><br>"
@@ -171,21 +203,24 @@ public final class SampleDataSupport {
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (choice != JOptionPane.YES_OPTION) {
+            log.info("User declined sample-data download");
             if (!force) {
                 JaerConstants.PREFS_ROOT.putBoolean(PREF_DECLINED, true);
             }
             return false;
         }
+        log.info("User accepted sample-data download");
         try {
             downloadAndUnpack(parent);
             JaerConstants.PREFS_ROOT.putBoolean(PREF_DECLINED, false);
+            if (parent instanceof net.sf.jaer.graphics.AEViewer v) {
+                SwingUtilities.invokeLater(v::refreshSampleDataHelpMenu);
+            }
+            openFolderAndReadme();
             return hasRecordings();
         } catch (Exception ex) {
-            log.log(Level.SEVERE, "Sample data download failed: " + ex, ex);
-            JOptionPane.showMessageDialog(parent,
-                    "<html>Download failed:<br>" + ex.getMessage()
-                            + "<br><br>Manual: <code>" + DOWNLOAD_URL + "</code>"
-                            + "<br>Unpack into <code>" + folder().getAbsolutePath() + "</code>",
+            logDownloadFailure(ex);
+            JOptionPane.showMessageDialog(parent, formatDownloadFailureHtml(ex),
                     "Sample data download failed",
                     JOptionPane.ERROR_MESSAGE);
             return false;
@@ -202,17 +237,7 @@ public final class SampleDataSupport {
 
     /** Open {@link #README_URL} in the default browser (safe off the EDT). */
     public static void browseReadmeUrl() {
-        Runnable r = () -> {
-            try {
-                if (!Desktop.isDesktopSupported()) {
-                    log.warning("No Desktop support, cannot open " + README_URL);
-                    return;
-                }
-                Desktop.getDesktop().browse(URI.create(README_URL));
-            } catch (Exception ex) {
-                log.log(Level.WARNING, "Could not open sample-data README URL: " + ex, ex);
-            }
-        };
+        Runnable r = () -> openInBrowser(README_URL);
         if (SwingUtilities.isEventDispatchThread()) {
             r.run();
         } else {
@@ -221,34 +246,131 @@ public final class SampleDataSupport {
     }
 
     /**
-     * Open the local {@code sampleData} folder in the file manager and open
-     * {@code README.md} if present (else the GitHub README URL).
+     * GitHub README in the browser on Windows, macOS, and Linux. If GitHub is
+     * unreachable, show the local {@code sampleData/README.md} inside jAER (do
+     * not hand a {@code .md} file to the OS). Does not open Explorer/Finder.
      */
     public static void openFolderAndReadme() {
-        Runnable r = () -> {
-            File dir = folder();
+        File dir = folder();
+        log.info("Sample data: opening folder " + dir.getAbsolutePath());
+        try {
             if (!dir.isDirectory()) {
                 dir.mkdirs();
             }
-            try {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().open(dir);
-                    File readme = new File(dir, "README.md");
-                    if (readme.isFile()) {
-                        Desktop.getDesktop().open(readme);
-                    } else {
-                        browseReadmeUrl();
-                    }
-                }
-            } catch (Exception ex) {
-                log.log(Level.WARNING, "Could not open sampleData folder or README: " + ex, ex);
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(dir);
+                log.info("Sample data: Desktop.open(folder) returned");
+            } else {
+                log.warning("Sample data: Desktop not supported, cannot open folder");
             }
-        };
-        if (SwingUtilities.isEventDispatchThread()) {
-            r.run();
-        } else {
-            SwingUtilities.invokeLater(r);
+        } catch (Exception ex) {
+            log.log(Level.WARNING, "Could not open sampleData folder: " + ex, ex);
         }
+        log.info("Sample data README: probing GitHub, then browser or in-app README");
+        Thread probe = new Thread(() -> {
+            boolean online = githubReadmeReachable();
+            log.info("Sample data README: GitHub reachable=" + online + " url=" + README_URL);
+            SwingUtilities.invokeLater(() -> {
+                if (online) {
+                    browseReadmeUrl();
+                } else {
+                    showLocalReadmeDialog(null);
+                }
+            });
+        }, "jaer-sample-data-readme");
+        probe.setDaemon(true);
+        probe.start();
+    }
+
+    private static boolean githubReadmeReachable() {
+        HttpURLConnection conn = null;
+        String probe = README_URL;
+        int hash = probe.indexOf('#');
+        if (hash >= 0) {
+            probe = probe.substring(0, hash);
+        }
+        long t0 = System.currentTimeMillis();
+        try {
+            conn = (HttpURLConnection) URI.create(probe).toURL().openConnection();
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(4000);
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestMethod("GET");
+            conn.connect();
+            int code = conn.getResponseCode();
+            long ms = System.currentTimeMillis() - t0;
+            boolean ok = code >= 200 && code < 400;
+            log.info("Sample data README: GET " + probe + " -> HTTP " + code + " in " + ms + " ms (ok=" + ok + ")");
+            return ok;
+        } catch (Exception ex) {
+            long ms = System.currentTimeMillis() - t0;
+            log.log(Level.INFO, "Sample data README: GitHub probe failed after " + ms + " ms: " + ex, ex);
+            return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private static void openInBrowser(String url) {
+        String os = System.getProperty("os.name", "");
+        boolean desktop = Desktop.isDesktopSupported();
+        boolean browse = desktop && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE);
+        log.info("Sample data README: opening browser url=" + url + " os=" + os
+                + " Desktop.supported=" + desktop + " BROWSE.supported=" + browse);
+        try {
+            String osL = os.toLowerCase(Locale.ROOT);
+            if (osL.contains("win")) {
+                new ProcessBuilder("cmd", "/c", "start", "", url).start();
+                log.info("Sample data README: started Windows cmd start for browser");
+                return;
+            }
+            if (osL.contains("mac")) {
+                new ProcessBuilder("open", url).start();
+                log.info("Sample data README: started macOS open for browser");
+                return;
+            }
+            new ProcessBuilder("xdg-open", url).start();
+            log.info("Sample data README: started xdg-open for browser");
+        } catch (Exception ex) {
+            log.log(Level.WARNING, "OS browser launch failed for " + url + ", trying Desktop.browse: " + ex, ex);
+            try {
+                if (browse) {
+                    Desktop.getDesktop().browse(URI.create(url));
+                    log.info("Sample data README: Desktop.browse returned for " + url);
+                } else {
+                    log.warning("Sample data README: Desktop.BROWSE not supported, cannot open " + url);
+                }
+            } catch (Exception ex2) {
+                log.log(Level.WARNING, "Could not open sample-data README URL: " + ex2, ex2);
+            }
+        }
+    }
+
+    private static void showLocalReadmeDialog(Component parent) {
+        File readme = new File(folder(), "README.md");
+        log.info("Sample data README: GitHub unreachable, showing in-app README from "
+                + (readme.isFile() ? readme.getAbsolutePath() : "(missing) " + readme.getAbsolutePath()));
+        String body;
+        if (readme.isFile()) {
+            try {
+                body = Files.readString(readme.toPath(), StandardCharsets.UTF_8);
+            } catch (Exception ex) {
+                body = "Could not read " + readme.getAbsolutePath() + "\n" + ex.getMessage();
+            }
+        } else {
+            body = "GitHub is not reachable and there is no local README.md.\n\n"
+                    + README_URL + "\n\nFolder: " + folder().getAbsolutePath();
+        }
+        JTextArea area = new JTextArea(body);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setPreferredSize(new Dimension(640, 480));
+        JOptionPane.showMessageDialog(parent, scroll, "jAER sample recordings (offline)",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     /** Put {@code sampleData/} on the File menu recent-folders list. */
@@ -259,7 +381,27 @@ public final class SampleDataSupport {
         File dir = folder();
         if (dir.isDirectory()) {
             recentFiles.addFolder(dir);
+            log.fine("Sample data: remembered folder " + dir.getAbsolutePath());
         }
+    }
+
+    /** HTML body for a failed zip download (Help menu and File → Open). */
+    public static String formatDownloadFailureHtml(Throwable ex) {
+        String msg = ex != null && ex.getMessage() != null ? ex.getMessage() : String.valueOf(ex);
+        StringBuilder sb = new StringBuilder("<html>");
+        sb.append(escapeHtml(msg).replace("\n", "<br>"));
+        sb.append("<br><br>Manual: <code>").append(escapeHtml(DOWNLOAD_URL)).append("</code>");
+        sb.append("<br>README: <code>").append(escapeHtml(README_URL)).append("</code>");
+        sb.append("<br>Unpack into <code>").append(escapeHtml(folder().getAbsolutePath())).append("</code>");
+        return sb.toString();
+    }
+
+    public static void logDownloadFailure(Throwable ex) {
+        if (isMissingOnRelease(ex)) {
+            log.warning(ex.getMessage());
+            return;
+        }
+        log.log(Level.SEVERE, "Sample data download failed: " + ex, ex);
     }
 
     /**
@@ -268,12 +410,13 @@ public final class SampleDataSupport {
      * Used by UI actions; progress UI is created on the Swing EDT.
      */
     public static void downloadAndUnpack(Component parent) throws Exception {
-        browseReadmeUrl();
         File dir = folder();
         Files.createDirectories(dir.toPath());
         File zip = new File(dir, "jaer-sample-data.zip.partial");
+        log.info("Downloading sample-data zip from " + DOWNLOAD_URL + " -> " + zip.getAbsolutePath());
         try {
             downloadTo(parent, DOWNLOAD_URL, zip);
+            log.info("Unpacking sample-data zip into " + dir.getAbsolutePath());
             unzipTo(zip, dir);
         } finally {
             Files.deleteIfExists(zip.toPath());
@@ -323,7 +466,7 @@ public final class SampleDataSupport {
                 HttpURLConnection conn = openFollowingRedirects(urlString);
                 int code = conn.getResponseCode();
                 if (code != HttpURLConnection.HTTP_OK) {
-                    throw new Exception("HTTP " + code + " for " + urlString);
+                    throw httpFailure(urlString, conn.getURL() != null ? conn.getURL().toString() : urlString, code);
                 }
                 long total = conn.getContentLengthLong();
                 try (InputStream in = new BufferedInputStream(conn.getInputStream());
@@ -395,7 +538,7 @@ public final class SampleDataSupport {
                 continue;
             }
             conn.disconnect();
-            throw new Exception("HTTP " + code + " for " + url);
+            throw httpFailure(urlString, url.toString(), code);
         }
         throw new Exception("Too many redirects for " + urlString);
     }
@@ -428,6 +571,56 @@ public final class SampleDataSupport {
                 }
             }
         }
+    }
+
+    private static final Pattern RELEASE_DOWNLOAD = Pattern.compile("/releases/download/([^/]+)/");
+
+    private static Exception httpFailure(String requested, String finalUrl, int code) {
+        if (code == HttpURLConnection.HTTP_NOT_FOUND) {
+            String tag = releaseTagFromUrl(finalUrl);
+            if (tag == null) {
+                tag = releaseTagFromUrl(requested);
+            }
+            StringBuilder sb = new StringBuilder();
+            if (tag != null) {
+                sb.append("Sample data is not available for GitHub release ").append(tag).append('.');
+            } else {
+                sb.append("Sample data is not available for this GitHub release.");
+            }
+            sb.append("\nLatest has no jaer-sample-data.zip asset yet (HTTP 404).");
+            sb.append("\nTried ").append(requested);
+            if (finalUrl != null && !finalUrl.equals(requested)) {
+                sb.append(" → ").append(finalUrl);
+            }
+            return new Exception(sb.toString());
+        }
+        return new Exception("HTTP " + code + " for " + finalUrl);
+    }
+
+    private static boolean isMissingOnRelease(Throwable ex) {
+        while (ex != null) {
+            String m = ex.getMessage();
+            if (m != null && (m.contains("Sample data is not available for") || m.contains("HTTP 404"))) {
+                return true;
+            }
+            ex = ex.getCause();
+        }
+        return false;
+    }
+
+    private static String releaseTagFromUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        Matcher m = RELEASE_DOWNLOAD.matcher(url);
+        return m.find() ? m.group(1) : null;
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static long parseLong(String s) {

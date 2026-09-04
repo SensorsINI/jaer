@@ -58,8 +58,8 @@ public class JaerConstants {
     public static final String JAER_RELEASES = "https://github.com/SensorsINI/jaer/releases";
     /** Curated recordings zip on the GitHub Latest release (not packed in the installer). */
     public static final String SAMPLE_DATA_DOWNLOAD_URL = "https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip";
-    /** User-facing file list (opened in the browser while the zip downloads). */
-    public static final String SAMPLE_DATA_README_URL = "https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md";
+    /** User-facing file list on GitHub (opened in the browser when online). */
+    public static final String SAMPLE_DATA_README_URL = "https://github.com/SensorsINI/jaer/tree/master/sampleData#readme";
     public static final String JAER_COMMITS = "https://github.com/SensorsINI/jaer/commits/master";
     public static final String JAER_ISSUES = "https://github.com/SensorsINI/jaer/issues";
     public static final String JAER_ISSUES_NEW = JAER_ISSUES + "/new";

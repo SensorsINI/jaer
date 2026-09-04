@@ -12,15 +12,15 @@ Recordings are **not** in git and **not** in the basic installer. Git tracks `sa
 | `sampleData/README.md` | What the files are (also inside the zip and the install tree) |
 | `sampleData/SIZE.txt` | Zip and unpacked MiB; written by pack, not in git |
 | Installer Welcome checkbox | Optional download; default **off** |
-| **Help → Sample data → Download jAER sample data** | Download if empty; otherwise open the folder and README |
+| **Help > Sample data** | **Download** if `sampleData/` is missing; **Show jAER sample data folder and README** if the folder exists (also after a download in this JVM) |
 
 Download URL:
 
 <https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip>
 
-README in the browser (Help menu opens this while a download runs):
+README in the browser on all platforms (local `README.md` is shown inside jAER only if GitHub is unreachable):
 
-<https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md>
+<https://github.com/SensorsINI/jaer/tree/master/sampleData#readme>
 
 Unpack so files land **in** `sampleData/` (zip root is the files, not a nested `sampleData/` directory). That folder is next to `dist/` / `lib/` in a git checkout and under `jaer/sampleData` in an installed copy.
 

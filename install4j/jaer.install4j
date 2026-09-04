@@ -40,7 +40,7 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
+      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore">
         <exclude>
           <!-- Secrets / gitignored credentials. file=".." packs the repo root; a missing
                exclude here ships Dropbox secrets in every local ant release. CI is safer
@@ -442,6 +442,22 @@ if (lib.isDirectory()) {
         }
     }
 }
+File dist = new File(context.getInstallationDirectory(), "dist");
+File[] dropboxScan = { lib, dist, context.getInstallationDirectory() };
+for (File dir : dropboxScan) {
+    if (dir == null || !dir.isDirectory()) {
+        continue;
+    }
+    File[] dropboxJunk = dir.listFiles((d, n) -&gt; d != null &amp;&amp; n != null
+        &amp;&amp; (n.toLowerCase(java.util.Locale.ROOT).contains("conflicted copy") || n.equals(".dropboxignore")));
+    if (dropboxJunk != null) {
+        for (File f : dropboxJunk) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+}
 File jars = new File(context.getInstallationDirectory(), "jars");
 if (jars.isDirectory()) {
     File[] srcZips = jars.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.endsWith("-src.zip") || n.endsWith("-sources.zip") || n.equals("usb4java-usb4java-1.3.0.zip")));
@@ -682,8 +698,22 @@ try {
     com.install4j.api.Util.logInfo(context, "Unpacked sample recordings into " + dest.getAbsolutePath());
 } catch (Exception ex) {
     com.install4j.api.Util.logError(context, "Sample data download failed: " + ex);
-    com.install4j.api.Util.showErrorMessage("Could not download sample recordings:\n" + ex.getMessage()
-        + "\n\nYou can download them later from File → Open or Help → Sample data in jAER.");
+    String msg = ex.getMessage() == null ? String.valueOf(ex) : ex.getMessage();
+    if (msg.contains("HTTP 404") || msg.contains("Sample data is not available")) {
+        String rel = "this GitHub release";
+        String needle = "/releases/download/";
+        int i = msg.indexOf(needle);
+        if (i &gt;= 0) {
+            String rest = msg.substring(i + needle.length());
+            int slash = rest.indexOf('/');
+            if (slash &gt; 0) {
+                rel = "GitHub release " + rest.substring(0, slash);
+            }
+        }
+        msg = "Sample data is not available for " + rel + ".\nLatest has no jaer-sample-data.zip asset yet.";
+    }
+    com.install4j.api.Util.showErrorMessage(msg
+        + "\n\nYou can try again later from File → Open or Help → Sample data in jAER.");
 } finally {
     if (zip.isFile()) {
         zip.delete();
