@@ -110,9 +110,12 @@ release-notes/3.4.0/8-event-cams-startup.mp4
 release-notes/3.4.0/8-event-cams-startup.webp
 docs/Tobi_home_PC_USB Host_Controllers.md
 release-notes/3.4.0/recording-preview.mp4
+release-notes/3.4.0/recording-preview.webp
 release-notes/3.4.0/hotel-bar-activity-histogram.mp4
+release-notes/3.4.0/hotel-bar-activity-histogram.webp
 
 # Curated sample recordings (Dropbox / local). README stays in git; SIZE.txt is pack-sample-data output.
 /sampleData/**
 !/sampleData/
 !/sampleData/README.md
+release-notes/3.4.0/adapitive-render-skipping-speedup.mp4
