@@ -206,7 +206,13 @@ public abstract class AbstractAEPlayer {
     protected PlaybackMode playbackMode = PlaybackMode.FixedTimeSlice;
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
-    protected int packetSizeEvents = 256;
+    /**
+     * Fallback ConstantCount size before a chip is set. Real default is
+     * {@link #defaultPacketSizeEventsForChip(AEChip)} (256 for DVS128, 16k for EVK4).
+     */
+    public static final int DEFAULT_PACKET_SIZE_EVENTS = 256;
+    private static final String PREF_PACKET_SIZE_EVENTS = "AbstractAEPlayer.packetSizeEvents";
+    protected int packetSizeEvents = DEFAULT_PACKET_SIZE_EVENTS;
     /** Leftover raw events after an AreaEventCount cut in the middle of a read chunk. */
     protected AEPacketRaw areaEventLeftover = null;
     private AreaEventCountExposer areaEventCountExposer = null;
@@ -597,6 +603,41 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
+     * Default ConstantCount slice: nearest power of two of {@code numPixels/64}.
+     * DVS128 (128x128) -> 256; Prophesee EVK4 / IMX636 (1280x720) -> 16384.
+     */
+    public static int defaultPacketSizeEventsForChip(AEChip chip) {
+        final int pixels = chip == null ? 128 * 128 : Math.max(1, chip.getNumPixels());
+        return nearestPowerOfTwo(Math.max(1, pixels / 64));
+    }
+
+    static int nearestPowerOfTwo(int n) {
+        if (n <= 1) {
+            return 1;
+        }
+        final int lower = Integer.highestOneBit(n);
+        final long upper = ((long) lower) << 1;
+        if (upper > Integer.MAX_VALUE) {
+            return lower;
+        }
+        return (n - lower <= (int) upper - n) ? lower : (int) upper;
+    }
+
+    /**
+     * Sets ConstantCount from this chip's prefs, or the pixel-based default if
+     * none is stored. Preserves playback direction. Call when the AEChip changes.
+     */
+    public void applyPacketSizeEventsForChip(AEChip chip) {
+        if (chip == null) {
+            return;
+        }
+        final int sign = packetSizeEvents < 0 ? -1 : 1;
+        final int def = defaultPacketSizeEventsForChip(chip);
+        final int n = chip.getPrefs().getInt(PREF_PACKET_SIZE_EVENTS, def);
+        setPacketSizeEvents(sign * n);
+    }
+
+    /**
      * Return the flextime packet size in events
      */
     public int getPacketSizeEvents() {
@@ -606,6 +647,10 @@ public abstract class AbstractAEPlayer {
     public void setPacketSizeEvents(int packetSizeEvents) {
         int old = this.packetSizeEvents;
         this.packetSizeEvents = packetSizeEvents;
+        AEChip chip = viewer != null ? viewer.getChip() : null;
+        if (chip != null) {
+            chip.getPrefs().putInt(PREF_PACKET_SIZE_EVENTS, Math.abs(packetSizeEvents));
+        }
         support.firePropertyChange(EVENT_PACKETSIZEEVENTS, old, packetSizeEvents);
     }
 

@@ -757,7 +757,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         msLabel.setText("us");
 
         packetSizeSpinner.setModel(new OctaveSpinnerNumberModel(256, 1, 1000000, 128));
-        packetSizeSpinner.setToolTipText("The event slice number of events");
+        packetSizeSpinner.setToolTipText("ConstantCount events per slice. Default is nearest power of two of (pixels/64): 256 for DVS128, 16k for EVK4.");
         packetSizeSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 packetSizeSpinnerStateChanged(evt);

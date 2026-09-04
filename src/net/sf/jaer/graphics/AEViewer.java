@@ -6141,7 +6141,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.FixedTimeSlice, "Fixed duration (CountDuration)",
                 "Accumulate a fixed time slice");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.FixedPacketSize, "Fixed event count (ConstantCount)",
-                "Accumulate a fixed number of events (flextime)");
+                "Accumulate a fixed number of events (flextime). Default is nearest power of two of (pixels/64): 256 for DVS128, 16k for EVK4.");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.AreaEventCount, "Area event count (AreaEventCount)",
                 "Expose when any spatial area reaches N events (f/s changes N). Set # areas in File → Preferences → Playback.");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.RealTime, "Real time",
@@ -13898,6 +13898,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
             if (chip.getFilterChain() != null) {
                 chip.getFilterChain().initFilters(); // at this point AEChip is fully initialized, so asking all filters to initialize themselves makes sense
+            }
+            if (aePlayer != null) {
+                aePlayer.applyPacketSizeEventsForChip(chip);
             }
         }
         bindRemoteOutputMenuItems();
