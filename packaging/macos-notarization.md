@@ -30,7 +30,7 @@ Identity delays: Apple Account name does not match government ID, 2FA incomplete
 2. Install the certs in Keychain on the Mac that runs `install4jc`.
 3. Create an [app-specific password](https://support.apple.com/en-us/102654) for the Apple Account (for `notarytool`). Do not use the main Apple ID password.
 4. Configure install4j: Installer → Code Signing / macOS notarization (`notarytool` + staple).
-5. Store certs, team ID, and app-specific password like SignPath secrets (`signpath/` on Dropbox, gitignored). Never commit them.
+5. Store certs, team ID, and app-specific password like SignPath secrets (`packaging/signpath/` on Dropbox, gitignored). Never commit them.
 6. Staple the DMG and attach that file to GitHub Releases.
 
 Team ID is under Membership details after enrollment. You will need it for install4j and `notarytool`.

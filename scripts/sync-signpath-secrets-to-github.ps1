@@ -1,8 +1,8 @@
-# Read local signpath/*.txt and set GitHub Actions secrets/variables via gh.
+# Read local packaging/signpath/*.txt and set GitHub Actions secrets/variables via gh.
 # Nothing is written into git. Requires: gh auth login, repo write access.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$dir = Join-Path $root 'signpath'
+$dir = Join-Path (Join-Path $root 'packaging') 'signpath'
 
 function Read-FirstMeaningfulLine([string]$path) {
     if (-not (Test-Path $path)) { throw "Missing file: $path" }
@@ -30,13 +30,13 @@ $project = Read-FirstMeaningfulLine (Join-Path $dir 'signpath-project-slug.txt')
 $policy = Read-FirstMeaningfulLine (Join-Path $dir 'signpath-signing-policy-slug.txt')
 
 if (-not $token) { throw 'signpath-api-token.txt is empty' }
-if (-not $license) { throw "install4j license empty ($licenseFile; also tried signpath/install4j-license.txt)" }
+if (-not $license) { throw "install4j license empty ($licenseFile; also tried packaging/signpath/install4j-license.txt)" }
 if (-not $project) { $project = 'jaer' }
 if (-not $policy) { $policy = 'test-signing' }
 
 Push-Location $root
 try {
-    Write-Host "Setting GitHub Actions secrets/variables from signpath/ ..."
+    Write-Host "Setting GitHub Actions secrets/variables from packaging/signpath/ ..."
     $token | gh secret set SIGNPATH_API_TOKEN
     $license | gh secret set INSTALL4J_LICENSE
     gh variable set SIGNPATH_ORGANIZATION_ID --body $orgId

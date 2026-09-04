@@ -73,8 +73,14 @@ Benchmarking_7_9_2026/PropheseeIMX636HD-2026-07-10T18-21-21-0400--0 disk with 1i
 deviceSettings/olderSystemsAndExperimental/
 
 # Local SignPath / install4j credentials (Dropbox; never commit secrets)
-/signpath/**
-!/signpath/README.txt
+/packaging/signpath/**
+!/packaging/signpath/README.txt
+!/packaging/signpath/artifact-configurations/
+!/packaging/signpath/artifact-configurations/**
+!/packaging/signpath/artifact-configurations/**/*.xml
+# Leftover root folders after the move into packaging/signpath/
+/signpath/
+/.signpath/
 
 # Cursor/VS Code multi-root workspace (machine paths, JDK home, extra folders)
 *.code-workspace
@@ -82,17 +88,12 @@ deviceSettings/olderSystemsAndExperimental/
 /.classpath
 /.project
 
-# Tracked SignPath artifact configs (repo *.xml ignore would otherwise hide these)
-!.signpath/
-!.signpath/**/
-!.signpath/**/*.xml
 .cursor/plans/jaer3_60s_shot_list_6114896f.plan.md
 release-notes/3.2.0/roshambo-example.mp4
 .cursor/plans/*.plan.md
 .cursor/progress-reports/*.md
 images/supported-cameras.jpg
 images/supported-cameras.pdf
-.signpath/github CI workflow test-signing2 logs_87968705213.zip
 release-notes/3.4.0/dvxplorer-micro-steadicam.mp4
 release-notes/3.4.0/dvxplorer-micro-steadicam.webp
 images/dvxplorer-micro.jpg

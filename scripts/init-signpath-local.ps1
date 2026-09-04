@@ -1,7 +1,7 @@
-# Create bare stub files under signpath/ if missing (does not overwrite).
+# Create bare stub files under packaging/signpath/ if missing (does not overwrite).
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$dir = Join-Path $root 'signpath'
+$dir = Join-Path (Join-Path $root 'packaging') 'signpath'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 
 $stubs = @{
@@ -22,4 +22,4 @@ foreach ($name in $stubs.Keys) {
     }
 }
 
-Write-Host "Fill in signpath/*.txt then run scripts/sync-signpath-secrets-to-github.ps1"
+Write-Host "Fill in packaging/signpath/*.txt then run scripts/sync-signpath-secrets-to-github.ps1"

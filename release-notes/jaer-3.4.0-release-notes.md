@@ -229,7 +229,7 @@ Synchronized live capture writes **one** `.aedat4` with EVTS/FRME/IMUS streams p
 
 * **Developer / packaging**
   * install4j project, icon, and localization live under `install4j/` (Ant, `replace-installed-jar`, and releasing docs updated). Unused `build.cmd`, Dropbox-hardcoded `jaer.desktop`, and Eclipse `.classpath`/`.project` removed from git.
-  * SignPath CI: updated test-signing cert and [remote signing workflow](README-releasing-tagging.md); Linux GitHub Release uploader fix. WIP macOS Developer ID for signed `.dmg`.
+  * SignPath CI: updated test-signing cert and [remote signing workflow](../docs/README-releasing-tagging.md); Linux GitHub Release uploader fix. WIP macOS Developer ID for signed `.dmg`.
   * 800×800 install4j launcher splash so the status line fits. eDVS, SpiNNaker, and OpalKelly factories are unregistered (sources remain).
 
 ### Bug fixes and minor improvements

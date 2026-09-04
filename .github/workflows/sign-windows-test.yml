@@ -7,7 +7,7 @@
 # CI user "CI builds" as Submitter; your login as Approver.
 # SIGNPATH_API_TOKEN must be the CI builds token (Actions has no submitter field).
 # Use release-signing only after that policy is ACTIVE and the certificate is VALID
-# (not CSR PENDING). See README-releasing-tagging.md.
+# (not CSR PENDING). See docs/README-releasing-tagging.md.
 
 name: Sign Windows (SignPath)
 

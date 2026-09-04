@@ -62,7 +62,7 @@ See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsIN
 Prerequisites:
 
 1. install4j on PATH (`install4jc`) -- https://www.ej-technologies.com/resources/install4j/v/13.0/help/doc/cli/compiler.html
-2. License (local: `install4j/license.txt`, gitignored; fallback `signpath/install4j-license.txt`)
+2. License (local: `install4j/license.txt`, gitignored; fallback `packaging/signpath/install4j-license.txt`)
 3. `VERSION.txt` set
 4. `images/SplashScreen.png` is the text-free 1024x1024 base art (`images/SplashScreen.pdf` when the art changes)
 
@@ -70,7 +70,7 @@ Prerequisites:
 
 On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w`, `images/256h`, `images/800w`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
 
-Splash only: `ant generate-splash`. The install4j launcher splash is the **800×800** PNG (`images/800w`). Keep **256h** for Windows / wizard icons and **1024w** for macOS icns. Details: [`install4j/README.md`](install4j/README.md).
+Splash only: `ant generate-splash`. The install4j launcher splash is the **800×800** PNG (`images/800w`). Keep **256h** for Windows / wizard icons and **1024w** for macOS icns. Details: [`install4j/README.md`](../install4j/README.md).
 
 TensorFlow for MLPNoiseFilter (two layers):
 - Ivy (lib/ for compile & ant release tree): tensorflow-core-api + unclassified
@@ -154,28 +154,28 @@ Remote trigger (does not run signing on your PC; starts the GitHub workflow):
 Or GitHub → Actions → **Sign Windows (SignPath)** → Run workflow. Push the workflow
 file first. Watch with `gh run watch`. Approve the SignPath request as yourself.
 
-### Local credentials (signpath/ — not in git)
+### Local credentials (`packaging/signpath/` — not in git)
 
-Keep secrets in Dropbox under signpath/ (gitignored except signpath/README.txt).
+Keep secrets in Dropbox under `packaging/signpath/` (gitignored except `README.txt` and the artifact XML).
 Do not commit tokens or license keys.
 
-  signpath/signpath-organization-id.txt   — org UUID (yours may already be filled)
-  signpath/signpath-api-token.txt         — API token of SignPath CI user "CI builds" (not your personal token)
-  install4j/license.txt               — install4j license key (preferred; gitignored)
-  signpath/install4j-license.txt      — same key (fallback for Ant / this sync script)
-  signpath/signpath-project-slug.txt      — default jaer
-  signpath/signpath-signing-policy-slug.txt — test-signing2 until release-signing is ACTIVE and VALID
+  packaging/signpath/signpath-organization-id.txt   — org UUID (yours may already be filled)
+  packaging/signpath/signpath-api-token.txt         — API token of SignPath CI user "CI builds" (not your personal token)
+  install4j/license.txt                             — install4j license key (preferred; gitignored)
+  packaging/signpath/install4j-license.txt          — same key (fallback for Ant / this sync script)
+  packaging/signpath/signpath-project-slug.txt      — default jaer
+  packaging/signpath/signpath-signing-policy-slug.txt — test-signing2 until release-signing is ACTIVE and VALID
 
 Recreate stubs if needed:
 
     powershell -File scripts/init-signpath-local.ps1
 
-Local Ant reads `install4j/license.txt` when non-empty, else `signpath/install4j-license.txt` (`ant release` /
+Local Ant reads `install4j/license.txt` when non-empty, else `packaging/signpath/install4j-license.txt` (`ant release` /
 `ant release-windows-ci`) so you need not set session env vars.
 
 ### Push credentials to GitHub Actions (not to git)
 
-Runners cannot see Dropbox. After filling signpath/*.txt, sync once with gh:
+Runners cannot see Dropbox. After filling `packaging/signpath/*.txt`, sync once with gh:
 
     powershell -File scripts/sync-signpath-secrets-to-github.ps1
 
@@ -209,7 +209,7 @@ Create or reuse the CI user (https://app.signpath.io):
 
   1. Users and Groups → CI users (not Invite user)
   2. Open **CI builds**, or Create CI user with that name
-  3. Generate token (shown once). Put it in `signpath/signpath-api-token.txt`
+  3. Generate token (shown once). Put it in `packaging/signpath/signpath-api-token.txt`
      and re-run `scripts/sync-signpath-secrets-to-github.ps1`
 
 Then edit project **jaer** → signing policy **test-signing2** (same roles on
@@ -220,20 +220,22 @@ Then edit project **jaer** → signing policy **test-signing2** (same roles on
   3. **Approvers:** your interactive user; **Use approval process**, required approvals 1
   4. Certificate: test-signing cert (e.g. Test certificate 2026)
   5. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
-     .signpath/artifact-configurations/windows-installer-2.xml)
+     packaging/signpath/artifact-configurations/windows-installer-2.xml).
+     SignPath's project UI still uses that slug; moving the XML in git does not
+     change the cloud config until you re-upload it.
 
 ### release-signing certificate (CSR → ACTIVE → CI)
 
 Do **not** Activate **release-signing** and do **not** submit that policy while
 the certificate shows **CSR PENDING**. SignPath has the private key on its HSM;
-the CSR in `signpath/release_certificate_2026.csr` (gitignored) is only the
+the CSR in `packaging/signpath/release_certificate_2026.csr` (gitignored) is only the
 public request. SignPath Foundation issues the production cert and it must be
 imported so the certificate becomes **VALID**. Then click **Activate** on the
 policy (submitter **CI builds**, approver you).
 
   1. Wait until SignPath shows the release certificate as **VALID** (not CSR PENDING)
   2. Activate policy **release-signing**
-  3. Set `signpath/signpath-signing-policy-slug.txt` to `release-signing`
+  3. Set `packaging/signpath/signpath-signing-policy-slug.txt` to `release-signing`
   4. Re-run `scripts/sync-signpath-secrets-to-github.ps1` (updates the GitHub
      variable used on tag pushes). Do not paste the API token into chat.
   5. Push the workflow if needed, then trigger **release-signing**:
@@ -285,7 +287,7 @@ Package-manager trees should include a `.jaer-packaged-install` marker file so H
 
 ## macOS notarization
 
-Unsigned DMGs and user-folder installs remain the supported Mac path until membership is Active and install4j is wired. Individual Apple Developer Program (not org): [packaging/macos-notarization.md](packaging/macos-notarization.md).
+Unsigned DMGs and user-folder installs remain the supported Mac path until membership is Active and install4j is wired. Individual Apple Developer Program (not org): [packaging/macos-notarization.md](../packaging/macos-notarization.md).
 
 ## Build notes
 

@@ -179,7 +179,7 @@ Agent chats load a short pipeline map from [`AGENTS.md`](AGENTS.md) and attach [
 
 Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org/).
 
-Windows installers submitted for signing are built from this repository on GitHub Actions (see [`.github/workflows/sign-windows-test.yml`](.github/workflows/sign-windows-test.yml) and [`README-releasing-tagging.md`](README-releasing-tagging.md)). Publisher identity on signed builds is **SignPath Foundation**.
+Windows installers submitted for signing are built from this repository on GitHub Actions (see [`.github/workflows/sign-windows-test.yml`](.github/workflows/sign-windows-test.yml) and [`docs/README-releasing-tagging.md`](docs/README-releasing-tagging.md)). Publisher identity on signed builds is **SignPath Foundation**.
 
 **Team roles**
 

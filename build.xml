@@ -58,7 +58,7 @@ macOS
                           Skip: -Dskip.macos.libusb=true
 
 Releases
-  See README-releasing-tagging.md. Local ant release is unsigned.
+  See docs/README-releasing-tagging.md. Local ant release is unsigned.
   Windows Authenticode is GitHub Actions + SignPath (not a local Ant sign).
   release                 confirm VERSION.txt, splash, clean/jar, then install4jc
   release-windows-ci      Windows-only media, no confirm (used by GitHub Actions)
@@ -659,7 +659,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <property name="jaer.install4j.dir" value="${basedir}/install4j"/>
     <property name="jaer.install4j.project" value="${jaer.install4j.dir}/jaer.install4j"/>
     <property name="jaer.install4j.license.primary" value="${jaer.install4j.dir}/license.txt"/>
-    <property name="jaer.install4j.license.signpath" value="${basedir}/signpath/install4j-license.txt"/>
+    <property name="jaer.install4j.license.signpath" value="${basedir}/packaging/signpath/install4j-license.txt"/>
 
     <target name="-sync-install4j-version" depends="-load-version">
         <replaceregexp file="${jaer.install4j.project}"
@@ -679,7 +679,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         <fail unless="jaer.release.confirmed" message="Release cancelled (reply y or yes to proceed)."/>
     </target>
 
-    <!-- Optional local license: install4j/license.txt, else signpath/install4j-license.txt (both gitignored). -->
+    <!-- Optional local license: install4j/license.txt, else packaging/signpath/install4j-license.txt (both gitignored). -->
     <target name="-probe-install4j-license-local">
         <available file="${jaer.install4j.license.primary}"
                    property="jaer.install4j.license.primary.exists"/>
@@ -726,7 +726,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
                 </tokenfilter>
             </filterchain>
         </loadfile>
-        <echo message="Using install4j license from signpath/install4j-license.txt"/>
+        <echo message="Using install4j license from packaging/signpath/install4j-license.txt"/>
     </target>
 
     <target name="-load-install4j-license-local"
@@ -1063,7 +1063,7 @@ Then re-run:        ant install
         <echo message="When ready: ant copy-updates-xml, git tag ${jaer.version}, create the GitHub release,"/>
         <echo message="and upload installers (scripts/upload-github-release-installers.ps1)."/>
         <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
-        <echo message="See README-releasing-tagging.md"/>
+        <echo message="See docs/README-releasing-tagging.md"/>
     </target>
 
     <target name="release-windows-ci"
@@ -1071,7 +1071,7 @@ Then re-run:        ant install
             description="Non-interactive Windows-only install4j media for SignPath CI (no confirm prompt).">
         <echo message="${line.separator}Windows install4j media build finished for ${jaer.version}."/>
         <echo message="Output: currentInstallers/${jaer.version}/jAER_windows-x64_*.exe"/>
-        <echo message="See README-releasing-tagging.md (SignPath Windows CI)."/>
+        <echo message="See docs/README-releasing-tagging.md (SignPath Windows CI)."/>
     </target>
 
     <!-- Remote GitHub Actions: SignPath signs only runner-built Windows media. Default policy
@@ -1091,7 +1091,7 @@ Then re-run:        ant install
         <echo message="Watch:  gh run watch"/>
         <echo message="Approve the SignPath request as yourself (not CI builds)."/>
         <echo message="Do not use release-signing until that policy is ACTIVE and the certificate is VALID."/>
-        <echo message="See README-releasing-tagging.md"/>
+        <echo message="See docs/README-releasing-tagging.md"/>
     </target>
 
     <target name="jaer-sign-jar" depends="jar">

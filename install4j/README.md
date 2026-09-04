@@ -1,6 +1,6 @@
 # install4j project and splash assets
 
-Open [`jaer.install4j`](jaer.install4j) in the [install4j](https://www.ej-technologies.com/products/install4j/overview.html) IDE. Media output is `currentInstallers/<VERSION.txt>/`. Release steps: [`../README-releasing-tagging.md`](../README-releasing-tagging.md).
+Open [`jaer.install4j`](jaer.install4j) in the [install4j](https://www.ej-technologies.com/products/install4j/overview.html) IDE. Media output is `currentInstallers/<VERSION.txt>/`. Release steps: [`../docs/README-releasing-tagging.md`](../docs/README-releasing-tagging.md).
 
 From the repo root: `ant release` (or `ant generate-splash` for PNGs only).
 
@@ -9,7 +9,7 @@ From the repo root: `ant release` (or `ant generate-splash` for PNGs only).
 | `jaer.install4j` | Installer / launcher / updater project |
 | `jaer.ico` | Windows launcher `iconFile` (legacy 64×64 1-bit ICO) |
 | `install4j-custom-resources.utf8` | English localization overrides |
-| `license.txt` | Compiler license key (gitignored; fallback `signpath/install4j-license.txt`) |
+| `license.txt` | Compiler license key (gitignored; fallback `packaging/signpath/install4j-license.txt`) |
 
 ## Generated splash / icon PNGs
 
