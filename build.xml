@@ -64,6 +64,14 @@ Releases
                           then git tag + GitHub draft Release (needs gh).
                           Skip draft: -Dskip.github.draft=true
   create-draft-release    git tag VERSION.txt, push, GitHub draft (no install4jc)
+  upload-installers       currentInstallers/<VERSION>/ jAER_* (+ sample zip) to GitHub draft
+                          (needs gh). Dry run: -Djaer.upload.whatif=true
+                          Other tag: -Djaer.upload.tag=3.4.0
+                          Does not overwrite GitHub release notes on an existing draft.
+  upload-release-notes-media
+                          <!-- webp: --> files to GitHub user-attachments, rewrite notes
+                          Dry run: -Djaer.upload.whatif=true
+  upload-release-notes    media first, then GitHub Release body from release-notes/ (needs gh)
   release-windows-ci      Windows-only media, no confirm (used by GitHub Actions)
   signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
                           Policy: -Dsignpath.policy=test-signing2|release-signing
@@ -72,7 +80,6 @@ Releases
                           Override: -Djaer.install4j.compression=7 -Djaer.install4j.faster=false
   generate-splash         VERSION.txt overlay on splash PNGs (1024/256 icons, 800 splash)
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
-  upload-release-notes    GitHub Release body from release-notes/ (needs gh)
   count-asset-downloads   GitHub Release asset download counts (needs gh auth)
                           One tag: -Djaer.asset.downloads.tag=3.3.0
                           More rows: -Djaer.asset.downloads.limit=20
@@ -1025,13 +1032,47 @@ Then re-run:        ant install
             <echo message="Copied ${jaer.updates.xml.source} -&gt; ${basedir}/updates.xml"/>
             <echo message="Set updates.xml baseUrl to GitHub Releases latest/download/."/>
             <echo message="When the GitHub Release is ready, commit and push updates.xml so auto-update can see ${jaer.version}."/>
-            <echo message="Upload currentInstallers/${jaer.version}/jAER_* to the GitHub Release (see scripts/upload-github-release-installers.ps1)."/>
+            <echo message="Upload currentInstallers/${jaer.version}/jAER_* to the GitHub Release: ant upload-installers"/>
         </sequential>
     </macrodef>
 
     <target name="copy-updates-xml" depends="-load-version"
             description="Copy currentInstallers/VERSION/updates.xml to repo root (run when the release is ready to publish).">
         <jaer-copy-updates-xml/>
+    </target>
+
+    <property name="jaer.upload.tag" value=""/>
+    <property name="jaer.upload.whatif" value="false"/>
+
+    <target name="-resolve-upload-tag" depends="-load-version">
+        <condition property="jaer.upload.tag.effective" value="${jaer.upload.tag}" else="${jaer.version}">
+            <not>
+                <equals arg1="${jaer.upload.tag}" arg2=""/>
+            </not>
+        </condition>
+    </target>
+
+    <target name="upload-installers" depends="checkos,-resolve-upload-tag"
+            description="Upload currentInstallers/VERSION jAER_* (+ sample zip) to GitHub Release (needs gh). Dry run: -Djaer.upload.whatif=true">
+        <echo message="Uploading installers for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif})."/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/upload-github-release-installers.ps1"/>
+            <arg value="-Tag"/>
+            <arg value="${jaer.upload.tag.effective}"/>
+            <arg value="-WhatIf" if:true="${jaer.upload.whatif}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/upload-github-release-installers.sh"/>
+            <arg value="--tag"/>
+            <arg value="${jaer.upload.tag.effective}"/>
+            <arg value="--what-if" if:true="${jaer.upload.whatif}"/>
+        </exec>
     </target>
 
     <property name="jaer.asset.downloads.tag" value=""/>
@@ -1087,21 +1128,51 @@ Then re-run:        ant install
         </exec>
     </target>
 
-    <target name="upload-release-notes" depends="-load-version"
-            description="Set GitHub Release body from release-notes/jaer-VERSION-release-notes.md (gh).">
+    <target name="upload-release-notes-media" depends="checkos,-resolve-upload-tag"
+            description="Upload webp: comment files to GitHub user-attachments and rewrite notes. Dry run: -Djaer.upload.whatif=true">
+        <echo message="Uploading release-notes WebP for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif})."/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/upload-release-notes-media.ps1"/>
+            <arg value="-Tag"/>
+            <arg value="${jaer.upload.tag.effective}"/>
+            <arg value="-WhatIf" if:true="${jaer.upload.whatif}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/upload-release-notes-media.sh"/>
+            <arg value="--tag"/>
+            <arg value="${jaer.upload.tag.effective}"/>
+            <arg value="--what-if" if:true="${jaer.upload.whatif}"/>
+        </exec>
+    </target>
+
+    <target name="upload-release-notes" depends="upload-release-notes-media"
+            description="Upload webp comment media, then set GitHub Release body from notes (gh).">
         <property name="jaer.release.notes.file"
-                  value="${basedir}/release-notes/jaer-${jaer.version}-release-notes.md"/>
+                  value="${basedir}/release-notes/jaer-${jaer.upload.tag.effective}-release-notes.md"/>
         <available file="${jaer.release.notes.file}" property="jaer.release.notes.exists"/>
         <fail unless="jaer.release.notes.exists"
               message="Missing ${jaer.release.notes.file}"/>
+        <condition property="jaer.upload.skip.body">
+            <istrue value="${jaer.upload.whatif}"/>
+        </condition>
+        <antcall target="-gh-release-edit-notes"/>
+    </target>
+
+    <target name="-gh-release-edit-notes" unless="jaer.upload.skip.body">
         <exec executable="gh" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="release"/>
             <arg value="edit"/>
-            <arg value="${jaer.version}"/>
+            <arg value="${jaer.upload.tag.effective}"/>
             <arg value="--notes-file"/>
             <arg value="${jaer.release.notes.file}"/>
         </exec>
-        <echo message="Set GitHub Release ${jaer.version} body from ${jaer.release.notes.file}"/>
+        <echo message="Set GitHub Release ${jaer.upload.tag.effective} body from ${jaer.release.notes.file}"/>
     </target>
 
     <target name="release"
@@ -1110,7 +1181,7 @@ Then re-run:        ant install
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
         <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
         <antcall target="create-draft-release"/>
-        <echo message="Upload installers to the draft: scripts/upload-github-release-installers.ps1"/>
+        <echo message="Upload installers to the draft: ant upload-installers"/>
         <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
         <echo message="Publish on GitHub when ready (or: gh release edit ${jaer.version} --draft=false),"/>
         <echo message="then ant copy-updates-xml. Skip the draft step: ant release -Dskip.github.draft=true"/>

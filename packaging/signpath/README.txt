@@ -46,4 +46,7 @@ GitHub Actions still needs those secrets/vars on the repo (runners cannot
 read your Dropbox). The sync script is the bridge; values never live in git.
 
 Tracked artifact config (not secret): artifact-configurations/windows-installer-2.xml
-See also docs/README-releasing-tagging.md → SignPath Windows CI.
+product-name must match install4j <application name="..."> (currently
+"jAER - Desktop Application for Event Sensors"). After editing the XML,
+paste it into SignPath slug windows-installer-2; do not use inactivated
+slug windows-installer. See docs/README-releasing-tagging.md.

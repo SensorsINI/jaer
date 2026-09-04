@@ -20,18 +20,20 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
    - After install4jc it tags `HEAD` as `<VERSION.txt>`, pushes that tag, and creates a **draft** GitHub Release (not Latest, not public until you publish). Needs `gh auth login`. Media-only: `ant release -Dskip.github.draft=true`. Tag/draft without rebuild: `ant create-draft-release`.
 3. Upload binaries onto that draft (creates a **draft** Release if the tag has none yet):
 
-       powershell -File scripts/upload-github-release-installers.ps1
-       bash scripts/upload-github-release-installers.sh
+       ant upload-installers
 
-   Dry run: `-WhatIf` (PowerShell and bash) or `--what-if` (bash).
+   Dry run: `ant upload-installers -Djaer.upload.whatif=true`. Other tag:
+   `-Djaer.upload.tag=3.4.0`. Same as `scripts/upload-github-release-installers.ps1` / `.sh`.
    Re-upload after a rebuild: same command (`--clobber`). Also uploads `jaer-sample-data.zip` when that file is in `currentInstallers/<VERSION>/` so `/releases/latest/download/jaer-sample-data.zip` works. The Welcome checkbox and File → Open use that URL.
-   Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`).
-   Put the download table and concise OS notes at the **top** (see 3.2.0 notes). GitHub
+   `ant upload-installers` does **not** overwrite the GitHub body on an existing draft.
+   Put the download table and concise OS notes at the **top** of
+   `release-notes/jaer-<VERSION>-release-notes.md` (see 3.2.0 notes). GitHub
    always appends **Assets** at the bottom of the Release page — do not duplicate a long
    installer section there. Update version in filenames (`3_2_0` / tag `3.2.0`).
-   Notes only:
+   Notes (uploads `<!-- webp: … -->` clips, then the GitHub body):
 
        ant upload-release-notes
+       ant upload-release-notes-media -Djaer.upload.whatif=true
        gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
 4. On GitHub, open the draft and **Publish release** (or `gh release edit <VERSION.txt> --draft=false`). That is when it can become Latest. Then `ant copy-updates-xml` (overwrites repo-root `updates.xml` and sets `baseUrl` to GitHub `/latest/download/`). Commit and push `updates.xml`. Installed copies only see `master`.
 5. Optional later: SignPath-signed Windows exe, winget/Homebrew, prune old assets.
@@ -220,10 +222,20 @@ Then edit project **jaer** → signing policy **test-signing2** (same roles on
   2. **Submitters:** **CI builds** only (remove your personal user)
   3. **Approvers:** your interactive user; **Use approval process**, required approvals 1
   4. Certificate: test-signing cert (e.g. Test certificate 2026)
-  5. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
-     packaging/signpath/artifact-configurations/windows-installer-2.xml).
-     SignPath's project UI still uses that slug; moving the XML in git does not
-     change the cloud config until you re-upload it.
+  5. Artifact configuration slug **windows-installer-2** (v1 slug
+     `windows-installer` was inactivated; that slug cannot be reused).
+     `product-name` in the XML must match install4j
+     `<application name="...">` exactly (currently
+     `jAER - Desktop Application for Event Sensors`). If SignPath reports
+     "unexpected product name", you are on the old string
+     (`jaer - Java Tools for Address Event Representation Sensors and Processing`)
+     or on slug `windows-installer`. Edit **windows-installer-2** in the
+     SignPath UI and paste
+     `packaging/signpath/artifact-configurations/windows-installer-2.xml`.
+     Git does not update the cloud config. If SignPath refuses the
+     product-name change on that slug, add a new config (e.g.
+     `windows-installer-3`), point both policies at it, and set
+     `artifact-configuration-slug` in `.github/workflows/sign-windows-test.yml`.
 
 ### release-signing certificate (CSR → ACTIVE → CI)
 
@@ -275,6 +287,32 @@ Non-interactive Windows-only local/CI Ant target (no confirm prompt):
     ant release-windows-ci
 
 Output: currentInstallers/<VERSION.txt>/jAER_windows-x64_*.exe
+
+## Release notes WebP (looping previews)
+
+Installer binaries are GitHub Release **assets**. Looping clips in the notes body
+are GitHub **user-attachments** (`https://github.com/user-attachments/assets/<uuid>`),
+the same store as drag-drop on github.com. Do not `gh release upload` those WebPs.
+
+In `release-notes/jaer-<VERSION>-release-notes.md`, path relative to `release-notes/`:
+
+```html
+<!-- webp: 3.4.0/8-cams-startup.webp -->
+```
+
+`ant upload-release-notes` (or `ant upload-release-notes-media`) uploads any tag
+whose next non-empty line is not already a user-attachments URL, inserts
+
+```html
+<img src="https://github.com/user-attachments/assets/<uuid>" alt="…" width="80%" />
+```
+
+and then `upload-release-notes` pushes the markdown with `gh release edit`.
+Local `.webp` stays gitignored (Dropbox); git tracks the comment plus the URL.
+Replace a clip: delete the `<img>` line, leave the tag, replace the local file.
+GitHub free image limit is **10 MB**. Encode with `ffmpeg -loop 0` (WebP default
+does not loop). The upload endpoint is unofficial (`uploads.github.com` +
+`gh auth token` with push access).
 
 ## OS package managers (winget / Homebrew)
 

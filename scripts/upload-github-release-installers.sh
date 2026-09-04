@@ -104,8 +104,7 @@ if ! gh release view "$TAG" >/dev/null 2>&1; then
     gh release create "$TAG" --draft --latest=false --title "jaer-$TAG" --notes "jAER $TAG installers. See release-notes/."
   fi
 elif [ -f "$NOTES" ]; then
-  echo "Updating GitHub release notes from $NOTES"
-  gh release edit "$TAG" --notes-file "$NOTES"
+  echo "Leaving GitHub release body unchanged (use ant upload-release-notes to push notes)."
 fi
 export GH_SPINNER_DISABLED=yes
 n=0

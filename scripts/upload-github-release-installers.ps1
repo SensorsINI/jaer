@@ -60,9 +60,8 @@ if ($releaseMissing) {
     } else {
         gh release create $Tag --draft --latest=false --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
     }
-} elseif (Test-Path $notesFile) {
-    Write-Host "Updating GitHub release notes from $notesFile"
-    gh release edit $Tag --notes-file $notesFile
+} else {
+    Write-Host "Leaving GitHub release body unchanged (use ant upload-release-notes to push notes)."
 }
 # One file at a time so the console shows which asset is in flight.
 # GH_SPINNER_DISABLED replaces the clock-hand spinner with a text progress line.
