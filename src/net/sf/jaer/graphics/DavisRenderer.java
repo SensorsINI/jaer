@@ -1421,7 +1421,7 @@ public class DavisRenderer extends AEChipRenderer {
 
     @Override
     public boolean isPacketLevelRenderSkipping() {
-        return isAdaptiveRenderSkippingEnabled() && !isDisplayFrames();
+        return super.isPacketLevelRenderSkipping() && !isDisplayFrames();
     }
 
     private void adaptDvsDownsampling() {

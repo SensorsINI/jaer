@@ -696,6 +696,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Extra same-file AEDAT-4 viewers skip the LZ4 re-record dialog (origin already chose). */
     private boolean skipAedat4Lz4Offer;
     private boolean suppressAdaptiveRenderSkipMenuSync;
+    private int lastLoggedPlaybackArsSkip = Integer.MIN_VALUE;
     /** Chip + ViewLoop run after first paint; USB scan is off the EDT. */
     private final AtomicBoolean livePathStarted = new AtomicBoolean(false);
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
@@ -6424,9 +6425,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                         numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isRecordFilteredEventsEnabled();
-                        // Never skip rendering while writing synchronized AVI frames — every packet must paint.
-                        // AEDAT-4 FRME: packet skip would grabInput (fill pendingFrames) then continue
-                        // without appendTypedPackets, so APS frames never reach DavisRenderer.
+                        // Live only: skip pixmap packets. Playback thins events in extractPolarity.
                         final boolean aedat4HasFrames = getAePlayer() != null
                                 && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream a4
                                 && a4.hasFramePackets();
@@ -7362,9 +7361,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 AEChipRenderer renderer = getRenderer();
                 if (renderer.isAdaptiveRenderSkippingEnabled()) {
                     sb.append(" ARS lvl=").append(renderer.getSkipFrameRenderingNumberCurrent())
-                            .append('/').append(renderer.getSkipFrameRenderingNumberMax())
-                            .append(" sk=").append(renderer.getSkipPacketsRenderingCount())
-                            .append(" ld=");
+                            .append('/').append(renderer.getSkipFrameRenderingNumberMax());
+                    if (getPlayMode() == PlayMode.PLAYBACK
+                            && getAePlayer() != null
+                            && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream a4) {
+                        sb.append(" evSkip=").append(a4.getLastPolarityEventSkip());
+                    } else {
+                        sb.append(" sk=").append(renderer.getSkipPacketsRenderingCount());
+                    }
+                    sb.append(" ld=");
                     appendFixed1(sb, fr.getLastLoopLoad());
                 } else {
                     sb.append(" ARS off");
@@ -8421,7 +8426,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         skipPacketsRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
         skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable (Ctrl+Shift+A).<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Skips pixmap rendering when ViewLoop is overloaded (live capture and forward playback).<br>Reverse playback always renders. Raw recording is unaffected. Recording turns ARS on automatically if it was off.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable (Ctrl+Shift+A).<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skip.<br>Live: skip pixmap packets when ViewLoop is overloaded.<br>Forward AEDAT-4 playback: pack every (skip+1)th event (reduces extractPolarity).<br>Reverse playback always uses every event. Raw recording and Save As are unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -8916,7 +8921,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         final AEChipRenderer renderer = chip.getRenderer();
-        showActionText(String.format("Adaptive render skipping %s; maximum %d packets",
+        showActionText(String.format("Adaptive render skipping %s; maximum %d (live packets / playback events)",
                 renderer.isAdaptiveRenderSkippingEnabled() ? "ON" : "OFF",
                 renderer.getConfiguredSkipFrameRenderingNumberMax()));
     }
@@ -8952,8 +8957,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if (newMode == PlayMode.PLAYBACK || oldMode == PlayMode.PLAYBACK) {
             getRenderer().clearPacketRenderSkipDecision();
+            getRenderer().setSkipPacketsRenderingCount(0);
         }
         syncAdaptiveRenderSkipMenuFromRenderer();
+    }
+
+    /**
+     * Adaptive current skip (not menu max) so 20 ms slices are not immediately
+     * thinned to 1 of 11. 0 for reverse, recording, and Save As.
+     */
+    public int playbackPolarityEventSkip() {
+        if (viewLoopSuspendedForOfflineExport || getPlayMode() != PlayMode.PLAYBACK) {
+            return 0;
+        }
+        if (isRecordingEnabled() && !isRecordingPaused()) {
+            return 0;
+        }
+        if (getAePlayer() == null || !getAePlayer().isPlayingForwards()) {
+            return 0;
+        }
+        if (chip == null || chip.getRenderer() == null || !chip.getRenderer().isAdaptiveRenderSkippingEnabled()) {
+            return 0;
+        }
+        AEChipRenderer r = chip.getRenderer();
+        int skip = r.getSkipFrameRenderingNumberCurrent();
+        if (log.isLoggable(Level.FINE) && skip != lastLoggedPlaybackArsSkip) {
+            lastLoggedPlaybackArsSkip = skip;
+            FrameRater fr = getFrameRater();
+            int sliceUs = getAePlayer() != null ? getAePlayer().getTimesliceUs() : -1;
+            log.fine(String.format(
+                    "ARS playback evSkip %d (lvl=%d/%d load=%.2f fps=%.0f/%d slice=%d us)",
+                    skip,
+                    r.getSkipFrameRenderingNumberCurrent(),
+                    r.getConfiguredSkipFrameRenderingNumberMax(),
+                    fr != null ? fr.getLastLoopLoad() : -1f,
+                    fr != null ? fr.getAverageFPS() : -1f,
+                    fr != null ? fr.getDesiredFPS() : -1,
+                    sliceUs));
+        }
+        return skip;
     }
 
     /**
@@ -9639,7 +9681,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public String formatLabel(int value) {
-                return String.format("Adaptive render skipping: max %d packets", value);
+                return String.format("Adaptive render skipping: max %d (packets live, events playback)", value);
             }
         }, () -> {
             syncAdaptiveRenderSkipMenuFromRenderer();

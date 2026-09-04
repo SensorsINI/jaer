@@ -47,7 +47,7 @@ Menu names match the AEViewer menus. Chip classes that add a menu
   <tr><td>C</td><td>Next color rendering mode (gray, RG, time-color, …)</td></tr>
   <tr><td>Ctrl+C</td><td>Previous color rendering mode</td></tr>
   <tr><td>Ctrl+F</td><td>Show <b>filters</b> window</td></tr>
-  <tr><td>Ctrl+Shift+A</td><td>Toggle <b>adaptive render skipping</b> (View menu). Skips pixmap rendering when the view loop is overloaded (live and forward playback). Reverse playback always renders. Hover the menu item and use the mouse wheel or Up/Down to change the maximum skip. Status bar shows ARS level and loop load (ld).</td></tr>
+  <tr><td>Ctrl+Shift+A</td><td>Toggle <b>adaptive render skipping</b> (View menu). Live: skip pixmap packets under load. Forward AEDAT-4 playback: pack every (skip+1)th event. Reverse uses every event. Hover the menu item and use the mouse wheel or Up/Down to change the maximum skip. Status bar shows ARS level and loop load (ld).</td></tr>
   <tr><td>Ctrl+= / Ctrl+- / Ctrl+0</td><td>Zoom in / zoom out / unzoom</td></tr>
   <tr><td>Down / Up</td><td>Decrease / increase contrast</td></tr>
   <tr><td>Left / Right</td><td>Decrease / increase target rendering frame rate</td></tr>

@@ -225,9 +225,10 @@ After filtering:
 
 Rendering can be **skipped** adaptively under load (`packetLevelRenderSkipping`)
 when no filters need every packet and AVI sync recording is not active; recording
-of raw data can still occur on the skip path. ARS applies to **live** capture and
-**forward file playback** (View → Adaptive render skipping, Ctrl+Shift+A). Reverse
-playback always renders. Starting a data recording turns ARS **on** if it was off
+of raw data can still occur on the skip path. **Live** ARS skips pixmap packets.
+**Forward AEDAT-4 playback** instead packs every `(skip+1)`th polarity event in
+`extractPolarity` (View → Adaptive render skipping, Ctrl+Shift+A). Reverse
+playback uses every event. Starting a data recording turns ARS **on** if it was off
 (not persisted) and boosts skip to max so ViewLoop keeps draining USB while
 LZ4/write runs; the recording overlay shows `ARS auto skip n/max`.
 The previous ARS on/off state is restored when recording stops.

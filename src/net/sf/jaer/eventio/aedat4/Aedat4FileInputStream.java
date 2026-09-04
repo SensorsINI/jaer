@@ -38,6 +38,7 @@ import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.RecordingChipDetector;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.Event;
 import net.sf.jaer.eventio.aedat4.dv.EventPacket;
@@ -77,10 +78,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     public static final int PREVIEW_INDEX_EVTS_PACKETS = 30;
     /**
-     * Max polarity events returned from one {@code readPacketBy*}. Same as
+     * Max polarity events <b>packed</b> from one {@code readPacketBy*}. Same as
      * {@link AEFileInputStream#MAX_BUFFER_SIZE_EVENTS} (1 Mi events). Guards
-     * OOM when on-demand decode would walk tens of millions of FlatBuffer events;
-     * ConstantDuration still gets the requested dt unless the slice exceeds this.
+     * OOM when on-demand decode would walk tens of millions of FlatBuffer events.
+     * With playback ARS skip N, the file window may be this times {@code N+1}
+     * so ConstantDuration can finish the requested dt while packing about 1 Mi.
      */
     private static final int MAX_EVENTS_PER_READ = AEFileInputStream.MAX_BUFFER_SIZE_EVENTS;
     /** Equal-time bins for the AEPlayer log event-rate sparkline (packet-table estimate). */
@@ -207,6 +209,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private boolean scanTimesliceInPacket;
     /** Count of {@link #eventRefs} that {@link #packetNeedsTimesliceScan(PacketRef)}. */
     private int timesliceScanPacketCount;
+    /**
+     * Playback ARS: pack every {@code skip+1}th polarity event (0 = all). Live USB
+     * is unchanged. Save-As / recording must leave this at 0.
+     */
+    private volatile int polarityEventSkip;
+    private volatile int lastPolarityEventSkip;
+    private final Event extractEventScratch = new Event();
 
     public Aedat4FileInputStream(File file, AEChip chip) throws IOException {
         this(file, chip, null, null);
@@ -318,6 +327,44 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** EVTS packets that need a FlatBuffer timestamp scan if a timeslice hits them. */
     public int getTimesliceScanPacketCount() {
         return timesliceScanPacketCount;
+    }
+
+    /**
+     * Keep every {@code skip+1}th polarity event in {@link #extractPolarity}.
+     * {@code 0} packs all events (default).
+     */
+    public void setPolarityEventSkip(int skip) {
+        polarityEventSkip = Math.max(0, skip);
+    }
+
+    public int getPolarityEventSkip() {
+        return polarityEventSkip;
+    }
+
+    /**
+     * Skip used for the current/last {@code readPacketBy*}. Status bar reads this.
+     */
+    public int getLastPolarityEventSkip() {
+        return lastPolarityEventSkip;
+    }
+
+    /**
+     * Viewer ARS max when playing forward; 0 for Save As, reverse, recording, or no viewer (bench).
+     */
+    private int effectivePolarityEventSkip() {
+        if (chip == null || chip.getAeViewer() == null) {
+            return polarityEventSkip;
+        }
+        return chip.getAeViewer().playbackPolarityEventSkip();
+    }
+
+    /**
+     * File-index span allowed in one timeslice. Playback ARS skip N walks
+     * {@code N+1} source events per packed event, so the 1 Mi packed cap
+     * corresponds to a wider file window.
+     */
+    private long maxSourceEventsPerRead() {
+        return (long) MAX_EVENTS_PER_READ * (effectivePolarityEventSkip() + 1);
     }
 
     public void resetPlaybackProfile() {
@@ -1497,11 +1544,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (startIdx >= endIdx) {
             return new AEPacketRaw(0);
         }
-        IntGrow addresses = new IntGrow((int) Math.min(Integer.MAX_VALUE, endIdx - startIdx));
-        IntGrow timestamps = new IntGrow(addresses.a.length);
-        // log.fine(String.format("AEDAT-4 extractPolarity ENTER [%,d,%,d)", startIdx, endIdx));
+        final int stride = effectivePolarityEventSkip() + 1;
+        lastPolarityEventSkip = stride - 1;
+        long span = endIdx - startIdx;
+        int estimated = (int) Math.min(Integer.MAX_VALUE, (span + stride - 1) / stride);
+        IntGrow addresses = new IntGrow(estimated);
+        IntGrow timestamps = new IntGrow(estimated);
         int skipped = 0;
         long i = startIdx;
+        Event scratch = extractEventScratch;
         while (i < endIdx) {
             int pi = findEventPacket(i);
             PacketRef ref = eventRefs[pi];
@@ -1515,8 +1566,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                         localEnd, packetElements, pi, ref.numElements));
                 localEnd = packetElements;
             }
-            for (int j = local; j < localEnd; j++) {
-                Event event = packet.elements(j);
+            int mis = (int) ((ref.firstEventIndex + local - startIdx) % stride);
+            int j = local + (mis == 0 ? 0 : stride - mis);
+            for (; j < localEnd; j += stride) {
+                Event event = packet.elements(scratch, j);
                 if (event == null) {
                     skipped++;
                     continue;
@@ -2181,6 +2234,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long pos0 = position;
         // Approx timestamps from packet table only — do not decompress here (slider/UI race).
         long tRead = System.nanoTime();
+        lastPolarityEventSkip = effectivePolarityEventSkip();
         if (forwards) {
             long start = position;
             long tStart = timestampApproxLong(start);
@@ -2196,9 +2250,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
             }
             profNsFindEnd += System.nanoTime() - tFind;
-            boolean capped = end - start > MAX_EVENTS_PER_READ;
+            long maxSource = maxSourceEventsPerRead();
+            boolean capped = end - start > maxSource;
             if (capped) {
-                end = start + MAX_EVENTS_PER_READ;
+                end = start + maxSource;
                 profCappedSlices++;
             }
             if (start >= end) {
@@ -2219,9 +2274,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             profSlices++;
             profEvents += pkt.getNumEvents();
             profNsRead += System.nanoTime() - tRead;
-            logPlaybackRead("readPacketByTime dt=%d pos %d->%d [%d,%d) t=%d..%d events=%d%s",
-                    dt, pos0, position, start, end, t0, tEnd, pkt.getNumEvents(),
-                    capped ? " capped" : "");
+            logPlaybackRead("readPacketByTime dt=%d pos %d->%d source=%d packed=%d evSkip=%d maxSource=%d t=%d..%d%s",
+                    dt, pos0, position, end - start, pkt.getNumEvents(), lastPolarityEventSkip,
+                    maxSource, t0, tEnd, capped ? " capped" : "");
             return pkt;
         }
         // Backwards: exclusive end is current position; find start with ts >= target.
@@ -2240,9 +2295,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 start--;
             }
         }
-        boolean capped = end - start > MAX_EVENTS_PER_READ;
+        long maxSource = maxSourceEventsPerRead();
+        boolean capped = end - start > maxSource;
         if (capped) {
-            start = end - MAX_EVENTS_PER_READ;
+            start = end - maxSource;
         }
         if (start >= end) {
             throw new EOFException("reached start of file");
@@ -2257,9 +2313,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         collectTypedForWindow(t0, t1, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
-        logPlaybackRead("readPacketByTime dt=%d (back) pos %d->%d [%d,%d) t=%d..%d target=%d events=%d%s",
-                dt, pos0, position, start, end, t0, t1, target, pkt.getNumEvents(),
-                capped ? " capped" : "");
+        logPlaybackRead("readPacketByTime dt=%d (back) pos %d->%d source=%d packed=%d evSkip=%d maxSource=%d t=%d..%d%s",
+                dt, pos0, position, end - start, pkt.getNumEvents(), lastPolarityEventSkip,
+                maxSource, t0, t1, capped ? " capped" : "");
         return pkt;
     }
 

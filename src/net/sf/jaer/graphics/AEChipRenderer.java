@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -1791,10 +1792,11 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     /**
      * True when the ViewLoop should decide skip once per packet (pure DVS and
      * non-frame Davis display). APS frame display uses per-frame skip in
-     * updateFrameBuffer().
+     * updateFrameBuffer(). Playback never skips pixmap frames; ARS thins events
+     * in AEDAT-4 extract instead.
      */
     public boolean isPacketLevelRenderSkipping() {
-        return isAdaptiveRenderSkippingEnabled();
+        return isAdaptiveRenderSkippingEnabled() && !isPlaybackPlayMode();
     }
 
     /**
@@ -1802,6 +1804,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * and render should be skipped for this packet.
      */
     public boolean advanceSkipRenderSlot() {
+        if (isPlaybackPlayMode()) {
+            packetRenderSkipDecision = Boolean.FALSE;
+            return false;
+        }
         final boolean skip = computeAndAdvanceSkipRenderSlot();
         packetRenderSkipDecision = skip;
         return skip;
@@ -1813,10 +1819,18 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @return true to skip rendering this frame
      */
     protected boolean skipFrame() {
+        if (isPlaybackPlayMode()) {
+            return false;
+        }
         if (packetRenderSkipDecision != null) {
             return packetRenderSkipDecision;
         }
         return computeAndAdvanceSkipRenderSlot();
+    }
+
+    private boolean isPlaybackPlayMode() {
+        return chip.getAeViewer() != null
+                && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK;
     }
 
     private boolean computeAndAdvanceSkipRenderSlot() {
@@ -1830,6 +1844,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     
     
     protected boolean skipApsEvent(){
+        if (isPlaybackPlayMode()) {
+            return false;
+        }
         return skipFramesCounter>0;
     }
     
@@ -1842,7 +1859,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (viewer == null || viewer.isPaused()) {
             return;
         }
-        // Reverse playback is for inspection; do not skip packets.
+        // Reverse playback is for inspection; pack every event.
         if (viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK
                 && (viewer.getAePlayer() == null || !viewer.getAePlayer().isPlayingForwards())) {
             skipFrameRenderingNumberCurrent = 0;
@@ -1883,6 +1900,13 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
         skipFrameRenderingNumberCurrent = Math.round(skipFrameRenderingLPFilter.filter(newSkip,
                 (int) (System.nanoTime() / 1000L)));
+        if (log.isLoggable(Level.FINE)
+                && viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                && skipFrameRenderingNumberCurrent != oldSkip) {
+            log.fine(String.format("ARS adapt playback skip %d -> %d (want %d load=%.2f max=%d)",
+                    oldSkip, skipFrameRenderingNumberCurrent, newSkip, loopLoad,
+                    getSkipFrameRenderingNumberMax()));
+        }
     }
     
         /**
