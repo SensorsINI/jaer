@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <updateDescriptor baseUrl="https://github.com/SensorsINI/jaer/releases/latest/download/">
-  <entry targetMediaFileId="38" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_macos_3_3_0.dmg" newVersion="3.3.0" newMediaFileId="38" fileSize="220766343" md5Sum="58fecebdc290ddd2396de91beb34eb73" sha256Sum="0b525e002def7ad72cf1c4ab448ac3251ea54d612951aaccaeaba1589166538a" bundledJre="macos-amd64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
+  <entry targetMediaFileId="38" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_macos_3_4_0.dmg" newVersion="3.4.0" newMediaFileId="38" fileSize="229466247" md5Sum="4ef1f1d5936499820a410ee91a49b946" sha256Sum="bd08c05a48229db6c73e68d0d730090a689601fa8f6c3a8a73b9bd892874f44e" bundledJre="macos-amd64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
-  <entry targetMediaFileId="39" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_macos_aarch64_3_3_0.dmg" newVersion="3.3.0" newMediaFileId="39" fileSize="205357191" md5Sum="0d27f646bff91ef92a347fca1f538783" sha256Sum="3135ffaaff607eeb07e58790435bb9b04a51576cf29029b959710a1865bc20ac" bundledJre="macos-aarch64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
+  <entry targetMediaFileId="39" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_macos_aarch64_3_4_0.dmg" newVersion="3.4.0" newMediaFileId="39" fileSize="214052999" md5Sum="2a0404a212e7f4f950a7d9314dd59a97" sha256Sum="a24bfa4c96d92de9dff03ba1586663d550d91e0585fa160b058943040323a369" bundledJre="macos-aarch64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
-  <entry targetMediaFileId="37" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_unix_3_3_0.sh" newVersion="3.3.0" newMediaFileId="37" fileSize="221402331" md5Sum="2e82afbfb9fc7b003a01137e1b09aa13" sha256Sum="c482fc07420890b42f504702ff9fc712a7352e62b40ad4b4463fc0991d1c750a" bundledJre="linux-amd64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
+  <entry targetMediaFileId="37" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_unix_3_4_0.sh" newVersion="3.4.0" newMediaFileId="37" fileSize="231218209" md5Sum="b878655cf66b99922f34d13e5c197fcc" sha256Sum="c609bb7343f5cff0f400001463ad64e909fb568b19c93ef7b7e874388f27fda7" bundledJre="linux-amd64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
-  <entry targetMediaFileId="26" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_windows-x64_3_3_0.exe" newVersion="3.3.0" newMediaFileId="26" fileSize="215432192" md5Sum="13600f5318231dcb8792d49d3b5cc86b" sha256Sum="0ec734fa4afcddbc4f9708edf4d904bd9fb1bb436863dd9e373dee3ef2a00f60" bundledJre="windows-amd64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
+  <entry targetMediaFileId="26" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_windows-x64_3_4_0.exe" newVersion="3.4.0" newMediaFileId="26" fileSize="223802880" md5Sum="a3fb49a877d3adf07de8e5e664c38fde" sha256Sum="92c4a845505ec4925e69006733e3c93543349587a78bf2f54ed0d448df76d201" bundledJre="windows-amd64-25.0.4.tar.gz" jreMinVersion="25" jreMaxVersion="25" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
 </updateDescriptor>
