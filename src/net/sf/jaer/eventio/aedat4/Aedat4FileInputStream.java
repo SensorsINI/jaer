@@ -162,6 +162,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private long position;
     private long markIn;
     private long markOut = Long.MAX_VALUE;
+    /**
+     * When true, forward playback stops/rewinds at OUT. Cleared by a seek to or
+     * past OUT so the slider can leave the marked region; re-armed by rewind or
+     * when the cursor is again before OUT.
+     */
+    private boolean outLoopArmed = true;
     private boolean repeat;
     private boolean nonMonotonicTimeExceptionsChecked = true;
     private int currentStartTimestamp;
@@ -2181,8 +2187,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         boolean forwards = n > 0;
         ensureReadableOrThrow(forwards);
-        long limitOut = effectiveMarkOut();
-        long limitIn = markIn;
+        long limitOut = forwardReadLimit();
+        long limitIn = 0;
         long pos0 = position;
         if (forwards) {
             long start = position;
@@ -2198,6 +2204,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             collectTypedForWindow(tStart, tEnd, start, end);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
+            notePositionAfterRead();
             logPlaybackRead("readPacketByNumber n=%d pos %d->%d [%d,%d) events=%d",
                     n, pos0, position, start, end, pkt.getNumEvents());
             return pkt;
@@ -2210,6 +2217,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw new EOFException("reached start of file");
         }
         position = start;
+        notePositionAfterRead();
         long t0 = timestampAtLong(start);
         long t1 = timestampAtLong(Math.max(start, end - 1));
         currentStartTimestamp = (int) t0;
@@ -2229,8 +2237,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         boolean forwards = dt > 0;
         ensureReadableOrThrow(forwards);
-        long limitOut = effectiveMarkOut();
-        long limitIn = markIn;
+        long limitOut = forwardReadLimit();
+        long limitIn = 0;
         long pos0 = position;
         // Approx timestamps from packet table only — do not decompress here (slider/UI race).
         long tRead = System.nanoTime();
@@ -2277,6 +2285,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             logPlaybackRead("readPacketByTime dt=%d pos %d->%d source=%d packed=%d evSkip=%d maxSource=%d t=%d..%d%s",
                     dt, pos0, position, end - start, pkt.getNumEvents(), lastPolarityEventSkip,
                     maxSource, t0, tEnd, capped ? " capped" : "");
+            notePositionAfterRead();
             return pkt;
         }
         // Backwards: exclusive end is current position; find start with ts >= target.
@@ -2313,6 +2322,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         collectTypedForWindow(t0, t1, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
+        notePositionAfterRead();
         logPlaybackRead("readPacketByTime dt=%d (back) pos %d->%d source=%d packed=%d evSkip=%d maxSource=%d t=%d..%d%s",
                 dt, pos0, position, end - start, pkt.getNumEvents(), lastPolarityEventSkip,
                 maxSource, t0, t1, capped ? " capped" : "");
@@ -2577,7 +2587,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw new EOFException("AEDAT-4 file has no playable timeline (no events/frames/IMU)");
         }
         if (forwards) {
-            if (position < effectiveMarkOut()) {
+            if (!atOutMarkerOrFileEnd()) {
                 return;
             }
             if (repeat) {
@@ -2586,17 +2596,48 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 } catch (IOException e) {
                     throw new EOFException(e.toString());
                 }
-                if (position >= effectiveMarkOut()) {
+                if (atOutMarkerOrFileEnd()) {
                     throw new EOFException();
                 }
                 return;
             }
             throw new EOFException();
         }
-        if (position > markIn) {
+        if (position > 0) {
             return;
         }
         throw new EOFException("reached start of file");
+    }
+
+    /**
+     * Exclusive end of the next forward packet. IN/OUT only bound playback while
+     * {@link #outLoopArmed} and the cursor is still before OUT. A seek to or past
+     * OUT plays through to the file end so the slider can place new markers.
+     */
+    private long forwardReadLimit() {
+        long out = effectiveMarkOut();
+        if (outLoopArmed && position < out) {
+            return out;
+        }
+        return playableSize();
+    }
+
+    /**
+     * True when the next forward read should rewind (if repeat) or EOF: end of
+     * file, or OUT reached by playback (not by slider seek).
+     */
+    private boolean atOutMarkerOrFileEnd() {
+        if (position >= playableSize()) {
+            return true;
+        }
+        return outLoopArmed && isMarkOutSet() && position >= effectiveMarkOut();
+    }
+
+    /** Re-arm OUT looping once the cursor is again before OUT (e.g. reverse). */
+    private void notePositionAfterRead() {
+        if (position < effectiveMarkOut()) {
+            outLoopArmed = true;
+        }
     }
 
     private long effectiveMarkOut() {
@@ -2759,6 +2800,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         position = markIn;
+        outLoopArmed = true;
         final Marks applied = snapshotMarks();
         support.firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, applied);
         // Do not call setMarks here: AEPlayer has not assigned aeInputStream yet.
@@ -2986,7 +3028,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public synchronized void position(long n) {
         long old = position;
-        position = Math.max(markIn, Math.min(n, effectiveMarkOut()));
+        long nEvents = playableSize();
+        if (n < 0) {
+            n = 0;
+        } else if (n > nEvents) {
+            n = nEvents;
+        }
+        position = n;
+        outLoopArmed = position < effectiveMarkOut();
         // Packet-table approx only — never decompress on slider seek (that hung ViewLoop).
         long t = playableSize() == 0 ? 0
                 : timestampApproxLong(Math.min(Math.max(0, position), playableSize() - 1));
@@ -3012,6 +3061,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public void rewind() throws IOException {
         long old = position;
         position = markIn;
+        outLoopArmed = true;
         frameCursor = 0;
         imuCursor = 0;
         haveEmittedTimestamp = false;
@@ -3031,6 +3081,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long[] oldMarks = new long[]{markIn, markOut};
         markIn = 0;
         markOut = playableSize();
+        outLoopArmed = true;
         markers.clear();
         support.firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, oldMarks, new long[]{markIn, markOut});
     }

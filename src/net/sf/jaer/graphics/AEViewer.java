@@ -8619,7 +8619,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         setMarkOutMI.setAction(aePlayer.markOutAction);
         setMarkOutMI.setText("Set OUT marker");
-        setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
+        setMarkOutMI.setToolTipText("Playback rewinds to IN (or stops) when this mark is reached; dragging the slider past it continues");
         playbackMenu.add(setMarkOutMI);
 
         toggleMarkerMI.setAction(aePlayer.toggleMarkerAction);
