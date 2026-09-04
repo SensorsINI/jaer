@@ -31,9 +31,9 @@ public final class Aedat4PlaybackBench {
                 + " dtUs=" + dtUs);
         long tOpen = System.nanoTime();
         Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip);
-        System.out.printf("open %.0f ms  events=%d  duration=%.3fs  scanTimeslice=%s%n",
+        System.out.printf("open %.0f ms  events=%d  duration=%.3fs  scanPackets=%d/%s%n",
                 (System.nanoTime() - tOpen) * 1e-6, in.size(), in.getDurationUs() * 1e-6,
-                Boolean.toString(in.isScanTimesliceInPacket()));
+                in.getTimesliceScanPacketCount(), Boolean.toString(in.isScanTimesliceInPacket()));
         System.out.println(in.getFileInfo().replace('\n', ' '));
 
         // Warm the packet cache / JIT.

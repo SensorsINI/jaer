@@ -88,17 +88,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** Floor (Hz) so log scale stays defined for quiet bins. */
     private static final double EVENT_RATE_LOG_FLOOR_HZ = 1.0;
     /**
-     * Scan actual event timestamps for timeslices when EVTS packet durations
-     * differ by at least this factor (2 orders of magnitude).
-     */
-    private static final long TIMESLICE_SCAN_DURATION_RATIO = 100;
-    /**
-     * Save As used to write one EVTS packet per 100k events (tens of seconds).
-     * Equal-duration mega-packets never trip {@link #TIMESLICE_SCAN_DURATION_RATIO},
-     * so interpolation attaches APS frames to a later clock than the events.
+     * Scan FlatBuffer timestamps inside an EVTS packet when its table span is
+     * at least this long (Save-As mega-packets of tens of seconds). Event-count
+     * cutoffs (e.g. 16k) fire on normal Prophesee packets (~250k events / tens of ms).
      */
     private static final long TIMESLICE_SCAN_MIN_PACKET_SPAN_US = 500_000L;
-    private static final long TIMESLICE_SCAN_MIN_PACKET_EVENTS = 16_384L;
+    /** Decompressed EVTS payloads kept for start/mid/end of a timeslice. */
+    private static final int EVENT_PACKET_CACHE_SLOTS = 8;
 
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -189,13 +185,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private int imuCursor;
     private boolean loggedImuOffsetFallback;
 
-    /** Last decompressed polarity packet (sequential playback reuse). */
-    private int cachedEventPacketIndex = -1;
-    private ByteBuffer cachedEventFlat;
+    /** Small LRU of decompressed polarity packets (avoids start/end thrash). */
+    private final int[] cachedEventPacketIndex = new int[EVENT_PACKET_CACHE_SLOTS];
+    private final ByteBuffer[] cachedEventFlat = new ByteBuffer[EVENT_PACKET_CACHE_SLOTS];
+    private final int[] cachedEventPacketTick = new int[EVENT_PACKET_CACHE_SLOTS];
+    private int eventPacketCacheClock;
 
     /** Playback bench accumulators ({@link #resetPlaybackProfile()} / {@link #formatPlaybackProfile()}). */
     private long profNsRead, profNsFindEnd, profNsTimestampAt, profNsCollect, profNsExtract, profNsDecompress;
-    private long profEvents, profSlices, profDecompressMisses, profCappedSlices;
+    private long profEvents, profSlices, profDecompressMisses, profCappedSlices, profScanSlices;
 
     /**
      * Log10(rate)/log10(max) per equal-time bin, or {@code null}. Built from the
@@ -203,11 +201,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     private float[] logRelativeEventRateByTime;
     /**
-     * True when EVTS packet durations vary by {@link #TIMESLICE_SCAN_DURATION_RATIO},
-     * a packet is a Save-As mega-packet, or some packets have inverted/zero span —
-     * linear interpolation then mis-slices events versus APS frames.
+     * True when some EVTS packets need FlatBuffer timestamp scans (inverted/zero
+     * span or Save-As mega-packet). Applied per timeslice, not globally.
      */
     private boolean scanTimesliceInPacket;
+    /** Count of {@link #eventRefs} that {@link #packetNeedsTimesliceScan(PacketRef)}. */
+    private int timesliceScanPacketCount;
 
     public Aedat4FileInputStream(File file, AEChip chip) throws IOException {
         this(file, chip, null, null);
@@ -236,6 +235,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         this.file = file;
         this.chip = chip;
         this.requestedEventStreamId = eventStreamId;
+        clearEventPacketCache();
         this.randomAccessFile = new RandomAccessFile(file, "r");
         this.channel = randomAccessFile.getChannel();
         try {
@@ -315,23 +315,29 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return scanTimesliceInPacket;
     }
 
+    /** EVTS packets that need a FlatBuffer timestamp scan if a timeslice hits them. */
+    public int getTimesliceScanPacketCount() {
+        return timesliceScanPacketCount;
+    }
+
     public void resetPlaybackProfile() {
         profNsRead = profNsFindEnd = profNsTimestampAt = profNsCollect = profNsExtract = profNsDecompress = 0;
-        profEvents = profSlices = profDecompressMisses = profCappedSlices = 0;
+        profEvents = profSlices = profDecompressMisses = profCappedSlices = profScanSlices = 0;
     }
 
     public String formatPlaybackProfile() {
         double ms = 1e-6;
         long n = Math.max(1L, profSlices);
         return String.format(
-                "slices=%d events=%d (%.1fk/slice) capped=%d zstdMisses=%d%n"
+                "slices=%d events=%d (%.1fk/slice) capped=%d scanned=%d zstdMisses=%d%n"
                         + "  readPacketByTime  %7.1f ms  (%.2f ms/slice)%n"
                         + "    findEndByTime   %7.1f ms  (%.0f%%)%n"
                         + "    timestampAt     %7.1f ms%n"
                         + "    collectTyped    %7.1f ms%n"
                         + "    extractPolarity %7.1f ms  (%.0f%%)%n"
                         + "    ZSTD+read       %7.1f ms  (included in findEnd/extract on cache miss)",
-                profSlices, profEvents, profEvents / (1000.0 * n), profCappedSlices, profDecompressMisses,
+                profSlices, profEvents, profEvents / (1000.0 * n), profCappedSlices, profScanSlices,
+                profDecompressMisses,
                 profNsRead * ms, profNsRead * ms / n,
                 profNsFindEnd * ms, 100.0 * profNsFindEnd / Math.max(1L, profNsRead),
                 profNsTimestampAt * ms,
@@ -1056,23 +1062,50 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             synthesizeTimelineFromTypedStreams(frames, imus);
         }
         markOut = playableSize();
-        cachedEventPacketIndex = -1;
-        cachedEventFlat = null;
+        clearEventPacketCache();
     }
 
     /**
-     * Prefer packet-table interpolation for timeslices. Scan FlatBuffer timestamps
-     * when packet durations vary by {@link #TIMESLICE_SCAN_DURATION_RATIO}, any
-     * packet spans {@link #TIMESLICE_SCAN_MIN_PACKET_SPAN_US} or has
-     * {@link #TIMESLICE_SCAN_MIN_PACKET_EVENTS} events (Save-As mega-packets),
-     * or some packets have inverted/zero span.
+     * True for inverted/zero-span packets and Save-As mega-packets (long table span).
+     * Interpolation cannot place a 20 ms slice inside those packets.
+     */
+    private static boolean packetNeedsTimesliceScan(PacketRef r) {
+        if (r == null || r.numElements <= 0) {
+            return false;
+        }
+        long span = r.unixEnd - r.unixStart;
+        return span <= 0 || span >= TIMESLICE_SCAN_MIN_PACKET_SPAN_US;
+    }
+
+    private boolean eventRangeNeedsTimesliceScan(long start, long exclusiveEnd) {
+        if (exclusiveEnd <= start || eventRefs.length == 0) {
+            return false;
+        }
+        int p0 = findEventPacket(start);
+        int p1 = findEventPacket(exclusiveEnd - 1);
+        if (p1 < p0) {
+            int tmp = p0;
+            p0 = p1;
+            p1 = tmp;
+        }
+        for (int p = p0; p <= p1; p++) {
+            if (packetNeedsTimesliceScan(eventRefs[p])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Packet-table interpolation for timeslices. Scan is per slice, only when
+     * the window intersects inverted/zero-span or mega-span packets.
      */
     private void chooseTimesliceEstimator() {
         scanTimesliceInPacket = false;
+        timesliceScanPacketCount = 0;
         if (eventRefs.length == 0) {
             return;
         }
-        long minSpan = Long.MAX_VALUE;
         long maxSpan = 0;
         long maxElements = 0;
         int inverted = 0;
@@ -1083,31 +1116,23 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (r.numElements > maxElements) {
                 maxElements = r.numElements;
             }
+            if (packetNeedsTimesliceScan(r)) {
+                timesliceScanPacketCount++;
+            }
             long span = r.unixEnd - r.unixStart;
             if (span <= 0) {
                 inverted++;
                 continue;
             }
-            if (span < minSpan) {
-                minSpan = span;
-            }
             if (span > maxSpan) {
                 maxSpan = span;
             }
         }
-        long ratio = 0;
-        boolean mega = maxSpan >= TIMESLICE_SCAN_MIN_PACKET_SPAN_US
-                || maxElements >= TIMESLICE_SCAN_MIN_PACKET_EVENTS;
-        if (inverted > 0 || mega) {
-            scanTimesliceInPacket = true;
-        } else if (minSpan > 0 && minSpan != Long.MAX_VALUE) {
-            ratio = maxSpan / minSpan;
-            scanTimesliceInPacket = ratio >= TIMESLICE_SCAN_DURATION_RATIO;
-        }
+        scanTimesliceInPacket = timesliceScanPacketCount > 0;
         if (scanTimesliceInPacket) {
             log.info(String.format(
-                    "AEDAT-4 timeslice: scanning event timestamps (packet duration ratio %s, inverted/zero-span packets=%d, maxSpan=%d us, maxEvents=%d)",
-                    ratio > 0 ? Long.toString(ratio) : "n/a", inverted, maxSpan, maxElements));
+                    "AEDAT-4 timeslice: %d/%d EVTS packets need timestamp scan when hit (inverted/zero-span=%d, maxSpan=%d us, maxEvents=%d)",
+                    timesliceScanPacketCount, eventRefs.length, inverted, maxSpan, maxElements));
         }
     }
 
@@ -1410,17 +1435,48 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return Math.max(0, Math.min(eventRefs.length - 1, lo));
     }
 
+    private void clearEventPacketCache() {
+        Arrays.fill(cachedEventPacketIndex, -1);
+        Arrays.fill(cachedEventFlat, null);
+        Arrays.fill(cachedEventPacketTick, 0);
+        eventPacketCacheClock = 0;
+    }
+
     private EventPacket eventPacketAt(int packetIndex) throws IOException {
-        if (packetIndex != cachedEventPacketIndex || cachedEventFlat == null) {
+        int hit = -1;
+        int empty = -1;
+        int lru = 0;
+        int lruTick = Integer.MAX_VALUE;
+        for (int s = 0; s < EVENT_PACKET_CACHE_SLOTS; s++) {
+            if (cachedEventPacketIndex[s] == packetIndex && cachedEventFlat[s] != null) {
+                hit = s;
+                break;
+            }
+            if (cachedEventPacketIndex[s] < 0 && empty < 0) {
+                empty = s;
+            }
+            if (cachedEventPacketTick[s] < lruTick) {
+                lruTick = cachedEventPacketTick[s];
+                lru = s;
+            }
+        }
+        int slot;
+        if (hit >= 0) {
+            slot = hit;
+        } else {
+            slot = empty >= 0 ? empty : lru;
             long t0 = System.nanoTime();
-            cachedEventFlat = readPayload(eventRefs[packetIndex]);
+            cachedEventFlat[slot] = readPayload(eventRefs[packetIndex]);
             profNsDecompress += System.nanoTime() - t0;
             profDecompressMisses++;
-            cachedEventPacketIndex = packetIndex;
-            // Verbose playback trace (re-enable for decode hangs):
-            // log.fine(String.format("AEDAT-4 decompress EVTS[%d] payload=%d B", packetIndex, eventRefs[packetIndex].payloadSize));
+            cachedEventPacketIndex[slot] = packetIndex;
         }
-        ByteBuffer view = cachedEventFlat.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        if (eventPacketCacheClock == Integer.MAX_VALUE) {
+            Arrays.fill(cachedEventPacketTick, 0);
+            eventPacketCacheClock = 0;
+        }
+        cachedEventPacketTick[slot] = ++eventPacketCacheClock;
+        ByteBuffer view = cachedEventFlat[slot].duplicate().order(ByteOrder.LITTLE_ENDIAN);
         view.rewind();
         return EventPacket.getSizePrefixedRootAsEventPacket(view);
     }
@@ -1876,8 +1932,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         randomAccessFile = new RandomAccessFile(file, "r");
         channel = randomAccessFile.getChannel();
-        cachedEventPacketIndex = -1;
-        cachedEventFlat = null;
+        clearEventPacketCache();
     }
 
     private static ByteBuffer readSizePrefixed(FileChannel channel) throws IOException {
@@ -1957,8 +2012,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             frameRefs = readRefs(in);
             imuRefs = readRefs(in);
             markOut = playableSize();
-            cachedEventPacketIndex = -1;
-            cachedEventFlat = null;
+            clearEventPacketCache();
             log.info(String.format(
                     "Loaded sparse AEDAT-4 index from %s in %d ms (stream %d: %,d events in %d packets, %,d frames, %,d IMU, %.1f KB)",
                     cache.getName(), System.currentTimeMillis() - t0, eventStreamId,
@@ -2151,9 +2205,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 throw new EOFException();
             }
             position = end;
-            long t0 = timestampAtLong(start);
+            boolean exactWindow = eventRangeNeedsTimesliceScan(start, end);
+            long t0 = exactWindow ? timestampAtLong(start) : timestampApproxLong(start);
             currentStartTimestamp = (int) t0;
-            long tEnd = timestampAtLong(Math.max(start, end - 1));
+            long tEnd = exactWindow
+                    ? timestampAtLong(Math.max(start, end - 1))
+                    : timestampApproxLong(Math.max(start, end - 1));
             long tCol = System.nanoTime();
             collectTypedForWindow(t0, tEnd, start, end);
             profNsCollect += System.nanoTime() - tCol;
@@ -2191,9 +2248,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw new EOFException("reached start of file");
         }
         position = start;
-        long t0 = timestampAtLong(start);
+        boolean exactWindow = eventRangeNeedsTimesliceScan(start, end);
+        long t0 = exactWindow ? timestampAtLong(start) : timestampApproxLong(start);
         currentStartTimestamp = (int) t0;
-        long t1 = timestampAtLong(Math.max(start, end - 1));
+        long t1 = exactWindow
+                ? timestampAtLong(Math.max(start, end - 1))
+                : timestampApproxLong(Math.max(start, end - 1));
         collectTypedForWindow(t0, t1, start, end);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
@@ -2206,13 +2266,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /**
      * Exclusive end index for events with relative timestamp &lt;= {@code target},
      * at least {@code start + 1}, capped by {@code limit}. Packet-table
-     * interpolation unless {@link #scanTimesliceInPacket}.
+     * interpolation unless this window hits inverted/zero-span or mega-span packets.
      */
     private long findEndIndexByTime(long start, long target, long limit) throws IOException {
         if (start >= limit) {
             return start;
         }
-        if (scanTimesliceInPacket) {
+        if (findEndWouldHitScanPacket(start, target, limit)) {
+            profScanSlices++;
             long dt = target - timestampApproxLong(start);
             return scanEndIndexByActualTime(start, dt, limit);
         }
@@ -2244,6 +2305,34 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return Math.max(start + 1, Math.min(pktEnd, estExclusive));
         }
         return Math.min(limit, end);
+    }
+
+    /** True if packet-table walk from {@code start} to {@code target} visits a scan packet. */
+    private boolean findEndWouldHitScanPacket(long start, long target, long limit) {
+        if (!scanTimesliceInPacket || eventRefs.length == 0) {
+            return false;
+        }
+        int pi = findEventPacket(start);
+        while (pi < eventRefs.length) {
+            PacketRef ref = eventRefs[pi];
+            long pktEnd = Math.min(limit, ref.firstEventIndex + ref.numElements);
+            if (pktEnd <= start) {
+                pi++;
+                continue;
+            }
+            if (packetNeedsTimesliceScan(ref)) {
+                return true;
+            }
+            if (ref.unixEnd <= target) {
+                if (pktEnd >= limit) {
+                    return false;
+                }
+                pi++;
+                continue;
+            }
+            return false;
+        }
+        return false;
     }
 
     /**
@@ -2303,7 +2392,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (end <= limitIn) {
             return limitIn;
         }
-        if (scanTimesliceInPacket) {
+        if (findStartWouldHitScanPacket(end, target, limitIn)) {
             long dt = target - timestampApproxLong(Math.max(limitIn, end - 1));
             return scanStartIndexByActualTime(end, dt, limitIn);
         }
@@ -2341,6 +2430,40 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return Math.max(segStart, Math.min(segEnd - 1, estInclusive));
         }
         return Math.max(limitIn, start);
+    }
+
+    /** True if backward packet-table walk from {@code end} to {@code target} visits a scan packet. */
+    private boolean findStartWouldHitScanPacket(long end, long target, long limitIn) {
+        if (!scanTimesliceInPacket || eventRefs.length == 0 || end <= limitIn) {
+            return false;
+        }
+        int pi = findEventPacket(end - 1);
+        while (pi >= 0) {
+            PacketRef ref = eventRefs[pi];
+            long pktStart = ref.firstEventIndex;
+            long pktEnd = pktStart + ref.numElements;
+            long segStart = Math.max(limitIn, pktStart);
+            long segEnd = Math.min(end, pktEnd);
+            if (segStart >= segEnd) {
+                pi--;
+                continue;
+            }
+            if (packetNeedsTimesliceScan(ref)) {
+                return true;
+            }
+            if (ref.unixEnd < target) {
+                return false;
+            }
+            if (ref.unixStart >= target) {
+                if (segStart <= limitIn) {
+                    return false;
+                }
+                pi--;
+                continue;
+            }
+            return false;
+        }
+        return false;
     }
 
     /**
@@ -2535,8 +2658,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         } catch (Exception e) {
             log.warning("Could not persist AEDAT-4 marks: " + e);
         }
-        cachedEventPacketIndex = -1;
-        cachedEventFlat = null;
+        clearEventPacketCache();
         if (channel != null) {
             channel.close();
         }
