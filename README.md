@@ -4,35 +4,11 @@
 
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
-![jAER supported cameras](/images/supported-cameras-annotated.jpg)
-
 **Why use proprietary vendor camera software?** jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
 
-(You get plug-and-play, "it just works" for all the cameras above.) 
+(jAER gives you plug-and-play, "it just works" for the most popular commercial event cameras.)
 
-<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
-
-It [efficiently](docs/README-jaer3.md) and ergonomically
- * captures USB event camera output from [most devices](#device-hardware-support), 
- * denoises -- with fast and accurate algorithms
- * displays -- with a variety of color and 2D/3D options
- * records -- in a high-speed compressed format (AEDAT-4)
- * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
- * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
-
-Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote** to
- * your favorite DNN over **super efficient shared memory** ([`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
- * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java)); on Linux Zoom/Google Meet.
- * or to a robot as a **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** publisher.
-
-You can also
-* [Export your data](docs/README-file-formats.md) in CSV, hdf5, or save data to quick compressed AEDAT-4 with **File → Save As...** \
-* Create MP4 videos with **File → Export video...** 
-
-![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
-
-*Interacting with jAER*
-
+<img width="720" height="480" alt="jaer3" src="https://github.com/user-attachments/assets/aec58330-25d1-4b8a-b8bd-5b841be8a2c5" />
 
 ## Installation
 
@@ -57,18 +33,40 @@ How they are packed and shipped: [`docs/README-sample-data.md`](docs/README-samp
 * install4j installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. A git clone needs [JDK 25+](https://adoptium.net/) to compile (`javac` target 25) and to `ant run`. See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
 * you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 
+## Features
 
-## Quick start sample data
+<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
 
-* The installer can download curated files into `sampleData/`. **Help → Sample data → Download jAER sample data** does the same. File list: [`sampleData/README.md`](sampleData/README.md). Packing: [`docs/README-sample-data.md`](docs/README-sample-data.md).
-* Download [DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
-drop them onto the jAER window to play them with the *DVS128* *AEChip*.
-* Download [DAVIS346 sample data files from the DAVIS24 dataset](https://sites.google.com/view/davis24-davis-sample-data/home) and
-drop them onto the jAER window to play them with the *Davis346blue* *AEChip*.
-* See the *Help/Sample Data* menu in jAER for more sample data.
-* See [`docs/README-file-formats.md`](docs/README-file-formats.md) for detailed information about supported file formats in jAER.
+
+
+jAER [efficiently](docs/README-jaer3.md) and ergonomically
+ * captures USB event camera output from [most devices](#device-hardware-support), 
+ * denoises -- with fast and accurate algorithms
+ * displays -- with a variety of color and 2D/3D options
+ * records -- in a high-speed compressed format (AEDAT-4)
+ * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
+ * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
+
+Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote** to
+ * your favorite DNN over **super efficient shared memory** ([`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
+ * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java)); on Linux Zoom/Google Meet.
+ * or to a robot as a **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** publisher.
+
+You can also
+* [Export your data](docs/README-file-formats.md) in CSV, hdf5, or save data to quick compressed AEDAT-4 with **File → Save As...** \
+* Create MP4 videos with **File → Export video...** 
+
+![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
+
+*Interacting with jAER*
+
+
+
+
 
 ## Device hardware support
+
+![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
 Live USB cameras selectable in the AEViewer **AEChip** menu (default list and related variants). Live USB operation is verified on **Windows, macOS (including Apple Silicon), and Linux**. File playback for many more sensors is listed in [`docs/README-file-formats.md`](docs/README-file-formats.md). Status is the chip’s `@DevelopmentStatus` (`Stable` or `Experimental`).
 
@@ -95,7 +93,16 @@ USB enumeration, the Interface menu, EDT rules, and per-camera libusb quirks: [`
 
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 
-## Citation and credits
+## Quick start sample data
+
+* The installer can download curated files into `sampleData/`. **Help → Sample data → Download jAER sample data** does the same. File list: [`sampleData/README.md`](sampleData/README.md). Packing: [`docs/README-sample-data.md`](docs/README-sample-data.md).
+* Download [DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
+drop them onto the jAER window to play them with the *DVS128* *AEChip*.
+* Download [DAVIS346 sample data files from the DAVIS24 dataset](https://sites.google.com/view/davis24-davis-sample-data/home) and
+drop them onto the jAER window to play them with the *Davis346blue* *AEChip*.
+* See the *Help/Sample Data* menu in jAER for more sample data.
+* See [`docs/README-file-formats.md`](docs/README-file-formats.md) for detailed information about supported file formats in jAER.
+* ## Citation and credits
 
 jAER was developed since 2007 by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch) to support event sensors and robot demonstrators.
 
