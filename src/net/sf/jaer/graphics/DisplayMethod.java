@@ -49,6 +49,8 @@ public abstract class DisplayMethod implements PropertyChangeListener {
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
+    /** If &gt; 0, overlay expires at this wall time instead of the default wrap-scaled duration. */
+    private long statusChangeUntilMillis = 0;
     private int statusChangeDisplayTimeMillis;
     /**
      * Provides PropertyChangeSupport for all DisplayMethods
@@ -199,12 +201,12 @@ public abstract class DisplayMethod implements PropertyChangeListener {
         }
         long now = System.currentTimeMillis();
         final int WRAP_LEN = 40;
-        if ((now - statusChangeStartTimeMillis) > getStatusChangeDisplayTimeMillis() * (1 + (statusChangeString.length() / WRAP_LEN))) {
+        if (isActionTextExpired(now, WRAP_LEN)) {
             statusChangeString = null;
             return;
         }
         String s = statusChangeString;
-        if (s.length() > WRAP_LEN) {
+        if (s.length() > WRAP_LEN && s.indexOf('\n') < 0) {
             s = WordUtils.wrap(s, WRAP_LEN);
         }
         String[] ss = s.split("\n");
@@ -233,14 +235,21 @@ public abstract class DisplayMethod implements PropertyChangeListener {
         if (statusChangeString == null || statusChangeDisplayTimeMillis <= 0) {
             return false;
         }
-        final int WRAP_LEN = 40;
-        long now = System.currentTimeMillis();
-        return (now - statusChangeStartTimeMillis) <= getStatusChangeDisplayTimeMillis() * (1 + (statusChangeString.length() / WRAP_LEN));
+        return !isActionTextExpired(System.currentTimeMillis(), 40);
+    }
+
+    private boolean isActionTextExpired(long now, int wrapLen) {
+        if (statusChangeUntilMillis > 0) {
+            return now > statusChangeUntilMillis;
+        }
+        return (now - statusChangeStartTimeMillis) > getStatusChangeDisplayTimeMillis()
+                * (1 + (statusChangeString.length() / wrapLen));
     }
 
     /** Drops the centered action overlay immediately. */
     public void clearActionText() {
         statusChangeString = null;
+        statusChangeUntilMillis = 0;
     }
 
     /**
@@ -250,9 +259,20 @@ public abstract class DisplayMethod implements PropertyChangeListener {
      * @param text
      */
     public void showActionText(String text) {
-//        if(statusChangeString!=null) text=statusChangeString+", "+text;
+        showActionText(text, 0);
+    }
+
+    /**
+     * Shows centered overlay text.
+     *
+     * @param text overlay
+     * @param durationMs if &gt; 0, keep the overlay for this many milliseconds
+     * (no wrap-length scaling); otherwise the default short duration
+     */
+    public void showActionText(String text, int durationMs) {
         statusChangeStartTimeMillis = System.currentTimeMillis();
         statusChangeString = text;
+        statusChangeUntilMillis = durationMs > 0 ? statusChangeStartTimeMillis + durationMs : 0;
     }
 
     /**

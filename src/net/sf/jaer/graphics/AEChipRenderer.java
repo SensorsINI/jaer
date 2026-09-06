@@ -956,24 +956,13 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * Shows the color mode and its properties for a short time. Intended for
-     * use after opening a new file and playing it, to remind users about the
-     * current mode.
+     * After opening a recording, show the Tab View/Playback overlay
+     * (color and accumulation method, plus c / t accelerators).
      */
     public void showRenderingModeTextOnAeViewer() {
-        if (chip.getAeViewer() != null) {
-            String s;
-            if (isSpaceTimeRollingDisplayActive()) {
-                s = SpaceTimeRollingEventDisplayMethod.formatStatusOverlay((AEChip) chip, getFadingOrSlidingFrames());
-            } else {
-                s = String.format("Color Mode: %s", colorMode.toString());
-                if (fadingEnabled) {
-                    s += "; " + getFadingDescription();
-                } else if (slidingWindowEnabled) {
-                    s += "; " + getSlidingWindowDescription();
-                }
-            }
-            chip.getAeViewer().showActionText(s);
+        AEViewer viewer = chip.getAeViewer();
+        if (viewer != null) {
+            viewer.showViewAndPlaybackOverlay(AEViewer.FILE_OPEN_VIEW_PLAYBACK_OVERLAY_MS);
         }
     }
 

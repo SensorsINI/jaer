@@ -560,6 +560,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private final HashMap<AbstractAEPlayer.PlaybackMode, JRadioButtonMenuItem> playbackModeMenuItems = new HashMap<>();
     /** True while Tab View/Playback overlay is the current action text. */
     private boolean tabOverlayVisible;
+    /** Overlay duration after a recording starts playing (Tab summary). */
+    static final int FILE_OPEN_VIEW_PLAYBACK_OVERLAY_MS = 7000;
     /** Nonmodal Help → Quick help / Shortcuts window (F1). */
     private AEViewerQuickHelpFrame quickHelpFrame;
 
@@ -6197,7 +6199,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         updatePlaybackModeMenuSelection();
 
         showRenderingModeMI.setText("Show View and Playback modes");
-        showRenderingModeMI.setToolTipText("Momentarily overlay the current display method, color/contrast, and playback accumulation method");
+        showRenderingModeMI.setToolTipText("Overlay color mode and event accumulation (Tab). c / t cycle them; f / s faster/slower.");
     }
 
     private void addPlaybackModeMenuItem(ButtonGroup group, AbstractAEPlayer.PlaybackMode mode, String label, String tip) {
@@ -6229,44 +6231,39 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Current View (display / color / accumulate) and Playback (play mode + EventExposureMode).
+     * Short Tab overlay: color mode, event accumulation mode, and key hints.
      */
     private String formatViewAndPlaybackStatus() {
-        StringBuilder sb = new StringBuilder(128);
-        sb.append("View: ");
-        if (chipCanvas != null && chipCanvas.getDisplayMethod() != null) {
-            sb.append(chipCanvas.getDisplayMethod().getClass().getSimpleName());
-        }
+        StringBuilder sb = new StringBuilder(160);
         AEChipRenderer renderer = getRenderer();
+        sb.append("Color Mode: ");
         if (renderer != null) {
-            sb.append('\n').append(renderer.getColorMode().name());
-            sb.append(" FS=").append(renderer.getColorScale());
-            sb.append(" accumulate=").append(renderer.isAccumulateEnabled());
-            if (renderer.isFadingEnabled()) {
-                sb.append(" fading");
-            }
-            if (renderer.isSlidingWindowEnabled()) {
-                sb.append(" sliding");
-            }
+            sb.append(renderer.getColorMode().name());
         }
-        sb.append("\nPlayback: ").append(getPlayMode());
+        sb.append("\nEvent Accumulation Mode: ");
         AbstractAEPlayer player = getAePlayer();
         if (player != null) {
-            sb.append("  ").append(player.getPlaybackMode());
             switch (player.getPlaybackMode()) {
                 case FixedTimeSlice:
-                    sb.append(String.format("  %ss", new EngineeringFormat().format(player.getTimesliceUs() * 1e-6f)));
+                    sb.append("CountDuration");
                     break;
                 case FixedPacketSize:
-                    sb.append(String.format("  %d events", player.getPacketSizeEvents()));
+                    sb.append("ConstantCount");
                     break;
                 case AreaEventCount:
-                    sb.append(String.format("  %d areas, %d ev/area", player.getNumAreas(), player.getAreaEventCount()));
+                    sb.append("AreaEventCount");
+                    break;
+                case RealTime:
+                    sb.append("RealTime");
                     break;
                 default:
+                    sb.append(player.getPlaybackMode());
                     break;
             }
         }
+        sb.append("\nc cycles color, t cycles accumulation");
+        sb.append("\nf/s: faster/slower");
+        sb.append("\nSee View/Playback menus");
         return sb.toString();
     }
 
@@ -13264,11 +13261,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_cyclePreviousColorRenderingMethodMenuItemActionPerformed
 
     private void showViewAndPlaybackOverlay() {
+        showViewAndPlaybackOverlay(0);
+    }
+
+    /**
+     * Centered Tab View/Playback overlay. Duration 0 uses the default short
+     * action-text time; {@link #FILE_OPEN_VIEW_PLAYBACK_OVERLAY_MS} after opening a file.
+     */
+    void showViewAndPlaybackOverlay(int durationMs) {
         if (chip == null || chip.getCanvas() == null || chip.getCanvas().getDisplayMethod() == null) {
             return;
         }
         DisplayMethod dm = chip.getCanvas().getDisplayMethod();
-        if (tabOverlayVisible && dm.isActionTextShowing()) {
+        if (durationMs <= 0 && tabOverlayVisible && dm.isActionTextShowing()) {
             dm.clearActionText();
             tabOverlayVisible = false;
             chip.getCanvas().repaint();
@@ -13276,7 +13281,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         String s = formatViewAndPlaybackStatus();
         log.info(s.replace('\n', ' '));
-        dm.showActionText(s);
+        dm.showActionText(s, durationMs);
         chip.getCanvas().repaint();
         tabOverlayVisible = true;
     }
