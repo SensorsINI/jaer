@@ -4,7 +4,8 @@
 
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
-**Why use proprietary vendor camera software?** jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
+**Why use proprietary vendor camera software?** jAER is the grandparent of all event camera software, developed by the lab that [invented the **DVS** event camera](https://patents.google.com/patent/US7728269B2/en) and [the **HVS** events+frames camera](https://patents.google.com/patent/WO2013092666A1/en). 
+jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). 
 
 (jAER gives you plug-and-play, "it just works" for the most popular commercial event cameras.)
 
@@ -18,28 +19,20 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
  * **Linux:** Run the installer with `sh <installer>.sh`. Then you can run *jaer* from the installation directory or GNOME menu. Official apt is not provided (USB cameras need an unsandboxed install).
 
- * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*.
+ * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. You might need to turn off the new (annoying) *Smart Ru*n Windows security feature.
 
  * **macOS:** See [opening unsigned dmg on macOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend installing to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present.
 
 Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates… 
 
-Optional **sample recordings** are not in the basic installer. The Welcome screen offers a download
-(`jaer-sample-data.zip` from the GitHub Latest release) when `sampleData/` has no recordings.
-File → Open and **Help → Sample data → Download jAER sample data** use the same zip.
-What the files are: [`sampleData/README.md`](sampleData/README.md).
-How they are packed and shipped: [`docs/README-sample-data.md`](docs/README-sample-data.md). 
+Optional **[sample recordings]](sampleData/README.md)** are not in the basic installer. The Welcome screen offers a download
+(`jaer-sample-data.zip` from the GitHub Latest release), or you can File → Open and **Help → Sample data → Download jAER sample data**.
 
-* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. A git clone needs [JDK 25+](https://adoptium.net/) to compile (`javac` target 25) and to `ant run`. See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
-* you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
+The *install4j* installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. 
 
 ## Features
 
-<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), and daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
-
-
-
-jAER [efficiently](docs/README-jaer3.md) and ergonomically
+<b>jAER accumulates 20 years of hands-on experience with event sensors,</b> spanning the first inventions of [practical event sensors](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears), daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). It [efficiently](docs/README-jaer3.md)
  * captures USB event camera output from [most devices](#device-hardware-support), 
  * denoises -- with fast and accurate algorithms
  * displays -- with a variety of color and 2D/3D options
@@ -59,10 +52,6 @@ You can also
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
 *Interacting with jAER*
-
-
-
-
 
 ## Device hardware support
 
@@ -158,7 +147,8 @@ jAER was also used to develop many event camera algorithms, including:
 
 ## Developing with jAER
 
-To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing).
+A git clone needs [JDK 25+](https://adoptium.net/) to compile (`javac` target 25) and [Apache ant](https://ant.apache.org/bindownload.cgi) to build.
+* you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 
 ### Developing in an LLM AI client (Cursor, VS Code, …)
 
