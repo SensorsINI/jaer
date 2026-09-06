@@ -87,7 +87,8 @@ TensorFlow for MLPNoiseFilter (two layers):
   lib/; install4j now deletes those leftovers after InstallFiles. Until then, delete
   lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
 - Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/ (tmp alone can be hundreds of MB
-  of local scratch and must not ship in installers).
+  of local scratch and must not ship in installers). Repo-root `*.webp` (e.g. `jaer3.webp`)
+  is excluded via `excludeSuffixes` plus an explicit `jaer3.webp` location.
 - Sample recordings: see [`README-sample-data.md`](README-sample-data.md). `sampleData/` is excluded from media except `README.md` and `SIZE.txt`.
 - OpenCV: Ivy keeps the openpnp fat jar (`opencv-4.8.1-0.jar`, ~102MB, all OS natives) in
   `lib/` for compile and `ant run`. `ant release` runs `split-opencv-natives` and each

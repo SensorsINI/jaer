@@ -179,6 +179,7 @@ public class JAERViewer {
         SwingUtilities.invokeLater(new RunningThread());
         StartupProfiler.mark("JAERViewer ctor: queued RunningThread");
 
+        net.sf.jaer.util.Install4jFileOpen.attach(this);
         USBRebindTester.start(this);
 
         markViewerRunning();
@@ -1325,6 +1326,7 @@ public class JAERViewer {
         }
         log.info("jAERViewer starting up");
         StartupProfiler.mark("after Logger init / splash");
+        net.sf.jaer.util.Install4jFileOpen.register();
         if (!confirmStartIfPossiblyAlreadyRunning()) {
             System.exit(0);
         }
@@ -1369,35 +1371,10 @@ public class JAERViewer {
                 return;
             }
             log.info("starting with file=" + f.getAbsolutePath() + " in working directory=" + System.getProperty("user.dir"));
-            try {
-                // Windows file association / double-click passes the path as argv[0].
-                // AEViewer registers itself in JAERViewer before setAeChipClass finishes,
-                // so waiting only for getNumViewers()>0 races and startPlayback hits a null chip.
-                final JAERViewer jv = new JAERViewer();
-                final AEViewer ready = waitForReadyViewer(jv, 60_000L);
-                if (ready == null || jv.getSyncPlayer() == null) {
-                    throw new IllegalStateException(
-                            "Timed out waiting for AEViewer chip to initialize before opening "
-                            + f.getAbsolutePath());
-                }
-                // File open shows Swing dialogs and may switch AEChip; run on EDT.
-                SwingUtilities.invokeAndWait(() -> {
-                    try {
-                        jv.getSyncPlayer().startPlayback(f);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            } catch (Exception e) {
-                Throwable shown = e;
-                while ((shown instanceof java.lang.reflect.InvocationTargetException
-                        || shown instanceof RuntimeException)
-                        && shown.getCause() != null && shown.getCause() != shown) {
-                    shown = shown.getCause();
-                }
-                log.log(Level.SEVERE, "Failed to open launch file " + f, shown);
-                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + shown);
-            }
+            // Windows file association / double-click passes the path as argv[0].
+            // AEViewer registers itself in JAERViewer before setAeChipClass finishes,
+            // so waiting only for getNumViewers()>0 races and startPlayback hits a null chip.
+            net.sf.jaer.util.Install4jFileOpen.openOnViewer(new JAERViewer(), f);
         } else {
             log.info("starting with no file arguments in working directory=" + System.getProperty("user.dir"));
             StartupProfiler.mark("queue JAERViewer on EDT");
@@ -1422,7 +1399,7 @@ public class JAERViewer {
      * @param jv top-level viewer manager
      * @param timeoutMs max wait; return null on timeout
      */
-    static AEViewer waitForReadyViewer(JAERViewer jv, long timeoutMs) throws InterruptedException {
+    public static AEViewer waitForReadyViewer(JAERViewer jv, long timeoutMs) throws InterruptedException {
         final long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMs);
         while (System.currentTimeMillis() <= deadline) {
             if (jv.getNumViewers() > 0) {

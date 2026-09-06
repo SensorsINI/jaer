@@ -2,7 +2,7 @@
 <install4j version="13.0.1" transformSequenceNumber="13">
   <directoryPresets config="../images/800w" />
   <!-- shrinkRuntime=false: skip "Shrinking runtime" (unused i4jruntime classes) on every media. Saves minutes; installer is a few MB larger. -->
-  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="false" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.4.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
+  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="false" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.4.1" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
@@ -40,7 +40,7 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore">
+      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.webp,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore">
         <exclude>
           <!-- Secrets / gitignored credentials. file=".." packs the repo root; a missing
                exclude here ships Dropbox secrets in every local ant release. CI is safer
@@ -182,6 +182,8 @@
           <entry location="lib/test-interface-1.0.jar" />
           <!-- Recordings stay out of media; README + SIZE are fileEntries below. -->
           <entry location="sampleData" />
+          <!-- Root demo clips (e.g. jaer3.webp). *.webp is also in excludeSuffixes. -->
+          <entry location="jaer3.webp" />
         </exclude>
       </dirEntry>
       <!-- Single SplashScreen.png in the tree (install4j keys on destination name). 800w
@@ -199,7 +201,7 @@
   </files>
   <launchers>
     <launcher name="jaer" id="25">
-      <executable name="jaer" iconSet="true" iconFile="./jaer.ico" executableMode="gui">
+      <executable name="jaer" iconSet="true" iconFile="./jaer.ico" executableMode="gui" singleInstance="true">
         <versionInfo fileDescription="jAER event sensor application" />
       </executable>
       <!-- Native splash: not java.awt.SplashScreen. writeMessage() updates statusLine
@@ -227,6 +229,13 @@
         <file path="../images/256h/SplashScreen.png" />
         <file path="../images/1024w/SplashScreen.png" />
       </iconImageFiles>
+      <!-- macOS CFBundleDocumentTypes (compile-time; cannot be optional without breaking the signed bundle). -->
+      <macStaticAssociations>
+        <fileAssociation extension="aedat" description="AEDAT event recording" role="editor" handlerRank="default" />
+        <fileAssociation extension="aedat2" description="AEDAT-2 event recording" role="editor" handlerRank="default" />
+        <fileAssociation extension="aedatz" description="Compressed AEDAT event recording" role="editor" handlerRank="default" />
+        <fileAssociation extension="aedat4" description="AEDAT-4 event recording" role="editor" handlerRank="default" />
+      </macStaticAssociations>
     </launcher>
   </launchers>
   <installerGui autoUpdateDescriptorUrl="https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml">
@@ -369,6 +378,27 @@ return !has;</visibilityScript>
                   <propertyName>allowSpacesOnUnix</propertyName>
                   <propertyName>validationScript</propertyName>
                   <propertyName>standardValidation</propertyName>
+                </externalParametrizationPropertyNames>
+              </formComponent>
+            </formComponents>
+          </screen>
+          <!-- Windows/Linux: user can uncheck types. macOS associations are in the launcher Info.plist (always). -->
+          <screen id="9300" beanClass="com.install4j.runtime.beans.screens.FileAssociationsScreen" rollbackBarrierExitCode="0">
+            <condition>!context.getBooleanVariable("sys.streamlinedInstallation") &amp;&amp; !Util.isMacOS()</condition>
+            <formComponents>
+              <formComponent id="9301" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent">
+                <serializedBean>
+                  <property name="labelText" type="string">${i18n:SelectAssociationsLabel}</property>
+                </serializedBean>
+              </formComponent>
+              <formComponent id="9302" beanClass="com.install4j.runtime.beans.formcomponents.FileAssociationsComponent" useExternalParametrization="true" externalParametrizationName="File Associations" externalParametrizationMode="include">
+                <serializedBean>
+                  <property name="fillVertical" type="boolean" value="true" />
+                  <property name="showSelectionButtons" type="boolean" value="false" />
+                </serializedBean>
+                <externalParametrizationPropertyNames>
+                  <propertyName>showSelectionButtons</propertyName>
+                  <propertyName>selectionButtonPosition</propertyName>
                 </externalParametrizationPropertyNames>
               </formComponent>
             </formComponents>
@@ -736,6 +766,27 @@ return true;
               <action id="19" beanClass="com.install4j.runtime.beans.actions.desktop.RegisterAddRemoveAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
                 <serializedBean>
                   <property name="itemName" type="string">${compiler:sys.fullName} ${compiler:sys.version}</property>
+                </serializedBean>
+              </action>
+              <action name="AEDAT files" id="9310" beanClass="com.install4j.runtime.beans.actions.desktop.CreateFileAssociationAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
+                <serializedBean>
+                  <property name="description" type="string">AEDAT event recordings (.aedat, .aedat2, .aedatz, .aedat4)</property>
+                  <property name="extension" type="string">aedat,aedat2,aedatz,aedat4</property>
+                  <property name="launcherId" type="string">25</property>
+                  <property name="selected" type="boolean" value="true" />
+                  <property name="unix" type="boolean" value="true" />
+                  <property name="unixIconFile">
+                    <object class="com.install4j.api.beans.ExternalFile">
+                      <string>../images/256h/SplashScreen.png</string>
+                    </object>
+                  </property>
+                  <property name="unixMimeType" type="string">application/x-aedat</property>
+                  <property name="windows" type="boolean" value="true" />
+                  <property name="windowsIconFile">
+                    <object class="com.install4j.api.beans.ExternalFile">
+                      <string>./jaer.ico</string>
+                    </object>
+                  </property>
                 </serializedBean>
               </action>
             </actions>

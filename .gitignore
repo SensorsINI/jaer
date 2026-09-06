@@ -114,6 +114,9 @@ release-notes/3.4.0/recording-preview.webp
 release-notes/3.4.0/hotel-bar-activity-histogram.mp4
 release-notes/3.4.0/hotel-bar-activity-histogram.webp
 
+# Repo-root demo clips (Dropbox). install4j also excludes *.webp from media.
+/*.webp
+
 # Curated sample recordings (Dropbox / local). README stays in git; SIZE.txt is pack-sample-data output.
 /sampleData/**
 !/sampleData/
