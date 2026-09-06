@@ -4,9 +4,11 @@ These files are short event-camera recordings you can play in jAER without a cam
 
 ## Get the files
 
-In jAER: **Help > Sample data > Download jAER sample data**, or **Show jAER sample data folder and README** if this folder is already present.
+In jAER: **Help > Sample data > Download jAER sample data**, or **Show jAER sample data folder and README** if recordings are already present.
 
-That downloads about **796 MB** and unpacks it into this folder (next to `dist/` and `lib/`). If this folder is already here, **Help > Sample data > Show jAER sample data folder and README** opens the folder and the [GitHub README](https://github.com/SensorsINI/jaer/tree/master/sampleData#readme).
+That downloads about **796 MB**. You choose the folder: default is this `sampleData` directory next to `dist/` and `lib/` (or the installer `sampleData` folder). If that location is not writable (typical for `C:\Program Files\jAER`), the chooser offers `jaerSampleData` in your home directory. The chosen folder is added to **File** recent folders.
+
+If this folder is already here with recordings, **Help > Sample data > Show jAER sample data folder and README** opens the folder and the [GitHub README](https://github.com/SensorsINI/jaer/tree/master/sampleData#readme).
 
 You can also use **File > Open** and choose a file here.
 
@@ -40,20 +42,22 @@ More public datasets (not in this zip) are linked under **Help > Sample data**.
 
 <!-- SAMPLE-DATA-CONTENTS -->
 
-Download **796 MB**, about **796 MB** on disk.
+Download **809 MB**, about **808 MB** on disk.
 
-| File                                                                      | Size     |
-|---------------------------------------------------------------------------|----------|
-| `DAVIS240C 2016  Tobi juggling.aedat4`                                    | 6.4 MB   |
-| `DAVIS240C CapoCaccia 2016 Hotel dei Pini bar-export.aedat4`               | 12.5 MB  |
-| `Davis346blue 2026 Steadicam test 6mm lens.aedat4`                         | 140.8 MB |
-| `Davis346blue DAVIS24 2019 fast spinning dot ramp up.aedat4`               | 32.2 MB  |
-| `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` | 14.6 MB  |
-| `DDD20 rec1501953155 San Marino drive clipped.aedat4`                      | 70.6 MB  |
-| `DVS128 DVS09 2006 mouse behavior over 3 days.aedat4`                      | 86.3 MB  |
-| `DVS128 DVS09 2006 Patrick Lichtstieiner juggling.aedat4`                  | 13.9 MB  |
-| `NRV DELTA01 2026 humming birds squabbling.aedat4`                         | 10.4 MB  |
-| `PropheseeIMX636HD 2026 short heavily filtered.aedat4`                     | 37.5 MB  |
-| `PropheseeIMX636HD Metavision driving_sample street.aedat4`                | 370.8 MB |
+| File | Size |
+|------|------|
+| `DAVIS240C 2016  Tobi juggling.aedat4` | 6.4 MB |
+| `DAVIS240C CapoCaccia 2016 Hotel dei Pini bar-export.aedat4` | 12.5 MB |
+| `Davis240C DVSFLOW16 Translating Boxest.aedat4` | 3.6 MB |
+| `Davis346blue 2026 Steadicam test 6mm lens.aedat4` | 140.8 MB |
+| `Davis346blue DAVIS24 2019 fast spinning dot ramp up.aedat4` | 32.2 MB |
+| `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` | 14.6 MB |
+| `DDD20 rec1501953155 San Marino drive clipped.aedat4` | 70.6 MB |
+| `DVS128 DVS09 2006 mouse behavior over 3 days.aedat4` | 86.3 MB |
+| `DVS128 DVS09 2006 Patrick Lichtstieiner juggling.aedat4` | 13.9 MB |
+| `IDavis240C DVSFLOW16 Rotating Fan.aedat4` | 8.7 MB |
+| `NRV DELTA01 2026 humming birds squabbling.aedat4` | 10.4 MB |
+| `PropheseeIMX636HD 2026 short heavily filtered.aedat4` | 37.5 MB |
+| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |
 
 <!-- /SAMPLE-DATA-CONTENTS -->

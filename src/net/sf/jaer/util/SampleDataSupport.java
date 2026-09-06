@@ -34,6 +34,9 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -57,6 +60,12 @@ public final class SampleDataSupport {
     public static final String README_URL = JaerConstants.SAMPLE_DATA_README_URL;
 
     public static final String PREF_DECLINED = "AEViewer.sampleDataDownloadDeclined";
+
+    /** Last folder the user chose for sample recordings (absolute path). */
+    public static final String PREF_FOLDER = "AEViewer.sampleDataFolder";
+
+    /** Suggested folder name under the user home when the install tree is not writable. */
+    public static final String HOME_FOLDER_NAME = "jaerSampleData";
 
     public static final String HELP_MENU_DOWNLOAD = "Download jAER sample data";
 
@@ -83,7 +92,23 @@ public final class SampleDataSupport {
     private SampleDataSupport() {
     }
 
+    /**
+     * Folder used for Help → Show, File → Open fallback, and download unpack.
+     * Prefers the last chosen download folder, otherwise the install {@code sampleData/}.
+     */
     public static File folder() {
+        String pref = JaerConstants.PREFS_ROOT.get(PREF_FOLDER, "");
+        if (pref != null && !pref.isBlank()) {
+            return new File(pref);
+        }
+        return installDefaultFolder();
+    }
+
+    /**
+     * {@code sampleData} next to the running jAER (git checkout or installer
+     * destination). Does not consult {@link #PREF_FOLDER}.
+     */
+    public static File installDefaultFolder() {
         File cwd = new File(System.getProperty("user.dir", "."), "sampleData");
         if (cwd.isDirectory() || new File(cwd, "README.md").isFile()) {
             return cwd;
@@ -95,14 +120,73 @@ public final class SampleDataSupport {
         return cwd;
     }
 
+    /**
+     * Chooser default: install {@code sampleData} when that location is writable,
+     * otherwise {@code jaerSampleData} in the user home directory.
+     */
+    public static File suggestedDownloadFolder() {
+        String pref = JaerConstants.PREFS_ROOT.get(PREF_FOLDER, "");
+        if (pref != null && !pref.isBlank()) {
+            File remembered = new File(pref);
+            if (isWritableLocation(remembered)) {
+                return remembered;
+            }
+        }
+        File install = installDefaultFolder();
+        if (isWritableLocation(install)) {
+            return install;
+        }
+        return new File(System.getProperty("user.home", "."), HOME_FOLDER_NAME);
+    }
+
+    /**
+     * True if a file can be created in {@code dir} (or in an existing ancestor if
+     * {@code dir} does not exist yet). {@link File#canWrite()} is not reliable on
+     * Windows Program Files.
+     */
+    public static boolean isWritableLocation(File dir) {
+        if (dir == null) {
+            return false;
+        }
+        try {
+            if (dir.isDirectory()) {
+                return probeWrite(dir.toPath());
+            }
+            File walk = dir.exists() ? dir : dir.getParentFile();
+            while (walk != null && !walk.exists()) {
+                walk = walk.getParentFile();
+            }
+            if (walk != null && walk.isDirectory()) {
+                return probeWrite(walk.toPath());
+            }
+        } catch (Exception ex) {
+            log.log(Level.FINE, "sampleData write probe failed for " + dir + ": " + ex);
+            return false;
+        }
+        return false;
+    }
+
+    private static boolean probeWrite(Path dir) {
+        try {
+            Path probe = Files.createTempFile(dir, ".jaer-w", ".tmp");
+            Files.deleteIfExists(probe);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
     /** True if {@link #folder()} exists as a directory (installer README tree or a download). */
     public static boolean folderExists() {
         return folder().isDirectory();
     }
 
-    /** Help menu uses Show (folder+README) when the folder is already there. */
+    /**
+     * Help menu uses Show after recordings are present (README-only install tree
+     * still offers Download, including when Program Files is not writable).
+     */
     public static boolean useShowHelpItem() {
-        return folderExists() || hasRecordings();
+        return hasRecordings();
     }
 
     public static String helpMenuLabel() {
@@ -111,13 +195,17 @@ public final class SampleDataSupport {
 
     public static String helpMenuToolTip() {
         if (useShowHelpItem()) {
-            return "Opens the sampleData folder and the GitHub README (in-app README if offline)";
+            return "Opens the sample recordings folder and the GitHub README (in-app README if offline)";
         }
-        return "Downloads curated recordings into sampleData, then opens the folder and README";
+        return "Choose a folder, download curated recordings, then open the folder and README";
     }
 
     public static File sizeFile() {
-        return new File(folder(), "SIZE.txt");
+        File inFolder = new File(folder(), "SIZE.txt");
+        if (inFolder.isFile()) {
+            return inFolder;
+        }
+        return new File(installDefaultFolder(), "SIZE.txt");
     }
 
     public static boolean isMetaName(String name) {
@@ -197,7 +285,7 @@ public final class SampleDataSupport {
         int choice = JOptionPane.showConfirmDialog(parent,
                 "<html>jAER sample recordings are not in this <code>sampleData</code> folder.<br><br>"
                         + sizeLine + ".<br><br>"
-                        + "Download from GitHub Latest and unpack here?<br>"
+                        + "Download from GitHub Latest? You will choose the unpack folder next.<br>"
                         + "<code>" + DOWNLOAD_URL + "</code>",
                 "Download sample recordings?",
                 JOptionPane.YES_NO_OPTION,
@@ -210,11 +298,17 @@ public final class SampleDataSupport {
             return false;
         }
         log.info("User accepted sample-data download");
+        File dest = chooseDownloadFolder(parent, recentFilesFrom(parent));
+        if (dest == null) {
+            log.info("User cancelled sample-data folder chooser");
+            return false;
+        }
         try {
-            downloadAndUnpack(parent);
+            downloadAndUnpack(parent, dest);
             JaerConstants.PREFS_ROOT.putBoolean(PREF_DECLINED, false);
             if (parent instanceof net.sf.jaer.graphics.AEViewer v) {
                 SwingUtilities.invokeLater(v::refreshSampleDataHelpMenu);
+                rememberFolder(v.getRecentFiles());
             }
             openFolderAndReadme();
             return hasRecordings();
@@ -229,10 +323,18 @@ public final class SampleDataSupport {
 
     public static File defaultOpenFolder() {
         File dir = folder();
-        if (!dir.isDirectory()) {
-            dir.mkdirs();
+        if (dir.isDirectory()) {
+            return dir;
         }
-        return dir;
+        File suggested = suggestedDownloadFolder();
+        if (suggested.isDirectory()) {
+            return suggested;
+        }
+        File parent = suggested.getParentFile();
+        if (parent != null && parent.isDirectory()) {
+            return parent;
+        }
+        return new File(System.getProperty("user.dir", "."));
     }
 
     /** Open {@link #README_URL} in the default browser (safe off the EDT). */
@@ -255,7 +357,12 @@ public final class SampleDataSupport {
         log.info("Sample data: opening folder " + dir.getAbsolutePath());
         try {
             if (!dir.isDirectory()) {
-                dir.mkdirs();
+                if (isWritableLocation(dir)) {
+                    Files.createDirectories(dir.toPath());
+                } else {
+                    log.warning("Sample data folder missing and not writable: " + dir.getAbsolutePath());
+                    return;
+                }
             }
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().open(dir);
@@ -405,23 +512,149 @@ public final class SampleDataSupport {
     }
 
     /**
-     * Download and unpack the curated sample recordings into {@code sampleData/}.
-     * <p>
-     * Used by UI actions; progress UI is created on the Swing EDT.
+     * Modal folder chooser for the zip unpack location. Default is the install
+     * {@code sampleData} folder when writable, otherwise
+     * {@code user.home/jaerSampleData}. Returns {@code null} if the user cancels.
      */
-    public static void downloadAndUnpack(Component parent) throws Exception {
-        File dir = folder();
-        Files.createDirectories(dir.toPath());
-        File zip = new File(dir, "jaer-sample-data.zip.partial");
+    public static File chooseDownloadFolder(Component parent, RecentFiles recentFiles) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            final File[] holder = new File[1];
+            try {
+                SwingUtilities.invokeAndWait(() -> holder[0] = chooseDownloadFolder(parent, recentFiles));
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception ex) {
+                log.log(Level.WARNING, "Sample data folder chooser failed: " + ex, ex);
+                return null;
+            }
+            return holder[0];
+        }
+        File suggested = suggestedDownloadFolder();
+        File install = installDefaultFolder();
+        boolean installWritable = isWritableLocation(install);
+        log.info("Sample data folder chooser: suggested=" + suggested.getAbsolutePath()
+                + " install=" + install.getAbsolutePath() + " installWritable=" + installWritable);
+        if (!suggested.exists() && isWritableLocation(suggested)) {
+            try {
+                Files.createDirectories(suggested.toPath());
+            } catch (Exception ex) {
+                log.log(Level.FINE, "Could not pre-create suggested sample folder " + suggested + ": " + ex);
+            }
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.setMultiSelectionEnabled(false);
+        chooser.setDialogTitle("Choose folder for jAER sample recordings");
+        chooser.setApproveButtonText("Use this folder");
+        File current = suggested.isDirectory() ? suggested
+                : (suggested.getParentFile() != null && suggested.getParentFile().isDirectory()
+                        ? suggested.getParentFile()
+                        : new File(System.getProperty("user.home", ".")));
+        chooser.setCurrentDirectory(current);
+        chooser.setSelectedFile(suggested);
+
+        JPanel accessory = new JPanel();
+        accessory.setLayout(new BoxLayout(accessory, BoxLayout.Y_AXIS));
+        String hintHtml;
+        if (installWritable) {
+            hintHtml = "<html>Unpack into this folder.<br>Default is the jAER <code>sampleData</code> folder.</html>";
+        } else {
+            hintHtml = "<html>The install folder is not writable<br>(for example under Program Files).<br>"
+                    + "Default is <code>" + HOME_FOLDER_NAME + "</code> in your home folder.</html>";
+        }
+        JLabel hint = new JLabel(hintHtml);
+        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+        accessory.add(hint);
+        if (recentFiles != null) {
+            accessory.add(Box.createVerticalStrut(8));
+            RecentFoldersComboAccessory recent = new RecentFoldersComboAccessory(recentFiles, chooser, null);
+            recent.setAlignmentX(Component.LEFT_ALIGNMENT);
+            accessory.add(recent);
+        }
+        accessory.add(Box.createVerticalGlue());
+        chooser.setAccessory(accessory);
+
+        while (true) {
+            int ret = chooser.showDialog(parent, "Use this folder");
+            if (ret != JFileChooser.APPROVE_OPTION) {
+                return null;
+            }
+            File dir = chooser.getSelectedFile();
+            if (dir == null) {
+                dir = chooser.getCurrentDirectory();
+            }
+            if (dir != null && dir.isFile()) {
+                dir = dir.getParentFile();
+            }
+            if (dir == null) {
+                JOptionPane.showMessageDialog(parent,
+                        "That is not a usable folder. Choose another location.",
+                        "Sample data folder", JOptionPane.WARNING_MESSAGE);
+                continue;
+            }
+            try {
+                Files.createDirectories(dir.toPath());
+            } catch (Exception ex) {
+                log.log(Level.INFO, "Could not create sample data folder " + dir + ": " + ex);
+                JOptionPane.showMessageDialog(parent,
+                        "<html>Cannot create or write to<br><code>" + escapeHtml(dir.getAbsolutePath())
+                                + "</code><br><br>" + escapeHtml(String.valueOf(ex.getMessage()))
+                                + "<br><br>Choose a writable folder (for example "
+                                + HOME_FOLDER_NAME + " in your home directory).</html>",
+                        "Folder not writable", JOptionPane.WARNING_MESSAGE);
+                continue;
+            }
+            if (!dir.isDirectory() || !isWritableLocation(dir)) {
+                JOptionPane.showMessageDialog(parent,
+                        "<html>Folder <code>" + escapeHtml(dir.getAbsolutePath())
+                                + "</code> is not writable.<br>Choose another location.</html>",
+                        "Folder not writable", JOptionPane.WARNING_MESSAGE);
+                continue;
+            }
+            persistFolder(dir);
+            rememberFolder(recentFiles);
+            log.info("Sample data download folder: " + dir.getAbsolutePath());
+            return dir;
+        }
+    }
+
+    private static void persistFolder(File dir) {
+        if (dir == null) {
+            return;
+        }
+        JaerConstants.PREFS_ROOT.put(PREF_FOLDER, dir.getAbsolutePath());
+    }
+
+    private static RecentFiles recentFilesFrom(Component parent) {
+        if (parent instanceof net.sf.jaer.graphics.AEViewer v) {
+            return v.getRecentFiles();
+        }
+        return null;
+    }
+
+    /**
+     * Download and unpack the curated sample recordings into {@code dest}.
+     * Progress UI is created on the Swing EDT.
+     */
+    public static void downloadAndUnpack(Component parent, File dest) throws Exception {
+        if (dest == null) {
+            throw new Exception("No sample data folder chosen");
+        }
+        Files.createDirectories(dest.toPath());
+        persistFolder(dest);
+        File zip = new File(dest, "jaer-sample-data.zip.partial");
         log.info("Downloading sample-data zip from " + DOWNLOAD_URL + " -> " + zip.getAbsolutePath());
         try {
             downloadTo(parent, DOWNLOAD_URL, zip);
-            log.info("Unpacking sample-data zip into " + dir.getAbsolutePath());
-            unzipTo(zip, dir);
+            log.info("Unpacking sample-data zip into " + dest.getAbsolutePath());
+            unzipTo(zip, dest);
         } finally {
             Files.deleteIfExists(zip.toPath());
         }
-        log.info("Unpacked sample recordings into " + dir.getAbsolutePath());
+        log.info("Unpacked sample recordings into " + dest.getAbsolutePath());
     }
 
     private static void downloadTo(Component parent, String urlString, File dest) throws Exception {

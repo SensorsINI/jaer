@@ -1093,11 +1093,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     SampleDataSupport.rememberFolder(recentFiles);
                     return;
                 }
+                File dest = SampleDataSupport.chooseDownloadFolder(AEViewer.this, recentFiles);
+                if (dest == null) {
+                    log.info("Help > Sample data: folder chooser cancelled");
+                    return;
+                }
                 log.info("Help > Sample data: starting zip download from "
-                        + SampleDataSupport.DOWNLOAD_URL);
+                        + SampleDataSupport.DOWNLOAD_URL + " into " + dest.getAbsolutePath());
                 Thread worker = new Thread(() -> {
                     try {
-                        SampleDataSupport.downloadAndUnpack(AEViewer.this);
+                        SampleDataSupport.downloadAndUnpack(AEViewer.this, dest);
                         log.info("Help > Sample data: unpack finished, switching menu to Show");
                         SwingUtilities.invokeLater(() -> {
                             refreshSampleDataHelpMenu();

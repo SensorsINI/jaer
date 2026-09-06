@@ -12,7 +12,7 @@ Recordings are **not** in git and **not** in the basic installer. Git tracks `sa
 | `sampleData/README.md` | What the files are (also inside the zip and the install tree) |
 | `sampleData/SIZE.txt` | Zip and unpacked MiB; written by pack, not in git |
 | Installer Welcome checkbox | Optional download; default **off** |
-| **Help > Sample data** | **Download** if `sampleData/` is missing; **Show jAER sample data folder and README** if the folder exists (also after a download in this JVM) |
+| **Help > Sample data** | **Download** if recordings are missing: you choose the unpack folder (install `sampleData/` when writable, otherwise `jaerSampleData` in the home directory). **Show jAER sample data folder and README** if recordings are already present |
 
 Download URL:
 
@@ -22,7 +22,7 @@ README in the browser on all platforms (local `README.md` is shown inside jAER o
 
 <https://github.com/SensorsINI/jaer/tree/master/sampleData#readme>
 
-Unpack so files land **in** `sampleData/` (zip root is the files, not a nested `sampleData/` directory). That folder is next to `dist/` / `lib/` in a git checkout and under `jaer/sampleData` in an installed copy.
+Unpack so files land **in** the folder you choose (zip root is the files, not a nested `sampleData/` directory). The chooser defaults to `sampleData/` next to `dist/` / `lib/` in a git checkout and `jaer/sampleData` in an installed copy. If that path is not writable (Windows Program Files), the default is `jaerSampleData` under the user home directory. jAER remembers the folder on the File menu recent-folders list.
 
 ## Pack
 
