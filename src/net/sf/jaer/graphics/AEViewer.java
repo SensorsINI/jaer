@@ -1109,6 +1109,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             SampleDataSupport.openFolderAndReadme();
                             SampleDataSupport.rememberFolder(recentFiles);
                         });
+                    } catch (SampleDataSupport.DownloadCancelledException ex) {
+                        log.info("Help > Sample data: download cancelled");
                     } catch (Exception ex) {
                         SampleDataSupport.logDownloadFailure(ex);
                         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this,

@@ -268,6 +268,25 @@
         </startup>
         <screens>
           <screen id="2" beanClass="com.install4j.runtime.beans.screens.WelcomeScreen" styleId="7" rollbackBarrierExitCode="0">
+            <preActivation>int zip = 0;
+try {
+    String s = context.getCompilerVariable("jaer.sampleDataZipMiB");
+    if (s != null &amp;&amp; !s.isEmpty()) {
+        zip = Integer.parseInt(s.trim());
+    }
+} catch (Exception ignored) {
+}
+int sec = zip &lt;= 0 ? 0 : Math.max(1, (int) Math.round(zip / 10.0));
+String eta;
+if (sec &lt;= 0) {
+    eta = "time depends on your connection (10 MB/s Wi-Fi assumed)";
+} else if (sec &lt; 90) {
+    eta = "about " + sec + " s at 10 MB/s Wi-Fi";
+} else {
+    eta = String.format(java.util.Locale.ROOT, "about %.1f min at 10 MB/s Wi-Fi", sec / 60.0);
+}
+context.setVariable("jaer.sampleDataEta", eta);
+</preActivation>
             <actions>
               <action id="7" beanClass="com.install4j.runtime.beans.actions.misc.LoadResponseFileAction" rollbackBarrierExitCode="0" multiExec="true">
                 <serializedBean>
@@ -306,7 +325,7 @@ return console.askOkCancel(message, true);
               </formComponent>
               <formComponent id="9201" beanClass="com.install4j.runtime.beans.formcomponents.CheckboxComponent">
                 <serializedBean>
-                  <property name="checkboxText" type="string">&lt;html&gt;&lt;div width="480"&gt;Download sample recordings&lt;br&gt;(${compiler:jaer.sampleDataZipMiB} MB download, ${compiler:jaer.sampleDataUnpackedMiB} MB on disk)&lt;br&gt;You can download later from Help → Sample data&lt;/div&gt;&lt;/html&gt;</property>
+                  <property name="checkboxText" type="string">&lt;html&gt;&lt;div width="480"&gt;Download sample recordings&lt;br&gt;(${compiler:jaer.sampleDataZipMiB} MB download, ${compiler:jaer.sampleDataUnpackedMiB} MB on disk, ${installer:jaer.sampleDataEta})&lt;br&gt;After files are copied you can skip this download, or use Help → Sample data later&lt;/div&gt;&lt;/html&gt;</property>
                   <property name="initiallySelected" type="boolean" value="false" />
                   <property name="variableName" type="string">downloadSampleData</property>
                 </serializedBean>
@@ -633,132 +652,6 @@ return true;
                   </property>
                 </serializedBean>
               </action>
-              <action name="Download sample recordings" id="9202" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="continue" errorMessage="Could not download sample recordings. Use File → Open in jAER to try again.">
-                <serializedBean>
-                  <property name="script">
-                    <object class="com.install4j.api.beans.ScriptProperty">
-                      <property name="value" type="string">if (!context.getBooleanVariable("downloadSampleData")) {
-    return true;
-}
-File install = context.getInstallationDirectory();
-File dest = new File(install, "sampleData");
-File nested = new File(install, "jaer/sampleData");
-if (new File(nested, "README.md").isFile() || new File(install, "jaer/lib").isDirectory()) {
-    dest = nested;
-} else if (new File(install, "lib").isDirectory() || new File(install, "dist").isDirectory()) {
-    dest = new File(install, "sampleData");
-} else if (new File(install, "jaer").isDirectory()) {
-    dest = nested;
-}
-if (!dest.isDirectory()) {
-    dest.mkdirs();
-}
-String urlString = "https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip";
-File zip = new File(dest, "jaer-sample-data.zip.partial");
-try {
-    context.getProgressInterface().setStatusMessage("Downloading sample recordings...");
-    java.net.URL url = new java.net.URI(urlString).toURL();
-    java.net.HttpURLConnection conn = null;
-    for (int hop = 0; hop &lt; 8; hop++) {
-        conn = (java.net.HttpURLConnection) url.openConnection();
-        conn.setConnectTimeout(30000);
-        conn.setReadTimeout(300000);
-        conn.setInstanceFollowRedirects(false);
-        conn.connect();
-        int code = conn.getResponseCode();
-        if (code == 200) {
-            break;
-        }
-        if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
-            String loc = conn.getHeaderField("Location");
-            conn.disconnect();
-            if (loc == null || loc.isEmpty()) {
-                throw new Exception("Redirect without Location");
-            }
-            url = new java.net.URI(url.toString()).resolve(loc).toURL();
-            conn = null;
-            continue;
-        }
-        throw new Exception("HTTP " + code + " for " + url);
-    }
-    if (conn == null) {
-        throw new Exception("Could not open " + urlString);
-    }
-    long total = conn.getContentLengthLong();
-    try (java.io.InputStream in = new java.io.BufferedInputStream(conn.getInputStream());
-            java.io.OutputStream out = new java.io.BufferedOutputStream(new java.io.FileOutputStream(zip))) {
-        byte[] buf = new byte[65536];
-        long read = 0;
-        int n;
-        while ((n = in.read(buf)) &gt;= 0) {
-            out.write(buf, 0, n);
-            read += n;
-            if (total &gt; 0) {
-                int pct = (int) Math.min(100, (read * 100) / total);
-                context.getProgressInterface().setPercentCompleted(pct);
-            }
-        }
-    } finally {
-        conn.disconnect();
-    }
-    context.getProgressInterface().setStatusMessage("Unpacking sample recordings...");
-    java.nio.file.Path destPath = dest.toPath().toAbsolutePath().normalize();
-    try (java.util.zip.ZipInputStream zin = new java.util.zip.ZipInputStream(new java.io.BufferedInputStream(new java.io.FileInputStream(zip)))) {
-        java.util.zip.ZipEntry entry;
-        byte[] buf = new byte[65536];
-        while ((entry = zin.getNextEntry()) != null) {
-            String name = entry.getName();
-            if (name == null || name.isEmpty()) {
-                continue;
-            }
-            java.nio.file.Path out = destPath.resolve(name).normalize();
-            if (!out.startsWith(destPath)) {
-                throw new Exception("Refusing zip path " + name);
-            }
-            if (entry.isDirectory()) {
-                java.nio.file.Files.createDirectories(out);
-                continue;
-            }
-            java.nio.file.Files.createDirectories(out.getParent());
-            try (java.io.OutputStream os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out.toFile()))) {
-                int n;
-                while ((n = zin.read(buf)) &gt;= 0) {
-                    os.write(buf, 0, n);
-                }
-            }
-        }
-    }
-    com.install4j.api.Util.logInfo(context, "Unpacked sample recordings into " + dest.getAbsolutePath());
-} catch (Exception ex) {
-    com.install4j.api.Util.logError(context, "Sample data download failed: " + ex);
-    String msg = ex.getMessage() == null ? String.valueOf(ex) : ex.getMessage();
-    if (msg.contains("HTTP 404") || msg.contains("Sample data is not available")) {
-        String rel = "this GitHub release";
-        String needle = "/releases/download/";
-        int i = msg.indexOf(needle);
-        if (i &gt;= 0) {
-            String rest = msg.substring(i + needle.length());
-            int slash = rest.indexOf('/');
-            if (slash &gt; 0) {
-                rel = "GitHub release " + rest.substring(0, slash);
-            }
-        }
-        msg = "Sample data is not available for " + rel + ".\nLatest has no jaer-sample-data.zip asset yet.";
-    }
-    com.install4j.api.Util.showErrorMessage(msg
-        + "\n\nYou can try again later from File → Open or Help → Sample data in jAER.");
-} finally {
-    if (zip.isFile()) {
-        zip.delete();
-    }
-}
-return true;
-</property>
-                    </object>
-                  </property>
-                </serializedBean>
-                <condition>context.getBooleanVariable("downloadSampleData")</condition>
-              </action>
               <action id="18" beanClass="com.install4j.runtime.beans.actions.desktop.CreateDefaultStartMenuEntriesAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
                 <serializedBean>
                   <property name="folderName" type="string">${installer:sys.programGroupName}</property>
@@ -801,6 +694,229 @@ return true;
               </formComponent>
             </formComponents>
           </screen>
+          <screen name="Sample recordings" id="9210" beanClass="com.install4j.runtime.beans.screens.FormScreen">
+            <serializedBean>
+              <property name="subTitle" type="string">Optional ${compiler:jaer.sampleDataZipMiB} MB download (${installer:jaer.sampleDataEta})</property>
+              <property name="title" type="string">Sample recordings</property>
+            </serializedBean>
+            <condition>context.getBooleanVariable("downloadSampleData")</condition>
+            <postActivation>context.getWizardContext().setControlButtonText(ControlButtonType.NEXT, "Download");
+context.getWizardContext().setControlButtonVisible(ControlButtonType.PREVIOUS, false);
+</postActivation>
+            <actions>
+              <action name="Download sample recordings" id="9202" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="continue" errorMessage="Could not download sample recordings. Use Help → Sample data in jAER to try again.">
+                <serializedBean>
+                  <property name="script">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">if (!context.getBooleanVariable("downloadSampleData")) {
+    return true;
+}
+File install = context.getInstallationDirectory();
+File dest = new File(install, "sampleData");
+File nested = new File(install, "jaer/sampleData");
+if (new File(nested, "README.md").isFile() || new File(install, "jaer/lib").isDirectory()) {
+    dest = nested;
+} else if (new File(install, "lib").isDirectory() || new File(install, "dist").isDirectory()) {
+    dest = new File(install, "sampleData");
+} else if (new File(install, "jaer").isDirectory()) {
+    dest = nested;
+}
+if (!dest.isDirectory()) {
+    dest.mkdirs();
+}
+String urlString = "https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip";
+File zip = new File(dest, "jaer-sample-data.zip.partial");
+boolean skipped = false;
+try {
+    com.install4j.api.context.ProgressInterface progress = context.getProgressInterface();
+    progress.setStatusMessage("Downloading sample recordings. Cancel skips this download; jAER is already installed.");
+    java.net.URL url = new java.net.URI(urlString).toURL();
+    java.net.HttpURLConnection conn = null;
+    for (int hop = 0; hop &lt; 8; hop++) {
+        if (context.isCancelling()) {
+            skipped = true;
+            break;
+        }
+        conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setConnectTimeout(30000);
+        conn.setReadTimeout(300000);
+        conn.setInstanceFollowRedirects(false);
+        conn.connect();
+        int code = conn.getResponseCode();
+        if (code == 200) {
+            break;
+        }
+        if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+            String loc = conn.getHeaderField("Location");
+            conn.disconnect();
+            if (loc == null || loc.isEmpty()) {
+                throw new Exception("Redirect without Location");
+            }
+            url = new java.net.URI(url.toString()).resolve(loc).toURL();
+            conn = null;
+            continue;
+        }
+        throw new Exception("HTTP " + code + " for " + url);
+    }
+    if (skipped) {
+        return true;
+    }
+    if (conn == null) {
+        throw new Exception("Could not open " + urlString);
+    }
+    long total = conn.getContentLengthLong();
+    long startNs = System.nanoTime();
+    try (java.io.InputStream in = new java.io.BufferedInputStream(conn.getInputStream());
+            java.io.OutputStream out = new java.io.BufferedOutputStream(new java.io.FileOutputStream(zip))) {
+        byte[] buf = new byte[65536];
+        long read = 0;
+        int n;
+        while ((n = in.read(buf)) &gt;= 0) {
+            if (context.isCancelling()) {
+                skipped = true;
+                break;
+            }
+            out.write(buf, 0, n);
+            read += n;
+            if (total &gt; 0) {
+                int pct = (int) Math.min(100, (read * 100) / total);
+                progress.setPercentCompleted(pct);
+            }
+            long remain = total &gt; 0 ? total - read : 0;
+            double elapsed = (System.nanoTime() - startNs) / 1e9;
+            double bps = elapsed &gt; 0.4 ? read / elapsed : 1e7;
+            int etaSec = remain &gt; 0 ? (int) Math.max(1, Math.round(remain / Math.max(bps, 5e5))) : 0;
+            long readMb = read / (1024 * 1024);
+            long totalMb = total &gt; 0 ? total / (1024 * 1024) : 0;
+            String etaTxt = etaSec &gt;= 90
+                ? String.format(java.util.Locale.ROOT, "about %.1f min left", etaSec / 60.0)
+                : (etaSec &gt; 0 ? ("about " + etaSec + " s left") : "finishing");
+            progress.setStatusMessage("Downloading sample recordings (" + etaTxt + "). Cancel skips this; jAER is already installed.");
+            if (totalMb &gt; 0) {
+                progress.setDetailMessage(readMb + " / " + totalMb + " MB");
+            }
+        }
+    } finally {
+        conn.disconnect();
+    }
+    if (skipped) {
+        com.install4j.api.Util.logInfo(context, "Sample data download skipped by user");
+        return true;
+    }
+    progress.setStatusMessage("Unpacking sample recordings...");
+    java.nio.file.Path destPath = dest.toPath().toAbsolutePath().normalize();
+    try (java.util.zip.ZipInputStream zin = new java.util.zip.ZipInputStream(new java.io.BufferedInputStream(new java.io.FileInputStream(zip)))) {
+        java.util.zip.ZipEntry entry;
+        byte[] buf = new byte[65536];
+        while ((entry = zin.getNextEntry()) != null) {
+            if (context.isCancelling()) {
+                skipped = true;
+                break;
+            }
+            String name = entry.getName();
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            java.nio.file.Path out = destPath.resolve(name).normalize();
+            if (!out.startsWith(destPath)) {
+                throw new Exception("Refusing zip path " + name);
+            }
+            if (entry.isDirectory()) {
+                java.nio.file.Files.createDirectories(out);
+                continue;
+            }
+            java.nio.file.Files.createDirectories(out.getParent());
+            try (java.io.OutputStream os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out.toFile()))) {
+                int n;
+                while ((n = zin.read(buf)) &gt;= 0) {
+                    os.write(buf, 0, n);
+                }
+            }
+        }
+    }
+    if (skipped) {
+        com.install4j.api.Util.logInfo(context, "Sample data unpack skipped by user");
+        return true;
+    }
+    com.install4j.api.Util.logInfo(context, "Unpacked sample recordings into " + dest.getAbsolutePath());
+} catch (Exception ex) {
+    if (context.isCancelling() || skipped) {
+        com.install4j.api.Util.logInfo(context, "Sample data download skipped: " + ex);
+        return true;
+    }
+    com.install4j.api.Util.logError(context, "Sample data download failed: " + ex);
+    String msg = ex.getMessage() == null ? String.valueOf(ex) : ex.getMessage();
+    if (msg.contains("HTTP 404") || msg.contains("Sample data is not available")) {
+        String rel = "this GitHub release";
+        String needle = "/releases/download/";
+        int i = msg.indexOf(needle);
+        if (i &gt;= 0) {
+            String rest = msg.substring(i + needle.length());
+            int slash = rest.indexOf('/');
+            if (slash &gt; 0) {
+                rel = "GitHub release " + rest.substring(0, slash);
+            }
+        }
+        msg = "Sample data is not available for " + rel + ".\nLatest has no jaer-sample-data.zip asset yet.";
+    }
+    com.install4j.api.Util.showErrorMessage(msg
+        + "\n\nYou can try again later from Help → Sample data in jAER.");
+} finally {
+    if (zip.isFile()) {
+        zip.delete();
+    }
+}
+return true;
+</property>
+                    </object>
+                  </property>
+                </serializedBean>
+                <condition>context.getBooleanVariable("downloadSampleData")</condition>
+              </action>
+            </actions>
+            <formComponents>
+              <formComponent id="9212" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent" insetBottom="12">
+                <serializedBean>
+                  <property name="labelText" type="string">&lt;html&gt;&lt;div width="480"&gt;Download curated recordings (${compiler:jaer.sampleDataZipMiB} MB, ${installer:jaer.sampleDataEta}).&lt;br&gt;&lt;br&gt;Click &lt;b&gt;Download&lt;/b&gt; to start, or &lt;b&gt;Skip&lt;/b&gt; to finish Setup now. You can download later from Help → Sample data in jAER.&lt;br&gt;&lt;br&gt;If a download is running, Cancel skips only this step: jAER is already installed.&lt;/div&gt;&lt;/html&gt;</property>
+                </serializedBean>
+              </formComponent>
+              <formComponent name="Skip sample download" id="9211" beanClass="com.install4j.runtime.beans.formcomponents.HyperlinkActionLabelComponent" insetBottom="16">
+                <serializedBean>
+                  <property name="actionScript">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">context.setVariable("downloadSampleData", Boolean.FALSE);
+context.goForward(1, true, false);
+</property>
+                    </object>
+                  </property>
+                  <property name="hyperlinkText" type="string">Skip — download later from Help → Sample data</property>
+                </serializedBean>
+                <visibilityScript>!context.isConsole()</visibilityScript>
+              </formComponent>
+              <formComponent id="9213" beanClass="com.install4j.runtime.beans.formcomponents.ProgressComponent">
+                <serializedBean>
+                  <property name="initialStatusMessage" type="string">Waiting to download…</property>
+                </serializedBean>
+              </formComponent>
+              <formComponent id="9214" beanClass="com.install4j.runtime.beans.formcomponents.ConsoleHandlerFormComponent">
+                <serializedBean>
+                  <property name="consoleScript">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">Object eta = context.getVariable("jaer.sampleDataEta");
+String etaTxt = eta == null ? "10 MB/s Wi-Fi assumed" : String.valueOf(eta);
+boolean go = console.askYesNo("Download sample recordings now (" + etaTxt + ")? No skips; use Help → Sample data in jAER later.", true);
+if (!go) {
+    context.setVariable("downloadSampleData", Boolean.FALSE);
+}
+return true;
+</property>
+                    </object>
+                  </property>
+                </serializedBean>
+              </formComponent>
+            </formComponents>
+          </screen>
+
           <screen id="20" beanClass="com.install4j.runtime.beans.screens.FinishedScreen" styleId="7" rollbackBarrierExitCode="0" finishScreen="true">
             <actions>
               <action id="40" beanClass="com.install4j.runtime.beans.actions.finish.ExecuteLauncherAction" actionElevationType="none" rollbackBarrierExitCode="0">

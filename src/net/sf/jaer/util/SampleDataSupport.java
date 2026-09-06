@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -36,6 +37,7 @@ import java.util.zip.ZipInputStream;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -197,7 +199,7 @@ public final class SampleDataSupport {
         if (useShowHelpItem()) {
             return "Opens the sample recordings folder and the GitHub README (in-app README if offline)";
         }
-        return "Choose a folder, download curated recordings, then open the folder and README";
+        return "Choose a folder, download curated recordings (Cancel stops the download only), then open the folder and README";
     }
 
     public static File sizeFile() {
@@ -257,11 +259,32 @@ public final class SampleDataSupport {
         }
     }
 
+    /** Typical home Wi-Fi used for installer and in-app time estimates. */
+    public static final double WIFI_MB_PER_SEC = 10.0;
+
+    public static String etaAtWifi10MBps(int zipMiB) {
+        if (zipMiB <= 0) {
+            return "time depends on your connection (10 MB/s Wi-Fi assumed)";
+        }
+        int sec = Math.max(1, (int) Math.round(zipMiB / WIFI_MB_PER_SEC));
+        if (sec < 90) {
+            return "about " + sec + " s at 10 MB/s Wi-Fi";
+        }
+        return String.format(Locale.ROOT, "about %.1f min at 10 MB/s Wi-Fi", sec / 60.0);
+    }
+
     public static String sizeOfferText(Sizes s) {
         if (s == null || !s.known) {
             return "Download and unpacked sizes are unknown (missing sampleData/SIZE.txt).";
         }
-        return s.zipMiB + " MB download, " + s.unpackedMiB + " MB on disk";
+        return s.zipMiB + " MB download (" + etaAtWifi10MBps(s.zipMiB) + "), " + s.unpackedMiB + " MB on disk";
+    }
+
+    /** User stopped an in-app sample-data download. */
+    public static final class DownloadCancelledException extends Exception {
+        public DownloadCancelledException() {
+            super("Sample data download cancelled");
+        }
     }
 
     /**
@@ -286,6 +309,7 @@ public final class SampleDataSupport {
                 "<html>jAER sample recordings are not in this <code>sampleData</code> folder.<br><br>"
                         + sizeLine + ".<br><br>"
                         + "Download from GitHub Latest? You will choose the unpack folder next.<br>"
+                        + "You can cancel the download after it starts.<br>"
                         + "<code>" + DOWNLOAD_URL + "</code>",
                 "Download sample recordings?",
                 JOptionPane.YES_NO_OPTION,
@@ -312,6 +336,9 @@ public final class SampleDataSupport {
             }
             openFolderAndReadme();
             return hasRecordings();
+        } catch (DownloadCancelledException ex) {
+            log.info("Sample-data download cancelled");
+            return false;
         } catch (Exception ex) {
             logDownloadFailure(ex);
             JOptionPane.showMessageDialog(parent, formatDownloadFailureHtml(ex),
@@ -660,24 +687,36 @@ public final class SampleDataSupport {
     private static void downloadTo(Component parent, String urlString, File dest) throws Exception {
         final JProgressBar[] barHolder = new JProgressBar[1];
         final javax.swing.JDialog[] dialogHolder = new javax.swing.JDialog[1];
+        final AtomicBoolean cancelled = new AtomicBoolean(false);
         Runnable initUi = () -> {
             JProgressBar bar = new JProgressBar(0, 100);
             bar.setStringPainted(true);
             barHolder[0] = bar;
 
             JLabel label = new JLabel("Downloading jaer-sample-data.zip …");
+            JButton cancel = new JButton("Cancel");
             JPanel panel = new JPanel(new BorderLayout(8, 8));
             panel.add(label, BorderLayout.NORTH);
             panel.add(bar, BorderLayout.CENTER);
-            panel.setPreferredSize(new Dimension(420, 70));
+            panel.add(cancel, BorderLayout.SOUTH);
+            panel.setPreferredSize(new Dimension(420, 100));
 
             JOptionPane pane = new JOptionPane(panel, JOptionPane.INFORMATION_MESSAGE,
                     JOptionPane.DEFAULT_OPTION, null, new Object[]{}, null);
             javax.swing.JDialog dialog = pane.createDialog(parent, "Downloading sample recordings");
-            dialog.setModal(false);
-            dialog.setDefaultCloseOperation(javax.swing.JDialog.DO_NOTHING_ON_CLOSE);
+            dialog.setModal(true);
+            dialog.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
+            dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    cancelled.set(true);
+                }
+            });
+            cancel.addActionListener(e -> {
+                cancelled.set(true);
+                dialog.dispose();
+            });
             dialogHolder[0] = dialog;
-            dialog.setVisible(true);
         };
         if (SwingUtilities.isEventDispatchThread()) {
             initUi.run();
@@ -702,20 +741,32 @@ public final class SampleDataSupport {
                     throw httpFailure(urlString, conn.getURL() != null ? conn.getURL().toString() : urlString, code);
                 }
                 long total = conn.getContentLengthLong();
+                long startNs = System.nanoTime();
                 try (InputStream in = new BufferedInputStream(conn.getInputStream());
                         OutputStream out = new BufferedOutputStream(new FileOutputStream(dest))) {
                     byte[] buf = new byte[64 * 1024];
                     long read = 0;
                     int n;
                     while ((n = in.read(buf)) >= 0) {
+                        if (cancelled.get() || Thread.currentThread().isInterrupted()) {
+                            throw new DownloadCancelledException();
+                        }
                         out.write(buf, 0, n);
                         read += n;
                         final int pct = total > 0 ? (int) Math.min(100, (read * 100) / total) : 0;
                         final long readMb = read / (1024 * 1024);
+                        long remain = total > 0 ? total - read : 0;
+                        double elapsed = (System.nanoTime() - startNs) / 1e9;
+                        double bps = elapsed > 0.4 ? read / elapsed : WIFI_MB_PER_SEC * 1e6;
+                        final int etaSec = remain > 0
+                                ? (int) Math.max(1, Math.round(remain / Math.max(bps, 5e5))) : 0;
                         SwingUtilities.invokeLater(() -> {
                             bar.setValue(pct);
+                            String eta = etaSec >= 90
+                                    ? String.format(Locale.ROOT, "%.1f min left", etaSec / 60.0)
+                                    : (etaSec > 0 ? etaSec + " s left" : "");
                             bar.setString(total > 0
-                                    ? String.format(Locale.ROOT, "%d%% (%d MB)", pct, readMb)
+                                    ? String.format(Locale.ROOT, "%d%% (%d MB) %s", pct, readMb, eta)
                                     : String.format(Locale.ROOT, "%d MB", readMb));
                         });
                     }
@@ -735,10 +786,20 @@ public final class SampleDataSupport {
         worker.setDaemon(true);
         worker.start();
         try {
-            worker.join();
+            if (SwingUtilities.isEventDispatchThread()) {
+                dialog.setVisible(true);
+            } else {
+                SwingUtilities.invokeAndWait(() -> dialog.setVisible(true));
+            }
+            worker.join(2000);
         } catch (InterruptedException ie) {
+            cancelled.set(true);
+            worker.interrupt();
             Thread.currentThread().interrupt();
-            throw new Exception("Download interrupted", ie);
+            throw new DownloadCancelledException();
+        }
+        if (cancelled.get() && (error[0] == null || error[0] instanceof DownloadCancelledException)) {
+            throw new DownloadCancelledException();
         }
         if (error[0] != null) {
             throw error[0];

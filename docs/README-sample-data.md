@@ -11,7 +11,7 @@ Recordings are **not** in git and **not** in the basic installer. Git tracks `sa
 | GitHub Latest asset `jaer-sample-data.zip` | The zip users download |
 | `sampleData/README.md` | What the files are (also inside the zip and the install tree) |
 | `sampleData/SIZE.txt` | Zip and unpacked MiB; written by pack, not in git |
-| Installer Welcome checkbox | Optional download; default **off** |
+| Installer Welcome checkbox | Optional download; default **off**. Shows zip/unpacked size and a time estimate at **10 MB/s Wi-Fi**. After files are copied, a **Sample recordings** screen can **Skip** (finish Setup) or **Download**. Cancel during the download skips only that step — jAER is already installed (Installation screen is a rollback barrier). |
 | **Help > Sample data** | **Download** if recordings are missing: you choose the unpack folder (install `sampleData/` when writable, otherwise `jaerSampleData` in the home directory). **Show jAER sample data folder and README** if recordings are already present |
 
 Download URL:
