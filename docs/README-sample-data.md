@@ -13,6 +13,7 @@ Recordings are **not** in git and **not** in the basic installer. Git tracks `sa
 | `sampleData/SIZE.txt` | Zip and unpacked MiB; written by pack, not in git |
 | Installer Welcome checkbox | Optional download; default **off**. Shows zip/unpacked size and a time estimate at **10 MB/s Wi-Fi**. After files are copied, a **Sample recordings** screen can **Skip** (finish Setup) or **Download**. Cancel during the download skips only that step — jAER is already installed (Installation screen is a rollback barrier). |
 | **Help > Sample data** | **Download** if recordings are missing: you choose the unpack folder (install `sampleData/` when writable, otherwise `jaerSampleData` in the home directory). **Show jAER sample data folder and README** if recordings are already present |
+| Uninstaller | Deletes default `jaer/sampleData` (and `sampleData` when the install dir is the jAER tree). Warns that extra files you put there are removed too. Does **not** delete `~/jaerSampleData`. If files remain in the install folder after uninstall, that folder is opened. |
 
 Download URL:
 

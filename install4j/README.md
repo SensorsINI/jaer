@@ -79,6 +79,8 @@ Do **not** treat `.gitignore` as the media exclude list. Ivy `lib/`, `jars/`, an
 
 Welcome has an optional **Download sample recordings** checkbox (`downloadSampleData`), default off when the destination `sampleData` has no recordings. The label includes zip/unpacked size and an ETA at 10 MB/s Wi-Fi. After the Installation screen (rollback barrier), a **Sample recordings** form can **Skip** to Finish or **Download**. Cancel during the download does not uninstall jAER; use Help → Sample data later. See [`docs/README-sample-data.md`](../docs/README-sample-data.md).
 
+The uninstaller deletes default `jaer/sampleData` (downloaded recordings are not in the install4j file inventory). The Welcome screen warns that extra files in that folder are removed too. Home-folder `jaerSampleData` is left alone. If anything remains in the install directory besides `.install4j`, that folder is opened.
+
 The `jaer` launcher uses **single instance** mode. Windows/Linux installers show a **File associations** screen with one optional checkbox for `.aedat` / `.aedat2` / `.aedatz` / `.aedat4` (checked by default). macOS associations are compile-time in the launcher `Info.plist` (`macStaticAssociations`) and cannot be optional without breaking the signed bundle. Double-click while jAER is running is handled by `Install4jFileOpen` (`StartupNotification`).
 
 ## Related Ant targets

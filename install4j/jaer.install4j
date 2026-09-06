@@ -970,16 +970,77 @@ return true;
                   <property name="consoleScript">
                     <object class="com.install4j.api.beans.ScriptProperty">
                       <property name="value" type="string">String message = context.getMessage("ConfirmUninstall", context.getApplicationName());
+File install = context.getInstallationDirectory();
+File nested = new File(install, "jaer/sampleData");
+File flat = new File(install, "sampleData");
+boolean hasSample = (nested.isDirectory() &amp;&amp; nested.list() != null &amp;&amp; nested.list().length &gt; 0)
+    || (new File(install, "lib").isDirectory() &amp;&amp; flat.isDirectory() &amp;&amp; flat.list() != null &amp;&amp; flat.list().length &gt; 0);
+if (hasSample) {
+    message = message + "\n\nThe sample recordings folder (jaer/sampleData) will be deleted, including any extra files you copied there.";
+}
 return console.askYesNo(message, true);
 </property>
                     </object>
                   </property>
                 </serializedBean>
               </formComponent>
+              <formComponent id="9320" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent" insetTop="12">
+                <serializedBean>
+                  <property name="labelText" type="string">&lt;html&gt;&lt;div width="480"&gt;&lt;b&gt;Sample recordings&lt;/b&gt; in &lt;code&gt;jaer/sampleData&lt;/code&gt; will be deleted (often ~1 GB), including any extra files you copied into that folder.&lt;br&gt;Recordings stored elsewhere (for example &lt;code&gt;jaerSampleData&lt;/code&gt; in your home folder) are not removed.&lt;/div&gt;&lt;/html&gt;</property>
+                </serializedBean>
+                <visibilityScript>File install = context.getInstallationDirectory();
+File nested = new File(install, "jaer/sampleData");
+File flat = new File(install, "sampleData");
+boolean nestedHas = nested.isDirectory();
+boolean flatDefault = new File(install, "lib").isDirectory() || new File(install, "dist").isDirectory();
+return nestedHas || (flatDefault &amp;&amp; flat.isDirectory());</visibilityScript>
+              </formComponent>
             </formComponents>
           </screen>
           <screen id="27" beanClass="com.install4j.runtime.beans.screens.UninstallationScreen" rollbackBarrierExitCode="0">
             <actions>
+              <action name="Delete default sample recordings" id="9321" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="continue">
+                <serializedBean>
+                  <property name="script">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">File install = context.getInstallationDirectory();
+java.util.List&lt;File&gt; roots = new java.util.ArrayList&lt;File&gt;();
+roots.add(new File(install, "jaer/sampleData"));
+File flat = new File(install, "sampleData");
+if (new File(install, "lib").isDirectory() || new File(install, "dist").isDirectory()) {
+    roots.add(flat);
+}
+class TreeDel {
+    void d(File f) {
+        if (f == null || !f.exists()) {
+            return;
+        }
+        File[] kids = f.listFiles();
+        if (kids != null) {
+            for (int i = 0; i &lt; kids.length; i++) {
+                d(kids[i]);
+            }
+        }
+        if (!f.delete()) {
+            com.install4j.api.Util.logInfo(context, "Could not delete " + f.getAbsolutePath());
+        }
+    }
+}
+TreeDel del = new TreeDel();
+context.getProgressInterface().setStatusMessage("Removing sample recordings...");
+for (int i = 0; i &lt; roots.size(); i++) {
+    File dir = roots.get(i);
+    if (dir.isDirectory()) {
+        com.install4j.api.Util.logInfo(context, "Deleting sample data folder " + dir.getAbsolutePath());
+        del.d(dir);
+    }
+}
+return true;
+</property>
+                    </object>
+                  </property>
+                </serializedBean>
+              </action>
               <action id="29" beanClass="com.install4j.runtime.beans.actions.UninstallFilesAction" actionElevationType="elevated" rollbackBarrierExitCode="0" />
             </actions>
             <formComponents>
@@ -992,6 +1053,28 @@ return console.askYesNo(message, true);
           </screen>
           <screen id="32" beanClass="com.install4j.runtime.beans.screens.UninstallFailureScreen" rollbackBarrierExitCode="0" finishScreen="true" />
           <screen id="30" beanClass="com.install4j.runtime.beans.screens.UninstallSuccessScreen" styleId="7" rollbackBarrierExitCode="0" finishScreen="true">
+            <postActivation>File root = context.getInstallationDirectory();
+boolean leftover = false;
+if (root != null &amp;&amp; root.isDirectory()) {
+    File[] kids = root.listFiles();
+    if (kids != null) {
+        for (int i = 0; i &lt; kids.length; i++) {
+            File f = kids[i];
+            String n = f.getName();
+            if (n.equals(".install4j") || n.equalsIgnoreCase("uninstall.exe")) {
+                continue;
+            }
+            leftover = true;
+            break;
+        }
+    }
+}
+context.setVariable("jaer.uninstallLeftovers", Boolean.valueOf(leftover));
+if (leftover &amp;&amp; !context.isUnattended()) {
+    com.install4j.api.Util.logInfo(context, "Opening leftover install folder " + root.getAbsolutePath());
+    com.install4j.api.Util.showPath(root.getAbsolutePath());
+}
+</postActivation>
             <formComponents>
               <formComponent id="31" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent" insetBottom="10">
                 <serializedBean>
