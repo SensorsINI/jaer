@@ -72,7 +72,7 @@ Prerequisites:
 
 On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w`, `images/256h`, `images/800w`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`, then tags `HEAD` and creates a GitHub **draft** Release. It does not copy repo-root `updates.xml`; publish the GitHub draft, then run `ant copy-updates-xml`.
 
-Splash only: `ant generate-splash`. The install4j launcher splash is the **800×800** PNG (`images/800w`). Keep **256h** for Windows / wizard icons and **1024w** for macOS icns. Details: [`install4j/README.md`](../install4j/README.md).
+Splash: `ant generate-splash` writes gitignored `images/800w`, `256h`, and `1024w` from `images/SplashScreen.png` + `VERSION.txt`. `ant install4j` and `ant release` run that first. The launcher splash is the **800×800** PNG; **256h** / **1024w** are compile-time icons only. Details: [`install4j/README.md`](../install4j/README.md).
 
 TensorFlow for MLPNoiseFilter (two layers):
 - Ivy (lib/ for compile & ant release tree): tensorflow-core-api + unclassified
@@ -86,9 +86,11 @@ TensorFlow for MLPNoiseFilter (two layers):
   Upgrading over an older install can leave javacpp-1.4.jar and OS TF native jars in
   lib/; install4j now deletes those leftovers after InstallFiles. Until then, delete
   lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
-- Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/ (tmp alone can be hundreds of MB
-  of local scratch and must not ship in installers). Repo-root `*.webp` (e.g. `jaer3.webp`)
-  is excluded via `excludeSuffixes` plus an explicit `jaer3.webp` location.
+- Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/, native/,
+  deviceSettings/olderSystemsAndExperimental/, Benchmarking_7_9_2026/ (tmp alone can be
+  hundreds of MB of local scratch and must not ship). Repo-root `*.webp` is excluded via
+  `excludeSuffixes`. Do not copy `.gitignore` wholesale into the fileset: `lib/` and
+  `dist/jAER.jar` are gitignored but required at runtime.
 - Sample recordings: see [`README-sample-data.md`](README-sample-data.md). `sampleData/` is excluded from media except `README.md` and `SIZE.txt`.
 - OpenCV: Ivy keeps the openpnp fat jar (`opencv-4.8.1-0.jar`, ~102MB, all OS natives) in
   `lib/` for compile and `ant run`. `ant release` runs `split-opencv-natives` and each

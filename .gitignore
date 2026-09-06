@@ -114,6 +114,11 @@ release-notes/3.4.0/recording-preview.webp
 release-notes/3.4.0/hotel-bar-activity-histogram.mp4
 release-notes/3.4.0/hotel-bar-activity-histogram.webp
 
+# Version overlay on splash (ant generate-splash). Source art is images/SplashScreen.png.
+/images/800w/
+/images/256h/
+/images/1024w/
+
 # Repo-root demo clips (Dropbox). install4j also excludes *.webp from media.
 /*.webp
 

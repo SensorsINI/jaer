@@ -2,7 +2,7 @@
 
 Open [`jaer.install4j`](jaer.install4j) in the [install4j](https://www.ej-technologies.com/products/install4j/overview.html) IDE. Media output is `currentInstallers/<VERSION.txt>/`. Release steps: [`../docs/README-releasing-tagging.md`](../docs/README-releasing-tagging.md).
 
-From the repo root: `ant release` (or `ant generate-splash` for PNGs only).
+From the repo root: `ant release`, `ant install4j` (regenerates splash from `VERSION.txt` then compile media), or `ant generate-splash` for PNGs only.
 
 | File | Role |
 |------|------|
@@ -13,7 +13,7 @@ From the repo root: `ant release` (or `ant generate-splash` for PNGs only).
 
 ## Generated splash / icon PNGs
 
-`ant generate-splash` (also the first step of `ant release`) overlays **jAER** and the full `VERSION.txt` string on the text-free base art and writes three squares:
+`ant generate-splash` overlays **jAER** and the full `VERSION.txt` string on the text-free base art and writes three squares. Those output folders are **gitignored build products** (`ant install4j`, `ant release`, `ant jar`, and `ant run` all run `generate-splash`). Track only `images/SplashScreen.png` (and the PDF). The 256h / 1024w files are compile-time icon sources; they are **not** copied into `C:\Program Files\jAER`. The 800 PNG is shipped as `SplashScreen.png` next to the launcher (and inside `jAER.jar`).
 
 | Path | Size | Used for |
 |------|------|----------|
@@ -75,6 +75,8 @@ Classpath copy: `ant jar` target `jaer-copySplashImage` puts `images/800w/Splash
 
 The main `dirEntry` packs the repo root into `jaer/` and **excludes** `images/` (large art / demos), `sampleData/` recordings, repo-root `*.webp` (e.g. `jaer3.webp`), Dropbox `*conflicted copy*` files, and `.dropboxignore`. Splash is re-added as a single `fileEntry` so it sits next to the exe as `SplashScreen.png`. `sampleData/README.md` and `SIZE.txt` are fileEntries under `jaer/sampleData`. Do not add a second `SplashScreen.png` from `256h` or `1024w`.
 
+Do **not** treat `.gitignore` as the media exclude list. Ivy `lib/`, `jars/`, and `dist/jAER.jar` are gitignored but required at runtime. The fileset lists VCS/IDE/docs/scratch excludes explicitly (including local `deviceSettings/olderSystemsAndExperimental`, `Benchmarking_7_9_2026`, `native`). Help → **Git update and build jAER (experimental)** is the only in-app git rebuild path; a normal install does not need `.git` or sources.
+
 Welcome has an optional **Download sample recordings** checkbox (`downloadSampleData`), default off when the destination `sampleData` has no recordings. After InstallFiles the installer can download `jaer-sample-data.zip`. See [`docs/README-sample-data.md`](../docs/README-sample-data.md).
 
 The `jaer` launcher uses **single instance** mode. Windows/Linux installers show a **File associations** screen with one optional checkbox for `.aedat` / `.aedat2` / `.aedatz` / `.aedat4` (checked by default). macOS associations are compile-time in the launcher `Info.plist` (`macStaticAssociations`) and cannot be optional without breaking the signed bundle. Double-click while jAER is running is handled by `Install4jFileOpen` (`StartupNotification`).
@@ -86,10 +88,10 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | `generate-splash` | Overlay `VERSION.txt` → `images/800w`, `1024w`, `256h` |
 | `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, pack sample data if present, `install4jc --release=…` |
 | `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
-| `install4j` | `install4jc` only (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
+| `install4j` | `generate-splash` then `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
 | `replace-installed-jar` | Copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
 
-After a splash or `jaer.install4j` launcher change, rebuild media (`ant release` or at least `ant generate-splash` then `ant install4j`). Replacing only the jar leaves the old 800/1024 splash inside the installed tree.
+After a splash or `jaer.install4j` launcher change, rebuild media (`ant release` or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.
 
 ## GUI / dry run
 

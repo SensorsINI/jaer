@@ -8898,8 +8898,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         helpMenu.add(checkForUpdatesMenuItem);
 
-        gitUpdateMenuItem.setText("Git update and build jAER....");
-        gitUpdateMenuItem.setToolTipText("Shows dialog to check for git updates to jAER");
+        gitUpdateMenuItem.setText("Git update and build jAER (experimental)....");
+        gitUpdateMenuItem.setToolTipText("Experimental: pull this git tree and Ant-build. Not tested for several years. Prefer Help → Check for New Releases for install4j updates.");
         gitUpdateMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 gitUpdateMenuItemActionPerformed(evt);

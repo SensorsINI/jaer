@@ -42,9 +42,9 @@
     <entries>
       <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.webp,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore">
         <exclude>
-          <!-- Secrets / gitignored credentials. file=".." packs the repo root; a missing
-               exclude here ships Dropbox secrets in every local ant release. CI is safer
-               only because these paths are not in git — still exclude them. -->
+          <!-- Do not honor .gitignore wholesale: lib/, jars/, and dist/jAER.jar are
+               gitignored Ivy/build products but are required at runtime. Exclude local
+               Dropbox/scratch that .gitignore already lists and that must not ship. -->
           <entry location="signpath" />
           <entry location=".signpath" />
           <entry location="install4j" />
@@ -114,6 +114,9 @@
           <entry location="bin" />
           <entry location="tools" />
           <entry location="packaging" />
+          <entry location="native" />
+          <entry location="deviceSettings/olderSystemsAndExperimental" />
+          <entry location="Benchmarking_7_9_2026" />
           <!-- Prefer javacpp 1.5.10 (TensorFlow); drop leftover 1.4 from older Ivy resolves. -->
           <entry location="lib/javacpp-1.4.jar" />
           <!-- Fat OpenCV (~102MB, all OS natives). Each media fileset below installs a

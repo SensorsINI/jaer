@@ -75,7 +75,7 @@ Releases
   release-windows-ci      Windows-only media, no confirm (used by GitHub Actions)
   signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
                           Policy: -Dsignpath.policy=test-signing2|release-signing
-  install4j               install4jc only (needs dist/jAER.jar + build/opencv-slim)
+  install4j               generate-splash (VERSION.txt), then install4jc (needs dist/jAER.jar)
                           Local: compression 5 + --faster (no LZMA). Release stays 9+LZMA.
                           Override: -Djaer.install4j.compression=7 -Djaer.install4j.faster=false
   generate-splash         VERSION.txt overlay on splash PNGs (1024/256 icons, 800 splash)
@@ -226,7 +226,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
 
     <target name="-check-runtime-jvm" depends="check-jdk"/>
 
-    <target depends="-check-runtime-jvm,init,compile" description="Run a main class." name="run">
+    <target depends="-check-runtime-jvm,init,compile,generate-splash" description="Run a main class." name="run">
         <j2seproject1:java>
             <customize>
                 <arg line="${application.args}"/>
@@ -330,7 +330,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     
     <!-- Ivy hook for normal compile (overrides empty NetBeans placeholders in build-impl.xml). -->
     <target name="-pre-compile-ivy" depends="download-deps"/>
-    <target name="-pre-compile" depends="check-jdk,-pre-compile-ivy"/>
+    <target name="-pre-compile" depends="check-jdk,-pre-compile-ivy,generate-splash"/>
 
     <target name="-pre-compile-single-ivy" depends="download-deps"/>
     <target name="-pre-compile-single" depends="check-jdk,-pre-compile-single-ivy"/>
@@ -367,7 +367,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     </target>
 
     <target name="compile-fast"
-            depends="check-jdk,init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile"
+            depends="check-jdk,init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile,generate-splash"
             description="Compile Java only without Ivy resolve/retrieve."/>
 
     <target name="compile-single-fast"
@@ -556,8 +556,8 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
             description="Install Homebrew libusb on Apple Silicon (ant run/init). Not sudo. Skip: -Dskip.macos.libusb=true"/>
 
 
-    <!--    copy splash image to src tree so that it gets into main jar-->
-    <target name="jaer-copySplashImage">
+    <!-- Overlay VERSION.txt, then copy 800×800 splash into the jar. -->
+    <target name="jaer-copySplashImage" depends="generate-splash">
         <copy file="images/800w/SplashScreen.png" todir="build/classes"/>
     </target>
 
@@ -907,11 +907,11 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <!-- Public name: Ant treats CLI args starting with "-" as options, so
          ant -run-install4jc-with-license does not work. -->
     <target name="install4j"
-            depends="-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
-            description="Run install4jc only (existing dist/jAER.jar; local compression 5, no LZMA).">
-        <echo message="${line.separator}install4j media build finished for ${jaer.version} (install4jc only)."/>
+            depends="-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,generate-splash,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="generate-splash then install4jc (existing dist/jAER.jar; local compression 5, no LZMA).">
+        <echo message="${line.separator}install4j media build finished for ${jaer.version} (splash + install4jc)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
-        <echo message="Did not regenerate splash, clean, or jar. Full pipeline: ant release"/>
+        <echo message="Did not clean or rebuild the jar. Full pipeline: ant release"/>
         <echo message="To try the installer on this machine: ant install"/>
     </target>
 

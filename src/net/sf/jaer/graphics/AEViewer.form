@@ -929,8 +929,8 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="gitUpdateMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Git update and build jAER...."/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows dialog to check for git updates to jAER"/>
+                <Property name="text" type="java.lang.String" value="Git update and build jAER (experimental)...."/>
+                <Property name="toolTipText" type="java.lang.String" value="Experimental: pull this git tree and Ant-build. Not tested for several years. Prefer Help → Check for New Releases for install4j updates."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="gitUpdateMenuItemActionPerformed"/>
