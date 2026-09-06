@@ -6077,6 +6077,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Drop leftover playback APS / pixmap after File → Close (same idea as
+     * {@link ChipDataFilePreview} clearing the last preview frame). Stops
+     * {@link eu.seebetter.ini.chips.davis.DavisFrameAssembler} from re-processing
+     * the last slice and {@link DavisRenderer} from re-blitting it while WAITING.
+     */
+    public void dropLeftoverPlaybackVisuals() {
+        if (chip != null) {
+            chip.setLastData(null);
+            chip.setLastBundle(null);
+        }
+        AEChipRenderer r = getRenderer();
+        if (r != null) {
+            synchronized (r) {
+                r.resetFrame(r.getGrayValue());
+            }
+        }
+    }
+
+    private static void dropLeftoverPlaybackPackets(PacketBundle cookedBundle) {
+        if (cookedBundle != null) {
+            cookedBundle.clear();
+        }
+    }
+
+    /**
      * Block until ViewLoop has finished any in-flight grabInput and is parked,
      * or until {@code timeoutMs}. Call from the Save As worker, not the ViewLoop
      * thread.
@@ -6432,12 +6457,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             if (playModeBeforeGrab == PlayMode.PLAYBACK && getPlayMode() != PlayMode.PLAYBACK) {
                                 // Ctrl+W / File → Close during a large slice: do not keep assembling APS.
+                                dropLeftoverPlaybackPackets(cookedBundle);
+                                cookedPacket = null;
                                 getFrameRater().takeAfter();
                                 paceViewLoopFrame();
                                 continue;
                             }
-                            if (rawPacket == null) {
-                                log.fine("null rawPacket, probably at OUT marker or end of file");
+                            if (getPlayMode() == PlayMode.WAITING) {
+                                // File already closed: grabInput still polls USB, but must not
+                                // extractBundle the leftover playback slice (Davis APS SOF spam).
+                                dropLeftoverPlaybackPackets(cookedBundle);
+                                cookedPacket = null;
+                                getFrameRater().takeAfter();
+                                paceViewLoopFrame();
+                                continue;
+                            }
+                            if (rawPacket == null || rawPacket.getNumEvents() == 0) {
+                                log.fine("null or empty rawPacket, probably at OUT marker or end of file");
                                 paceViewLoopFrame();
                                 continue;
                             }
@@ -6972,7 +7008,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             Thread.sleep(sleepMs);
                         } catch (InterruptedException e) {
-                            log.info("WAITING interrupted");
+                            log.fine("WAITING interrupted");
                         }
                         return emptyRawPacket;
                     }

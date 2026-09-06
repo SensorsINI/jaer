@@ -746,6 +746,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // the EDT in native USB (NRV LibUsb.getStringDescriptorAscii while the reader thread
         // is stuck in deallocateTransfers/handleEventsTimeout).
         resetDavisApsAssembler();
+        viewer.dropLeftoverPlaybackVisuals();
         if (resumeLive && viewer.aemon != null && viewer.aemon.isOpen()) {
             try {
                 viewer.aemon.setEventAcquisitionEnabled(true);
