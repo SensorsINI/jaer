@@ -34,7 +34,7 @@ Start jAER from the install directory or the desktop / GNOME entry the installer
 
 Download the `.exe` and run it. This build is not Authenticode-signed yet: SmartScreen may say *Windows protected your PC* — **More info** → **Run anyway** (and **Install anyway** if the installer also warns). USB cameras: if jAER reports `LIBUSB_ERROR_NOT_SUPPORTED`, bind **WinUSB** with [Zadig](https://zadig.akeo.ie/) (not libusb-win32). Prophesee EVK4 can use Prophesee **wdi-simple**.
 
-**If you later want to download Sample Data, choose a user folder, not the default location Program Files.** This will be fixed in release 3.4.1.
+**If you later want to download Sample Data, choose a user folder, not the default location Program Files.** Fixed in **[3.4.1](https://github.com/SensorsINI/jaer/releases/tag/3.4.1)** (writable-folder chooser).
 
 ### macOS
 

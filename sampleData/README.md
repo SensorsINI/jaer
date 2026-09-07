@@ -6,7 +6,7 @@ These files are short event-camera recordings you can play in jAER without a cam
 
 In jAER: **Help > Sample data > Download jAER sample data**, or **Show jAER sample data folder and README** if recordings are already present.
 
-That downloads about **932 MB**. You choose the folder: default is this `sampleData` directory next to `dist/` and `lib/` (or the installer `sampleData` folder). If that location is not writable (typical for `C:\Program Files\jAER`), the chooser offers `jaerSampleData` in your home directory. The chosen folder is added to **File** recent folders.
+That downloads about **932 MB**. You choose the folder: default is this `sampleData` directory next to `dist/` and `lib/` (or the installer `sampleData` folder). If that location is not writable (typical for `C:\Program Files\jAER`), the chooser offers `jaerSampleData` in your home directory. The chosen folder is added to the **File > Recent Files and Folders** list.
 
 If this folder is already here with recordings, **Help > Sample data > Show jAER sample data folder and README** opens the folder and the [GitHub README](https://github.com/SensorsINI/jaer/tree/master/sampleData#readme).
 
@@ -47,6 +47,7 @@ More public datasets (not in this zip) are linked under **Help > Sample data**.
 
 <!-- SAMPLE-DATA-CONTENTS -->
 
+
 Download **932 MB**, about **932 MB** on disk.
 
 | File | Size |
@@ -66,9 +67,7 @@ Download **932 MB**, about **932 MB** on disk.
 | `DVS640 EssacSim Warehouse Quad walk env0_ep0.aedat4` | 98.2 MB |
 | `NRV DELTA01 2026 humming birds squabbling.aedat4` | 10.4 MB |
 | `PropheseeIMX636HD 2026 short heavily filtered.aedat4` | 37.5 MB |
-| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |
-
-<!-- /SAMPLE-DATA-CONTENTS -->
+| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |<!-- /SAMPLE-DATA-CONTENTS -->
 
 ## Notes
 
