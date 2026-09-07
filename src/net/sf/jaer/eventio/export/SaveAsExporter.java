@@ -4,6 +4,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -128,34 +129,51 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 h5 = new DsecHdf5AEOutputStream(options.outputFile, options.sensorWidth, options.sensorHeight);
             } else {
                 long baseUs = 0;
-                try {
-                    long absMs = stream.getAbsoluteStartingTimeMs();
-                    if (absMs > 0) {
-                        baseUs = absMs * 1000L;
+                if (stream instanceof Aedat4FileInputStream) {
+                    baseUs = ((Aedat4FileInputStream) stream).getBaseUnixUs();
+                } else {
+                    try {
+                        long absMs = stream.getAbsoluteStartingTimeMs();
+                        if (absMs > 0) {
+                            baseUs = absMs * 1000L;
+                        }
+                    } catch (Exception e) {
+                        log.log(Level.FINE, "No absolute start time for AEDAT-4 export", e);
                     }
-                } catch (Exception e) {
-                    log.log(Level.FINE, "No absolute start time for AEDAT-4 export", e);
                 }
                 aedat4 = new Aedat4FileOutputStream(options.outputFile, chip, options.aedat4Compression, baseUs);
             }
             if (options.writeImu) {
                 imu = new ImuCsvSink(options.imuFile(), source);
             }
-            boolean needAssembler = options.writeFrames
-                    || (aedat4 != null && chip instanceof DavisBaseCamera);
+            final boolean sourceIsAedat4 = stream instanceof Aedat4FileInputStream;
+            final boolean sourceHasTypedFrames = sourceIsAedat4
+                    && ((Aedat4FileInputStream) stream).hasFramePackets();
+            // AEDAT-4 already has sensor APS as FRME packets. Do not run
+            // DavisFrameAssembler on leftover mixed APS samples — that invents
+            // extra frames and duplicates the originals (e.g. 39 → 91).
+            boolean needAssembler = (options.writeFrames || aedat4 != null)
+                    && chip instanceof DavisBaseCamera
+                    && !sourceHasTypedFrames
+                    && !(aedat4 != null && sourceIsAedat4);
             if (options.writeFrames) {
                 int maxAdc = chip instanceof DavisChip ? ((DavisChip) chip).getMaxADC() : DavisChip.MAX_ADC;
                 frames = new FramePngSink(options.framesDir(), source, maxAdc);
             }
-            if (needAssembler && chip instanceof DavisBaseCamera) {
+            if (needAssembler) {
                 assembler = new DavisFrameAssembler((DavisBaseCamera) chip);
+            } else if (sourceHasTypedFrames && chip instanceof DavisBaseCamera) {
+                log.info("Save As: copying indexed AEDAT-4 APS frames; not re-assembling from mixed APS samples");
             }
             long range = Math.max(1, end == Long.MAX_VALUE ? Math.max(1, stream.size()) : end - start);
             long badEvents = 0;
             int stuckSlices = 0;
             setProgress(0);
             publish("Exporting…");
-            while (!isCancelled()) {
+            if (aedat4 != null && sourceIsAedat4) {
+                exportAedat4RecordOrder((Aedat4FileInputStream) stream, aedat4, chip, chain, start, end);
+            }
+            while (!isCancelled() && !(aedat4 != null && sourceIsAedat4)) {
                 long pos = stream.position();
                 if (pos >= end) {
                     break;
@@ -418,6 +436,90 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             }
         }
         return 1;
+    }
+
+    /**
+     * Copy EVTS/FRME/IMUS in file order. Does not reslice events or assemble
+     * Davis APS. Filters and IN/OUT only rewrite EVTS packets that need it.
+     */
+    private void exportAedat4RecordOrder(Aedat4FileInputStream in, Aedat4FileOutputStream out,
+            AEChip chip, FilterChain chain, long start, long end) throws IOException {
+        in.setPolarityEventSkip(0);
+        List<Aedat4FileInputStream.RecordedPacket> packets = in.packetsInRecordOrder();
+        final boolean filter = options.applyEventFilters && chain != null;
+        log.info(String.format(
+                "Save As AEDAT-4 record-order: %d packets (EVTS/FRME/IMUS), events [%d, %d), filters=%s",
+                packets.size(), start, end, filter));
+        final long baseUnixUs = in.getBaseUnixUs();
+        int done = 0;
+        for (Aedat4FileInputStream.RecordedPacket packet : packets) {
+            if (isCancelled()) {
+                throw new CancellationException("Save As cancelled");
+            }
+            if (!in.inEventIndexRange(packet, start, end)) {
+                done++;
+                continue;
+            }
+            switch (packet.kind) {
+                case FRAME -> out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_FRAMES,
+                        in.readUncompressedPayload(packet), packet.numElements,
+                        packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
+                case IMU -> out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_IMU,
+                        in.readUncompressedPayload(packet), packet.numElements,
+                        packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
+                case EVENTS -> {
+                    if (!filter && packet.eventsFullyInside(start, end)) {
+                        out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_EVENTS,
+                                in.readUncompressedPayload(packet), packet.numElements,
+                                packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
+                    } else {
+                        writeRecordedEvents(in, out, chip, chain, filter, packet, start, end);
+                    }
+                }
+            }
+            done++;
+            int pct = (int) Math.min(99, (100L * done) / Math.max(1, packets.size()));
+            setProgress(pct);
+            publish(String.format("Exported %,d events (%.0f%%)", out.getEventsWritten(), (double) pct));
+        }
+    }
+
+    private void writeRecordedEvents(Aedat4FileInputStream in, Aedat4FileOutputStream out,
+            AEChip chip, FilterChain chain, boolean filter,
+            Aedat4FileInputStream.RecordedPacket packet, long start, long end) throws IOException {
+        AEPacketRaw raw = in.extractRecordedEvents(packet, start, end);
+        if (raw == null || raw.getNumEvents() == 0) {
+            return;
+        }
+        PacketBundle bundle = chip.getEventExtractor().extractBundle(raw);
+        if (bundle == null || bundle.isEmpty()) {
+            return;
+        }
+        if (filter) {
+            bundle = chain.filterBundle(bundle);
+            if (bundle == null) {
+                return;
+            }
+        }
+        markOutOfBounds(bundle, chip);
+        out.writeBundle(polarityOnly(toTypedBundle(bundle, null, chip, true)), true);
+    }
+
+    /** Drop frames/IMU decoded from mixed APS samples; those stay as copied FRME/IMUS. */
+    private static PacketBundle polarityOnly(PacketBundle bundle) {
+        if (bundle == null) {
+            return bundle;
+        }
+        PacketBundle out = new PacketBundle();
+        for (TypedDataPacket p : bundle) {
+            if (p instanceof FramePacket || p instanceof ImuPacket) {
+                continue;
+            }
+            if (p != null && !p.isEmpty()) {
+                out.add(p);
+            }
+        }
+        return out;
     }
 
     /** Marks polarity events outside the chip as filteredOut. Returns how many. */

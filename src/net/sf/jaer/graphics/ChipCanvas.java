@@ -176,6 +176,15 @@ public class ChipCanvas implements GLEventListener, Observer {
     private float ZCLIP = 1;
     private TextRenderer renderer = null;
     /**
+     * Pause JOGL while the AEViewer is dragged or resized (NVIDIA SIGSEGV in
+     * {@code TextRenderer} {@code glDrawArrays} when the window crosses screens
+     * on Linux).
+     */
+    private static final int WINDOW_GEOMETRY_SETTLE_MS = 250;
+    private volatile long suppressGlUntilMs;
+    private volatile GraphicsDevice lastGraphicsDevice;
+    private javax.swing.Timer windowGeometrySettleTimer;
+    /**
      * Welcome overlay lines set by {@link AEViewer#setWelcomeOverlay(String[])}.
      * {@code null} means use {@link Welcome#linesFor(AEViewer)}; empty means do
      * not draw (cleared).
@@ -562,6 +571,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     @Override
     public void display(final GLAutoDrawable drawable) {
+        if (skipGlBecauseWindowGeometry()) {
+            return;
+        }
         final GL2 gl = drawable.getGL().getGL2();
         gl.glViewport(0, 0, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         resetFixedFunctionState(gl);
@@ -1349,6 +1361,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @see #display(com.jogamp.opengl.GLAutoDrawable)
      */
     public void paintFrame() {
+        if (glCanvas == null || skipGlBecauseWindowGeometry()) {
+            return;
+        }
 //        synchronized (glCanvas.getTreeLock()) {
         try {
 //                glCanvas.getContext().makeCurrent();
@@ -1369,6 +1384,108 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        }
     }
 
+    /**
+     * True while the AEViewer window is being moved or resized, including
+     * dragged onto another screen. Skip JOGL so NVIDIA/X11 does not SIGSEGV in
+     * {@code glDrawArrays} from {@code TextRenderer}.
+     */
+    public boolean shouldSuppressGlForWindowGeometry() {
+        return System.currentTimeMillis() < suppressGlUntilMs;
+    }
+
+    /**
+     * Called from {@link AEViewer} on move/resize. Also used when
+     * {@link #display} sees a {@link GraphicsDevice} change.
+     */
+    public void onWindowGeometryChanging() {
+        suppressGlUntilMs = System.currentTimeMillis() + WINDOW_GEOMETRY_SETTLE_MS;
+        if (glCanvas != null) {
+            glCanvas.setIgnoreRepaint(true);
+        }
+        Runnable armTimer = () -> {
+            if (windowGeometrySettleTimer == null) {
+                windowGeometrySettleTimer = new javax.swing.Timer(WINDOW_GEOMETRY_SETTLE_MS, e -> onWindowGeometrySettled());
+                windowGeometrySettleTimer.setRepeats(false);
+            }
+            windowGeometrySettleTimer.setInitialDelay(WINDOW_GEOMETRY_SETTLE_MS);
+            windowGeometrySettleTimer.restart();
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            armTimer.run();
+        } else {
+            javax.swing.SwingUtilities.invokeLater(armTimer);
+        }
+    }
+
+    private boolean skipGlBecauseWindowGeometry() {
+        if (shouldSuppressGlForWindowGeometry()) {
+            return true;
+        }
+        GraphicsDevice now = currentWindowGraphicsDevice();
+        if (lastGraphicsDevice != null && now != null && now != lastGraphicsDevice) {
+            log.info("OpenGL display on a different screen than last frame; skipping until the window settles");
+            dropTextRenderersWithoutDispose();
+            lastGraphicsDevice = now;
+            onWindowGeometryChanging();
+            return true;
+        }
+        if (lastGraphicsDevice == null && now != null) {
+            lastGraphicsDevice = now;
+        }
+        return false;
+    }
+
+    private void onWindowGeometrySettled() {
+        GraphicsDevice now = currentWindowGraphicsDevice();
+        if (lastGraphicsDevice != null && now != null && now != lastGraphicsDevice) {
+            log.info("AEViewer moved to a different screen (" + lastGraphicsDevice.getIDstring()
+                    + " -> " + now.getIDstring()
+                    + "); dropping GL text renderers without dispose()");
+            dropTextRenderersWithoutDispose();
+        }
+        lastGraphicsDevice = now;
+        suppressGlUntilMs = 0L;
+        if (glCanvas != null) {
+            glCanvas.setIgnoreRepaint(false);
+            glCanvas.repaint();
+        }
+    }
+
+    private GraphicsDevice currentWindowGraphicsDevice() {
+        if (glCanvas == null) {
+            return null;
+        }
+        try {
+            java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(glCanvas);
+            if (w != null && w.getGraphicsConfiguration() != null) {
+                return w.getGraphicsConfiguration().getDevice();
+            }
+            if (glCanvas.getGraphicsConfiguration() != null) {
+                return glCanvas.getGraphicsConfiguration().getDevice();
+            }
+        } catch (Exception e) {
+            log.log(Level.FINE, "currentWindowGraphicsDevice: {0}", e.toString());
+        }
+        return null;
+    }
+
+    /**
+     * Drop JOGL text objects without native {@code dispose()} — that call can
+     * SIGSEGV after a screen change.
+     */
+    private void dropTextRenderersWithoutDispose() {
+        renderer = null;
+        spikeMarkerTextRenderer = null;
+        GLContext ctx = glCanvas != null ? glCanvas.getContext() : null;
+        if (ctx != null) {
+            DrawGL.forgetContext(ctx);
+        }
+        DisplayMethod m = getDisplayMethod();
+        if (m != null) {
+            m.onGlContextUnreliable();
+        }
+    }
+
     public void removeGLEventListener(final GLEventListener listener) {
     }
 
@@ -1380,7 +1497,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * calls repaint on the glCanvas
      */
     public void repaint() {
-        if (glCanvas != null) {
+        if (glCanvas != null && !shouldSuppressGlForWindowGeometry()) {
             glCanvas.repaint();
         }
     }
@@ -1391,7 +1508,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @param tm time to repaint within, in ms
      */
     public void repaint(final long tm) {
-        if (glCanvas != null) {
+        if (glCanvas != null && !shouldSuppressGlForWindowGeometry()) {
             glCanvas.repaint(tm);
         }
     }
@@ -1404,8 +1521,11 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     @Override
     public void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width, final int height) {
-        final GL2 gl = drawable.getGL().getGL2();
         getClipArea().setDirty();
+        if (skipGlBecauseWindowGeometry()) {
+            return;
+        }
+        final GL2 gl = drawable.getGL().getGL2();
         getZoom().applyProjection(gl);
         gl.glViewport(0, 0, width, height);
 //        checkGLError(gl, glu, "at start of reshape");
@@ -1608,6 +1728,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             final float fs = Math.max(1f, scale); // text offset in chip pixels
             if (spikeMarkerTextRenderer == null) {
                 spikeMarkerTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, SPIKE_MARKER_FONT_ATLAS), true, true);
+                spikeMarkerTextRenderer.setUseVertexArrays(false);
             }
             final String label = x + "," + y;
             spikeMarkerTextRenderer.begin3DRendering();

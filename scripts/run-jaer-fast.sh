@@ -39,6 +39,9 @@ done
 # WIP: compact object headers (JEP 519) until JEP 534 makes them the JVM default.
 # --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+).
 
+JAER_TMP="${TMPDIR:-/tmp}/jaer"
+mkdir -p "$JAER_TMP"
+
 exec java \
   --add-exports java.base/java.lang=ALL-UNNAMED \
   --add-exports java.desktop/sun.awt=ALL-UNNAMED \
@@ -52,6 +55,8 @@ exec java \
   -Dsun.java2d.noddraw=true \
   -Dsun.java2d.opengl=false \
   -XX:+UseCompactObjectHeaders \
+  -XX:ErrorFile="$JAER_TMP/hs_err_pid%p.log" \
+  -XX:ReplayDataFile="$JAER_TMP/replay_pid%p.log" \
   -Xmx10g \
   -Xrs \
   -splash:images/800w/SplashScreen.png \

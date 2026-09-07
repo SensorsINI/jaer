@@ -227,9 +227,12 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <target name="-check-runtime-jvm" depends="check-jdk"/>
 
     <target depends="-check-runtime-jvm,init,compile,generate-splash" description="Run a main class." name="run">
+        <mkdir dir="${java.io.tmpdir}/jaer"/>
         <j2seproject1:java>
             <customize>
                 <arg line="${application.args}"/>
+                <jvmarg value="-XX:ErrorFile=${java.io.tmpdir}/jaer/hs_err_pid%p.log"/>
+                <jvmarg value="-XX:ReplayDataFile=${java.io.tmpdir}/jaer/replay_pid%p.log"/>
             </customize>
         </j2seproject1:java>
     </target>
@@ -462,6 +465,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
 
     <target name="-pre-init">
         <tstamp/>
+        <mkdir dir="${java.io.tmpdir}/jaer"/>
     </target>
 
     <!-- makes sure that the build version is written to the jar -->

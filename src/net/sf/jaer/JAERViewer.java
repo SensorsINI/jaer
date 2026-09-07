@@ -353,17 +353,11 @@ public class JAERViewer {
             return start;
         }
         List<File> dumps = JaerIssueReporter.findCrashDumps(pid, semaphore.lastModified());
-        StringBuilder dumpHtml = new StringBuilder();
-        if (!dumps.isEmpty()) {
-            dumpHtml.append("<br><br>Crash dumps found:<br>");
-            for (File f : dumps) {
-                dumpHtml.append("<code>").append(escapeHtml(f.getAbsolutePath())).append("</code><br>");
-            }
-        }
+        String dumpHtml = JaerIssueReporter.dumpFilesHtml(dumps);
         File sessionLog = JaerIssueReporter.sessionLogFile();
         if (sessionLog != null) {
-            dumpHtml.append("<br>Session log:<br><code>")
-                    .append(escapeHtml(sessionLog.getAbsolutePath())).append("</code>");
+            dumpHtml += "<br>Session log:<br><code>"
+                    + escapeHtml(sessionLog.getAbsolutePath()) + "</code>";
         }
         String pidNote = pid != null ? " (PID " + pid + " is not running)" : "";
         String msg = "<html>The previous jAER session did not exit cleanly" + pidNote + ".<br><br>"
@@ -372,23 +366,32 @@ public class JAERViewer {
                 + dumpHtml
                 + "<br><br>Report this problem on GitHub, or start jAER anyway?</html>";
         Object[] options = {"Report issue", "Start anyhow", "Cancel"};
-        while (true) {
-            int choice = JOptionPane.showOptionDialog(null, msg, "Previous jAER session did not exit cleanly",
-                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
-            if (choice == 0) {
-                logger.info("Reporting unclean previous session from " + semaphore.getAbsolutePath());
-                JaerIssueReporter.report(null, "Previous session did not exit cleanly",
-                        null, null, detail, dumps);
-                continue;
-            }
-            boolean start = choice == 1;
+        int choice = JOptionPane.showOptionDialog(null, msg, "Previous jAER session did not exit cleanly",
+                JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
+        if (choice == 0) {
+            logger.info("Reporting unclean previous session from " + semaphore.getAbsolutePath());
+            JaerIssueReporter.report(null, "Previous session did not exit cleanly",
+                    null, null, detail, dumps);
+            Object[] afterReport = {"Start anyhow", "Cancel"};
+            int after = JOptionPane.showOptionDialog(null,
+                    "<html>The issue report was opened.<br><br>Start jAER anyway?</html>",
+                    "Previous jAER session did not exit cleanly",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, afterReport, afterReport[0]);
+            boolean start = after == 0;
             if (start) {
-                logger.warning("Starting after unclean exit; semaphore " + semaphore.getAbsolutePath());
+                logger.warning("Starting after unclean-exit report; semaphore " + semaphore.getAbsolutePath());
             } else {
-                logger.info("Startup cancelled after unclean-exit warning " + semaphore.getAbsolutePath());
+                logger.info("Startup cancelled after unclean-exit report " + semaphore.getAbsolutePath());
             }
             return start;
         }
+        boolean start = choice == 1;
+        if (start) {
+            logger.warning("Starting after unclean exit; semaphore " + semaphore.getAbsolutePath());
+        } else {
+            logger.info("Startup cancelled after unclean-exit warning " + semaphore.getAbsolutePath());
+        }
+        return start;
     }
 
     /**
@@ -1344,7 +1347,8 @@ public class JAERViewer {
                 + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
                 + "\nEdit this file to configure logging."
                 + "\njava.io.tmpdir=" + System.getProperty("java.io.tmpdir")
-                + "\njaer.tmpdir=" + net.sf.jaer.util.JaerTmpdir.get().getAbsolutePath());
+                + "\njaer.tmpdir=" + net.sf.jaer.util.JaerTmpdir.get().getAbsolutePath()
+                + "\nhs_err=" + net.sf.jaer.util.JaerIssueReporter.configuredErrorFileOrFallback());
         log.info("Preferences come from root located at " + prefs.absolutePath());
         Logger root = log;
         while (root.getParent() != null) {

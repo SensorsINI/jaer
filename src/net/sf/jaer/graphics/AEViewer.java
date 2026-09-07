@@ -39,6 +39,8 @@ import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -1175,6 +1177,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void windowOpened(WindowEvent e) {
                 StartupProfiler.mark("AEViewer.windowOpened");
                 StartupProfiler.dump();
+            }
+        });
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                notifyChipCanvasWindowGeometryChanging();
+            }
+
+            @Override
+            public void componentResized(ComponentEvent e) {
+                notifyChipCanvasWindowGeometryChanging();
             }
         });
         showViewerFrameEarly();
@@ -4630,6 +4643,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return chip.getCanvas();
         }
         return null;
+    }
+
+    /**
+     * Pause OpenGL while this frame is dragged or resized (Linux multi-monitor
+     * NVIDIA crash in JOGL {@code TextRenderer}).
+     */
+    private void notifyChipCanvasWindowGeometryChanging() {
+        ChipCanvas canvas = getChipCanvas();
+        if (canvas != null) {
+            canvas.onWindowGeometryChanging();
+        }
     }
 
     /**

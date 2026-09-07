@@ -8,6 +8,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -92,7 +93,7 @@ public final class JaerIssueReporter {
 
         File reportFile = writeReportFile(report.toString());
         copyToClipboard(report.toString());
-        String body = buildIssueBody(heading, reportFile, exceptionText);
+        String body = buildIssueBody(heading, reportFile, exceptionText, dumpFiles);
         String url = JaerConstants.JAER_ISSUES_NEW
                 + "?title=" + encode(heading)
                 + "&body=" + encode(body);
@@ -100,11 +101,23 @@ public final class JaerIssueReporter {
         if (reportFile != null) {
             Window owner = parent instanceof Window w ? w
                     : (parent != null ? SwingUtilities.getWindowAncestor(parent) : null);
-            String html = "<html>A report was copied to the clipboard and saved to:<br>"
-                    + ShowFolderSaveConfirmation.escapeHtml(reportFile.getAbsolutePath())
-                    + "<br><br>Paste it into the GitHub issue, or drag the file onto the issue page after signing in.";
+            StringBuilder html = new StringBuilder("<html>A report was copied to the clipboard and saved to:<br>");
+            html.append(ShowFolderSaveConfirmation.escapeHtml(reportFile.getAbsolutePath()));
+            html.append("<br><br>Paste it into the GitHub issue, or drag the file onto the issue page after signing in.");
+            if (dumpFiles != null && !dumpFiles.isEmpty()) {
+                html.append("<br><br>Also <b>attach the text crash log</b> (<code>hs_err_pid*.log</code>) to the issue. ");
+                html.append("Do not attach a binary <code>core.*</code> dump.<br>");
+                for (File f : dumpFiles) {
+                    html.append("<code>").append(ShowFolderSaveConfirmation.escapeHtml(f.getAbsolutePath()))
+                            .append("</code>");
+                    if (isOsCoreDump(f)) {
+                        html.append(" (OS core — skip)");
+                    }
+                    html.append("<br>");
+                }
+            }
             ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(
-                    owner, reportFile, html, null, null, "Report issue");
+                    owner, reportFile, html.toString(), null, null, "Report issue");
             dialog.setModal(true);
             dialog.setVisible(true);
         }
@@ -125,6 +138,7 @@ public final class JaerIssueReporter {
         appendProp(sb, "user.dir");
         appendProp(sb, "java.io.tmpdir");
         sb.append("jaer.tmpdir=").append(JaerTmpdir.get().getAbsolutePath()).append('\n');
+        sb.append("hs_err.location=").append(configuredErrorFileOrFallback()).append('\n');
         appendProp(sb, "java.util.logging.config.file");
         try {
             sb.append("pid=").append(ProcessHandle.current().pid()).append('\n');
@@ -174,9 +188,9 @@ public final class JaerIssueReporter {
     }
 
     /**
-     * {@code hs_err_pid*.log} and {@code replay_pid*.log} in {@code user.dir},
-     * {@link JaerTmpdir}, and the system temp root, matching {@code pid} when known,
-     * otherwise newer than {@code sinceMs}.
+     * {@code hs_err_pid*.log}, {@code replay_pid*.log}, and OS {@code core}
+     * files in {@code user.dir}, {@link JaerTmpdir}, and the system temp root,
+     * matching {@code pid} when known, otherwise newer than {@code sinceMs}.
      */
     public static List<File> findCrashDumps(Long pid, long sinceMs) {
         List<File> found = new ArrayList<>();
@@ -195,17 +209,105 @@ public final class JaerIssueReporter {
                     continue;
                 }
                 String n = f.getName();
-                if (!(n.startsWith("hs_err") && n.endsWith(".log"))
-                        && !(n.startsWith("replay_pid") && n.endsWith(".log"))) {
+                if (!isCrashDumpName(n)) {
                     continue;
                 }
-                if ((pid != null && n.contains("pid" + pid)) || f.lastModified() >= sinceMs) {
+                if ((pid != null && n.contains("pid" + pid))
+                        || (pid != null && n.equals("core." + pid))
+                        || f.lastModified() >= sinceMs) {
                     found.add(f);
                 }
             }
         }
         found.sort(Comparator.comparingLong(File::lastModified).reversed());
         return found;
+    }
+
+    static boolean isCrashDumpName(String n) {
+        if (n == null) {
+            return false;
+        }
+        if (n.startsWith("hs_err") && n.endsWith(".log")) {
+            return true;
+        }
+        if (n.startsWith("replay_pid") && n.endsWith(".log")) {
+            return true;
+        }
+        return n.equals("core") || n.matches("core\\.\\d+");
+    }
+
+    static boolean isOsCoreDump(File f) {
+        return f != null && isOsCoreDumpName(f.getName());
+    }
+
+    static boolean isOsCoreDumpName(String n) {
+        return n != null && (n.equals("core") || n.matches("core\\.\\d+"));
+    }
+
+    /**
+     * {@code -XX:ErrorFile} from VM args if present, else the HotSpot fallback:
+     * working directory, then the OS temp directory if that folder is not writable.
+     */
+    public static String configuredErrorFileOrFallback() {
+        String configured = errorFileFromVmArgs();
+        if (configured != null && !configured.isBlank()) {
+            return configured;
+        }
+        return JaerTmpdir.errorFilePath() + " (set -XX:ErrorFile; otherwise cwd "
+                + new File(System.getProperty("user.dir", ".")).getAbsolutePath()
+                + ", then " + JaerTmpdir.systemTmp().getAbsolutePath() + " if cwd is not writable)";
+    }
+
+    /** {@code -XX:ErrorFile=} value from this JVM's input arguments, or null. */
+    public static String errorFileFromVmArgs() {
+        try {
+            for (String arg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+                if (arg != null && arg.startsWith("-XX:ErrorFile=")) {
+                    return arg.substring("-XX:ErrorFile=".length());
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * HTML fragment for the unclean-exit dialog: list dumps and ask the user to
+     * attach the text {@code hs_err} (not a binary OS core).
+     */
+    public static String dumpFilesHtml(List<File> dumps) {
+        StringBuilder dumpHtml = new StringBuilder();
+        if (dumps == null || dumps.isEmpty()) {
+            dumpHtml.append("<br><br>No JVM crash log (<code>hs_err_pid*.log</code>) was found.<br>")
+                    .append("Looked in:<br><code>")
+                    .append(escapeHtml(JaerTmpdir.get().getAbsolutePath())).append("</code><br><code>")
+                    .append(escapeHtml(new File(System.getProperty("user.dir", ".")).getAbsolutePath()))
+                    .append("</code><br><code>")
+                    .append(escapeHtml(JaerTmpdir.systemTmp().getAbsolutePath())).append("</code><br>")
+                    .append("If the previous working directory was not writable, HotSpot writes <code>hs_err</code> ")
+                    .append("to the system temp folder (not <code>jaer/</code> unless <code>-XX:ErrorFile</code> is set). ")
+                    .append("On Ubuntu the binary OS core dump is often taken by Apport (<code>/var/crash/</code>) ")
+                    .append("and is too large to attach to GitHub; the text <code>hs_err_pid*.log</code> is the useful file.");
+            return dumpHtml.toString();
+        }
+        dumpHtml.append("<br><br>Please <b>attach the text crash log</b> (<code>hs_err_pid*.log</code>) ")
+                .append("to the GitHub issue. Do not attach a binary <code>core.*</code> dump (too large).<br>");
+        for (File f : dumps) {
+            dumpHtml.append("<code>").append(escapeHtml(f.getAbsolutePath())).append("</code>");
+            if (isOsCoreDump(f)) {
+                dumpHtml.append(" (OS core dump — do not attach)");
+            }
+            dumpHtml.append("<br>");
+        }
+        return dumpHtml.toString();
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     public static Long parseSemaphorePid(String detail) {
@@ -427,7 +529,7 @@ public final class JaerIssueReporter {
         } catch (Exception e) {
             pid = 0L;
         }
-        File dump = new File(System.getProperty("user.dir", "."), "hs_err_pid" + pid + ".log");
+        File dump = JaerTmpdir.file("hs_err_pid" + pid + ".log");
         String text = "# Simulated hs_err for jAER issue-reporter test\n"
                 + "# pid=" + pid + "\n"
                 + "A fatal error has been detected by the Java Runtime Environment:\n"
@@ -455,10 +557,24 @@ public final class JaerIssueReporter {
     }
 
     private static void appendDumpFiles(StringBuilder report, List<File> dumpFiles) {
-        if (dumpFiles == null || dumpFiles.isEmpty()) {
+        if (dumpFiles == null) {
+            return;
+        }
+        if (dumpFiles.isEmpty()) {
+            report.append("=== Crash dumps ===\n(none found in ")
+                    .append(JaerTmpdir.get().getAbsolutePath()).append(", ")
+                    .append(new File(System.getProperty("user.dir", ".")).getAbsolutePath())
+                    .append(", or ").append(JaerTmpdir.systemTmp().getAbsolutePath())
+                    .append(")\n")
+                    .append("Attach hs_err_pid*.log if you find it. Do not attach a binary core dump.\n\n");
             return;
         }
         for (File f : dumpFiles) {
+            if (isOsCoreDump(f)) {
+                report.append("=== OS core dump (do not attach to GitHub; too large) ===\n");
+                report.append(f.getAbsolutePath()).append(" size=").append(f.length()).append(" bytes\n\n");
+                continue;
+            }
             report.append("=== Dump ").append(f.getAbsolutePath()).append(" ===\n");
             report.append(readTail(f, MAX_LOG_CHARS)).append("\n\n");
         }
@@ -486,7 +602,7 @@ public final class JaerIssueReporter {
         }
     }
 
-    private static String buildIssueBody(String title, File reportFile, String exceptionText) {
+    private static String buildIssueBody(String title, File reportFile, String exceptionText, List<File> dumpFiles) {
         StringBuilder body = new StringBuilder(MAX_URL_BODY_CHARS);
         body.append("## ").append(title).append("\n\n");
         body.append("**jAER** ").append(JaerConstants.getReleaseVersion())
@@ -504,8 +620,16 @@ public final class JaerIssueReporter {
         if (reportFile != null) {
             body.append(" and saved to `").append(reportFile.getAbsolutePath()).append('`');
         }
-        body.append(". Please paste it below or attach the file.\n\n");
-        body.append("```\n");
+        body.append(". Please paste it below or attach the file.\n");
+        if (dumpFiles != null) {
+            for (File f : dumpFiles) {
+                if (isOsCoreDump(f)) {
+                    continue;
+                }
+                body.append("\nPlease also attach `").append(f.getAbsolutePath()).append("`.\n");
+            }
+        }
+        body.append("\n```\n");
         body.append(systemInfo());
         body.append("```\n");
         String s = body.toString();

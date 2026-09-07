@@ -46,6 +46,8 @@ goto argloop
 
 if not "!JVM_EXTRA!"=="" echo run-jaer-fast: JVM extras:!JVM_EXTRA!
 
+if not exist "%TEMP%\jaer" mkdir "%TEMP%\jaer"
+
 rem WIP: compact object headers (JEP 519) until JEP 534 makes them the JVM default.
 rem --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+).
 java ^
@@ -61,6 +63,8 @@ java ^
   -Dsun.java2d.noddraw=true ^
   -Dsun.java2d.opengl=false ^
   -XX:+UseCompactObjectHeaders ^
+  -XX:ErrorFile="%TEMP%\jaer\hs_err_pid%%p.log" ^
+  -XX:ReplayDataFile="%TEMP%\jaer\replay_pid%%p.log" ^
   -Xmx10g ^
   -Xrs ^
   -splash:images/800w/SplashScreen.png ^

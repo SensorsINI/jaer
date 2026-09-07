@@ -54,6 +54,11 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         super(chipCanvas);
     }
 
+    @Override
+    public void onGlContextUnreliable() {
+        textRenderer = null;
+    }
+
     /**
      * called by ChipCanvas.display(GLAutoDrawable) to draw the RGB fr histogram
      * values. The GL context is assumed to already be transformed so that chip
@@ -273,7 +278,9 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glRotated(90, 0, 0, 1);
             if (textRenderer == null) {
                 textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
-                // textRenderer.setUseVertexArrays(false);
+                // NVIDIA + multi-monitor and Intel Arc can SIGSEGV in glDrawArrays
+                // from TextRenderer's Pipelined_QuadRenderer.
+                textRenderer.setUseVertexArrays(false);
             }
             getChipCanvas().checkGLError(gl, glu, "after transforms and possibily allocating text renderer rendering special event count");
             textRenderer.begin3DRendering();

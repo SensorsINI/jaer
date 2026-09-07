@@ -101,6 +101,14 @@ public abstract class DisplayMethod implements PropertyChangeListener {
      */
     abstract public void display(GLAutoDrawable drawable);
 
+    /**
+     * Window moved to another screen or the GL context is otherwise unreliable.
+     * Drop JOGL {@link TextRenderer} fields without calling {@code dispose()}
+     * (that native call can SIGSEGV). Next {@link #display} constructs new ones.
+     */
+    public void onGlContextUnreliable() {
+    }
+
     public String getDescription() {
         return this.getClass().getSimpleName();
     }

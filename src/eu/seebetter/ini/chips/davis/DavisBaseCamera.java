@@ -1513,6 +1513,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super(chip.getCanvas());
         }
 
+        @Override
+        public void onGlContextUnreliable() {
+            super.onGlContextUnreliable();
+            exposureTextRenderer = null;
+            imuTextRenderer = null;
+        }
+
         private TextRenderer exposureTextRenderer = null;
 
         @Override
@@ -1532,6 +1539,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         protected void displayDavisOverlays(final GLAutoDrawable drawable) {
             if (exposureTextRenderer == null) {
                 exposureTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
+                exposureTextRenderer.setUseVertexArrays(false);
             }
 
             if (!checkedCameraPresent && (getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
@@ -1578,6 +1586,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             final GL2 gl = drawable.getGL().getGL2();
             if (imuTextRenderer == null) {
                 imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36)); // recreate, memory hog if instance variable
+                imuTextRenderer.setUseVertexArrays(false);
             }
             gl.glPushMatrix();
 

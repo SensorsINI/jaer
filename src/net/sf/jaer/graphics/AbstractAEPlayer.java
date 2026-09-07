@@ -30,7 +30,6 @@ import net.sf.jaer.JaerConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
-import org.apache.commons.io.FilenameUtils;
 
 /**
  * Base class for AEPlayers for playing back AER data files that implements some
@@ -958,9 +957,8 @@ public abstract class AbstractAEPlayer {
 //
 //        // Set default file name if available
 //        String lastFileName = prefs.get("lastMarksFile", "exported-marks.csv");
-        fileChooser.setCurrentDirectory(playingFile.getParentFile().getAbsoluteFile());
-        String csvFileName = FilenameUtils.removeExtension(playingFile.getAbsolutePath()) + "-marks.csv";
-        fileChooser.setSelectedFile(new File(csvFileName));
+        fileChooser.setCurrentDirectory(net.sf.jaer.util.JaerTmpdir.markers());
+        fileChooser.setSelectedFile(AEFileInputStream.marksCacheFile(playingFile));
 
         int userSelection = fileChooser.showSaveDialog(null);
 

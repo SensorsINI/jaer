@@ -261,8 +261,9 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
     }
 
     /**
-     * Loads cached IN/OUT/other marks for this file from preferences (if any)
-     * and applies them to the stream and player slider. Default: no-op.
+     * Loads cached IN/OUT/other marks for this file from
+     * {@link net.sf.jaer.util.JaerTmpdir#markers()} (if any) and applies them to
+     * the stream and player slider. Default: no-op.
      */
     default void marksInitialize() {
     }

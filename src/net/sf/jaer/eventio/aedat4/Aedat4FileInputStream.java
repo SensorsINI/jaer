@@ -22,6 +22,7 @@ import java.nio.channels.FileChannel;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Level;
@@ -637,6 +638,152 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** True when this open selected an IMU stream with indexed samples. */
     public boolean hasImuPackets() {
         return imuStreamId >= 0 && imuRefs != null && imuRefs.length > 0;
+    }
+
+    /**
+     * EVTS, FRME, and IMUS packets for this camera, sorted by file offset
+     * (record order). Save As copies this sequence instead of reslicing.
+     */
+    public List<RecordedPacket> packetsInRecordOrder() {
+        int n = eventRefs.length + frameRefs.length + imuRefs.length;
+        ArrayList<RecordedPacket> out = new ArrayList<>(n);
+        for (PacketRef r : eventRefs) {
+            out.add(new RecordedPacket(RecordedPacket.Kind.EVENTS, r));
+        }
+        for (PacketRef r : frameRefs) {
+            out.add(new RecordedPacket(RecordedPacket.Kind.FRAME, r));
+        }
+        for (PacketRef r : imuRefs) {
+            out.add(new RecordedPacket(RecordedPacket.Kind.IMU, r));
+        }
+        out.sort(Comparator.comparingLong(p -> p.payloadOffset));
+        return out;
+    }
+
+    /** Decompressed FlatBuffer payload (size-prefixed), ready to recompress on write. */
+    public synchronized byte[] readUncompressedPayload(RecordedPacket packet) throws IOException {
+        if (packet == null) {
+            return new byte[0];
+        }
+        ByteBuffer bb = readPayload(refOf(packet));
+        byte[] raw = new byte[bb.remaining()];
+        bb.get(raw);
+        return raw;
+    }
+
+    /**
+     * Polarity events from one recorded EVTS packet, clipped to {@code [clipStart, clipEnd)}.
+     * Does not reslice across packet boundaries.
+     */
+    public synchronized AEPacketRaw extractRecordedEvents(RecordedPacket packet, long clipStart, long clipEnd)
+            throws IOException {
+        if (packet == null || packet.kind != RecordedPacket.Kind.EVENTS) {
+            return new AEPacketRaw(0);
+        }
+        long a = Math.max(packet.firstEventIndex, clipStart);
+        long b = packet.firstEventIndex + packet.numElements;
+        if (clipEnd != Long.MAX_VALUE) {
+            b = Math.min(b, clipEnd);
+        }
+        return extractPolarity(a, b);
+    }
+
+    public FramePacket decodeRecordedFrame(RecordedPacket packet) throws IOException {
+        return packet == null || packet.kind != RecordedPacket.Kind.FRAME ? null : decodeFrame(refOf(packet));
+    }
+
+    public ImuPacket decodeRecordedImu(RecordedPacket packet) throws IOException {
+        return packet == null || packet.kind != RecordedPacket.Kind.IMU ? null : decodeImu(refOf(packet));
+    }
+
+    /**
+     * True if this recorded packet belongs in an event-index clip {@code [start, end)}.
+     * EVTS uses event indices. FRME/IMUS use timestamp overlap with that clip,
+     * or are all included when the clip covers the whole file.
+     */
+    public boolean inEventIndexRange(RecordedPacket packet, long start, long end) {
+        if (packet == null) {
+            return false;
+        }
+        boolean wholeFile = start <= 0 && (end == Long.MAX_VALUE || (size() > 0 && end >= size()));
+        if (packet.kind == RecordedPacket.Kind.EVENTS) {
+            if (!wholeFile && end <= start) {
+                return false;
+            }
+            long a = packet.firstEventIndex;
+            long b = a + packet.numElements;
+            if (wholeFile) {
+                return true;
+            }
+            return a < end && b > start;
+        }
+        if (wholeFile) {
+            return true;
+        }
+        if (end <= start) {
+            return false;
+        }
+        long t0 = timestampApproxLong(start);
+        long last = Math.max(start, end - 1);
+        long t1 = timestampApproxLong(Math.min(last, Math.max(0L, size() - 1)));
+        return packet.unixEnd >= t0 && packet.unixStart <= t1;
+    }
+
+    private static PacketRef refOf(RecordedPacket packet) {
+        return new PacketRef(packet.payloadOffset, packet.payloadSize, packet.unixStart, packet.unixEnd,
+                packet.numElements, packet.firstEventIndex);
+    }
+
+    /**
+     * One AEDAT-4 packet as stored (not a playback timeslice).
+     */
+    public static final class RecordedPacket {
+        public enum Kind {
+            EVENTS, FRAME, IMU
+        }
+
+        public final Kind kind;
+        public final long payloadOffset;
+        public final int payloadSize;
+        public final long unixStart;
+        public final long unixEnd;
+        public final long numElements;
+        public final long firstEventIndex;
+        public final long wrapOffset;
+
+        RecordedPacket(Kind kind, PacketRef r) {
+            this.kind = kind;
+            this.payloadOffset = r.payloadOffset;
+            this.payloadSize = r.payloadSize;
+            this.unixStart = r.unixStart;
+            this.unixEnd = r.unixEnd;
+            this.numElements = r.numElements;
+            this.firstEventIndex = r.firstEventIndex;
+            this.wrapOffset = r.wrapOffset;
+        }
+
+        /**
+         * DV FileDataTable time (Unix µs). {@link #unixStart} is relative after
+         * indexing; undo that and any 32-bit wrap so copied packets match
+         * rewritten EVTS (which store Unix µs).
+         */
+        public long fileUnixStart(long baseUnixUs) {
+            return unixStart + baseUnixUs - wrapOffset;
+        }
+
+        public long fileUnixEnd(long baseUnixUs) {
+            return unixEnd + baseUnixUs - wrapOffset;
+        }
+
+        /** True when every event in this EVTS packet lies in {@code [start, end)}. */
+        public boolean eventsFullyInside(long start, long end) {
+            if (kind != Kind.EVENTS) {
+                return false;
+            }
+            long a = firstEventIndex;
+            long b = a + numElements;
+            return a >= start && (end == Long.MAX_VALUE || b <= end);
+        }
     }
 
     /** Reads IOHeader, resolves selected camera stream IDs from infoNode. */
@@ -2675,6 +2822,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public long getAbsoluteStartingTimeMs() { return baseUnixUs / 1000L; }
 
+    /** File epoch in Unix microseconds (AEDAT-4 packet timestamps). */
+    public long getBaseUnixUs() {
+        return baseUnixUs;
+    }
+
     @Override
     public ZoneId getZoneId() { return ZoneId.systemDefault(); }
 
@@ -2765,7 +2917,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
-     * Restores IN/OUT/other marks from the shared preferences cache (same map
+     * Restores IN/OUT/other marks from the shared tmpdir CSV cache (same files
      * as AEDAT-2 {@link AEFileInputStream}). Positions are event indices for
      * AEDAT-4. Applies marks to the player slider when available.
      */
@@ -2813,7 +2965,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return snapshotMarks();
     }
 
-    /** Writes current marks into the shared preferences cache (or clears entry). */
+    /** Writes current marks into the shared tmpdir CSV cache (or deletes the sidecar). */
     private void persistMarks() {
         if (file == null) {
             return;

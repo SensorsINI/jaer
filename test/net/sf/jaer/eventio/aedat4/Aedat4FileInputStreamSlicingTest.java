@@ -35,7 +35,7 @@ import prophesee.chip.PropheseeIMX636HD;
  * Mirrors the three AEPlayer exposure modes ({@code CountDuration} /
  * {@code ConstantCount} / {@code AreaEventCount}), single-step determinism,
  * rewind with and without IN, and IN/OUT marker bounds (repeat on/off).
- * {@code close()} persists marks — tests restore the prefs cache so sample
+ * {@code close()} persists marks — tests restore the tmpdir CSV cache so sample
  * files keep the user's IN/OUT.
  * Skips when {@code sampleData/*.aedat4} is not present.
  */

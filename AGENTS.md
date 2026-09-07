@@ -21,7 +21,7 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 
 ## Logs
 
-`ant run` / console is **INFO** (`conf/Logging.properties`). USB and ViewLoop detail is **FINE** in the rotating file `%t/jaer/jAER-%g.log` (`java.io.tmpdir/jaer/`; on Windows `%TEMP%\jaer\`). If the console cannot explain a hang, missed hotplug, or USB open failure, read the newest **`jAER-0.log`** there (not `jaer/logs/` in the repo). For USB open/close/multicamera failures, check tmpdir usb-open-trace.log.  For issues relaeted to human interface, check for possible interaction log stored in the tmpdir/jaer/interactions log.
+`ant run` / console is **INFO** (`conf/Logging.properties`). USB and ViewLoop detail is **FINE** in the rotating file `%t/jaer/jAER-%g.log` (`java.io.tmpdir/jaer/`; on Windows `%TEMP%\jaer\`). If the console cannot explain a hang, missed hotplug, or USB open failure, read the newest **`jAER-0.log`** there (not `jaer/logs/` in the repo). For USB open/close/multicamera failures, check tmpdir usb-open-trace.log. For issues related to human interface, check for possible interaction log stored in the tmpdir/jaer/interactions log. JVM native crashes write **`hs_err_pid*.log`** (and `replay_pid*.log`) to the same `java.io.tmpdir/jaer/` folder via `-XX:ErrorFile` (attach the text hs_err to GitHub issues; do not attach a binary OS `core.*` dump). If the working directory is not writable and ErrorFile is unset, HotSpot falls back to the OS temp root (`/tmp` or `%TEMP%`), not the `jaer/` subfolder. On Ubuntu, Apport often takes the OS core dump (`/var/crash/`).
 
 ## Build
 

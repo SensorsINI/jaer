@@ -51,7 +51,7 @@ public final class MemoryDiagnostics {
         return "Hints: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=... "
                 + "| -XX:NativeMemoryTracking=summary then jcmd <pid> VM.native_memory summary "
                 + "| GL 1285=out of GPU memory (reduce chip display size, disable sliding window/accumulate) "
-                + "| see hs_err_pid*.log and replay_pid*.log in working directory";
+                + "| see hs_err_pid*.log and replay_pid*.log in ${java.io.tmpdir}/jaer";
     }
 
     public static void logSummary(Logger log, Level level, String context) {

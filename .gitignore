@@ -9,6 +9,9 @@
 /jars
 /dist/
 hs_err*.log
+replay_pid*.log
+/core
+/core.[0-9]*
 nbproject/build-native.xml~
 # Obsolete exe4j launcher (replaced by install4j); may still exist locally
 /exe4j-launcher/

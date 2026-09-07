@@ -262,7 +262,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                 + "Unchecked: export the entire recording, ignoring markers.</html>");
         applyFiltersCb.setToolTipText("<html>Checked: run the current EventFilter chain before writing "
                 + "(same as filtered re-recording).<br>"
-                + "Unchecked: write extracted events with no filtering.<br>"
+                + "Unchecked: write the recording as stored (AEDAT-4 copies EVTS/FRME/IMUS "
+                + "packets in file order).<br>"
                 + "AEDAT-4 Save As is the preferred way to clip or filter a recording; "
                 + "the recording button still re-records at playback pace.</html>");
         applyFiltersCb.addItemListener(e -> updateFilterSummary());

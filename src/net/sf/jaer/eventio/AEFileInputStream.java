@@ -56,6 +56,7 @@ import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.JaerTmpdir;
 import net.sf.jaer.util.PrefObj;
 
 /**
@@ -117,7 +118,7 @@ import net.sf.jaer.util.PrefObj;
 public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface { // TODO extend
 
     static final private Logger log = Logger.getLogger("net.sf.jaer");
-    private static HashMap<String, Marks> marksFilesMap = null; // stores previous marks on files
+    private static HashMap<String, Marks> marksFilesMap = null; // legacy prefs fallback; new writes are CSV under JaerTmpdir.markers()
     /** True after {@link #marksInitialize()}; preview-only streams never set this, so close() must not persist marks. */
     private boolean marksInitialized = false;
     private static final Preferences prefs = JaerConstants.PREFS_ROOT.node("AEFileInputStream");
@@ -151,7 +152,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private boolean rewindFlag = false;
 
     /**
-     * Serializable IN/OUT/other marks cached in preferences by absolute path.
+     * Serializable IN/OUT/other marks cached as CSV under
+     * {@link net.sf.jaer.util.JaerTmpdir#markers()} (one file per recording).
      * Shared with {@link net.sf.jaer.eventio.aedat4.Aedat4FileInputStream}.
      * Positions are stream-specific (AEDAT-2: byte offsets; AEDAT-4: event indices).
      */
@@ -394,9 +396,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     @Override
     public void marksInitialize() {
-        marksLoadMapFromPreferences();
         marksInitialized = true;
-        Marks savedMarks = marksFilesMap.get(getFile().getAbsolutePath());
+        Marks savedMarks = marksGetForFile(getFile());
         if (savedMarks == null) {
             log.info("no marks for this file");
             clearMarks();
@@ -1269,9 +1270,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Writes IN/OUT/other marks to preferences only if they were loaded for
-     * playback. File-dialog preview never calls {@link #marksInitialize()}, so
-     * it must not NPE or overwrite saved marks with empty defaults.
+     * Writes IN/OUT/other marks to {@link JaerTmpdir#markers()} only if they
+     * were loaded for playback. File-dialog preview never calls
+     * {@link #marksInitialize()}, so it must not overwrite saved marks with
+     * empty defaults.
      */
     private void persistMarksOnClose() {
         if (file == null) {
@@ -1909,7 +1911,29 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Stores the map of previous marks
+     * Sidecar name under {@link JaerTmpdir#markers()}: recording name plus a
+     * stable hash of the absolute path so two files with the same basename do
+     * not share marks.
+     */
+    public static String marksCacheFileName(File file) {
+        if (file == null) {
+            return "unknown.marks.csv";
+        }
+        String name = file.getName();
+        if (name == null || name.isEmpty()) {
+            name = "unknown";
+        }
+        return name + "." + Integer.toHexString(file.getAbsolutePath().hashCode()) + ".marks.csv";
+    }
+
+    /** Write/read location for this recording's marks CSV ({@code jaer/markers/…}). */
+    public static File marksCacheFile(File file) {
+        return JaerTmpdir.markersFile(marksCacheFileName(file));
+    }
+
+    /**
+     * Stores the map of previous marks (legacy Java Preferences; new writes go
+     * to {@link JaerTmpdir#markers()}).
      */
     public static void marksSaveToPreferences() {
         try {
@@ -1921,10 +1945,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Load the map of previous marks
-     *
+     * Load the map of previous marks from Java Preferences (fallback for
+     * recordings that have not been migrated to a markers CSV yet).
      */
     public static void marksLoadMapFromPreferences() {
+        if (marksFilesMap != null) {
+            return;
+        }
         try {
             Object o = PrefObj.getObject(prefs, "marks");
             if (o == null) {
@@ -1942,140 +1969,154 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /**
      * Returns cached marks for {@code file}, or null if none / cleared.
+     * Prefers {@link JaerTmpdir#markers()} CSV; falls back to Java Preferences
+     * and migrates that entry to a sidecar.
      * Used by AEDAT-4 and other {@link AEFileInputStreamInterface} implementations.
      */
     public static Marks marksGetForFile(File file) {
         if (file == null) {
             return null;
         }
+        File csv = JaerTmpdir.resolveMarkers(marksCacheFileName(file));
+        if (csv.isFile() && csv.canRead() && csv.length() > 0) {
+            try {
+                return readMarksFromCsv(csv);
+            } catch (Exception e) {
+                log.warning(String.format("Could not read marks from %s: %s", csv, e));
+            }
+        }
         marksLoadMapFromPreferences();
-        return marksFilesMap.get(file.getAbsolutePath());
+        Marks fromPrefs = marksFilesMap.get(file.getAbsolutePath());
+        if (fromPrefs != null) {
+            try {
+                writeMarksToCsv(fromPrefs, marksCacheFile(file));
+                log.info("Migrated marks for " + file.getName() + " to " + marksCacheFile(file));
+            } catch (Exception e) {
+                log.fine("Could not migrate marks to sidecar: " + e);
+            }
+        }
+        return fromPrefs;
     }
 
     /**
-     * Stores (or clears with null) marks for {@code file} and persists preferences.
+     * Stores (or clears with null) marks for {@code file} as CSV under
+     * {@link JaerTmpdir#markers()}. Removes a leftover preferences entry so
+     * stale IN/OUT do not come back after a clear.
      */
     public static void marksPutForFile(File file, Marks marks) {
         if (file == null) {
             return;
         }
+        File csv = marksCacheFile(file);
+        try {
+            if (marks == null) {
+                if (csv.isFile() && !csv.delete()) {
+                    log.warning("Could not delete marks file " + csv);
+                }
+            } else {
+                writeMarksToCsv(marks, csv);
+            }
+        } catch (Exception e) {
+            log.warning(String.format("Could not store marks to %s: %s", csv, e));
+        }
+        marksRemoveFromPreferences(file);
+    }
+
+    /** Drop this recording from the legacy preferences map if it is present. */
+    private static void marksRemoveFromPreferences(File file) {
         marksLoadMapFromPreferences();
-        marksFilesMap.put(file.getAbsolutePath(), marks);
-        marksSaveToPreferences();
-    }
-
-    /**
-     * Exports the data from a given Marks instance to a specified CSV file. The
-     * CSV file will have a header row and one data row. The format is:
-     * markIn,markOut,"comma_separated_otherMarks"
-     *
-     * @param file The File object representing the target CSV file.
-     * @throws IOException If an I/O error occurs during file writing.
-     */
-    public void marksExportToCSV(File file) throws IOException {
-        // Use try-with-resources to ensure the BufferedWriter is closed automatically.
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            // Write the header row for clarity in the CSV file.
-            writer.write("markIn,markOut,otherMarks\n");
-
-            // Convert the TreeSet of Longs into a single comma-separated string.
-            // Each Long is mapped to its String representation, then joined.
-            String otherMarksString = marks.otherMarks.stream()
-                    .map(String::valueOf)
-                    .collect(Collectors.joining(","));
-
-            // Write the data row.
-            // The 'otherMarksString' is enclosed in double quotes to handle potential
-            // commas within the data itself, which is standard CSV practice.
-            writer.write(String.format("%d,%d,\"%s\"\n",
-                    marks.markIn, // First column: markIn
-                    marks.markOut, // Second column: markOut
-                    otherMarksString)); // Third column: otherMarks as a quoted string
+        if (marksFilesMap != null && marksFilesMap.containsKey(file.getAbsolutePath())) {
+            marksFilesMap.remove(file.getAbsolutePath());
+            marksSaveToPreferences();
         }
     }
 
     /**
-     * Imports Marks data from a specified CSV file and populates the given
-     * Marks instance. It expects the CSV file to have a header row (which is
-     * skipped) and then one data row. The expected format is:
-     * markIn,markOut,"comma_separated_otherMarks"
-     *
-     * @param marks The Marks object to be populated with the imported data.
-     * This object must not be null.
-     * @param file The File object representing the source CSV file.
-     * @throws IOException If an I/O error occurs during file reading.
-     * @throws IllegalArgumentException If the provided Marks instance is null,
-     * or if the CSV file format is unexpected (e.g., wrong number of columns,
-     * invalid number format).
+     * Writes {@code marks} as CSV ({@code markIn,markOut,"otherMarks"}).
      */
-    public void marksImportFromCSV(File file) throws IOException, IllegalArgumentException {
-        // Validate that the Marks instance to be populated is not null.
+    public static void writeMarksToCsv(Marks marks, File file) throws IOException {
         if (marks == null) {
-            throw new IllegalArgumentException("Marks instance to populate cannot be null.");
+            throw new IllegalArgumentException("Marks instance to export cannot be null.");
         }
+        File parent = file.getParentFile();
+        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+            throw new IOException("Could not create directory " + parent);
+        }
+        String otherMarksString = marks.otherMarks == null ? ""
+                : marks.otherMarks.stream().map(String::valueOf).collect(Collectors.joining(","));
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write("markIn,markOut,otherMarks\n");
+            writer.write(String.format("%d,%d,\"%s\"\n",
+                    marks.markIn, marks.markOut, otherMarksString));
+        }
+    }
 
-        // Use try-with-resources to ensure the BufferedReader is closed automatically.
+    /**
+     * Reads a Marks CSV written by {@link #writeMarksToCsv(Marks, File)}.
+     * Does not fire property changes (use {@link #marksImportFromCSV(File)} for that).
+     */
+    public static Marks readMarksFromCsv(File file) throws IOException, IllegalArgumentException {
+        Marks marks = new Marks();
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             int lineNumber = 0;
-
-            // Read and skip the header line.
             if ((line = reader.readLine()) != null) {
-                lineNumber++; // Increment line number for the header.
-                // In a more robust solution, you might parse the header to validate columns.
+                lineNumber++;
             } else {
-                // If the file is empty (no header), throw an exception.
                 throw new IOException("CSV file is empty or contains no header.");
             }
-
-            // Read the actual data line.
             if ((line = reader.readLine()) != null) {
-                lineNumber++; // Increment line number for the data.
-
-                // Split the line by comma, but only if the comma is NOT inside double quotes.
-                // This regex handles the quoted 'otherMarks' field correctly.
+                lineNumber++;
                 String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-
-                // Check if the number of parsed parts matches the expected number of columns.
                 if (parts.length != 3) {
-                    throw new IllegalArgumentException("Unexpected number of columns in CSV line " + lineNumber + ": " + line + ". Expected 3, found " + parts.length);
+                    throw new IllegalArgumentException("Unexpected number of columns in CSV line "
+                            + lineNumber + ": " + line + ". Expected 3, found " + parts.length);
                 }
-
                 try {
-                    // Parse markIn and markOut from the first two parts.
                     marks.markIn = Long.parseLong(parts[0].trim());
                     marks.markOut = Long.parseLong(parts[1].trim());
-
-                    // Process the 'otherMarks' string.
                     String otherMarksCsv = parts[2].trim();
-                    // Remove enclosing double quotes if they exist (from the export process).
                     if (otherMarksCsv.startsWith("\"") && otherMarksCsv.endsWith("\"")) {
                         otherMarksCsv = otherMarksCsv.substring(1, otherMarksCsv.length() - 1);
                     }
-
-                    // Clear any existing marks in the TreeSet before adding new ones.
                     marks.otherMarks.clear();
-                    // If the otherMarksCsv string is not empty, parse its contents.
                     if (!otherMarksCsv.isEmpty()) {
-                        // Split the string by comma, trim each part, filter out empty strings,
-                        // parse each part to a Long, and add it to the TreeSet.
                         Arrays.stream(otherMarksCsv.split(","))
                                 .map(String::trim)
-                                .filter(s -> !s.isEmpty()) // Filter out empty strings that might result from splitting (e.g., "1,,2")
+                                .filter(s -> !s.isEmpty())
                                 .map(Long::parseLong)
                                 .forEach(marks.otherMarks::add);
                     }
-                    getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks); // so that AEPlayerAdvanceControlPanel computes the slider markers
-
                 } catch (NumberFormatException e) {
-                    // Catch and re-throw NumberFormatException with more context.
-                    throw new IllegalArgumentException("Invalid number format in CSV line " + lineNumber + ": " + line, e);
+                    throw new IllegalArgumentException("Invalid number format in CSV line "
+                            + lineNumber + ": " + line, e);
                 }
             } else {
-                // If there's only a header and no data, throw an exception.
                 throw new IOException("CSV file contains only header, no data found.");
             }
         }
+        return marks;
+    }
+
+    /**
+     * Exports the current IN/OUT/other marks to a CSV file.
+     * Format: {@code markIn,markOut,"comma_separated_otherMarks"}
+     */
+    public void marksExportToCSV(File file) throws IOException {
+        writeMarksToCsv(marks, file);
+    }
+
+    /**
+     * Imports Marks from a CSV written by {@link #marksExportToCSV(File)} and
+     * fires {@link AEInputStream#EVENT_MARKS_LOADED}.
+     */
+    public void marksImportFromCSV(File file) throws IOException, IllegalArgumentException {
+        Marks imported = readMarksFromCsv(file);
+        marks.markIn = imported.markIn;
+        marks.markOut = imported.markOut;
+        marks.otherMarks.clear();
+        marks.otherMarks.addAll(imported.otherMarks);
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks);
     }
 
 }

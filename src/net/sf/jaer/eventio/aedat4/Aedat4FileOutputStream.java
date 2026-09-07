@@ -482,6 +482,18 @@ public class Aedat4FileOutputStream implements Closeable {
         }
     }
 
+    /**
+     * Write an already-decoded FlatBuffer packet (Save As record-order copy).
+     * Does not rebuild EVTS/FRME/IMUS contents or rebase timestamps.
+     */
+    public synchronized void writeCopiedPacket(int streamId, byte[] uncompressedPayload,
+            long numElements, long timestampStart, long timestampEnd) throws IOException {
+        if (uncompressedPayload == null || uncompressedPayload.length == 0 || numElements <= 0) {
+            return;
+        }
+        writePacket(streamId, uncompressedPayload, numElements, timestampStart, timestampEnd);
+    }
+
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
         ByteBuffer toWrite = Aedat4Compression.compressDirect(payload, compression);
         uncompressedPayloadBytes += payload.length;
@@ -658,7 +670,16 @@ public class Aedat4FileOutputStream implements Closeable {
                 eng.format((double) imuSamples).trim()));
         long tMin = Long.MAX_VALUE;
         long tMax = Long.MIN_VALUE;
+        // EVTS data-table times only (same span File Info uses). Copied FRME/IMU
+        // used to store relative µs while rewritten EVTS store Unix µs.
         for (DataDefinition d : dataDefinitions) {
+            int rem = d.streamId % Aedat4CameraTrack.STREAMS_PER_CAMERA;
+            if (rem < 0) {
+                rem += Aedat4CameraTrack.STREAMS_PER_CAMERA;
+            }
+            if (rem != 0) {
+                continue;
+            }
             if (d.timestampStart > 0 && d.timestampStart < tMin) {
                 tMin = d.timestampStart;
             }

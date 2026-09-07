@@ -71,13 +71,15 @@ Recording format is chosen in AEViewer prefs / Control menu (`recordingDataFileV
 
 Enabled only while a recording is open (`PlayMode.PLAYBACK`). Save As opens its own reader on a background low-priority thread so playback can continue or another file can be opened. Re-recording remains on the recording button.
 
-- **AEDAT-4** (default): native DV-compatible `.aedat4` (events, frames, IMU). Preferred way to clip with IN/OUT or apply EventFilters. File → Save As stays enabled while an export runs, so another recording can be exported in parallel.
+- **AEDAT-4** (default): native DV-compatible `.aedat4` (events, frames, IMU). Preferred way to clip with IN/OUT or apply EventFilters. File → Save As stays enabled while an export runs, so another recording can be exported in parallel. An AEDAT-4 source is copied in **record order**: each EVTS, FRME, and IMUS packet is written as stored (same packet sizes and interleave). Save As does not reslice events into 8192-event windows or reassemble Davis APS from mixed samples. IN/OUT trims only the first/last EVTS packets that straddle the marks; Apply EventFilters rewrites EVTS packets only. AEDAT-2 and other playback formats still scan in 8192-event slices (and may assemble APS).
 - **CSV / text** and **DSEC HDF5**: same scan; DAVIS/CDAVIS can add HVS sidecars.
 - **Use IN and OUT markers** (default on): unset ends are file start / EOF.
 - **Apply EventFilters** (default on): same chain as filtered re-recording.
 - **HVS sidecars** (DAVIS / CDAVIS, CSV/HDF5 only): optional `<basename>-frames/` compressed PNGs + `timestamps.txt`, and `<basename>-imu.csv`.
 
 Dialog: [`SaveAsExportDialog`](../src/net/sf/jaer/eventio/export/SaveAsExportDialog.java).
+
+Playback IN, OUT, and other markers are stored as CSV under `${java.io.tmpdir}/jaer/markers/` and restored when the recording is reopened.
 
 ---
 

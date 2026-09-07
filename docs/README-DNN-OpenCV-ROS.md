@@ -65,8 +65,8 @@ jAER writes a **memory-mapped file** and a localhost **TCP JSON-lines** control 
 
 | `outputMode` | Payload | Typical consumer | TCP |
 |--------------|---------|------------------|-----|
-| **EventCountFrames** | 64×64 uint8 event-count image | [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) | `127.0.0.1:14100` |
-| **EventWindows** | packed `(t, x, y, p)` windows | [rpg_e2vid](https://github.com/SensorsINI/rpg_e2vid) / FireNet | `127.0.0.1:14101` |
+| **EventCountFrames** (These frames can be exposed using **ConstantDuration**, **ConstantCount**, or **AreaEventCount** accumulation in jAER))| 64×64 uint8 event-count image | [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) | `127.0.0.1:14100` |
+| **EventWindows** | packed `(t, x, y, p)` windows of a constant # of events | [rpg_e2vid](https://github.com/SensorsINI/rpg_e2vid) / FireNet | `127.0.0.1:14101` |
 
 Default mmap paths (also shown as `mmapPath` in the dialog):
 

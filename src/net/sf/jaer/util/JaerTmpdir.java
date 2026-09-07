@@ -19,8 +19,15 @@ public final class JaerTmpdir {
      */
     public static final String AEIDX_DIR_NAME = "aeidx";
 
+    /**
+     * Playback IN/OUT/other-marks CSV subfolder under {@link #get()}
+     * ({@code *.marks.csv}).
+     */
+    public static final String MARKERS_DIR_NAME = "markers";
+
     private static volatile File cached;
     private static volatile File cachedAeidx;
+    private static volatile File cachedMarkers;
 
     private JaerTmpdir() {
     }
@@ -86,6 +93,69 @@ public final class JaerTmpdir {
     /** Write location for a playback index cache: {@code new File(aeidx(), name)}. */
     public static File aeidxFile(String name) {
         return new File(aeidx(), name);
+    }
+
+    /**
+     * {@code ${java.io.tmpdir}/jaer/markers}, created if needed. Falls back to
+     * {@link #get()} if the subfolder cannot be created.
+     */
+    public static File markers() {
+        File d = cachedMarkers;
+        if (d != null) {
+            return d;
+        }
+        synchronized (JaerTmpdir.class) {
+            if (cachedMarkers != null) {
+                return cachedMarkers;
+            }
+            File dir = new File(get(), MARKERS_DIR_NAME);
+            if (!dir.isDirectory() && !dir.mkdirs()) {
+                System.err.println("JaerTmpdir: could not create " + dir.getAbsolutePath()
+                        + "; using " + get().getAbsolutePath());
+                cachedMarkers = get();
+            } else {
+                cachedMarkers = dir;
+            }
+            return cachedMarkers;
+        }
+    }
+
+    /** Write location for a playback marks CSV: {@code new File(markers(), name)}. */
+    public static File markersFile(String name) {
+        return new File(markers(), name);
+    }
+
+    /**
+     * Existing marks CSV: prefer {@code jaer/markers/name}, then {@code jaer/name},
+     * then the system temp root. Does not move files from the older locations.
+     */
+    public static File resolveMarkers(String name) {
+        File preferred = markersFile(name);
+        if (preferred.isFile()) {
+            return preferred;
+        }
+        File inJaerRoot = file(name);
+        if (inJaerRoot.isFile() && !inJaerRoot.equals(preferred)) {
+            return inJaerRoot;
+        }
+        File systemRoot = new File(systemTmp(), name);
+        return systemRoot.isFile() ? systemRoot : preferred;
+    }
+
+    /**
+     * HotSpot {@code -XX:ErrorFile} value ({@code hs_err_pid%p.log} under
+     * {@link #get()}). {@code %p} is replaced by the crashed PID.
+     */
+    public static String errorFilePath() {
+        return file("hs_err_pid%p.log").getAbsolutePath();
+    }
+
+    /**
+     * HotSpot {@code -XX:ReplayDataFile} value ({@code replay_pid%p.log} under
+     * {@link #get()}).
+     */
+    public static String replayDataFilePath() {
+        return file("replay_pid%p.log").getAbsolutePath();
     }
 
     /**
