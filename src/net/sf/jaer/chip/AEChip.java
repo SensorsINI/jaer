@@ -519,56 +519,80 @@ public class AEChip extends Chip2D {
      * user using the ProgressMonitor cancel button
      */
     public AEFileInputStreamInterface constuctFileInputStream(File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
-        // usually called from EDT.. makes it tricky to update any progress GUI
+        AEFileInputStreamInterface stream = openFileInputStream(file, progressMonitor, true, null);
+        aeInputStream = stream;
+        return stream;
+    }
+
+    /**
+     * Open {@code file} on this chip without replacing {@link #aeInputStream}.
+     * Used by File → Save As so the scan has its own handle while playback can
+     * continue or another recording can be opened.
+     *
+     * @param aedat4EventStreamId AEDAT-4 EVTS stream to read; {@code null} selects the first
+     */
+    public AEFileInputStreamInterface openDetachedFileInputStream(File file, Integer aedat4EventStreamId)
+            throws IOException, InterruptedException {
+        return openFileInputStream(file, null, false, aedat4EventStreamId);
+    }
+
+    private AEFileInputStreamInterface openFileInputStream(File file, ProgressMonitor progressMonitor,
+            boolean consumePendingAedat4StreamId, Integer aedat4EventStreamId)
+            throws IOException, InterruptedException {
+        // usually called from EDT for playback; Save As calls off-EDT with a detached chip
         if (FilenameUtils.isExtension(file.getName(), TextFileInputStream.FILE_EXTENSION_TXT)
                 || FilenameUtils.isExtension(file.getName(), TextFileInputStream.FILE_EXTENSION_CSV)) {
-            // for text file, since counting events is slow, show progress dialog and let user cancel it
             try {
                 log.info(String.format("Opening file %s as a text CSV file", file));
-                aeInputStream = new TextFileInputStream(file, this, progressMonitor);
+                return new TextFileInputStream(file, this, progressMonitor);
             } catch (IOException ex) {
                 log.warning(ex.toString());
                 throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
             }
-        } else if (FilenameUtils.isExtension(file.getName(), RosbagFileInputStream.DATA_FILE_EXTENSION)) {
-            // for rosbag, since creating index is slow, show progress dialog and let user cancel it
+        }
+        if (FilenameUtils.isExtension(file.getName(), RosbagFileInputStream.DATA_FILE_EXTENSION)) {
             try {
-                aeInputStream = new RosbagFileInputStream(file, this, progressMonitor);
+                return new RosbagFileInputStream(file, this, progressMonitor);
             } catch (BagReaderException ex) {
                 log.warning(ex.toString());
                 throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
             }
-        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT4.substring(1))) {
-            Integer eventStreamId = null;
-            if (aeViewer != null) {
+        }
+        if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT4.substring(1))) {
+            Integer eventStreamId = aedat4EventStreamId;
+            if (eventStreamId == null && consumePendingAedat4StreamId && aeViewer != null) {
                 eventStreamId = aeViewer.consumePendingAedat4EventStreamId();
             }
-            aeInputStream = new Aedat4FileInputStream(file, this, progressMonitor, eventStreamId);
-        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDZ.substring(1))) {
+            return new Aedat4FileInputStream(file, this, progressMonitor, eventStreamId);
+        }
+        if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDZ.substring(1))) {
             log.info(String.format("Opening file %s as AEDZ compressed AEDAT-2", file));
-            aeInputStream = new AEDZInputStream(file);
-        } else if (FilenameUtils.isExtension(file.getName(), MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
+            return new AEDZInputStream(file);
+        }
+        if (FilenameUtils.isExtension(file.getName(), MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
             log.info(String.format("Opening file %s as Metavision RAW EVT3", file));
-            aeInputStream = new MetavisionRawFileInputStream(file, this, progressMonitor);
-        } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
+            return new MetavisionRawFileInputStream(file, this, progressMonitor);
+        }
+        if (DsecHdf5AEInputStream.isHdf5Extension(file)
                 && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
             log.info(String.format("Opening file %s as DSEC HDF5 events", file));
-            aeInputStream = new DsecHdf5AEInputStream(file, this, progressMonitor);
-        } else if (DddHdf5.isHdf5Extension(file) && DddHdf5.isDddRecording(file)) {
+            return new DsecHdf5AEInputStream(file, this, progressMonitor);
+        }
+        if (DddHdf5.isHdf5Extension(file) && DddHdf5.isDddRecording(file)) {
             throw new FileNotFoundException("file " + file
                     + " is a DDD17/DDD20 cAER+OpenXC HDF5 recording; open it in the File dialog to convert events and frames to AEDAT-4");
-        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))
+        }
+        if (FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))
                 && MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
             log.info(String.format("Opening file %s as Metavision DAT", file));
-            aeInputStream = new MetavisionDatFileInputStream(file, this, progressMonitor);
-        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))
+            return new MetavisionDatFileInputStream(file, this, progressMonitor);
+        }
+        if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
-            aeInputStream = new AEFileInputStream(file, this);
-        } else {
-            throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5/.hdf5 (DSEC or DDD17/DDD20), or .bag files are currently supported");
+            return new AEFileInputStream(file, this);
         }
-        return aeInputStream;
+        throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5/.hdf5 (DSEC or DDD17/DDD20), or .bag files are currently supported");
     }
 
     /**

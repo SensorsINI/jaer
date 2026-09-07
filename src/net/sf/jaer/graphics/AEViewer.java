@@ -12920,8 +12920,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         private void updateSaveAsMenuItemEnabled() {
             saveAsMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK
-                    && getAePlayer() != null && getAePlayer().getAEInputStream() != null
-                    && !SaveAsExportDialog.isExportActive(this));
+                    && getAePlayer() != null && getAePlayer().getAEInputStream() != null);
         }
 
         private void stopVideoExportMenuItemActionPerformed(java.awt.event.ActionEvent evt) {

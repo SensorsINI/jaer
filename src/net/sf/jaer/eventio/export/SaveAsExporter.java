@@ -31,14 +31,15 @@ import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEOutputStream;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
- * Offline File → Save As scan: park ViewLoop (no grab/paint), iterate the input
- * stream, write AEDAT-4, CSV, or DSEC HDF5 (plus optional HVS sidecars), restore
- * position.
+ * Offline File → Save As scan: open a detached input stream on a headless chip
+ * copy so AEViewer can keep playing or open another file. Writes AEDAT-4, CSV,
+ * or DSEC HDF5 (plus optional HVS sidecars).
  */
 public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, String> {
 
@@ -53,37 +54,29 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     public static final String PROP_PROGRESS = "saveAsProgress";
     public static final String PROP_STATUS = "saveAsStatus";
 
-    private final AEViewer viewer;
     private final SaveAsOptions options;
 
-    public SaveAsExporter(AEViewer viewer, SaveAsOptions options) {
-        this.viewer = viewer;
+    public SaveAsExporter(SaveAsOptions options) {
         this.options = options;
+    }
+
+    File getOutputFile() {
+        return options != null ? options.outputFile : null;
     }
 
     @Override
     protected Result doInBackground() throws Exception {
-        AEChip chip = viewer.getChip();
-        if (chip == null) {
-            throw new IOException("No AEChip");
+        Thread.currentThread().setName("jaer-save-as");
+        Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+        if (options.sourceFile == null || !options.sourceFile.isFile()) {
+            throw new IOException("No source recording to export");
         }
-        AEFileInputStreamInterface stream = viewer.getAePlayer() != null
-                ? viewer.getAePlayer().getAEInputStream() : null;
-        if (stream == null) {
-            throw new IOException("No playback file is open");
+        if (options.chipClass == null) {
+            throw new IOException("No AEChip class for export");
         }
-        boolean wasPaused = viewer.isPaused();
-        boolean wasRepeat = stream.isRepeat();
-        boolean wasMono = stream.isNonMonotonicTimeExceptionsChecked();
-        long savedPos = stream.position();
-        long savedMarkIn = stream.getMarkInPosition();
-        long savedMarkOut = stream.getMarkOutPosition();
-        boolean savedInSet = stream.isMarkInSet();
-        boolean savedOutSet = stream.isMarkOutSet();
-        boolean restoreAedat2Marks = false;
-        boolean restoreAedat4Marks = false;
-        boolean subSaved = chip.getEventExtractor() != null && chip.getEventExtractor().isSubsamplingEnabled();
-        final String sourceFileInfo = snapshotSourceFileInfo(stream);
+        AEChip chip = constructHeadlessChip(options.chipClass);
+        AEFileInputStreamInterface stream = null;
+        final String sourceFileInfo = options.sourceFileInfo != null ? options.sourceFileInfo : "";
         CsvEventSink csv = null;
         DsecHdf5AEOutputStream h5 = null;
         Aedat4FileOutputStream aedat4 = null;
@@ -91,66 +84,44 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         FramePngSink frames = null;
         DavisFrameAssembler assembler = null;
         try {
-            viewer.suspendViewLoopForOfflineExport();
-            // Wait until ViewLoop has left grabInput. A short sleep is not enough
-            // for a large AEDAT-4 timeslice (decode can take seconds) and the loop
-            // still paints every 1 s while merely paused.
-            if (!viewer.waitUntilViewLoopParkedForOfflineExport(60_000)) {
-                log.warning("Save As proceeding without a parked ViewLoop; playback may still share the stream");
-            }
-            stream.setRepeat(false);
-            // Seeking backward from playback would otherwise throw NonMonotonicTimeException
-            // on the first event (position() does not reset mostRecentTimestamp).
-            stream.setNonMonotonicTimeExceptionsChecked(false);
             if (chip.getEventExtractor() != null) {
                 chip.getEventExtractor().setSubsamplingEnabled(false);
             }
-            long start = 0;
-            long end = stream.size();
-            if (options.useInOutMarkers) {
-                if (stream.isMarkInSet()) {
-                    start = stream.getMarkInPosition();
-                }
-                if (stream.isMarkOutSet()) {
-                    end = stream.getMarkOutPosition();
-                }
-            } else if (savedInSet || savedOutSet) {
-                // Stream readPacketByNumber still stops at OUT even when the checkbox is off.
-                if (stream instanceof AEFileInputStream) {
-                    AEFileInputStream.Marks m = ((AEFileInputStream) stream).getMarks();
-                    m.markIn = 0;
-                    m.markOut = Long.MAX_VALUE;
-                    restoreAedat2Marks = true;
-                } else {
-                    stream.clearMarks();
-                    restoreAedat4Marks = true;
-                }
-                start = 0;
-                end = stream.size();
-            }
+            publish("Opening source for export…");
+            stream = chip.openDetachedFileInputStream(options.sourceFile, options.aedat4EventStreamId);
+            stream.setRepeat(false);
+            stream.setNonMonotonicTimeExceptionsChecked(false);
+            long start = Math.max(0L, options.rangeStart);
+            long end = options.rangeEnd;
             if (end <= start) {
-                if (options.useInOutMarkers && stream.isMarkInSet() && stream.isMarkOutSet()) {
+                if (options.useInOutMarkers) {
                     throw new IOException("OUT marker is not after IN marker");
                 }
-                // size() is 0/unknown on some streams (e.g. older rosbag): read until EOF
                 end = Long.MAX_VALUE;
             }
+            if (end != Long.MAX_VALUE && stream.size() > 0 && end > stream.size()) {
+                end = stream.size();
+            }
             stream.position(start);
-            // Do not merge leftover playback APS into the export (torn frames / SignalRead spam).
             if (chip instanceof DavisBaseCamera) {
                 ((DavisBaseCamera) chip).resetUsbApsAssembler();
             }
-            // Only AEFileInputStream uses these as timestamp state. Other streams
-            // (notably rosbag) treat setCurrentStartTimestamp as a seek.
             if (stream instanceof AEFileInputStream) {
                 AEFileInputStream aedat = (AEFileInputStream) stream;
                 aedat.setMostRecentTimestamp(Integer.MIN_VALUE);
                 aedat.setCurrentStartTimestamp(Integer.MIN_VALUE);
             }
-            log.info(String.format("Save As %s: events [%d, %d) of %d, filters=%s, markers=%s",
+            FilterChain chain = null;
+            if (options.applyEventFilters) {
+                chain = chip.getFilterChain();
+                if (chain != null) {
+                    chain.setFilteringEnabled(options.filterChainGloballyEnabled);
+                }
+            }
+            log.info(String.format("Save As %s (background): events [%d, %d) of %d, filters=%s, markers=%s, source=%s",
                     options.format, start, end, stream.size(),
-                    options.applyEventFilters, options.useInOutMarkers));
-            File source = stream.getFile();
+                    options.applyEventFilters, options.useInOutMarkers, options.sourceFile.getName()));
+            File source = options.sourceFile;
             if (options.format == SaveAsOptions.Format.CSV) {
                 csv = new CsvEventSink(options.outputFile, options.csvFormatter, source);
             } else if (options.format == SaveAsOptions.Format.DSEC_H5) {
@@ -179,7 +150,6 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             if (needAssembler && chip instanceof DavisBaseCamera) {
                 assembler = new DavisFrameAssembler((DavisBaseCamera) chip);
             }
-            FilterChain chain = chip.getFilterChain();
             long range = Math.max(1, end == Long.MAX_VALUE ? Math.max(1, stream.size()) : end - start);
             long badEvents = 0;
             int stuckSlices = 0;
@@ -212,7 +182,6 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     continue;
                 }
                 if (raw == null || raw.getNumEvents() == 0) {
-                    // Empty slice with no progress: OUT/EOF or a stuck non-monotonic event.
                     if (stream.position() <= pos) {
                         break;
                     }
@@ -284,7 +253,6 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 log.warning(String.format("Save As skipped %,d bad events while writing %s",
                         badEvents, options.outputFile.getName()));
             }
-            // Flush sinks before returning so HDF5 close failures are not reported as success.
             closeSink(csv);
             csv = null;
             closeSink(h5);
@@ -295,7 +263,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             imu = null;
             closeSink(frames);
             frames = null;
-            result.outputFileInfo = appendFileSize(result.outputFileInfo, options.outputFile);
+            result.outputFileInfo = appendFileSizeSummary(result.outputFileInfo,
+                    options.sourceFileBytes, options.outputFile);
             return result;
         } catch (CancellationException cancel) {
             if (h5 != null) {
@@ -311,27 +280,48 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             closeQuietly(aedat4);
             closeQuietly(imu);
             closeQuietly(frames);
-            try {
-                if (restoreAedat2Marks && stream instanceof AEFileInputStream) {
-                    AEFileInputStream.Marks m = ((AEFileInputStream) stream).getMarks();
-                    m.markIn = savedMarkIn;
-                    m.markOut = savedMarkOut;
-                } else if (restoreAedat4Marks) {
-                    restoreMarks(stream, savedMarkIn, savedMarkOut, savedInSet, savedOutSet);
+            if (stream != null) {
+                try {
+                    stream.close();
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "Could not close Save As source stream", e);
                 }
-                stream.position(savedPos);
-            } catch (Exception e) {
-                log.log(Level.WARNING, "Could not restore playback position", e);
             }
-            stream.setRepeat(wasRepeat);
-            stream.setNonMonotonicTimeExceptionsChecked(wasMono);
-            if (chip.getEventExtractor() != null) {
-                chip.getEventExtractor().setSubsamplingEnabled(subSaved);
+            cleanupHeadlessChip(chip);
+        }
+    }
+
+    private static AEChip constructHeadlessChip(Class<? extends AEChip> clazz) throws IOException {
+        ChipCanvas.beginPreviewHeadless();
+        try {
+            return clazz.getConstructor().newInstance();
+        } catch (Exception e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new IOException("Could not construct " + clazz.getSimpleName() + " for Save As: " + cause, cause);
+        } finally {
+            ChipCanvas.endPreviewHeadless();
+        }
+    }
+
+    private static void cleanupHeadlessChip(AEChip chip) {
+        if (chip == null) {
+            return;
+        }
+        try {
+            FilterChain chain = chip.getFilterChain();
+            if (chain != null) {
+                for (EventFilter2D f : chain) {
+                    if (f != null) {
+                        try {
+                            f.cleanup();
+                        } catch (Exception e) {
+                            log.log(Level.FINE, "Save As filter cleanup", e);
+                        }
+                    }
+                }
             }
-            if (chip instanceof DavisBaseCamera) {
-                ((DavisBaseCamera) chip).resetUsbApsAssembler();
-            }
-            viewer.resumeViewLoopAfterOfflineExport(wasPaused);
+        } catch (Exception e) {
+            log.log(Level.FINE, "Save As headless chip cleanup", e);
         }
     }
 
@@ -340,7 +330,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
      * {@link Aedat4FileInputStream#getFileInfo()}; other formats get path +
      * {@link Object#toString()}.
      */
-    private static String snapshotSourceFileInfo(AEFileInputStreamInterface stream) {
+    static String snapshotSourceFileInfo(AEFileInputStreamInterface stream) {
         if (stream == null) {
             return "";
         }
@@ -380,17 +370,31 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         return sb.toString();
     }
 
-    private static String appendFileSize(String info, File out) {
-        if (out == null || !out.isFile()) {
+    /**
+     * Trailing line: original on-disk size, exported size (engineering, 1 digit),
+     * and exported/original as percent and ratio.
+     */
+    static String appendFileSizeSummary(String info, long originalBytes, File out) {
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(1);
+        String line;
+        long exported = (out != null && out.isFile()) ? out.length() : -1;
+        if (originalBytes > 0 && exported >= 0) {
+            String orig = eng.format((double) originalBytes).trim();
+            String exp = eng.format((double) exported).trim();
+            double pct = 100.0 * exported / (double) originalBytes;
+            double ratio = exported > 0 ? originalBytes / (double) exported : 0;
+            line = String.format("Files: %sB original -> %sB exported (%.0f%% of original, %.1f:1)",
+                    orig, exp, pct, ratio);
+        } else if (exported >= 0) {
+            line = String.format("Size: %sB", eng.format((double) exported).trim());
+        } else {
             return info;
         }
-        EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
-        String size = String.format("Size: %sB", eng.format((double) out.length()).trim());
         if (info == null || info.isEmpty()) {
-            return size;
+            return line;
         }
-        return info + "\n" + size;
+        return info + "\n\n" + line;
     }
 
     /**
@@ -640,23 +644,6 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     @Override
     protected void done() {
         // listeners on the worker itself (progress) already fire
-    }
-
-    private static void restoreMarks(AEFileInputStreamInterface stream, long in, long out,
-            boolean inSet, boolean outSet) {
-        if (!inSet && !outSet) {
-            return;
-        }
-        long here = stream.position();
-        if (inSet) {
-            stream.position(in);
-            stream.setMarkIn();
-        }
-        if (outSet) {
-            stream.position(out);
-            stream.setMarkOut();
-        }
-        stream.position(here);
     }
 
     private static void closeSink(AutoCloseable c) throws Exception {

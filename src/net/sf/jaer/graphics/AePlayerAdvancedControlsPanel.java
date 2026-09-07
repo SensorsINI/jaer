@@ -33,7 +33,6 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventio.export.SaveAsExportDialog;
 import net.sf.jaer.graphics.AbstractAEPlayer.PlaybackMode;
 
 /**
@@ -147,10 +146,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         try {
             if (evt.getSource() instanceof AEFileInputStreamInterface) {
                 if (evt.getPropertyName().equals(AEInputStream.EVENT_POSITION)) { // comes from AEFileInputStream
-                    if (aeViewer.isViewLoopSuspendedForOfflineExport()
-                            || SaveAsExportDialog.isExportActive(aeViewer)) {
-                        // Save As scans the same stream; updating the slider would look
-                        // like playback and can seek (contending with export).
+                    if (aeViewer.isViewLoopSuspendedForOfflineExport()) {
+                        // Exclusive stream park (legacy); do not drive the slider from a scan.
                         return;
                     }
                     sliderDontProcess = true;

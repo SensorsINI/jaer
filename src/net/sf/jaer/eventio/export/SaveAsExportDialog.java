@@ -38,7 +38,9 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
@@ -67,6 +69,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     private final AEViewer viewer;
     private SaveAsExporter exporter;
+    /** Source file for an in-flight export (title); null when idle. */
+    private File exportSourceFile;
 
     private final JTextField pathField = new JTextField(18);
     private RecentFoldersJumpCombo recentFolderCombo;
@@ -112,7 +116,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         super("Save As");
         this.viewer = viewer;
         setName("SaveAsExport");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         if (viewer != null) {
             setIconImage(viewer.getIconImage());
         }
@@ -136,14 +140,12 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                     "Save As", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        SaveAsExportDialog existing = findForViewer(viewer);
-        if (existing != null) {
-            if (existing.exporter == null || existing.exporter.isDone()) {
-                existing.syncToOpenRecording();
-            }
-            existing.updateFilterSummary();
-            existing.toFront();
-            existing.setVisible(true);
+        SaveAsExportDialog idle = findIdleForViewer(viewer);
+        if (idle != null) {
+            idle.syncToOpenRecording();
+            idle.updateFilterSummary();
+            idle.toFront();
+            idle.setVisible(true);
             return;
         }
         SaveAsExportDialog d = new SaveAsExportDialog(viewer);
@@ -154,31 +156,48 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         if (viewer == null) {
             return false;
         }
-        SaveAsExportDialog d = findForViewer(viewer);
-        return d != null && d.exporter != null && !d.exporter.isDone();
+        for (SaveAsExportDialog d : dialogsForViewer(viewer)) {
+            if (d.exporter != null && !d.exporter.isDone()) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    /** Disposes the Save As window for this viewer, if any. */
+    /** Cancels in-flight exports and disposes Save As windows for this viewer. */
     public static void disposeForViewer(AEViewer viewer) {
-        SaveAsExportDialog d = findForViewer(viewer);
-        if (d != null) {
+        for (SaveAsExportDialog d : dialogsForViewer(viewer)) {
+            if (d.exporter != null && !d.exporter.isDone()) {
+                d.exporter.cancel(false);
+            }
             d.dispose();
         }
     }
 
-    private static SaveAsExportDialog findForViewer(AEViewer viewer) {
+    /** Idle (not exporting) Save As window for this viewer, if any. */
+    private static SaveAsExportDialog findIdleForViewer(AEViewer viewer) {
+        for (SaveAsExportDialog d : dialogsForViewer(viewer)) {
+            if (d.exporter == null || d.exporter.isDone()) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    private static java.util.List<SaveAsExportDialog> dialogsForViewer(AEViewer viewer) {
+        java.util.List<SaveAsExportDialog> list = new java.util.ArrayList<>();
         if (viewer == null) {
-            return null;
+            return list;
         }
         for (Window w : Window.getWindows()) {
             if (w instanceof SaveAsExportDialog && w.isDisplayable()) {
                 SaveAsExportDialog d = (SaveAsExportDialog) w;
                 if (d.viewer == viewer) {
-                    return d;
+                    list.add(d);
                 }
             }
         }
-        return null;
+        return list;
     }
 
     private void buildUi() {
@@ -336,8 +355,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         ac.weightx = 1;
         ac.fill = GridBagConstraints.HORIZONTAL;
         aedat4Panel.add(htmlWrap("Native DV-compatible AEDAT-4 (events, frames, IMU in one file). "
-                + "Pauses playback and scans as fast as possible — preferred over re-recording "
-                + "to clip with IN/OUT or apply EventFilters."), ac);
+                + "Scans in the background at low priority — you can keep playing or open another file. "
+                + "Preferred over re-recording to clip with IN/OUT or apply EventFilters."), ac);
         ac.gridy++;
         ac.gridwidth = 1;
         ac.weightx = 0;
@@ -388,12 +407,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         startButton.addActionListener(this::startExport);
         cancelButton.addActionListener(this::cancelExport);
-        closeButton.addActionListener(e -> {
-            if (exporter != null && !exporter.isDone()) {
-                cancelExport(null);
-            }
-            dispose();
-        });
+        closeButton.setToolTipText("Hide this window. An export in progress keeps running; Cancel stops it.");
+        closeButton.addActionListener(e -> hideOrDispose());
         buttons.add(startButton);
         buttons.add(cancelButton);
         buttons.add(closeButton);
@@ -407,6 +422,11 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             public void windowActivated(WindowEvent e) {
                 bindFilterEnabledListeners();
                 updateFilterSummary();
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                hideOrDispose();
             }
 
             @Override
@@ -448,6 +468,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         updateHvsUi();
         bindFilterEnabledListeners();
         updateFilterSummary();
+        updateWindowTitle();
     }
 
     private String defaultOutputPath() {
@@ -521,7 +542,12 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     private void updateWindowTitle() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
         String ext = f != null ? f.extension : "aedat4";
-        setTitle(AEDataFile.saveRecordedDataTitle(ext));
+        String title = AEDataFile.saveRecordedDataTitle(ext);
+        File src = exportSourceFile != null ? exportSourceFile : viewer.getInputFile();
+        if (src != null) {
+            title = title + " — " + src.getName();
+        }
+        setTitle(title);
     }
 
     private void updateHvsUi() {
@@ -740,6 +766,12 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                 return;
             }
         }
+        if (outputPathInUse(out)) {
+            JOptionPane.showMessageDialog(this,
+                    "Another Save As is already writing " + out.getName() + ".",
+                    "Save As", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         savePrefs();
         SaveAsOptions opt = new SaveAsOptions();
         opt.outputFile = out;
@@ -755,11 +787,84 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         AEChip chip = viewer.getChip();
         opt.sensorWidth = chip != null ? chip.getSizeX() : 0;
         opt.sensorHeight = chip != null ? chip.getSizeY() : 0;
-        exporter = new SaveAsExporter(viewer, opt);
+        if (!capturePlaybackSnapshot(opt, chip)) {
+            return;
+        }
+        exporter = new SaveAsExporter(opt);
         exporter.addPropertyChangeListener(this);
         updateRecordingUi(true);
         statusLabel.setText("Starting…");
         exporter.execute();
+    }
+
+    /**
+     * Snapshot the open recording so export does not share playback's stream.
+     * After this, the user can keep playing or open another file.
+     */
+    private boolean capturePlaybackSnapshot(SaveAsOptions opt, AEChip chip) {
+        if (chip == null) {
+            JOptionPane.showMessageDialog(this, "No AEChip is set.", "Save As", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        AEFileInputStreamInterface stream = viewer.getAePlayer() != null
+                ? viewer.getAePlayer().getAEInputStream() : null;
+        if (stream == null) {
+            JOptionPane.showMessageDialog(this, "No playback file is open.", "Save As", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        File src = stream.getFile();
+        if (src == null || !src.isFile()) {
+            JOptionPane.showMessageDialog(this, "Playback has no source file on disk.", "Save As", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        opt.sourceFile = src;
+        opt.sourceFileBytes = src.length();
+        opt.sourceFileInfo = SaveAsExporter.snapshotSourceFileInfo(stream);
+        opt.chipClass = chip.getClass();
+        FilterChain chain = chip.getFilterChain();
+        opt.filterChainGloballyEnabled = chain == null || chain.isFilteringEnabled();
+        opt.rangeStart = 0;
+        long size = stream.size();
+        opt.rangeEnd = size > 0 ? size : Long.MAX_VALUE;
+        if (opt.useInOutMarkers) {
+            if (stream.isMarkInSet()) {
+                opt.rangeStart = stream.getMarkInPosition();
+            }
+            if (stream.isMarkOutSet()) {
+                opt.rangeEnd = stream.getMarkOutPosition();
+            }
+        }
+        if (stream instanceof Aedat4FileInputStream aedat4) {
+            opt.aedat4EventStreamId = aedat4.getEventStreamId();
+        }
+        exportSourceFile = src;
+        updateWindowTitle();
+        return true;
+    }
+
+    private boolean outputPathInUse(File out) {
+        if (out == null) {
+            return false;
+        }
+        File abs = out.getAbsoluteFile();
+        for (Window w : Window.getWindows()) {
+            if (w instanceof SaveAsExportDialog d && d != this && d.isDisplayable()
+                    && d.exporter != null && !d.exporter.isDone()) {
+                File other = d.exporter.getOutputFile();
+                if (other != null && other.getAbsoluteFile().equals(abs)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void hideOrDispose() {
+        if (exporter != null && !exporter.isDone()) {
+            setVisible(false);
+            return;
+        }
+        dispose();
     }
 
     private void cancelExport(ActionEvent e) {
@@ -804,6 +909,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         } else if (SaveAsExporter.PROP_STATUS.equals(evt.getPropertyName())) {
             statusLabel.setText(String.valueOf(evt.getNewValue()));
         } else if ("state".equals(evt.getPropertyName()) && exporter != null && exporter.isDone()) {
+            exportSourceFile = null;
+            updateWindowTitle();
             updateRecordingUi(false);
             try {
                 SaveAsExporter.Result r = exporter.get();

@@ -1,6 +1,7 @@
 package net.sf.jaer.eventio.export;
 
 import java.io.File;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.textio.DavisTextEventFormatter;
 
 /**
@@ -28,6 +29,18 @@ public final class SaveAsOptions {
     }
 
     public File outputFile;
+    /**
+     * Recording to scan. Captured when Save starts so playback can close or
+     * switch files without affecting the export.
+     */
+    public File sourceFile;
+    public long sourceFileBytes = -1;
+    public String sourceFileInfo = "";
+    public long rangeStart;
+    public long rangeEnd = Long.MAX_VALUE;
+    public Integer aedat4EventStreamId;
+    public Class<? extends AEChip> chipClass;
+    public boolean filterChainGloballyEnabled = true;
     public Format format = Format.AEDAT4;
     public boolean useInOutMarkers = true;
     public boolean applyEventFilters = true;

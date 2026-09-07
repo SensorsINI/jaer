@@ -69,9 +69,9 @@ Recording format is chosen in AEViewer prefs / Control menu (`recordingDataFileV
 
 ### File → Save As (playback export)
 
-Enabled only while a recording is open (`PlayMode.PLAYBACK`). Unlike re-recording (AEDAT at ViewLoop pace), Save As pauses playback and scans the file as fast as possible, then restores position. Re-recording remains on the recording button.
+Enabled only while a recording is open (`PlayMode.PLAYBACK`). Save As opens its own reader on a background low-priority thread so playback can continue or another file can be opened. Re-recording remains on the recording button.
 
-- **AEDAT-4** (default): native DV-compatible `.aedat4` (events, frames, IMU). Preferred way to clip with IN/OUT or apply EventFilters.
+- **AEDAT-4** (default): native DV-compatible `.aedat4` (events, frames, IMU). Preferred way to clip with IN/OUT or apply EventFilters. File → Save As stays enabled while an export runs, so another recording can be exported in parallel.
 - **CSV / text** and **DSEC HDF5**: same scan; DAVIS/CDAVIS can add HVS sidecars.
 - **Use IN and OUT markers** (default on): unset ends are file start / EOF.
 - **Apply EventFilters** (default on): same chain as filtered re-recording.
