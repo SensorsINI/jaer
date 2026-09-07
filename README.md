@@ -20,7 +20,7 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
  * **Linux:** Run the installer with `sh <installer>.sh`. Then you can run *jaer* from the installation directory or GNOME menu. Official apt is not provided (USB cameras need an unsandboxed install).
 
- * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. You might need to turn off the new (annoying) *Smart Ru*n Windows security feature.
+ * **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. You might need to turn off the new (annoying) *Smart App Control* Windows security feature to run the (currently) unsigned jAER launcher.
 
  * **macOS:** See [opening unsigned dmg on macOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend installing to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present.
 
