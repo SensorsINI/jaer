@@ -24,7 +24,13 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
    Dry run: `ant upload-installers -Djaer.upload.whatif=true`. Other tag:
    `-Djaer.upload.tag=3.4.0`. Same as `scripts/upload-github-release-installers.ps1` / `.sh`.
-   Re-upload after a rebuild: same command (`--clobber`). Also uploads `jaer-sample-data.zip` when that file is in `currentInstallers/<VERSION>/` so `/releases/latest/download/jaer-sample-data.zip` works. The Welcome checkbox and File → Open use that URL.
+   Default **skips** `jAER_windows-x64_*.exe` so a SignPath-signed (or test-signed)
+   GitHub asset is not replaced by the local unsigned build. Mac/Linux and
+   `jaer-sample-data.zip` still use `gh release upload --clobber`. Force the
+   unsigned Windows exe: `-Djaer.upload.clobberWindows=true` (or `-ClobberWindows` /
+   `--clobber-windows` on the scripts). Also uploads `jaer-sample-data.zip` when that
+   file is in `currentInstallers/<VERSION>/` so `/releases/latest/download/jaer-sample-data.zip`
+   works. The Welcome checkbox and File → Open use that URL.
    `ant upload-installers` does **not** overwrite the GitHub body on an existing draft.
    Put the download table and concise OS notes at the **top** of
    `release-notes/jaer-<VERSION>-release-notes.md` (see 3.2.0 notes). GitHub
@@ -149,7 +155,8 @@ Windows media and submit SignPath (**test-signing2** now; **release-signing** af
 that policy is ACTIVE and its certificate is VALID).
 
 Signed Windows comes from Actions; local `ant release` is still fine for unsigned
-Mac/Unix media and for local Windows smoke tests.
+Mac/Unix media and for local Windows smoke tests. `ant upload-installers` skips
+the Windows `.exe` unless `-Djaer.upload.clobberWindows=true`.
 
 Remote trigger (does not run signing on your PC; starts the GitHub workflow):
 

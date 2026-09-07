@@ -64,8 +64,11 @@ Releases
                           then git tag + GitHub draft Release (needs gh).
                           Skip draft: -Dskip.github.draft=true
   create-draft-release    git tag VERSION.txt, push, GitHub draft (no install4jc)
-  upload-installers       currentInstallers/<VERSION>/ jAER_* (+ sample zip) to GitHub draft
-                          (needs gh). Dry run: -Djaer.upload.whatif=true
+  upload-installers       currentInstallers/<VERSION>/ macOS/Linux jAER_* (+ sample zip)
+                          to GitHub draft (needs gh). Skips Windows .exe so SignPath
+                          signed/test-signed asset is kept. Force unsigned Windows:
+                          -Djaer.upload.clobberWindows=true
+                          Dry run: -Djaer.upload.whatif=true
                           Other tag: -Djaer.upload.tag=3.4.0
                           Does not overwrite GitHub release notes on an existing draft.
   upload-release-notes-media
@@ -1071,6 +1074,7 @@ Then re-run:        ant install
 
     <property name="jaer.upload.tag" value=""/>
     <property name="jaer.upload.whatif" value="false"/>
+    <property name="jaer.upload.clobberWindows" value="false"/>
 
     <target name="-resolve-upload-tag" depends="-load-version">
         <condition property="jaer.upload.tag.effective" value="${jaer.upload.tag}" else="${jaer.version}">
@@ -1081,8 +1085,8 @@ Then re-run:        ant install
     </target>
 
     <target name="upload-installers" depends="checkos,-resolve-upload-tag"
-            description="Upload currentInstallers/VERSION jAER_* (+ sample zip) to GitHub Release (needs gh). Dry run: -Djaer.upload.whatif=true">
-        <echo message="Uploading installers for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif})."/>
+            description="Upload macOS/Linux (+ sample zip) to GitHub Release. Skips Windows exe unless -Djaer.upload.clobberWindows=true. Dry run: -Djaer.upload.whatif=true">
+        <echo message="Uploading installers for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif}, clobberWindows=${jaer.upload.clobberWindows})."/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">
             <arg value="-NoProfile"/>
@@ -1093,6 +1097,7 @@ Then re-run:        ant install
             <arg value="-Tag"/>
             <arg value="${jaer.upload.tag.effective}"/>
             <arg value="-WhatIf" if:true="${jaer.upload.whatif}"/>
+            <arg value="-ClobberWindows" if:true="${jaer.upload.clobberWindows}"/>
         </exec>
         <exec executable="bash" osfamily="unix" searchpath="true"
               failonerror="true" dir="${basedir}">
@@ -1100,6 +1105,7 @@ Then re-run:        ant install
             <arg value="--tag"/>
             <arg value="${jaer.upload.tag.effective}"/>
             <arg value="--what-if" if:true="${jaer.upload.whatif}"/>
+            <arg value="--clobber-windows" if:true="${jaer.upload.clobberWindows}"/>
         </exec>
     </target>
 
@@ -1210,6 +1216,7 @@ Then re-run:        ant install
         <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
         <antcall target="create-draft-release"/>
         <echo message="Upload installers to the draft: ant upload-installers"/>
+        <echo message="That upload skips the Windows .exe (SignPath asset) unless -Djaer.upload.clobberWindows=true."/>
         <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
         <echo message="Publish on GitHub when ready (or: gh release edit ${jaer.version} --draft=false),"/>
         <echo message="then ant copy-updates-xml. Skip the draft step: ant release -Dskip.github.draft=true"/>

@@ -145,5 +145,5 @@ jobs:
           - Signing request: ${{ steps.signpath.outputs.signing-request-web-url }}
           - Signed download: ${{ steps.signpath.outputs.signed-artifact-download-url }}
           - Note: approve the request in SignPath UI if the job waits on approval.
-          - Mac/Linux installers: local ``ant release`` then ``scripts/upload-github-release-installers.ps1``.
+          - Mac/Linux installers: local ``ant release`` then ``scripts/upload-github-release-installers.ps1`` (skips Windows exe unless ``-ClobberWindows``).
           "@ | Add-Content -Path $env:GITHUB_STEP_SUMMARY

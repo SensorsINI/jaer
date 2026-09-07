@@ -1,14 +1,19 @@
 # Upload install4j media from currentInstallers/<VERSION.txt>/ to the GitHub Release for that tag.
 # Requires: gh auth, VERSION.txt, media built by `ant release`.
 # Creates a *draft* GitHub Release if the tag has none (not Latest until published).
+# Default: skip jAER_windows-x64_*.exe so a SignPath-signed (or test-signed) GitHub
+# asset is not replaced by the local unsigned install4j build. Pass -ClobberWindows
+# only when you intend to overwrite that exe.
 # Usage (repo root):
 #   powershell -File scripts/upload-github-release-installers.ps1
 #   powershell -File scripts/upload-github-release-installers.ps1 -Tag 3.2.0
 #   powershell -File scripts/upload-github-release-installers.ps1 -WhatIf
+#   powershell -File scripts/upload-github-release-installers.ps1 -ClobberWindows
 
 param(
     [string]$Tag = "",
-    [switch]$WhatIf
+    [switch]$WhatIf,
+    [switch]$ClobberWindows
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,12 +32,22 @@ $installers = @(Get-ChildItem -Path $dir -File | Where-Object {
     $_.Name -match '^jAER_(windows-x64|macos|unix)_.*\.(exe|dmg|sh)$'
 })
 if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jAER_unix_*.sh under $dir" }
+$windowsExe = @($installers | Where-Object { $_.Name -like 'jAER_windows-x64_*.exe' })
+if (-not $ClobberWindows -and $windowsExe.Count -gt 0) {
+    foreach ($w in $windowsExe) {
+        Write-Host ('Skipping ' + $w.Name + ' to keep the SignPath-signed GitHub asset. Overwrite unsigned with -ClobberWindows')
+    }
+    $installers = @($installers | Where-Object { $_.Name -notlike 'jAER_windows-x64_*.exe' })
+}
 $sampleZip = Join-Path $dir "jaer-sample-data.zip"
 $files = @($installers)
 if (Test-Path -LiteralPath $sampleZip) {
     $files += Get-Item -LiteralPath $sampleZip
 } else {
-    Write-Host "WARNING: $sampleZip missing — run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset."
+    Write-Host "WARNING: $sampleZip missing - run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset."
+}
+if (-not $files) {
+    throw ('Nothing to upload. Windows exe is skipped unless ClobberWindows is set. No macOS/Linux/sample zip under ' + $dir)
 }
 
 Write-Host "Release tag: $Tag"

@@ -114,4 +114,4 @@ if ($releaseMissing) {
 
 Write-Host "Draft: https://github.com/SensorsINI/jaer/releases (publish there when ready)"
 Write-Host "Or:    gh release edit $Tag --draft=false"
-Write-Host "Upload installers after media build: scripts/upload-github-release-installers.ps1"
+Write-Host "Upload installers after media build: scripts/upload-github-release-installers.ps1 (skips Windows exe unless -ClobberWindows)"

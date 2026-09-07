@@ -135,4 +135,4 @@ fi
 
 echo "Draft: https://github.com/SensorsINI/jaer/releases (publish there when ready)"
 echo "Or:    gh release edit $TAG --draft=false"
-echo "Upload installers after media build: scripts/upload-github-release-installers.sh"
+echo "Upload installers after media build: scripts/upload-github-release-installers.sh (skips Windows exe unless --clobber-windows)"

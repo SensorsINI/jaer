@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 # Upload install4j media from currentInstallers/<VERSION>/ to the GitHub Release for that tag.
+# Default: skip jAER_windows-x64_*.exe so a SignPath-signed GitHub asset is not
+# replaced. Pass --clobber-windows to upload the local unsigned exe.
 # Usage (repo root):
 #   bash scripts/upload-github-release-installers.sh
 #   bash scripts/upload-github-release-installers.sh 3.3.0
 #   bash scripts/upload-github-release-installers.sh --what-if
 #   bash scripts/upload-github-release-installers.sh -WhatIf
+#   bash scripts/upload-github-release-installers.sh --clobber-windows
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 usage() {
-  echo "Usage: $0 [--what-if|-WhatIf|-n] [--tag TAG | TAG]" >&2
+  echo "Usage: $0 [--what-if|-WhatIf|-n] [--clobber-windows] [--tag TAG | TAG]" >&2
 }
 
 WHATIF=0
+CLOBBER_WINDOWS=0
 TAG=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -23,6 +27,10 @@ while [ $# -gt 0 ]; do
       ;;
     -n|--dry-run|--what-if|-WhatIf|--WhatIf)
       WHATIF=1
+      shift
+      ;;
+    --clobber-windows|-ClobberWindows)
+      CLOBBER_WINDOWS=1
       shift
       ;;
     --tag)
@@ -69,11 +77,30 @@ if [ ${#installers[@]} -eq 0 ]; then
   echo "No installer media under $DIR" >&2
   exit 1
 fi
-files=("${installers[@]}")
+if [ "$CLOBBER_WINDOWS" -eq 0 ]; then
+  kept=()
+  for f in "${installers[@]}"; do
+    base="$(basename "$f")"
+    case "$base" in
+      jAER_windows-x64_*.exe)
+        echo "Skipping $base (keeps SignPath-signed GitHub asset). Overwrite unsigned: --clobber-windows"
+        ;;
+      *)
+        kept+=("$f")
+        ;;
+    esac
+  done
+  installers=("${kept[@]+"${kept[@]}"}")
+fi
+files=("${installers[@]+"${installers[@]}"}")
 if [ -f "$DIR/jaer-sample-data.zip" ]; then
   files+=("$DIR/jaer-sample-data.zip")
 else
   echo "WARNING: $DIR/jaer-sample-data.zip missing — run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset." >&2
+fi
+if [ ${#files[@]} -eq 0 ]; then
+  echo "Nothing to upload (Windows exe skipped unless --clobber-windows; no macOS/Linux/sample zip under $DIR)" >&2
+  exit 1
 fi
 
 size_mb() {
