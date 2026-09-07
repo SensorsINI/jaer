@@ -669,10 +669,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         if (path.isEmpty()) {
             return;
         }
-        File file = new File(path);
-        String name = stripExt(file.getName());
-        File parent = file.getParentFile();
-        File next = parent != null ? new File(parent, name + "." + f.extension) : new File(name + "." + f.extension);
+        File next = SaveAsOptions.ensureFormatExtension(new File(path), f);
         pathField.setText(next.getPath());
     }
 
@@ -736,8 +733,13 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             }));
         }
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-            pathField.setText(chooser.getSelectedFile().getAbsolutePath());
-            updatePathExtension();
+            File chosen = SaveAsOptions.ensureFormatExtension(chooser.getSelectedFile(), f);
+            File playing = playingRecordingFor(chosen);
+            if (playing != null) {
+                warnCannotOverwritePlaying(playing);
+                return;
+            }
+            pathField.setText(chosen.getAbsolutePath());
             if (recentFolderCombo != null) {
                 recentFolderCombo.refresh();
             }
@@ -755,10 +757,17 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             JOptionPane.showMessageDialog(this, "Choose an output file path.", "Save As", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        File out = new File(path);
+        SaveAsOptions.Format format = (SaveAsOptions.Format) formatCombo.getSelectedItem();
+        File out = SaveAsOptions.ensureFormatExtension(new File(path), format);
+        pathField.setText(out.getPath());
         File parent = out.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
             JOptionPane.showMessageDialog(this, "Could not create folder " + parent, "Save As", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        File playing = playingRecordingFor(out);
+        if (playing != null) {
+            warnCannotOverwritePlaying(playing);
             return;
         }
         if (out.exists()) {
@@ -776,7 +785,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         savePrefs();
         SaveAsOptions opt = new SaveAsOptions();
         opt.outputFile = out;
-        opt.format = (SaveAsOptions.Format) formatCombo.getSelectedItem();
+        opt.format = format != null ? format : SaveAsOptions.Format.AEDAT4;
         opt.useInOutMarkers = useMarkersCb.isSelected();
         opt.applyEventFilters = applyFiltersCb.isSelected();
         opt.aedat4Compression = Aedat4Compression.clamp(aedat4CompressionCombo.getSelectedIndex());
@@ -858,6 +867,54 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             }
         }
         return false;
+    }
+
+    /**
+     * Recording currently open for playback that {@code out} would overwrite,
+     * or {@code null} if the path is not a playing file.
+     */
+    private File playingRecordingFor(File out) {
+        if (out == null) {
+            return null;
+        }
+        File playing = playingFile(viewer);
+        if (SaveAsExporter.sameRecordingPath(out, playing)) {
+            return playing;
+        }
+        if (viewer.getJaerViewer() != null) {
+            for (AEViewer other : viewer.getJaerViewer().getViewers()) {
+                if (other == viewer) {
+                    continue;
+                }
+                File otherPlaying = playingFile(other);
+                if (SaveAsExporter.sameRecordingPath(out, otherPlaying)) {
+                    return otherPlaying;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static File playingFile(AEViewer v) {
+        if (v == null || v.getPlayMode() != PlayMode.PLAYBACK) {
+            return null;
+        }
+        if (v.getAePlayer() != null && v.getAePlayer().getAEInputStream() != null) {
+            File streamFile = v.getAePlayer().getAEInputStream().getFile();
+            if (streamFile != null) {
+                return streamFile;
+            }
+        }
+        return v.getInputFile();
+    }
+
+    private void warnCannotOverwritePlaying(File playing) {
+        String name = playing != null ? playing.getName() : "this recording";
+        JOptionPane.showMessageDialog(this,
+                "<html>You cannot overwrite a recording that is currently playing.<br><br>"
+                        + "<code>" + ShowFolderSaveConfirmation.escapeHtml(name) + "</code><br><br>"
+                        + "Choose a different output file (the default name adds <code>-export</code>).",
+                "Save As", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void hideOrDispose() {

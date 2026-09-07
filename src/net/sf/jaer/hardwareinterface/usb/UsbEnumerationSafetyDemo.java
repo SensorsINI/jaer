@@ -1514,6 +1514,15 @@ public final class UsbEnumerationSafetyDemo {
                 "force quit escalates to destroyForcibly");
         require(reporter.contains("ProcessHandle.of"),
                 "PID liveness uses ProcessHandle (OS independent)");
+        require(reporter.contains("fileOpenHandoff=1"),
+                "semaphore advertises file-open handoff for a second double-click");
+        String fileOpen = Files.readString(
+                Paths.get("src", "net", "sf", "jaer", "util", "Install4jFileOpen.java"),
+                StandardCharsets.UTF_8);
+        require(fileOpen.contains("tryHandoffToLiveInstance"),
+                "second launch with a file can hand off to the live instance");
+        require(fileOpen.contains("open-requests"),
+                "Linux file-open handoff uses tmpdir open-requests");
     }
 
     private static String methodBody(Path path, String start, String end) throws Exception {

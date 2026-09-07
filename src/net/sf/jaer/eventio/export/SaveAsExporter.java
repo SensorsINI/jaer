@@ -65,6 +65,19 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         return options != null ? options.outputFile : null;
     }
 
+    /** True when output would truncate the source recording (same path). */
+    static boolean sameRecordingPath(File a, File b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        try {
+            return a.toPath().toAbsolutePath().normalize()
+                    .equals(b.toPath().toAbsolutePath().normalize());
+        } catch (Exception e) {
+            return a.getAbsoluteFile().equals(b.getAbsoluteFile());
+        }
+    }
+
     @Override
     protected Result doInBackground() throws Exception {
         Thread.currentThread().setName("jaer-save-as");
@@ -74,6 +87,10 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         }
         if (options.chipClass == null) {
             throw new IOException("No AEChip class for export");
+        }
+        options.outputFile = SaveAsOptions.ensureFormatExtension(options.outputFile, options.format);
+        if (sameRecordingPath(options.outputFile, options.sourceFile)) {
+            throw new IOException("Cannot overwrite a playing recording; choose a different output file");
         }
         AEChip chip = constructHeadlessChip(options.chipClass);
         AEFileInputStreamInterface stream = null;

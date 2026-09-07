@@ -1,5 +1,6 @@
 # Keep text files as LF in the working tree (shared Dropbox Linux/Windows).
 * text=auto eol=lf
+*.sh text eol=lf
 
 # Explicit binaries
 *.jar binary

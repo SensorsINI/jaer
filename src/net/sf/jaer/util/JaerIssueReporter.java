@@ -38,6 +38,13 @@ public final class JaerIssueReporter {
     private static final int MAX_LOG_CHARS = 256 * 1024;
     private static final int MAX_URL_BODY_CHARS = 2500;
     private static final int MAX_CLIPBOARD_CHARS = 512 * 1024;
+
+    /**
+     * Line written into {@code JAERViewerRunning.txt} so a second launch can
+     * hand a recording to this process instead of showing the already-running
+     * dialog. Older jAER without this line keeps the dialog.
+     */
+    public static final String FILE_OPEN_HANDOFF_LINE = "fileOpenHandoff=1";
     private static final String SESSION_LOG_PREFIX = "jAER-";
     private static final String SESSION_LOG_SUFFIX = ".log";
 
@@ -478,7 +485,16 @@ public final class JaerIssueReporter {
         sb.append("os=").append(System.getProperty("os.name", "")).append(' ')
                 .append(System.getProperty("os.version", "")).append('\n');
         sb.append("java=").append(System.getProperty("java.version", "")).append('\n');
+        sb.append(FILE_OPEN_HANDOFF_LINE).append('\n');
         return sb.toString();
+    }
+
+    /**
+     * True when the running-instance semaphore was written by a jAER that
+     * watches {@code ${java.io.tmpdir}/jaer/open-requests/}.
+     */
+    public static boolean supportsFileOpenHandoff(String semaphoreDetail) {
+        return semaphoreDetail != null && semaphoreDetail.contains(FILE_OPEN_HANDOFF_LINE);
     }
 
     /**

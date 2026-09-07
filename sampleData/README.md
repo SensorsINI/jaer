@@ -44,14 +44,18 @@ More public datasets (not in this zip) are linked under **Help > Sample data**.
 
 <!-- SAMPLE-DATA-CONTENTS -->
 
-Download **927 MB**, about **927 MB** on disk.
+
+Download **943 MB**, about **943 MB** on disk.
 
 | File | Size |
 |------|------|
 | `DAVIS240C 2016  Tobi juggling.aedat4` | 6.4 MB |
+| `DAVIS240C 2016  Tobi juggling-export.aedat4` | 8.8 MB |
 | `DAVIS240C CapoCaccia 2016 Hotel dei Pini bar-export.aedat4` | 12.5 MB |
+| `Davis240C DVSFLOW16 Rotating Fan 1.aedat4` | 4.9 MB |
 | `Davis240C DVSFLOW16 Rotating Fan.aedat4` | 8.7 MB |
-| `Davis240C DVSFLOW16 Translating Boxest.aedat4` | 3.6 MB |
+| `Davis240C DVSFLOW16 Translating Boxes 1.aedat4` | 2.3 MB |
+| `Davis240C DVSFLOW16 Translating Boxes.aedat4` | 3.6 MB |
 | `Davis346blue 2026 Steadicam test 6mm lens.aedat4` | 140.8 MB |
 | `Davis346blue DAVIS24 2019 fast spinning dot ramp up.aedat4` | 32.2 MB |
 | `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` | 14.6 MB |
@@ -59,9 +63,7 @@ Download **927 MB**, about **927 MB** on disk.
 | `DVS128 2007 robo goalie. balls and arm.aedat4` | 20.5 MB |
 | `DVS128 DVS09 2006 mouse behavior over 3 days.aedat4` | 86.3 MB |
 | `DVS128 DVS09 2006 Patrick Lichtstieiner juggling.aedat4` | 13.9 MB |
-| `DVS640 EssacSim Warehouse Qud walk env0_ep0.aedat4` | 98.2 MB |
+| `DVS640 EssacSim Warehouse Quad walk env0_ep0.aedat4` | 98.2 MB |
 | `NRV DELTA01 2026 humming birds squabbling.aedat4` | 10.4 MB |
 | `PropheseeIMX636HD 2026 short heavily filtered.aedat4` | 37.5 MB |
-| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |
-
-<!-- /SAMPLE-DATA-CONTENTS -->
+| `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB || `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB |<!-- /SAMPLE-DATA-CONTENTS -->

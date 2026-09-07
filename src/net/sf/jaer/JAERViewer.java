@@ -57,7 +57,6 @@ import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
@@ -1329,6 +1328,12 @@ public class JAERViewer {
         }
         log.info("jAERViewer starting up");
         StartupProfiler.mark("after Logger init / splash");
+        final File launchFile = fileArgs.length > 0
+                ? net.sf.jaer.util.Install4jFileOpen.parseLaunchArgument(fileArgs[0]) : null;
+        if (net.sf.jaer.util.Install4jFileOpen.tryHandoffToLiveInstance(launchFile)) {
+            log.info("Asked the already-running jAER to open " + launchFile.getAbsolutePath());
+            System.exit(0);
+        }
         net.sf.jaer.util.Install4jFileOpen.register();
         if (!confirmStartIfPossiblyAlreadyRunning()) {
             System.exit(0);
@@ -1366,21 +1371,20 @@ public class JAERViewer {
 //            }
         }
 
-        if (fileArgs.length > 0) {
-            final File f = new File(fileArgs[0]);
-            if (FileAccessTimeout.kind(f) != FileAccessTimeout.Kind.FILE) {
-                log.warning("Ignoring non-file launch argument \"" + fileArgs[0]
-                        + "\" (from PowerShell quote -D flags, use --%, or set JAER_JVM_ARGS)");
-                SwingUtilities.invokeLater(() -> new JAERViewer());
-                return;
-            }
-            log.info("starting with file=" + f.getAbsolutePath() + " in working directory=" + System.getProperty("user.dir"));
+        if (launchFile != null) {
+            log.info("starting with file=" + launchFile.getAbsolutePath() + " in working directory=" + System.getProperty("user.dir"));
             // Windows file association / double-click passes the path as argv[0].
+            // Linux desktop Exec=%U may pass file://; parseLaunchArgument already resolved that.
             // AEViewer registers itself in JAERViewer before setAeChipClass finishes,
             // so waiting only for getNumViewers()>0 races and startPlayback hits a null chip.
-            net.sf.jaer.util.Install4jFileOpen.openOnViewer(new JAERViewer(), f);
+            net.sf.jaer.util.Install4jFileOpen.openOnViewer(new JAERViewer(), launchFile);
         } else {
-            log.info("starting with no file arguments in working directory=" + System.getProperty("user.dir"));
+            if (fileArgs.length > 0) {
+                log.warning("Ignoring non-file launch argument \"" + fileArgs[0]
+                        + "\" (from PowerShell quote -D flags, use --%, or set JAER_JVM_ARGS)");
+            } else {
+                log.info("starting with no file arguments in working directory=" + System.getProperty("user.dir"));
+            }
             StartupProfiler.mark("queue JAERViewer on EDT");
             SwingUtilities.invokeLater(new Runnable() {
 

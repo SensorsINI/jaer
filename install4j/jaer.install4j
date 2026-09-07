@@ -1084,7 +1084,9 @@ if (root != null &amp;&amp; root.isDirectory()) {
         for (int i = 0; i &lt; kids.length; i++) {
             File f = kids[i];
             String n = f.getName();
-            if (n.equals(".install4j") || n.equalsIgnoreCase("uninstall.exe")) {
+            // Unix installer leaves "uninstall"; Windows leaves uninstall.exe. Neither is user data.
+            if (n.equals(".install4j") || n.equalsIgnoreCase("uninstall.exe")
+                    || n.equalsIgnoreCase("uninstall") || n.equals("uninstall.desktop")) {
                 continue;
             }
             leftover = true;
@@ -1095,7 +1097,13 @@ if (root != null &amp;&amp; root.isDirectory()) {
 context.setVariable("jaer.uninstallLeftovers", Boolean.valueOf(leftover));
 if (leftover &amp;&amp; !context.isUnattended()) {
     com.install4j.api.Util.logInfo(context, "Opening leftover install folder " + root.getAbsolutePath());
-    com.install4j.api.Util.showPath(root.getAbsolutePath());
+    try {
+        // After UninstallFilesAction the bundled JRE's jspawnhelper is often already gone.
+        // Util.showPath then fails posix_spawn("/bin/sh") with ENOENT; uninstall itself succeeded.
+        com.install4j.api.Util.showPath(root.getAbsolutePath());
+    } catch (Throwable t) {
+        com.install4j.api.Util.logInfo(context, "Could not open leftover folder (uninstaller JRE already removed): " + t);
+    }
 }
 </postActivation>
             <formComponents>
