@@ -66,10 +66,13 @@ Releases
   create-draft-release    git tag VERSION.txt, push, GitHub draft (no install4jc)
   upload-installers       currentInstallers/<VERSION>/ macOS/Linux jAER_* (+ sample zip)
                           to GitHub draft (needs gh). Skips Windows .exe so SignPath
-                          signed/test-signed asset is kept. Force unsigned Windows:
-                          -Djaer.upload.clobberWindows=true
-                          Dry run: -Djaer.upload.whatif=true
-                          Other tag: -Djaer.upload.tag=3.4.0
+                          signed/test-signed asset is kept.
+  upload-installers-clobber-windows
+                          same, including the local unsigned Windows .exe
+                          PowerShell: ant "-Djaer.upload.clobberWindows=true" upload-installers
+                          (quote -D...=true or PS splits on = and Ant looks for target "true")
+                          Dry run: ant "-Djaer.upload.whatif=true" upload-installers
+                          Other tag: ant "-Djaer.upload.tag=3.4.0" upload-installers
                           Does not overwrite GitHub release notes on an existing draft.
   upload-release-notes-media
                           <!-- webp: --> files to GitHub user-attachments, rewrite notes
@@ -1085,7 +1088,7 @@ Then re-run:        ant install
     </target>
 
     <target name="upload-installers" depends="checkos,-resolve-upload-tag"
-            description="Upload macOS/Linux (+ sample zip) to GitHub Release. Skips Windows exe unless -Djaer.upload.clobberWindows=true. Dry run: -Djaer.upload.whatif=true">
+            description="Upload macOS/Linux (+ sample zip) to GitHub Release. Skips Windows exe. Include it: ant upload-installers-clobber-windows">
         <echo message="Uploading installers for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif}, clobberWindows=${jaer.upload.clobberWindows})."/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">
@@ -1107,6 +1110,13 @@ Then re-run:        ant install
             <arg value="--what-if" if:true="${jaer.upload.whatif}"/>
             <arg value="--clobber-windows" if:true="${jaer.upload.clobberWindows}"/>
         </exec>
+    </target>
+
+    <target name="upload-installers-clobber-windows"
+            description="Same as upload-installers, including the local unsigned Windows exe (overwrites SignPath asset).">
+        <antcall target="upload-installers">
+            <param name="jaer.upload.clobberWindows" value="true"/>
+        </antcall>
     </target>
 
     <property name="jaer.asset.downloads.tag" value=""/>
@@ -1216,7 +1226,8 @@ Then re-run:        ant install
         <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
         <antcall target="create-draft-release"/>
         <echo message="Upload installers to the draft: ant upload-installers"/>
-        <echo message="That upload skips the Windows .exe (SignPath asset) unless -Djaer.upload.clobberWindows=true."/>
+        <echo message="Include local unsigned Windows exe (overwrites SignPath): ant upload-installers-clobber-windows"/>
+        <echo message="PowerShell -D must be quoted: ant &quot;-Djaer.upload.clobberWindows=true&quot; upload-installers"/>
         <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
         <echo message="Publish on GitHub when ready (or: gh release edit ${jaer.version} --draft=false),"/>
         <echo message="then ant copy-updates-xml. Skip the draft step: ant release -Dskip.github.draft=true"/>

@@ -35,7 +35,7 @@ if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jA
 $windowsExe = @($installers | Where-Object { $_.Name -like 'jAER_windows-x64_*.exe' })
 if (-not $ClobberWindows -and $windowsExe.Count -gt 0) {
     foreach ($w in $windowsExe) {
-        Write-Host ('Skipping ' + $w.Name + ' to keep the SignPath-signed GitHub asset. Overwrite unsigned with -ClobberWindows')
+        Write-Host ('Skipping ' + $w.Name + ' to keep the SignPath-signed GitHub asset. Overwrite unsigned: ant upload-installers-clobber-windows')
     }
     $installers = @($installers | Where-Object { $_.Name -notlike 'jAER_windows-x64_*.exe' })
 }

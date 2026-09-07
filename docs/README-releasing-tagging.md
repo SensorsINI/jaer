@@ -22,13 +22,22 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
        ant upload-installers
 
-   Dry run: `ant upload-installers -Djaer.upload.whatif=true`. Other tag:
-   `-Djaer.upload.tag=3.4.0`. Same as `scripts/upload-github-release-installers.ps1` / `.sh`.
+   Dry run: `ant "-Djaer.upload.whatif=true" upload-installers`. Other tag:
+   `ant "-Djaer.upload.tag=3.4.0" upload-installers`. Same as
+   `scripts/upload-github-release-installers.ps1` / `.sh`.
+   On PowerShell, **quote** `-Dname=value` (otherwise `=` splits and Ant looks for
+   target `true`). Put `-D` before the target.
    Default **skips** `jAER_windows-x64_*.exe` so a SignPath-signed (or test-signed)
    GitHub asset is not replaced by the local unsigned build. Mac/Linux and
    `jaer-sample-data.zip` still use `gh release upload --clobber`. Force the
-   unsigned Windows exe: `-Djaer.upload.clobberWindows=true` (or `-ClobberWindows` /
-   `--clobber-windows` on the scripts). Also uploads `jaer-sample-data.zip` when that
+   unsigned Windows exe (no `-D`):
+
+       ant upload-installers-clobber-windows
+
+   Or: `ant "-Djaer.upload.clobberWindows=true" upload-installers`
+   Scripts: `powershell -File scripts/upload-github-release-installers.ps1 -ClobberWindows`
+   or `bash scripts/upload-github-release-installers.sh --clobber-windows`.
+   Also uploads `jaer-sample-data.zip` when that
    file is in `currentInstallers/<VERSION>/` so `/releases/latest/download/jaer-sample-data.zip`
    works. The Welcome checkbox and File → Open use that URL.
    `ant upload-installers` does **not** overwrite the GitHub body on an existing draft.
@@ -155,8 +164,9 @@ Windows media and submit SignPath (**test-signing2** now; **release-signing** af
 that policy is ACTIVE and its certificate is VALID).
 
 Signed Windows comes from Actions; local `ant release` is still fine for unsigned
-Mac/Unix media and for local Windows smoke tests. `ant upload-installers` skips
-the Windows `.exe` unless `-Djaer.upload.clobberWindows=true`.
+Mac/Unix media and for local Windows smoke tests. Include the Windows `.exe` with:
+
+    ant upload-installers-clobber-windows
 
 Remote trigger (does not run signing on your PC; starts the GitHub workflow):
 

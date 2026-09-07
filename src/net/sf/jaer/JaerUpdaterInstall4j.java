@@ -131,15 +131,17 @@ public class JaerUpdaterInstall4j {
      * checks where dialog only shows if there is one available
      */
     public void checkForInstall4jReleaseUpdate(JFrame parent, boolean interactive) {
+        log.info(String.format("Check for New Releases (interactive=%s): install4j sys.version, then %s",
+                interactive, INSTALL4J_UPDATES_URL));
         // check if running from installed version of jaer (fails if running from git compiled jaer)
         String currentVersion = "unknown";
         try {
             currentVersion = Variables.getCompilerVariable("sys.version");
-        } catch (IOException e) {
+            log.info("install4j sys.version=" + currentVersion);
+        } catch (Exception e) {
+            log.info("No install4j sys.version (" + e + "). Update check needs an installed copy, not ant run / git.");
             if (interactive) {
                 JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p>To check for updates, you need to install jAER with an install4j installer. <p>(Probably are you running from git compiled development environment): <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                log.info(String.format("Could not determine current version of install4j release installation: %s.\nProbably you are a developer who is running from git checkout", e.toString()));
             }
             if (!DEBUG) {
                 return;
@@ -151,7 +153,8 @@ public class JaerUpdaterInstall4j {
                 UpdateCheckResult result = fetchUpdateCheckResult(currentVersion);
                 showUpdateResultDialog(parent, result);
                 storeUpdateCheckTime();
-            } catch (IOException | UserCanceledException e) {
+            } catch (Exception e) {
+                log.warning("Could not check for release update: " + e);
                 JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
             }
         } else { // noninteractive (automatic) checks run in separate thread and show result in Swing thread when done
@@ -163,6 +166,7 @@ public class JaerUpdaterInstall4j {
     }
 
     private UpdateCheckResult fetchUpdateCheckResult(String currentVersion) throws IOException, UserCanceledException {
+        log.info("Fetching update descriptor " + INSTALL4J_UPDATES_URL);
         UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(INSTALL4J_UPDATES_URL, ApplicationDisplayMode.GUI);
         boolean updateAvailable = updateDescriptor.getPossibleUpdateEntry() != null;
         String updateVersion = null;
@@ -172,6 +176,8 @@ public class JaerUpdaterInstall4j {
                 updateVersion = updateDescriptorEntry.getNewVersion();
             }
         }
+        log.info(String.format("Update descriptor: current=%s available=%s newVersion=%s",
+                currentVersion, updateAvailable, updateVersion));
         return new UpdateCheckResult(currentVersion, updateAvailable, updateVersion, isPackageManagedInstall());
     }
 

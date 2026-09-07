@@ -83,7 +83,7 @@ if [ "$CLOBBER_WINDOWS" -eq 0 ]; then
     base="$(basename "$f")"
     case "$base" in
       jAER_windows-x64_*.exe)
-        echo "Skipping $base (keeps SignPath-signed GitHub asset). Overwrite unsigned: --clobber-windows"
+        echo "Skipping $base (keeps SignPath-signed GitHub asset). Overwrite unsigned: ant upload-installers-clobber-windows"
         ;;
       *)
         kept+=("$f")
