@@ -90,6 +90,8 @@ public class JaerConstants {
     public static final String HELP_URL_EVDOWNSAMPLING = "https://github.com/anindyaghosh/EvDownsampling#readme";
     /** Prophesee / Metavision sample recordings and datasets (RAW EVT2/EVT3, HDF5, DAT). */
     public static final String HELP_URL_PROPHESEE_SAMPLE_DATA = "https://docs.prophesee.ai/stable/datasets.html#chapter-datasets";
+    /** User guide: File → Remote (OpenCV / DNN mmap / ROS2) and Python dataloaders. */
+    public static final String HELP_URL_DNN_OPENCV_ROS = "https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md";
     private static boolean loggedVersionInfoAlready=false;
     
     public static final String getBuildVersion(){

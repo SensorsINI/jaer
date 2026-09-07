@@ -41,13 +41,14 @@ jAER [efficiently](docs/README-jaer3.md)
  * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
  * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
 
-Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote** to
- * your favorite DNN over **super efficient shared memory** ([`DNNOutputViaSharedMemory`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/DNNOutputViaSharedMemory.java)) 
- * **[OpenCV](https://opencv.org/)** as a camera ([`OpenCVOutput`](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventio/opencv/OpenCVOutput.java)); on Linux Zoom/Google Meet.
- * or to a robot as a **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** publisher.
+Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote**. How-to for new users: **[live camera server + Python dataloaders](docs/README-DNN-OpenCV-ROS.md)**.
+
+ * DNN over **shared memory** ([EventCountFrames / EventWindows](docs/README-DNN-OpenCV-ROS.md#dnn-shared-memory))
+ * **[OpenCV](https://opencv.org/)** as a camera ([HTTP MJPEG / Linux webcam](docs/README-DNN-OpenCV-ROS.md#opencv-live-camera)); on Linux Zoom/Google Meet
+ * **[ROS2](https://www.ros.org/) / [Foxglove](https://foxglove.dev/)** ([publisher](docs/README-DNN-OpenCV-ROS.md#ros2-and-foxglove))
 
 You can also
-* [Export your data](docs/README-file-formats.md) in CSV, hdf5, or save data to quick compressed AEDAT-4 with **File → Save As...** \
+* [Export your data](docs/README-file-formats.md) in CSV, hdf5, or save data to compressed AEDAT-4 with **File → Save As...** — [Python dataloaders](docs/README-DNN-OpenCV-ROS.md#python-dataloaders)
 * Create MP4 videos with **File → Export video...** 
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
@@ -135,7 +136,7 @@ but has also been used to build many robots:
 5. [pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java))
 6. [bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java))
 7. [slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/virtualslotcar/SlotCarRacer.java))
-8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)) — hello world: File → Remote → **DNN shared memory output…** (`DNNOutputViaSharedMemory`, `outputMode=EventCountFrames`) and run [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap` (see [3.2.0 notes](release-notes/jaer-3.2.0-release-notes.md))
+8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)) — hello world: File → Remote → **DNN shared memory output…** (`outputMode=EventCountFrames`) and [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap` ([guide](docs/README-DNN-OpenCV-ROS.md#dnn-shared-memory))
 9. [incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoIncremental.java))
 
 jAER was also used to develop many event camera algorithms, including:

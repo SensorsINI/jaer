@@ -13,9 +13,12 @@ import net.sf.jaer.graphics.AEChipRenderer;
  * <p>Alongside the jAER stream descriptors ({@code events}, {@code frames},
  * {@code imu}) the infoNode embeds {@code jAERConfigSnapshot} node(s)
  * (schema version {@code 1}) carrying the immutable recording-start
- * configuration snapshot as deterministic, escaped {@code <attr>} entries. DV
- * and jAER ignore the non-numeric node safely while parsing the numbered
- * stream nodes. Muxed files emit one snapshot node per camera
+ * configuration snapshot as deterministic, escaped {@code <attr>} entries.
+ * Snapshot nodes are siblings of {@code outInfo} under {@code <dv>} — not
+ * children of {@code outInfo}. PyPI {@code aedat} 2.2.0 parses every
+ * {@code outInfo} child {@code name} as a stream id ({@code u32}) and fails
+ * with {@code invalid digit found in string} on {@code jAERConfigSnapshot}.
+ * Muxed files emit one snapshot node per camera
  * ({@code jAERConfigSnapshot}, {@code jAERConfigSnapshot-1}, …).
  */
 public final class Aedat4InfoNode {
@@ -96,12 +99,12 @@ public final class Aedat4InfoNode {
             appendStream(sb, s.name, s.typeId, s.outputName, s.typeDescription,
                     compressionName, s.sx, s.sy, s.source, s.colorFilter);
         }
+        sb.append("</node>");
         if (snapshots != null) {
             for (int i = 0; i < snapshots.length; i++) {
                 appendConfigSnapshotNode(sb, snapshotNodeName(i), snapshots[i]);
             }
         }
-        sb.append("</node>");
         sb.append("</dv>");
         return sb.toString();
     }

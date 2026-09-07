@@ -129,6 +129,7 @@ Constants: [`JaerConstants`](../src/net/sf/jaer/JaerConstants.java).
 
 ## Related docs
 
+- [Live camera server + Python dataloaders](README-DNN-OpenCV-ROS.md) — File → Remote (OpenCV, DNN mmap, ROS2) and reading AEDAT-4 / CSV / HDF5 in Python
 - [jAER 3 pipeline](README-jaer3.md) — PacketBundle path and AEDAT-4 recording
 - [Prophesee driver README](../src/prophesee/README.md) — EVK4 live + RAW EVT3 / DAT playback
 - [USB live acquisition bench](usb-live-acquisition-bench.md)

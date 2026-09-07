@@ -34,6 +34,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
@@ -87,7 +88,9 @@ public class DNNOutputViaSharedMemoryDialog extends JFrame implements WindowSave
 
         MessageWithLink intro = new MessageWithLink(
                 "Publishes DVS data over a memory-mapped file plus localhost TCP<br>"
-                + "for a Python DNN. Set <b>outputMode</b> to match the consumer.");
+                + "for a Python DNN. Set <b>outputMode</b> to match the consumer.<br>"
+                + "Overview: <a href=\"" + JaerConstants.HELP_URL_DNN_OPENCV_ROS
+                + "\">docs/README-DNN-OpenCV-ROS.md</a>");
         MessageWithLink howTo = new MessageWithLink(
                 "<ul style=\"margin:4px 0 0 16px;padding:0;\">"
                 + "<li><b>EventCountFrames</b> — 64&times;64 uint8 histograms for "

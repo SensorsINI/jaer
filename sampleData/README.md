@@ -18,7 +18,7 @@ You can also use **File > Open** and choose a file here.
 2. jAER usually selects the matching camera. If the picture looks wrong, set **Sensor** (AEChip) to the camera in the table below.
 3. Play / pause with the player controls. Scrub the timeline; F1 shows you quick help on keyboard shortcuts.
 
-These samples are **AEDAT-4** (`.aedat4`).
+These samples are **AEDAT-4** (`.aedat4`). To replay one as a live OpenCV / DNN / ROS camera, or to load it in Python, see [`docs/README-DNN-OpenCV-ROS.md`](../docs/README-DNN-OpenCV-ROS.md).
 
 ## What is in each file
 

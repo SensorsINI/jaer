@@ -40,6 +40,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
@@ -126,7 +127,9 @@ public class ROSOutputDialog extends JFrame implements WindowSaver.DontResize {
 
         MessageWithLink intro = new MessageWithLink(
                 "Publishes assembled DVS frames (not the OpenGL pixmap)<br>"
-                + "to ROS2 DDS and/or <a href=\"https://foxglove.dev/download\">Foxglove</a> Studio.");
+                + "to ROS2 DDS and/or <a href=\"https://foxglove.dev/download\">Foxglove</a> Studio.<br>"
+                + "Overview: <a href=\"" + JaerConstants.HELP_URL_DNN_OPENCV_ROS
+                + "\">docs/README-DNN-OpenCV-ROS.md</a>");
         JPanel helpRow = showHelpRow(filter,
                 "Foxglove WebSocket, ROS2 topics, and frame types");
 

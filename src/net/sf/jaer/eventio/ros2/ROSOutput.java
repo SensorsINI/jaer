@@ -38,6 +38,8 @@ import net.sf.jaer.eventio.ros2.Ros2FrameAssembler.TimeSliceMethod;
 <html>
 <body>
 <h2>ROSOutput</h2>
+<p><b>Overview for new users</b> (live camera server + reading recordings in Python):
+<a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md">docs/README-DNN-OpenCV-ROS.md</a>.</p>
 <p>Assembles event-camera frames (not the AEViewer pixmap) and publishes them
 to <b>ROS2</b> (IHMC jros2 / Fast-DDS, no ROS2 install on the jAER machine) and/or
 <b>Foxglove Studio</b> over a local WebSocket.</p>

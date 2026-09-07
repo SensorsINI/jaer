@@ -54,6 +54,8 @@ import net.sf.jaer.eventprocessing.FilterChain;
 <html>
 <body>
 <h2>DNNOutputViaSharedMemory</h2>
+<p><b>Overview for new users</b> (live camera server + reading recordings in Python):
+<a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md">docs/README-DNN-OpenCV-ROS.md</a>.</p>
 <p>Publishes DVS data to a <b>memory-mapped file</b> plus a localhost
 <b>TCP JSON-lines</b> control channel so a local Python process can run a DNN.
 Choose <code>outputMode</code> for the consumer:</p>

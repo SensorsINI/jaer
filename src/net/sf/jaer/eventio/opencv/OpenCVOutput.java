@@ -49,6 +49,8 @@ import net.sf.jaer.graphics.DavisRenderer;
 <html>
 <body>
 <h2>OpenCVOutput</h2>
+<p><b>Overview for new users</b> (live camera server + reading recordings in Python):
+<a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md">docs/README-DNN-OpenCV-ROS.md</a>.</p>
 <p>Assembles event-camera or Davis APS frames and serves them as an
 <b>HTTP Motion JPEG</b> stream so stock OpenCV can open the sensor like a
 mono or color camera. Also under File → Remote → <b>OpenCV camera output…</b>.</p>

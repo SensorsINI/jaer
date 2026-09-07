@@ -57,6 +57,8 @@ import net.sf.jaer.graphics.AEViewer;
 <html>
 <body>
 <h2>DavisTextOutputWriter</h2>
+<p>Python dataloaders and File → Save As (CSV / HDF5 / AEDAT-4):
+<a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md">docs/README-DNN-OpenCV-ROS.md</a>.</p>
 <p>Writes DVS (and optionally IMU) to a <b>text / CSV</b> file in
 <a href="http://rpg.ifi.uzh.ch/davis_data.html">RPG DAVIS text</a> style.
 <b>Upstream filters affect what is written.</b></p>

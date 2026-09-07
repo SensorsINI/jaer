@@ -43,6 +43,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicToggleButtonUI;
 
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterPanel;
 import net.sf.jaer.util.MessageWithLink;
@@ -135,7 +136,9 @@ public class OpenCVOutputDialog extends JFrame implements WindowSaver.DontResize
 
         MessageWithLink intro = new MessageWithLink(
                 "Publishes DVS or Davis frames as HTTP Motion JPEG<br>"
-                + "so stock OpenCV <code>VideoCapture</code> can open the sensor like a camera.");
+                + "so stock OpenCV <code>VideoCapture</code> can open the sensor like a camera.<br>"
+                + "Overview: <a href=\"" + JaerConstants.HELP_URL_DNN_OPENCV_ROS
+                + "\">docs/README-DNN-OpenCV-ROS.md</a>");
         JPanel helpRow = showHelpRow(filter,
                 "Python/C++ VideoCapture, HTML preview, Linux v4l2loopback (publishV4l2; Cheese: scripts/cheese-jaer.sh)");
 
