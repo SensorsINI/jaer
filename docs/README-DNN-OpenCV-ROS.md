@@ -158,8 +158,9 @@ Optional IN/OUT markers clip the export. Optional **Apply EventFilters** writes 
 
 Tested on `sampleData/`:
 
-* Works: `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` (DV-native; 885 529 events, 32 RGB frames, IMU), `PropheseeIMX636HD 2026 short heavily filtered.aedat4` (4.9 M events).
-* **Fails** on most other jAER sample files with `RuntimeError: invalid digit found in string`. Those files put a `jAERConfigSnapshot` node *inside* `outInfo`; `aedat` treats every `outInfo` child name as a numeric stream id. Current jAER writes the snapshot as a *sibling* of `outInfo`. Re-export with **File → Save As… → AEDAT-4**, or use HDF5/CSV above. Existing sample zip files are unchanged until they are re-exported.
+* **Opens** after File → Save As AEDAT-4 (snapshot is a *sibling* of `outInfo`, not a child). Current `sampleData/` re-exports parse; old zip files with the snapshot *inside* `outInfo` still raise `RuntimeError: invalid digit found in string`.
+* **Events / IMU** decode on DVS-only and APS-empty files (DVS128, DVS640, NRV, Steadicam).
+* **Davis APS frames** (`OPENCV_16U_C1`) still raise `unknown frame format` and stop the iterator. Color DV files such as `Davis346redColor MISTLab RoboCup soccer ball approaching from air.aedat4` work (8-bit RGB). Use HDF5/CSV above if you need APS in numpy before `aedat` supports 16-bit gray.
 
 ```python
 import aedat
