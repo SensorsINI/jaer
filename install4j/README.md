@@ -11,6 +11,12 @@ From the repo root: `ant release`, `ant install4j` (regenerates splash from `VER
 | `install4j-custom-resources.utf8` | English localization overrides |
 | `license.txt` | Compiler license key (gitignored; fallback `packaging/signpath/install4j-license.txt`) |
 
+## macOS code signing / notarization
+
+On the Mini, `scripts/run-install4jc.sh` (from `ant release` / `ant install4j`) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git).
+
+If the install4j IDE has `jaer.install4j` open, reload it after a git pull. Prefer `ant` for signed Mac media. Windows `ant release` and CI use `--disable-signing` (SignPath signs the exe).
+
 ## Generated splash / icon PNGs
 
 `ant generate-splash` overlays **jAER** and the full `VERSION.txt` string on the text-free base art and writes three squares. Those output folders are **gitignored build products** (`ant install4j`, `ant release`, `ant jar`, and `ant run` all run `generate-splash`). Track only `images/SplashScreen.png` (and the PDF). The 256h / 1024w files are compile-time icon sources; they are **not** copied into `C:\Program Files\jAER`. The 800 PNG is shipped as `SplashScreen.png` next to the launcher (and inside `jAER.jar`).

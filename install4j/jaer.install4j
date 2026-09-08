@@ -6,6 +6,24 @@
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
+    <!-- macOS signing: PKCS12 + App Store Connect API live in gitignored signpath/.
+         appleIssuerId / appleKeyId are filled by scripts/run-install4jc.sh (-D), not committed. -->
+    <variables>
+      <variable name="appleIssuerId" />
+      <variable name="appleKeyId" />
+    </variables>
+    <codeSigning macEnabled="true" macPkcs12File="../signpath/macos-developer-id-application.p12" macNotarize="true" macApiIssuer="${compiler:appleIssuerId}" macApiKey="${compiler:appleKeyId}" macApiPrivateKey="../signpath/AuthKey.p8">
+      <macAdditionalBinaries>
+        <entry>*.dylib</entry>
+        <entry>*.jnilib</entry>
+        <entry>*.so</entry>
+      </macAdditionalBinaries>
+      <!-- Apple inspects Mach-O inside every JAR. A named allowlist missed lz4, zstd-jni,
+           jros2, nrjavaserial, install4j-runtime (3.4.1 notarization Invalid). -->
+      <macSearchedJars>
+        <entry>*</entry>
+      </macSearchedJars>
+    </codeSigning>
     <!-- 3.3.0: Adoptium Temurin 25 LTS (matches ant run). 3.2.0 media stays 21.0.12. -->
     <jreBundles jdkProviderId="Adoptium" release="25/jdk-25.0.4+7">
       <modules>

@@ -346,7 +346,7 @@ Package-manager trees should include a `.jaer-packaged-install` marker file so H
 
 ## macOS notarization
 
-Unsigned DMGs and user-folder installs remain the supported Mac path until Developer ID + install4j notarization are wired. Individual membership is **Active**. Next: certs and `notarytool` — [packaging/macos-notarization.md](../packaging/macos-notarization.md).
+Individual Apple Developer Program. Signed/notarized DMGs: Mini `ant release` / `ant install4j` (install4j 13 App Store Connect API + Developer ID Application `.p12` in repo-root `signpath/`). Details: [packaging/macos-notarization.md](../packaging/macos-notarization.md).
 
 ## Build notes
 

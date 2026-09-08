@@ -893,13 +893,29 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         <echo message="install4j sample-data sizes: zipMiB=${zipMiB} unpackedMiB=${unpackedMiB} eta=${jaer.sampleDataEta}"/>
     </target>
 
+    <!-- Unix: scripts/run-install4jc.sh injects Apple/license secrets (not logged by Ant).
+         Windows: SignPath signs the exe; skip install4j codesign/notarize. -->
     <target name="-run-install4jc-with-license"
             depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
             if="jaer.install4j.license">
-        <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
+        <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/run-install4jc.sh"/>
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
+        </exec>
+        <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="--disable-signing"/>
+            <arg value="--disable-notarization"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
@@ -913,9 +929,23 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <target name="-run-install4jc-without-license"
             depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
             unless="jaer.install4j.license">
-        <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
+        <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/run-install4jc.sh"/>
             <arg value="--release=${jaer.version}"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
+        </exec>
+        <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="--disable-signing"/>
+            <arg value="--disable-notarization"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
@@ -1019,6 +1049,8 @@ Then re-run:        ant install
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="--disable-signing"/>
+            <arg value="--disable-notarization"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>
@@ -1036,6 +1068,8 @@ Then re-run:        ant install
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=windows"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="--disable-signing"/>
+            <arg value="--disable-notarization"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
             <arg value="-D"/>

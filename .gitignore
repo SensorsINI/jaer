@@ -76,15 +76,21 @@ Benchmarking_7_9_2026/PropheseeIMX636HD-2026-07-10T18-21-21-0400--0 disk with 1i
 # Local Dropbox archive of obsolete biasgen presets (not shipped)
 deviceSettings/olderSystemsAndExperimental/
 
-# Local SignPath / install4j credentials (Dropbox; never commit secrets)
+# Local SignPath / install4j credentials (never commit secrets)
 /packaging/signpath/**
 !/packaging/signpath/README.txt
 !/packaging/signpath/artifact-configurations/
 !/packaging/signpath/artifact-configurations/**
 !/packaging/signpath/artifact-configurations/**/*.xml
-# Leftover root folders after the move into packaging/signpath/
+# Mini Apple PKCS12 / API key, and leftover root after the packaging/signpath move
 /signpath/
 /.signpath/
+*.p12
+*.p8
+*.pfx
+*.pem
+*.keystore
+*.jks
 
 # Cursor/VS Code multi-root workspace (machine paths, JDK home, extra folders)
 *.code-workspace

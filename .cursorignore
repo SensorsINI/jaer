@@ -1,0 +1,16 @@
+# Local secrets: never index, never attach to the agent.
+# Git already ignores these; this file is the Cursor-side lock.
+
+signpath/**
+!signpath/README.txt
+
+install4j/license.txt
+install4j/license*.txt
+install4j License key*.txt
+
+*.p12
+*.p8
+*.pfx
+*.pem
+*.keystore
+*.jks

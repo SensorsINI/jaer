@@ -6,28 +6,40 @@ In-app self-update that replaces an app in `/Applications` is flaky until the ap
 
 **Account:** Individual, paid, **Active** (Tobias Delbruck). Gatekeeper will show the personal legal name. Not ETH/UZH/SensorsINI.
 
-**Developer ID Application** (G2) is in the Mini **login** keychain and shows as a valid codesigning identity. If Keychain marks the leaf red, install **Developer ID - G2** from [Apple PKI](https://www.apple.com/certificateauthority/) (`DeveloperIDG2CA.cer`). Do not set Always Trust on the leaf.
+**Developer ID Application** (G2) is in the Mini **login** keychain and shows as a valid codesigning identity. If Keychain marks the leaf red, install **Developer ID - G2** from [Apple PKI](https://www.apple.com/certificateauthority/) (`DeveloperIDG2CA.cer`). Do not set Always Trust the leaf.
 
-Keep Intel media id 38; Apple Silicon is media id 39. `install4j/jaer.install4j` has no signing/notarization config yet.
+Keep Intel media id 38; Apple Silicon is media id 39.
 
-## Next: Installer cert and notarytool (Mac Mini)
+jAER media is **macosFolder** DMGs, not a `.pkg`. Skip **Developer ID Installer**. install4j **13.0.2** signs with Developer ID Application and notarizes with the **App Store Connect API** (issuer + key ID + `.p8`). It does **not** use `notarytool` Apple ID passwords.
 
-Do this on the Mac that will run `install4jc`. Account Holder only. [Apple: Developer ID certificates](https://developer.apple.com/help/account/certificates/create-developer-id-certificates).
+## Secrets on this Mini (repo-root `signpath/`, not Dropbox)
 
-1. Copy **Team ID** from [Membership](https://developer.apple.com/account) (10 characters). Put it in a local note under gitignored `signpath/` or similar. Do not commit it if you also store passwords there.
-2. Create a Certificate Signing Request: Keychain Access → Certificate Assistant → **Request a Certificate From a Certificate Authority** → your email, Common Name = your name, **Saved to disk** (do not email).
-3. [Certificates](https://developer.apple.com/account/resources/certificates/list) → **+** → **Developer ID Application** → upload the CSR → Download the `.cer` → double-click to install into **login** Keychain. Confirm it appears under **My Certificates** with a private key.
-4. Repeat for **Developer ID Installer** (same or a second CSR). install4j may use it for the installer/pkg path; the `.app` and typically the DMG use Application.
-5. Check: `security find-identity -v -p codesigning` should list `Developer ID Application: Tobias Delbruck (TEAMID)`.
-6. [App-specific password](https://support.apple.com/en-us/102654) at [account.apple.com](https://account.apple.com) → Sign-In & Security. Name it e.g. `jaer-notarytool`. Do **not** use the Apple Account password.
-7. Store notary credentials in Keychain (replace email, team id, password):
+Gitignored (`/signpath/` in `.gitignore`) and listed in `.cursorignore`. Do not paste contents into chat.
 
-       xcrun notarytool store-credentials "jaer-notarytool" --apple-id "YOUR_APPLE_ID_EMAIL" --team-id "TEAMID" --password "xxxx-xxxx-xxxx-xxxx"
+| File | What |
+|------|------|
+| `install4j/license.txt` | install4j license (one line) |
+| `signpath/macos-developer-id-application.p12` | Developer ID Application + private key |
+| `signpath/AuthKey.p8` | App Store Connect API private key (stable name; Apple’s download name may differ) |
+| `signpath/apple-issuer-id.txt` | Issuer UUID |
+| `signpath/apple-key-id.txt` | Key ID |
+| `signpath/macos-p12-password.txt` | `.p12` export password (one line). Needed for `ant` (no TTY). Or `export JAER_MAC_KEYSTORE_PASSWORD`. |
 
-8. After that, wire install4j (Installer → Code Signing / macOS notarization; `notarytool` + staple). Then `ant release` on the Mac, staple the DMGs, attach those files to GitHub Releases.
+## Build signed DMGs
 
-Never commit `.cer`, `.p12`, CSR, Team ID + password, or the app-specific password. Same rule as SignPath secrets.
+`ant install4j` / `ant release` run `scripts/run-install4jc.sh`. Issuer/key ID stay out of `jaer.install4j`.
+
+Finder Get Info does not show notarization. After a successful build:
+
+```bash
+xcrun stapler validate currentInstallers/<ver>/jAER_macos_aarch64_*.dmg
+spctl -a -t open --context context:primary-signature -vv currentInstallers/<ver>/jAER_macos_aarch64_*.dmg
+```
+
+`source=Notarized Developer ID` and a stapled ticket are the proof. `Unnotarized Developer ID` means codesign worked and Apple still rejected or has not stapled. install4j writes `currentInstallers/<ver>/*.dmg.notarization.log` (`status: Invalid` lists unsigned nested natives).
+
+Optional fallback for notarization logs: `xcrun notarytool store-credentials` with the **API key**. Agree to the Xcode license first (`sudo xcodebuild -license` in Terminal).
 
 ## Enrollment (done)
 
-Individual membership via the Apple Developer app / [enroll](https://developer.apple.com/programs/enroll/). Identity verification required a legal-name match (Tobias, not Tobi). Failed ID scans: [developer.apple.com/contact](https://developer.apple.com/contact) → Membership and Account.
+Individual membership via the Apple Developer app. Identity verification required a legal-name match (Tobias, not Tobi). CSR via Keychain Access **menu bar** → Certificate Assistant. Website: **Developer ID** → **G2 SUB-CA** → Application. Install `.cer` into **login**.

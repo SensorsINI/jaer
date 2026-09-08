@@ -29,6 +29,8 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 
 Plans for this repo: `.cursor/plans/` (CreatePlan’s user-global file must be copied there the same turn). Shell: bash on Linux/WSL, PowerShell 5.1 on native Windows (`.cursor/rules/shell-by-platform.mdc`).
 
+**Secrets:** never read or print `install4j/license.txt`, repo-root `signpath/**`, or `*.p12` / `*.p8`. Those files are gitignored and listed in `.cursorignore`.
+
 ## Progress reports
 
 If the work is substantial debugging or a multi-file feature that needs your interaction or manual testing, write the aim and current progress to `.cursor/progress-reports/<short_name>.md` so Dropbox can pick it up on another machine. Skip one-file / drive-by edits. At session start, read any matching report before continuing. Details: `.cursor/rules/progress-reports.mdc`.

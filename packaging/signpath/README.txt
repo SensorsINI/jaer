@@ -1,8 +1,10 @@
-Local SignPath / install4j credentials (Dropbox)
+Local SignPath / install4j credentials
 ================================================
 
 This folder stays on your machine (gitignored except this README and
 artifact-configurations/*.xml). Do not commit API tokens or license keys.
+Apple Developer ID `.p12` / App Store Connect `.p8` on the Mini live in
+gitignored repo-root `signpath/`, not here.
 
 Fill in these files (one value per file; see stubs created beside this README):
 
@@ -17,9 +19,8 @@ Fill in these files (one value per file; see stubs created beside this README):
       this same value; GitHub has no separate submitter setting.
 
   install4j-license.txt
-      Your install4j license key (single line). Fallback for local Ant and
-      this folder's sync script when install4j/license.txt is missing.
-      Preferred location: install4j/license.txt (gitignored).
+      Fallback copy of the install4j license (single line) when
+      install4j/license.txt is missing. Prefer install4j/license.txt.
 
   signpath-project-slug.txt
       Default: jaer
