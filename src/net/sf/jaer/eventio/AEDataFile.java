@@ -63,6 +63,10 @@ public interface AEDataFile {
     public static final String DATA_FILE_VERSION_NUMBER_AEDAT4 = "4.0";
     /** AEDZ file extension including '.': ".aedz" */
     public static final String DATA_FILE_EXTENSION_AEDZ = ".aedz";
+    /** Exported video (File → Export video); opened with the OS player, not as event data. */
+    public static final String DATA_FILE_EXTENSION_MP4 = ".mp4";
+    /** Intermediate / exported AVI; opened with the OS player, not as event data. */
+    public static final String DATA_FILE_EXTENSION_AVI = ".avi";
     /**
      * Format-selector sentinel for the AEDZ compressed recording format. Not an
      * AEDAT version number: it is only used to route

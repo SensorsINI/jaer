@@ -33,6 +33,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.eventio.ddd.DddHdf5;
@@ -43,6 +44,7 @@ import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
 import net.sf.jaer.util.NameFilteringFileChooser;
 import net.sf.jaer.util.SampleDataSupport;
+import net.sf.jaer.util.ShowFolderSaveConfirmation;
 
 /**
  * Handles file input of AEs to control the number of events/sample or period of
@@ -334,6 +336,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
+        if (file != null && RecordingChipDetector.isExternalVideoFile(file) && file.isFile()) {
+            if (viewer != null && viewer.getRecentFiles() != null) {
+                viewer.getRecentFiles().addFile(file);
+            }
+            if (!ShowFolderSaveConfirmation.openWithDesktop(file)) {
+                JOptionPane.showMessageDialog(viewer,
+                        "Could not open " + file.getName() + " with the system video player.",
+                        "Open video", JOptionPane.WARNING_MESSAGE);
+            }
+            return;
+        }
         if (aeInputStream != null) {
             try {
                 aeInputStream.close();

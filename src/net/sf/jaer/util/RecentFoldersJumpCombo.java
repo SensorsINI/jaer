@@ -1,6 +1,7 @@
 package net.sf.jaer.util;
 
 import java.awt.Component;
+import java.awt.FontMetrics;
 import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -136,8 +137,13 @@ public class RecentFoldersJumpCombo extends JComboBox<File> {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             if (value instanceof File f) {
                 String path = f.getAbsolutePath();
-                setText(path);
                 setToolTipText(path);
+                int w = list != null ? list.getWidth() : 0;
+                if (w <= 0) {
+                    w = 320;
+                }
+                FontMetrics fm = getFontMetrics(getFont());
+                setText(OutputFilename.ellipsizeMiddle(path, fm, Math.max(40, w - 24)));
             }
             return this;
         }

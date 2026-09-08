@@ -17,7 +17,9 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
@@ -33,6 +35,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.graphics.AbstractAEPlayer.PlaybackMode;
 
 /**
@@ -47,7 +50,24 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private final AEViewer aeViewer;
     MoreLessAction moreLessAction = new MoreLessAction();
     private volatile boolean sliderDontProcess = false; // semaphore used to prevent slider actions when slider is set programmatically
-    private final Hashtable<Integer, JLabel> marksTable = new Hashtable<Integer, JLabel>(); // lookup from slider position to label, given to slider to draw labels at markers
+    /** JSlider label table; Hashtable forbids null keys (NPE on put/remove). */
+    private final Hashtable<Integer, JLabel> marksTable = new Hashtable<Integer, JLabel>() {
+        @Override
+        public synchronized JLabel put(Integer key, JLabel value) {
+            if (key == null || value == null) {
+                return null;
+            }
+            return super.put(key, value);
+        }
+
+        @Override
+        public synchronized JLabel remove(Object key) {
+            if (key == null) {
+                return null;
+            }
+            return super.remove(key);
+        }
+    };
     private final JLabel markInLabel, markOutLabel, markerLabel;
     private Integer markInPosition = null, markOutPosition = null, markPosition = null; // store keys in markTable so we can remove them
     private JPopupMenu markerPopupMenu = null;
@@ -61,6 +81,11 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         this.markOutLabel = new JLabel("]");
         this.markInLabel = new JLabel("[");
         this.markerLabel = new JLabel("^");
+        markInLabel.setForeground(new java.awt.Color(20, 180, 60));
+        markOutLabel.setForeground(new java.awt.Color(220, 60, 20));
+        markInLabel.setFont(markInLabel.getFont().deriveFont(java.awt.Font.BOLD, 12f));
+        markOutLabel.setFont(markOutLabel.getFont().deriveFont(java.awt.Font.BOLD, 12f));
+        markerLabel.setForeground(new java.awt.Color(200, 160, 0));
         markInLabel.setToolTipText("IN marker");
         markOutLabel.setToolTipText("OUT marker");
         markerLabel.setToolTipText("Marker");
@@ -160,58 +185,38 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_IN_SET)) {
                     synchronized (aePlayer) {
+                        AEFileInputStreamInterface src = streamFrom(evt);
+                        Integer pos = sliderPosFromEvent(evt, src);
                         if (markInPosition != null) {
                             marksTable.remove(markInPosition);
                         }
-                        if (evt.getSource() instanceof AEPlayer) {
-                            sliderDontProcess = true;
-                            long pos = (long) evt.getNewValue();
-                            playerSlider.setValue(convertToSlider(pos));
-
-                        }
-                        {
-                            markInPosition = playerSlider.getValue();
-                            marksTable.put(markInPosition, markInLabel);
-                            playerSlider.setLabelTable(marksTable);
-                            playerSlider.setPaintLabels(true);
-                            playerSlider.repaint();
-                        }
+                        markInPosition = pos;
+                        putMark(markInPosition, markInLabel);
+                        refreshSliderMarkPaint();
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_OUT_SET)) {
                     synchronized (aePlayer) {
+                        AEFileInputStreamInterface src = streamFrom(evt);
+                        Integer pos = sliderPosFromEvent(evt, src);
                         if (markOutPosition != null) {
                             marksTable.remove(markOutPosition);
                         }
-                        if (evt.getSource() instanceof AEPlayer) {
-                            sliderDontProcess = true;
-                            long pos = (long) evt.getNewValue();
-                            playerSlider.setValue(convertToSlider(pos));
-                        }
-                        markOutPosition = playerSlider.getValue();
-                        marksTable.put(markOutPosition, markOutLabel);
-                        playerSlider.setLabelTable(marksTable);
-                        playerSlider.setPaintLabels(true);
-                        playerSlider.repaint();
+                        markOutPosition = pos;
+                        putMark(markOutPosition, markOutLabel);
+                        refreshSliderMarkPaint();
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_TOGGLED)) {
                     synchronized (aePlayer) {
-                        Object oldLocation=evt.getOldValue(), newLocation=evt.getNewValue();
-                        boolean added=newLocation!=null;
-                        markPosition = convertToSlider(added?(long)newLocation:(long)oldLocation);
-                        if (marksTable.get(markPosition) != null) {
-                            marksTable.remove(markPosition);
-                        } else {
-                            marksTable.put(markPosition, markerLabel);
-                        }
-                        playerSlider.setLabelTable(marksTable);
-                        playerSlider.setPaintLabels(true);
-                        playerSlider.repaint();
+                        applyMarkToggled(evt, streamFrom(evt));
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_CLEARED)) {
                     clearSliderMarks();
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_LOADED)) {
-                    AEFileInputStream.Marks marks = (Marks) evt.getNewValue();
-                    setMarks(marks);
+                    if (evt.getNewValue() instanceof Marks marks) {
+                        setMarks(marks);
+                    } else {
+                        reapplyMarksFromStream(streamFrom(evt));
+                    }
                     playerSlider.repaint();
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                     if (evt.getSource() instanceof AEFileInputStreamInterface stream) {
@@ -221,6 +226,33 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_CLEARED)) {
                 // SyncPlayer (and other AbstractAEPlayer sources) are not AEFileInputStreamInterface
                 clearSliderMarks();
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_TOGGLED)) {
+                synchronized (aePlayer) {
+                    applyMarkToggled(evt, playbackStream());
+                }
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_IN_SET)
+                    || evt.getPropertyName().equals(AEInputStream.EVENT_MARK_OUT_SET)
+                    || evt.getPropertyName().equals(AEInputStream.EVENT_MARKS_LOADED)) {
+                if (AEInputStream.EVENT_MARKS_LOADED.equals(evt.getPropertyName())
+                        && evt.getNewValue() instanceof Marks marks) {
+                    setMarks(marks);
+                } else if (AEInputStream.EVENT_MARK_IN_SET.equals(evt.getPropertyName())) {
+                    Integer pos = sliderPosFromEvent(evt, playbackStream());
+                    if (markInPosition != null) {
+                        marksTable.remove(markInPosition);
+                    }
+                    markInPosition = pos;
+                    putMark(markInPosition, markInLabel);
+                    refreshSliderMarkPaint();
+                } else if (AEInputStream.EVENT_MARK_OUT_SET.equals(evt.getPropertyName())) {
+                    Integer pos = sliderPosFromEvent(evt, playbackStream());
+                    if (markOutPosition != null) {
+                        marksTable.remove(markOutPosition);
+                    }
+                    markOutPosition = pos;
+                    putMark(markOutPosition, markOutLabel);
+                    refreshSliderMarkPaint();
+                }
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
                 timesliceSpinner.setValue(aePlayer.getTimesliceUs());
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PACKETSIZEEVENTS)) {
@@ -256,7 +288,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 repeatPlaybackButton.setSelected((boolean) evt.getNewValue());
             }
         } catch (Throwable t) {
-            log.warning("caught error in player control panel - probably another thread is modifying the text field at the same time: " + t.toString());
+            log.log(Level.WARNING, "caught error in player control panel", t);
         }
     }
 
@@ -283,6 +315,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         } else {
             playerSlider.setToolTipText("Shows and controls playback position (in events, not time)");
         }
+        reapplyMarksFromStream(stream);
         if (log.isLoggable(Level.FINE) || timeMapped) {
             String msg = String.format(
                     "AEPlayer sparkline bind: stream=%s timeMapped=%s rates=%s",
@@ -366,15 +399,22 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markPosition = null;
         playerSlider.setLabelTable(marksTable);
         playerSlider.setPaintLabels(false);
+        playerSlider.setPlaybackMarks(null, null, null);
         playerSlider.repaint();
     }
 
     public void setMarks(Marks marks) {
+        setMarks(marks, playbackStream());
+    }
+
+    private void setMarks(Marks marks, AEFileInputStreamInterface stream) {
         if (marks == null) {
             clearSliderMarks();
             return;
         }
-        AEFileInputStreamInterface stream = aePlayer.getAEInputStream();
+        if (stream == null) {
+            stream = playbackStream();
+        }
         if (stream == null || stream.size() <= 0) {
             log.fine("setMarks deferred/skipped: AEInputStream not ready");
             return;
@@ -385,33 +425,111 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         boolean inSet = stream.isMarkInSet();
         boolean outSet = stream.isMarkOutSet();
         if (inSet) {
-            markInPosition = convertToSlider(marks.markIn);
-            if (markInPosition != null) {
-                marksTable.put(markInPosition, markInLabel);
-            }
+            markInPosition = convertToSlider(stream, marks.markIn);
+            putMark(markInPosition, markInLabel);
         }
         if (outSet) {
-            markOutPosition = convertToSlider(marks.markOut);
-            if (markOutPosition != null) {
-                marksTable.put(markOutPosition, markOutLabel);
-            }
+            markOutPosition = convertToSlider(stream, marks.markOut);
+            putMark(markOutPosition, markOutLabel);
         }
         if (marks.otherMarks != null) {
             for (long pos : marks.otherMarks) {
-                Integer sliderPos = convertToSlider(pos);
-                if (sliderPos != null) {
-                    marksTable.put(sliderPos, markerLabel);
-                }
+                putMark(convertToSlider(stream, pos), markerLabel);
             }
         }
+        refreshSliderMarkPaint();
+    }
+
+    private void applyMarkToggled(PropertyChangeEvent evt, AEFileInputStreamInterface src) {
+        Object oldLocation = evt != null ? evt.getOldValue() : null;
+        Object newLocation = evt != null ? evt.getNewValue() : null;
+        boolean added = newLocation != null;
+        Object loc = added ? newLocation : oldLocation;
+        Integer sliderPos = loc instanceof Number n ? convertToSlider(src, n.longValue()) : null;
+        if (sliderPos == null) {
+            log.fine("toggle marker: no slider position (stream or mapping unavailable)");
+        } else if (added) {
+            putMark(sliderPos, markerLabel);
+        } else {
+            marksTable.remove(sliderPos);
+        }
+        refreshSliderMarkPaint();
+    }
+
+    private void putMark(Integer sliderPos, JLabel label) {
+        if (sliderPos == null || label == null) {
+            return;
+        }
+        marksTable.put(sliderPos, label);
+    }
+
+    private AEFileInputStreamInterface streamFrom(PropertyChangeEvent evt) {
+        if (evt != null && evt.getSource() instanceof AEFileInputStreamInterface s) {
+            return s;
+        }
+        return playbackStream();
+    }
+
+    /** Viewer's file player stream — not {@link net.sf.jaer.SyncPlayer#getAEInputStream()} (always null). */
+    private AEFileInputStreamInterface playbackStream() {
+        if (aeViewer != null && aeViewer.aePlayer != null) {
+            AEFileInputStreamInterface s = aeViewer.aePlayer.getAEInputStream();
+            if (s != null) {
+                return s;
+            }
+        }
+        return aePlayer != null ? aePlayer.getAEInputStream() : null;
+    }
+
+    private Integer sliderPosFromEvent(PropertyChangeEvent evt, AEFileInputStreamInterface stream) {
+        Object nv = evt != null ? evt.getNewValue() : null;
+        if (nv instanceof Number n) {
+            return convertToSlider(stream, n.longValue());
+        }
+        return null;
+    }
+
+    private void reapplyMarksFromStream(AEFileInputStreamInterface stream) {
+        if (stream == null) {
+            stream = playbackStream();
+        }
+        if (stream == null) {
+            refreshSliderMarkPaint();
+            return;
+        }
+        Marks m = new Marks();
+        m.markIn = stream.getMarkInPosition();
+        m.markOut = stream.getMarkOutPosition();
+        if (stream instanceof AEFileInputStream a2) {
+            m = a2.getMarks();
+        } else if (stream instanceof Aedat4FileInputStream a4) {
+            m = a4.getPlaybackMarks();
+        }
+        setMarks(m, stream);
+    }
+
+    private void refreshSliderMarkPaint() {
+        List<Integer> others = new ArrayList<>();
+        for (var e : marksTable.entrySet()) {
+            if (e.getValue() == markerLabel && e.getKey() != null) {
+                others.add(e.getKey());
+            }
+        }
+        playerSlider.setPlaybackMarks(markInPosition, markOutPosition, others);
         playerSlider.setLabelTable(marksTable);
-        playerSlider.setPaintLabels(!marksTable.isEmpty());
+        playerSlider.setPaintLabels(false);
         playerSlider.repaint();
     }
 
     private Integer convertToSlider(long pos) {
-        AEFileInputStreamInterface stream = aePlayer.getAEInputStream();
+        return convertToSlider(playbackStream(), pos);
+    }
+
+    private Integer convertToSlider(AEFileInputStreamInterface stream, long pos) {
         if (stream == null) {
+            stream = playbackStream();
+        }
+        if (stream == null || playerSlider == null) {
             return null;
         }
         return stream.eventPositionToSliderValue(pos, playerSlider.getMaximum());

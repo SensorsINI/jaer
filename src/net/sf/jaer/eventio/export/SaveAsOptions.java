@@ -1,9 +1,9 @@
 package net.sf.jaer.eventio.export;
 
 import java.io.File;
-import java.util.Locale;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.OutputFilename;
 import net.sf.jaer.util.textio.DavisTextEventFormatter;
 
 /**
@@ -90,43 +90,7 @@ public final class SaveAsOptions {
         if (format == null) {
             format = Format.AEDAT4;
         }
-        String current = name;
-        while (true) {
-            int dot = current.lastIndexOf('.');
-            if (dot > 0 && dot < current.length() - 1) {
-                String ext = current.substring(dot + 1);
-                if (format.acceptsExtension(ext)) {
-                    return current.substring(0, dot) + "." + ext.toLowerCase(Locale.ROOT);
-                }
-                current = current.substring(0, dot);
-                continue;
-            }
-            String glued = gluedAcceptedExtension(current, format);
-            if (glued != null) {
-                return current.substring(0, current.length() - glued.length()) + "." + glued;
-            }
-            while (current.endsWith(".") && current.length() > 1) {
-                current = current.substring(0, current.length() - 1);
-            }
-            return current + "." + format.extension;
-        }
-    }
-
-    /** {@code 1aedat4} → {@code aedat4} when that is an accepted suffix. */
-    private static String gluedAcceptedExtension(String name, Format format) {
-        if (name == null || name.isEmpty()) {
-            return null;
-        }
-        String lower = name.toLowerCase(Locale.ROOT);
-        for (String ext : format.acceptedExtensions()) {
-            if (ext.isEmpty() || lower.length() <= ext.length()) {
-                continue;
-            }
-            if (lower.endsWith(ext) && name.charAt(name.length() - ext.length() - 1) != '.') {
-                return ext;
-            }
-        }
-        return null;
+        return OutputFilename.ensureExtensionName(name, format.extension, format.acceptedExtensions());
     }
 
     public File outputFile;

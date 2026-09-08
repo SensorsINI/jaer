@@ -187,7 +187,15 @@ public class RecentFiles {
                 }
                 JMenuItem item=new JMenuItem(name);
                 item.setActionCommand(f.getPath());
-                item.setToolTipText(String.format("<html>%s<p>(Hold Shift and select to open folder)",f.getPath()));
+                String path = f.getPath();
+                String fname = f.getName().toLowerCase();
+                if (fname.endsWith(".mp4") || fname.endsWith(".avi")) {
+                    item.setToolTipText(String.format(
+                            "<html>%s<p>Opens in the system video player<br>(Hold Shift and select to open folder)",
+                            path));
+                } else {
+                    item.setToolTipText(String.format("<html>%s<p>(Hold Shift and select to open folder)", path));
+                }
                 item.addActionListener(listener);
                 item.setMnemonic(item.getText().charAt(0));
                 fileItems.add(item);

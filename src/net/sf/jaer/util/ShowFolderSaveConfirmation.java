@@ -6,6 +6,9 @@ import java.awt.FlowLayout;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -208,20 +211,54 @@ public class ShowFolderSaveConfirmation extends JDialog {
 
     /**
      * Opens {@code file} with the OS default application (e.g. video player).
+     * Uses {@link Desktop#open} when available, then {@code xdg-open} /
+     * {@code open} / {@code cmd /c start} as a fallback.
+     *
+     * @return true if a launch was started
      */
-    public static void openWithDesktop(File file) {
+    public static boolean openWithDesktop(File file) {
         if (file == null || !file.isFile()) {
             log.warning("Cannot open file: " + file);
-            return;
+            return false;
         }
-        if (!Desktop.isDesktopSupported()) {
-            log.warning("Desktop operations not supported");
-            return;
+        if (Desktop.isDesktopSupported()) {
+            try {
+                Desktop.getDesktop().open(file);
+                return true;
+            } catch (Exception ex) {
+                log.fine("Desktop.open failed for " + file + ": " + ex);
+            }
+        }
+        if (openWithOsCommand(file)) {
+            return true;
+        }
+        log.warning("Could not open " + file + " with the system application");
+        return false;
+    }
+
+    private static boolean openWithOsCommand(File file) {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        List<String> cmd = new ArrayList<>();
+        if (os.contains("win")) {
+            cmd.add("cmd");
+            cmd.add("/c");
+            cmd.add("start");
+            cmd.add("");
+            cmd.add(file.getAbsolutePath());
+        } else if (os.contains("mac")) {
+            cmd.add("open");
+            cmd.add(file.getAbsolutePath());
+        } else {
+            cmd.add("xdg-open");
+            cmd.add(file.getAbsolutePath());
         }
         try {
-            Desktop.getDesktop().open(file);
-        } catch (Exception ex) {
-            log.warning("Could not open " + file + ": " + ex);
+            new ProcessBuilder(cmd).start();
+            log.info("Opened with " + cmd.get(0) + ": " + file);
+            return true;
+        } catch (Exception e) {
+            log.warning("OS open command failed (" + cmd.get(0) + "): " + e);
+            return false;
         }
     }
 

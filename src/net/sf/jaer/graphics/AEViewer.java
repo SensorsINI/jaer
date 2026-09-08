@@ -2727,6 +2727,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (file == null || !file.isFile()) {
             return true;
         }
+        if (RecordingChipDetector.isExternalVideoFile(file)) {
+            return true;
+        }
         Integer alreadyPending = pendingAedat4EventStreamId;
         Class<? extends AEChip> suggested = null;
         String name = file.getName().toLowerCase(Locale.ROOT);
@@ -13140,6 +13143,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void openAedatInputFile(File f) throws IOException, InterruptedException {
         if ((f != null) && f.isFile()) {
             recentFiles.addFile(f);
+            if (RecordingChipDetector.isExternalVideoFile(f)) {
+                if (!ShowFolderSaveConfirmation.openWithDesktop(f)) {
+                    JOptionPane.showMessageDialog(this,
+                            "Could not open " + f.getName() + " with the system video player.",
+                            "Open video", JOptionPane.WARNING_MESSAGE);
+                }
+                return;
+            }
             getAePlayer().startPlayback(f); // TODO fix with progress monitor
         } else if ((f != null) && f.isDirectory()) {
             prefs.put("AEViewer.lastFile", f.getCanonicalPath());
@@ -13524,7 +13535,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
                             || f.getName().toLowerCase(Locale.ROOT).endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)
                             || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_H5)
-                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_HDF5)) {
+                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_HDF5)
+                            || RecordingChipDetector.isExternalVideoFile(f)) {
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {

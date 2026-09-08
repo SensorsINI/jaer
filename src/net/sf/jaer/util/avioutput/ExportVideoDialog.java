@@ -1,12 +1,15 @@
 package net.sf.jaer.util.avioutput;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -32,6 +35,7 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.OutputFilename;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
 import net.sf.jaer.util.RecentFoldersJumpCombo;
@@ -47,11 +51,12 @@ import net.sf.jaer.util.WindowSaver;
 public class ExportVideoDialog extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(ExportVideoDialog.class);
+    private static final int DIALOG_MAX_WIDTH = 560;
 
     private final AEViewer viewer;
     private AbstractAviWriter writer;
 
-    private final JTextField pathField = new JTextField(36);
+    private final JTextField nameField = new JTextField(18);
     private final JComboBox<AVIOutputStream.VideoFormat> formatCombo = new JComboBox<>(
             new AVIOutputStream.VideoFormat[]{
                 AVIOutputStream.VideoFormat.JPG,
@@ -108,7 +113,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         applyAedatDefaults();
         updateFfmpegStatus();
         updateRecordingUi(false);
-        pack();
+        packDialog();
         setLocationRelativeTo(viewer);
 
         addWindowListener(new WindowAdapter() {
@@ -142,10 +147,19 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         c.gridx = 0;
         c.gridy = row;
         c.weightx = 0;
-        form.add(new JLabel("Output file:"), c);
+        form.add(new JLabel("File name:"), c);
         c.gridx = 1;
         c.weightx = 1;
-        form.add(pathField, c);
+        nameField.setToolTipText("<html>Basename only — folder is the row below.<br>"
+                + ".mp4 or .avi is added if missing (same as File → Save As).<br>"
+                + "Paste a full path to split folder and name.");
+        nameField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                applyFilenameFromField();
+            }
+        });
+        form.add(nameField, c);
         c.gridx = 2;
         c.weightx = 0;
         JButton browse = new JButton("Browse…");
@@ -156,13 +170,13 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         c.gridx = 0;
         c.gridy = row;
         c.weightx = 0;
-        form.add(new JLabel("Recent folder:"), c);
+        form.add(new JLabel("Folder:"), c);
         c.gridx = 1;
         c.gridwidth = 2;
         c.weightx = 1;
         recentFolderCombo = new RecentFoldersJumpCombo(viewer != null ? viewer.getRecentFiles() : null,
-                this::parentOfPathField, this::setOutputFolder);
-        recentFolderCombo.setToolTipText("Jump the output file to a folder from File → recent folders");
+                this::selectedFolder, this::setOutputFolder);
+        recentFolderCombo.setToolTipText("Output folder (File → recent folders, or Browse…)");
         form.add(recentFolderCombo, c);
         c.gridwidth = 1;
 
@@ -258,7 +272,10 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         buttons.add(convertNowButton);
         buttons.add(closeButton);
 
-        convertMp4Cb.addActionListener(e -> updateFfmpegStatus());
+        convertMp4Cb.addActionListener(e -> {
+            applyFilenameFromField();
+            updateFfmpegStatus();
+        });
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(form, BorderLayout.CENTER);
@@ -266,7 +283,19 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     }
 
     private void loadPrefs() {
-        pathField.setText(prefs.get("lastExportPath", "jAER-export.mp4"));
+        File last = new File(prefs.get("lastExportPath", "jAER-export.mp4"));
+        File folder = last.getParentFile();
+        if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
+            File playing = viewer != null ? viewer.getInputFile() : null;
+            folder = playing != null ? playing.getParentFile() : null;
+        }
+        if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
+            folder = new File(System.getProperty("user.home", "."));
+        }
+        nameField.setText(last.getName().isEmpty() ? "jAER-export.mp4" : last.getName());
+        if (recentFolderCombo != null) {
+            recentFolderCombo.syncSelection(folder);
+        }
         try {
             formatCombo.setSelectedItem(AVIOutputStream.VideoFormat.valueOf(prefs.get("format", "JPG")));
         } catch (Exception e) {
@@ -284,6 +313,15 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         deleteAviCb.setSelected(prefs.getBoolean("deleteAvi", false));
         ffmpegPathField.setText(FfmpegMp4Converter.getConfiguredFfmpegPath());
         syncFrameRateSpinnerEnabled();
+        applyFilenameFromField();
+    }
+
+    private void packDialog() {
+        pack();
+        Dimension s = getSize();
+        if (s.width > DIALOG_MAX_WIDTH) {
+            setSize(DIALOG_MAX_WIDTH, s.height);
+        }
     }
 
     private void syncFrameRateSpinnerEnabled() {
@@ -295,7 +333,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     }
 
     private void savePrefs() {
-        prefs.put("lastExportPath", pathField.getText().trim());
+        prefs.put("lastExportPath", chosenOutputFile().getAbsolutePath());
         prefs.put("format", formatCombo.getSelectedItem().toString());
         prefs.putInt("frameRate", (Integer) frameRateSpinner.getValue());
         prefs.putBoolean("matchViewerFrameRate", matchViewerRateCb.isSelected());
@@ -358,7 +396,10 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         }
         String found = FfmpegMp4Converter.findFfmpeg();
         if (found != null) {
-            ffmpegStatusLabel.setText("<html>ffmpeg: <b>found</b> (" + found + ")");
+            ffmpegStatusLabel.setText("<html>ffmpeg: <b>found</b> ("
+                    + OutputFilename.ellipsizeMiddle(found, 42) + ")");
+            ffmpegStatusLabel.setToolTipText(found);
+            ffmpegPathField.setToolTipText(found);
             if (ffmpegPathField.getText().trim().isEmpty() && new File(found).isFile()) {
                 ffmpegPathField.setText(found);
             }
@@ -405,39 +446,95 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         });
     }
 
-    private File parentOfPathField() {
-        String path = pathField.getText().trim();
-        if (path.isEmpty()) {
-            return null;
+    private File selectedFolder() {
+        if (recentFolderCombo != null && recentFolderCombo.getSelectedItem() instanceof File folder) {
+            if (FileAccessTimeout.isDirectory(folder)) {
+                return folder;
+            }
         }
-        File parent = new File(path).getParentFile();
-        return parent != null ? parent : null;
+        return null;
+    }
+
+    private File chosenOutputFile() {
+        applyFilenameFromField();
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            name = "jAER-export";
+        }
+        File folder = selectedFolder();
+        File file = folder != null ? new File(folder, name) : new File(name);
+        return ensureVideoExtension(file);
+    }
+
+    private File ensureVideoExtension(File file) {
+        if (convertMp4Cb.isSelected()) {
+            return OutputFilename.ensureExtension(file, "mp4", "mp4", "avi");
+        }
+        return OutputFilename.ensureExtension(file, "avi", "avi");
+    }
+
+    /**
+     * If the name field contains a full path, move the directory into Folder
+     * and keep only the basename. Then apply {@code .mp4}/{@code .avi}.
+     */
+    private void applyFilenameFromField() {
+        String text = nameField.getText().trim();
+        if (text.isEmpty()) {
+            return;
+        }
+        File asFile = new File(text);
+        boolean looksAbsolute = asFile.isAbsolute()
+                || text.indexOf('/') >= 0
+                || text.indexOf('\\') >= 0;
+        if (looksAbsolute && asFile.getParentFile() != null) {
+            File parent = asFile.getParentFile();
+            nameField.setText(asFile.getName());
+            if (FileAccessTimeout.isDirectory(parent) && recentFolderCombo != null) {
+                recentFolderCombo.refresh();
+                recentFolderCombo.syncSelection(parent);
+            }
+        }
+        File ensured = ensureVideoExtension(new File(nameField.getText().trim()));
+        if (!ensured.getName().equals(nameField.getText().trim())) {
+            nameField.setText(ensured.getName());
+        }
+        File full = chosenOutputFileWithoutApply();
+        nameField.setToolTipText("<html>" + ShowFolderSaveConfirmation.escapeHtml(full.getAbsolutePath())
+                + "<br>Folder is the row below. Extension is added if missing.");
+    }
+
+    private File chosenOutputFileWithoutApply() {
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            name = "jAER-export";
+        }
+        File folder = selectedFolder();
+        File file = folder != null ? new File(folder, name) : new File(name);
+        return ensureVideoExtension(file);
     }
 
     private void setOutputFolder(File folder) {
         if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
             return;
         }
-        File current = new File(pathField.getText().trim());
-        String name = current.getName();
-        if (name == null || name.isEmpty()) {
-            name = "jAER-export.mp4";
+        if (nameField.getText().trim().isEmpty()) {
+            nameField.setText("jAER-export.mp4");
         }
-        pathField.setText(new File(folder, name).getAbsolutePath());
+        applyFilenameFromField();
         if (recentFolderCombo != null) {
             recentFolderCombo.syncSelection(folder);
         }
     }
 
     private void browse(ActionEvent e) {
+        applyFilenameFromField();
+        File current = chosenOutputFileWithoutApply();
         JFileChooser chooser = new JFileChooser();
-        String path = pathField.getText().trim();
-        File current = path.isEmpty() ? new File("jAER-export.mp4") : new File(path);
-        chooser.setSelectedFile(current);
         File parent = current.getParentFile();
         if (parent != null && FileAccessTimeout.isDirectory(parent)) {
             chooser.setCurrentDirectory(parent);
         }
+        chooser.setSelectedFile(current);
         chooser.setFileFilter(new FileNameExtensionFilter("Video (*.mp4, *.avi)", "mp4", "avi"));
         chooser.setDialogType(JFileChooser.SAVE_DIALOG);
         RecentFiles recent = viewer != null ? viewer.getRecentFiles() : null;
@@ -451,10 +548,14 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             }));
         }
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-            pathField.setText(chooser.getSelectedFile().getAbsolutePath());
-            if (recentFolderCombo != null) {
+            File chosen = ensureVideoExtension(chooser.getSelectedFile());
+            nameField.setText(chosen.getName());
+            File dir = chosen.getParentFile();
+            if (dir != null && recentFolderCombo != null) {
                 recentFolderCombo.refresh();
+                recentFolderCombo.syncSelection(dir);
             }
+            applyFilenameFromField();
         }
     }
 
@@ -466,12 +567,12 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
                     "Export video", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        String path = pathField.getText().trim();
-        if (path.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Choose an output file path.", "Export video", JOptionPane.WARNING_MESSAGE);
+        if (nameField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Choose an output file name.", "Export video", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        File chosen = new File(path);
+        File chosen = chosenOutputFile();
+        String path = chosen.getAbsolutePath();
         convertToMp4 = convertMp4Cb.isSelected() || path.toLowerCase().endsWith(".mp4");
         deleteAviAfterMp4 = deleteAviCb.isSelected();
 
@@ -663,7 +764,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private void updateRecordingUi(boolean recording) {
         startButton.setEnabled(!recording);
         stopButton.setEnabled(recording);
-        pathField.setEnabled(!recording);
+        nameField.setEnabled(!recording);
         formatCombo.setEnabled(!recording);
         matchViewerRateCb.setEnabled(!recording);
         writeTimecodeCb.setEnabled(!recording);

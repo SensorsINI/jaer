@@ -48,6 +48,8 @@ import prophesee.eventio.MetavisionRawFileInputStream;
  * on the AEChip/Sensor menu.
  * AEDAT-4 {@code infoNode} uses DV attribute form
  * {@code <attr key="k" type="t">v</attr>}.
+ * Exported {@code .mp4}/{@code .avi} are not recordings; see
+ * {@link #isExternalVideoFile(File)}.
  */
 public final class RecordingChipDetector {
 
@@ -61,6 +63,26 @@ public final class RecordingChipDetector {
             Pattern.CASE_INSENSITIVE);
 
     private RecordingChipDetector() {
+    }
+
+    /**
+     * True for File → Export video outputs ({@code .mp4}, {@code .avi}).
+     * These are opened with the OS default player, not as event recordings.
+     */
+    public static boolean isExternalVideoFile(File file) {
+        return file != null && isExternalVideoFile(file.getName());
+    }
+
+    /**
+     * @param name filename or path; matching is case-insensitive on the extension
+     */
+    public static boolean isExternalVideoFile(String name) {
+        if (name == null || name.isEmpty()) {
+            return false;
+        }
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_MP4)
+                || lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AVI);
     }
 
     /** Hint extracted from a recording (may be partial). */
@@ -179,6 +201,10 @@ public final class RecordingChipDetector {
      */
     public static Class<? extends AEChip> detect(File file, List<String> loadedChipClassNames) {
         if (file == null || !file.isFile()) {
+            return null;
+        }
+        if (isExternalVideoFile(file)) {
+            log.fine("Not an event recording (system-player video): " + file.getName());
             return null;
         }
         List<Class<? extends AEChip>> loaded = loadClasses(loadedChipClassNames);
