@@ -331,15 +331,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      * Starts playback on the data file. If the file is an index file, the
      * JAERViewer is called to start playback of the set of data files. Fires a
      * property change event "fileopen", after playMode is changed to PLAYBACK.
+     * After chip-compat and convert/rerecord prompts succeed, the original
+     * {@code file} is added to File → recent files (needed for launch and
+     * double-click, which skip {@link AEViewer#openAedatInputFile}).
      *
      * @param file the File to play.
      */
     @Override
     public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
         if (file != null && RecordingChipDetector.isExternalVideoFile(file) && file.isFile()) {
-            if (viewer != null && viewer.getRecentFiles() != null) {
-                viewer.getRecentFiles().addFile(file);
-            }
+            rememberInRecentFiles(file);
             if (!ShowFolderSaveConfirmation.openWithDesktop(file)) {
                 JOptionPane.showMessageDialog(viewer,
                         "Could not open " + file.getName() + " with the system video player.",
@@ -397,6 +398,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         final File rerecordFrom = lz4Plan.rerecordFrom;
         final File dddConvertFrom = dddPlan.convertFrom;
         inputFile = playFile;
+        // File>Open / drag-drop already add before calling here; launch and
+        // double-click (install4j / SyncPlayer) do not. addFile is idempotent.
+        rememberInRecentFiles(file);
         if (viewer.consumeSkipOriginAedat4Open()) {
             viewer.spawnPendingExtraAedat4Streams(playFile);
             viewer.endFilePlaybackOpen();
@@ -1260,5 +1264,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         aeInputStream.setNonMonotonicTimeExceptionsChecked(yes);
+    }
+
+    /**
+     * Records a file that playback accepted. Cancelled chip-compat or
+     * convert prompts return before this is called.
+     */
+    private void rememberInRecentFiles(File f) {
+        if (f == null || viewer == null || viewer.getRecentFiles() == null) {
+            return;
+        }
+        viewer.getRecentFiles().addFile(f);
     }
 }
