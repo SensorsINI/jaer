@@ -1071,7 +1071,7 @@ public class DVXplorer extends AETemporalConstastRetina {
             }
             if (cooked == null) {
                 reusedBundle.setRawPacket(in);
-                return reusedBundle;
+                return reusedBundle.copyPacketList();
             }
             cooked.setRawPacket(in);
             if (polarityOut == null) {
@@ -1114,7 +1114,7 @@ public class DVXplorer extends AETemporalConstastRetina {
                 reusedBundle.addAllowEmpty(cooked);
             }
             reusedBundle.setRawPacket(in);
-            return reusedBundle;
+            return reusedBundle.copyPacketList();
         }
         
         /**

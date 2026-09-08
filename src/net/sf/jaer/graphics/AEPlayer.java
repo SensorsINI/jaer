@@ -123,17 +123,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 final File file = viewer.lastFile;
                 startPlayback(file);
 
-            } else {
-                preview.showFile(null);
             }
         } catch (GLException e) {
             log.warning(e.toString());
-            preview.showFile(null);
         } catch (IOException e) {
             log.warning(e.toString());
         } catch (InterruptedException e) {
             log.warning(e.toString());
         } finally {
+            // Open used to skip this: playTimer kept extractBundle on the live chip
+            // while ViewLoop.filterBundle iterated the same reused PacketBundle (CME).
+            preview.shutdown();
             fileChooser = null;
 //        viewer.chipCanvas.setScale(oldScale);
             // restore persistent scale so that we don't get tiny size on next startup

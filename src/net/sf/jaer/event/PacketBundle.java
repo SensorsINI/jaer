@@ -6,6 +6,7 @@
 package net.sf.jaer.event;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -18,10 +19,18 @@ import java.util.List;
  * <p>
  * Replaces the former single mixed {@code ApsDvsEventPacket} as the unit passed
  * through extract → filter → render → log.
+ * <p>
+ * Structural mutation ({@link #add}, {@link #clear}) is synchronized. Iterators
+ * snapshot the packet list so a concurrent {@code extractBundle} (file preview
+ * on the live extractor, or the next ViewLoop extract of a reused buffer)
+ * cannot throw {@link java.util.ConcurrentModificationException} in
+ * {@code FilterChain.filterBundle}.
  *
  * @author tobi
  */
 public class PacketBundle implements Iterable<TypedDataPacket> {
+
+    private static final TypedDataPacket[] EMPTY = new TypedDataPacket[0];
 
     private final ArrayList<TypedDataPacket> packets = new ArrayList<>(8);
 
@@ -31,12 +40,12 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     public PacketBundle() {
     }
 
-    public void clear() {
+    public synchronized void clear() {
         packets.clear();
         rawPacket = null;
     }
 
-    public void add(TypedDataPacket packet) {
+    public synchronized void add(TypedDataPacket packet) {
         if (packet != null && !packet.isEmpty()) {
             packets.add(packet);
         }
@@ -45,32 +54,53 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     /**
      * Adds a packet even if empty (rarely needed for placeholders).
      */
-    public void addAllowEmpty(TypedDataPacket packet) {
+    public synchronized void addAllowEmpty(TypedDataPacket packet) {
         if (packet != null) {
             packets.add(packet);
         }
     }
 
-    public int getNumPackets() {
+    public synchronized int getNumPackets() {
         return packets.size();
     }
 
-    public boolean isEmpty() {
+    public synchronized boolean isEmpty() {
         return packets.isEmpty();
     }
 
-    public TypedDataPacket get(int i) {
+    public synchronized TypedDataPacket get(int i) {
         return packets.get(i);
     }
 
-    public List<TypedDataPacket> getPackets() {
-        return Collections.unmodifiableList(packets);
+    /**
+     * Snapshot of packet refs. Safe to iterate after the bundle is mutated.
+     */
+    public synchronized TypedDataPacket[] snapshot() {
+        return packets.toArray(EMPTY);
+    }
+
+    /**
+     * Shallow copy of the packet list (same {@link TypedDataPacket} objects).
+     * Extractors that reuse one scratch bundle should return this so ViewLoop
+     * can filter while the next extract clears the scratch.
+     */
+    public PacketBundle copyPacketList() {
+        PacketBundle c = new PacketBundle();
+        synchronized (this) {
+            c.packets.addAll(this.packets);
+            c.rawPacket = this.rawPacket;
+        }
+        return c;
+    }
+
+    public synchronized List<TypedDataPacket> getPackets() {
+        return Collections.unmodifiableList(Arrays.asList(snapshot()));
     }
 
     /**
      * First polarity (DVS) packet in the bundle, or null.
      */
-    public EventPacket<?> getFirstPolarityPacket() {
+    public synchronized EventPacket<?> getFirstPolarityPacket() {
         for (TypedDataPacket p : packets) {
             if (p.getPacketType() == PacketType.POLARITY && p instanceof EventPacket) {
                 return (EventPacket<?>) p;
@@ -82,7 +112,7 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     /**
      * First frame packet, or null.
      */
-    public FramePacket getFirstFramePacket() {
+    public synchronized FramePacket getFirstFramePacket() {
         for (TypedDataPacket p : packets) {
             if (p instanceof FramePacket) {
                 return (FramePacket) p;
@@ -94,7 +124,7 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     /**
      * First IMU packet, or null.
      */
-    public ImuPacket getFirstImuPacket() {
+    public synchronized ImuPacket getFirstImuPacket() {
         for (TypedDataPacket p : packets) {
             if (p instanceof ImuPacket) {
                 return (ImuPacket) p;
@@ -106,7 +136,7 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
     /**
      * Total polarity events across all POLARITY packets.
      */
-    public int getNumPolarityEvents() {
+    public synchronized int getNumPolarityEvents() {
         int n = 0;
         for (TypedDataPacket p : packets) {
             if (p.getPacketType() == PacketType.POLARITY) {
@@ -116,7 +146,7 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
         return n;
     }
 
-    public long getFirstTimestampUs() {
+    public synchronized long getFirstTimestampUs() {
         long t = Long.MAX_VALUE;
         boolean any = false;
         for (TypedDataPacket p : packets) {
@@ -131,7 +161,7 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
         return any ? t : 0;
     }
 
-    public long getLastTimestampUs() {
+    public synchronized long getLastTimestampUs() {
         long t = Long.MIN_VALUE;
         boolean any = false;
         for (TypedDataPacket p : packets) {
@@ -146,21 +176,25 @@ public class PacketBundle implements Iterable<TypedDataPacket> {
         return any ? t : 0;
     }
 
-    public net.sf.jaer.aemonitor.AEPacketRaw getRawPacket() {
+    public synchronized net.sf.jaer.aemonitor.AEPacketRaw getRawPacket() {
         return rawPacket;
     }
 
-    public void setRawPacket(net.sf.jaer.aemonitor.AEPacketRaw rawPacket) {
+    public synchronized void setRawPacket(net.sf.jaer.aemonitor.AEPacketRaw rawPacket) {
         this.rawPacket = rawPacket;
     }
 
+    /**
+     * Snapshot iterator — does not fail if the bundle is cleared or appended
+     * during the loop (file-preview {@code extractBundle} vs ViewLoop filter).
+     */
     @Override
     public Iterator<TypedDataPacket> iterator() {
-        return packets.iterator();
+        return Arrays.asList(snapshot()).iterator();
     }
 
     @Override
-    public String toString() {
+    public synchronized String toString() {
         StringBuilder sb = new StringBuilder("PacketBundle[");
         sb.append(packets.size()).append(" packets:");
         for (TypedDataPacket p : packets) {

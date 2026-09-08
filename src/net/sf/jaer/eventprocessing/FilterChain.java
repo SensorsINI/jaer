@@ -243,7 +243,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
         PacketBundle out = new PacketBundle();
         out.setRawPacket(in.getRawPacket());
-        for (TypedDataPacket p : in) {
+        // Snapshot so a concurrent extractBundle (file-preview timer on the live
+        // extractor, or next reuse of Davis/DVX reusedBundle) cannot CME this loop.
+        final TypedDataPacket[] slice = in.snapshot();
+        if (log.isLoggable(Level.FINER)) {
+            log.finer(String.format("filterBundle n=%d bundle@%08x thread=%s %s",
+                    slice.length, System.identityHashCode(in),
+                    Thread.currentThread().getName(), in));
+        }
+        for (TypedDataPacket p : slice) {
             TypedDataPacket cur = p;
             for (EventFilter2D f : this) {
                 if (!f.isFilterEnabled()) {

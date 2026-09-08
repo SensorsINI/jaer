@@ -806,7 +806,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     reusedBundle.addAllowEmpty(cooked);
                 }
                 reusedBundle.setRawPacket(in);
-                return reusedBundle;
+                return reusedBundle.copyPacketList();
             }
             return extractBundleTyped(in);
         }
@@ -822,7 +822,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
             if (!(getChip() instanceof DavisChip) || in == null) {
                 reusedBundle.setRawPacket(in);
-                return reusedBundle;
+                return reusedBundle.copyPacketList();
             }
             if (bundlePolarityOut == null) {
                 bundlePolarityOut = new EventPacket<>(PolarityEvent.class);
@@ -969,7 +969,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
 
             reusedBundle.setRawPacket(in);
-            return reusedBundle;
+            return reusedBundle.copyPacketList();
         }
 
         /**

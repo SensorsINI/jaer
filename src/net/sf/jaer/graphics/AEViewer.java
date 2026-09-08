@@ -6856,6 +6856,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
                     return filterChain.filterBundle(input);
+                } catch (java.util.ConcurrentModificationException e) {
+                    // PacketBundle list mutated while filtering (leftover file-preview
+                    // extractBundle on the live extractor, or extractor reusedBundle).
+                    // Not a filter bug — do not disable the chain.
+                    log.log(Level.WARNING, String.format(
+                            "filterBundle ConcurrentModificationException (filters left enabled) bundle@%08x n=%s thread=%s",
+                            System.identityHashCode(input),
+                            input == null ? "null" : Integer.toString(input.getNumPackets()),
+                            Thread.currentThread().getName()), e);
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
                     log.log(Level.SEVERE, e.toString(), e);
@@ -9231,6 +9240,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     });
                 }
                 fileChooser = null;
+                preview.shutdown();
                 //     setPaused(false);
                 //            chipCanvas.setScale(oldScale);
             } else if (evt.getActionCommand().equals("stop")) {

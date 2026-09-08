@@ -102,11 +102,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         this.viewerChip = chip;
-        this.chip = chip;
         this.chooser = jfc;
-        extractor = chip.getEventExtractor();
-        renderer = createPreviewRenderer(chip);
-        enablePreviewDisplayModes(renderer);
         setLayout(new BorderLayout());
         setBackground(Color.BLACK);
         setOpaque(true);
@@ -114,6 +110,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         setFocusable(true);
         playTimer = new Timer(PLAY_PERIOD_MS, this::playTick);
         playTimer.setRepeats(true);
+        // Never extract on the live viewer's extractor: Davis/DVX reusedBundle is
+        // the same object ViewLoop.filterBundle iterates (ConcurrentModificationException).
+        AEChip headless = null;
+        try {
+            if (chip != null) {
+                headless = headlessChipFor(chip.getClass());
+            }
+        } catch (Throwable t) {
+            log.log(Level.WARNING, "headless preview chip failed; preview extract disabled", t);
+        }
+        applyPreviewChip(headless);
     }
 
     private static AEChipRenderer createPreviewRenderer(AEChip chip) {
@@ -137,8 +144,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
 
     /**
      * Use a headless instance of the recording's AEChip for extract/render.
-     * Does not call {@link AEViewer#setAeChipClass}. On any failure, keep the
-     * viewer chip and note it in the overlay.
+     * Does not call {@link AEViewer#setAeChipClass}. Never uses the live
+     * viewer's extractor (that shares {@code reusedBundle} with ViewLoop).
      */
     private void prepareChipForFile(File file) {
         chipNote = "";
@@ -149,42 +156,53 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             log.log(Level.WARNING, "Could not detect AEChip for preview of " + file.getName(), t);
         }
         Class<? extends AEChip> viewerClass = viewerChip != null ? viewerChip.getClass() : null;
-        if (suggested == null || viewerClass == null
-                || suggested.equals(viewerClass)
-                || suggested.getSimpleName().equalsIgnoreCase(viewerClass.getSimpleName())) {
-            applyPreviewChip(viewerChip);
+        Class<? extends AEChip> use = suggested != null ? suggested : viewerClass;
+        if (use == null) {
+            applyPreviewChip(null);
             return;
         }
         try {
-            AEChip instance = previewChipCache.get(suggested);
-            if (instance == null) {
-                instance = constructHeadlessChip(suggested);
-                if (instance == null || instance.getSizeX() <= 0 || instance.getEventExtractor() == null) {
-                    throw new IllegalStateException("headless " + suggested.getSimpleName()
-                            + " has no size or event extractor");
-                }
-                previewChipCache.put(suggested, instance);
-            }
-            applyPreviewChip(instance);
+            applyPreviewChip(headlessChipFor(use));
         } catch (Throwable t) {
             log.log(Level.WARNING, String.format(
-                    "Preview could not switch to %s for %s; using %s",
-                    suggested.getSimpleName(), file.getName(), viewerClass.getSimpleName()), t);
-            chipNote = "using " + viewerClass.getSimpleName()
-                    + " (could not load " + suggested.getSimpleName() + ")";
-            applyPreviewChip(viewerChip);
+                    "Preview could not use headless %s for %s",
+                    use.getSimpleName(), file.getName()), t);
+            chipNote = "preview extract disabled (" + use.getSimpleName() + ")";
+            applyPreviewChip(null);
         }
     }
 
-    private void applyPreviewChip(AEChip c) {
-        chip = c != null ? c : viewerChip;
-        extractor = chip != null ? chip.getEventExtractor() : null;
-        if (chip == viewerChip) {
-            renderer = createPreviewRenderer(chip);
-        } else {
-            AEChipRenderer r = chip.getRenderer();
-            renderer = r != null ? r : createPreviewRenderer(chip);
+    private AEChip headlessChipFor(Class<? extends AEChip> clazz) throws Exception {
+        if (clazz == null) {
+            return null;
         }
+        AEChip instance = previewChipCache.get(clazz);
+        if (instance == null || instance.getSizeX() <= 0 || instance.getEventExtractor() == null) {
+            instance = constructHeadlessChip(clazz);
+            if (instance == null || instance.getSizeX() <= 0 || instance.getEventExtractor() == null) {
+                throw new IllegalStateException("headless " + clazz.getSimpleName()
+                        + " has no size or event extractor");
+            }
+            previewChipCache.put(clazz, instance);
+        }
+        return instance;
+    }
+
+    /**
+     * Bind preview extract/render to a headless chip. {@code null} disables
+     * extract (text overlay only). Never falls back to {@link #viewerChip}.
+     */
+    private void applyPreviewChip(AEChip c) {
+        if (c == null || c == viewerChip) {
+            chip = null;
+            extractor = null;
+            renderer = null;
+            return;
+        }
+        chip = c;
+        extractor = c.getEventExtractor();
+        AEChipRenderer r = c.getRenderer();
+        renderer = r != null ? r : createPreviewRenderer(c);
         enablePreviewDisplayModes(renderer);
     }
 
@@ -315,6 +333,18 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         t.start();
     }
 
+    /**
+     * Stop the preview timer and close the preview stream. Call when the file
+     * chooser closes (Open or Cancel). A running {@code playTimer} keeps this
+     * object reachable and used to call {@code extractBundle} on the live chip.
+     */
+    public void shutdown() {
+        abortPreviewWork();
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("ChipDataFilePreview.shutdown playTimer stopped");
+        }
+    }
+
     private void abortPreviewWork() {
         playTimer.stop();
         videoPreview = false;
@@ -349,6 +379,11 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
             String lower = file.getName().toLowerCase();
             prepareChipForFile(file);
+            if (chip == null) {
+                finishTextOnly(gen, chipNote != null && !chipNote.isEmpty()
+                        ? chipNote : "preview extract disabled");
+                return;
+            }
             if (lower.endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
                 MetavisionRawFileInputStream.HeaderInfo hi
                         = MetavisionRawFileInputStream.peekHeader(file);
@@ -444,6 +479,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 bundlesShown = 0;
                 if (playVideo) {
                     playTimer.start();
+                    if (log.isLoggable(Level.FINE)) {
+                        log.fine(String.format(
+                                "file preview playTimer start headless=%s extractor@%08x",
+                                chip != null ? chip.getClass().getSimpleName() : "null",
+                                System.identityHashCode(extractor)));
+                    }
                 } else {
                     try {
                         opened.close();
@@ -483,8 +524,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     }
 
     private void playTick(ActionEvent e) {
+        if (chooser != null && !chooser.isShowing()) {
+            abortPreviewWork();
+            return;
+        }
         synchronized (previewLock) {
             if (!videoPreview || ais == null) {
+                return;
+            }
+            if (chip == null || extractor == null || chip == viewerChip) {
+                log.warning("file preview playTick refused live-viewer extractor; stopping timer");
+                abortPreviewWork();
                 return;
             }
             try {
