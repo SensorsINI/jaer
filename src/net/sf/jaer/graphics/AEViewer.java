@@ -2599,7 +2599,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Add AEChip classes to the Customize menu (and persist) so a USB match
-     * found only in {@link #DEFAULT_CHIP_CLASS_NAMES} is available next time.
+     * or a recording that names a chip not yet on the menu is available next time.
      */
     private void addChipClassesToMenu(java.util.List<Class<? extends AEChip>> classes) {
         if (classes == null || classes.isEmpty() || chipClassNames == null) {
@@ -2614,7 +2614,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (!chipClassNames.contains(name)) {
                 chipClassNames.add(name);
                 added = true;
-                log.info("Added " + c.getSimpleName() + " to AEChip menu (USB device match)");
+                log.info("Added " + c.getSimpleName() + " to AEChip menu");
             }
         }
         if (!added) {
@@ -2716,7 +2716,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * If the recording's chip (from filename, then header) differs from the
      * current {@link AEChip}, ask to switch before opening (Yes / No / Always /
      * Cancel). Always and {@link #isAutoSwitchAeChipForPlayback()} skip later
-     * prompts. For multi-camera
+     * prompts. A chip that is not on the AEChip/Sensor menu is appended and
+     * selected without a prompt. For multi-camera
      * AEDAT-4 files, show an EVTS list; each selected stream is bound to the
      * first matching AEViewer (USB identity only when two streams share a chip).
      * Unmatched open viewers are reused; new windows only if needed (soft cap 8).
@@ -2741,8 +2742,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         chosen = eventStreams.get(0);
                         pendingAedat4EventStreamId = chosen.streamId;
                     }
-                    suggested = RecordingChipDetector.resolve(chosen.toChipHint(),
+                    suggested = RecordingChipDetector.resolvePreferringLoaded(chosen.toChipHint(),
                             loadChipClasses(chipClassNames));
+                    adoptRecordingChipClass(suggested);
                     if (suggested != null && !chipClassMatches(getAeChipClass(), suggested)) {
                         log.info("AEDAT-4 extra stream: switching AEChip to " + suggested.getSimpleName()
                                 + " for " + chosen.displayLabel());
@@ -2778,6 +2780,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chosen = mine.stream;
                     pendingAedat4EventStreamId = chosen.streamId;
                     suggested = mine.chip;
+                    adoptRecordingChipClass(suggested);
                     if (suggested != null && !chipClassMatches(getAeChipClass(), suggested)) {
                         log.info("AEDAT-4 assignment: switching this viewer to "
                                 + suggested.getSimpleName() + " for " + chosen.displayLabel());
@@ -2791,7 +2794,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 pendingAedat4EventStreamId = chosen.streamId;
                 pendingExtraAedat4EventStreams = null;
                 pendingAedat4PlaybackPlan = null;
-                suggested = RecordingChipDetector.resolve(chosen.toChipHint(),
+                suggested = RecordingChipDetector.resolvePreferringLoaded(chosen.toChipHint(),
                         loadChipClasses(chipClassNames));
                 log.info("AEDAT-4 stream selected: " + chosen.displayLabel()
                         + (suggested == null ? "" : " -> " + suggested.getSimpleName()));
@@ -2805,14 +2808,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (suggested == null) {
             return true;
         }
+        boolean addedMissingChip = adoptRecordingChipClass(suggested);
         Class current = getAeChipClass();
         if (current != null && (current.equals(suggested)
                 || current.getSimpleName().equalsIgnoreCase(suggested.getSimpleName()))) {
             return true;
         }
         String currentName = current == null ? "(none)" : current.getSimpleName();
-        if (isAutoSwitchAeChipForPlayback()) {
-            log.info("Auto-switching AEChip from " + currentName + " to " + suggested.getSimpleName()
+        if (addedMissingChip || isAutoSwitchAeChipForPlayback()) {
+            log.info((addedMissingChip ? "Using newly added AEChip " : "Auto-switching AEChip from ")
+                    + (addedMissingChip ? suggested.getSimpleName() : currentName + " to " + suggested.getSimpleName())
                     + " for recording " + file.getName());
             setAeChipClass(suggested);
             return true;
@@ -2925,7 +2930,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     i, c == null ? null : c.getSimpleName(), v.playbackDeviceIdentity()));
         }
         pendingAedat4PlaybackPlan = Aedat4PlaybackAssignment.assign(
-                selected, slots, loadChipClasses(chipClassNames));
+                selected, slots, playbackChipCatalog());
         pendingExtraAedat4EventStreams = new ArrayList<>();
         int origin = vs.indexOf(this);
         for (Aedat4PlaybackAssignment.Binding b : pendingAedat4PlaybackPlan) {
@@ -2947,6 +2952,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     public List<Class<? extends AEChip>> loadedAeChipClasses() {
         return loadChipClasses(chipClassNames);
+    }
+
+    /**
+     * Menu chips first, then every allowed {@link AEChip} so muxed AEDAT-4
+     * assignment can resolve a camera that is not yet on the Sensor list.
+     */
+    public List<Class<? extends AEChip>> playbackChipCatalog() {
+        List<Class<? extends AEChip>> loaded = loadChipClasses(chipClassNames);
+        List<Class<? extends AEChip>> all = RecordingChipDetector.allAllowedChipClasses();
+        if (all == null || all.isEmpty()) {
+            return loaded;
+        }
+        List<Class<? extends AEChip>> out = new ArrayList<>(loaded);
+        for (Class<? extends AEChip> c : all) {
+            if (c != null && !out.contains(c)) {
+                out.add(c);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Append {@code suggested} to the AEChip/Sensor list if it is missing.
+     *
+     * @return true if it was newly added
+     */
+    private boolean adoptRecordingChipClass(Class<? extends AEChip> suggested) {
+        if (suggested == null || chipClassNames == null) {
+            return false;
+        }
+        if (chipClassNames.contains(suggested.getName())) {
+            return false;
+        }
+        addChipClassesToMenu(List.of(suggested));
+        log.info("Added " + suggested.getSimpleName() + " to the end of the AEChip menu for this recording");
+        return true;
     }
 
     private static RecordingChipDetector.StreamHint streamById(

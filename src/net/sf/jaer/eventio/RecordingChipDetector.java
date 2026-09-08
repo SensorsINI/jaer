@@ -23,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.JaerAllowedSubclasses;
+import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
@@ -42,13 +43,17 @@ import prophesee.eventio.MetavisionRawFileInputStream;
  * Legacy jAER {@code .dat} (pre-2010 / DVS09 dataset) falls back to {@link DVS128}.
  * Prophesee / Metavision {@code .dat} (ASCII {@code % } header) is detected separately.
  * <p>
- * Only matches against the viewer's loaded (selected) chip class names.
+ * Prefers the viewer's loaded (selected) chip class names, then the full
+ * AEChip allowlist so a recording can still resolve a chip that is not yet
+ * on the AEChip/Sensor menu.
  * AEDAT-4 {@code infoNode} uses DV attribute form
  * {@code <attr key="k" type="t">v</attr>}.
  */
 public final class RecordingChipDetector {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
+
+    private static volatile List<Class<? extends AEChip>> allAllowedCache;
 
     /** DV: {@code <attr key="source" type="string">DAVIS346_…</attr>} */
     private static final Pattern ATTR_TYPED = Pattern.compile(
@@ -169,42 +174,43 @@ public final class RecordingChipDetector {
 
     /**
      * Detect chip class among {@code loadedChipClassNames} (FQCN list from the
-     * AEViewer device menu). Returns null if unknown or ambiguous.
+     * AEViewer device menu), then among all allowed {@link AEChip} classes.
+     * Returns null if unknown or ambiguous.
      */
     public static Class<? extends AEChip> detect(File file, List<String> loadedChipClassNames) {
-        if (file == null || !file.isFile() || loadedChipClassNames == null || loadedChipClassNames.isEmpty()) {
+        if (file == null || !file.isFile()) {
             return null;
         }
         List<Class<? extends AEChip>> loaded = loadClasses(loadedChipClassNames);
-        if (loaded.isEmpty()) {
-            return null;
-        }
 
         Hint fromName = fromFilename(file.getName());
-        Class<? extends AEChip> byName = resolve(fromName, loaded);
+        Class<? extends AEChip> byName = resolvePreferringLoaded(fromName, loaded);
         if (byName != null) {
-            log.info("Recording chip from filename: " + byName.getSimpleName() + " (" + fromName + ")");
+            log.info("Recording chip from filename: " + byName.getSimpleName() + " (" + fromName + ")"
+                    + notOnMenuSuffix(byName, loaded));
             return byName;
         }
 
         Hint fromHeader = fromHeader(file);
         if (fromHeader != null) {
-            Class<? extends AEChip> byHeader = resolve(fromHeader, loaded);
+            Class<? extends AEChip> byHeader = resolvePreferringLoaded(fromHeader, loaded);
             if (byHeader != null) {
-                log.info("Recording chip from header: " + byHeader.getSimpleName() + " (" + fromHeader + ")");
+                log.info("Recording chip from header: " + byHeader.getSimpleName() + " (" + fromHeader + ")"
+                        + notOnMenuSuffix(byHeader, loaded));
                 return byHeader;
             }
-            log.info("Could not match recording chip hint among loaded AEChips: " + fromHeader);
+            log.info("Could not match recording chip hint among loaded or allowed AEChips: " + fromHeader);
         }
 
         // Pre-2010 jAER / DVS09 downloads use .dat and almost always came from DVS128.
         // Skip if this .dat is a Prophesee / Metavision DAT (already tried in fromHeader).
         Hint fromLegacyDat = fromLegacyDatExtension(file);
         if (fromLegacyDat != null) {
-            Class<? extends AEChip> byDat = resolve(fromLegacyDat, loaded);
+            Class<? extends AEChip> byDat = resolvePreferringLoaded(fromLegacyDat, loaded);
             if (byDat != null) {
                 log.info("Recording chip from legacy .dat extension: " + byDat.getSimpleName()
-                        + " (" + fromLegacyDat + ")");
+                        + " (" + fromLegacyDat + ")"
+                        + notOnMenuSuffix(byDat, loaded));
                 return byDat;
             }
         }
@@ -213,6 +219,65 @@ public final class RecordingChipDetector {
             log.fine("No chip hint from filename, header, or extension for " + file.getName());
         }
         return null;
+    }
+
+    /**
+     * Resolve against the viewer's menu first, then the compiled AEChip
+     * allowlist (chips the user has not added via Customize).
+     */
+    public static Class<? extends AEChip> resolvePreferringLoaded(
+            Hint hint, List<Class<? extends AEChip>> loaded) {
+        if (hint == null) {
+            return null;
+        }
+        Class<? extends AEChip> fromLoaded = resolve(hint, loaded);
+        if (fromLoaded != null) {
+            return fromLoaded;
+        }
+        return resolve(hint, allAllowedChipClasses());
+    }
+
+    /**
+     * Concrete allowed {@link AEChip} classes (cached). Used when a recording
+     * names a chip that is not on the current AEChip/Sensor menu.
+     */
+    public static List<Class<? extends AEChip>> allAllowedChipClasses() {
+        List<Class<? extends AEChip>> cached = allAllowedCache;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (RecordingChipDetector.class) {
+            if (allAllowedCache != null) {
+                return allAllowedCache;
+            }
+            List<String> names = JaerAllowedSubclasses.listedNames(AEChip.class);
+            if (names == null) {
+                names = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+            }
+            allAllowedCache = loadClasses(names);
+            return allAllowedCache;
+        }
+    }
+
+    private static String notOnMenuSuffix(Class<? extends AEChip> matched,
+            List<Class<? extends AEChip>> loaded) {
+        if (matched == null || containsClass(loaded, matched)) {
+            return "";
+        }
+        return " (not on AEChip menu)";
+    }
+
+    private static boolean containsClass(List<Class<? extends AEChip>> loaded,
+            Class<? extends AEChip> c) {
+        if (loaded == null || c == null) {
+            return false;
+        }
+        for (Class<? extends AEChip> x : loaded) {
+            if (c.equals(x)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -827,6 +892,9 @@ public final class RecordingChipDetector {
     @SuppressWarnings("unchecked")
     private static List<Class<? extends AEChip>> loadClasses(List<String> fqcn) {
         List<Class<? extends AEChip>> out = new ArrayList<>();
+        if (fqcn == null) {
+            return out;
+        }
         for (String name : fqcn) {
             try {
                 Class<?> c = JaerAllowedSubclasses.load(name, AEChip.class);

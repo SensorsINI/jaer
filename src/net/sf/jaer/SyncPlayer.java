@@ -311,7 +311,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         }
         List<Aedat4PlaybackAssignment.ViewerSlot> slots = playbackSlots(viewers);
         List<Aedat4PlaybackAssignment.Binding> plan = Aedat4PlaybackAssignment.assign(
-                streams, slots, origin.loadedAeChipClasses(), used);
+                streams, slots, origin.playbackChipCatalog(), used);
         startAssignedAedat4Streams(file, plan, origin);
     }
 
@@ -419,7 +419,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             viewers = outer.getViewers();
         }
         List<Aedat4PlaybackAssignment.Binding> plan = Aedat4PlaybackAssignment.assign(
-                streams, playbackSlots(viewers), viewers.get(0).loadedAeChipClasses());
+                streams, playbackSlots(viewers), viewers.get(0).playbackChipCatalog());
         Aedat4PlaybackAssignment.Binding firstBind = plan.isEmpty() ? null : plan.get(0);
         AEViewer first = firstBind != null && !firstBind.createNew && firstBind.viewerIndex >= 0
                 ? viewers.get(firstBind.viewerIndex) : viewers.get(0);
