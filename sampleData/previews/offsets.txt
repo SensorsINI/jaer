@@ -1,0 +1,4 @@
+# Optional start time (seconds) for make-sample-data-previews.sh / .ps1
+# Stem must match the .aedat4 basename (no extension). Last token is seconds.
+# Example:
+# DVS128 DVS09 2006 mouse behavior over 3 days  60

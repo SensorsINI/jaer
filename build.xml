@@ -96,6 +96,7 @@ Releases
 
 Scripts (not Ant)
   scripts/run-jaer-fast.bat|.sh    launch from build/classes without ant
+  scripts/make-sample-data-previews.sh|.ps1    5s 120px WebP thumbs from sample MP4/AVI
 ]]></echo>
         <taskdef name="printfilestostdout" classname="PrintFileToStdout"
                  classpath="${java.io.tmpdir}/jaer-ant-help-tool"/>
@@ -835,8 +836,8 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
             <and>
                 <isset property="jaer.sampleData.dir"/>
                 <resourcecount when="greater" count="0">
-                    <fileset dir="${basedir}/sampleData" includes="**/*"
-                             excludes="README.md,SIZE.txt,.gitignore,.gitattributes"/>
+                    <fileset dir="${basedir}/sampleData"
+                             includes="**/*.aedat4,**/*.aedat,**/*.dat,**/*.raw"/>
                 </resourcecount>
             </and>
         </condition>

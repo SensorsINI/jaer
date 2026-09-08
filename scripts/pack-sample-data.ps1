@@ -15,9 +15,9 @@ if (-not (Test-Path -LiteralPath $sampleDir -PathType Container)) {
     throw "Missing $sampleDir - create it and add recordings"
 }
 
-$meta = @("README.md", "SIZE.txt", ".gitignore", ".gitattributes")
+$recExt = @(".aedat4", ".aedat", ".dat", ".raw")
 $recordings = Get-ChildItem -LiteralPath $sampleDir -File -Force | Where-Object {
-    $meta -notcontains $_.Name
+    $recExt -contains $_.Extension.ToLowerInvariant()
 }
 if (-not $recordings) {
     throw "No recordings in $sampleDir (only README/SIZE). Drop files there first."

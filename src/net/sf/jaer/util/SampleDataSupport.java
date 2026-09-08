@@ -75,6 +75,8 @@ public final class SampleDataSupport {
 
     private static final String[] META_NAMES = { "README.md", "SIZE.txt", ".gitignore", ".gitattributes" };
 
+    private static final String[] RECORDING_SUFFIXES = { ".aedat4", ".aedat", ".dat", ".raw" };
+
     public static final class Sizes {
         public final long zipBytes;
         public final int zipMiB;
@@ -222,7 +224,21 @@ public final class SampleDataSupport {
         return false;
     }
 
-    /** Any regular file under sampleData other than README / SIZE / gitignore. */
+    /** True for sample recordings (AEDAT-4/2, legacy {@code .dat}, Prophesee {@code .raw}). */
+    public static boolean isRecordingName(String name) {
+        if (name == null || name.isEmpty()) {
+            return false;
+        }
+        String lower = name.toLowerCase(Locale.ROOT);
+        for (String s : RECORDING_SUFFIXES) {
+            if (lower.endsWith(s)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when the sample folder has at least one recording (not README / WebP previews). */
     public static boolean hasRecordings() {
         File dir = folder();
         if (!dir.isDirectory()) {
@@ -232,7 +248,7 @@ public final class SampleDataSupport {
             return Files.walk(dir.toPath())
                     .filter(Files::isRegularFile)
                     .map(p -> p.getFileName().toString())
-                    .anyMatch(n -> !isMetaName(n));
+                    .anyMatch(SampleDataSupport::isRecordingName);
         } catch (Exception ex) {
             log.log(Level.FINE, "sampleData walk failed: " + ex, ex);
             return false;

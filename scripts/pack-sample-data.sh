@@ -19,9 +19,9 @@ if [ ! -d "$SAMPLE" ]; then
   exit 1
 fi
 
-is_meta() {
+is_recording() {
   case "$1" in
-    README.md|SIZE.txt|.gitignore|.gitattributes) return 0 ;;
+    *.aedat4|*.aedat|*.AEDAT4|*.AEDAT|*.dat|*.DAT|*.raw|*.RAW) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -30,10 +30,9 @@ FILES=()
 for f in "$SAMPLE"/*; do
   [ -f "$f" ] || continue
   n="${f##*/}"
-  if is_meta "$n"; then
-    continue
+  if is_recording "$n"; then
+    FILES+=("$n")
   fi
-  FILES+=("$n")
 done
 if [ ${#FILES[@]} -eq 0 ]; then
   echo "No recordings in $SAMPLE (only README/SIZE). Drop files there first." >&2

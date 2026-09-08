@@ -126,9 +126,13 @@ release-notes/3.4.0/hotel-bar-activity-histogram.webp
 /*.webp
 
 # Curated sample recordings (Dropbox / local). README stays in git; SIZE.txt is pack-sample-data output.
+# Looping WebP thumbs for the GitHub README are tracked; source MP4/AVI in preview-src/ are not.
 /sampleData/**
 !/sampleData/
 !/sampleData/README.md
+!/sampleData/previews/
+!/sampleData/previews/*.webp
+!/sampleData/previews/offsets.txt
 release-notes/3.4.0/adapitive-render-skipping-speedup.mp4
 release-notes/3.4.0/adaptive-render-skipping.mp4
 release-notes/3.4.0/adaptive-render-skipping.webp
