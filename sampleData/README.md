@@ -6,6 +6,8 @@ These files are short event-camera recordings you can play in jAER without a cam
 
 In jAER: **Help > Sample data > Download jAER sample data**, or **Show jAER sample data folder and README** if recordings are already present.
 
+Permanent link to the zip on the latest GitHub release: <https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip>
+
 That downloads about **932 MB**. You choose the folder: default is this `sampleData` directory next to `dist/` and `lib/` (or the installer `sampleData` folder). If that location is not writable (typical for `C:\Program Files\jAER`), the chooser offers `jaerSampleData` in your home directory. The chosen folder is added to the **File > Recent Files and Folders** list.
 
 If this folder is already here with recordings, **Help > Sample data > Show jAER sample data folder and README** opens the folder and the [GitHub README](https://github.com/SensorsINI/jaer/tree/master/sampleData#readme).
