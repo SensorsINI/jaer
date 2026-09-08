@@ -3,9 +3,11 @@ package net.sf.jaer.util.avioutput;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
@@ -15,6 +17,8 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -29,7 +33,10 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.RecordingFilename;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
@@ -40,6 +47,7 @@ import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
 import net.sf.jaer.util.RecentFoldersJumpCombo;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.WindowSaver;
 
 /**
@@ -51,7 +59,15 @@ import net.sf.jaer.util.WindowSaver;
 public class ExportVideoDialog extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(ExportVideoDialog.class);
-    private static final int DIALOG_MAX_WIDTH = 560;
+    /** Title / prefs key for {@link WarningDialogWithDontShowPreference} overwrite confirm. */
+    private static final String OVERWRITE_TITLE = "Overwrite export video";
+    /** Live export stamp: chip name plus date-hh-mm (no seconds / zone). */
+    private static final DateTimeFormatter LIVE_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm");
+    /**
+     * Output folder chosen via Browse, Folder combo, or a pasted path.
+     * Sticky for this JVM only; a new process starts from the recording folder again.
+     */
+    private static File sessionOutputFolder;
 
     private final AEViewer viewer;
     private AbstractAviWriter writer;
@@ -99,6 +115,11 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private long savedMarkOut;
     private boolean savedMarkInSet;
     private boolean savedMarkOutSet;
+    /**
+     * Recording identity last used to fill {@link #nameField}. Unchanged source
+     * keeps a user-typed name; a different playback file (or live vs playback) resets it.
+     */
+    private String lastDefaultedSourceKey;
 
     public ExportVideoDialog(AEViewer viewer) {
         super("Export video");
@@ -150,6 +171,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         form.add(new JLabel("File name:"), c);
         c.gridx = 1;
         c.weightx = 1;
+        nameField.setColumns(40);
         nameField.setToolTipText("<html>Basename only — folder is the row below.<br>"
                 + ".mp4 or .avi is added if missing (same as File → Save As).<br>"
                 + "Paste a full path to split folder and name.");
@@ -283,19 +305,6 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     }
 
     private void loadPrefs() {
-        File last = new File(prefs.get("lastExportPath", "jAER-export.mp4"));
-        File folder = last.getParentFile();
-        if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
-            File playing = viewer != null ? viewer.getInputFile() : null;
-            folder = playing != null ? playing.getParentFile() : null;
-        }
-        if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
-            folder = new File(System.getProperty("user.home", "."));
-        }
-        nameField.setText(last.getName().isEmpty() ? "jAER-export.mp4" : last.getName());
-        if (recentFolderCombo != null) {
-            recentFolderCombo.syncSelection(folder);
-        }
         try {
             formatCombo.setSelectedItem(AVIOutputStream.VideoFormat.valueOf(prefs.get("format", "JPG")));
         } catch (Exception e) {
@@ -313,15 +322,37 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         deleteAviCb.setSelected(prefs.getBoolean("deleteAvi", false));
         ffmpegPathField.setText(FfmpegMp4Converter.getConfiguredFfmpegPath());
         syncFrameRateSpinnerEnabled();
-        applyFilenameFromField();
     }
 
     private void packDialog() {
+        sizeNameFieldToText();
         pack();
         Dimension s = getSize();
-        if (s.width > DIALOG_MAX_WIDTH) {
-            setSize(DIALOG_MAX_WIDTH, s.height);
+        int screen = Toolkit.getDefaultToolkit().getScreenSize().width;
+        int max = Math.max(400, screen - 80);
+        if (s.width > max) {
+            setSize(max, s.height);
         }
+    }
+
+    /** Make the name field (and thus pack) as wide as the basename. */
+    private void sizeNameFieldToText() {
+        String name = nameField.getText();
+        if (name == null) {
+            name = "";
+        }
+        FontMetrics fm = nameField.getFontMetrics(nameField.getFont());
+        Insets in = nameField.getInsets();
+        int pad = in.left + in.right;
+        if (pad < 16) {
+            pad = 24;
+        }
+        int w = fm.stringWidth(name) + pad + fm.charWidth('M') * 2;
+        int h = nameField.getPreferredSize().height;
+        Dimension d = new Dimension(Math.max(w, fm.charWidth('M') * 24), h);
+        nameField.setColumns(Math.max(24, name.length() + 2));
+        nameField.setMinimumSize(d);
+        nameField.setPreferredSize(d);
     }
 
     private void syncFrameRateSpinnerEnabled() {
@@ -333,7 +364,6 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     }
 
     private void savePrefs() {
-        prefs.put("lastExportPath", chosenOutputFile().getAbsolutePath());
         prefs.put("format", formatCombo.getSelectedItem().toString());
         prefs.putInt("frameRate", (Integer) frameRateSpinner.getValue());
         prefs.putBoolean("matchViewerFrameRate", matchViewerRateCb.isSelected());
@@ -344,12 +374,97 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         FfmpegMp4Converter.setConfiguredFfmpegPath(ffmpegPathField.getText().trim());
     }
 
+    /**
+     * Filename follows the current recording until the user edits it; a different
+     * recording (or live vs playback) fills the name again. Folder is the playing
+     * file's parent unless the user picked another folder this JVM.
+     */
     private void applyAedatDefaults() {
         boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
         useMarkersCb.setEnabled(playback);
+        if (!startButton.isEnabled()) {
+            if (recentFolderCombo != null) {
+                recentFolderCombo.refresh();
+            }
+            return;
+        }
+        File folder = defaultOutputFolder();
         if (recentFolderCombo != null) {
             recentFolderCombo.refresh();
+            recentFolderCombo.syncSelection(folder);
         }
+        String key = currentSourceKey();
+        if (!key.equals(lastDefaultedSourceKey)) {
+            nameField.setText(defaultBasename());
+            lastDefaultedSourceKey = key;
+        }
+        applyFilenameFromField();
+        if (isDisplayable()) {
+            packDialog();
+        }
+    }
+
+    private String currentSourceKey() {
+        File src = playbackSourceFile();
+        if (src != null) {
+            return src.getAbsolutePath();
+        }
+        return "LIVE:" + liveChipSegment();
+    }
+
+    private File playbackSourceFile() {
+        if (viewer == null || viewer.getPlayMode() != PlayMode.PLAYBACK) {
+            return null;
+        }
+        return viewer.getInputFile();
+    }
+
+    private String defaultBasename() {
+        File src = playbackSourceFile();
+        if (src != null) {
+            return stripRecordingExtension(src.getName());
+        }
+        return liveChipSegment() + "_" + LIVE_STAMP.format(LocalDateTime.now());
+    }
+
+    private String liveChipSegment() {
+        AEChip chip = viewer != null ? viewer.getChip() : null;
+        String name = chip != null ? chip.getClass().getSimpleName() : "jAER";
+        return RecordingFilename.sanitizeSegment(name);
+    }
+
+    private File defaultOutputFolder() {
+        if (sessionOutputFolder != null && FileAccessTimeout.isDirectory(sessionOutputFolder)) {
+            return sessionOutputFolder;
+        }
+        File src = playbackSourceFile();
+        File parent = src != null ? src.getParentFile() : null;
+        if (parent != null && FileAccessTimeout.isDirectory(parent)) {
+            return parent;
+        }
+        File rec = viewer != null ? viewer.getLastRecordingFolder() : null;
+        if (rec != null && FileAccessTimeout.isDirectory(rec)) {
+            return rec;
+        }
+        return new File(System.getProperty("user.home", "."));
+    }
+
+    private static void rememberSessionFolder(File folder) {
+        if (folder != null && FileAccessTimeout.isDirectory(folder)) {
+            sessionOutputFolder = folder.getAbsoluteFile();
+        }
+    }
+
+    private static String stripRecordingExtension(String name) {
+        if (name == null || name.isEmpty()) {
+            return "jAER-export";
+        }
+        String known = AEDataFile.dataFileExtensionOf(name);
+        if (!known.isEmpty()) {
+            return name.substring(0, name.length() - known.length());
+        }
+        int dot = name.lastIndexOf('.');
+        return dot > 0 ? name.substring(0, dot) : name;
     }
 
     private void detectFfmpeg() {
@@ -489,9 +604,12 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         if (looksAbsolute && asFile.getParentFile() != null) {
             File parent = asFile.getParentFile();
             nameField.setText(asFile.getName());
-            if (FileAccessTimeout.isDirectory(parent) && recentFolderCombo != null) {
-                recentFolderCombo.refresh();
-                recentFolderCombo.syncSelection(parent);
+            if (FileAccessTimeout.isDirectory(parent)) {
+                rememberSessionFolder(parent);
+                if (recentFolderCombo != null) {
+                    recentFolderCombo.refresh();
+                    recentFolderCombo.syncSelection(parent);
+                }
             }
         }
         File ensured = ensureVideoExtension(new File(nameField.getText().trim()));
@@ -517,8 +635,9 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
             return;
         }
+        rememberSessionFolder(folder);
         if (nameField.getText().trim().isEmpty()) {
-            nameField.setText("jAER-export.mp4");
+            nameField.setText(defaultBasename());
         }
         applyFilenameFromField();
         if (recentFolderCombo != null) {
@@ -551,9 +670,12 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             File chosen = ensureVideoExtension(chooser.getSelectedFile());
             nameField.setText(chosen.getName());
             File dir = chosen.getParentFile();
-            if (dir != null && recentFolderCombo != null) {
-                recentFolderCombo.refresh();
-                recentFolderCombo.syncSelection(dir);
+            if (dir != null) {
+                rememberSessionFolder(dir);
+                if (recentFolderCombo != null) {
+                    recentFolderCombo.refresh();
+                    recentFolderCombo.syncSelection(dir);
+                }
             }
             applyFilenameFromField();
         }
@@ -597,11 +719,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             mp4File = null;
         }
 
-        if (aviFile.exists()) {
-            int r = JOptionPane.showConfirmDialog(this, "Overwrite " + aviFile + "?", "Export video", JOptionPane.OK_CANCEL_OPTION);
-            if (r != JOptionPane.OK_OPTION) {
-                return;
-            }
+        if (!confirmOverwriteIfNeeded()) {
+            return;
         }
 
         savePrefs();
@@ -628,6 +747,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         writer.setShowCloseOnRewindDialog(false);
         if (playback) {
             preparePlaybackForExport(useMarkersCb.isSelected());
+            listenForPlaybackEnd(writer);
         }
         writer.setWriteEnabled(true);
 
@@ -643,6 +763,12 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             restoreWriterState();
             JOptionPane.showMessageDialog(this, "Could not start recording to " + aviFile, "Export video", JOptionPane.WARNING_MESSAGE);
             return;
+        }
+        if (playback) {
+            AbstractAEPlayer player = viewer.getAePlayer();
+            if (player != null && player.isPaused()) {
+                player.setPaused(false);
+            }
         }
         updateRecordingUi(true);
         statusLabel.setText(String.format("Recording %s at %d fps (synchronized)…",
@@ -681,9 +807,53 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
                 stream.clearMarks();
             }
         }
-        if (player.isPaused()) {
-            player.setPaused(false);
+        // Stay paused until startRecording() rewinds to IN / file start.
+        if (!player.isPaused()) {
+            player.setPaused(true);
         }
+    }
+
+    /**
+     * JaerAviWriter must hear stream rewind/EOF to stop at OUT or end of file.
+     * FILEOPEN only subscribed the writer if it was already enabled then.
+     */
+    private void listenForPlaybackEnd(AbstractAviWriter w) {
+        if (w == null || viewer == null) {
+            return;
+        }
+        AEFileInputStreamInterface stream = viewer.getAeFileInputStream();
+        if (stream == null) {
+            AbstractAEPlayer player = viewer.getAePlayer();
+            stream = player != null ? player.getAEInputStream() : null;
+        }
+        if (stream != null) {
+            stream.getSupport().removePropertyChangeListener(w);
+            stream.getSupport().addPropertyChangeListener(w);
+        }
+    }
+
+    /**
+     * Confirm overwrite of AVI and/or MP4. {@link WarningDialogWithDontShowPreference}
+     * "Don't show again" is stored for this dialog title so later exports skip the prompt.
+     */
+    private boolean confirmOverwriteIfNeeded() {
+        StringBuilder existing = new StringBuilder();
+        if (aviFile != null && aviFile.exists()) {
+            existing.append("<br>").append(ShowFolderSaveConfirmation.escapeHtml(aviFile.getAbsolutePath()));
+        }
+        if (mp4File != null && mp4File.exists() && !mp4File.equals(aviFile)) {
+            existing.append("<br>").append(ShowFolderSaveConfirmation.escapeHtml(mp4File.getAbsolutePath()));
+        }
+        if (existing.length() == 0) {
+            return true;
+        }
+        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true,
+                OVERWRITE_TITLE,
+                "<html>Overwrite existing file(s)?" + existing,
+                JOptionPane.WARNING_MESSAGE, true, JOptionPane.OK_CANCEL_OPTION);
+        d.setLocationRelativeTo(this);
+        d.setVisible(true);
+        return d.isConfirmed();
     }
 
     private void restorePlaybackAfterExport() {
@@ -898,6 +1068,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         ExportVideoDialog existing = findForViewer(viewer);
         if (existing != null) {
             existing.applyAedatDefaults();
+            existing.packDialog();
             existing.toFront();
             return;
         }

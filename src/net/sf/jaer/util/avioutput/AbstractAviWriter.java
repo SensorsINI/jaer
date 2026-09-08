@@ -394,6 +394,12 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         lastFile = file;
         putString("lastFileName", lastFileName);
         resetFrameCaptureHandshake();
+        // Rewind to IN / file start before the AVI is armed so the first captured
+        // frame is not from the current mid-file position.
+        if (rewindBeforeRecording && chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+            ignoreRewinwdEventFlag = true;
+            chip.getAeViewer().getAePlayer().rewind();
+        }
         setVideoOutputStream(openVideoOutputStream(file, additionalComments));
         if (getVideoOutputStream() == null) {
             return false;
@@ -401,10 +407,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setWriteEnabled(true);
         setFramesWritten(0);
         getSupport().firePropertyChange(EVENT_RECORDING_ACTIVE, false, true);
-        if (rewindBeforeRecording && chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
-            ignoreRewinwdEventFlag = true;
-            chip.getAeViewer().getAePlayer().rewind();
-        }
         return true;
     }
 
@@ -656,7 +658,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     public void setRewindBeforeRecording(boolean rewindBeforeRecording) {
         this.rewindBeforeRecording = rewindBeforeRecording;
-        putBoolean("rewindBeforeRecording", closeOnRewind);
+        putBoolean("rewindBeforeRecording", rewindBeforeRecording);
     }
 
     public void annotate(GLAutoDrawable drawable) {
