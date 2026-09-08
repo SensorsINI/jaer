@@ -26,9 +26,15 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
+import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.util.FileAccessTimeout;
+import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.RecentFoldersComboAccessory;
+import net.sf.jaer.util.RecentFoldersJumpCombo;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.WindowSaver;
 
@@ -54,9 +60,9 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             });
     private final JSpinner frameRateSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 240, 1));
     private final JCheckBox matchViewerRateCb = new JCheckBox("Match AEViewer target rendering rate", true);
-    private final JCheckBox writeTimecodeCb = new JCheckBox("Write timecode file", true);
-    private final JCheckBox rewindBeforeCb = new JCheckBox("Rewind before recording", true);
-    private final JCheckBox closeOnRewindCb = new JCheckBox("Close on rewind (one play-through)", true);
+    private RecentFoldersJumpCombo recentFolderCombo;
+    private final JCheckBox writeTimecodeCb = new JCheckBox("Write timecode file", false);
+    private final JCheckBox useMarkersCb = new JCheckBox("Use IN and OUT markers", true);
     private final JCheckBox convertMp4Cb = new JCheckBox("Convert to MP4 with ffmpeg after close", true);
     private final JCheckBox deleteAviCb = new JCheckBox("Delete intermediate AVI after successful MP4", false);
     private final JTextField ffmpegPathField = new JTextField(24);
@@ -80,6 +86,14 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private boolean writerWasFilterEnabled;
     private boolean writerWasSelected;
     private boolean writerWasAnnotationEnabled;
+    private boolean playerRepeatSaved;
+    private boolean savedPlayerRepeat;
+    private boolean marksClearedForExport;
+    private AEFileInputStreamInterface marksStream;
+    private long savedMarkIn;
+    private long savedMarkOut;
+    private boolean savedMarkInSet;
+    private boolean savedMarkOutSet;
 
     public ExportVideoDialog(AEViewer viewer) {
         super("Export video");
@@ -142,6 +156,20 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         c.gridx = 0;
         c.gridy = row;
         c.weightx = 0;
+        form.add(new JLabel("Recent folder:"), c);
+        c.gridx = 1;
+        c.gridwidth = 2;
+        c.weightx = 1;
+        recentFolderCombo = new RecentFoldersJumpCombo(viewer != null ? viewer.getRecentFiles() : null,
+                this::parentOfPathField, this::setOutputFolder);
+        recentFolderCombo.setToolTipText("Jump the output file to a folder from File → recent folders");
+        form.add(recentFolderCombo, c);
+        c.gridwidth = 1;
+
+        row++;
+        c.gridx = 0;
+        c.gridy = row;
+        c.weightx = 0;
         form.add(new JLabel("AVI frame format:"), c);
         c.gridx = 1;
         c.gridwidth = 2;
@@ -175,11 +203,11 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
 
         row++;
         c.gridy = row;
-        form.add(rewindBeforeCb, c);
-
-        row++;
-        c.gridy = row;
-        form.add(closeOnRewindCb, c);
+        useMarkersCb.setToolTipText("<html>Checked: record the IN–OUT interval "
+                + "(unset IN = file start, unset OUT = EOF; one play-through).<br>"
+                + "Unchecked: record the entire file, ignoring markers.<br>"
+                + "Live capture ignores this option; click Stop to finish.</html>");
+        form.add(useMarkersCb, c);
 
         row++;
         c.gridy = row;
@@ -250,7 +278,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         if (matchViewerRateCb.isSelected() && viewer != null) {
             frameRateSpinner.setValue(Math.max(1, viewer.getDesiredFrameRate()));
         }
-        writeTimecodeCb.setSelected(prefs.getBoolean("writeTimecode", true));
+        writeTimecodeCb.setSelected(prefs.getBoolean("writeTimecode", false));
+        useMarkersCb.setSelected(prefs.getBoolean("useMarkers", true));
         convertMp4Cb.setSelected(prefs.getBoolean("convertMp4", true));
         deleteAviCb.setSelected(prefs.getBoolean("deleteAvi", false));
         ffmpegPathField.setText(FfmpegMp4Converter.getConfiguredFfmpegPath());
@@ -271,6 +300,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         prefs.putInt("frameRate", (Integer) frameRateSpinner.getValue());
         prefs.putBoolean("matchViewerFrameRate", matchViewerRateCb.isSelected());
         prefs.putBoolean("writeTimecode", writeTimecodeCb.isSelected());
+        prefs.putBoolean("useMarkers", useMarkersCb.isSelected());
         prefs.putBoolean("convertMp4", convertMp4Cb.isSelected());
         prefs.putBoolean("deleteAvi", deleteAviCb.isSelected());
         FfmpegMp4Converter.setConfiguredFfmpegPath(ffmpegPathField.getText().trim());
@@ -278,12 +308,9 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
 
     private void applyAedatDefaults() {
         boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
-        rewindBeforeCb.setSelected(playback);
-        closeOnRewindCb.setSelected(playback);
-        if (!playback) {
-            // live: keep rewind/close-on-rewind off by default
-            rewindBeforeCb.setSelected(false);
-            closeOnRewindCb.setSelected(false);
+        useMarkersCb.setEnabled(playback);
+        if (recentFolderCombo != null) {
+            recentFolderCombo.refresh();
         }
     }
 
@@ -370,9 +397,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
                         "<html>Saved MP4:<br>" + (out != null ? out.getAbsolutePath() : message));
             } else if (!"ffmpeg not found".equals(message)) {
                 statusLabel.setText("MP4 convert failed; AVI kept");
-                showExportSavedDialog(avi,
-                        "<html>MP4 conversion failed:<br>" + message
-                        + "<br><br>AVI kept:<br>" + avi.getAbsolutePath());
+                showExportSavedDialog(avi, ffmpegFailHtml(message, avi));
             } else {
                 statusLabel.setText("ffmpeg missing; AVI kept");
             }
@@ -380,19 +405,56 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         });
     }
 
+    private File parentOfPathField() {
+        String path = pathField.getText().trim();
+        if (path.isEmpty()) {
+            return null;
+        }
+        File parent = new File(path).getParentFile();
+        return parent != null ? parent : null;
+    }
+
+    private void setOutputFolder(File folder) {
+        if (folder == null || !FileAccessTimeout.isDirectory(folder)) {
+            return;
+        }
+        File current = new File(pathField.getText().trim());
+        String name = current.getName();
+        if (name == null || name.isEmpty()) {
+            name = "jAER-export.mp4";
+        }
+        pathField.setText(new File(folder, name).getAbsolutePath());
+        if (recentFolderCombo != null) {
+            recentFolderCombo.syncSelection(folder);
+        }
+    }
+
     private void browse(ActionEvent e) {
         JFileChooser chooser = new JFileChooser();
         String path = pathField.getText().trim();
-        if (!path.isEmpty()) {
-            File f = new File(path);
-            chooser.setSelectedFile(f);
-            if (f.getParentFile() != null && f.getParentFile().isDirectory()) {
-                chooser.setCurrentDirectory(f.getParentFile());
-            }
+        File current = path.isEmpty() ? new File("jAER-export.mp4") : new File(path);
+        chooser.setSelectedFile(current);
+        File parent = current.getParentFile();
+        if (parent != null && FileAccessTimeout.isDirectory(parent)) {
+            chooser.setCurrentDirectory(parent);
         }
         chooser.setFileFilter(new FileNameExtensionFilter("Video (*.mp4, *.avi)", "mp4", "avi"));
+        chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+        RecentFiles recent = viewer != null ? viewer.getRecentFiles() : null;
+        if (recent != null) {
+            final String proposedName = current.getName();
+            chooser.setAccessory(new RecentFoldersComboAccessory(recent, chooser, () -> {
+                File dir = chooser.getCurrentDirectory();
+                if (dir != null && proposedName != null && !proposedName.isEmpty()) {
+                    chooser.setSelectedFile(new File(dir, proposedName));
+                }
+            }));
+        }
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             pathField.setText(chooser.getSelectedFile().getAbsolutePath());
+            if (recentFolderCombo != null) {
+                recentFolderCombo.refresh();
+            }
         }
     }
 
@@ -459,9 +521,13 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             writer.setFrameRate((Integer) frameRateSpinner.getValue());
         }
         writer.setWriteTimecodeFile(writeTimecodeCb.isSelected());
-        writer.setRewindBeforeRecording(rewindBeforeCb.isSelected());
-        writer.setCloseOnRewind(closeOnRewindCb.isSelected());
+        boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
+        writer.setRewindBeforeRecording(playback);
+        writer.setCloseOnRewind(playback);
         writer.setShowCloseOnRewindDialog(false);
+        if (playback) {
+            preparePlaybackForExport(useMarkersCb.isSelected());
+        }
         writer.setWriteEnabled(true);
 
         if (viewer != null && !viewer.isActiveRenderingEnabled()) {
@@ -472,6 +538,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         attachWriterListener();
         if (!writer.startRecording(aviFile)) {
             detachWriterListener();
+            restorePlaybackAfterExport();
             restoreWriterState();
             JOptionPane.showMessageDialog(this, "Could not start recording to " + aviFile, "Export video", JOptionPane.WARNING_MESSAGE);
             return;
@@ -490,6 +557,59 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         writerWasSelected = w.isSelected();
         writerWasAnnotationEnabled = w.isAnnotationEnabled();
         writerStateSaved = true;
+    }
+
+    private void preparePlaybackForExport(boolean useMarkers) {
+        AbstractAEPlayer player = viewer != null ? viewer.getAePlayer() : null;
+        if (player == null) {
+            return;
+        }
+        savedPlayerRepeat = player.isRepeat();
+        playerRepeatSaved = true;
+        player.setRepeat(true);
+        AEFileInputStreamInterface stream = player.getAEInputStream();
+        if (stream != null) {
+            stream.setRepeat(true);
+            if (!useMarkers && (stream.isMarkInSet() || stream.isMarkOutSet())) {
+                marksStream = stream;
+                savedMarkIn = stream.getMarkInPosition();
+                savedMarkOut = stream.getMarkOutPosition();
+                savedMarkInSet = stream.isMarkInSet();
+                savedMarkOutSet = stream.isMarkOutSet();
+                marksClearedForExport = true;
+                stream.clearMarks();
+            }
+        }
+        if (player.isPaused()) {
+            player.setPaused(false);
+        }
+    }
+
+    private void restorePlaybackAfterExport() {
+        AbstractAEPlayer player = viewer != null ? viewer.getAePlayer() : null;
+        if (playerRepeatSaved && player != null) {
+            player.setRepeat(savedPlayerRepeat);
+            AEFileInputStreamInterface stream = player.getAEInputStream();
+            if (stream != null) {
+                stream.setRepeat(savedPlayerRepeat);
+            }
+            playerRepeatSaved = false;
+        }
+        if (marksClearedForExport && marksStream != null) {
+            try {
+                if (savedMarkInSet) {
+                    marksStream.position(savedMarkIn);
+                    marksStream.setMarkIn();
+                }
+                if (savedMarkOutSet) {
+                    marksStream.position(savedMarkOut);
+                    marksStream.setMarkOut();
+                }
+            } catch (Exception ignored) {
+            }
+            marksClearedForExport = false;
+            marksStream = null;
+        }
     }
 
     /**
@@ -546,6 +666,14 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         pathField.setEnabled(!recording);
         formatCombo.setEnabled(!recording);
         matchViewerRateCb.setEnabled(!recording);
+        writeTimecodeCb.setEnabled(!recording);
+        convertMp4Cb.setEnabled(!recording);
+        deleteAviCb.setEnabled(!recording);
+        boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
+        useMarkersCb.setEnabled(!recording && playback);
+        if (recentFolderCombo != null) {
+            recentFolderCombo.setEnabled(!recording && recentFolderCombo.getItemCount() > 0);
+        }
         syncFrameRateSpinnerEnabled();
         if (recording) {
             frameRateSpinner.setEnabled(false);
@@ -572,6 +700,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private void onRecordingFinished() {
         updateRecordingUi(false);
         detachWriterListener();
+        restorePlaybackAfterExport();
         restoreWriterState();
         final File avi = aviFile != null ? aviFile : (writer != null ? writer.getFile() : null);
         if (avi != null) {
@@ -607,9 +736,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             } else if (!"ffmpeg not found".equals(message)) {
                 pendingMp4Convert = true;
                 statusLabel.setText("MP4 convert failed; AVI kept");
-                showExportSavedDialog(avi,
-                        "<html>AVI was saved, but MP4 conversion failed:<br>" + message
-                        + (avi != null ? ("<br><br>AVI:<br>" + avi.getAbsolutePath()) : ""));
+                showExportSavedDialog(avi, ffmpegFailHtml(message, avi));
             } else {
                 pendingMp4Convert = true;
                 statusLabel.setText("ffmpeg missing; AVI kept");
@@ -622,6 +749,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
      * Confirmation after a successful (or AVI-kept) export: Show folder / Play video / OK.
      */
     private void showExportSavedDialog(File videoFile, String htmlMsg) {
+        rememberRecentExport(videoFile);
         if (videoFile == null) {
             JOptionPane.showMessageDialog(this, htmlMsg.replaceAll("<[^>]+>", " "),
                     "Export video", JOptionPane.INFORMATION_MESSAGE);
@@ -639,6 +767,26 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         dialog.setVisible(true);
     }
 
+    private void rememberRecentExport(File videoFile) {
+        if (videoFile == null || !videoFile.isFile() || videoFile.length() == 0
+                || viewer == null || viewer.getRecentFiles() == null) {
+            return;
+        }
+        viewer.getRecentFiles().addFile(videoFile);
+        if (recentFolderCombo != null) {
+            recentFolderCombo.refresh();
+        }
+    }
+
+    private static String ffmpegFailHtml(String summary, File avi) {
+        String escaped = ShowFolderSaveConfirmation.escapeHtml(summary != null ? summary : "ffmpeg failed");
+        escaped = escaped.replace("\n", "<br>");
+        String aviPath = avi != null ? ShowFolderSaveConfirmation.escapeHtml(avi.getAbsolutePath()) : "";
+        return "<html>AVI was saved, but MP4 conversion failed.<br><br>"
+                + escaped
+                + (aviPath.isEmpty() ? "" : "<br><br>AVI kept:<br>" + aviPath);
+    }
+
     /**
      * Opens the dialog for the given viewer (or brings an existing one forward).
      */
@@ -648,6 +796,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         }
         ExportVideoDialog existing = findForViewer(viewer);
         if (existing != null) {
+            existing.applyAedatDefaults();
             existing.toFront();
             return;
         }

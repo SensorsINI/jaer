@@ -101,7 +101,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
     protected int framesWritten = 0;
-    protected boolean writeTimecodeFile = getBoolean("writeTimecodeFile", true);
+    protected boolean writeTimecodeFile = getBoolean("writeTimecodeFile", false);
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
     protected File timecodeFile = null;
     protected FileWriter timecodeWriter = null;
@@ -164,6 +164,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_EOF, this);
                 chipPropertyChangeListenerAdded = true;
             }
         }
@@ -851,14 +852,24 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            if (!ignoreRewinwdEventFlag && closeOnRewind && getVideoOutputStream() != null) {
+        String name = evt.getPropertyName();
+        if (AEInputStream.EVENT_REWOUND.equals(name) || AEInputStream.EVENT_EOF.equals(name)) {
+            boolean rewind = AEInputStream.EVENT_REWOUND.equals(name);
+            if (rewind && ignoreRewinwdEventFlag) {
+                ignoreRewinwdEventFlag = false;
+                return;
+            }
+            if (closeOnRewind && getVideoOutputStream() != null) {
                 doFinishRecording();
                 if (showCloseOnRewindDialog && chip.getAeViewer() != null) {
-                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
+                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName
+                            + (rewind ? " on Rewind" : " at end of file")
+                            + " after " + framesWritten + " frames were written");
                 }
             }
-            ignoreRewinwdEventFlag = false;
+            if (rewind) {
+                ignoreRewinwdEventFlag = false;
+            }
         }
     }
 

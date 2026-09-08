@@ -376,6 +376,9 @@ public final class FfmpegMp4Converter {
                     cmd.add("-y");
                     cmd.add("-i");
                     cmd.add(aviFile.getAbsolutePath());
+                    // libx264 yuv420p requires even width and height (OpenGL canvas can be odd).
+                    cmd.add("-vf");
+                    cmd.add("scale=trunc(iw/2)*2:trunc(ih/2)*2");
                     cmd.add("-c:v");
                     cmd.add("libx264");
                     cmd.add("-pix_fmt");
@@ -399,8 +402,9 @@ public final class FfmpegMp4Converter {
                     }
                     int code = p.waitFor();
                     if (code != 0) {
-                        message = "ffmpeg exited with code " + code + "\n" + sb;
-                        log.warning(message);
+                        deleteIncompleteMp4(out);
+                        message = summarizeFfmpegError(code, sb.toString());
+                        log.warning("ffmpeg exited with code " + code + "\n" + sb);
                         return false;
                     }
                     if (deleteAviOnSuccess && aviFile.exists() && !aviFile.delete()) {
@@ -410,6 +414,7 @@ public final class FfmpegMp4Converter {
                     log.info(message);
                     return true;
                 } catch (Exception e) {
+                    deleteIncompleteMp4(out);
                     message = e.toString();
                     log.warning(message);
                     return false;
@@ -433,5 +438,90 @@ public final class FfmpegMp4Converter {
             }
         };
         worker.execute();
+    }
+
+    /**
+     * Removes a failed ffmpeg MP4 (typically 0 bytes after {@code -y} truncates
+     * the output before the encoder errors).
+     */
+    static void deleteIncompleteMp4(File mp4) {
+        if (mp4 == null || !mp4.isFile()) {
+            return;
+        }
+        if (mp4.length() > 0) {
+            // Non-empty leftovers are still unusable after a failed convert.
+            log.warning("Deleting incomplete MP4 after ffmpeg failure: " + mp4 + " (" + mp4.length() + " bytes)");
+        }
+        if (!mp4.delete()) {
+            log.warning("Could not delete incomplete MP4 " + mp4);
+        }
+    }
+
+    /**
+     * Short dialog text from ffmpeg stderr. Full output is logged.
+     */
+    public static String summarizeFfmpegError(int exitCode, String output) {
+        String hint = pickFfmpegErrorHint(output);
+        StringBuilder sb = new StringBuilder();
+        sb.append("ffmpeg failed (exit ").append(exitCode).append(")");
+        if (hint != null && !hint.isEmpty()) {
+            sb.append(": ").append(hint);
+        }
+        sb.append("\n\nSee the jAER log for the full ffmpeg output.");
+        return sb.toString();
+    }
+
+    private static String pickFfmpegErrorHint(String output) {
+        if (output == null || output.isEmpty()) {
+            return "";
+        }
+        String[] lines = output.split("\\r?\\n");
+        String first = null;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isEmpty() || isFfmpegBannerLine(t)) {
+                continue;
+            }
+            String lower = t.toLowerCase(Locale.ROOT);
+            if (lower.contains("not divisible")) {
+                return shortenHint(t);
+            }
+            if (lower.contains("error") || lower.contains("failed") || lower.contains("invalid")
+                    || lower.contains("not divisible") || lower.contains("could not")
+                    || lower.contains("nothing was written")) {
+                if (first == null) {
+                    first = t;
+                } else if (t.length() < first.length() && (lower.contains("not divisible")
+                        || lower.contains("error while opening") || lower.contains("conversion failed"))) {
+                    first = t;
+                }
+            }
+        }
+        if (first != null) {
+            return shortenHint(first);
+        }
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String t = lines[i].trim();
+            if (!t.isEmpty() && !isFfmpegBannerLine(t) && t.length() < 200) {
+                return t;
+            }
+        }
+        return "";
+    }
+
+    private static String shortenHint(String t) {
+        if (t.length() > 240) {
+            return t.substring(0, 240) + "…";
+        }
+        return t;
+    }
+
+    private static boolean isFfmpegBannerLine(String t) {
+        return t.startsWith("ffmpeg version") || t.startsWith("built with") || t.startsWith("configuration:")
+                || t.startsWith("libav") || t.startsWith("libsw") || t.startsWith("libpost")
+                || t.startsWith("Input #") || t.startsWith("Stream #") || t.startsWith("Stream mapping")
+                || t.startsWith("Press [") || t.startsWith("Duration:") || t.startsWith("metadata:")
+                || t.startsWith("handler_name") || t.startsWith("encoder ")
+                || t.startsWith("[swscaler") || t.startsWith("Last message repeated");
     }
 }
