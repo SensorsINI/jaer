@@ -4,33 +4,30 @@ Unsigned jAER DMGs still work: README already tells users to right-click Open an
 
 In-app self-update that replaces an app in `/Applications` is flaky until the app and installer are Developer ID signed and notarized.
 
-**Account type:** individual (Tobi Delbruck), not ETH/UZH/SensorsINI. Gatekeeper will show the personal legal name. No D‑U‑N‑S. ~USD 99/year.
+**Account:** Individual, paid, **Active** (Tobias Delbruck). Gatekeeper will show the personal legal name. Not ETH/UZH/SensorsINI.
 
-Keep Intel media id 38; Apple Silicon is media id 39.
+**Developer ID Application** (G2) is in the Mini **login** keychain and shows as a valid codesigning identity. If Keychain marks the leaf red, install **Developer ID - G2** from [Apple PKI](https://www.apple.com/certificateauthority/) (`DeveloperIDG2CA.cer`). Do not set Always Trust on the leaf.
 
-## Enroll now
+Keep Intel media id 38; Apple Silicon is media id 39. `install4j/jaer.install4j` has no signing/notarization config yet.
 
-Use the [Apple Developer app](https://developer.apple.com/support/app-account) on iPhone, iPad, or Mac (preferred). Website: [developer.apple.com/programs/enroll](https://developer.apple.com/programs/enroll/).
+## Next: Installer cert and notarytool (Mac Mini)
 
-1. Apple Account with **two-factor authentication**. First and last name must be your **legal name** (no nickname/alias).
-2. In the Developer app: Account → **Enroll** → **Individual** (or sole proprietor).
-3. Confirm legal name, personal email, phone, and a street address (**no P.O. box**).
-4. After Apple verifies identity, accept the Apple Developer Program License Agreement and pay the membership (card; price shown in local currency).
-5. Wait until membership status is **Active** (often same day; identity review can take longer).
+Do this on the Mac that will run `install4jc`. Account Holder only. [Apple: Developer ID certificates](https://developer.apple.com/help/account/certificates/create-developer-id-certificates).
 
-Do **not** create certificates until membership is Active.
+1. Copy **Team ID** from [Membership](https://developer.apple.com/account) (10 characters). Put it in a local note under gitignored `signpath/` or similar. Do not commit it if you also store passwords there.
+2. Create a Certificate Signing Request: Keychain Access → Certificate Assistant → **Request a Certificate From a Certificate Authority** → your email, Common Name = your name, **Saved to disk** (do not email).
+3. [Certificates](https://developer.apple.com/account/resources/certificates/list) → **+** → **Developer ID Application** → upload the CSR → Download the `.cer` → double-click to install into **login** Keychain. Confirm it appears under **My Certificates** with a private key.
+4. Repeat for **Developer ID Installer** (same or a second CSR). install4j may use it for the installer/pkg path; the `.app` and typically the DMG use Application.
+5. Check: `security find-identity -v -p codesigning` should list `Developer ID Application: Tobias Delbruck (TEAMID)`.
+6. [App-specific password](https://support.apple.com/en-us/102654) at [account.apple.com](https://account.apple.com) → Sign-In & Security. Name it e.g. `jaer-notarytool`. Do **not** use the Apple Account password.
+7. Store notary credentials in Keychain (replace email, team id, password):
 
-Identity delays: Apple Account name does not match government ID, 2FA incomplete, or enrollment started from a shared/org-named Apple ID.
+       xcrun notarytool store-credentials "jaer-notarytool" --apple-id "YOUR_APPLE_ID_EMAIL" --team-id "TEAMID" --password "xxxx-xxxx-xxxx-xxxx"
 
-## After membership is Active (not yet)
+8. After that, wire install4j (Installer → Code Signing / macOS notarization; `notarytool` + staple). Then `ant release` on the Mac, staple the DMGs, attach those files to GitHub Releases.
 
-1. In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/certificates/list), create:
-   - **Developer ID Application** (sign the `.app`)
-   - **Developer ID Installer** (sign the installer/pkg if install4j uses one)
-2. Install the certs in Keychain on the Mac that runs `install4jc`.
-3. Create an [app-specific password](https://support.apple.com/en-us/102654) for the Apple Account (for `notarytool`). Do not use the main Apple ID password.
-4. Configure install4j: Installer → Code Signing / macOS notarization (`notarytool` + staple).
-5. Store certs, team ID, and app-specific password like SignPath secrets (`packaging/signpath/` on Dropbox, gitignored). Never commit them.
-6. Staple the DMG and attach that file to GitHub Releases.
+Never commit `.cer`, `.p12`, CSR, Team ID + password, or the app-specific password. Same rule as SignPath secrets.
 
-Team ID is under Membership details after enrollment. You will need it for install4j and `notarytool`.
+## Enrollment (done)
+
+Individual membership via the Apple Developer app / [enroll](https://developer.apple.com/programs/enroll/). Identity verification required a legal-name match (Tobias, not Tobi). Failed ID scans: [developer.apple.com/contact](https://developer.apple.com/contact) → Membership and Account.
