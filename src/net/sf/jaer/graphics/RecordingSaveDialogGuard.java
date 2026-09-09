@@ -34,7 +34,7 @@ import javax.swing.event.DocumentListener;
 public final class RecordingSaveDialogGuard {
 
     /** How long after dialog open to treat lone {@code l}/{@code L} as stray. */
-    private static final long STRAY_KEY_GUARD_MS = 1500;
+    static final long STRAY_KEY_GUARD_MS = 1500;
 
     private RecordingSaveDialogGuard() {
     }

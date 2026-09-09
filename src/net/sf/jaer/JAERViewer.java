@@ -57,6 +57,8 @@ import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.graphics.RecordingSetupDialog;
+import net.sf.jaer.util.OutputFilename;
 import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
@@ -946,8 +948,14 @@ public class JAERViewer {
             i++;
         }
         String base = RecordingFilename.muxedAedat4Base(tokens, new Date());
-        File file = RecordingFilename.uniqueFile(first.lastRecordingFolder, base,
-                AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
+        File pending = first.takePendingRecordingStartFile();
+        File file = pending != null
+                ? pending
+                : RecordingFilename.uniqueFile(first.lastRecordingFolder, base,
+                        AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
+        if (pending != null) {
+            file = OutputFilename.ensureExtension(file, "aedat4", "aedat4");
+        }
         try {
             FileOutputStream fos = new FileOutputStream(file);
             long baseUs = System.currentTimeMillis() * 1000L;
@@ -1067,12 +1075,22 @@ public class JAERViewer {
 
     public void toggleSynchronizedRecording() {
         //TODO - unchecking synchronized recording in AEViewer still comes here and records synchronized
-        recordingEnabled = !recordingEnabled;
         if (recordingEnabled) {
-            startSynchronizedRecording();
-        } else {
             stopSynchronizedRecording();
+            return;
         }
+        AEViewer host = viewers.isEmpty() ? null : viewers.get(0);
+        List<AEViewer> rec = viewersForSynchronizedRecording();
+        if (!rec.isEmpty()) {
+            host = rec.get(0);
+        }
+        if (!RecordingSetupDialog.confirmFirstThisJvm(host, rec.isEmpty() ? null : rec)) {
+            if (host != null) {
+                host.fixRecordingControls();
+            }
+            return;
+        }
+        startSynchronizedRecording();
     }
 
     public void zeroTimestamps() {

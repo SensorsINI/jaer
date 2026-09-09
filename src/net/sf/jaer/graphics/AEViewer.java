@@ -459,6 +459,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @see #startRecording(String,String)
      */
     private File recordingFile = null;
+    /** Filename chosen in the once-per-session {@link RecordingSetupDialog}; consumed by {@link #startRecording()}. */
+    private File pendingRecordingStartFile = null;
     AEFileOutputStream recordingOutputStream;
     Aedat4FileOutputStream aedat4RecordingOutputStream;
     /** Muxed AEDAT-4 camera index (0 = streams 0/1/2). */
@@ -10028,12 +10030,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    synchronized public void toggleRecording() {
+    public void toggleRecording() {
         if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
             jaerViewer.toggleSynchronizedRecording();
         } else if (isRecordingEnabled()) {
             stopRecording(true); // confirms filename dialog when flag true
         } else {
+            if (!RecordingSetupDialog.confirmFirstThisJvm(this)) {
+                fixRecordingControls();
+                return;
+            }
             startRecording();
         }
         //        if(recordingButton.isSelected()){
@@ -10043,7 +10049,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        }
     }
 
-    void fixRecordingControls() {
+    public void fixRecordingControls() {
         SwingUtilities.invokeLater(new Runnable() { // made this a runnable to run later to fix possible race problems - tobi
             @Override
             public void run() {//        System.out.println("fixing recording controls, recordingEnabled="+recordingEnabled);
@@ -10682,6 +10688,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            return null;
 //        }
         dataFileVersionNum = getRecordingDataFileVersion();
+        File pending = takePendingRecordingStartFile();
+        if (pending != null) {
+            return startRecording(pending.getAbsolutePath(), dataFileVersionNum);
+        }
         String base = RecordingFilename.singleCameraBase(chip, new Date());
         File lf = RecordingFilename.uniqueFile(lastRecordingFolder, base,
                 AEDataFile.extensionForVersion(dataFileVersionNum));
@@ -12705,6 +12715,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public File getLastRecordingFolder() {
         return lastRecordingFolder;
+    }
+
+    /**
+     * Path from the session recording-setup dialog for the next
+     * {@link #startRecording()} or muxed open. Cleared after use.
+     */
+    public void setPendingRecordingStartFile(File file) {
+        pendingRecordingStartFile = file;
+    }
+
+    public File takePendingRecordingStartFile() {
+        File f = pendingRecordingStartFile;
+        pendingRecordingStartFile = null;
+        return f;
     }
 
     /**
