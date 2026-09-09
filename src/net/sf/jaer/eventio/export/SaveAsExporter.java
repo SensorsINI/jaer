@@ -25,6 +25,7 @@ import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
@@ -51,11 +52,20 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
      * threshold so a marked IN/OUT export stays event/frame interpolated.
      */
     private static final int SLICE_EVENTS = 8_192;
+    /** Dialog / taskbar PropertyChange cadence (SwingWorker {@code progress} + status). */
+    private static final long UI_INTERVAL_NS = 500_000_000L;
 
     public static final String PROP_PROGRESS = "saveAsProgress";
     public static final String PROP_STATUS = "saveAsStatus";
 
     private final SaveAsOptions options;
+    private long clipStart;
+    private long clipEndExclusive;
+    private long clipRange;
+    private long covered;
+    private long eventsIn;
+    private long exportStartNs;
+    private long lastUiNs;
 
     public SaveAsExporter(SaveAsOptions options) {
         this.options = options;
@@ -134,6 +144,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 chain = chip.getFilterChain();
                 if (chain != null) {
                     chain.setFilteringEnabled(options.filterChainGloballyEnabled);
+                    prepareExportFilters(chain);
                 }
             }
             log.info(String.format("Save As %s (background): events [%d, %d) of %d, filters=%s, markers=%s, source=%s",
@@ -182,7 +193,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             } else if (sourceHasTypedFrames && chip instanceof DavisBaseCamera) {
                 log.info("Save As: copying indexed AEDAT-4 APS frames; not re-assembling from mixed APS samples");
             }
-            long range = Math.max(1, end == Long.MAX_VALUE ? Math.max(1, stream.size()) : end - start);
+            initClipProgress(start, end, stream.size());
             long badEvents = 0;
             int stuckSlices = 0;
             setProgress(0);
@@ -233,6 +244,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     if (bundle == null || bundle.isEmpty()) {
                         continue;
                     }
+                    eventsIn += polarityCount(bundle, false);
                     if (options.applyEventFilters && chain != null) {
                         bundle = chain.filterBundle(bundle);
                         if (bundle == null) {
@@ -260,14 +272,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     continue;
                 }
                 stuckSlices = 0;
-                int pct = (int) Math.min(99, (100L * Math.max(0, stream.position() - start)) / range);
-                setProgress(pct);
-                long nEv = eventsWritten(csv, h5, aedat4);
-                if (badEvents > 0) {
-                    publish(String.format("Exported %,d events, skipped %,d bad (%.0f%%)", nEv, badEvents, (double) pct));
-                } else {
-                    publish(String.format("Exported %,d events (%.0f%%)", nEv, (double) pct));
-                }
+                covered = Math.max(0L, Math.min(clipRange, stream.position() - clipStart));
+                reportUi(false, eventsWritten(csv, h5, aedat4), badEvents);
             }
             if (isCancelled()) {
                 throw new CancellationException("Save As cancelled");
@@ -324,6 +330,46 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             }
             cleanupHeadlessChip(chip);
         }
+    }
+
+    /**
+     * Headless chip constructs filters with {@code filterEnabled=false}. FilterFrame
+     * is what normally calls {@link EventFilter#setPreferredEnabledState()}; copy
+     * the playback chip's enabled flags instead so Save As matches the dialog.
+     */
+    private void prepareExportFilters(FilterChain chain) {
+        chain.initFilters();
+        java.util.HashSet<String> on = new java.util.HashSet<>();
+        if (options.enabledFilterClassNames != null) {
+            on.addAll(options.enabledFilterClassNames);
+        }
+        if (!on.isEmpty()) {
+            for (EventFilter2D f : chain) {
+                if (f != null) {
+                    f.setFilterEnabledForProcessing(on.contains(f.getClass().getName()));
+                }
+            }
+        } else {
+            for (EventFilter2D f : chain) {
+                if (f != null) {
+                    f.setPreferredEnabledState();
+                }
+            }
+        }
+        StringBuilder names = new StringBuilder();
+        int n = 0;
+        for (EventFilter2D f : chain) {
+            if (f != null && f.isFilterEnabled()) {
+                if (n > 0) {
+                    names.append(", ");
+                }
+                names.append(f.getClass().getSimpleName());
+                n++;
+            }
+        }
+        log.info(n == 0
+                ? "Save As: Apply EventFilters is on but no filter is enabled on the export chip"
+                : "Save As applying " + n + " EventFilter(s): " + names);
     }
 
     private static AEChip constructHeadlessChip(Class<? extends AEChip> clazz) throws IOException {
@@ -464,17 +510,22 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         in.setPolarityEventSkip(0);
         List<Aedat4FileInputStream.RecordedPacket> packets = in.packetsInRecordOrder();
         final boolean filter = options.applyEventFilters && chain != null;
+        int totalInRange = 0;
+        for (Aedat4FileInputStream.RecordedPacket packet : packets) {
+            if (in.inEventIndexRange(packet, start, end)) {
+                totalInRange++;
+            }
+        }
         log.info(String.format(
-                "Save As AEDAT-4 record-order: %d packets (EVTS/FRME/IMUS), events [%d, %d), filters=%s",
-                packets.size(), start, end, filter));
+                "Save As AEDAT-4 record-order: %d packets (%d in IN/OUT range), events [%d, %d), filters=%s",
+                packets.size(), totalInRange, start, end, filter));
         final long baseUnixUs = in.getBaseUnixUs();
-        int done = 0;
+        int doneInRange = 0;
         for (Aedat4FileInputStream.RecordedPacket packet : packets) {
             if (isCancelled()) {
                 throw new CancellationException("Save As cancelled");
             }
             if (!in.inEventIndexRange(packet, start, end)) {
-                done++;
                 continue;
             }
             switch (packet.kind) {
@@ -486,6 +537,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
                 case EVENTS -> {
                     if (!filter && packet.eventsFullyInside(start, end)) {
+                        eventsIn += packet.numElements;
                         out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_EVENTS,
                                 in.readUncompressedPayload(packet), packet.numElements,
                                 packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
@@ -494,10 +546,14 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     }
                 }
             }
-            done++;
-            int pct = (int) Math.min(99, (100L * done) / Math.max(1, packets.size()));
-            setProgress(pct);
-            publish(String.format("Exported %,d events (%.0f%%)", out.getEventsWritten(), (double) pct));
+            doneInRange++;
+            if (packet.kind == Aedat4FileInputStream.RecordedPacket.Kind.EVENTS) {
+                long pos = Math.min(clipEndExclusive, packet.firstEventIndex + packet.numElements);
+                covered = Math.max(covered, Math.max(0L, pos - clipStart));
+            }
+            long fromPackets = totalInRange > 0 ? clipRange * doneInRange / totalInRange : 0;
+            covered = Math.max(covered, Math.min(clipRange, fromPackets));
+            reportUi(false, out.getEventsWritten(), 0);
         }
     }
 
@@ -512,6 +568,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         if (bundle == null || bundle.isEmpty()) {
             return;
         }
+        eventsIn += polarityCount(bundle, false);
         if (filter) {
             bundle = chain.filterBundle(bundle);
             if (bundle == null) {
@@ -585,6 +642,113 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             return csv.getEventsWritten();
         }
         return h5 != null ? h5.getEventsWritten() : 0;
+    }
+
+    private void initClipProgress(long start, long end, long streamSize) {
+        clipStart = Math.max(0L, start);
+        if (end == Long.MAX_VALUE || end <= clipStart) {
+            clipEndExclusive = Math.max(clipStart + 1, streamSize);
+        } else {
+            clipEndExclusive = end;
+        }
+        clipRange = Math.max(1L, clipEndExclusive - clipStart);
+        covered = 0;
+        eventsIn = 0;
+        exportStartNs = System.nanoTime();
+        lastUiNs = 0;
+    }
+
+    /**
+     * 0–99 progress of {@code position} in {@code [start, end)}. IN/OUT clips
+     * start at 0% even when IN is mid-file.
+     */
+    static int clipProgressPercent(long start, long endExclusive, long position) {
+        long range = Math.max(1L, endExclusive - start);
+        long covered = Math.max(0L, Math.min(range, position - start));
+        return (int) Math.min(99, (100L * covered) / range);
+    }
+
+    static String formatCompactDurationMs(long durationMs) {
+        long sec = Math.max(0L, durationMs) / 1000L;
+        if (sec < 60) {
+            return sec + "s";
+        }
+        long min = sec / 60L;
+        sec = sec % 60L;
+        if (min < 60) {
+            return String.format("%dm %02ds", min, sec);
+        }
+        long h = min / 60L;
+        min = min % 60L;
+        return String.format("%dh %02dm", h, min);
+    }
+
+    static String formatEta(long elapsedNs, long covered, long range) {
+        if (covered <= 0 || range <= 0 || elapsedNs < 1_000_000_000L) {
+            return null;
+        }
+        long remaining = range - covered;
+        if (remaining <= 0) {
+            return "ETA 0s";
+        }
+        long remainingNs = elapsedNs * remaining / covered;
+        return "ETA " + formatCompactDurationMs(remainingNs / 1_000_000L);
+    }
+
+    private static int polarityCount(PacketBundle bundle, boolean keptOnly) {
+        if (bundle == null) {
+            return 0;
+        }
+        int n = 0;
+        for (TypedDataPacket p : bundle) {
+            if (p == null || p.getPacketType() != PacketType.POLARITY || !(p instanceof EventPacket)) {
+                continue;
+            }
+            EventPacket<?> ep = (EventPacket<?>) p;
+            if (ep instanceof ApsDvsEventPacket) {
+                Iterator<?> it = ((ApsDvsEventPacket<?>) ep).fullIterator();
+                while (it.hasNext()) {
+                    Object o = it.next();
+                    if (!(o instanceof ApsDvsEvent e)) {
+                        continue;
+                    }
+                    if (e.isApsData() || e.isImuSample()) {
+                        continue;
+                    }
+                    if (keptOnly && e.isFilteredOut()) {
+                        continue;
+                    }
+                    n++;
+                }
+            } else {
+                n += keptOnly ? ep.getSizeNotFilteredOut() : ep.getSize();
+            }
+        }
+        return n;
+    }
+
+    private void reportUi(boolean force, long eventsWritten, long badEvents) {
+        long now = System.nanoTime();
+        if (!force && lastUiNs != 0 && now - lastUiNs < UI_INTERVAL_NS) {
+            return;
+        }
+        lastUiNs = now;
+        int pct = clipProgressPercent(clipStart, clipEndExclusive, clipStart + covered);
+        setProgress(pct);
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("Exported %,d events (%d%%)", eventsWritten, pct));
+        if (options.applyEventFilters && eventsIn > 0) {
+            double filtered = 100.0 * Math.max(0L, eventsIn - eventsWritten) / (double) eventsIn;
+            sb.append(String.format(", filtered out %.0f%%", Math.min(100.0, filtered)));
+        }
+        if (badEvents > 0) {
+            sb.append(String.format(", skipped %,d bad", badEvents));
+        }
+        String eta = formatEta(now - exportStartNs, covered, clipRange);
+        if (eta != null) {
+            sb.append(", ").append(eta);
+        }
+        publish(sb.toString());
     }
 
     /**

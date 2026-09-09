@@ -6,6 +6,7 @@ import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Taskbar;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
@@ -804,6 +805,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         exporter.addPropertyChangeListener(this);
         updateRecordingUi(true);
         statusLabel.setText("Starting…");
+        applyTaskbarProgress(0, Taskbar.State.NORMAL);
         exporter.execute();
     }
 
@@ -833,6 +835,14 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         opt.chipClass = chip.getClass();
         FilterChain chain = chip.getFilterChain();
         opt.filterChainGloballyEnabled = chain == null || chain.isFilteringEnabled();
+        opt.enabledFilterClassNames = new java.util.ArrayList<>();
+        if (chain != null) {
+            for (EventFilter2D f : chain) {
+                if (f != null && f.isFilterEnabled()) {
+                    opt.enabledFilterClassNames.add(f.getClass().getName());
+                }
+            }
+        }
         opt.rangeStart = 0;
         long size = stream.size();
         opt.rangeEnd = size > 0 ? size : Long.MAX_VALUE;
@@ -948,6 +958,9 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     @Override
     public void dispose() {
+        if (exporter == null || exporter.isDone()) {
+            applyTaskbarProgress(0, Taskbar.State.OFF);
+        }
         unbindFilterEnabledListeners();
         super.dispose();
     }
@@ -963,7 +976,9 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             return;
         }
         if ("progress".equals(evt.getPropertyName())) {
-            progressBar.setValue((Integer) evt.getNewValue());
+            int pct = (Integer) evt.getNewValue();
+            progressBar.setValue(pct);
+            applyTaskbarProgress(pct, Taskbar.State.NORMAL);
         } else if (SaveAsExporter.PROP_STATUS.equals(evt.getPropertyName())) {
             statusLabel.setText(String.valueOf(evt.getNewValue()));
         } else if ("state".equals(evt.getPropertyName()) && exporter != null && exporter.isDone()) {
@@ -973,6 +988,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             try {
                 SaveAsExporter.Result r = exporter.get();
                 progressBar.setValue(100);
+                applyTaskbarProgress(100, Taskbar.State.NORMAL);
                 statusLabel.setText(r.badEvents > 0
                         ? String.format("Done (skipped %,d bad events).", r.badEvents)
                         : "Done.");
@@ -984,21 +1000,60 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                 }
                 String msg = ShowFolderSaveConfirmation.htmlSaveAsMessage(exported, after, r.sourceFileInfo);
                 viewer.rememberLastSaveAs(exported, r.sourceFileInfo);
+                applyTaskbarProgress(0, Taskbar.State.OFF);
                 dispose();
                 viewer.showSavedFileConfirmation(exported, msg);
             } catch (CancellationException | InterruptedException cancel) {
                 statusLabel.setText("Cancelled.");
                 progressBar.setValue(0);
+                applyTaskbarProgress(0, Taskbar.State.OFF);
             } catch (ExecutionException ex) {
                 Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                 if (cause instanceof CancellationException) {
                     statusLabel.setText("Cancelled.");
                     progressBar.setValue(0);
+                    applyTaskbarProgress(0, Taskbar.State.OFF);
                     return;
                 }
                 statusLabel.setText("Failed: " + cause.getMessage());
+                applyTaskbarProgress(progressBar.getValue(), Taskbar.State.ERROR);
                 JOptionPane.showMessageDialog(this, cause.getMessage(), "Save As failed", JOptionPane.ERROR_MESSAGE);
+                applyTaskbarProgress(0, Taskbar.State.OFF);
             }
+        }
+    }
+
+    /**
+     * Windows-style green fill on the taskbar button (and AEViewer if this
+     * window is hidden). No-op when the OS/Java {@link Taskbar} feature is missing.
+     */
+    private void applyTaskbarProgress(int pct, Taskbar.State state) {
+        try {
+            if (!Taskbar.isTaskbarSupported()) {
+                return;
+            }
+            Taskbar tb = Taskbar.getTaskbar();
+            int value = Math.max(0, Math.min(100, pct));
+            boolean windowState = tb.isSupported(Taskbar.Feature.PROGRESS_STATE_WINDOW);
+            boolean windowValue = tb.isSupported(Taskbar.Feature.PROGRESS_VALUE_WINDOW);
+            if (windowState || windowValue) {
+                Window[] targets = { this, viewer };
+                for (Window w : targets) {
+                    if (w == null || !w.isDisplayable()) {
+                        continue;
+                    }
+                    if (windowState) {
+                        tb.setWindowProgressState(w, state);
+                    }
+                    if (windowValue && state != Taskbar.State.OFF) {
+                        tb.setWindowProgressValue(w, value);
+                    }
+                }
+            } else if (tb.isSupported(Taskbar.Feature.PROGRESS_VALUE)) {
+                tb.setProgressValue(state == Taskbar.State.OFF ? -1 : value);
+            }
+        } catch (Exception e) {
+            // Headless, unsupported, or a window that is not a taskbar target.
         }
     }
 }

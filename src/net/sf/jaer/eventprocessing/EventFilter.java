@@ -384,6 +384,23 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
+     * Enable or disable processing without writing {@link Preferences}. Headless
+     * Save As uses a second chip instance and must not clobber the viewer's
+     * stored enabled flags.
+     */
+    public synchronized void setFilterEnabledForProcessing(boolean enabled) {
+        filterEnabled = enabled;
+        if (getEnclosedFilter() != null) {
+            getEnclosedFilter().setFilterEnabledForProcessing(enabled);
+        }
+        if (getEnclosedFilterChain() != null) {
+            for (EventFilter f : getEnclosedFilterChain()) {
+                f.setFilterEnabledForProcessing(enabled);
+            }
+        }
+    }
+
+    /**
      * Set the controls visible for this filter
      *
      * @param yes true to show controls, false to collapse them

@@ -106,6 +106,12 @@ public final class SaveAsOptions {
     public Integer aedat4EventStreamId;
     public Class<? extends AEChip> chipClass;
     public boolean filterChainGloballyEnabled = true;
+    /**
+     * Fully-qualified class names of filters that were enabled on the playback
+     * chip when Save started. The export chip is a new instance; it must copy
+     * these flags (see {@link EventFilter#setFilterEnabledForProcessing}).
+     */
+    public java.util.ArrayList<String> enabledFilterClassNames = new java.util.ArrayList<>();
     public Format format = Format.AEDAT4;
     public boolean useInOutMarkers = true;
     public boolean applyEventFilters = true;
