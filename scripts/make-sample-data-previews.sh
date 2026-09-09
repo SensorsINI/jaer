@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Clip source MP4/AVI (or mov/mkv/webm) to looping 120px-wide WebP previews for
+# Clip source MP4/AVI (or mov/mkv/webm) to looping 240px-wide WebP previews for
 # sampleData/README.md. Name each source like the .aedat4 (same stem).
 #
 # Usage (repo root):
 #   bash scripts/make-sample-data-previews.sh
 #   bash scripts/make-sample-data-previews.sh --src ~/exports
-#   bash scripts/make-sample-data-previews.sh --force --duration 5 --width 120
+#   bash scripts/make-sample-data-previews.sh --force --duration 5 --width 240
 #
 # Looks for sources in --src, then sampleData/preview-src/, then sampleData/.
 # Optional start times: sampleData/previews/offsets.txt
@@ -15,7 +15,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-WIDTH=120
+WIDTH=240
 DURATION=5
 FPS=12
 QUALITY=50

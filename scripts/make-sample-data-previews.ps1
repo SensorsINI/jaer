@@ -1,4 +1,4 @@
-# Clip source MP4/AVI (or mov/mkv/webm) to looping 120px-wide WebP previews for
+# Clip source MP4/AVI (or mov/mkv/webm) to looping 240px-wide WebP previews for
 # sampleData/README.md. Name each source like the .aedat4 (same stem).
 #
 # Usage (repo root):
@@ -13,7 +13,7 @@
 param(
     [string]$Src = "",
     [string]$Out = "",
-    [int]$Width = 120,
+    [int]$Width = 240,
     [double]$Duration = 5,
     [int]$Fps = 12,
     [int]$Quality = 50,

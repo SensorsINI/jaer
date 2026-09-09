@@ -107,24 +107,42 @@ unpackedBytes=$unpackedBytes
 unpackedMiB=$unpackedMiB
 "@ | Set-Content -LiteralPath $sizePath -Encoding ASCII
 
-$nl = [Environment]::NewLine
-$table = '| File | Size |' + $nl + '|------|------|'
-foreach ($f in ($recordings | Sort-Object Name)) {
-    $mb = '{0:N1} MB' -f ($f.Length / 1MB)
-    $table = $table + $nl + '| `' + $f.Name + '` | ' + $mb + ' |'
+function Format-FileMb([long]$bytes) {
+    return ([Math]::Round($bytes / 1MB, 1)).ToString('0.0', [Globalization.CultureInfo]::InvariantCulture) + ' MB'
 }
-$readmeText = Get-Content -LiteralPath $readme -Raw
-$start = '<!-- SAMPLE-DATA-CONTENTS -->'
-$end = '<!-- /SAMPLE-DATA-CONTENTS -->'
-$i0 = $readmeText.IndexOf($start)
-$i1 = $readmeText.IndexOf($end)
-if ($i0 -ge 0 -and $i1 -gt $i0) {
-    $before = $readmeText.Substring(0, $i0 + $start.Length)
-    $after = $readmeText.Substring($i1)
-    $intro = $nl + $nl + 'Download **' + $zipMiB + ' MB**, about **' + $unpackedMiB + ' MB** on disk.' + $nl + $nl
-    $newReadme = $before + $intro + $table + $nl + $nl + $after
+
+if (Test-Path -LiteralPath $readme -PathType Leaf) {
+    $sizeByName = @{}
+    foreach ($f in $recordings) {
+        $sizeByName[$f.Name] = Format-FileMb $f.Length
+    }
+    $readmeText = Get-Content -LiteralPath $readme -Raw
+    $readmeText = [regex]::Replace(
+        $readmeText,
+        'That downloads about \*\*[0-9.]+\s*MB\*\*',
+        ('That downloads about **{0} MB**' -f $zipMiB))
+    $updated = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $lines = New-Object System.Collections.Generic.List[string]
+    foreach ($line in ($readmeText -split "`r?`n", -1)) {
+        if ($line.StartsWith('|') -and $line -match '`([^`]+)`') {
+            $fn = $Matches[1]
+            if ($sizeByName.ContainsKey($fn)) {
+                $cells = [regex]::Split($line, '\|')
+                if ($cells.Length -ge 5) {
+                    $cells[3] = ' ' + $sizeByName[$fn] + ' '
+                    $line = [string]::Join('|', $cells)
+                    [void]$updated.Add($fn)
+                }
+            }
+        }
+        $lines.Add($line)
+    }
+    $missing = @($sizeByName.Keys | Where-Object { -not $updated.Contains($_) } | Sort-Object)
+    if ($missing) {
+        Write-Host ('README Size column missing for: {0}' -f ($missing -join ', '))
+    }
     $utf8 = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($readme, $newReadme.TrimEnd() + $nl, $utf8)
+    [System.IO.File]::WriteAllText($readme, (($lines -join "`n").TrimEnd() + "`n"), $utf8)
 }
 
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false

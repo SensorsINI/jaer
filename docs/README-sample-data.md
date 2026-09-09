@@ -10,7 +10,7 @@ Recordings are **not** in git and **not** in the basic installer. Git tracks `sa
 |-------|------|
 | GitHub Latest asset `jaer-sample-data.zip` | The zip users download |
 | `sampleData/README.md` | What the files are (also inside the zip and the install tree) |
-| `sampleData/previews/*.webp` | 5 s / 120 px loops for the GitHub README table. Not in the zip. |
+| `sampleData/previews/*.webp` | 5 s / 240 px loops for the GitHub README table. Not in the zip. |
 | `sampleData/SIZE.txt` | Zip and unpacked MiB; written by pack, not in git |
 | Installer Welcome checkbox | Optional download; default **off**. Shows zip/unpacked size and a time estimate at **10 MB/s Wi-Fi**. After files are copied, a **Sample recordings** screen can **Skip** (finish Setup) or **Download**. Cancel during the download skips only that step — jAER is already installed (Installation screen is a rollback barrier). |
 | **Help > Sample data** | **Download** if recordings are missing: you choose the unpack folder (install `sampleData/` when writable, otherwise `jaerSampleData` in the home directory). **Show jAER sample data folder and README** if recordings are already present |
@@ -33,7 +33,7 @@ Unpack so files land **in** the folder you choose (zip root is the files, not a 
 
 Writes `currentInstallers/<VERSION>/jaer-sample-data.zip` (store / no deflate; AEDAT-4 is already compressed) and `sampleData/SIZE.txt`. Skips the zip if a name+size stamp still matches. Force: `scripts/pack-sample-data.ps1 -Force` or `bash scripts/pack-sample-data.sh --force`.
 
-The pack scripts also refresh the generated size table between `<!-- SAMPLE-DATA-CONTENTS -->` markers in `sampleData/README.md`. Keep file descriptions **outside** that block. Only `*.aedat4` (and `.aedat` / `.dat` / `.raw`) are zipped; WebP previews and source MP4/AVI are skipped.
+The pack scripts refresh the **Size** column in the `sampleData/README.md` file table (matched by the backtick filename) and the **That downloads about N MB** line. Add new recordings as a row in that table; pack does not invent descriptions. Only `*.aedat4` (and `.aedat` / `.dat` / `.raw`) are zipped; WebP previews and source MP4/AVI are skipped.
 
 ## README preview clips
 
@@ -45,7 +45,7 @@ bash scripts/make-sample-data-previews.sh
 
 Windows: `powershell -File scripts/make-sample-data-previews.ps1`
 
-That writes looping 5 s, 120 px-wide animated WebP to `sampleData/previews/` (`-loop 0`, 12 fps). Re-encode with `--force`. Optional start times (seconds into the source) go in `sampleData/previews/offsets.txt`:
+That writes looping 5 s, 240 px-wide animated WebP to `sampleData/previews/` (`-loop 0`, 12 fps, quality 50). Defaults live in the scripts (`WIDTH` / `-Width`); there is no separate config file. Re-encode with `--force`. Optional start times (seconds into the source) go in `sampleData/previews/offsets.txt`:
 
 ```
 DVS128 DVS09 2006 mouse behavior over 3 days  60

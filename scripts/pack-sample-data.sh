@@ -104,23 +104,46 @@ unpacked_mib=$(mib "$unpacked")
   echo "unpackedMiB=$unpacked_mib"
 } > "$SAMPLE/SIZE.txt"
 
-TABLE=$'| File | Size |\n|------|------|\n'
-for n in "${FILES[@]}"; do
-  b=$(file_bytes "$SAMPLE/$n")
-  mb=$(awk -v b="$b" 'BEGIN { printf "%.1f MB", b / 1024 / 1024 }')
-  TABLE+="| \`$n\` | $mb |"$'\n'
-done
-
 README="$SAMPLE/README.md"
-START='<!-- SAMPLE-DATA-CONTENTS -->'
-END='<!-- /SAMPLE-DATA-CONTENTS -->'
-if grep -q "$START" "$README" && grep -q "$END" "$README"; then
-  BLOCK=$(printf '\n\nDownload **%s MB**, about **%s MB** on disk.\n\n%s\n' "$zip_mib" "$unpacked_mib" "$TABLE")
-  awk -v start="$START" -v end="$END" -v block="$BLOCK" '
-    $0 ~ start { print; printf "%s", block; skip=1; next }
-    $0 ~ end { skip=0 }
-    skip { next }
-    { print }
+if [ -f "$README" ]; then
+  SIZES="$STAGING/sizes.tsv"
+  : > "$SIZES"
+  for n in "${FILES[@]}"; do
+    b=$(file_bytes "$SAMPLE/$n")
+    mb=$(awk -v b="$b" 'BEGIN { printf "%.1f MB", b / 1024 / 1024 }')
+    printf '%s\t%s\n' "$n" "$mb" >> "$SIZES"
+  done
+  awk -v zipmib="$zip_mib" -v sizes="$SIZES" '
+    BEGIN {
+      FS = OFS = "|"
+      while ((getline line < sizes) > 0) {
+        split(line, p, "\t")
+        sz[p[1]] = p[2]
+      }
+      close(sizes)
+    }
+    {
+      if ($0 ~ /That downloads about \*\*[0-9.]+\s*MB\*\*/) {
+        sub(/\*\*[0-9.]+\s*MB\*\*/, "**" zipmib " MB**")
+      }
+      if (NF >= 5 && $3 ~ /`/) {
+        file = $3
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", file)
+        gsub(/^`|`$/, "", file)
+        if (file in sz) {
+          $4 = " " sz[file] " "
+          seen[file] = 1
+        }
+      }
+      print
+    }
+    END {
+      for (f in sz) {
+        if (!(f in seen)) {
+          printf "README Size column missing for: %s\n", f > "/dev/stderr"
+        }
+      }
+    }
   ' "$README" > "$README.tmp"
   mv "$README.tmp" "$README"
 fi
