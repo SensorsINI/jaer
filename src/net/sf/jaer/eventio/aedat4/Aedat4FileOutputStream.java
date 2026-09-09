@@ -634,6 +634,16 @@ public class Aedat4FileOutputStream implements Closeable {
                 compression, uncompressedPayloadBytes, compressedPayloadBytes);
     }
 
+    /** Uncompressed FlatBuffer packet payload bytes (before LZ4/ZSTD). */
+    public long getUncompressedPayloadBytes() {
+        return uncompressedPayloadBytes;
+    }
+
+    /** On-disk packet payload bytes after compression (same as uncompressed if NONE). */
+    public long getCompressedPayloadBytes() {
+        return compressedPayloadBytes;
+    }
+
     /** {@code compressed / uncompressed} payload ratio, or 1 if nothing written. */
     public double getPayloadCompressionRatio() {
         if (uncompressedPayloadBytes <= 0) {

@@ -14,13 +14,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotates an {@link net.sf.jaer.eventprocessing.EventFilter} with longer HTML
- * help shown in a nonmodal dialog on first selection (controls expanded) and
- * again from the FilterPanel {@code ?} button.
+ * Annotates a type with longer HTML help shown in a nonmodal dialog.
+ * {@link net.sf.jaer.eventprocessing.EventFilter} subclasses use it on first
+ * selection (controls expanded) and from the FilterPanel {@code ?} button.
+ * Other types (for example {@link net.sf.jaer.eventio.aedat4.Aedat4Compression})
+ * can use the same annotation; callers read it with {@link Html#of(Class)}.
  * <p>
  * Use it like {@link Description}, but with HTML for a user guide rather than a
  * one-line tooltip. Links are clickable in the dialog. Relative
- * {@code <img src="file.png">} paths resolve against the filter class package
+ * {@code <img src="file.png">} paths resolve against the annotated class package
  * (put the PNG next to the {@code .java} file; Ant copies it onto the classpath).
  * <pre>
  * {@code
@@ -49,4 +51,28 @@ public @interface Help {
      * HTML body (or a full {@code <html>...} document) for the help dialog.
      */
     String value();
+
+    /**
+     * Reads {@link #value()} from a type's {@code @Help}, or {@code null} if
+     * missing or blank. Annotation types cannot declare static methods.
+     */
+    final class Html {
+        private Html() {
+        }
+
+        public static String of(Class<?> type) {
+            if (type == null) {
+                return null;
+            }
+            Help h = type.getAnnotation(Help.class);
+            if (h == null) {
+                return null;
+            }
+            String html = h.value();
+            if (html == null || html.trim().isEmpty()) {
+                return null;
+            }
+            return html;
+        }
+    }
 }

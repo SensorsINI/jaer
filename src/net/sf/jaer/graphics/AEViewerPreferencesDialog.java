@@ -10,6 +10,7 @@ import java.beans.PropertyChangeListener;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -41,6 +42,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.SwingWorker;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
@@ -50,12 +52,16 @@ import javax.swing.event.DocumentListener;
 
 import org.apache.commons.text.WordUtils;
 
+import net.sf.jaer.Help;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventio.aedat4.Aedat4WriteBench;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
+import net.sf.jaer.util.HtmlHelpFrame;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
@@ -127,6 +133,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JTextField timestampResetBitmaskTF;
     private JComboBox<String> recordingFormatCB;
     private JComboBox<String> aedat4CompressionCB;
+    private JButton aedat4CompressionBenchButton;
+    private JButton aedat4CompressionHelpButton;
+    private HtmlHelpFrame aedat4CompressionHelpDialog;
+    private HtmlHelpFrame aedat4CompressionBenchDialog;
     private JLabel recordingFolderStatusLabel;
 
     private JCheckBox activeRenderingCB;
@@ -696,7 +706,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         aedat4CompressionCB.setToolTipText("<html>DV-compatible per-packet compression for AEDAT-4.<br>"
                 + "LZ4 is best for real-time recording. HIGH modes shrink files more but may slow live display "
-                + "at high event rates. Takes effect on the next Start recording.");
+                + "at high event rates. Takes effect on the next Start recording.<br>"
+                + "Use <b>Help</b> for which codec to pick, and <b>Bench this PC</b> to measure write speed here.");
         aedat4CompressionCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -707,6 +718,22 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
         });
         p.add(aedat4CompressionCB, gbcField(y++));
+
+        JPanel compressionActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        aedat4CompressionHelpButton = new JButton("Help");
+        aedat4CompressionHelpButton.setToolTipText("Which AEDAT-4 compression to use for recording");
+        aedat4CompressionHelpButton.addActionListener(e -> toggleAedat4CompressionHelp());
+        aedat4CompressionBenchButton = new JButton("Bench this PC…");
+        aedat4CompressionBenchButton.setToolTipText(
+                "<html>Write synthetic polarity packets through Aedat4FileOutputStream<br>"
+                + "for None / LZ4 / LZ4 high / ZSTD / ZSTD high. Takes a few seconds.");
+        aedat4CompressionBenchButton.addActionListener(e -> runAedat4CompressionBench());
+        compressionActions.add(aedat4CompressionHelpButton);
+        compressionActions.add(aedat4CompressionBenchButton);
+        GridBagConstraints actionGbc = gbcField(y++);
+        actionGbc.fill = GridBagConstraints.NONE;
+        actionGbc.weightx = 0;
+        p.add(compressionActions, actionGbc);
 
         p.add(new JLabel("Recording folder:"), gbcLabel(y));
         recordingFolderStatusLabel = new JLabel();
@@ -1407,6 +1434,66 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         recordingFolderStatusLabel.setForeground(enough ? new Color(0x1B5E20) : new Color(0xB71C1C));
     }
 
+    private void toggleAedat4CompressionHelp() {
+        if (aedat4CompressionHelpDialog != null && aedat4CompressionHelpDialog.isDisplayable()
+                && aedat4CompressionHelpDialog.isVisible()) {
+            aedat4CompressionHelpDialog.setVisible(false);
+            return;
+        }
+        String html = Help.Html.of(Aedat4Compression.class);
+        if (html == null) {
+            JOptionPane.showMessageDialog(this, "AEDAT-4 compression help is missing.",
+                    "Help", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (aedat4CompressionHelpDialog == null || !aedat4CompressionHelpDialog.isDisplayable()) {
+            aedat4CompressionHelpDialog = new HtmlHelpFrame(
+                    "AEDAT-4 recording compression", this, "Aedat4CompressionHelp", 640, 720);
+            aedat4CompressionHelpDialog.setDocumentBase(HtmlHelpFrame.packageBaseUrl(Aedat4Compression.class));
+        }
+        aedat4CompressionHelpDialog.setHtml(html);
+        aedat4CompressionHelpDialog.setVisible(true);
+        aedat4CompressionHelpDialog.toFront();
+    }
+
+    private void runAedat4CompressionBench() {
+        if (aedat4CompressionBenchButton != null) {
+            aedat4CompressionBenchButton.setEnabled(false);
+        }
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        new SwingWorker<Aedat4WriteBench.Report, Void>() {
+            @Override
+            protected Aedat4WriteBench.Report doInBackground() throws Exception {
+                return Aedat4WriteBench.run(Aedat4WriteBench.Config.interactive());
+            }
+
+            @Override
+            protected void done() {
+                setCursor(Cursor.getDefaultCursor());
+                if (aedat4CompressionBenchButton != null) {
+                    aedat4CompressionBenchButton.setEnabled(true);
+                }
+                try {
+                    Aedat4WriteBench.Report report = get();
+                    AEViewer.log.info(report.toPlainText());
+                    if (aedat4CompressionBenchDialog == null || !aedat4CompressionBenchDialog.isDisplayable()) {
+                        aedat4CompressionBenchDialog = new HtmlHelpFrame(
+                                "AEDAT-4 compression bench", AEViewerPreferencesDialog.this,
+                                "Aedat4CompressionBench", 780, 520);
+                    }
+                    aedat4CompressionBenchDialog.setHtml(report.toHtml());
+                    aedat4CompressionBenchDialog.setVisible(true);
+                    aedat4CompressionBenchDialog.toFront();
+                } catch (Exception e) {
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    JOptionPane.showMessageDialog(AEViewerPreferencesDialog.this,
+                            cause.toString(), "AEDAT-4 compression bench failed",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
     private static String escapeHtml(String s) {
         if (s == null) {
             return "";
@@ -1434,6 +1521,12 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             recordingFormatCB.setSelectedIndex(versionIndex);
             aedat4CompressionCB.setSelectedIndex(viewer.getAedat4Compression());
             aedat4CompressionCB.setEnabled(aedat4);
+            if (aedat4CompressionHelpButton != null) {
+                aedat4CompressionHelpButton.setEnabled(true);
+            }
+            if (aedat4CompressionBenchButton != null) {
+                aedat4CompressionBenchButton.setEnabled(true);
+            }
             refreshRecordingFolderStatus();
 
             activeRenderingCB.setSelected(viewer.isActiveRenderingEnabled());

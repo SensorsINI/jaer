@@ -17,6 +17,7 @@ import net.jpountz.lz4.LZ4FrameInputStream;
 import net.jpountz.xxhash.XXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorInputStream;
+import net.sf.jaer.Help;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 import net.sf.jaer.util.EngineeringFormat;
@@ -36,6 +37,64 @@ import net.sf.jaer.util.EngineeringFormat;
  *       continuation blocks). Full Commons framed reader is the last resort.</li>
  * </ul>
  */
+@Help("""
+<html>
+<body>
+<h2>AEDAT-4 recording compression</h2>
+<p>Each AEDAT-4 packet is a FlatBuffer, then optionally one <b>LZ4 or ZSTD frame</b>.
+Codecs are DV-compatible. Choose in AEViewer <b>Preferences → File → AEDAT-4 compression</b>
+(live record) or File → Save As. Use <b>Bench this PC</b> there: the numbers below are
+typical orders of magnitude, not a guarantee for your disk and CPU.</p>
+
+<h3>What the codecs actually do</h3>
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>Setting</th><th>Implementation in jAER</th><th>Typical compress speed</th><th>Typical ratio vs uncompressed payloads</th></tr>
+<tr><td><b>None</b></td><td>Write FlatBuffers as-is</td><td>Disk bound. Example: ~110&nbsp;MiB/s, ~7.5&nbsp;Meps</td><td>1.0:1</td></tr>
+<tr><td><b>LZ4</b> (default)</td><td>lz4-java <i>fast</i>, 64&nbsp;KiB independent blocks</td><td>Often <b>as fast as or faster than None</b> (less disk). Example: ~160&nbsp;MiB/s, ~10&nbsp;Meps</td><td>Quiet ~2:1; high-rate random ~1.8:1</td></tr>
+<tr><td><b>LZ4 high</b></td><td>lz4-java <i>highCompressor</i>, 1&nbsp;MiB blocks</td><td>~5–6× slower than LZ4. Example: ~26&nbsp;MiB/s, ~1.7&nbsp;Meps</td><td>Usually only ~15–60% smaller than LZ4</td></tr>
+<tr><td><b>ZSTD</b></td><td>zstd level 3</td><td>~4× slower than LZ4 on high-rate. Example: ~38&nbsp;MiB/s, ~2.5&nbsp;Meps</td><td>Quiet ~9:1; high-rate random ~2.7:1</td></tr>
+<tr><td><b>ZSTD high</b></td><td>zstd level 9</td><td>~6× slower than LZ4. Example: ~25&nbsp;MiB/s, ~1.6&nbsp;Meps</td><td>Best on high-rate (~3:1); quiet often <b>same as ZSTD</b> (~9:1)</td></tr>
+</table>
+<p>Example speeds are from a write-only bench of <code>Aedat4FileOutputStream</code>
+(Windows 11 laptop, JDK 25, SSD): FlatBuffers + codec + disk, no USB or rendering.
+Live recording shares the CPU with capture and display, so real headroom is lower.
+Decompression is cheaper than compression. LZ4 decode is extremely fast; ZSTD is slower
+but usually fine for playback. Dependent-block LZ4 from some DV files is a playback issue,
+not a recording one (jAER writes independent blocks).</p>
+
+<h3>Match the codec to the scene, not the camera name</h3>
+<p>Cost is per <b>packet of events</b>. A quiet night scene at 20&nbsp;keps is a few small
+packets per frame time. A high-contrast drive at 10–50&nbsp;Meps is tens of megabytes of
+FlatBuffers per second.</p>
+<ul>
+<li><b>Bursty / mostly quiet surveillance</b> (empty frames, occasional person or car):
+prefer <b>ZSTD</b>. Clustered (x,y) often yields <b>~9:1</b> vs None (LZ4 only ~2:1).
+ZSTD high rarely shrinks further on this kind of data and is slower. CPU is idle
+between bursts, so ZSTD seldom drops the live display.</li>
+<li><b>High-rate streams</b> (bright lab, driving, Prophesee/Davis at high event rate):
+prefer <b>LZ4</b>. Random-ish polarity is only ~<b>1.8:1</b> with LZ4 and ~3:1 with ZSTD high,
+while ZSTD/LZ4 high run at ~1.6–2.5&nbsp;Meps in the write-only bench — too slow if you
+sustain 10&nbsp;Meps. If recording makes the viewer stutter, switch to <b>None</b>.
+LZ4 can still beat None on SSD because it writes less.</li>
+<li><b>Offline File → Save As / archive</b>: use <b>ZSTD</b>; try <b>ZSTD high</b> only if
+the bench shows a smaller file at a speed you can wait for.</li>
+</ul>
+
+<h3>Practical rule of thumb</h3>
+<ol>
+<li>Start with <b>LZ4</b> for live recording.</li>
+<li>If the live display stalls only while recording a fast camera, set <b>None</b>.</li>
+<li>If the scene is sparse and disk space matters, set <b>ZSTD</b>.</li>
+<li>Skip <b>LZ4 high</b> unless a bench on this PC shows it smaller <i>and</i> still
+fast enough — it is usually slower than ZSTD with a worse ratio.</li>
+</ol>
+<p>Run <b>Preferences → File → Bench this PC</b> to measure
+<code>Aedat4FileOutputStream</code> on this machine (high-rate random vs quiet/bursty
+synthetic polarity). Then pick the codec that stays above your expected event rate with
+an acceptable file size.</p>
+</body>
+</html>
+""")
 public final class Aedat4Compression {
 
     /** Default ZSTD level (DV "ZSTD"). */
