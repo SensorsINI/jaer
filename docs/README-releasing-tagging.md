@@ -28,9 +28,12 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
    On PowerShell, **quote** `-Dname=value` (otherwise `=` splits and Ant looks for
    target `true`). Put `-D` before the target.
    Default **skips** `jAER_windows-x64_*.exe` so a SignPath-signed (or test-signed)
-   GitHub asset is not replaced by the local unsigned build. Mac/Linux and
-   `jaer-sample-data.zip` still use `gh release upload --clobber`. Force the
-   unsigned Windows exe (no `-D`):
+   GitHub asset is not replaced by the local unsigned build. **Notarized Mac DMGs
+   must be built and uploaded from the Mini** (see [macOS notarized installers](#macos-notarized-installers)).
+   Do not `ant upload-installers` Mac `.dmg` files from Windows/Linux if those
+   media were compiled with `--disable-signing`; that would clobber a stapled
+   Mini build. Linux `.sh` can come from any host. Force the unsigned Windows
+   exe (no `-D`):
 
        ant upload-installers-clobber-windows
 
@@ -344,9 +347,46 @@ does not loop). The upload endpoint is unofficial (`uploads.github.com` +
 
 Package-manager trees should include a `.jaer-packaged-install` marker file so Help → Check for release updates does not offer Download and install.
 
-## macOS notarization
+## macOS notarized installers
 
-Individual Apple Developer Program. Signed/notarized DMGs: Mini `ant release` / `ant install4j` (install4j 13 App Store Connect API + Developer ID Application `.p12` in repo-root `signpath/`). Details: [packaging/macos-notarization.md](../packaging/macos-notarization.md).
+Notarized Intel + Apple Silicon DMGs are a **Mini-only** pipeline. Windows GitHub
+Actions / SignPath signs the `.exe` only. `ant` on Windows passes
+`--disable-signing` / `--disable-notarization`. install4j can emit unsigned Mac
+DMGs on any OS; those are not the GitHub Mac assets.
+
+Apple secrets live in gitignored repo-root `signpath/` on this Mini only (not
+Dropbox). Details: [packaging/macos-notarization.md](../packaging/macos-notarization.md).
+
+### Maintainer: build and upload (Mini)
+
+1. Confirm `signpath/` has the `.p12`, `AuthKey.p8`, issuer/key txt, and
+   `macos-p12-password.txt` (or `JAER_MAC_KEYSTORE_PASSWORD`).
+2. `ant install4j` (existing `dist/jAER.jar`) or `ant release` (full jar + tag/draft).
+   First-account notarization can sit on `Waiting for notarization result` for hours.
+3. Proof (not Finder Get Info, not a stale `*.dmg.notarization.log`):
+
+       xcrun stapler validate currentInstallers/<ver>/jAER_macos_aarch64_*.dmg
+       spctl -a -t open --context context:primary-signature -vv currentInstallers/<ver>/jAER_macos_aarch64_*.dmg
+
+   Expect `source=Notarized Developer ID`. Repeat for `jAER_macos_*.dmg` (Intel).
+4. From this Mini, `ant upload-installers` so the draft/release gets the stapled
+   DMGs. Do not overwrite them later from a Windows `ant release`.
+
+Finder: double-click the `.dmg` (mounts a volume). Then double-click
+**`jAER <VERSION.txt> Installer`**. That name is `installerName` / `volumeName` on
+media ids 38 and 39. Changing it requires another Mini sign+notarize.
+
+### User: open a notarized DMG
+
+1. Download the Apple Silicon or Intel DMG from the GitHub Release.
+2. Double-click the `.dmg`. Finder opens a disk named `jAER <version> Installer`.
+3. Double-click **`jAER <version> Installer`**. Do not use Archive Utility.
+4. Prefer a user folder unless you are installing a notarized build into
+   `/Applications`.
+
+Unsigned DMGs and Homebrew casks are unchanged (right-click Open / cask recipe).
+
+Individual Apple Developer Program. Gatekeeper shows the personal legal name.
 
 ## Build notes
 

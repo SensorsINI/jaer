@@ -13,7 +13,9 @@ From the repo root: `ant release`, `ant install4j` (regenerates splash from `VER
 
 ## macOS code signing / notarization
 
-On the Mini, `scripts/run-install4jc.sh` (from `ant release` / `ant install4j`) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git).
+On the Mini, `scripts/run-install4jc.sh` (from `ant release` / `ant install4j`) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git). GitHub Mac `.dmg` assets must be the Mini-notarized files (`ant upload-installers` from this machine).
+
+Media ids 38/39 use `installerName` / `volumeName` `jAER ${compiler:sys.version} Installer` so Finder shows a short installer name. That is Mac-only; do not change the global application name (SignPath Windows `product-name`).
 
 If the install4j IDE has `jaer.install4j` open, reload it after a git pull. Prefer `ant` for signed Mac media. Windows `ant release` and CI use `--disable-signing` (SignPath signs the exe).
 

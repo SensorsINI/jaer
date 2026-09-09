@@ -1,6 +1,6 @@
 # macOS Developer ID and notarization
 
-Unsigned jAER DMGs still work: README already tells users to right-click Open and to install into a **user folder**. Homebrew casks do **not** require notarization.
+Unsigned jAER DMGs still work with right-click Open and a **user folder**. Homebrew casks do **not** require notarization.
 
 In-app self-update that replaces an app in `/Applications` is flaky until the app and installer are Developer ID signed and notarized.
 
@@ -25,11 +25,11 @@ Gitignored (`/signpath/` in `.gitignore`) and listed in `.cursorignore`. Do not 
 | `signpath/apple-key-id.txt` | Key ID |
 | `signpath/macos-p12-password.txt` | `.p12` export password (one line). Needed for `ant` (no TTY). Or `export JAER_MAC_KEYSTORE_PASSWORD`. |
 
-## Build signed DMGs
+## Build signed DMGs (this Mini only)
 
-`ant install4j` / `ant release` run `scripts/run-install4jc.sh`. Issuer/key ID stay out of `jaer.install4j`.
+`ant install4j` / `ant release` run `scripts/run-install4jc.sh`. Issuer/key ID stay out of `jaer.install4j`. Windows/CI must not upload unsigned Mac DMGs over these files. GitHub Mac assets: build here, then `ant upload-installers` from this Mini.
 
-Finder Get Info does not show notarization. After a successful build:
+Finder: double-click the `.dmg`, then **`jAER <version> Installer`**. That bundle name is `installerName` on media 38/39 (`jaer.install4j`). Get Info does not show notarization. After a successful build:
 
 ```bash
 xcrun stapler validate currentInstallers/<ver>/jAER_macos_aarch64_*.dmg

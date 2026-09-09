@@ -1962,7 +1962,9 @@ return true;</property>
     </widgetStyles>
   </installerGui>
   <mediaSets>
-    <macosFolder name="macOS Folder" id="38" architecture="amd64">
+    <!-- installerName is the Finder .app (default is the long application name + " Installer").
+         volumeName is the mounted disk. Next Mini ant install4j re-signs and re-notarizes. -->
+    <macosFolder name="macOS Folder" id="38" architecture="amd64" installerName="jAER ${compiler:sys.version} Installer" volumeName="jAER ${compiler:sys.version} Installer">
       <jreBundle usePack200="false" />
       <exclude>
         <entry filesetId="9001" />
@@ -1972,7 +1974,7 @@ return true;</property>
     </macosFolder>
     <!-- Apple Silicon: distinct mediaFileName so install4j does not collide with id 38's jAER_macos_${version}.dmg.
          Keep id 38 for Intel so existing installs still match updates.xml. -->
-    <macosFolder name="macOS Folder Apple Silicon" id="39" architecture="aarch64" mediaFileName="${compiler:sys.shortName}_macos_aarch64_${compiler:sys.version}">
+    <macosFolder name="macOS Folder Apple Silicon" id="39" architecture="aarch64" mediaFileName="${compiler:sys.shortName}_macos_aarch64_${compiler:sys.version}" installerName="jAER ${compiler:sys.version} Installer" volumeName="jAER ${compiler:sys.version} Installer">
       <jreBundle usePack200="false" />
       <exclude>
         <entry filesetId="9001" />
