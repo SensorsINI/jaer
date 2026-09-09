@@ -597,7 +597,7 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     @Override
     public void mouseClicked(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
-        log.info(e.getSource().toString());
+        log.fine(e.getSource().toString());
         clickedPoint = p;
         if (circularShapeCenterSelecting) {
             circularShapeCenterSelecting = false;

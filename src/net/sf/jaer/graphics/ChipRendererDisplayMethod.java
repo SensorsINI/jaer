@@ -47,6 +47,11 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
         textureUploadScratch = null;
     }
 
+    @Override
+    public void onGlContextUnreliable() {
+        histogramTextureId = 0;
+    }
+
     /**
      * called by ChipCanvas.display(GLAutoDrawable) to draw the RGB fr histogram
      * values. The GL context is assumed to already be transformed so that chip

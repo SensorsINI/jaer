@@ -67,6 +67,9 @@ public class JAERWindowUtilities {
         resizingCountMap.put(frame, count);
 
         try {
+            if (!frame.isShowing()) {
+                return;
+            }
             Point loc = frame.getLocationOnScreen();
             Dimension dim = frame.getSize();
 

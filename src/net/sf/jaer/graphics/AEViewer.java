@@ -646,6 +646,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static boolean showedSkippedPacketsRenderingWarning = false;
     /** True when this recording temporarily enabled ARS (was off). Restored on stop. */
     private boolean arsForcedOnForRecording;
+    /** Last frame bounds used to ignore AWT move/resize events that did not change geometry. */
+    private int lastWindowGeometryX = Integer.MIN_VALUE, lastWindowGeometryY, lastWindowGeometryW, lastWindowGeometryH;
     /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
     private boolean eventAcquisitionPausedForPlayback;
     /**
@@ -4693,9 +4695,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Pause OpenGL while this frame is dragged or resized (Linux multi-monitor
-     * NVIDIA crash in JOGL {@code TextRenderer}).
+     * NVIDIA crash in JOGL {@code TextRenderer}). AWT can fire move/resize
+     * with unchanged bounds while JOGL paints; those must not keep skipping GL.
      */
     private void notifyChipCanvasWindowGeometryChanging() {
+        int x = getX(), y = getY(), w = getWidth(), h = getHeight();
+        if (x == lastWindowGeometryX && y == lastWindowGeometryY
+                && w == lastWindowGeometryW && h == lastWindowGeometryH) {
+            return;
+        }
+        lastWindowGeometryX = x;
+        lastWindowGeometryY = y;
+        lastWindowGeometryW = w;
+        lastWindowGeometryH = h;
         ChipCanvas canvas = getChipCanvas();
         if (canvas != null) {
             canvas.onWindowGeometryChanging();

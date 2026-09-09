@@ -1399,9 +1399,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void onWindowGeometryChanging() {
         suppressGlUntilMs = System.currentTimeMillis() + WINDOW_GEOMETRY_SETTLE_MS;
-        if (glCanvas != null) {
-            glCanvas.setIgnoreRepaint(true);
-        }
+        // Do not setIgnoreRepaint(true): after a Windows resize the WGL surface
+        // needs AWT paint/reshape, and ViewLoop then never fills the canvas.
         Runnable armTimer = () -> {
             if (windowGeometrySettleTimer == null) {
                 windowGeometrySettleTimer = new javax.swing.Timer(WINDOW_GEOMETRY_SETTLE_MS, e -> onWindowGeometrySettled());
@@ -1422,31 +1421,47 @@ public class ChipCanvas implements GLEventListener, Observer {
             return true;
         }
         GraphicsDevice now = currentWindowGraphicsDevice();
-        if (lastGraphicsDevice != null && now != null && now != lastGraphicsDevice) {
-            log.info("OpenGL display on a different screen than last frame; skipping until the window settles");
-            dropTextRenderersWithoutDispose();
-            lastGraphicsDevice = now;
-            onWindowGeometryChanging();
-            return true;
-        }
-        if (lastGraphicsDevice == null && now != null) {
+        if (now != null && !sameGraphicsDevice(lastGraphicsDevice, now)) {
+            if (lastGraphicsDevice != null) {
+                log.info("OpenGL display on a different screen than last frame ("
+                        + lastGraphicsDevice.getIDstring() + " -> " + now.getIDstring()
+                        + "); skipping until the window settles");
+                dropTextRenderersWithoutDispose();
+                onWindowGeometryChanging();
+                lastGraphicsDevice = now;
+                return true;
+            }
             lastGraphicsDevice = now;
         }
         return false;
     }
 
+    private static boolean sameGraphicsDevice(GraphicsDevice a, GraphicsDevice b) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        String ida = a.getIDstring();
+        String idb = b.getIDstring();
+        return ida != null && ida.equals(idb);
+    }
+
     private void onWindowGeometrySettled() {
         GraphicsDevice now = currentWindowGraphicsDevice();
-        if (lastGraphicsDevice != null && now != null && now != lastGraphicsDevice) {
+        if (now != null && lastGraphicsDevice != null && !sameGraphicsDevice(lastGraphicsDevice, now)) {
             log.info("AEViewer moved to a different screen (" + lastGraphicsDevice.getIDstring()
                     + " -> " + now.getIDstring()
                     + "); dropping GL text renderers without dispose()");
             dropTextRenderersWithoutDispose();
         }
-        lastGraphicsDevice = now;
+        if (now != null) {
+            lastGraphicsDevice = now;
+        }
         suppressGlUntilMs = 0L;
+        getClipArea().setDirty();
         if (glCanvas != null) {
-            glCanvas.setIgnoreRepaint(false);
             glCanvas.repaint();
         }
     }
@@ -1522,7 +1537,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     @Override
     public void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width, final int height) {
         getClipArea().setDirty();
-        if (skipGlBecauseWindowGeometry()) {
+        if (width <= 0 || height <= 0) {
             return;
         }
         final GL2 gl = drawable.getGL().getGL2();
@@ -2182,6 +2197,9 @@ public class ChipCanvas implements GLEventListener, Observer {
                 if (chip.getNumPixels() == 0) {
                     // Observer unzoom on EVENT_SIZEX can run before sizeY is set.
                     log.fine("chip is not initialized yet; clip bounds deferred until size is set");
+                    return;
+                }
+                if (glCanvas.getWidth() <= 0 || glCanvas.getHeight() <= 0) {
                     return;
                 }
                 if (currentZoomChipPixel == null) {
