@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="NRVS5KRC1S">
+          <map/>
+          <node name="RectangularClusterTracker">
+            <map>
+              <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
+              <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
+              <entry key="RectangularClusterTracker.clusterSize" value="0.054000005"/>
+              <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+              <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
+              <entry key="RectangularClusterTracker.filterEnabled" value="true"/>
+              <entry key="RectangularClusterTracker.helpDialogShown" value="true"/>
+              <entry key="RectangularClusterTracker.dynamicSizeEnabled" value="false"/>
+              <entry key="RectangularClusterTracker.ellipticalClusterEdgeThickness" value="0.1681793"/>
+              <entry key="RectangularClusterTracker.thresholdEventRatePerPixelForVisibleClusterHz" value="0.9638841"/>
+              <entry key="RectangularClusterTracker.locationMixingFactor" value="8.211937E-5"/>
+              <entry key="RectangularClusterTracker.zoomOnTrackedCluster" value="false"/>
+              <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
+              <entry key="RectangularClusterTracker.surroundInhibitionEnabled" value="true"/>
+            </map>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

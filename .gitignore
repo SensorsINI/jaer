@@ -36,6 +36,8 @@ exe*.tmp
 /native
 *.jar
 *.xml
+# Shipped example filter prefs (already-tracked XMLs elsewhere were added with -f)
+!filterSettings/*.xml
 jogl-osx-problem/bad frame.png
 jogl-osx-problem/bugreport folder.png
 jogl-osx-problem/jaer osx.wmv
