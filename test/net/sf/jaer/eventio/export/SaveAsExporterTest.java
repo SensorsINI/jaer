@@ -35,6 +35,15 @@ public class SaveAsExporterTest {
     }
 
     @Test
+    public void etaDoesNotOverflowLongMultiplyToZero() {
+        // 3 min elapsed, 80M/280M of a large clip — old code: elapsed*remaining overflowed.
+        long elapsed = 180L * 1_000_000_000L;
+        long remainingNs = SaveAsExporter.etaRemainingNs(elapsed, 80_000_000L, 280_000_000L);
+        assertTrue(remainingNs > 60L * 1_000_000_000L);
+        assertEquals("ETA 7m 30s", SaveAsExporter.formatEta(elapsed, 80_000_000L, 280_000_000L));
+    }
+
+    @Test
     public void compactDuration() {
         assertEquals("8s", SaveAsExporter.formatCompactDurationMs(8000));
         assertEquals("2m 05s", SaveAsExporter.formatCompactDurationMs(125_000));

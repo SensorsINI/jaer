@@ -37,6 +37,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Offline File → Save As scan: open a detached input stream on a headless chip
@@ -54,6 +55,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private static final int SLICE_EVENTS = 8_192;
     /** Dialog / taskbar PropertyChange cadence (SwingWorker {@code progress} + status). */
     private static final long UI_INTERVAL_NS = 500_000_000L;
+    /** Smooth coverage/sec so a fast FRAME/IMU burst does not make ETA jump to 0s. */
+    private static final float ETA_RATE_TAU_MS = 4_000f;
+    private static final long ETA_MIN_ELAPSED_NS = 2_000_000_000L;
 
     public static final String PROP_PROGRESS = "saveAsProgress";
     public static final String PROP_STATUS = "saveAsStatus";
@@ -66,6 +70,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private long eventsIn;
     private long exportStartNs;
     private long lastUiNs;
+    private final LowpassFilter etaRateLp = new LowpassFilter(ETA_RATE_TAU_MS);
+    private long lastRateCovered;
+    private long lastRateNs;
 
     public SaveAsExporter(SaveAsOptions options) {
         this.options = options;
@@ -520,13 +527,16 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 "Save As AEDAT-4 record-order: %d packets (%d in IN/OUT range), events [%d, %d), filters=%s",
                 packets.size(), totalInRange, start, end, filter));
         final long baseUnixUs = in.getBaseUnixUs();
-        int doneInRange = 0;
         for (Aedat4FileInputStream.RecordedPacket packet : packets) {
             if (isCancelled()) {
                 throw new CancellationException("Save As cancelled");
             }
             if (!in.inEventIndexRange(packet, start, end)) {
                 continue;
+            }
+            if (packet.kind == Aedat4FileInputStream.RecordedPacket.Kind.EVENTS) {
+                long begin = Math.max(clipStart, packet.firstEventIndex);
+                covered = Math.max(covered, Math.max(0L, begin - clipStart));
             }
             switch (packet.kind) {
                 case FRAME -> out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_FRAMES,
@@ -544,15 +554,10 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     } else {
                         writeRecordedEvents(in, out, chip, chain, filter, packet, start, end);
                     }
+                    long pos = Math.min(clipEndExclusive, packet.firstEventIndex + packet.numElements);
+                    covered = Math.max(covered, Math.max(0L, pos - clipStart));
                 }
             }
-            doneInRange++;
-            if (packet.kind == Aedat4FileInputStream.RecordedPacket.Kind.EVENTS) {
-                long pos = Math.min(clipEndExclusive, packet.firstEventIndex + packet.numElements);
-                covered = Math.max(covered, Math.max(0L, pos - clipStart));
-            }
-            long fromPackets = totalInRange > 0 ? clipRange * doneInRange / totalInRange : 0;
-            covered = Math.max(covered, Math.min(clipRange, fromPackets));
             reportUi(false, out.getEventsWritten(), 0);
         }
     }
@@ -656,6 +661,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         eventsIn = 0;
         exportStartNs = System.nanoTime();
         lastUiNs = 0;
+        lastRateCovered = 0;
+        lastRateNs = exportStartNs;
+        etaRateLp.reset();
     }
 
     /**
@@ -683,16 +691,37 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         return String.format("%dh %02dm", h, min);
     }
 
-    static String formatEta(long elapsedNs, long covered, long range) {
-        if (covered <= 0 || range <= 0 || elapsedNs < 1_000_000_000L) {
-            return null;
+    /**
+     * Remaining time from average rate. Uses double so {@code elapsed * remaining}
+     * cannot overflow {@code long} (that showed as {@code ETA 0s} at ~tens of %).
+     */
+    static long etaRemainingNs(long elapsedNs, long covered, long range) {
+        if (covered <= 0 || range <= 0 || elapsedNs <= 0) {
+            return -1L;
         }
         long remaining = range - covered;
         if (remaining <= 0) {
-            return "ETA 0s";
+            return 0L;
         }
-        long remainingNs = elapsedNs * remaining / covered;
+        return (long) (elapsedNs * (remaining / (double) covered));
+    }
+
+    static String formatEta(long remainingNs) {
+        if (remainingNs < 0) {
+            return null;
+        }
+        if (remainingNs > 0 && remainingNs < 1_000_000_000L) {
+            remainingNs = 1_000_000_000L;
+        }
         return "ETA " + formatCompactDurationMs(remainingNs / 1_000_000L);
+    }
+
+    /** @deprecated test helper wrapping {@link #etaRemainingNs} */
+    static String formatEta(long elapsedNs, long covered, long range) {
+        if (elapsedNs < 1_000_000_000L) {
+            return null;
+        }
+        return formatEta(etaRemainingNs(elapsedNs, covered, range));
     }
 
     private static int polarityCount(PacketBundle bundle, boolean keptOnly) {
@@ -744,11 +773,44 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         if (badEvents > 0) {
             sb.append(String.format(", skipped %,d bad", badEvents));
         }
-        String eta = formatEta(now - exportStartNs, covered, clipRange);
+        String eta = formatEta(etaRemainingNsSmoothed(now));
         if (eta != null) {
             sb.append(", ").append(eta);
         }
         publish(sb.toString());
+    }
+
+    /**
+     * Instantaneous coverage/sec through {@link LowpassFilter} (first sample
+     * initializes the state). Falls back to mean rate. Never uses overflowing
+     * {@code long} multiply.
+     */
+    private long etaRemainingNsSmoothed(long nowNs) {
+        long elapsedNs = nowNs - exportStartNs;
+        if (elapsedNs < ETA_MIN_ELAPSED_NS || covered <= 0) {
+            return -1L;
+        }
+        long remaining = clipRange - covered;
+        if (remaining <= 0) {
+            return 0L;
+        }
+        long dtNs = nowNs - lastRateNs;
+        long dCovered = covered - lastRateCovered;
+        if (dtNs > 0 && dCovered > 0) {
+            float perSec = (float) (dCovered * 1_000_000_000d / dtNs);
+            // First filter() call sets lpVal = perSec (initialized=false).
+            etaRateLp.filter(perSec, nowNs / 1000L);
+            lastRateCovered = covered;
+            lastRateNs = nowNs;
+        }
+        float rate = etaRateLp.isInitialized() ? etaRateLp.getValue() : 0f;
+        long avgNs = etaRemainingNs(elapsedNs, covered, clipRange);
+        if (rate > 1e-3f) {
+            long lpNs = (long) (remaining / rate * 1_000_000_000d);
+            // Prefer the slower estimate so a fast burst cannot collapse ETA to 0s.
+            return Math.max(avgNs, lpNs);
+        }
+        return avgNs;
     }
 
     /**
