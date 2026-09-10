@@ -20,6 +20,22 @@ Selecting a camera switches the Sensor (AEChip) to [`OpenCvFrameCamera`](../src/
 
 v1 is **local device indices** only (no RTSP/file URL).
 
+## OpenCV menu and capabilities
+
+OpenCV Java `VideoCapture` has **no capability list**. `get(CAP_PROP_*)` after open is the **current** mode (often 640×480 on DirectShow even when 720p exists). [`OpenCvFrameCamera`](../src/net/sf/jaer/chip/opencv/OpenCvFrameCamera.java) is constructed as VGA until a frame or a successful `set` changes the size.
+
+The **OpenCV** menu (same add/remove pattern as **DAVIS**) requests:
+
+- Size (driver default, 320×240 … 1920×1080)
+- Pixel format (driver default, YUY2, MJPG — MJPG often unlocks higher UVC sizes; jAER still stores RGB `FramePacket`)
+- Frame rate (driver default, 15 / 30 / 60 — many backends ignore this)
+- Brightness / contrast +/−, autofocus if `get(CAP_PROP_AUTOFOCUS) >= 0`
+- Windows: **Camera settings…** (`CAP_PROP_SETTINGS` DirectShow dialog)
+
+The overlay shows what `get` reports after `set`. Stored size/FOURCC/fps apply on the next `open()`. Analog controls and the OS dialog need a LIVE camera.
+
+True format enums (DirectShow `GetStreamCaps`, V4L2 `VIDIOC_ENUM_FMT`) are not used.
+
 ## Live capture
 
 [`OpenCvCameraHardwareInterface`](../src/net/sf/jaer/hardwareinterface/opencv/OpenCvCameraHardwareInterface.java) runs a capture thread. Each `VideoCapture.read` becomes one RGB `FramePacket` (Y flipped: OpenCV top-left → jAER bottom-left). Timestamps are microseconds since the last `resetTimestamps()` (`System.nanoTime()`). ViewLoop uses `acquireAvailablePacketBundle()`.

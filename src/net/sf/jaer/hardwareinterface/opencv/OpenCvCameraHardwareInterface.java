@@ -52,6 +52,7 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
     private volatile PacketBundle lastBundle = new PacketBundle();
     private int lastNumEvents;
     private int estimatedRate;
+    private int lastReportedFps;
     private int aeBufferSize = 1;
 
     public OpenCvCameraHardwareInterface(OpenCvCameraFactory.DeviceInfo info) {
@@ -128,6 +129,9 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
         originNanos.set(System.nanoTime());
         open.set(true);
         applyChipGeometryFromCapture(cap);
+        if (chip instanceof OpenCvCaptureControls) {
+            ((OpenCvCaptureControls) chip).onCaptureOpened(this);
+        }
         setEventAcquisitionEnabled(true);
         log.info("Opened " + label);
     }
@@ -153,6 +157,161 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
             c.setSizeX(w);
             c.setSizeY(h);
         }
+    }
+
+    public int getApi() {
+        return api;
+    }
+
+    /**
+     * Request size / FOURCC / fps on the open capture. Zero width or blank
+     * FOURCC or fps &lt;= 0 leaves that property to the driver. Returns a short
+     * status line of what {@code get} reports afterward.
+     */
+    public synchronized String applyControls(int width, int height, String fourcc, double fps) {
+        VideoCapture cap = capture;
+        if (!open.get() || cap == null || !cap.isOpened()) {
+            return "OpenCV camera is not open";
+        }
+        if (fourcc != null && !fourcc.isBlank()) {
+            cap.set(Videoio.CAP_PROP_FOURCC, OpenCvCameraFactory.fourccCode(fourcc));
+        }
+        if (width > 0 && height > 0) {
+            cap.set(Videoio.CAP_PROP_FRAME_WIDTH, width);
+            cap.set(Videoio.CAP_PROP_FRAME_HEIGHT, height);
+        }
+        if (fps > 0.5) {
+            cap.set(Videoio.CAP_PROP_FPS, fps);
+        }
+        try {
+            cap.grab();
+        } catch (Exception e) {
+            log.log(Level.FINE, "OpenCV grab after set: " + e, e);
+        }
+        return modeStatus(cap);
+    }
+
+    public synchronized String modeStatus() {
+        VideoCapture cap = capture;
+        if (!open.get() || cap == null || !cap.isOpened()) {
+            return "OpenCV camera is not open";
+        }
+        return modeStatus(cap);
+    }
+
+    private String modeStatus(VideoCapture cap) {
+        int w = (int) cap.get(Videoio.CAP_PROP_FRAME_WIDTH);
+        int h = (int) cap.get(Videoio.CAP_PROP_FRAME_HEIGHT);
+        double fps = cap.get(Videoio.CAP_PROP_FPS);
+        String fcc = OpenCvCameraFactory.fourccName(cap.get(Videoio.CAP_PROP_FOURCC));
+        applyChipGeometry(w, h);
+        if (fps > 0.5 && fps < 1000) {
+            lastReportedFps = (int) Math.round(fps);
+        }
+        StringBuilder sb = new StringBuilder();
+        if (w > 0 && h > 0) {
+            sb.append(w).append('×').append(h);
+        }
+        if (!fcc.isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append(fcc);
+        }
+        String fpsTxt = OpenCvCameraFactory.formatFps(fps);
+        if (!fpsTxt.isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            sb.append(fpsTxt);
+        }
+        return sb.length() == 0 ? "OpenCV driver default mode" : sb.toString();
+    }
+
+    public synchronized boolean propertySupported(int propId) {
+        VideoCapture cap = capture;
+        if (!open.get() || cap == null || !cap.isOpened()) {
+            return false;
+        }
+        return cap.get(propId) >= 0;
+    }
+
+    public synchronized double getProperty(int propId) {
+        VideoCapture cap = capture;
+        if (!open.get() || cap == null || !cap.isOpened()) {
+            return -1;
+        }
+        return cap.get(propId);
+    }
+
+    /**
+     * Step brightness or contrast. Range is inferred from the current value
+     * (0–1 vs 0–100 vs 0–255).
+     */
+    public synchronized String nudgeProperty(int propId, int direction, String name) {
+        VideoCapture cap = capture;
+        if (!open.get() || cap == null || !cap.isOpened()) {
+            return "OpenCV camera is not open";
+        }
+        double v = cap.get(propId);
+        if (v < 0) {
+            return name + " is not supported on this camera";
+        }
+        double hi = 255;
+        double step = 8;
+        if (v <= 1.01) {
+            hi = 1;
+            step = 0.05;
+        } else if (v <= 100.01) {
+            hi = 100;
+            step = 5;
+        }
+        double nv = v + (direction < 0 ? -step : step);
+        if (nv < 0) {
+            nv = 0;
+        }
+        if (nv > hi) {
+            nv = hi;
+        }
+        cap.set(propId, nv);
+        double after = cap.get(propId);
+        return String.format(java.util.Locale.ROOT, "%s %.3g", name, after);
+    }
+
+    public synchronized String setAutofocus(boolean enable) {
+        VideoCapture cap = capture;
+        if (!open.get() || cap == null || !cap.isOpened()) {
+            return "OpenCV camera is not open";
+        }
+        if (cap.get(Videoio.CAP_PROP_AUTOFOCUS) < 0) {
+            return "Autofocus is not supported on this camera";
+        }
+        cap.set(Videoio.CAP_PROP_AUTOFOCUS, enable ? 1 : 0);
+        boolean on = cap.get(Videoio.CAP_PROP_AUTOFOCUS) >= 0.5;
+        return "Autofocus " + (on ? "on" : "off");
+    }
+
+    public synchronized boolean isAutofocusOn() {
+        return getProperty(Videoio.CAP_PROP_AUTOFOCUS) >= 0.5;
+    }
+
+    /**
+     * DirectShow property page (Windows). Runs on a worker thread; blocks that
+     * thread until the dialog closes.
+     */
+    public void openOsSettingsDialog() {
+        Thread t = new Thread(() -> {
+            synchronized (OpenCvCameraHardwareInterface.this) {
+                VideoCapture cap = capture;
+                if (!open.get() || cap == null || !cap.isOpened()) {
+                    log.info("OpenCV settings: camera is not open");
+                    return;
+                }
+                cap.set(Videoio.CAP_PROP_SETTINGS, 1);
+            }
+        }, "jaer-opencv-settings");
+        t.setDaemon(true);
+        t.start();
     }
 
     @Override
@@ -268,11 +427,15 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
         Mat mat = new Mat();
         FramePacket frame = new FramePacket();
         while (acquire.get() && open.get()) {
-            VideoCapture cap = capture;
-            if (cap == null || !cap.isOpened()) {
-                break;
+            boolean ok;
+            synchronized (this) {
+                VideoCapture cap = capture;
+                if (cap == null || !cap.isOpened()) {
+                    break;
+                }
+                ok = cap.read(mat) && !mat.empty();
             }
-            if (!cap.read(mat) || mat.empty()) {
+            if (!ok) {
                 try {
                     Thread.sleep(5);
                 } catch (InterruptedException e) {
@@ -299,7 +462,7 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
                 FramePacket copy = copyFrame(frame);
                 wb.add(copy);
             }
-            estimatedRate = 30;
+            estimatedRate = lastReportedFps > 0 ? lastReportedFps : 30;
         }
         mat.release();
     }

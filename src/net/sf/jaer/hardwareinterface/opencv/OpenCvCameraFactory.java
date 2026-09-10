@@ -276,7 +276,22 @@ public final class OpenCvCameraFactory implements HardwareInterfaceFactoryInterf
         return sb.toString();
     }
 
-    static String fourccName(double raw) {
+    /** Pack a four-character code for {@code CAP_PROP_FOURCC} ({@code MJPG}, {@code YUY2}). */
+    public static int fourccCode(String name) {
+        if (name == null) {
+            return 0;
+        }
+        String s = name.trim();
+        if (s.length() < 4) {
+            return 0;
+        }
+        return (s.charAt(0) & 0xff)
+                | ((s.charAt(1) & 0xff) << 8)
+                | ((s.charAt(2) & 0xff) << 16)
+                | ((s.charAt(3) & 0xff) << 24);
+    }
+
+    public static String fourccName(double raw) {
         int c = (int) Math.round(raw);
         if (c <= 0) {
             return "";

@@ -26,6 +26,13 @@ public final class OpenCvCameraFactoryDemo {
                 || !tip.contains("Zoom")) {
             throw new AssertionError("tooltipHtml missing expected webcam details: " + tip);
         }
+        int mjpg = OpenCvCameraFactory.fourccCode("MJPG");
+        if (!"MJPG".equals(OpenCvCameraFactory.fourccName(mjpg))) {
+            throw new AssertionError("fourccCode/Name roundtrip MJPG");
+        }
+        if (OpenCvCameraFactory.fourccCode("YUY") != 0) {
+            throw new AssertionError("short FOURCC must be 0");
+        }
         f.probeNow();
         if (f.getNumInterfacesAvailable() != n) {
             throw new AssertionError("probeNow with enumeration disabled must not change cache");
