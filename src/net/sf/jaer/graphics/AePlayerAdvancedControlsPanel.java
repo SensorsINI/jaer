@@ -100,23 +100,36 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.toggleMarkerAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
-        // https://stackoverflow.com/questions/518471/jslider-question-position-after-leftclick
-        MouseListener[] listeners = playerSlider.getMouseListeners();
-        for (MouseListener l : listeners) {
-            removeMouseListener(l); // remove UI-installed TrackListener
+        // Jump to click on the track instead of unit-scrolling (SO 518471).
+        // Capture play/pause *before* TrackListener.setValue → doSingleStep pauses.
+        for (MouseListener l : playerSlider.getMouseListeners()) {
+            if (l instanceof TrackListener) {
+                playerSlider.removeMouseListener(l);
+            }
         }
         final BasicSliderUI ui = (BasicSliderUI) playerSlider.getUI();
         BasicSliderUI.TrackListener tl = ui.new TrackListener() {
-            // this is where we jump to absolute value of click
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    beginSliderSeekGesture();
+                }
+                super.mousePressed(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                super.mouseReleased(e);
+                endSliderSeekGesture();
+            }
+
             @Override
             public void mouseClicked(MouseEvent e) {
                 Point p = e.getPoint();
                 int value = ui.valueForXPosition(p.x);
-
                 playerSlider.setValue(value);
             }
 
-            // disable check that will invoke scrollDueToClickInTrack
             @Override
             public boolean shouldScroll(int dir) {
                 return false;
@@ -996,23 +1009,53 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             log.warning(e.toString());
         }
 }//GEN-LAST:event_packetSizeSpinnerStateChanged
+    /** Pause state at mouse-down, before seek/single-step. */
     private boolean playerSliderWasPaused = false;
+    /** True between left-button press and matching resume on release. */
+    private boolean playerSliderGestureActive = false;
+
+    /**
+     * Remember play/pause before TrackListener or stateChanged pause for a preview frame.
+     */
+    private void beginSliderSeekGesture() {
+        if (playerSliderGestureActive) {
+            return;
+        }
+        playerSliderGestureActive = true;
+        playerSliderWasPaused = aeViewer.isPaused();
+    }
+
+    /**
+     * Restore the pause state from mouse-down. ViewLoop may already be parked from
+     * {@code doSingleStep}; interrupt so play resumes immediately.
+     */
+    private void endSliderSeekGesture() {
+        if (!playerSliderGestureActive) {
+            return;
+        }
+        playerSliderGestureActive = false;
+        JAERViewer jv = aeViewer.getJaerViewer();
+        if (jv != null) {
+            for (AEViewer v : jv.getViewers()) {
+                v.setDoSingleStepEnabled(false);
+            }
+        } else {
+            aeViewer.setDoSingleStepEnabled(false);
+        }
+        aeViewer.setPaused(playerSliderWasPaused);
+        if (!playerSliderWasPaused) {
+            aeViewer.interruptViewloop();
+        }
+    }
 
     private void playerSliderMousePressed (java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMousePressed
-        //        playerSliderMousePressed=true;
-        playerSliderWasPaused = aePlayer.isPaused();
-        //        log.info("playerSliderWasPaused="+playerSliderWasPaused);
+        if (evt.getButton() == MouseEvent.BUTTON1) {
+            beginSliderSeekGesture();
+        }
 }//GEN-LAST:event_playerSliderMousePressed
 
     private void playerSliderMouseReleased (java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMouseReleased
-        //        playerSliderMousePressed=false;
-        //        log.info("playerSliderWasPaused="+playerSliderWasPaused);
-        if (!playerSliderWasPaused) {
-            synchronized (aePlayer) {
-                aePlayer.setDoSingleStepEnabled(false);
-                aePlayer.resume(); // might be in middle of single step in viewLoop, which will just pause again
-            }
-        }
+        endSliderSeekGesture();
 }//GEN-LAST:event_playerSliderMouseReleased
 
     private void playerSliderStateChanged (javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_playerSliderStateChanged
@@ -1029,6 +1072,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         }
 
         synchronized (aePlayer) {
+            JAERViewer jv = aeViewer.getJaerViewer();
             try {
                 aeViewer.aePlayer.setPlaybackSliderFraction(fracPos);
                 AEFileInputStreamInterface stream = aeViewer.aePlayer.getAEInputStream();
@@ -1037,20 +1081,27 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 String s = String.format("%8.3f s, %10d position",
                         stream.getPositionTimestampUs() * 1e-6, stream.position());
                 aeViewer.setStatusMessage(s);
-                JAERViewer jv = aeViewer.getJaerViewer();
                 if (jv != null && jv.isSyncEnabled() && jv.getViewers().size() > 1) {
                     jv.getSyncPlayer().seekAllToTimestamp(time, aeViewer);
                 }
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
-            boolean wasPaused = aeViewer.getJaerViewer().getSyncPlayer().isPaused();
-            aeViewer.getJaerViewer().getSyncPlayer().doSingleStep();
-            aeViewer.getJaerViewer().getSyncPlayer().setPaused(wasPaused);
-            // inform all listeners on the players that they have been repositioned
-            for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {
-                if (v.getAePlayer() != null && v.getAePlayer().getAEInputStream() != null) {
-                    v.getAePlayer().getSupport().firePropertyChange(AEInputStream.EVENT_REPOSITIONED, null, v.getAePlayer().getAEInputStream().position());
+            // Preview the new packet. doSingleStep always pauses; restore on mouse up.
+            // After a click, mouseClicked can fire after we already restored play — do not pause again.
+            if (playerSliderGestureActive || aeViewer.isPaused()) {
+                if (jv != null) {
+                    jv.getSyncPlayer().doSingleStep();
+                } else {
+                    aeViewer.doSingleStep();
+                }
+            }
+            if (jv != null) {
+                for (AEViewer v : jv.getViewers()) {
+                    AEPlayer local = v.getLocalAePlayer();
+                    if (local != null && local.getAEInputStream() != null) {
+                        local.getSupport().firePropertyChange(AEInputStream.EVENT_REPOSITIONED, null, local.getAEInputStream().position());
+                    }
                 }
             }
         }
