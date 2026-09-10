@@ -54,6 +54,8 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
     private String key = "WarningDialogWithDontShowPreference";
+    /** Optional stable prefs identity; defaults to {@link #key} (dialog title). */
+    private String prefsIdentity;
     ImageIcon imageIcon;
 
     /** Creates new form WarningDialogWithDontShowPreference
@@ -111,6 +113,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
         initComponents();
         optionPane.setMessage(text);
         key = title;
+        prefsIdentity = title;
         setTitle(title);
         optionPane.setMessageType(messageType);
         if (optionType != JOptionPane.DEFAULT_OPTION) {
@@ -119,6 +122,16 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
         dontShowAgainCheckBox.setSelected(defaultDontShowAgain);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         pack();
+    }
+
+    /**
+     * Stable don't-show-again prefs token. Use a constant that does not include
+     * changing message details (e.g. an fps value in the HTML body).
+     * Call before {@link #setVisible(boolean)}.
+     */
+    public void setPrefsIdentity(String prefsIdentity) {
+        this.prefsIdentity = (prefsIdentity == null || prefsIdentity.isEmpty()) ? key : prefsIdentity;
+        log.fine(() -> "WarningDialog prefs identity=" + this.prefsIdentity + " prefsKey=" + prefsKey());
     }
 
     /**
@@ -165,27 +178,54 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
             log.warning("You should not be calling this logic outside the Swing Event Thread!");
         }
         if (show && isWarningDisabled()) {
-            log.info("not showing WarningDialogWithDontShowPreference " + getTitle() + " because warning was disabled. To turn on this warning, remove the Preferences key " + prefsKey());
+            log.info("not showing WarningDialogWithDontShowPreference " + getTitle()
+                    + " because warning was disabled. To turn on this warning, remove the Preferences key " + prefsKey());
             return;
         }
+        log.fine(() -> "setVisible(" + show + ") title=" + getTitle() + " prefsKey=" + prefsKey()
+                + " disabled=" + isWarningDisabled());
         super.setVisible(show);
     }
 
     /** returns true if user has disabled this warning */
     public boolean isWarningDisabled() {
-        if (prefs.get(prefsKey(), null) == null) {
-            return false;
-        } else {
-            return prefs.getBoolean(prefsKey(), false);
+        if (prefs.getBoolean(prefsKey(), false)) {
+            return true;
         }
+        String legacy = legacyTruncatedPrefsKey(key);
+        if (!legacy.equals(prefsKey()) && prefs.getBoolean(legacy, false)) {
+            log.fine(() -> "don't-show-again matched legacy key " + legacy);
+            return true;
+        }
+        return false;
     }
 
-    private String prefsKey() {
-        String s = key;
+    public String prefsKey() {
+        String s = (prefsIdentity != null) ? prefsIdentity : key;
+        return "WarningDialogWithDontShowPreference." + s;
+    }
+
+    /** Former prefs token: first 10 + last 10 chars of titles longer than 20. */
+    private static String legacyTruncatedPrefsKey(String title) {
+        String s = title == null ? "" : title;
         if (s.length() > 20) {
-            s = s.substring(0, 10) + s.substring(s.length() - 10, s.length());
+            s = s.substring(0, 10) + s.substring(s.length() - 10);
         }
         return "WarningDialogWithDontShowPreference." + s;
+    }
+
+    private void storeDontShowPreference(Object optionValue) {
+        if (optionValue == JOptionPane.UNINITIALIZED_VALUE) {
+            log.fine("skip storing don't-show-again; option value still uninitialized");
+            return;
+        }
+        if (!shouldStoreDontShowPreference(optionValue)) {
+            log.fine(() -> "not storing don't-show-again for optionValue=" + optionValue);
+            return;
+        }
+        boolean selected = dontShowAgainCheckBox.isSelected();
+        log.info("storing preference for " + prefsKey() + "=" + selected);
+        prefs.putBoolean(prefsKey(), selected);
     }
 
     /** This method is called from within the constructor to
@@ -242,10 +282,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
 
     /** Closes the dialog */
     private void closeDialog(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_closeDialog
-        if (shouldStoreDontShowPreference(JOptionPane.CANCEL_OPTION)) {
-            log.info("storing preference for " + prefsKey() + "=" + dontShowAgainCheckBox.isSelected());
-            prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
-        }
+        storeDontShowPreference(JOptionPane.CANCEL_OPTION);
         doClose(RET_CANCEL);
     }//GEN-LAST:event_closeDialog
 
@@ -256,15 +293,16 @@ private void optionPanePropertyChange (java.beans.PropertyChangeEvent evt) {//GE
             && (evt.getSource() == optionPane)
             && (prop.equals(JOptionPane.VALUE_PROPERTY))) {
         Object v = optionPane.getValue();
+        if (v == null || v == JOptionPane.UNINITIALIZED_VALUE) {
+            log.fine("optionPane VALUE_PROPERTY ignored (uninitialized)");
+            return;
+        }
         if (Integer.valueOf(JOptionPane.OK_OPTION).equals(v) || Integer.valueOf(JOptionPane.YES_OPTION).equals(v)) {
             returnStatus = RET_OK;
         } else {
             returnStatus = RET_CANCEL;
         }
-        if (shouldStoreDontShowPreference(v)) {
-            log.info("storing preference for " + prefsKey() + "=" + dontShowAgainCheckBox.isSelected());
-            prefs.putBoolean(prefsKey(), dontShowAgainCheckBox.isSelected());
-        }
+        storeDontShowPreference(v);
         setVisible(false);
         dispose();
     }
