@@ -11,7 +11,7 @@ Related: [README-jaer3.md](README-jaer3.md) (ViewLoop / PacketBundle), [README-u
 - Never open `VideoCapture` on the Swing EDT.
 - Do **not** probe indices on every USB WAITING poll. `getNumInterfacesAvailable()` returns the last snapshot only.
 - Probe off-EDT at factory construction (background) and on **Interface → Refresh**.
-- Indices `0..7`, backend `CAP_DSHOW` (Windows), `CAP_AVFOUNDATION` (macOS), `CAP_V4L2` (Linux).
+- Indices `0..7`, backend `CAP_DSHOW` (Windows), `CAP_AVFOUNDATION` (macOS), `CAP_V4L2` (Linux). Stop after two consecutive failed opens so missing indices do not spam native OpenCV logs.
 - If OpenCV natives fail to load (`OpenCVNativeLoader`), the list is empty.
 
 Label example: `OpenCV: 0 DSHOW 640x480`.

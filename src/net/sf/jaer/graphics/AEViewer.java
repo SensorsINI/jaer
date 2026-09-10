@@ -740,7 +740,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         StartupProfiler.mark("AEViewer ctor start");
         loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
         loggingHandler.getSupport().addPropertyChangeListener(this); // logs to Console handler in AEViewer
-        Logger.getLogger("").addHandler(loggingHandler);
 
         log.info("AEViewer starting up...");
 
@@ -785,6 +784,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        Logger.getLogger("").addHandler(loggingHandler);
         // Cypress FX2 monitor/sequencer menu: historical and rarely used.
         monSeqMenu.setVisible(false);
         StartupProfiler.mark("AEViewer after initComponents");

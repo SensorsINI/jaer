@@ -123,19 +123,24 @@ public final class OpenCvCameraFactory implements HardwareInterfaceFactoryInterf
         }
         int api = preferredApi();
         List<DeviceInfo> found = new ArrayList<>();
+        int consecutiveMisses = 0;
         for (int i = 0; i < MAX_INDEX; i++) {
             if (OpenCvCameraHardwareInterface.isIndexOpen(i)) {
                 DeviceInfo prev = previous(i);
                 found.add(prev != null ? prev
                         : new DeviceInfo(i, api, "OpenCV: " + i + " (open)", 0, 0));
+                consecutiveMisses = 0;
                 continue;
             }
             DeviceInfo info = tryOpen(i, api);
-            if (info == null && api != Videoio.CAP_ANY) {
-                info = tryOpen(i, Videoio.CAP_ANY);
-            }
             if (info != null) {
                 found.add(info);
+                consecutiveMisses = 0;
+            } else {
+                consecutiveMisses++;
+                if (consecutiveMisses >= 2) {
+                    break;
+                }
             }
         }
         snapshot = List.copyOf(found);
