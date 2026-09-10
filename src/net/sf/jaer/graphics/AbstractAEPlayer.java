@@ -29,6 +29,7 @@ import java.util.prefs.Preferences;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 
 /**
@@ -381,9 +382,23 @@ public abstract class AbstractAEPlayer {
      */
     public void setPlaybackMode(PlaybackMode playbackMode) {
         PlaybackMode old = this.playbackMode;
+        if ((playbackMode == PlaybackMode.FixedPacketSize || playbackMode == PlaybackMode.AreaEventCount)
+                && !eventCountSlicingAllowed()) {
+            log.info("event-count playback is disabled for frame/IMU-only AEDAT-4; using CountDuration");
+            playbackMode = PlaybackMode.FixedTimeSlice;
+        }
         this.playbackMode = playbackMode;
         prefs.put("AbstractAEPlayer.playbackMode", playbackMode.name());
         support.firePropertyChange(EVENT_PLAYBACKMODE, old, playbackMode);
+    }
+
+    /**
+     * ConstantCount / AreaEventCount need a polarity stream. Frame/IMU-only
+     * AEDAT-4 uses time slices (or latches to a synced event camera).
+     */
+    public boolean eventCountSlicingAllowed() {
+        AEFileInputStreamInterface stream = getAEInputStream();
+        return !(stream instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets());
     }
 
     /**
@@ -709,6 +724,13 @@ public abstract class AbstractAEPlayer {
     void toggleFlexTime() {
         if (playbackMode == PlaybackMode.RealTime) {
             log.warning("cannot toggle flex time since we are in RealTime playback mode now");
+            return;
+        }
+        if (!eventCountSlicingAllowed()) {
+            setFixedTimesliceEnabled();
+            if (viewer != null) {
+                viewer.showActionText("CountDuration only (no events in this stream)");
+            }
             return;
         }
         if (playbackMode == PlaybackMode.FixedTimeSlice) {

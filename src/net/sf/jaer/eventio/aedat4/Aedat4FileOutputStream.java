@@ -386,22 +386,55 @@ public class Aedat4FileOutputStream implements Closeable {
         if (pixels == null) {
             return;
         }
-        byte[] pixelBytes = new byte[pixels.length * 2];
-        for (int i = 0, j = 0; i < pixels.length; i++) {
-            int value = pixels[i] & 0xffff;
-            pixelBytes[j++] = (byte) value;
-            pixelBytes[j++] = (byte) (value >>> 8);
+        byte format;
+        byte[] pixelBytes;
+        if (packet.getColorMode() == FramePacket.ColorMode.RGB) {
+            format = FrameFormat.OPENCV_8U_C3;
+            pixelBytes = rgbShortsToBgr8(pixels);
+        } else if (packet.getColorMode() == FramePacket.ColorMode.RGBA) {
+            format = FrameFormat.OPENCV_8U_C4;
+            pixelBytes = rgbaShortsToBgra8(pixels);
+        } else {
+            format = FrameFormat.OPENCV_16U_C1;
+            pixelBytes = new byte[pixels.length * 2];
+            for (int i = 0, j = 0; i < pixels.length; i++) {
+                int value = pixels[i] & 0xffff;
+                pixelBytes[j++] = (byte) value;
+                pixelBytes[j++] = (byte) (value >>> 8);
+            }
         }
         long start = toUnixUs(packet.getTimestampStartUs());
         long end = toUnixUs(packet.getTimestampEndUs());
         long midpoint = start + ((end - start) / 2);
         FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, pixelBytes.length + 128));
         int pixelsOffset = Frame.createPixelsVector(builder, pixelBytes);
-        int root = Frame.createFrame(builder, midpoint, start, end, start, end, FrameFormat.OPENCV_16U_C1,
+        int root = Frame.createFrame(builder, midpoint, start, end, start, end, format,
                 (short) packet.getWidth(), (short) packet.getHeight(), (short) 0, (short) 0, pixelsOffset,
                 packet.getExposureUs(), FrameSource.SENSOR);
         builder.finishSizePrefixed(root, "FRME");
         writePacket(currentTrack.framesStreamId(), builder.sizedByteArray(), 1, start, end);
+    }
+
+    /** jAER RGB shorts (low 8 bits) → DV OpenCV BGR 8U_C3. */
+    static byte[] rgbShortsToBgr8(short[] pixels) {
+        byte[] out = new byte[pixels.length];
+        for (int i = 0; i + 2 < pixels.length; i += 3) {
+            out[i] = (byte) (pixels[i + 2] & 0xff);
+            out[i + 1] = (byte) (pixels[i + 1] & 0xff);
+            out[i + 2] = (byte) (pixels[i] & 0xff);
+        }
+        return out;
+    }
+
+    static byte[] rgbaShortsToBgra8(short[] pixels) {
+        byte[] out = new byte[pixels.length];
+        for (int i = 0; i + 3 < pixels.length; i += 4) {
+            out[i] = (byte) (pixels[i + 2] & 0xff);
+            out[i + 1] = (byte) (pixels[i + 1] & 0xff);
+            out[i + 2] = (byte) (pixels[i] & 0xff);
+            out[i + 3] = (byte) (pixels[i + 3] & 0xff);
+        }
+        return out;
     }
 
     private void writeImuPacket(ImuPacket packet) throws IOException {

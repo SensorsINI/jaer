@@ -196,6 +196,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
+import net.sf.jaer.hardwareinterface.opencv.OpenCvCameraFactory;
+import net.sf.jaer.hardwareinterface.opencv.OpenCvCameraHardwareInterface;
+import net.sf.jaer.chip.opencv.OpenCvFrameCamera;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry;
@@ -616,7 +619,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         DVS640.class.getName(),
         NRVS5KRC1S.class.getName(),
         PropheseeIMX636HD.class.getName(),
-        DVS1280x720SD.class.getName()
+        DVS1280x720SD.class.getName(),
+        OpenCvFrameCamera.class.getName()
     };
     /**
      * The class name of the aeChipClass
@@ -1951,6 +1955,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 return false;
             }
+            if (hw instanceof OpenCvCameraHardwareInterface) {
+                ensureChipCompatibleWithLiveDevice(hw);
+                if (chip.getHardwareInterface() == null) {
+                    bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous OpenCV camera to ");
+                }
+                return chip.getHardwareInterface() != null;
+            }
             if (NetworkChip.class.isInstance(chip)) {
                 return false;
             }
@@ -2304,6 +2315,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         if (UDPInterface.class.isInstance(hw) || NetworkChip.class.isInstance(chip)) {
+            return;
+        }
+        if (hw instanceof OpenCvCameraHardwareInterface) {
+            if (!(chip instanceof OpenCvFrameCamera)) {
+                log.info("Switching AEChip to OpenCvFrameCamera for " + hw);
+                addChipClassesToMenu(java.util.List.of(OpenCvFrameCamera.class));
+                setAeChipClass(OpenCvFrameCamera.class);
+            }
             return;
         }
         UsbIds.Pair ids = UsbIds.peek(hw);
@@ -2703,6 +2722,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (ser != null && !ser.isEmpty()) {
             return ser;
         }
+        HardwareInterface hw0 = chip == null ? null : chip.getAssignedHardwareInterface();
+        if (hw0 instanceof OpenCvCameraHardwareInterface) {
+            return "cam" + ((OpenCvCameraHardwareInterface) hw0).getCameraIndex();
+        }
         if (rememberLastInterfaceSerial != null && !rememberLastInterfaceSerial.isBlank()) {
             return rememberLastInterfaceSerial;
         }
@@ -2739,7 +2762,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String name = file.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4) || name.endsWith(".aedat4")) {
             List<RecordingChipDetector.StreamHint> eventStreams
-                    = RecordingChipDetector.listAedat4EventStreams(file);
+                    = RecordingChipDetector.listAedat4PlaybackCameras(file);
             if (eventStreams.size() > 1) {
                 RecordingChipDetector.StreamHint chosen;
                 if (alreadyPending != null) {
@@ -6293,8 +6316,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         item.setToolTipText(tip);
         item.addActionListener(e -> {
             if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.getViewers().size() > 1
-                    && mode != AbstractAEPlayer.PlaybackMode.FixedTimeSlice) {
-                JOptionPane.showMessageDialog(this, "Flextime / area-count playback doesn't make sense for synchronized viewing");
+                    && mode != AbstractAEPlayer.PlaybackMode.FixedTimeSlice
+                    && !anyPlayingEventAedat4()) {
+                JOptionPane.showMessageDialog(this,
+                        "Event-count playback needs an event camera. Frame/IMU-only streams use CountDuration.");
+                updatePlaybackModeMenuSelection();
+                return;
+            }
+            if (!aePlayer.eventCountSlicingAllowed()
+                    && mode != AbstractAEPlayer.PlaybackMode.FixedTimeSlice
+                    && mode != AbstractAEPlayer.PlaybackMode.RealTime) {
+                JOptionPane.showMessageDialog(this,
+                        "This stream has no polarity events. Use CountDuration (or Real time).");
                 updatePlaybackModeMenuSelection();
                 return;
             }
@@ -6306,14 +6339,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackModeMenuItems.put(mode, item);
     }
 
+    void refreshPlaybackAccumulationControls() {
+        updatePlaybackModeMenuSelection();
+    }
+
     private void updatePlaybackModeMenuSelection() {
         if (aePlayer == null) {
             return;
+        }
+        boolean eventCountOk = aePlayer.eventCountSlicingAllowed();
+        JRadioButtonMenuItem countItem = playbackModeMenuItems.get(AbstractAEPlayer.PlaybackMode.FixedPacketSize);
+        JRadioButtonMenuItem areaItem = playbackModeMenuItems.get(AbstractAEPlayer.PlaybackMode.AreaEventCount);
+        if (countItem != null) {
+            countItem.setEnabled(eventCountOk);
+        }
+        if (areaItem != null) {
+            areaItem.setEnabled(eventCountOk);
+        }
+        if (playerControls != null) {
+            playerControls.setEventCountSlicingEnabled(eventCountOk);
         }
         JRadioButtonMenuItem item = playbackModeMenuItems.get(aePlayer.getPlaybackMode());
         if (item != null) {
             item.setSelected(true);
         }
+    }
+
+    private boolean anyPlayingEventAedat4() {
+        if (jaerViewer == null) {
+            return false;
+        }
+        for (AEViewer v : jaerViewer.getViewers()) {
+            if (v.getPlayMode() != PlayMode.PLAYBACK) {
+                continue;
+            }
+            AEFileInputStreamInterface s = v.getAeFileInputStream();
+            if (s instanceof Aedat4FileInputStream a4 && a4.hasEventPackets()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -6558,17 +6623,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 continue;
                             }
                             if (rawPacket == null || rawPacket.getNumEvents() == 0) {
-                                log.fine("null or empty rawPacket, probably at OUT marker or end of file");
-                                paceViewLoopFrame();
-                                continue;
+                                AEFileInputStreamInterface playbackStream = getAeFileInputStream();
+                                boolean pendingTyped = playbackStream instanceof Aedat4FileInputStream a4
+                                        && a4.hasPendingTypedPackets();
+                                if (!pendingTyped) {
+                                    log.fine("null or empty rawPacket, probably at OUT marker or end of file");
+                                    paceViewLoopFrame();
+                                    continue;
+                                }
+                                if (rawPacket == null) {
+                                    rawPacket = new AEPacketRaw(0);
+                                }
                             }
                         }
 
                         numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isRecordFilteredEventsEnabled();
                         // Live only: skip pixmap packets. Playback thins events in extractPolarity.
-                        final boolean aedat4HasFrames = getAePlayer() != null
-                                && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream a4
+                        final boolean aedat4HasFrames = getAeFileInputStream() instanceof Aedat4FileInputStream a4
                                 && a4.hasFramePackets();
                         if (!aedat4HasFrames && !isPaused() && !isJaerAviRecordingActive()
                                 && getRenderer().isPacketLevelRenderSkipping()) {
@@ -6608,12 +6680,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             cookedBundle = extractBundle(rawPacket);
                         }
                         // AEDAT-4: inject FRME/IMUS decoded for this time slice
-                        if (getAePlayer() != null
-                                && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream) {
+                        if (getAeFileInputStream() instanceof Aedat4FileInputStream a4) {
                             if (cookedBundle == null) {
                                 cookedBundle = new PacketBundle();
                             }
-                            ((Aedat4FileInputStream) getAePlayer().getAEInputStream()).appendTypedPackets(cookedBundle);
+                            a4.appendTypedPackets(cookedBundle);
                         }
                         if (cookedBundle == null || cookedBundle.isEmpty()) {
                             // Mid-USB APS-only slices can yield empty typed bundles; do not spam SEVERE.
@@ -7513,8 +7584,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     sb.append(" ARS lvl=").append(renderer.getSkipFrameRenderingNumberCurrent())
                             .append('/').append(renderer.getSkipFrameRenderingNumberMax());
                     if (getPlayMode() == PlayMode.PLAYBACK
-                            && getAePlayer() != null
-                            && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream a4) {
+                            && getAeFileInputStream() instanceof Aedat4FileInputStream a4) {
                         sb.append(" evSkip=").append(a4.getLastPolarityEventSkip());
                     } else {
                         sb.append(" sk=").append(renderer.getSkipPacketsRenderingCount());
@@ -9600,9 +9670,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
-            showActionText("Scanning USB…");
+            showActionText("Scanning USB and OpenCV cameras…");
             Thread t = new Thread(() -> {
                 try {
+                    OpenCvCameraFactory.factory().probeNow();
                     HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
                     final int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
                     if (!LibUsbHotplug.isSupported()) {
@@ -9754,6 +9825,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 zeroTimestamps();
             }
 	}//GEN-LAST:event_zeroTimestampsMenuItemActionPerformed
+
 
 	private void cycleNextColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleNextColorRenderingMethodMenuItemActionPerformed
             if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) /*&& (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)*/) {
@@ -10217,7 +10289,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * (APS + IMU) and {@link DVXplorer} (IMU, including Mini/Micro).
      */
     public static boolean aedzOmitsImuOrFrames(AEChip chip) {
-        return chip instanceof DavisChip || chip instanceof DVXplorer;
+        return chip instanceof DavisChip || chip instanceof DVXplorer
+                || chip instanceof OpenCvFrameCamera;
     }
 
     static String aedzMissingStreamsLabel(AEChip chip) {
@@ -10226,6 +10299,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if (chip instanceof DVXplorer) {
             return "IMU samples";
+        }
+        if (chip instanceof OpenCvFrameCamera) {
+            return "RGB frames";
         }
         return "IMU or frames";
     }

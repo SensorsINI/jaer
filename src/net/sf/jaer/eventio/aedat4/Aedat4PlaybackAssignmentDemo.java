@@ -21,6 +21,7 @@ public final class Aedat4PlaybackAssignmentDemo {
         testSoftCapUnlessMoreDevices();
         testIdentityTokens();
         testRosSubscriber346ResolvesDavis346();
+        testOpenCvFrmeOnlyAssignment();
         System.out.println("AEDAT4_PLAYBACK_ASSIGNMENT PASS");
     }
 
@@ -138,8 +139,27 @@ public final class Aedat4PlaybackAssignmentDemo {
         assertTrue(plan.get(1).createNew, "second ROS stream opens a new viewer");
     }
 
+    private static void testOpenCvFrmeOnlyAssignment() {
+        List<RecordingChipDetector.StreamHint> streams = List.of(
+                evts(0, "Davis346red-SN0001", 346, 260),
+                frme(4, "OpenCvFrameCamera-cam0", 640, 480));
+        List<ViewerSlot> viewers = List.of(new ViewerSlot(0, "Davis346red", "SN0001"));
+        List<Binding> plan = Aedat4PlaybackAssignment.assign(streams, viewers, loaded());
+        assertTrue(plan.size() == 2, "Davis EVTS + OpenCV FRME");
+        assertTrue(plan.get(0).chip == eu.seebetter.ini.chips.davis.Davis346red.class
+                && !plan.get(0).createNew,
+                "Davis EVTS stays on Davis viewer");
+        assertTrue(plan.get(1).chip == net.sf.jaer.chip.opencv.OpenCvFrameCamera.class
+                && plan.get(1).createNew,
+                "FRME-only OpenCV stream opens a new viewer, got " + plan.get(1).chip);
+    }
+
     private static RecordingChipDetector.StreamHint evts(int id, String source, int sx, int sy) {
         return new RecordingChipDetector.StreamHint(id, "EVTS", source, sx, sy, null, "events");
+    }
+
+    private static RecordingChipDetector.StreamHint frme(int id, String source, int sx, int sy) {
+        return new RecordingChipDetector.StreamHint(id, "FRME", source, sx, sy, null, "frames");
     }
 
     private static List<Class<? extends AEChip>> loaded() {
@@ -147,6 +167,7 @@ public final class Aedat4PlaybackAssignmentDemo {
         loaded.add(ch.unizh.ini.jaer.chip.retina.DVS128.class);
         loaded.add(ch.unizh.ini.jaer.chip.retina.DVXplorer.class);
         loaded.add(eu.seebetter.ini.chips.davis.Davis346red.class);
+        loaded.add(net.sf.jaer.chip.opencv.OpenCvFrameCamera.class);
         return loaded;
     }
 

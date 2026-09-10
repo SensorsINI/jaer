@@ -596,6 +596,12 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         return;
                     }
                     aeInputStream = stream;
+                    if (stream instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets()) {
+                        if (isFlexTimeEnabled() || isAreaEventCountEnabled()) {
+                            setFixedTimesliceEnabled();
+                        }
+                        log.info("Frame/IMU-only AEDAT-4: CountDuration slicing (ConstantCount/AreaEventCount disabled)");
+                    }
                     // Close progress before setPlayMode — dialog/EDT must not contend with ViewLoop locks.
                     try {
                         progressMonitor.setProgress(100);
@@ -624,6 +630,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     log.fine("done(): applying restored marks to player controls");
                     applyRestoredMarksToPlayerControls(aeInputStream);
                     viewer.getPlayerControls().bindEventRateSparkline(aeInputStream);
+                    viewer.refreshPlaybackAccumulationControls();
                     if (viewer.getChip().getRenderer() != null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)) {
                         log.fine("done(): showRenderingModeTextOnAeViewer");
                         AEChipRenderer renderer = (AEChipRenderer) viewer.getChip().getRenderer();
@@ -826,6 +833,41 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
     }
 
+    /**
+     * Other PLAYBACK viewers in a synced group have polarity; this stream
+     * should latch the last frame/IMU at that event time instead of slicing.
+     */
+    private boolean followsEventCameraSlices() {
+        if (viewer == null || viewer.getJaerViewer() == null || !viewer.getJaerViewer().isSyncEnabled()) {
+            return false;
+        }
+        int others = 0;
+        for (AEViewer v : viewer.getJaerViewer().getViewers()) {
+            if (v == viewer || v.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+                continue;
+            }
+            AEFileInputStreamInterface s = v.getAeFileInputStream();
+            if (s instanceof Aedat4FileInputStream a4 && a4.hasEventPackets()) {
+                others++;
+            }
+        }
+        return others > 0;
+    }
+
+    private int eventSliceAuthorityTimeUs() {
+        if (viewer != null && viewer.getJaerViewer() != null && viewer.getJaerViewer().getSyncPlayer() != null) {
+            return viewer.getJaerViewer().getSyncPlayer().getTime();
+        }
+        return getTime();
+    }
+
+    private AEPacketRaw latchToEventSlice() throws IOException {
+        if (!(aeInputStream instanceof Aedat4FileInputStream a4)) {
+            return new AEPacketRaw(0);
+        }
+        return a4.latchTypedAtOrBefore(eventSliceAuthorityTimeUs() & 0xffffffffL);
+    }
+
     @Override
     public AEPacketRaw getNextPacket() {
         return getNextPacket(null);
@@ -843,10 +885,15 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
 
         try {
-            boolean area = viewer.aePlayer.isAreaEventCountEnabled();
-            boolean flex = !area && viewer.aePlayer.isFlexTimeEnabled();
+            final boolean typedOnly = aeInputStream instanceof Aedat4FileInputStream
+                    && !((Aedat4FileInputStream) aeInputStream).hasEventPackets();
+            final boolean followEvents = typedOnly && followsEventCameraSlices();
+            boolean area = !typedOnly && viewer.aePlayer.isAreaEventCountEnabled();
+            boolean flex = !typedOnly && !area && viewer.aePlayer.isFlexTimeEnabled();
             if (!jogOccuring || jogPacketsLeft == 0) {
-                if (area) {
+                if (followEvents) {
+                    aeRaw = latchToEventSlice();
+                } else if (area) {
                     aeRaw = readPacketByAreaEventCount();
                 } else {
                     int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
@@ -873,7 +920,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     setDirectionForwards(forwards);
                     long posBefore = aeInputStream.position();
                     int slice = area ? 0 : (flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs());
-                    if (area) {
+                    if (followEvents) {
+                        aeRaw = latchToEventSlice();
+                    } else if (area) {
                         aeRaw = readPacketByAreaEventCount();
                     } else if (!flex) {
                         aeRaw = aeInputStream.readPacketByTime(slice);

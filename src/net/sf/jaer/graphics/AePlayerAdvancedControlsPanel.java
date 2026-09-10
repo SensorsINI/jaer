@@ -331,6 +331,21 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     }
 
     /**
+     * ConstantCount / AreaEventCount need polarity events.
+     */
+    public void setEventCountSlicingEnabled(boolean allowed) {
+        if (fixedPacketSizeButton != null) {
+            fixedPacketSizeButton.setEnabled(allowed);
+        }
+        if (areaEventCountButton != null) {
+            areaEventCountButton.setEnabled(allowed);
+        }
+        if (packetSizeSpinner != null) {
+            packetSizeSpinner.setEnabled(allowed);
+        }
+    }
+
+    /**
      * @return the playerSlider
      */
     public javax.swing.JSlider getPlayerSlider() {

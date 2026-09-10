@@ -113,6 +113,9 @@ public final class UsbIds {
         if (a == b) {
             return true;
         }
+        if (net.sf.jaer.hardwareinterface.opencv.OpenCvCameraHardwareInterface.sameDevice(a, b)) {
+            return true;
+        }
         for (HardwareInterface ca : components(a)) {
             if (ca == null) {
                 continue;

@@ -570,6 +570,9 @@ public class AEViewerSnapshotProbe {
         AEChip dvx = new org.objenesis.ObjenesisStd().newInstance(
                 ch.unizh.ini.jaer.chip.retina.DVXplorerMicro.class);
         assertTrue(AEViewer.aedzOmitsImuOrFrames(dvx), "DVXplorerMicro omits IMU under AEDZ");
+        AEChip opencv = new org.objenesis.ObjenesisStd().newInstance(
+                net.sf.jaer.chip.opencv.OpenCvFrameCamera.class);
+        assertTrue(AEViewer.aedzOmitsImuOrFrames(opencv), "OpenCvFrameCamera omits RGB frames under AEDZ");
         assertTrue("rec.aedat4".equals(AEViewer.toAedat4RecordingFilename("rec.aedz")),
                 ".aedz rewrites to .aedat4");
         assertTrue("rec.aedat4".equals(AEViewer.toAedat4RecordingFilename("rec.AEDZ")),
@@ -768,7 +771,7 @@ public class AEViewerSnapshotProbe {
         }
 
         @Override
-        void fixRecordingControls() {
+        public void fixRecordingControls() {
             // Headless probe: production lifecycle is exercised without scheduling Swing widget updates.
         }
     }

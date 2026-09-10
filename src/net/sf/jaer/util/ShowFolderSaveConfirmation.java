@@ -20,9 +20,10 @@ import javax.swing.SwingUtilities;
 
 /**
  * Confirmation after saving a file: message plus optional Show folder / play /
- * OK buttons.
+ * OK buttons. Packed to content and centered on the owner; {@link WindowSaver.DontRestore}
+ * so a saved bounds restore cannot override that.
  */
-public class ShowFolderSaveConfirmation extends JDialog {
+public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.DontRestore {
 
     static final private Logger log = Logger.getLogger("net.sf.jaer");
 
@@ -78,7 +79,6 @@ public class ShowFolderSaveConfirmation extends JDialog {
         this.file = file;
         this.msg = msg;
         setResizable(true);
-        setLocationRelativeTo(owner);
         if (getContentPane() instanceof JPanel panel) {
             panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // top, left, bottom, right
         }
@@ -123,6 +123,24 @@ public class ShowFolderSaveConfirmation extends JDialog {
         add(buts, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(okB);
         pack();
+        setLocationRelativeTo(owner);
+    }
+
+    /**
+     * Center on the owner after {@link #pack()} and again on the next EDT turn
+     * so {@link WindowSaver} cannot leave a restored origin in place.
+     */
+    @Override
+    public void setVisible(boolean visible) {
+        if (visible) {
+            pack();
+            setLocationRelativeTo(getOwner());
+            super.setVisible(true);
+            final Window owner = getOwner();
+            SwingUtilities.invokeLater(() -> setLocationRelativeTo(owner));
+            return;
+        }
+        super.setVisible(false);
     }
 
     /**

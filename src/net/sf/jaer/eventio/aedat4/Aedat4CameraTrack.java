@@ -36,9 +36,8 @@ public final class Aedat4CameraTrack {
     }
 
     public static Aedat4CameraTrack fromChip(AEChip chip, RecordingConfigurationSnapshot snapshot, int index) {
-        String serial = RecordingFilename.usbSerialAlnum(chip);
-        String source = RecordingFilename.cameraToken(
-                chip == null ? "jAER" : chip.getClass().getSimpleName(), serial);
+        RecordingFilename.DeviceToken tok = RecordingFilename.tokenFromChip(chip);
+        String source = RecordingFilename.cameraToken(tok.chipSimpleName, tok.serialAlnum);
         return new Aedat4CameraTrack(chip, source, snapshot, index);
     }
 

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.opencv.OpenCvCameraHardwareInterface;
 
 /**
  * OS-safe recording basenames from chip class + USB serial (single or muxed).
@@ -122,6 +123,9 @@ public final class RecordingFilename {
     public static String deviceAbbrev(String chipSimpleName) {
         String raw = chipSimpleName == null || chipSimpleName.isEmpty() ? "jAER" : chipSimpleName;
         String n = raw.toLowerCase(Locale.ROOT);
+        if (n.startsWith("opencv")) {
+            return "OpenC";
+        }
         if (n.startsWith("nrv")) {
             return "NRV";
         }
@@ -155,6 +159,10 @@ public final class RecordingFilename {
 
     public static DeviceToken tokenFromChip(AEChip chip) {
         String name = chip == null ? "jAER" : chip.getClass().getSimpleName();
+        if (chip != null && chip.getHardwareInterface() instanceof OpenCvCameraHardwareInterface) {
+            int idx = ((OpenCvCameraHardwareInterface) chip.getHardwareInterface()).getCameraIndex();
+            return new DeviceToken(name, "cam" + idx);
+        }
         return new DeviceToken(name, usbSerialAlnum(chip));
     }
 

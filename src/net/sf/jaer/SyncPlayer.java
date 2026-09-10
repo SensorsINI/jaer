@@ -29,6 +29,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.RecordingChipDetector;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
@@ -554,20 +555,30 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         if (numPlayers < 2 || getPlayingViewers().size() < 2) {
             return player.getNextPacket(player);
         }
-        int[] currentTimes = new int[getPlayingViewers().size()];
-        int i = 0;
+        int maxtime = Integer.MIN_VALUE;
         try {
+            boolean eventAuthority = false;
             for (AEViewer v : getPlayingViewers()) {
-                currentTimes[i++] = v.aePlayer.getTime();
+                AEFileInputStreamInterface s = v.getAeFileInputStream();
+                if (s instanceof Aedat4FileInputStream a4 && a4.hasEventPackets()) {
+                    eventAuthority = true;
+                    break;
+                }
+            }
+            for (AEViewer v : getPlayingViewers()) {
+                if (eventAuthority) {
+                    AEFileInputStreamInterface s = v.getAeFileInputStream();
+                    if (!(s instanceof Aedat4FileInputStream a4 && a4.hasEventPackets())) {
+                        continue;
+                    }
+                }
+                int t = v.aePlayer.getTime();
+                if (t > maxtime) {
+                    maxtime = t;
+                }
             }
         } catch (ConcurrentModificationException e) {
             log.warning("caught " + e.toString() + " when finding current packet times from all viewers");
-        }
-        int maxtime = Integer.MIN_VALUE;
-        for (int t : currentTimes) {
-            if (t > maxtime) {
-                maxtime = t;
-            }
         }
         if (maxtime != Integer.MIN_VALUE) {
             setTime(maxtime);

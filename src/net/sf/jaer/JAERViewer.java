@@ -907,6 +907,10 @@ public class JAERViewer {
             log.info("synchronized recording switched from AEDZ to AEDAT-4 so IMU/frames are stored");
         }
 
+        for (AEViewer v : rec) {
+            v.zeroTimestamps();
+        }
+
         boolean muxAedat4 = rec.size() > 1
                 && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(rec.get(0).getRecordingDataFileVersion());
         if (muxAedat4) {

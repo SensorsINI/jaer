@@ -500,6 +500,39 @@ public final class RecordingChipDetector {
         return events;
     }
 
+    /**
+     * One stream per camera for muxed playback: EVTS when present for that
+     * {@code source}, else FRME (frame-only OpenCV cameras).
+     */
+    public static List<StreamHint> listAedat4PlaybackCameras(File file) {
+        List<StreamHint> all = listAedat4Streams(file);
+        List<StreamHint> cameras = new ArrayList<>();
+        java.util.LinkedHashMap<String, List<StreamHint>> bySource = new java.util.LinkedHashMap<>();
+        for (StreamHint s : all) {
+            String key = s.source != null && !s.source.isEmpty()
+                    ? s.source
+                    : ("stream-group-" + (s.streamId / 3));
+            bySource.computeIfAbsent(key, k -> new ArrayList<>()).add(s);
+        }
+        for (List<StreamHint> group : bySource.values()) {
+            StreamHint evts = null;
+            StreamHint frme = null;
+            for (StreamHint s : group) {
+                if (s.isEvents() && evts == null) {
+                    evts = s;
+                } else if (s.isFrames() && frme == null) {
+                    frme = s;
+                }
+            }
+            if (evts != null) {
+                cameras.add(evts);
+            } else if (frme != null) {
+                cameras.add(frme);
+            }
+        }
+        return cameras;
+    }
+
     public static String peekAedat4InfoNodeXml(File file) {
         try (FileInputStream in = new FileInputStream(file); FileChannel channel = in.getChannel()) {
             ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);

@@ -172,6 +172,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private boolean repeat;
     private boolean nonMonotonicTimeExceptionsChecked = true;
     private int currentStartTimestamp;
+    /**
+     * FRME/IMUS-only CountDuration playhead (relative µs). Frame index is not
+     * incremented every ViewLoop frame — that ignored timeslice when dt was
+     * smaller than the inter-frame gap.
+     */
+    private long typedPlayheadUs;
+    private boolean typedPlayheadSet;
     /** Last 32-bit relative timestamp emitted (for EVENT_WRAPPED_TIME). */
     private int mostRecentEmittedTimestamp;
     private boolean haveEmittedTimestamp;
@@ -402,7 +409,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public boolean usesTimeMappedSlider() {
-        return indexComplete && eventRefs.length > 0 && getDurationUsLong() > 0;
+        return indexComplete && getDurationUsLong() > 0;
     }
 
     @Override
@@ -430,7 +437,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return 0;
         }
         long idx = Math.max(0, Math.min(eventPos, n - 1));
-        float f = (float) ((timestampApproxLong(idx) - eventRefs[0].unixStart) / (double) dur);
+        float f = (float) ((timestampApproxLong(idx) - timelineOriginUs()) / (double) dur);
         if (f < 0) {
             f = 0;
         } else if (f > 1) {
@@ -630,6 +637,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         pendingImu.clear();
     }
 
+    /** True when this open selected an EVTS stream with indexed polarity packets. */
+    public boolean hasEventPackets() {
+        return eventStreamId >= 0 && eventRefs != null && eventRefs.length > 0;
+    }
+
     /** True when this open selected a FRME stream with indexed frames. */
     public boolean hasFramePackets() {
         return frameStreamId >= 0 && frameRefs != null && frameRefs.length > 0;
@@ -638,6 +650,57 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** True when this open selected an IMU stream with indexed samples. */
     public boolean hasImuPackets() {
         return imuStreamId >= 0 && imuRefs != null && imuRefs.length > 0;
+    }
+
+    /** FRME/IMUS waiting for {@link #appendTypedPackets(PacketBundle)} after the last read. */
+    public boolean hasPendingTypedPackets() {
+        return !pendingFrames.isEmpty() || !pendingImu.isEmpty();
+    }
+
+    /**
+     * Frame/IMU-only playback: decode the last frame (and IMU packet) at or
+     * before relative {@code t} µs. Does not step a polarity index. Used when
+     * an event camera in a synced group owns the slice clock.
+     */
+    public synchronized AEPacketRaw latchTypedAtOrBefore(long t) throws IOException {
+        ensureChannelOpen();
+        pendingFrames.clear();
+        pendingImu.clear();
+        lastReadT0 = t;
+        lastReadT1 = t;
+        int fi = lastRefAtOrBefore(frameRefs, t, true);
+        if (fi >= 0) {
+            FramePacket decoded = decodeFrame(frameRefs[fi]);
+            if (decoded != null) {
+                pendingFrames.add(decoded);
+            }
+            frameCursor = fi;
+        } else {
+            frameCursor = 0;
+        }
+        int ii = lastRefAtOrBefore(imuRefs, t, false);
+        if (ii >= 0) {
+            ImuPacket decoded = decodeImu(imuRefs[ii], Long.MIN_VALUE, t);
+            if (decoded != null && decoded.getSize() > 0) {
+                pendingImu.add(decoded);
+            }
+            imuCursor = ii;
+        } else {
+            imuCursor = 0;
+        }
+        position(eventIndexNearestTimestamp(t));
+        currentStartTimestamp = (int) t;
+        if (!hasPolarity()) {
+            typedPlayheadUs = t;
+            typedPlayheadSet = true;
+        }
+        firePosition();
+        notePositionAfterRead();
+        if (shouldLogPlaybackFine()) {
+            log.fine(String.format("latchTypedAtOrBefore t=%d frames=%d imu=%d",
+                    t, pendingFrames.size(), pendingImu.size()));
+        }
+        return new AEPacketRaw(0);
     }
 
     /**
@@ -857,22 +920,32 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (chosen == null) {
             chosen = streams.get(0);
         }
-        eventStreamId = chosen.streamId;
-        selectedSource = chosen.source;
-        dvOpenCvCoordinates = chosen.hasDvOpenCvCoordinates();
-        if (!dvOpenCvCoordinates) {
-            log.info("AEDAT-4 stream " + eventStreamId
-                    + ": jAER coordinate space (skip DV OpenCV XY remap on read)");
-        }
+        eventStreamId = -1;
         frameStreamId = -1;
         imuStreamId = -1;
+        selectedSource = chosen.source;
+        dvOpenCvCoordinates = chosen.hasDvOpenCvCoordinates();
+        if (chosen.isEvents()) {
+            eventStreamId = chosen.streamId;
+        } else if (chosen.isFrames()) {
+            frameStreamId = chosen.streamId;
+        } else if (chosen.isImu()) {
+            imuStreamId = chosen.streamId;
+        } else {
+            eventStreamId = chosen.streamId;
+        }
+        if (!dvOpenCvCoordinates) {
+            log.info("AEDAT-4 stream " + (eventStreamId >= 0 ? eventStreamId : frameStreamId)
+                    + ": jAER coordinate space (skip DV OpenCV XY remap on read)");
+        }
         for (RecordingChipDetector.StreamHint s : streams) {
-            if (s.streamId == eventStreamId) {
+            if (s.streamId == eventStreamId || s.streamId == frameStreamId || s.streamId == imuStreamId) {
                 continue;
             }
             boolean sameSource = selectedSource != null && selectedSource.equals(s.source);
-            // Same-source typed streams, or legacy single-camera 0/1/2 layout.
-            if (s.isFrames() && (sameSource || frameStreamId < 0 && streams.size() <= 3)) {
+            if (s.isEvents() && eventStreamId < 0 && (sameSource || streams.size() <= 3)) {
+                eventStreamId = s.streamId;
+            } else if (s.isFrames() && (sameSource || frameStreamId < 0 && streams.size() <= 3)) {
                 if (frameStreamId < 0 || sameSource) {
                     frameStreamId = s.streamId;
                 }
@@ -1263,6 +1336,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         markOut = playableSize();
         clearEventPacketCache();
+        syncTypedPlayheadFromPosition();
     }
 
     /**
@@ -1874,6 +1948,46 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 && Aedat4FileOutputStream.imuHostStamped(chip)) {
             collectImuByEventFileRange(eventStart, eventEnd);
         }
+        if (!hasPolarity()) {
+            holdLastTypedAtOrBefore(t1);
+        }
+    }
+
+    /** Last packet with start (or hi time) ≤ {@code t}. Refs are file order; times are usually monotonic. */
+    private static int lastRefAtOrBefore(PacketRef[] refs, long t, boolean useStart) {
+        int last = -1;
+        if (refs == null) {
+            return -1;
+        }
+        for (int i = 0; i < refs.length; i++) {
+            long ts = useStart ? refs[i].unixStart : packetHi(refs[i]);
+            if (ts <= t) {
+                last = i;
+            }
+        }
+        return last;
+    }
+
+    /** Polarity-free timeslice with no overlapping FRME/IMUS: keep the last packet at or before {@code t}. */
+    private void holdLastTypedAtOrBefore(long t) throws IOException {
+        if (pendingFrames.isEmpty()) {
+            int fi = lastRefAtOrBefore(frameRefs, t, true);
+            if (fi >= 0) {
+                FramePacket decoded = decodeFrame(frameRefs[fi]);
+                if (decoded != null) {
+                    pendingFrames.add(decoded);
+                }
+            }
+        }
+        if (pendingImu.isEmpty()) {
+            int ii = lastRefAtOrBefore(imuRefs, t, false);
+            if (ii >= 0) {
+                ImuPacket decoded = decodeImu(imuRefs[ii], Long.MIN_VALUE, t);
+                if (decoded != null && decoded.getSize() > 0) {
+                    pendingImu.add(decoded);
+                }
+            }
+        }
     }
 
     private static long packetLo(PacketRef r) {
@@ -2219,6 +2333,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             imuRefs = readRefs(in);
             markOut = playableSize();
             clearEventPacketCache();
+            syncTypedPlayheadFromPosition();
             log.info(String.format(
                     "Loaded sparse AEDAT-4 index from %s in %d ms (stream %d: %,d events in %d packets, %,d frames, %,d IMU, %.1f KB)",
                     cache.getName(), System.currentTimeMillis() - t0, eventStreamId,
@@ -2340,6 +2455,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (forwards) {
             long start = position;
             int cappedN = Math.min(n, MAX_EVENTS_PER_READ);
+            if (!hasPolarity()) {
+                cappedN = Math.min(cappedN, 1);
+            }
             long end = Math.min(limitOut, position + cappedN);
             if (start >= end) {
                 throw new EOFException();
@@ -2358,6 +2476,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         // Backwards: events in [start, position), then move position to start.
         int cappedN = Math.min(-n, MAX_EVENTS_PER_READ);
+        if (!hasPolarity()) {
+            cappedN = Math.min(cappedN, 1);
+        }
         long end = position;
         long start = Math.max(limitIn, end - cappedN);
         if (start >= end) {
@@ -2390,20 +2511,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         // Approx timestamps from packet table only — do not decompress here (slider/UI race).
         long tRead = System.nanoTime();
         lastPolarityEventSkip = effectivePolarityEventSkip();
+        if (!hasPolarity()) {
+            return readTypedSliceByTime(dt, pos0, tRead);
+        }
         if (forwards) {
             long start = position;
             long tStart = timestampApproxLong(start);
             long target = tStart + dt;
             long end;
             long tFind = System.nanoTime();
-            if (hasPolarity()) {
-                end = findEndIndexByTime(start, target, limitOut);
-            } else {
-                end = start + 1;
-                while (end < limitOut && timelineTimestamps[(int) (end - 1)] <= target) {
-                    end++;
-                }
-            }
+            end = findEndIndexByTime(start, target, limitOut);
             profNsFindEnd += System.nanoTime() - tFind;
             long maxSource = maxSourceEventsPerRead();
             boolean capped = end - start > maxSource;
@@ -2442,15 +2559,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         long tEnd = timestampApproxLong(Math.max(limitIn, end - 1));
         long target = tEnd + dt; // dt < 0
-        long start;
-        if (hasPolarity()) {
-            start = findStartIndexByTime(end, target, limitIn);
-        } else {
-            start = end - 1;
-            while (start > limitIn && timelineTimestamps[(int) (start - 1)] >= target) {
-                start--;
-            }
-        }
+        long start = findStartIndexByTime(end, target, limitIn);
         long maxSource = maxSourceEventsPerRead();
         boolean capped = end - start > maxSource;
         if (capped) {
@@ -2474,6 +2583,111 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 dt, pos0, position, end - start, pkt.getNumEvents(), lastPolarityEventSkip,
                 maxSource, t0, t1, capped ? " capped" : "");
         return pkt;
+    }
+
+    /**
+     * CountDuration for frame/IMU-only files: advance a time playhead by {@code dt}
+     * µs and hold the last frame at that time. Do not step one timeline mark per
+     * ViewLoop frame (that played at render FPS whenever dt was less than the
+     * inter-frame gap).
+     */
+    private AEPacketRaw readTypedSliceByTime(int dt, long pos0, long tRead) throws IOException {
+        if (!typedPlayheadSet) {
+            syncTypedPlayheadFromPosition();
+        }
+        boolean forwards = dt > 0;
+        long tFirst = typedFirstTs();
+        long tLast = typedLimitTs();
+        if (forwards) {
+            if (typedPlayheadUs >= tLast) {
+                throw new EOFException();
+            }
+            long t0 = typedPlayheadUs;
+            long t1 = t0 + dt;
+            if (t1 > tLast) {
+                t1 = tLast;
+            }
+            collectTypedForWindow(t0, t1, -1, -1);
+            typedPlayheadUs = t1;
+            currentStartTimestamp = (int) t0;
+            applyTypedPlayheadToPosition(t1);
+            firePosition();
+            notePositionAfterRead();
+            AEPacketRaw pkt = new AEPacketRaw(0);
+            profSlices++;
+            profNsRead += System.nanoTime() - tRead;
+            logPlaybackRead("readTypedSliceByTime dt=%d pos %d->%d t=%d..%d frames=%d",
+                    dt, pos0, position, t0, t1, pendingFrames.size());
+            return pkt;
+        }
+        if (typedPlayheadUs <= tFirst) {
+            throw new EOFException("reached start of file");
+        }
+        long t1 = typedPlayheadUs;
+        long t0 = t1 + dt;
+        if (t0 < tFirst) {
+            t0 = tFirst;
+        }
+        collectTypedForWindow(t0, t1, -1, -1);
+        typedPlayheadUs = t0;
+        currentStartTimestamp = (int) t0;
+        applyTypedPlayheadToPosition(t0);
+        firePosition();
+        notePositionAfterRead();
+        logPlaybackRead("readTypedSliceByTime dt=%d (back) pos %d->%d t=%d..%d frames=%d",
+                dt, pos0, position, t0, t1, pendingFrames.size());
+        return new AEPacketRaw(0);
+    }
+
+    private long typedFirstTs() {
+        return timelineTimestamps.length == 0 ? 0 : (timelineTimestamps[0] & 0xffffffffL);
+    }
+
+    private long typedLastTs() {
+        return timelineTimestamps.length == 0 ? 0
+                : (timelineTimestamps[timelineTimestamps.length - 1] & 0xffffffffL);
+    }
+
+    /** Last playable time: file end, or IN/OUT mark when armed. */
+    private long typedLimitTs() {
+        long last = typedLastTs();
+        if (outLoopArmed && isMarkOutSet()) {
+            long outIdx = Math.max(0, effectiveMarkOut() - 1);
+            last = Math.min(last, timestampApproxLong(outIdx));
+        }
+        return last;
+    }
+
+    private long timelineOriginUs() {
+        if (hasPolarity() && eventRefs.length > 0) {
+            return eventRefs[0].unixStart;
+        }
+        return typedFirstTs();
+    }
+
+    private void syncTypedPlayheadFromPosition() {
+        if (hasPolarity() || timelineTimestamps.length == 0) {
+            typedPlayheadSet = false;
+            return;
+        }
+        typedPlayheadUs = timestampApproxLong(Math.min(Math.max(0, position), playableSize() - 1));
+        typedPlayheadSet = true;
+        currentStartTimestamp = (int) typedPlayheadUs;
+    }
+
+    private void applyTypedPlayheadToPosition(long t) {
+        long n = playableSize();
+        if (n <= 0) {
+            position = 0;
+            return;
+        }
+        long idx = eventIndexNearestTimestamp(t);
+        if (idx < 0) {
+            idx = 0;
+        } else if (idx > n) {
+            idx = n;
+        }
+        position = idx;
     }
 
     /**
@@ -2753,6 +2967,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (position > 0) {
             return;
         }
+        if (!hasPolarity() && typedPlayheadSet && typedPlayheadUs > typedFirstTs()) {
+            return;
+        }
         throw new EOFException("reached start of file");
     }
 
@@ -2774,6 +2991,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * file, or OUT reached by playback (not by slider seek).
      */
     private boolean atOutMarkerOrFileEnd() {
+        if (!hasPolarity() && typedPlayheadSet && typedPlayheadUs >= typedLimitTs()) {
+            return true;
+        }
         if (position >= playableSize()) {
             return true;
         }
@@ -2884,6 +3104,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public int getMostRecentTimestamp() {
+        if (!hasPolarity() && typedPlayheadSet) {
+            return (int) typedPlayheadUs;
+        }
         if (playableSize() == 0) {
             return 0;
         }
@@ -3000,7 +3223,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public int getCurrentStartTimestamp() { return currentStartTimestamp; }
 
     @Override
-    public void setCurrentStartTimestamp(int currentStartTimestamp) { this.currentStartTimestamp = currentStartTimestamp; }
+    public void setCurrentStartTimestamp(int currentStartTimestamp) {
+        this.currentStartTimestamp = currentStartTimestamp;
+        if (!hasPolarity()) {
+            typedPlayheadUs = currentStartTimestamp & 0xffffffffL;
+            typedPlayheadSet = true;
+        }
+    }
 
     /**
      * Packet-table binary search to the event index nearest {@code timestampUs}
@@ -3139,7 +3368,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     public float getFractionalTimePosition() {
         long dur = getDurationUsLong();
-        if (dur <= 0 || eventRefs.length == 0) {
+        if (dur <= 0) {
+            return getFractionalPosition();
+        }
+        if (!hasPolarity() && typedPlayheadSet) {
+            float f = (float) ((typedPlayheadUs - timelineOriginUs()) / (double) dur);
+            if (f < 0) {
+                return 0;
+            }
+            if (f > 1) {
+                return 1;
+            }
+            return f;
+        }
+        if (eventRefs.length == 0) {
             return getFractionalPosition();
         }
         long n = playableSize();
@@ -3150,7 +3392,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return 1;
         }
         float f = (float) ((timestampApproxLong(Math.min(position, Math.max(0, n - 1)))
-                - eventRefs[0].unixStart) / (double) dur);
+                - timelineOriginUs()) / (double) dur);
         if (f < 0) {
             return 0;
         }
@@ -3166,12 +3408,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public void setFractionalTimePosition(float frac) {
         frac = Math.max(0, Math.min(1, frac));
         long dur = getDurationUsLong();
-        if (dur <= 0 || eventRefs.length == 0) {
+        if (dur <= 0) {
             setFractionalPosition(frac);
             return;
         }
-        long t = eventRefs[0].unixStart + (long) (frac * dur);
+        long t = timelineOriginUs() + (long) (frac * dur);
         position(eventIndexNearestTimestamp(t));
+        if (!hasPolarity()) {
+            typedPlayheadUs = t;
+            typedPlayheadSet = true;
+            currentStartTimestamp = (int) t;
+        }
     }
 
     @Override
@@ -3193,6 +3440,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 : timestampApproxLong(Math.min(Math.max(0, position), playableSize() - 1));
         currentStartTimestamp = (int) t;
         haveEmittedTimestamp = false;
+        if (!hasPolarity()) {
+            typedPlayheadUs = t;
+            typedPlayheadSet = true;
+        }
         // log.fine(String.format("AEDAT-4 position %d->%d approxTs=%d", old, position, t));
         frameCursor = 0;
         imuCursor = 0;
@@ -3217,6 +3468,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         frameCursor = 0;
         imuCursor = 0;
         haveEmittedTimestamp = false;
+        syncTypedPlayheadFromPosition();
         support.firePropertyChange(AEInputStream.EVENT_REWOUND, old, position);
     }
 
