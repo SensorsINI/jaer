@@ -36,6 +36,7 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
     private final String label;
     private final int probeWidth;
     private final int probeHeight;
+    private final String tooltipHtml;
 
     private final PacketBundlePool pool = new PacketBundlePool();
     private final AEPacketRaw emptyRaw = new AEPacketRaw(0);
@@ -53,12 +54,31 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
     private int estimatedRate;
     private int aeBufferSize = 1;
 
+    public OpenCvCameraHardwareInterface(OpenCvCameraFactory.DeviceInfo info) {
+        this(info.index, info.api, info.label, info.width, info.height, info.tooltipHtml);
+    }
+
     public OpenCvCameraHardwareInterface(int cameraIndex, int api, String label, int width, int height) {
+        this(cameraIndex, api, label, width, height,
+                OpenCvCameraFactory.tooltipHtml(cameraIndex, api, null, width, height, 0, ""));
+    }
+
+    public OpenCvCameraHardwareInterface(int cameraIndex, int api, String label, int width, int height,
+            String tooltipHtml) {
         this.cameraIndex = cameraIndex;
         this.api = api;
         this.label = label == null ? ("OpenCV: " + cameraIndex) : label;
         this.probeWidth = width;
         this.probeHeight = height;
+        this.tooltipHtml = tooltipHtml;
+    }
+
+    /** HTML for Interface-menu hover (probe backend, size, fps; occupancy note). */
+    public String tooltipHtml() {
+        if (tooltipHtml != null && !tooltipHtml.isBlank()) {
+            return tooltipHtml;
+        }
+        return OpenCvCameraFactory.tooltipHtml(cameraIndex, api, null, probeWidth, probeHeight, 0, "");
     }
 
     public int getCameraIndex() {

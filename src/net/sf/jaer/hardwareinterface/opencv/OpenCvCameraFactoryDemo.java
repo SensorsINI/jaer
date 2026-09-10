@@ -20,6 +20,12 @@ public final class OpenCvCameraFactoryDemo {
         if (f.getInterface(-1) != null || f.getInterface(10_000) != null) {
             throw new AssertionError("out-of-range getInterface must be null");
         }
+        String tip = OpenCvCameraFactory.tooltipHtml(0, 700, "DSHOW", 1280, 720, 30, "YUY2");
+        if (!tip.contains("OpenCV camera index 0") || !tip.contains("DirectShow")
+                || !tip.contains("1280") || !tip.contains("30 fps") || !tip.contains("YUY2")
+                || !tip.contains("Zoom")) {
+            throw new AssertionError("tooltipHtml missing expected webcam details: " + tip);
+        }
         f.probeNow();
         if (f.getNumInterfacesAvailable() != n) {
             throw new AssertionError("probeNow with enumeration disabled must not change cache");

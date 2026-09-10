@@ -1018,6 +1018,14 @@ public final class UsbEnumerationSafetyDemo {
                 "map file name is aeviewer-interface-map.properties");
         require(mapSrc.contains("in-memory map still used") || mapSrc.contains("cache()"),
                 "map keeps an in-memory cache if Windows cannot replace the file");
+        require(mapSrc.contains("public static synchronized void putNone"),
+                "Interface → None with Remember last off persists none for the next start");
+        require(src.contains("ViewerInterfaceBindingMap.putNone(viewerInstanceIndex)"),
+                "None with Remember last off writes viewer.N.none");
+        require(src.contains("not auto-opening OpenCV camera (Remember last off and Interface None)"),
+                "sole OpenCV webcam is not auto-opened after Remember last off and None");
+        require(src.contains("loggedSkipOpenCvAutobind"),
+                "OpenCV skip is logged once, not on every WAITING poll");
     }
 
     /**

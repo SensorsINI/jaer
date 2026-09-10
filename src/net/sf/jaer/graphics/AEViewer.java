@@ -1607,6 +1607,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int liveOpenMisses;
     private static volatile String usbOpenSerialHolder;
     private boolean loggedStartupBindMiss;
+    /** WAITING polls every ~1 s; log the OpenCV skip once per skip period. */
+    private boolean loggedSkipOpenCvAutobind;
 
     private boolean bindRememberedInterfaceIfPossible(int ninterfaces) {
         if (!autobindOnWaiting && !SessionCameraOpenCoordinator.hasOpenGrant(this)) {
@@ -1849,6 +1851,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Interface-menu hover text. OpenCV items use probe details (backend, size,
+     * fps); USB items keep a short occupancy line when another window holds them.
+     */
+    private String interfaceChoiceTooltip(HardwareInterface hw, String occupancy) {
+        if (hw instanceof OpenCvCameraHardwareInterface) {
+            String html = ((OpenCvCameraHardwareInterface) hw).tooltipHtml();
+            if (occupancy == null || occupancy.isBlank()) {
+                return html;
+            }
+            if (html != null && html.startsWith("<html>")) {
+                return "<html>" + occupancy + "<br>" + html.substring("<html>".length());
+            }
+            return occupancy;
+        }
+        return occupancy;
+    }
+
+    /**
      * Interface / Welcome label: family + (#n), plus which window already
      * opened this camera when that is not this viewer.
      */
@@ -1958,6 +1978,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return false;
             }
             if (hw instanceof OpenCvCameraHardwareInterface) {
+                if (!isRememberLastInterface()
+                        && ViewerInterfaceBindingMap.isNone(viewerInstanceIndex)) {
+                    if (!loggedSkipOpenCvAutobind) {
+                        log.info("not auto-opening OpenCV camera (Remember last off and Interface None)");
+                        loggedSkipOpenCvAutobind = true;
+                    }
+                    return false;
+                }
+                loggedSkipOpenCvAutobind = false;
                 ensureChipCompatibleWithLiveDevice(hw);
                 if (chip.getHardwareInterface() == null) {
                     bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous OpenCV camera to ");
@@ -3811,9 +3840,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setFont(item.getFont().deriveFont(Font.ITALIC));
 //            interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i)); // has no number, already opened
             item.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, chip.getAssignedHardwareInterface());
-            LibUsbLinkInfo.Snapshot usbLink = LibUsbLinkInfo.lastOpen();
-            item.setToolTipText(usbLink != null ? usbLink.tooltipHtml()
-                    : "Currently selected hardware interface");
+            HardwareInterface openHw = chip.getAssignedHardwareInterface();
+            if (openHw instanceof OpenCvCameraHardwareInterface) {
+                item.setToolTipText(((OpenCvCameraHardwareInterface) openHw).tooltipHtml());
+            } else {
+                LibUsbLinkInfo.Snapshot usbLink = LibUsbLinkInfo.lastOpen();
+                item.setToolTipText(usbLink != null ? usbLink.tooltipHtml()
+                        : "Currently selected hardware interface");
+            }
             interfaceMenu.add(item);
 
             item.setSelected(true);
@@ -3871,18 +3905,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         && (chip == null || !UsbIds.samePhysicalDevice(hw, chip.getAssignedHardwareInterface()))) {
                     interfaceButton.setEnabled(false);
                     interfaceButton.setText(menuText + " — already open");
-                    interfaceButton.setToolTipText("USB handle already open (another window)");
+                    interfaceButton.setToolTipText(interfaceChoiceTooltip(hw,
+                            "USB handle already open (another window)"));
                     interfaceMenu.add(interfaceButton);
                     bg.add(interfaceButton);
                     continue;
                 }
                 if (claimedBy != null && claimedBy != this) {
                     interfaceButton.setEnabled(false);
-                    interfaceButton.setToolTipText("Already open in " + claimedBy.getViewerWindowLabel());
+                    interfaceButton.setToolTipText(interfaceChoiceTooltip(hw,
+                            "Already open in " + claimedBy.getViewerWindowLabel()));
                     interfaceMenu.add(interfaceButton);
                     bg.add(interfaceButton);
                     continue;
                 }
+                interfaceButton.setToolTipText(interfaceChoiceTooltip(hw, null));
                 interfaceMenu.add(interfaceButton);
                 bg.add(interfaceButton);
                 interfaceButton.addActionListener(new ActionListener() {
@@ -4093,7 +4130,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         rememberLastInterfaceDeviceID = null;
         rememberLastInterfaceSerial = null;
-        ViewerInterfaceBindingMap.remove(viewerInstanceIndex);
+        if (!isRememberLastInterface()) {
+            ViewerInterfaceBindingMap.putNone(viewerInstanceIndex);
+        } else {
+            ViewerInterfaceBindingMap.remove(viewerInstanceIndex);
+        }
         clearOpeningCameraOverlay();
         notifyOtherViewersOfHardwareClaimChange();
         if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
@@ -4208,7 +4249,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         public RememberLastInterfaceAction() {
             super("Remember last interface selected");
             putValue(Action.SHORT_DESCRIPTION,
-                    "Reopen each window's last USB camera on restart (global; all AEViewers share this)");
+                    "Reopen each window's last USB camera on restart (global). "
+                            + "Deselect this, then Interface → None, so a built-in webcam is not taken over on the next start. "
+                            + "Pick the webcam from Interface when you want it.");
             putValue(Action.SELECTED_KEY, isRememberLastInterface());
         }
 
@@ -4217,7 +4260,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setRememberLastInterface(!rememberLastInterface);
             showAction(isRememberLastInterface()
                     ? "Will reopen last interface automatically"
-                    : "Select desired interface from Interface menu");
+                    : "Then Interface → None so restart will not take a webcam");
         }
 
     }

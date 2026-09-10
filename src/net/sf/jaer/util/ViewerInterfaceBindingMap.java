@@ -133,7 +133,26 @@ public final class ViewerInterfaceBindingMap {
         } else {
             p.remove(prefix + "chip");
         }
+        p.remove(prefix + "none");
         store(p);
+    }
+
+    /**
+     * Interface → None while Remember last is off: next start must not
+     * sole-device-bind an OpenCV webcam.
+     */
+    public static synchronized void putNone(int viewerIndex) {
+        Properties p = cache();
+        String prefix = prefix(viewerIndex);
+        p.remove(prefix + "label");
+        p.remove(prefix + "serial");
+        p.remove(prefix + "chip");
+        p.setProperty(prefix + "none", "true");
+        store(p);
+    }
+
+    public static synchronized boolean isNone(int viewerIndex) {
+        return "true".equalsIgnoreCase(cache().getProperty(prefix(viewerIndex) + "none", ""));
     }
 
     public static synchronized void remove(int viewerIndex) {
@@ -142,6 +161,7 @@ public final class ViewerInterfaceBindingMap {
         p.remove(prefix + "label");
         p.remove(prefix + "serial");
         p.remove(prefix + "chip");
+        p.remove(prefix + "none");
         store(p);
     }
 
