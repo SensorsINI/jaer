@@ -785,6 +785,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        // Cypress FX2 monitor/sequencer menu: historical and rarely used.
+        monSeqMenu.setVisible(false);
         StartupProfiler.mark("AEViewer after initComponents");
         installPlaybackModeMenu();
         bindCtrlWAbortToRootPane();
