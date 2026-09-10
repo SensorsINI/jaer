@@ -900,7 +900,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     if (!flex) {
                         aeRaw = aeInputStream.readPacketByTime(slice);
                     } else {
-                        aeRaw = aeInputStream.readPacketByNumber(slice);
+                        aeRaw = extendToMinimumExposure(aeInputStream.readPacketByNumber(slice));
                     }
                 }
             } else {
@@ -927,7 +927,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     } else if (!flex) {
                         aeRaw = aeInputStream.readPacketByTime(slice);
                     } else {
-                        aeRaw = aeInputStream.readPacketByNumber(slice);
+                        aeRaw = extendToMinimumExposure(aeInputStream.readPacketByNumber(slice));
                     }
                     if (log.isLoggable(Level.FINE)) {
                         log.fine(String.format(
@@ -1009,7 +1009,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         final int chunk = 256;
         final int direction = isPlayingForwards() ? 1 : -1;
         int guard = 0;
-        while (!exposer.isExposed() && guard++ < 20_000) {
+        while (!exposer.isExposed() && guard++ < 200_000) {
             AEPacketRaw chunkPkt;
             if (areaEventLeftover != null && areaEventLeftover.getNumEvents() > 0) {
                 chunkPkt = areaEventLeftover;
@@ -1042,6 +1042,46 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
         }
         return out;
+    }
+
+    /**
+     * After a ConstantCount read, keep reading until event time spans at least
+     * the min exposure, but not past the max (0 disables that bound).
+     */
+    private AEPacketRaw extendToMinimumExposure(AEPacketRaw packet) throws IOException {
+        int minUs = getMinimumExposureTimeUs();
+        int maxUs = getMaximumExposureTimeUs();
+        if (packet == null || packet.getNumEvents() == 0) {
+            return packet;
+        }
+        int dt = packet.getLastTimestamp() - packet.getFirstTimestamp();
+        if (dt < 0) {
+            return packet;
+        }
+        if (maxUs > 0 && dt >= maxUs) {
+            return packet;
+        }
+        if (minUs <= 0 || dt >= minUs) {
+            return packet;
+        }
+        int remaining = minUs - dt;
+        if (maxUs > 0 && remaining > maxUs - dt) {
+            remaining = maxUs - dt;
+        }
+        if (remaining <= 0) {
+            return packet;
+        }
+        int signedRemaining = isPlayingForwards() ? remaining : -remaining;
+        AEPacketRaw more = aeInputStream.readPacketByTime(signedRemaining);
+        if (more == null || more.getNumEvents() == 0) {
+            return packet;
+        }
+        try {
+            packet.append(more);
+            return packet;
+        } catch (NonMonotonicTimeException e) {
+            return new AEPacketRaw(packet, more);
+        }
     }
 
     private static AEPacketRaw copyRawRange(AEPacketRaw src, int from, int len) {

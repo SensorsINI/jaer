@@ -102,7 +102,13 @@ public abstract class AbstractAEPlayer {
             EVENT_PACKETSIZEEVENTS = "packetSizeEvents",
             EVENT_AREA_EVENT_COUNT = "areaEventCount",
             EVENT_NUM_AREAS = "numAreas",
+            EVENT_MINIMUM_EXPOSURE_TIME = "minimumExposureTime",
+            EVENT_MAXIMUM_EXPOSURE_TIME = "maximumExposureTime",
             EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen", EVENT_REPEAT = "repeat"; // TODO not used yet in code
+    /** Default minimum slice duration for ConstantCount / AreaEventCount (1 ms). 0 disables. */
+    public static final float MINIMUM_EXPOSURE_TIME_S_DEFAULT = 1e-3f;
+    /** Default maximum slice duration (0 = no cap). AreaEventCount used to hard-cap at 1 s. */
+    public static final float MAXIMUM_EXPOSURE_TIME_S_DEFAULT = 0f;
 
     /**
      * Creates new instance of AbstractAEPlayer and adds the viewer (if not
@@ -123,6 +129,9 @@ public abstract class AbstractAEPlayer {
         } catch (IllegalArgumentException e) {
             playbackMode = PlaybackMode.FixedTimeSlice;
         }
+        minimumExposureTimeS = prefs.getFloat("AbstractAEPlayer.minimumExposureTimeS", MINIMUM_EXPOSURE_TIME_S_DEFAULT);
+        maximumExposureTimeS = prefs.getFloat("AbstractAEPlayer.maximumExposureTimeS", MAXIMUM_EXPOSURE_TIME_S_DEFAULT);
+        minExposureFmt.setPrecision(2);
     }
 
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -216,6 +225,13 @@ public abstract class AbstractAEPlayer {
     /** Leftover raw events after an AreaEventCount cut in the middle of a read chunk. */
     protected AEPacketRaw areaEventLeftover = null;
     private AreaEventCountExposer areaEventCountExposer = null;
+    /**
+     * Minimum event-time span (seconds) before ConstantCount / AreaEventCount
+     * may end a slice. Prevents scrolling through same-timestamp bursts.
+     */
+    protected float minimumExposureTimeS = MINIMUM_EXPOSURE_TIME_S_DEFAULT;
+    protected float maximumExposureTimeS = MAXIMUM_EXPOSURE_TIME_S_DEFAULT;
+    private final EngineeringFormat minExposureFmt = new EngineeringFormat();
     protected int jogPacketCount = 20;
     /** Remaining jog steps; written from EDT (Esc cancel) and read on ViewLoop — must be volatile. */
     volatile protected int jogPacketsLeft = 0;
@@ -415,6 +431,8 @@ public abstract class AbstractAEPlayer {
             areaEventCountExposer.setEventExposureMode(AreaEventCountExposer.EventExposureMode.AreaEventCount);
             areaEventCountExposer.setEventCount(prefs.getInt("AbstractAEPlayer.areaEventCount", AreaEventCountExposer.EVENT_COUNT_DEFAULT));
             areaEventCountExposer.setNumAreas(prefs.getInt("AbstractAEPlayer.numAreas", AreaEventCountExposer.NUM_AREAS_DEFAULT));
+            areaEventCountExposer.setDurationMinUs(getMinimumExposureTimeUs());
+            areaEventCountExposer.setDurationMaxUs(getMaximumExposureTimeUs());
             areaEventCountExposer.getSupport().addPropertyChangeListener(evt -> {
                 if (AreaEventCountExposer.EVENT_EVENT_COUNT.equals(evt.getPropertyName())) {
                     prefs.putInt("AbstractAEPlayer.areaEventCount", areaEventCountExposer.getEventCount());
@@ -451,7 +469,112 @@ public abstract class AbstractAEPlayer {
     }
 
     public void setNumAreas(int numAreas) {
-        getAreaEventCountExposer().setNumAreas(numAreas);
+        if (numAreas < 1) {
+            numAreas = 1;
+        }
+        prefs.putInt("AbstractAEPlayer.numAreas", numAreas);
+        AreaEventCountExposer exposer = getAreaEventCountExposer();
+        if (exposer != null) {
+            exposer.setNumAreas(numAreas);
+        }
+    }
+
+    /**
+     * Minimum event-timestamp span for ConstantCount and AreaEventCount slices.
+     */
+    public float getMinimumExposureTimeS() {
+        return minimumExposureTimeS;
+    }
+
+    /**
+     * Same value in microseconds (rounded, ≥ 0).
+     */
+    public int getMinimumExposureTimeUs() {
+        return secondsToUs(minimumExposureTimeS);
+    }
+
+    /**
+     * Two-digit engineering format; {@code 0} for disabled.
+     */
+    public String formatExposureTimeS(float seconds) {
+        if (!Float.isFinite(seconds) || seconds <= 0f) {
+            return "0";
+        }
+        return minExposureFmt.format(seconds).trim();
+    }
+
+    public String formatMinimumExposureTimeS() {
+        return formatExposureTimeS(minimumExposureTimeS);
+    }
+
+    public String formatMaximumExposureTimeS() {
+        return formatExposureTimeS(maximumExposureTimeS);
+    }
+
+    public EngineeringFormat getMinimumExposureTimeFormat() {
+        return minExposureFmt;
+    }
+
+    public void setMinimumExposureTimeS(float minimumExposureTimeS) {
+        if (!Float.isFinite(minimumExposureTimeS) || minimumExposureTimeS < 0f) {
+            minimumExposureTimeS = 0f;
+        }
+        float old = this.minimumExposureTimeS;
+        this.minimumExposureTimeS = minimumExposureTimeS;
+        prefs.putFloat("AbstractAEPlayer.minimumExposureTimeS", minimumExposureTimeS);
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.setDurationMinUs(getMinimumExposureTimeUs());
+        }
+        support.firePropertyChange(EVENT_MINIMUM_EXPOSURE_TIME, old, this.minimumExposureTimeS);
+    }
+
+    public float getMaximumExposureTimeS() {
+        return maximumExposureTimeS;
+    }
+
+    public int getMaximumExposureTimeUs() {
+        return secondsToUs(maximumExposureTimeS);
+    }
+
+    public void setMaximumExposureTimeS(float maximumExposureTimeS) {
+        if (!Float.isFinite(maximumExposureTimeS) || maximumExposureTimeS < 0f) {
+            maximumExposureTimeS = 0f;
+        }
+        float old = this.maximumExposureTimeS;
+        this.maximumExposureTimeS = maximumExposureTimeS;
+        prefs.putFloat("AbstractAEPlayer.maximumExposureTimeS", maximumExposureTimeS);
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.setDurationMaxUs(getMaximumExposureTimeUs());
+        }
+        support.firePropertyChange(EVENT_MAXIMUM_EXPOSURE_TIME, old, this.maximumExposureTimeS);
+    }
+
+    /** Octave step for mouse wheel on min/max exposure; 0 → 1 ms on the first up-notch. */
+    public static float octaveStepExposureTimeS(float seconds, boolean increase) {
+        if (!Float.isFinite(seconds) || seconds < 0f) {
+            seconds = 0f;
+        }
+        if (increase) {
+            if (seconds <= 0f) {
+                return MINIMUM_EXPOSURE_TIME_S_DEFAULT;
+            }
+            return seconds * 2f;
+        }
+        if (seconds <= MINIMUM_EXPOSURE_TIME_S_DEFAULT) {
+            return 0f;
+        }
+        return seconds / 2f;
+    }
+
+    private static int secondsToUs(float seconds) {
+        if (!Float.isFinite(seconds) || seconds <= 0f) {
+            return 0;
+        }
+        long us = Math.round(seconds * 1e6f);
+        if (us > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) us;
     }
 
     public void clearAreaEventLeftover() {

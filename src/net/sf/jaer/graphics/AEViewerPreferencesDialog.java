@@ -17,6 +17,8 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -61,6 +63,7 @@ import net.sf.jaer.eventio.aedat4.Aedat4WriteBench;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.HtmlHelpFrame;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerPreferencesStore;
@@ -150,7 +153,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
+    private JTextField minExposureTimeTF;
+    private JTextField maxExposureTimeTF;
     private JSpinner numAreasSpinner;
+    private final EngineeringFormat minExposureFmt = new EngineeringFormat();
     private JRadioButton sliderTimeRelativeRB;
     private JRadioButton sliderTimeAbsoluteRB;
 
@@ -192,6 +198,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             setIconImage(viewer.getIconImage());
         }
         buildUi();
+        minExposureFmt.setPrecision(2);
         if (viewer != null) {
             viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_REMEMBER_LAST_INTERFACE,
                     new PropertyChangeListener() {
@@ -244,6 +251,54 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                                 } finally {
                                     updatingUi = false;
                                 }
+                            }
+                        }
+                    });
+            viewer.getSupport().addPropertyChangeListener(AbstractAEPlayer.EVENT_NUM_AREAS,
+                    new PropertyChangeListener() {
+                        @Override
+                        public void propertyChange(PropertyChangeEvent evt) {
+                            if (numAreasSpinner == null || updatingUi) {
+                                return;
+                            }
+                            Object nv = evt.getNewValue();
+                            if (nv instanceof Number) {
+                                updatingUi = true;
+                                try {
+                                    numAreasSpinner.setValue(Math.max(1, ((Number) nv).intValue()));
+                                } finally {
+                                    updatingUi = false;
+                                }
+                            }
+                        }
+                    });
+            viewer.getSupport().addPropertyChangeListener(AbstractAEPlayer.EVENT_MINIMUM_EXPOSURE_TIME,
+                    new PropertyChangeListener() {
+                        @Override
+                        public void propertyChange(PropertyChangeEvent evt) {
+                            if (minExposureTimeTF == null || updatingUi) {
+                                return;
+                            }
+                            updatingUi = true;
+                            try {
+                                refreshMinExposureTextFromPlayer();
+                            } finally {
+                                updatingUi = false;
+                            }
+                        }
+                    });
+            viewer.getSupport().addPropertyChangeListener(AbstractAEPlayer.EVENT_MAXIMUM_EXPOSURE_TIME,
+                    new PropertyChangeListener() {
+                        @Override
+                        public void propertyChange(PropertyChangeEvent evt) {
+                            if (maxExposureTimeTF == null || updatingUi) {
+                                return;
+                            }
+                            updatingUi = true;
+                            try {
+                                refreshMaxExposureTextFromPlayer();
+                            } finally {
+                                updatingUi = false;
                             }
                         }
                     });
@@ -1192,6 +1247,42 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
+        p.add(new JLabel("Min exposure (count modes):"), gbcLabel(y));
+        minExposureTimeTF = new JTextField(8);
+        minExposureTimeTF.setHorizontalAlignment(JTextField.RIGHT);
+        minExposureTimeTF.setToolTipText("Do not end a ConstantCount/AreaEventCount slice until this event time has passed (0 = no minimum). Default 1 ms.");
+        minExposureTimeTF.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                commitMinExposureFromText();
+            }
+        });
+        minExposureTimeTF.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                commitMinExposureFromText();
+            }
+        });
+        p.add(minExposureTimeTF, gbcField(y++));
+
+        p.add(new JLabel("Max exposure (count modes):"), gbcLabel(y));
+        maxExposureTimeTF = new JTextField(8);
+        maxExposureTimeTF.setHorizontalAlignment(JTextField.RIGHT);
+        maxExposureTimeTF.setToolTipText("End a count-based slice after this event time even if the count is not reached (0 = no maximum).");
+        maxExposureTimeTF.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                commitMaxExposureFromText();
+            }
+        });
+        maxExposureTimeTF.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                commitMaxExposureFromText();
+            }
+        });
+        p.add(maxExposureTimeTF, gbcField(y++));
+
         p.add(new JLabel("# areas (AreaEventCount):"), gbcLabel(y));
         numAreasSpinner = new JSpinner(new SpinnerNumberModel(AreaEventCountExposer.NUM_AREAS_DEFAULT, 1, 1024, 1));
         numAreasSpinner.setToolTipText("Target number of spatial cells for AreaEventCount playback (T method). Changing this briefly shows the grid.");
@@ -1567,6 +1658,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 repeatPlaybackCB.setSelected(player.isRepeat());
                 jogPacketCountSpinner.setValue(Math.max(1, player.getJogPacketCount()));
                 numAreasSpinner.setValue(Math.max(1, player.getNumAreas()));
+                refreshMinExposureTextFromPlayer();
+                refreshMaxExposureTextFromPlayer();
             }
             boolean absTime = viewer.isSliderTimeOverlayAbsolute();
             sliderTimeRelativeRB.setSelected(!absTime);
@@ -1645,6 +1738,78 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         renderingModeRB.setEnabled(hasChain);
         acquisitionModeRB.setEnabled(hasChain);
         updateIntervalSpinner.setEnabled(hasChain || frame != null);
+    }
+
+    private void refreshMinExposureTextFromPlayer() {
+        if (minExposureTimeTF == null || viewer == null) {
+            return;
+        }
+        AbstractAEPlayer player = viewer.getAePlayer();
+        if (player == null) {
+            return;
+        }
+        String s = player.formatMinimumExposureTimeS();
+        if (!s.equals(minExposureTimeTF.getText())) {
+            minExposureTimeTF.setText(s);
+        }
+    }
+
+    private void refreshMaxExposureTextFromPlayer() {
+        if (maxExposureTimeTF == null || viewer == null) {
+            return;
+        }
+        AbstractAEPlayer player = viewer.getAePlayer();
+        if (player == null) {
+            return;
+        }
+        String s = player.formatMaximumExposureTimeS();
+        if (!s.equals(maxExposureTimeTF.getText())) {
+            maxExposureTimeTF.setText(s);
+        }
+    }
+
+    private void commitMinExposureFromText() {
+        if (updatingUi || minExposureTimeTF == null || viewer == null) {
+            return;
+        }
+        AbstractAEPlayer player = viewer.getAePlayer();
+        if (player == null) {
+            return;
+        }
+        try {
+            float v = minExposureFmt.parseFloat(minExposureTimeTF.getText().trim());
+            updatingUi = true;
+            try {
+                player.setMinimumExposureTimeS(v);
+                minExposureTimeTF.setText(player.formatMinimumExposureTimeS());
+            } finally {
+                updatingUi = false;
+            }
+        } catch (Exception e) {
+            refreshMinExposureTextFromPlayer();
+        }
+    }
+
+    private void commitMaxExposureFromText() {
+        if (updatingUi || maxExposureTimeTF == null || viewer == null) {
+            return;
+        }
+        AbstractAEPlayer player = viewer.getAePlayer();
+        if (player == null) {
+            return;
+        }
+        try {
+            float v = minExposureFmt.parseFloat(maxExposureTimeTF.getText().trim());
+            updatingUi = true;
+            try {
+                player.setMaximumExposureTimeS(v);
+                maxExposureTimeTF.setText(player.formatMaximumExposureTimeS());
+            } finally {
+                updatingUi = false;
+            }
+        } catch (Exception e) {
+            refreshMaxExposureTextFromPlayer();
+        }
     }
 
     private void applyPreferenceSearch() {

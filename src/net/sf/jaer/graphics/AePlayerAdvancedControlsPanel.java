@@ -10,11 +10,13 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.Component;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
@@ -28,6 +30,9 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSlider;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.plaf.basic.BasicSliderUI;
 import javax.swing.plaf.basic.BasicSliderUI.TrackListener;
 import net.sf.jaer.JAERViewer;
@@ -37,6 +42,7 @@ import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.graphics.AbstractAEPlayer.PlaybackMode;
+import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 
 /**
  * All the controls for playback are in this GUI.
@@ -274,6 +280,17 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 }
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_AREA_EVENT_COUNT)) {
                 packetSizeSpinner.setValue(evt.getNewValue());
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_NUM_AREAS)) {
+                if (numAreasSpinner != null && evt.getNewValue() instanceof Number n) {
+                    int v = n.intValue();
+                    if (((Number) numAreasSpinner.getValue()).intValue() != v) {
+                        numAreasSpinner.setValue(v);
+                    }
+                }
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_MINIMUM_EXPOSURE_TIME)) {
+                refreshMinimumExposureField();
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_MAXIMUM_EXPOSURE_TIME)) {
+                refreshMaximumExposureField();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PLAYBACKMODE)) {
                 switch (aePlayer.getPlaybackMode()) {
                     case FixedPacketSize:
@@ -293,6 +310,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                         realtimeButton.setSelected(true);
                         break;
                 }
+                updateCountModeControlEnablement();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PAUSED)) {
                 aePlayer.pausePlayAction.setPlayAction();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
@@ -356,6 +374,156 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         if (packetSizeSpinner != null) {
             packetSizeSpinner.setEnabled(allowed);
         }
+        updateCountModeControlEnablement();
+    }
+
+    private void updateCountModeControlEnablement() {
+        boolean allowed = aePlayer != null && aePlayer.eventCountSlicingAllowed();
+        boolean countMode = aePlayer != null && (aePlayer.isFlexTimeEnabled() || aePlayer.isAreaEventCountEnabled());
+        boolean area = aePlayer != null && aePlayer.isAreaEventCountEnabled();
+        if (numAreasSpinner != null) {
+            numAreasSpinner.setEnabled(allowed && area);
+        }
+        if (minExposureField != null) {
+            minExposureField.setEnabled(allowed && countMode);
+        }
+        if (minExposureLabel != null) {
+            minExposureLabel.setEnabled(allowed && countMode);
+        }
+        if (maxExposureField != null) {
+            maxExposureField.setEnabled(allowed && countMode);
+        }
+        if (maxExposureLabel != null) {
+            maxExposureLabel.setEnabled(allowed && countMode);
+        }
+        if (areasLabel != null) {
+            areasLabel.setEnabled(allowed && area);
+        }
+    }
+
+    private void refreshMinimumExposureField() {
+        if (minExposureField == null || aePlayer == null) {
+            return;
+        }
+        String s = aePlayer.formatMinimumExposureTimeS();
+        if (!s.equals(minExposureField.getText())) {
+            minExposureField.setText(s);
+        }
+    }
+
+    private void refreshMaximumExposureField() {
+        if (maxExposureField == null || aePlayer == null) {
+            return;
+        }
+        String s = aePlayer.formatMaximumExposureTimeS();
+        if (!s.equals(maxExposureField.getText())) {
+            maxExposureField.setText(s);
+        }
+    }
+
+    private void commitMinimumExposureField() {
+        if (aePlayer == null || minExposureField == null) {
+            return;
+        }
+        try {
+            float s = aePlayer.getMinimumExposureTimeFormat().parseFloat(minExposureField.getText().trim());
+            aePlayer.setMinimumExposureTimeS(s);
+            refreshMinimumExposureField();
+        } catch (Exception e) {
+            log.warning(e.toString());
+            minExposureField.selectAll();
+            refreshMinimumExposureField();
+        }
+    }
+
+    private void commitMaximumExposureField() {
+        if (aePlayer == null || maxExposureField == null) {
+            return;
+        }
+        try {
+            float s = aePlayer.getMinimumExposureTimeFormat().parseFloat(maxExposureField.getText().trim());
+            aePlayer.setMaximumExposureTimeS(s);
+            refreshMaximumExposureField();
+        } catch (Exception e) {
+            log.warning(e.toString());
+            maxExposureField.selectAll();
+            refreshMaximumExposureField();
+        }
+    }
+
+    private void rightAlignNumericFields() {
+        if (timeField != null) {
+            timeField.setHorizontalAlignment(JTextField.RIGHT);
+        }
+        if (eventField != null) {
+            eventField.setHorizontalAlignment(JTextField.RIGHT);
+        }
+        if (minExposureField != null) {
+            minExposureField.setHorizontalAlignment(JTextField.RIGHT);
+        }
+        if (maxExposureField != null) {
+            maxExposureField.setHorizontalAlignment(JTextField.RIGHT);
+        }
+        rightAlignSpinner(timesliceSpinner);
+        rightAlignSpinner(packetSizeSpinner);
+        rightAlignSpinner(numAreasSpinner);
+    }
+
+    private static void rightAlignSpinner(JSpinner spinner) {
+        if (spinner == null) {
+            return;
+        }
+        if (spinner.getEditor() instanceof JSpinner.DefaultEditor editor) {
+            editor.getTextField().setHorizontalAlignment(JTextField.RIGHT);
+        }
+    }
+
+    /** Mouse wheel uses the spinner's next/previous (octave for time/count, ±1 for areas). */
+    private static void installSpinnerMouseWheel(JSpinner spinner) {
+        if (spinner == null) {
+            return;
+        }
+        MouseWheelListener wheel = (MouseWheelEvent e) -> {
+            if (!spinner.isEnabled()) {
+                return;
+            }
+            e.consume();
+            int rotation = e.getWheelRotation();
+            if (rotation == 0) {
+                return;
+            }
+            Object next = rotation < 0 ? spinner.getNextValue() : spinner.getPreviousValue();
+            if (next != null) {
+                spinner.setValue(next);
+            }
+        };
+        spinner.addMouseWheelListener(wheel);
+        for (Component child : spinner.getComponents()) {
+            child.addMouseWheelListener(wheel);
+            if (child instanceof JSpinner.DefaultEditor editor) {
+                editor.getTextField().addMouseWheelListener(wheel);
+            }
+        }
+    }
+
+    private void installExposureFieldMouseWheel(JTextField field, boolean min) {
+        field.addMouseWheelListener((MouseWheelEvent e) -> {
+            if (!field.isEnabled() || aePlayer == null) {
+                return;
+            }
+            e.consume();
+            int rotation = e.getWheelRotation();
+            if (rotation == 0) {
+                return;
+            }
+            float cur = min ? aePlayer.getMinimumExposureTimeS() : aePlayer.getMaximumExposureTimeS();
+            float next = AbstractAEPlayer.octaveStepExposureTimeS(cur, rotation < 0);
+            if (min) {
+                aePlayer.setMinimumExposureTimeS(next);
+            } else {
+                aePlayer.setMaximumExposureTimeS(next);
+            }
+        });
     }
 
     /**
@@ -396,6 +564,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         } else {
             packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
         }
+        if (numAreasSpinner != null) {
+            numAreasSpinner.setValue(Math.max(1, aePlayer.getNumAreas()));
+        }
+        refreshMinimumExposureField();
+        refreshMaximumExposureField();
+        updateCountModeControlEnablement();
 
         pauseButton.setAction(aePlayer.pausePlayAction);
         playForwardsButton.setAction(aePlayer.playAction);
@@ -629,6 +803,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         msLabel = new javax.swing.JLabel();
         packetSizeSpinner = new javax.swing.JSpinner();
         eventsLabel = new javax.swing.JLabel();
+        numAreasSpinner = new javax.swing.JSpinner();
+        areasLabel = new javax.swing.JLabel();
+        minExposureField = new javax.swing.JTextField();
+        minExposureLabel = new javax.swing.JLabel();
+        maxExposureField = new javax.swing.JTextField();
+        maxExposureLabel = new javax.swing.JLabel();
         syncPanel = new javax.swing.JPanel();
         syncPlaybackCheckBox = new javax.swing.JCheckBox();
 
@@ -851,7 +1031,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         moreControlsPanel.add(playerStatusPanel);
 
         playbackModePanel.setAlignmentX(0.0F);
-        playbackModePanel.setPreferredSize(new java.awt.Dimension(600, 60));
+        playbackModePanel.setPreferredSize(new java.awt.Dimension(700, 95));
 
         buttonGroup1.add(fixedTimeSliceButton);
         fixedTimeSliceButton.setText("Fixed time slice");
@@ -873,7 +1053,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         buttonGroup1.add(areaEventCountButton);
         areaEventCountButton.setText("Area event count");
-        areaEventCountButton.setToolTipText("Accumulate until any spatial area reaches N events (f/s changes N). Set # areas in File → Preferences → Playback.");
+        areaEventCountButton.setToolTipText("Accumulate until any spatial area reaches N events (f/s changes N). # areas is the grid size.");
         areaEventCountButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 areaEventCountButtonActionPerformed(evt);
@@ -909,6 +1089,52 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         eventsLabel.setText("events");
 
+        numAreasSpinner.setModel(new SpinnerNumberModel(AreaEventCountExposer.NUM_AREAS_DEFAULT, 1, 1024, 1));
+        numAreasSpinner.setToolTipText("AreaEventCount: target number of spatial cells covering the chip.");
+        numAreasSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                if (aePlayer != null) {
+                    aePlayer.setNumAreas(((Number) numAreasSpinner.getValue()).intValue());
+                }
+            }
+        });
+        areasLabel.setText("areas");
+
+        minExposureField.setColumns(6);
+        minExposureField.setToolTipText("Count methods: do not end a slice until this much event time has passed (0 = no minimum). Default 1 ms.");
+        minExposureField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                commitMinimumExposureField();
+            }
+        });
+        minExposureField.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                commitMinimumExposureField();
+            }
+        });
+        minExposureLabel.setText("s min");
+
+        maxExposureField.setColumns(6);
+        maxExposureField.setToolTipText("Count methods: end the slice after this much event time even if the count is not reached (0 = no maximum).");
+        maxExposureField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                commitMaximumExposureField();
+            }
+        });
+        maxExposureField.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                commitMaximumExposureField();
+            }
+        });
+        maxExposureLabel.setText("s max");
+
+        installSpinnerMouseWheel(timesliceSpinner);
+        installSpinnerMouseWheel(packetSizeSpinner);
+        installSpinnerMouseWheel(numAreasSpinner);
+        installExposureFieldMouseWheel(minExposureField, true);
+        installExposureFieldMouseWheel(maxExposureField, false);
+        rightAlignNumericFields();
+
         javax.swing.GroupLayout playbackModePanelLayout = new javax.swing.GroupLayout(playbackModePanel);
         playbackModePanel.setLayout(playbackModePanelLayout);
         playbackModePanelLayout.setHorizontalGroup(
@@ -917,25 +1143,35 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 .addContainerGap()
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
-                        .addComponent(timesliceSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 114, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(msLabel)
-                        .addGap(18, 18, 18)
-                        .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(playbackModePanelLayout.createSequentialGroup()
                         .addComponent(fixedTimeSliceButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(fixedPacketSizeButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(areaEventCountButton)))
-                .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(playbackModePanelLayout.createSequentialGroup()
+                        .addComponent(areaEventCountButton)
                         .addGap(2, 2, 2)
                         .addComponent(realtimeButton))
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
+                        .addComponent(timesliceSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 114, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(eventsLabel)))
-                .addContainerGap(180, Short.MAX_VALUE))
+                        .addComponent(msLabel)
+                        .addGap(18, 18, 18)
+                        .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(eventsLabel)
+                        .addGap(18, 18, 18)
+                        .addComponent(numAreasSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(areasLabel))
+                    .addGroup(playbackModePanelLayout.createSequentialGroup()
+                        .addGap(138, 138, 138)
+                        .addComponent(minExposureField, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(minExposureLabel)
+                        .addGap(18, 18, 18)
+                        .addComponent(maxExposureField, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(maxExposureLabel)))
+                .addContainerGap(20, Short.MAX_VALUE))
         );
         playbackModePanelLayout.setVerticalGroup(
             playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -951,7 +1187,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     .addComponent(timesliceSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(msLabel)
                     .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(eventsLabel))
+                    .addComponent(eventsLabel)
+                    .addComponent(numAreasSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(areasLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(minExposureField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(minExposureLabel)
+                    .addComponent(maxExposureField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(maxExposureLabel))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -973,10 +1217,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private void fixedTimeSliceButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fixedTimeSliceButtonActionPerformed
         aePlayer.setPlaybackMode(PlaybackMode.FixedTimeSlice);
         timesliceSpinner.setValue(aePlayer.getTimesliceUs());
+        updateCountModeControlEnablement();
 }//GEN-LAST:event_fixedTimeSliceButtonActionPerformed
 
     private void fixedPacketSizeButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fixedPacketSizeButtonActionPerformed
         aePlayer.setPlaybackMode(PlaybackMode.FixedPacketSize);
+        updateCountModeControlEnablement();
 }//GEN-LAST:event_fixedPacketSizeButtonActionPerformed
 
     private void areaEventCountButtonActionPerformed(java.awt.event.ActionEvent evt) {
@@ -984,10 +1230,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         if (aePlayer.getAreaEventCountExposer() != null) {
             packetSizeSpinner.setValue(aePlayer.getAreaEventCountExposer().getEventCount());
         }
+        updateCountModeControlEnablement();
     }
 
     private void realtimeButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_realtimeButtonActionPerformed
         aePlayer.setPlaybackMode(PlaybackMode.RealTime);
+        updateCountModeControlEnablement();
 }//GEN-LAST:event_realtimeButtonActionPerformed
 
     private void timesliceSpinnerStateChanged (javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_timesliceSpinnerStateChanged
@@ -1152,6 +1400,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JTextField eventField;
     private javax.swing.JLabel eventFieldLabel;
     private javax.swing.JLabel eventsLabel;
+    private javax.swing.JSpinner numAreasSpinner;
+    private javax.swing.JLabel areasLabel;
+    private javax.swing.JTextField minExposureField;
+    private javax.swing.JLabel minExposureLabel;
+    private javax.swing.JTextField maxExposureField;
+    private javax.swing.JLabel maxExposureLabel;
     private javax.swing.JRadioButton areaEventCountButton;
     private javax.swing.JRadioButton fixedPacketSizeButton;
     private javax.swing.JRadioButton fixedTimeSliceButton;

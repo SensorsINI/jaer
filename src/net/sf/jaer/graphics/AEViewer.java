@@ -7686,10 +7686,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         statusTextFieldMessages.add(s);
+        if (statusTextField == null) {
+            return;
+        }
         SwingUtilities.invokeLater(new Runnable() { //invoke in Swing thread to avoid Errors thrown by getLock when the viewloop (which is calling setStatusMessage) is interrupted by playMode change
 
             @Override
             public void run() {
+                if (statusTextField == null) {
+                    return;
+                }
                 statusTextField.setText(s);
                 if (statusTimer != null) {
                     statusTimer.stop();
@@ -7725,10 +7731,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param c
      */
     public void setStatusColor(final Color c) {
+        if (statusTextField == null) {
+            return;
+        }
         SwingUtilities.invokeLater(new Runnable() {
 
             @Override
             public void run() {
+                if (statusTextField == null) {
+                    return;
+                }
                 statusTextField.setForeground(c);
             }
         });
@@ -10052,8 +10064,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 default:
                     getSupport().firePropertyChange(evt); // forward the event, e.g. for fileopen, etc
             }
-        } else if (evt.getSource() instanceof AEPlayer) {
-            getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
+        } else if (evt.getSource() instanceof AbstractAEPlayer) {
+            getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
         }
     }
 

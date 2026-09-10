@@ -55,11 +55,13 @@ import net.sf.jaer.graphics.FrameAnnotater;
 <code>EventExposureMode</code> decides when a DVS &ldquo;frame&rdquo; is exposed:</p>
 <ul>
 <li><b>CountDuration</b> &mdash; accumulate for <code>durationUs</code>.</li>
-<li><b>ConstantCount</b> &mdash; accumulate <code>eventCount</code> events in the whole scene.</li>
+<li><b>ConstantCount</b> &mdash; accumulate <code>eventCount</code> events in the whole scene,
+but not before <code>durationMinUs</code> of event time has elapsed (player
+<code>minimumExposureTime</code>).</li>
 <li><b>AreaEventCount</b> &mdash; divide the chip into about <code>numAreas</code>
 rectangular cells (default 32) and expose when <i>any</i> cell reaches
-<code>eventCount</code> (default 1000). Optional min/max duration clamp the
-slice like PatchMatchFlow AreaEventNumber.</li>
+<code>eventCount</code> (default 1000). <code>durationMinUs</code>/<code>durationMaxUs</code>
+clamp the slice (0 disables that bound).</li>
 </ul>
 <p>AEViewer playback uses this as a third packet-slicing mode (f/s change
 <code>eventCount</code>). DavisAutoShooter and DvsFramer enclose an instance.</p>
@@ -133,9 +135,9 @@ public class AreaEventCountExposer extends EventFilter2D implements FrameAnnotat
                 "Target number of rectangular areas covering the chip (default 32). Actual grid is the nearest aspect-matched nax*nay.");
         setPropertyTooltip(dur, "durationUs", "Slice duration in us for CountDuration.");
         setPropertyTooltip(dur, "durationMinUs",
-                "AreaEventCount: do not expose before this many us even if an area is full (0 = no minimum).");
+                "Do not expose ConstantCount/AreaEventCount before this many us (0 = no minimum). Holds same-timestamp bursts in one slice.");
         setPropertyTooltip(dur, "durationMaxUs",
-                "AreaEventCount: expose after this many us even if no area is full (caps sparse scenes).");
+                "Count methods: expose after this many us even if the count is not reached (0 = no maximum).");
         setPropertyTooltip(areas, "showAreas", "Draw the area grid and the hottest cell count.");
         setFilterEnabled(false);
     }
@@ -453,8 +455,8 @@ public class AreaEventCountExposer extends EventFilter2D implements FrameAnnotat
     }
 
     public void setDurationMaxUs(int durationMaxUs) {
-        if (durationMaxUs < 1) {
-            durationMaxUs = 1;
+        if (durationMaxUs < 0) {
+            durationMaxUs = 0;
         }
         this.durationMaxUs = durationMaxUs;
         putInt("durationMaxUs", durationMaxUs);
@@ -541,8 +543,9 @@ public class AreaEventCountExposer extends EventFilter2D implements FrameAnnotat
     }
 
     /**
-     * CountDuration: dt &gt;= durationUs. ConstantCount: totalEvents &gt;=
-     * eventCount. AreaEventCount: (any area full OR dt &gt;= max) AND dt &gt;= min.
+     * CountDuration: dt &gt;= durationUs. ConstantCount: (count AND dt &gt;= min)
+     * OR (max &gt; 0 AND dt &gt;= max). AreaEventCount: (any area full AND dt &gt;= min)
+     * OR (max &gt; 0 AND dt &gt;= max). Min/max 0 disable that bound.
      */
     private boolean checkExposed() {
         if (exposed) {
@@ -554,6 +557,10 @@ public class AreaEventCountExposer extends EventFilter2D implements FrameAnnotat
             markExposed();
             return true;
         }
+        if (durationMaxUs > 0 && dt >= durationMaxUs) {
+            markExposed();
+            return true;
+        }
         switch (eventExposureMode) {
             case CountDuration:
                 if (dt >= durationUs) {
@@ -561,14 +568,12 @@ public class AreaEventCountExposer extends EventFilter2D implements FrameAnnotat
                 }
                 break;
             case ConstantCount:
-                if (totalEvents >= eventCount) {
+                if (totalEvents >= eventCount && dt >= durationMinUs) {
                     markExposed();
                 }
                 break;
             case AreaEventCount:
-                boolean longEnough = dt >= durationMinUs;
-                boolean areaOrTimeout = areaCountExceeded || dt >= durationMaxUs;
-                if (longEnough && areaOrTimeout) {
+                if (dt >= durationMinUs && areaCountExceeded) {
                     markExposed();
                 }
                 break;

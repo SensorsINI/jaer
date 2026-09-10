@@ -394,6 +394,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         boolean flextime = !area && player.isFlexTimeEnabled();
         int durationUs = player.getTimesliceUs();
         int eventCount = player.getPacketSizeEvents();
+        int minExposureUs = player.getMinimumExposureTimeUs();
+        int maxExposureUs = player.getMaximumExposureTimeUs();
         AreaEventCountExposer exposer = area ? player.getAreaEventCountExposer() : null;
         if (exposer != null) {
             exposer.resetAccumulation();
@@ -405,10 +407,17 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         maxY = chip.getSizeY();
         boolean noEventsInThisPacket = true;
         numEventsThisPacket = 0;
+        int packetStartTimestamp = lastTimestampRead;
+        boolean havePacketStart = false;
         while (dvsReader != null && (noEventsReadYet || noEventsInThisPacket)
                 || (area && exposer != null && !exposer.isExposed())
                 || (!area && !flextime && lastTimestampRead < lastPacketLastTimestamp + durationUs)
-                || (!area && flextime && numEventsThisPacket < eventCount)) {
+                || (!area && flextime
+                        && !(havePacketStart && maxExposureUs > 0
+                                && lastTimestampRead - packetStartTimestamp >= maxExposureUs)
+                        && (numEventsThisPacket < eventCount
+                                || (havePacketStart && minExposureUs > 0
+                                        && lastTimestampRead - packetStartTimestamp < minExposureUs)))) {
             try {
                 line = dvsReader.readLine();
                 if (line == null) {
@@ -427,6 +436,10 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 parseEvent(line, outItr);
                 noEventsInThisPacket = false;
                 numEventsThisPacket++;
+                if (!havePacketStart) {
+                    packetStartTimestamp = lastTimestampRead;
+                    havePacketStart = true;
+                }
                 if (exposer != null && lastParsedX >= 0) {
                     exposer.addEvent(lastParsedX, lastParsedY, lastTimestampRead);
                 }
