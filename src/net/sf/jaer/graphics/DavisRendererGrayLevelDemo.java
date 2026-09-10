@@ -178,6 +178,23 @@ public class DavisRendererGrayLevelDemo {
                     false, ColorMode.HotCode, newCanvas(Canvas2DStub.class), 0f);
             matrixFailures += runCase("3d", matrixChip, matrixRenderer, displayConfig,
                     false, ColorMode.GrayLevel, newCanvas(Canvas3DStub.class), 0f);
+            matrixChip.setSizeX(1280);
+            matrixChip.setSizeY(720);
+            matrixRenderer.checkPixmapAllocation();
+            final int hd = 4 * 2048 * 1024;
+            if (matrixRenderer.textureWidth != 2048 || matrixRenderer.textureHeight != 1024
+                    || matrixRenderer.grayBuffer.capacity() < hd
+                    || matrixRenderer.pixBuffer.capacity() < hd
+                    || matrixRenderer.pixmap.capacity() < hd) {
+                System.out.println("[U3.grow] FAIL: HD pixmap gray="
+                        + (matrixRenderer.grayBuffer == null ? -1 : matrixRenderer.grayBuffer.capacity())
+                        + " pix=" + (matrixRenderer.pixBuffer == null ? -1 : matrixRenderer.pixBuffer.capacity())
+                        + " tex=" + matrixRenderer.textureWidth + "x" + matrixRenderer.textureHeight);
+                matrixFailures++;
+            } else {
+                matrixRenderer.startFrame(0);
+                System.out.println("[U3.grow] 1280x720 grayBuffer=" + matrixRenderer.grayBuffer.capacity());
+            }
 
             final AEChip nullCanvasChip = newChip();
             requireFixture(nullCanvasChip.getCanvas() == null,

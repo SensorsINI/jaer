@@ -32,7 +32,7 @@ The **OpenCV** menu (same add/remove pattern as **DAVIS**) requests:
 - Brightness / contrast +/−, autofocus if `get(CAP_PROP_AUTOFOCUS) >= 0`
 - Windows: **Camera settings…** (`CAP_PROP_SETTINGS` DirectShow dialog)
 
-The overlay shows what `get` reports after `set`. Stored size/FOURCC/fps apply on the next `open()`. Analog controls and the OS dialog need a LIVE camera.
+The overlay shows what `get` reports after `set`. Stored size/FOURCC/fps apply on the next `open()`. Analog controls and the OS dialog need a LIVE camera. Live size change reallocates the Davis RGBA pixmap **and** `grayBuffer` together (and publishes the power-of-two texture size only after that) so 1280×720 does not crash ViewLoop.
 
 True format enums (DirectShow `GetStreamCaps`, V4L2 `VIDIOC_ENUM_FMT`) are not used.
 

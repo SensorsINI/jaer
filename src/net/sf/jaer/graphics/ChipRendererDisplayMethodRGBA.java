@@ -82,6 +82,9 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
         protected void displayQuad(final GLAutoDrawable drawable) {
         final Chip2DRenderer renderer = getChipCanvas().getRenderer();
+        if (renderer instanceof DavisRenderer) {
+            ((DavisRenderer) renderer).checkPixmapAllocation();
+        }
         final FloatBuffer pixmap = renderer.getPixmap();
         FloatBuffer dvsEventsMap = null;
 //		FloatBuffer offMap = null;

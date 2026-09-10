@@ -53,7 +53,14 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
     private int lastNumEvents;
     private int estimatedRate;
     private int lastReportedFps;
+    /** Null until the first analog nudge probes set/get (0 vs 0–1 vs 0–255). */
+    private AnalogScale brightnessScale;
+    private AnalogScale contrastScale;
     private int aeBufferSize = 1;
+
+    private enum AnalogScale {
+        UNSUPPORTED, UNIT, HUNDRED, BYTE
+    }
 
     public OpenCvCameraHardwareInterface(OpenCvCameraFactory.DeviceInfo info) {
         this(info.index, info.api, info.label, info.width, info.height, info.tooltipHtml);
@@ -245,26 +252,38 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
     }
 
     /**
-     * Step brightness or contrast. Range is inferred from the current value
-     * (0–1 vs 0–100 vs 0–255).
+     * Step brightness or contrast. When {@code get} is 0, that can mean 0–1,
+     * 0–255 at minimum, or unsupported; probe with {@code set} then {@code get}.
      */
     public synchronized String nudgeProperty(int propId, int direction, String name) {
         VideoCapture cap = capture;
         if (!open.get() || cap == null || !cap.isOpened()) {
             return "OpenCV camera is not open";
         }
+        AnalogScale scale = analogScale(cap, propId, name);
+        if (scale == AnalogScale.UNSUPPORTED) {
+            return name + " is not supported on this camera (set/get did not stick)";
+        }
         double v = cap.get(propId);
         if (v < 0) {
             return name + " is not supported on this camera";
         }
-        double hi = 255;
-        double step = 8;
-        if (v <= 1.01) {
-            hi = 1;
-            step = 0.05;
-        } else if (v <= 100.01) {
-            hi = 100;
-            step = 5;
+        double hi;
+        double step;
+        switch (scale) {
+            case UNIT:
+                hi = 1;
+                step = 0.05;
+                break;
+            case HUNDRED:
+                hi = 100;
+                step = 5;
+                break;
+            case BYTE:
+            default:
+                hi = 255;
+                step = 8;
+                break;
         }
         double nv = v + (direction < 0 ? -step : step);
         if (nv < 0) {
@@ -275,7 +294,59 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
         }
         cap.set(propId, nv);
         double after = cap.get(propId);
-        return String.format(java.util.Locale.ROOT, "%s %.3g", name, after);
+        String range = scale == AnalogScale.UNIT ? "0-1"
+                : scale == AnalogScale.HUNDRED ? "0-100" : "0-255";
+        return String.format(java.util.Locale.ROOT, "%s %.3g (%s)", name, after, range);
+    }
+
+    /**
+     * Discover analog range: try {@code set(128)} (8-bit), {@code set(50)}
+     * (percent), {@code set(0.5)} (unit). Restore the original value.
+     */
+    private AnalogScale analogScale(VideoCapture cap, int propId, String name) {
+        if (propId == Videoio.CAP_PROP_BRIGHTNESS && brightnessScale != null) {
+            return brightnessScale;
+        }
+        if (propId == Videoio.CAP_PROP_CONTRAST && contrastScale != null) {
+            return contrastScale;
+        }
+        double orig = cap.get(propId);
+        AnalogScale found;
+        if (orig < 0) {
+            found = AnalogScale.UNSUPPORTED;
+        } else if (orig > 1.01 && orig <= 100.01) {
+            found = AnalogScale.HUNDRED;
+        } else if (orig > 100.01) {
+            found = AnalogScale.BYTE;
+        } else {
+            cap.set(propId, 128);
+            double g = cap.get(propId);
+            if (Math.abs(g - 128) < 16 || g > 8) {
+                found = AnalogScale.BYTE;
+            } else {
+                cap.set(propId, 50);
+                g = cap.get(propId);
+                if (Math.abs(g - 50) < 8 || (g > 2 && g <= 100)) {
+                    found = AnalogScale.HUNDRED;
+                } else {
+                    cap.set(propId, 0.5);
+                    g = cap.get(propId);
+                    if (Math.abs(g - 0.5) < 0.08 || (g > 0.02 && g <= 1.01)) {
+                        found = AnalogScale.UNIT;
+                    } else {
+                        found = AnalogScale.UNSUPPORTED;
+                    }
+                }
+            }
+            cap.set(propId, orig);
+        }
+        if (propId == Videoio.CAP_PROP_BRIGHTNESS) {
+            brightnessScale = found;
+        } else if (propId == Videoio.CAP_PROP_CONTRAST) {
+            contrastScale = found;
+        }
+        log.info(name + " analog probe: " + found + " (get was " + orig + ")");
+        return found;
     }
 
     public synchronized String setAutofocus(boolean enable) {
@@ -338,6 +409,8 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
         }
         OPEN_INDICES.remove(cameraIndex);
         open.set(false);
+        brightnessScale = null;
+        contrastScale = null;
         pool.reset();
     }
 

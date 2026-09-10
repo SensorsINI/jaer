@@ -748,12 +748,15 @@ public class DavisRenderer extends AEChipRenderer {
         }
     }
 
-    protected void startFrame(final int ts) {
+    protected synchronized void startFrame(final int ts) {
         timestampFrameStart = ts;
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
-        System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, pixBuffer.array().length);
-
+        if (grayBuffer == null || pixBuffer == null) {
+            checkPixmapAllocation();
+        }
+        final int n = Math.min(grayBuffer.array().length, pixBuffer.array().length);
+        System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
     }
 
     protected void endFrame(final int ts) {
@@ -937,24 +940,67 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     @Override
-    protected void checkPixmapAllocation() {
-        if ((sizeX != chip.getSizeX()) || (sizeY != chip.getSizeY())) {
-            sizeX = chip.getSizeX();
-            textureWidth = DavisRenderer.ceilingPow2(sizeX);
-
-            sizeY = chip.getSizeY();
-            textureHeight = DavisRenderer.ceilingPow2(sizeY);
+    protected synchronized void checkPixmapAllocation() {
+        if (chip == null) {
+            return;
         }
-
-        final int n = 4 * textureWidth * textureHeight;
-        if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (dvsEventsMap.capacity() < n) /*|| (offMap.capacity() < n)*/
-                || (annotateMap.capacity() < n)) {
-            pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+        final int newSx = chip.getSizeX();
+        final int newSy = chip.getSizeY();
+        if (newSx <= 0 || newSy <= 0) {
+            return;
+        }
+        final int newTw = DavisRenderer.ceilingPow2(newSx);
+        final int newTh = DavisRenderer.ceilingPow2(newSy);
+        final int n = 4 * newTw * newTh;
+        final boolean grow = (pixmap == null) || (pixmap.capacity() < n)
+                || (pixBuffer == null) || (pixBuffer.capacity() < n)
+                || (dvsEventsMap == null) || (dvsEventsMap.capacity() < n)
+                || (annotateMap == null) || (annotateMap.capacity() < n)
+                || (grayBuffer == null) || (grayBuffer.capacity() < n);
+        if (grow) {
+            // Allocate first, then publish textureWidth so GL paint cannot
+            // upload 2048x1024 from a 1024x512 pixmap (OpenCV 1280x720).
+            pixmap = FloatBuffer.allocate(n);
             pixBuffer = FloatBuffer.allocate(n);
             dvsEventsMap = FloatBuffer.allocate(n);
-//            offMap = FloatBuffer.allocate(n);
             annotateMap = FloatBuffer.allocate(n);
+            grayBuffer = FloatBuffer.allocate(n);
+            fillGrayBuffer(newTw, newTh);
         }
+        sizeX = newSx;
+        sizeY = newSy;
+        textureWidth = newTw;
+        textureHeight = newTh;
+        pixmap.limit(n);
+        pixmap.rewind();
+        pixBuffer.limit(n);
+        pixBuffer.rewind();
+        dvsEventsMap.limit(n);
+        dvsEventsMap.rewind();
+        annotateMap.limit(n);
+        annotateMap.rewind();
+        grayBuffer.limit(n);
+        grayBuffer.rewind();
+    }
+
+    private void fillGrayBuffer(final int tw, final int th) {
+        grayBuffer.rewind();
+        final ChipCanvas canvas = getChip() == null ? null : getChip().getCanvas();
+        int alpha = (isDisplayFrames() || colorMode == ColorMode.HotCode
+                || ((canvas != null) && canvas.is3DEnabled())) ? 0 : 1;
+        float gray = colorMode != null ? colorMode.getBackgroundGrayLevel() : grayValue;
+        for (int y = 0; y < tw; y++) {
+            for (int x = 0; x < th; x++) {
+                grayBuffer.put(gray);
+                grayBuffer.put(gray);
+                grayBuffer.put(gray);
+                grayBuffer.put(alpha);
+            }
+        }
+        grayBuffer.rewind();
+        final int n = 4 * tw * th;
+        System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
+        System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
     }
 
     /**
@@ -980,8 +1026,8 @@ public class DavisRenderer extends AEChipRenderer {
      * @see #getPixMapIndex(int, int)
      */
     public FloatBuffer getDvsEventsMap() {
-        dvsEventsMap.rewind();
         checkPixmapAllocation();
+        dvsEventsMap.rewind();
         return dvsEventsMap;
     }
 
@@ -1003,8 +1049,8 @@ public class DavisRenderer extends AEChipRenderer {
      * @see #getPixMapIndex(int, int)
      */
     protected FloatBuffer getAnnotateMap() {
-        annotateMap.rewind();
         checkPixmapAllocation();
+        annotateMap.rewind();
         return annotateMap;
     }
 
