@@ -688,9 +688,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             float maxW = chip.getSizeX() * 0.70f;
-            int fontsize = Math.max(8, Math.round(14 * (chip.getSizeX() / 346f)));
+            int fontsize = Math.max(4, Math.round(7 * (chip.getSizeX() / 346f)));
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{recordingLine}, maxW);
-            int limitFontsize = Math.max(6, Math.round(fontsize * 0.75f));
+            int limitFontsize = Math.max(3, Math.round(fontsize * 0.75f));
             String[] detailLines = new String[1 + limitLines.length];
             detailLines[0] = applyFiltersLine;
             System.arraycopy(limitLines, 0, detailLines, 1, limitLines.length);
