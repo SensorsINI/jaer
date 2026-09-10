@@ -25,6 +25,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.graphics.ScrollWheelTunableMenuItem;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.opencv.OpenCvCameraHardwareInterface;
 import net.sf.jaer.hardwareinterface.opencv.OpenCvCaptureControls;
@@ -54,6 +55,8 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
     private static final double[] FPSES = {0, 15, 30, 60};
 
     private JMenu opencvMenu;
+    private ScrollWheelTunableMenuItem brightnessItem;
+    private ScrollWheelTunableMenuItem contrastItem;
 
     public OpenCvFrameCamera() {
         setName("OpenCvFrameCamera");
@@ -92,7 +95,8 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
         }
         opencvMenu = new JMenu("OpenCV");
         opencvMenu.setToolTipText("Requests OpenCV VideoCapture size, format, and analog controls. "
-                + "The driver may keep VGA; these are not a capability list.");
+                + "Analog values are session-only (not Preferences). "
+                + "The driver may keep VGA; size/format are not a capability list.");
         opencvMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         JMenu sizeMenu = new JMenu("Size");
         ButtonGroup sizeGroup = new ButtonGroup();
@@ -119,10 +123,10 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
         }
         opencvMenu.add(fpsMenu);
         opencvMenu.add(new JSeparator());
-        opencvMenu.add(new JMenuItem(new NudgeAction("Brightness +", Videoio.CAP_PROP_BRIGHTNESS, 1, "Brightness")));
-        opencvMenu.add(new JMenuItem(new NudgeAction("Brightness -", Videoio.CAP_PROP_BRIGHTNESS, -1, "Brightness")));
-        opencvMenu.add(new JMenuItem(new NudgeAction("Contrast +", Videoio.CAP_PROP_CONTRAST, 1, "Contrast")));
-        opencvMenu.add(new JMenuItem(new NudgeAction("Contrast -", Videoio.CAP_PROP_CONTRAST, -1, "Contrast")));
+        brightnessItem = analogItem("Brightness", Videoio.CAP_PROP_BRIGHTNESS, -64, 64, 4);
+        contrastItem = analogItem("Contrast", Videoio.CAP_PROP_CONTRAST, 0, 100, 5);
+        opencvMenu.add(brightnessItem);
+        opencvMenu.add(contrastItem);
         opencvMenu.add(new JSeparator());
         opencvMenu.add(new JCheckBoxMenuItem(new AutofocusAction()));
         opencvMenu.add(new JMenuItem(new ShowModeAction()));
@@ -143,6 +147,7 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
             public void menuCanceled(MenuEvent e) {
             }
         });
+        ScrollWheelTunableMenuItem.installPopupWheelHandler(opencvMenu);
         getAeViewer().addMenu(opencvMenu);
     }
 
@@ -153,6 +158,8 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
             getAeViewer().removeMenu(opencvMenu);
         }
         opencvMenu = null;
+        brightnessItem = null;
+        contrastItem = null;
     }
 
     @Override
@@ -235,9 +242,13 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
                 fa.putValue(Action.SELECTED_KEY, fa.fourcc.equalsIgnoreCase(rf));
             } else if (a instanceof FpsAction pa) {
                 pa.putValue(Action.SELECTED_KEY, Math.abs(pa.fps - rfps) < 0.01);
-            } else if (a instanceof NudgeAction || a instanceof AutofocusAction
+            } else if (a instanceof AutofocusAction
                     || a instanceof OsSettingsAction || a instanceof ShowModeAction) {
                 item.setEnabled(live);
+            }
+            if (item instanceof ScrollWheelTunableMenuItem tunable) {
+                tunable.setEnabled(live);
+                tunable.refreshLabel();
             }
             if (a instanceof AutofocusAction && hw != null) {
                 boolean supported = hw.propertySupported(Videoio.CAP_PROP_AUTOFOCUS);
@@ -318,28 +329,62 @@ public class OpenCvFrameCamera extends AEChip implements OpenCvCaptureControls {
         }
     }
 
-    final class NudgeAction extends AbstractAction {
-        private final int propId;
-        private final int direction;
-        private final String name;
-
-        NudgeAction(String label, int propId, int direction, String name) {
-            putValue(Action.NAME, label);
-            this.propId = propId;
-            this.direction = direction;
-            this.name = name;
-            putValue(Action.SHORT_DESCRIPTION, "Change " + name + " if this UVC camera exposes it.");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            OpenCvCameraHardwareInterface hw = liveHw();
-            if (hw == null) {
-                announce("Open the camera from Interface first");
-                return;
+    /**
+     * Session-only analog (not Preferences). Wheel and Left/Right step;
+     * Up/Down move to the next OpenCV menu row.
+     */
+    private ScrollWheelTunableMenuItem analogItem(String name, int propId, int lo, int hi, int step) {
+        ScrollWheelTunableMenuItem item = new ScrollWheelTunableMenuItem();
+        item.setVerticalArrowsAdjust(false);
+        item.setToolTipText("<html>" + name + " is not saved (not a bias).<br>"
+                + "Mouse wheel or Left/Right while this row is highlighted. Up/Down selects another row.");
+        item.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            @Override
+            public int get() {
+                OpenCvCameraHardwareInterface hw = liveHw();
+                if (hw == null) {
+                    return 0;
+                }
+                int v = hw.getAnalog(propId, 0);
+                if (v < lo) {
+                    return lo;
+                }
+                if (v > hi) {
+                    return hi;
+                }
+                return v;
             }
-            announce(hw.nudgeProperty(propId, direction, name));
-        }
+
+            @Override
+            public void set(int value) {
+                OpenCvCameraHardwareInterface hw = liveHw();
+                if (hw == null) {
+                    return;
+                }
+                hw.setAnalog(propId, value, lo, hi);
+                announce(name + " " + hw.getAnalog(propId, value));
+            }
+
+            @Override
+            public int stepUp(int current) {
+                return Math.min(current + step, hi);
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return Math.max(current - step, lo);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                if (lo < 0) {
+                    return String.format("%s %d  (%+d..%+d)", name, value, lo, hi);
+                }
+                return String.format("%s %d  (%d..%d)", name, value, lo, hi);
+            }
+        }, () -> {
+        });
+        return item;
     }
 
     final class AutofocusAction extends AbstractAction {

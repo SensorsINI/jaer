@@ -24,6 +24,14 @@ import javax.swing.event.MouseInputAdapter;
  */
 interface WheelAdjustableMenuItem {
     boolean adjustForWheelRotation(int wheelRotation);
+
+    /**
+     * When false, Up/Down move to the next menu item; Left/Right (and the
+     * wheel) change the value. Adaptive skip uses true (Up/Down also step).
+     */
+    default boolean verticalArrowsAdjustValue() {
+        return true;
+    }
 }
 
 public class ScrollWheelTunableMenuItem extends JMenuItem implements WheelAdjustableMenuItem {
@@ -47,6 +55,7 @@ public class ScrollWheelTunableMenuItem extends JMenuItem implements WheelAdjust
 
     private IntParameter parameter;
     private Runnable onChanged;
+    private boolean verticalArrowsAdjust = true;
 
     public ScrollWheelTunableMenuItem() {
     }
@@ -77,12 +86,22 @@ public class ScrollWheelTunableMenuItem extends JMenuItem implements WheelAdjust
             @Override
             public void menuKeyPressed(MenuKeyEvent e) {
                 final int keyCode = e.getKeyCode();
-                if (keyCode != KeyEvent.VK_UP && keyCode != KeyEvent.VK_DOWN) {
+                final WheelAdjustableMenuItem item = findTunableItem(e.getPath());
+                if (item == null) {
                     return;
                 }
-                final WheelAdjustableMenuItem item = findTunableItem(e.getPath());
-                final int rotation = keyCode == KeyEvent.VK_UP ? -1 : 1;
-                if (item != null && item.adjustForWheelRotation(rotation)) {
+                final int rotation;
+                if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_KP_LEFT) {
+                    rotation = 1;
+                } else if (keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_KP_RIGHT) {
+                    rotation = -1;
+                } else if (item.verticalArrowsAdjustValue()
+                        && (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN)) {
+                    rotation = keyCode == KeyEvent.VK_UP ? -1 : 1;
+                } else {
+                    return;
+                }
+                if (item.adjustForWheelRotation(rotation)) {
                     e.consume();
                 }
             }
@@ -141,6 +160,19 @@ public class ScrollWheelTunableMenuItem extends JMenuItem implements WheelAdjust
             }
         }
         return null;
+    }
+
+    /**
+     * OpenCV analog items: Left/Right and wheel change the value; Up/Down
+     * move to the next menu row.
+     */
+    public void setVerticalArrowsAdjust(boolean verticalArrowsAdjust) {
+        this.verticalArrowsAdjust = verticalArrowsAdjust;
+    }
+
+    @Override
+    public boolean verticalArrowsAdjustValue() {
+        return verticalArrowsAdjust;
     }
 
     public void bind(IntParameter parameter, Runnable onChanged) {

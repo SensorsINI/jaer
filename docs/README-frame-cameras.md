@@ -29,7 +29,8 @@ The **OpenCV** menu (same add/remove pattern as **DAVIS**) requests:
 - Size (driver default, 320×240 … 1920×1080)
 - Pixel format (driver default, YUY2, MJPG — MJPG often unlocks higher UVC sizes; jAER still stores RGB `FramePacket`)
 - Frame rate (driver default, 15 / 30 / 60 — many backends ignore this)
-- Brightness / contrast +/−, autofocus if `get(CAP_PROP_AUTOFOCUS) >= 0`
+- Brightness (-64..+64) and contrast (0..100): mouse wheel or Left/Right while the row is highlighted (Up/Down moves to the next row). Session-only; not Preferences.
+- Autofocus if `get(CAP_PROP_AUTOFOCUS) >= 0`
 - Windows: **Camera settings…** (`CAP_PROP_SETTINGS` DirectShow dialog)
 
 The overlay shows what `get` reports after `set`. Stored size/FOURCC/fps apply on the next `open()`. Analog controls and the OS dialog need a LIVE camera. Live size change reallocates the Davis RGBA pixmap **and** `grayBuffer` together (and publishes the power-of-two texture size only after that) so 1280×720 does not crash ViewLoop.
