@@ -1493,6 +1493,10 @@ public final class UsbEnumerationSafetyDemo {
                 "resume/unplug dialog offers No, discard");
         require(src.contains("confirmSaveOrDiscardRecording"),
                 "resume/unplug uses a two-button save/discard prompt");
+        require(src.contains("maybeWarnHostSleepForTimeLimitedRecording"),
+                "time-limited recording warns if OS sleep is shorter than the limit");
+        require(src.contains("HostSleepTimeout.claimWarningThisJvm"),
+                "sleep-timeout warning is once per JVM");
     }
 
     /**

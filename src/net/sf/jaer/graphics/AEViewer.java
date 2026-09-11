@@ -232,6 +232,7 @@ import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.SampleDataSupport;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
+import net.sf.jaer.util.HostSleepTimeout;
 import net.sf.jaer.util.RecordingDiskSpace;
 import net.sf.jaer.util.StartupProfiler;
 import net.sf.jaer.util.RemoteControl;
@@ -13138,6 +13139,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         invalidateRecordingTimeLimitOverlay();
         if (isRecordingEnabled() && recordingTimeLimit > 0) {
             stopRecordingIfTimeLimitReached();
+        }
+        maybeWarnHostSleepForTimeLimitedRecording();
+    }
+
+    /**
+     * Once per JVM: if this time-limited recording is longer than the host sleep
+     * timeout (or longer than 15 minutes when the OS timeout cannot be read),
+     * ask the user to extend sleep so the computer does not suspend mid-record.
+     */
+    private void maybeWarnHostSleepForTimeLimitedRecording() {
+        if (recordingTimeLimit <= 0L) {
+            return;
+        }
+        if (GraphicsEnvironment.isHeadless()) {
+            return;
+        }
+        if (!HostSleepTimeout.claimWarningThisJvm(recordingTimeLimit)) {
+            return;
+        }
+        String msg = HostSleepTimeout.warningHtml(recordingTimeLimit);
+        log.warning("time-limited recording may hit host sleep: " + msg.replaceAll("<[^>]+>", " "));
+        Runnable show = () -> JOptionPane.showMessageDialog(this, msg, "Computer sleep timeout",
+                JOptionPane.WARNING_MESSAGE);
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            SwingUtilities.invokeLater(show);
         }
     }
 
