@@ -159,6 +159,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private final EngineeringFormat minExposureFmt = new EngineeringFormat();
     private JRadioButton sliderTimeRelativeRB;
     private JRadioButton sliderTimeAbsoluteRB;
+    private JCheckBox sliderTimeAlwaysCB;
 
     private JCheckBox exitCompletelyWithXCB;
     private JCheckBox rememberLastInterfaceCB;
@@ -1303,10 +1304,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         p.add(new JLabel("Playback slider time overlay:"), gbc(y++));
         sliderTimeRelativeRB = new JRadioButton("Relative to start of recording");
         sliderTimeRelativeRB.setToolTipText(
-                "While press-sliding the playback slider, show elapsed time from the start of the recording on the chip view");
+                "Show elapsed time from the start of the recording on the chip view (while press-sliding, or always if Always display time is on)");
         sliderTimeAbsoluteRB = new JRadioButton("Absolute date/time");
         sliderTimeAbsoluteRB.setToolTipText(
-                "While press-sliding the playback slider, show wall-clock date/time from the recording start on the chip view");
+                "Show wall-clock date/time from the recording start on the chip view (while press-sliding, or always if Always display time is on)");
         ButtonGroup sliderTimeGroup = new ButtonGroup();
         sliderTimeGroup.add(sliderTimeRelativeRB);
         sliderTimeGroup.add(sliderTimeAbsoluteRB);
@@ -1323,6 +1324,19 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         sliderTimeAbsoluteRB.addActionListener(sliderTimeListener);
         p.add(sliderTimeRelativeRB, gbc(y++));
         p.add(sliderTimeAbsoluteRB, gbc(y++));
+        sliderTimeAlwaysCB = new JCheckBox("Always display time");
+        sliderTimeAlwaysCB.setToolTipText(
+                "Keep the relative or absolute time overlay on the chip view during playback, not only while dragging the slider");
+        sliderTimeAlwaysCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setSliderTimeOverlayAlways(sliderTimeAlwaysCB.isSelected());
+            }
+        });
+        p.add(sliderTimeAlwaysCB, gbc(y++));
 
         return p;
     }
@@ -1664,6 +1678,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             boolean absTime = viewer.isSliderTimeOverlayAbsolute();
             sliderTimeRelativeRB.setSelected(!absTime);
             sliderTimeAbsoluteRB.setSelected(absTime);
+            sliderTimeAlwaysCB.setSelected(viewer.isSliderTimeOverlayAlways());
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
             if (exitCompletelyWithXCB != null) {

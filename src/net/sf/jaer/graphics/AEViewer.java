@@ -487,6 +487,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     /** False: slider overlay is elapsed from recording start; true: wall-clock date/time. */
     private boolean sliderTimeOverlayAbsolute = prefs.getBoolean("AEViewer.sliderTimeOverlayAbsolute", false);
+    /** When true, chip-view time overlay is shown during playback, not only while dragging the slider. */
+    private boolean sliderTimeOverlayAlways = prefs.getBoolean("AEViewer.sliderTimeOverlayAlways", false);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
     private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
     private boolean showOpenCvOutputOverlay = prefs.getBoolean("AEViewer.showOpenCvOutputOverlay", true);
@@ -11504,16 +11506,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Chip-view overlay while the playback slider is held and dragged. Relative
+     * Chip-view overlay while the playback slider is held and dragged, or always
+     * during file playback if {@link #isSliderTimeOverlayAlways()}. Relative
      * elapsed time from the recording start (default) or absolute date/time from
      * {@link AEFileInputStreamInterface#getAbsoluteStartingTimeMs()}.
      *
-     * @return overlay text, or {@code null} when the slider is not being adjusted
+     * @return overlay text, or {@code null} when the overlay should not be shown
      */
     public String getSliderSeekOverlayText() {
-        AePlayerAdvancedControlsPanel controls = getPlayerControls();
-        if (controls == null || !controls.isSliderBeingAdjusted()) {
-            return null;
+        if (!isSliderTimeOverlayAlways()) {
+            AePlayerAdvancedControlsPanel controls = getPlayerControls();
+            if (controls == null || !controls.isSliderBeingAdjusted()) {
+                return null;
+            }
         }
         AEFileInputStreamInterface stream = getAeFileInputStream();
         if (stream == null) {
@@ -11573,6 +11578,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setSliderTimeOverlayAbsolute(boolean sliderTimeOverlayAbsolute) {
         this.sliderTimeOverlayAbsolute = sliderTimeOverlayAbsolute;
         prefs.putBoolean("AEViewer.sliderTimeOverlayAbsolute", sliderTimeOverlayAbsolute);
+    }
+
+    public boolean isSliderTimeOverlayAlways() {
+        return sliderTimeOverlayAlways;
+    }
+
+    /**
+     * When true, the playback time overlay stays on the chip view during file
+     * playback, not only while press-sliding the slider.
+     */
+    public void setSliderTimeOverlayAlways(boolean sliderTimeOverlayAlways) {
+        this.sliderTimeOverlayAlways = sliderTimeOverlayAlways;
+        prefs.putBoolean("AEViewer.sliderTimeOverlayAlways", sliderTimeOverlayAlways);
     }
 
     /**
