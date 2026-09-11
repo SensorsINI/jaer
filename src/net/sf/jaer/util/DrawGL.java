@@ -430,7 +430,7 @@ public final class DrawGL {
      * Shrinks {@code startFontSize} so every line fits in {@code maxChipWidth}.
      */
     public static int fontSizeToFitWidth(int startFontSize, String[] lines, float maxChipWidth) {
-        int fs = Math.max(6, startFontSize);
+        int fs = Math.max(1, startFontSize);
         if (lines == null || lines.length == 0 || maxChipWidth <= 0) {
             return fs;
         }
@@ -441,7 +441,7 @@ public final class DrawGL {
         if (longest <= maxChipWidth || longest <= 0) {
             return fs;
         }
-        return Math.max(6, (int) Math.floor(fs * maxChipWidth / longest));
+        return Math.max(1, (int) Math.floor(fs * maxChipWidth / longest));
     }
 
     /**

@@ -228,7 +228,8 @@ public abstract class DisplayMethod implements PropertyChangeListener {
             return;
         }
 
-        int fontsize = Math.max(8, Math.round(8 * (chip.getSizeX() / 346f)));
+        int fontsize = chipCanvas.overlayFontSize(8);
+        fontsize = DrawGL.fontSizeToFitWidth(fontsize, ss, Math.max(1, chip.getSizeX()) * 0.94f);
         float adv = DrawGL.lineAdvance(fontsize);
         float ht = adv * nlines;
         float ypos = chipCanvas.getViewportCenterY() + (ht / 2f);

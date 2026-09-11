@@ -688,7 +688,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             float maxW = chip.getSizeX() * 0.70f;
-            int fontsize = Math.max(4, Math.round(7 * (chip.getSizeX() / 346f)));
+            int fontsize = overlayFontSize(7);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{recordingLine}, maxW);
             int limitFontsize = Math.max(3, Math.round(fontsize * 0.75f));
             String[] detailLines = new String[1 + limitLines.length];
@@ -732,7 +732,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             float maxW = chip.getSizeX() * 0.92f;
-            int fontsize = Math.max(8, Math.round(16 * (chip.getSizeX() / 346f)));
+            int fontsize = overlayFontSize(16);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{text}, maxW);
             float xpos = getViewportCenterX();
             float y = getViewportYAtFraction(0.07f);
@@ -914,7 +914,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             float chipW = Math.max(1, chip.getSizeX());
-            int fontsize = Math.max(6, Math.round(12 * (chipW / 346f)));
+            int fontsize = overlayFontSize(12);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.2f;
             float xpos = getViewportCenterX();
@@ -983,7 +983,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             // ~1.5× smaller than initial welcome overlay sizing
-            int fontsize = Math.max(4, Math.round(10 * (chip.getSizeX() / 346f) / 1.5f));
+            int fontsize = overlayFontSize(10 / 1.5f);
             float scale = 1f;
             if (fontsize < 10) {
                 fontsize *= 2;
@@ -1045,7 +1045,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             GL2 gl = drawable.getGL().getGL2();
             String[] lines = text.split("\n", -1);
             float chipW = Math.max(1, chip.getSizeX());
-            int fontsize = Math.max(3, Math.round(6 * (chipW / 346f)));
+            int fontsize = overlayFontSize(6);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.0f;
             float blockH = lineSpace * lines.length;
@@ -1669,6 +1669,18 @@ public class ChipCanvas implements GLEventListener, Observer {
             return a.getBottom() + h * fracFromBottom;
         }
         return chip != null ? chip.getSizeY() * fracFromBottom : 0f;
+    }
+
+    /**
+     * Chip-pixel HUD font size. {@code sizeAt346} is the size used on a 346-wide
+     * chip (DAVIS346). Scales with {@link Chip2D#getSizeX()} so on-screen size
+     * is similar across chips (a floor of 8 made DVS128 overlays huge).
+     */
+    public int overlayFontSize(float sizeAt346) {
+        if (chip == null || chip.getSizeX() <= 0) {
+            return Math.max(1, Math.round(sizeAt346));
+        }
+        return Math.max(1, Math.round(sizeAt346 * (chip.getSizeX() / 346f)));
     }
 
     /**
