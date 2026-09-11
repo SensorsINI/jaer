@@ -696,8 +696,9 @@ public class ChipCanvas implements GLEventListener, Observer {
             System.arraycopy(limitLines, 0, detailLines, 1, limitLines.length);
             limitFontsize = DrawGL.fontSizeToFitWidth(limitFontsize, detailLines, maxW);
             float lineSpace = fontsize * 1.35f;
-            float xpos = chip.getSizeX() / 2f;
-            float y = chip.getSizeY() * 0.92f;
+            float xpos = getViewportCenterX();
+            float y = getViewportYAtFraction(0.92f);
+            beginHudChipScale(gl, xpos, y);
             DrawGL.drawString(fontsize, xpos, y, .5f, RECORDING_OVERLAY_COLOR, recordingLine);
             y -= lineSpace;
             DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f,
@@ -707,14 +708,16 @@ public class ChipCanvas implements GLEventListener, Observer {
                 DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.yellow, line);
                 y -= limitFontsize * 1.4f;
             }
+            endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
         }
     }
 
     /**
-     * While the playback slider is held and dragged, pale-blue time near the
-     * bottom of the chip view (relative or absolute; see
+     * Pale-blue time near the bottom of the chip view while the playback slider
+     * is dragged, or always during file playback if
+     * {@link AEViewer#isSliderTimeOverlayAlways()} (relative or absolute; see
      * {@link AEViewer#isSliderTimeOverlayAbsolute()}).
      */
     private void drawSliderSeekTimeOverlayIfNeeded(final GLAutoDrawable drawable) {
@@ -727,13 +730,15 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         try {
-            drawable.getGL().getGL2();
+            GL2 gl = drawable.getGL().getGL2();
             float maxW = chip.getSizeX() * 0.92f;
             int fontsize = Math.max(8, Math.round(16 * (chip.getSizeX() / 346f)));
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{text}, maxW);
-            float xpos = chip.getSizeX() / 2f;
-            float y = chip.getSizeY() * 0.07f;
+            float xpos = getViewportCenterX();
+            float y = getViewportYAtFraction(0.07f);
+            beginHudChipScale(gl, xpos, y);
             DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, SLIDER_SEEK_OVERLAY_COLOR, text);
+            endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "slider seek overlay: {0}", e.toString());
         }
@@ -812,12 +817,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         String[] lines = text.split("\n", -1);
         try {
+            GL2 gl = drawable.getGL().getGL2();
             if (renderer == null) {
                 renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36), true, true);
                 renderer.setUseVertexArrays(false);
             }
-            renderer.begin3DRendering();
-            renderer.setColor(SKIP_RENDER_OVERLAY_COLOR);
             float maxW = chip.getSizeX() * 0.92f;
             float maxH = Math.max(8f, chip.getSizeY() * 0.10f);
             float scale = Float.MAX_VALUE;
@@ -840,12 +844,16 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
             float blockH = lines.length == 0 ? 0
                     : ((lines.length - 1) * lineSpace) + (float) bounds[0].getHeight() * scale;
-            float y = (chip.getSizeY() - blockH) / 2f;
+            float y = getViewportCenterY() - blockH / 2f;
+            beginHudChipScale(gl);
+            renderer.begin3DRendering();
+            renderer.setColor(SKIP_RENDER_OVERLAY_COLOR);
             for (int i = 0; i < lines.length; i++) {
-                float x = (chip.getSizeX() / 2f) - (float) (bounds[i].getWidth() * scale / 2f);
+                float x = getViewportCenterX() - (float) (bounds[i].getWidth() * scale / 2f);
                 renderer.draw3D(lines[i], x, y + (lines.length - 1 - i) * lineSpace, 0, scale);
             }
             renderer.end3DRendering();
+            endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "skip-render overlay: {0}", e.toString());
         }
@@ -870,7 +878,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (viewer == null) {
             return;
         }
-        float y = chip.getSizeY() * 0.08f;
+        float y = getViewportYAtFraction(0.08f);
         if (viewer.isShowRosOutputOverlay()) {
             net.sf.jaer.eventio.ros2.ROSOutput ros = net.sf.jaer.eventio.ros2.ROSOutput.find(aeChip);
             if (ros != null && ros.isFilterEnabled()) {
@@ -904,16 +912,18 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         String[] lines = ("Streaming Active:\n" + text).split("\n", -1);
         try {
-            drawable.getGL().getGL2();
+            GL2 gl = drawable.getGL().getGL2();
             float chipW = Math.max(1, chip.getSizeX());
             int fontsize = Math.max(6, Math.round(12 * (chipW / 346f)));
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.2f;
-            float xpos = chipW / 2f;
+            float xpos = getViewportCenterX();
+            beginHudChipScale(gl, xpos, yChip);
             for (int i = 0; i < lines.length; i++) {
                 float y = yChip + (lines.length - 1 - i) * lineSpace;
                 DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, lines[i]);
             }
+            endHudChipScale(gl);
             return yChip + lines.length * lineSpace + chip.getSizeY() * 0.02f;
         } catch (GLException e) {
             log.log(Level.FINE, "status overlay: {0}", e.toString());
@@ -979,17 +989,19 @@ public class ChipCanvas implements GLEventListener, Observer {
                 fontsize *= 2;
                 scale = .5f;
             }
+            beginHudChipScale(gl);
             gl.glPushMatrix();
             gl.glScalef(scale, scale, scale);
             float lineSpace = fontsize * 1.55f;
             float blockH = lineSpace * lines.length;
-            float xpos = (chip.getSizeX() / 2f) / scale;
-            float y = (chip.getSizeY() / 2f) / scale + (blockH / 2f) - fontsize;
+            float xpos = getViewportCenterX() / scale;
+            float y = getViewportCenterY() / scale + (blockH / 2f) - fontsize;
             for (String line : lines) {
                 DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, line);
                 y -= lineSpace;
             }
             gl.glPopMatrix();
+            endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "welcome overlay: {0}", e.toString());
         }
@@ -1030,19 +1042,21 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         try {
-            drawable.getGL().getGL2();
+            GL2 gl = drawable.getGL().getGL2();
             String[] lines = text.split("\n", -1);
             float chipW = Math.max(1, chip.getSizeX());
             int fontsize = Math.max(3, Math.round(6 * (chipW / 346f)));
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.0f;
             float blockH = lineSpace * lines.length;
-            float xpos = chipW / 2f;
-            float y = (chip.getSizeY() / 2f) + (blockH / 2f) - fontsize;
+            float xpos = getViewportCenterX();
+            float y = getViewportCenterY() + (blockH / 2f) - fontsize;
+            beginHudChipScale(gl);
             for (String line : lines) {
                 DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, line);
                 y -= lineSpace;
             }
+            endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "USB link overlay: {0}", e.toString());
         }
@@ -1618,6 +1632,86 @@ public class ChipCanvas implements GLEventListener, Observer {
         return getZoom().getClipArea();
     }
 
+    /**
+     * Chip-pixel X at the center of the current GL viewport (clip area). HUD
+     * overlays should use this so they stay on-screen when the view is zoomed
+     * or panned. Falls back to chip center if clip bounds are not ready.
+     */
+    public float getViewportCenterX() {
+        Zoom.ClipArea a = getClipArea();
+        float w = a.getWidth();
+        if (w > 1e-3f) {
+            return a.getLeft() + w * 0.5f;
+        }
+        return chip != null ? chip.getSizeX() / 2f : 0f;
+    }
+
+    /**
+     * Chip-pixel Y at the center of the current GL viewport (clip area).
+     */
+    public float getViewportCenterY() {
+        Zoom.ClipArea a = getClipArea();
+        float h = a.getHeight();
+        if (h > 1e-3f) {
+            return a.getBottom() + h * 0.5f;
+        }
+        return chip != null ? chip.getSizeY() / 2f : 0f;
+    }
+
+    /**
+     * Chip-pixel Y at a fraction of the current viewport height (0 bottom, 1
+     * top). For HUD lines that sit near the top or bottom of the view.
+     */
+    public float getViewportYAtFraction(float fracFromBottom) {
+        Zoom.ClipArea a = getClipArea();
+        float h = a.getHeight();
+        if (h > 1e-3f) {
+            return a.getBottom() + h * fracFromBottom;
+        }
+        return chip != null ? chip.getSizeY() * fracFromBottom : 0f;
+    }
+
+    /**
+     * Chip-space scale so HUD text drawn in chip pixels keeps the same on-screen
+     * size as the unzoomed view. {@code unzoomedScale / currentScale}.
+     */
+    public float getHudChipScale() {
+        float current = getScale();
+        float unzoomed = getClipArea().getUnzoomedScale();
+        if (current < 1e-6f || unzoomed < 1e-6f) {
+            return 1f;
+        }
+        return unzoomed / current;
+    }
+
+    /**
+     * Scale subsequent drawing around {@code anchor} so chip-pixel fonts do not
+     * grow with zoom. Pair with {@link #endHudChipScale(GL2)}.
+     */
+    public void beginHudChipScale(GL2 gl, float anchorX, float anchorY) {
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        gl.glPushMatrix();
+        float s = getHudChipScale();
+        if (Math.abs(s - 1f) < 1e-3f) {
+            return;
+        }
+        gl.glTranslatef(anchorX, anchorY, 0);
+        gl.glScalef(s, s, 1f);
+        gl.glTranslatef(-anchorX, -anchorY, 0);
+    }
+
+    /**
+     * Scale around the viewport center. Pair with {@link #endHudChipScale(GL2)}.
+     */
+    public void beginHudChipScale(GL2 gl) {
+        beginHudChipScale(gl, getViewportCenterX(), getViewportCenterY());
+    }
+
+    public void endHudChipScale(GL2 gl) {
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        gl.glPopMatrix();
+    }
+
 //    /**
 //     * Border around chip in model space coordinate (chip pixels).
 //     *
@@ -2183,6 +2277,13 @@ public class ChipCanvas implements GLEventListener, Observer {
 
             private float getScale() {
                 return isZoomed() ? zoomedScreenPixelsPerChipPixelScale : unzoomedScreenPixelsPerChipPixelScale;
+            }
+
+            /**
+             * Screen pixels per chip pixel for the default (unzoomed) view.
+             */
+            public float getUnzoomedScale() {
+                return unzoomedScreenPixelsPerChipPixelScale;
             }
 
             /**

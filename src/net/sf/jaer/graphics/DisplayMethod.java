@@ -231,9 +231,12 @@ public abstract class DisplayMethod implements PropertyChangeListener {
         int fontsize = Math.max(8, Math.round(8 * (chip.getSizeX() / 346f)));
         float adv = DrawGL.lineAdvance(fontsize);
         float ht = adv * nlines;
-        float ypos = (chip.getSizeY() / 2f) + (ht / 2f);
-        float xpos = chip.getSizeX() / 2f;
+        float ypos = chipCanvas.getViewportCenterY() + (ht / 2f);
+        float xpos = chipCanvas.getViewportCenterX();
+        GL2 gl = drawable.getGL().getGL2();
+        chipCanvas.beginHudChipScale(gl, xpos, chipCanvas.getViewportCenterY());
         DrawGL.drawLinesDropShadow(fontsize, xpos, ypos, .5f, Color.white, ss);
+        chipCanvas.endHudChipScale(gl);
     }
 
     /**
