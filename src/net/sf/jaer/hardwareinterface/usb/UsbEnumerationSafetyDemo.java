@@ -1497,6 +1497,10 @@ public final class UsbEnumerationSafetyDemo {
                 "time-limited recording warns if OS sleep is shorter than the limit");
         require(src.contains("HostSleepTimeout.claimWarningThisJvm"),
                 "sleep-timeout warning is once per JVM");
+        require(!src.contains("Set recording time limit"),
+                "time limit lives on RecordingSetupDialog, not File menu");
+        require(src.contains("confirmIfNeeded"),
+                "start recording uses RecordingSetupDialog.confirmIfNeeded");
     }
 
     /**

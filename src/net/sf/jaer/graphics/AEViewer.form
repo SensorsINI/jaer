@@ -97,15 +97,6 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="recordingPlaybackImmediatelyCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="recordingSetTimelimitMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Set recording time limit..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Sets a time limit for recording"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="recordingSetTimelimitMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="recordingFilterSeparator">
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableFiltersOnStartupCheckBoxMenuItem">

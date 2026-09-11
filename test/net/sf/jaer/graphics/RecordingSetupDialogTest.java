@@ -39,4 +39,13 @@ public class RecordingSetupDialogTest {
         String expectedBase = RecordingFilename.singleCameraBase(null, new Date(0L));
         assertTrue(out.getName().startsWith(expectedBase));
     }
+
+    @Test
+    public void setupDialogShowsForFirstThreeThenFileMenuOrTimed() {
+        assertTrue(RecordingSetupDialog.shouldShow(0, 0L, false));
+        assertTrue(RecordingSetupDialog.shouldShow(2, 0L, false));
+        assertTrue(!RecordingSetupDialog.shouldShow(3, 0L, false));
+        assertTrue(RecordingSetupDialog.shouldShow(3, 0L, true));
+        assertTrue(RecordingSetupDialog.shouldShow(99, 60_000L, false));
+    }
 }

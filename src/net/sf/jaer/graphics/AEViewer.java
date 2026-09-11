@@ -249,10 +249,6 @@ import net.sf.jaer.util.avioutput.ExportVideoDialog;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.eventio.export.SaveAsExportDialog;
 import net.sf.jaer.util.filter.LowpassFilter;
-import org.joda.time.Period;
-import org.joda.time.PeriodType;
-import org.joda.time.format.PeriodFormatter;
-import org.joda.time.format.PeriodFormatterBuilder;
 import org.opencv.core.Core;
 
 /**
@@ -523,24 +519,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * open timeout (25 s) so a hung {@code openAEMonitor} is not treated as sleep.
      */
     static final long SLEEP_RESUME_WALL_ONLY_MS = 30_000L;
-    private static final String RECORDING_TIME_LIMIT_NO_LIMIT = "No limit";
-    private static final String[] RECORDING_TIME_LIMIT_PRESETS = {
-        RECORDING_TIME_LIMIT_NO_LIMIT,
-        "1m", "10m", "30m", "1h", "3h", "12h", "24h", "1d", "7d", "14d", "30d"
-    };
     private static final DateTimeFormatter SLIDER_SEEK_ABSOLUTE_FORMAT
             = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z");
-    private static final PeriodFormatter RECORDING_TIME_LIMIT_FORMATTER = new PeriodFormatterBuilder()
-            .appendDays().appendSuffix("d")
-            .appendSeparator(" ")
-            .appendHours().appendSuffix("h")
-            .appendSeparator(" ")
-            .appendMinutes().appendSuffix("m")
-            .appendSeparator(" ")
-            .appendSeconds().appendSuffix("s")
-            .appendSeparator(" ")
-            .appendMillis()
-            .toFormatter();
     /** Cached overlay for recording time limit; refreshed at most once per second. */
     private volatile String recordingTimeLimitOverlayText = null;
     private volatile long recordingTimeLimitOverlayLastMs = 0;
@@ -8133,7 +8113,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator8 = new javax.swing.JSeparator();
         recordingMenuItem = new javax.swing.JMenuItem();
         recordingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        recordingSetTimelimitMenuItem = new javax.swing.JMenuItem();
         recordingFilterSeparator = new javax.swing.JSeparator();
         recordFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -8474,15 +8453,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(recordingPlaybackImmediatelyCheckBoxMenuItem);
-
-        recordingSetTimelimitMenuItem.setText("Set recording time limit...");
-        recordingSetTimelimitMenuItem.setToolTipText("Sets a time limit for recording from presets or a free-form duration (0 for no limit). Applies immediately to an in-progress recording.");
-        recordingSetTimelimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                recordingSetTimelimitMenuItemActionPerformed(evt);
-            }
-        });
-        fileMenu.add(recordingSetTimelimitMenuItem);
         fileMenu.add(recordingFilterSeparator);
 
         enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
@@ -10195,12 +10165,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     public void toggleRecording() {
+        toggleRecording(false);
+    }
+
+    /**
+     * @param forceSetupDialog true to always show {@link RecordingSetupDialog}
+     * (File → Start recording). Toolbar and {@code L} follow the 3-show /
+     * time-limit policy.
+     */
+    public void toggleRecording(boolean forceSetupDialog) {
         if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
-            jaerViewer.toggleSynchronizedRecording();
+            jaerViewer.toggleSynchronizedRecording(forceSetupDialog);
         } else if (isRecordingEnabled()) {
             stopRecording(true); // confirms filename dialog when flag true
         } else {
-            if (!RecordingSetupDialog.confirmFirstThisJvm(this)) {
+            if (!RecordingSetupDialog.confirmIfNeeded(this, forceSetupDialog)) {
                 fixRecordingControls();
                 return;
             }
@@ -12745,133 +12724,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setRecordFilteredEventsEnabled(recordFilteredEventsCheckBoxMenuItem.isSelected());
 	}//GEN-LAST:event_recordFilteredEventsCheckBoxMenuItemActionPerformed
 
-	private void recordingSetTimelimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordingSetTimelimitMenuItemActionPerformed
-            JPanel panel = new JPanel(new BorderLayout(0, 8));
-            panel.add(new JLabel("<html>Choose a preset or type a duration (0 or No limit for none).<br>"
-                    + "Examples: 1000 (ms implied), 2m 30s, 1h 15m<br>"
-                    + (isRecordingEnabled()
-                    ? "Applies immediately to the <b>current recording</b> (total time from when it started; now "
-                    + formatRecordingDurationHms(recordingElapsedMs()) + " recorded)."
-                    : "Applies to the next recording.")
-                    + "</html>"), BorderLayout.NORTH);
-
-            JComboBox<String> chooser = new JComboBox<>(RECORDING_TIME_LIMIT_PRESETS);
-            chooser.setMaximumRowCount(RECORDING_TIME_LIMIT_PRESETS.length);
-            JTextField freeForm = new JTextField(16);
-            String initial = recordingTimeLimitDialogInitialValue();
-            freeForm.setText(RECORDING_TIME_LIMIT_NO_LIMIT.equals(initial) ? "0" : initial);
-            int presetIndex = -1;
-            for (int i = 0; i < RECORDING_TIME_LIMIT_PRESETS.length; i++) {
-                if (RECORDING_TIME_LIMIT_PRESETS[i].equals(initial)) {
-                    presetIndex = i;
-                    break;
-                }
-            }
-            chooser.setSelectedIndex(presetIndex);
-            chooser.addActionListener(e -> {
-                Object sel = chooser.getSelectedItem();
-                if (sel == null) {
-                    return;
-                }
-                String preset = sel.toString();
-                freeForm.setText(RECORDING_TIME_LIMIT_NO_LIMIT.equals(preset) ? "0" : preset);
-                freeForm.requestFocusInWindow();
-                freeForm.selectAll();
-            });
-
-            JPanel chooserRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-            chooserRow.add(new JLabel("Preset:"));
-            chooserRow.add(chooser);
-            chooserRow.add(new JLabel("or type:"));
-            chooserRow.add(freeForm);
-            panel.add(chooserRow, BorderLayout.CENTER);
-
-            int result = JOptionPane.showConfirmDialog(this, panel, "Recording time limit",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-            if (result != JOptionPane.OK_OPTION) {
-                return;
-            }
-            String ans = freeForm.getText();
-            if (ans == null) {
-                return;
-            }
-            ans = ans.trim();
-            if (ans.isEmpty()) {
-                return;
-            }
-
-            try {
-                boolean wasRecording = isRecordingEnabled();
-                long elapsedMs = wasRecording ? recordingElapsedMs() : 0L;
-                applyRecordingTimeLimit(parseRecordingTimeLimitMs(ans));
-                String s = recordingTimeLimit <= 0 ? RECORDING_TIME_LIMIT_NO_LIMIT
-                        : formatRecordingTimeLimitForDialog(recordingTimeLimit);
-                log.info(String.format("recording time limit set to %s (%d ms)", s, recordingTimeLimit));
-                if (wasRecording && recordingTimeLimit > 0 && elapsedMs > recordingTimeLimit) {
-                    return; // already past the new limit; stopRecording shows the save dialog
-                }
-                String msg;
-                if (wasRecording && isRecordingEnabled() && recordingTimeLimit > 0) {
-                    long remainingMs = Math.max(0L, recordingTimeLimit - elapsedMs);
-                    msg = String.format("Time limit set to %s (%d ms). Current recording has %s remaining.",
-                            s, recordingTimeLimit, formatRecordingDurationHms(remainingMs));
-                } else if (wasRecording && recordingTimeLimit <= 0) {
-                    msg = "Recording time limit cleared; current recording continues with no limit.";
-                } else {
-                    msg = String.format("Time limit set to %s (%d ms)", s, recordingTimeLimit);
-                }
-                JOptionPane.showMessageDialog(this, msg);
-            } catch (IllegalArgumentException e) {
-                JOptionPane.showMessageDialog(this, String.format("Bad format? Caught %s", e.toString()), "Error with duration", JOptionPane.ERROR_MESSAGE);
-            }
-	}//GEN-LAST:event_recordingSetTimelimitMenuItemActionPerformed
-
-    private String recordingTimeLimitDialogInitialValue() {
-        if (recordingTimeLimit <= 0) {
-            return RECORDING_TIME_LIMIT_NO_LIMIT;
-        }
-        for (String preset : RECORDING_TIME_LIMIT_PRESETS) {
-            if (RECORDING_TIME_LIMIT_NO_LIMIT.equals(preset)) {
-                continue;
-            }
-            try {
-                if (parseRecordingTimeLimitMs(preset) == recordingTimeLimit) {
-                    return preset;
-                }
-            } catch (IllegalArgumentException e) {
-                // skip unmatched preset
-            }
-        }
-        return formatRecordingTimeLimitForDialog(recordingTimeLimit);
-    }
-
-    private static String formatRecordingTimeLimitForDialog(long ms) {
-        if (ms <= 0) {
-            return RECORDING_TIME_LIMIT_NO_LIMIT;
-        }
-        Period p = new Period(ms).normalizedStandard(PeriodType.dayTime());
-        String printed = RECORDING_TIME_LIMIT_FORMATTER.print(p);
-        return printed.isEmpty() ? Long.toString(ms) : printed;
-    }
-
-    private static long parseRecordingTimeLimitMs(String ans) {
-        if (ans == null) {
-            throw new IllegalArgumentException("null duration");
-        }
-        ans = ans.trim();
-        if (ans.isEmpty()) {
-            throw new IllegalArgumentException("empty duration");
-        }
-        if (ans.equalsIgnoreCase(RECORDING_TIME_LIMIT_NO_LIMIT)) {
-            return 0L;
-        }
-        if (ans.matches("\\d+")) {
-            return Long.parseLong(ans);
-        }
-        Period p = RECORDING_TIME_LIMIT_FORMATTER.parsePeriod(ans);
-        return p.toStandardDuration().getMillis();
-    }
-
     private long recordingElapsedMs() {
         return Math.max(0L, System.currentTimeMillis() - recordingStartTime);
     }
@@ -13150,9 +13002,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Sets the recording time limit and applies it to an in-progress recording:
      * overlay updates immediately, and recording stops if elapsed time already
-     * exceeds the new limit. {@code 0} means no limit.
+     * exceeds the new limit. {@code 0} means no limit. Sticky for this viewer
+     * until the setup dialog (or this method) changes it.
      */
-    private void applyRecordingTimeLimit(long limitMs) {
+    public void applyRecordingTimeLimit(long limitMs) {
         recordingTimeLimit = Math.max(0L, limitMs);
         invalidateRecordingTimeLimitOverlay();
         if (isRecordingEnabled() && recordingTimeLimit > 0) {
@@ -14732,7 +14585,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu loggingLevelMenu;
     private javax.swing.JMenuItem recordingMenuItem;
     private javax.swing.JCheckBoxMenuItem recordingPlaybackImmediatelyCheckBoxMenuItem;
-    private javax.swing.JMenuItem recordingSetTimelimitMenuItem;
     private javax.swing.JSeparator recordingFilterSeparator;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenu monSeqMenu;

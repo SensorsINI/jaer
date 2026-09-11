@@ -19,6 +19,7 @@ public final class HostSleepTimeoutDemo {
         testParseGsettings();
         testWarningOncePerJvm();
         testWarningHtml();
+        testDecodeUtf16();
         System.out.println("ALL PASS");
     }
 
@@ -44,6 +45,11 @@ public final class HostSleepTimeoutDemo {
         assertTrue(!HostSleepTimeout.shouldWarn(HostSleepTimeout.TYPICAL_MS, fifteen),
                 "sleep equal to limit does not warn");
         assertTrue(!HostSleepTimeout.shouldWarn(10L * 60L * 1000L, fifteen), "limit shorter than sleep");
+        OptionalLong fortyFive = OptionalLong.of(45L * 60L * 1000L);
+        assertTrue(!HostSleepTimeout.shouldWarn(30L * 60L * 1000L, fortyFive),
+                "30 m recording vs 45 m sleep does not warn");
+        assertTrue(HostSleepTimeout.shouldWarn(2L * 3600L * 1000L, fortyFive),
+                "2 h recording vs 45 m sleep warns");
         System.out.println("PASS testShouldWarn");
     }
 
@@ -108,6 +114,14 @@ public final class HostSleepTimeoutDemo {
         String unknown = HostSleepTimeout.warningHtml(2L * 3600L * 1000L, OptionalLong.empty());
         assertTrue(unknown.contains("typical"), unknown);
         System.out.println("PASS testWarningHtml");
+    }
+
+    private static void testDecodeUtf16() {
+        byte[] utf16 = new byte[] {(byte) 0xFF, (byte) 0xFE, 'A', 0, 'C', 0};
+        assertTrue("AC".equals(HostSleepTimeout.decodeWindowsCli(utf16)), "UTF-16LE BOM");
+        assertTrue("hi".equals(HostSleepTimeout.decodeWindowsCli("hi".getBytes(java.nio.charset.StandardCharsets.UTF_8))),
+                "UTF-8");
+        System.out.println("PASS testDecodeUtf16");
     }
 
     private static void assertTrue(boolean cond, String msg) {

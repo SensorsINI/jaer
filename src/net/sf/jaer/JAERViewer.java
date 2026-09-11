@@ -1078,6 +1078,10 @@ public class JAERViewer {
     }
 
     public void toggleSynchronizedRecording() {
+        toggleSynchronizedRecording(false);
+    }
+
+    public void toggleSynchronizedRecording(boolean forceSetupDialog) {
         //TODO - unchecking synchronized recording in AEViewer still comes here and records synchronized
         if (recordingEnabled) {
             stopSynchronizedRecording();
@@ -1088,7 +1092,7 @@ public class JAERViewer {
         if (!rec.isEmpty()) {
             host = rec.get(0);
         }
-        if (!RecordingSetupDialog.confirmFirstThisJvm(host, rec.isEmpty() ? null : rec)) {
+        if (!RecordingSetupDialog.confirmIfNeeded(host, rec.isEmpty() ? null : rec, forceSetupDialog)) {
             if (host != null) {
                 host.fixRecordingControls();
             }
@@ -1130,7 +1134,8 @@ public class JAERViewer {
         public ToggleRecordingAction(AEViewer viewer) {
             this.viewer = viewer;
             putValue(NAME, "Start recording");
-            putValue(SHORT_DESCRIPTION, "Controls synchronized recording on all viewers");
+            putValue(SHORT_DESCRIPTION,
+                    "Start or stop recording (L). File → Start recording data always opens the setup dialog.");
             putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_L, 0));
             putValue(MNEMONIC_KEY, KeyEvent.VK_L);
         }
@@ -1145,7 +1150,8 @@ public class JAERViewer {
                 return;
             }
             if (isSyncEnabled()) {
-                toggleSynchronizedRecording();
+                boolean forceSetup = RecordingSetupDialog.isExplicitFileMenuStart(e);
+                toggleSynchronizedRecording(forceSetup);
                 if (recordingEnabled) {
                     putValue(NAME, "Stop recording");
                 } else if (viewers.get(0).getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
@@ -1155,7 +1161,7 @@ public class JAERViewer {
                 }
                 log.info("recordingEnabled=" + recordingEnabled);
             } else {
-                viewer.toggleRecording();
+                viewer.toggleRecording(RecordingSetupDialog.isExplicitFileMenuStart(e));
             }
         }
 

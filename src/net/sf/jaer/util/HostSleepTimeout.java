@@ -20,7 +20,7 @@ public final class HostSleepTimeout {
     /** Typical laptop sleep timeout when the OS value cannot be read. */
     public static final long TYPICAL_MS = 15L * 60L * 1000L;
 
-    static final long QUERY_TIMEOUT_MS = 2500L;
+    static final long QUERY_TIMEOUT_MS = 8000L;
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Object QUERY_LOCK = new Object();
@@ -255,6 +255,14 @@ public final class HostSleepTimeout {
         String key = "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Power\\User\\PowerSchemes\\"
                 + scheme.group(1) + "\\" + WIN_SUB_SLEEP + "\\" + WIN_STANDBYIDLE;
         String setting = runCommand(QUERY_TIMEOUT_MS, "reg", "query", key);
+        if (setting != null) {
+            OptionalLong ac = matchSeconds(WIN_AC_INDEX, setting);
+            OptionalLong dc = matchSeconds(WIN_DC_INDEX, setting);
+            log.info("Windows STANDBYIDLE AC="
+                    + (ac.isPresent() ? formatDuration(ac.getAsLong() * 1000L) : "unset")
+                    + " DC="
+                    + (dc.isPresent() ? formatDuration(dc.getAsLong() * 1000L) : "unset"));
+        }
         return parseWindowsRegistryStandbyIdleMs(schemes, setting);
     }
 
@@ -317,11 +325,25 @@ public final class HostSleepTimeout {
                 return null;
             }
             try (InputStream in = p.getInputStream()) {
-                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                return decodeWindowsCli(in.readAllBytes());
             }
         } catch (Exception e) {
             log.log(Level.FINE, "command failed: " + String.join(" ", cmd), e);
             return null;
         }
+    }
+
+    static String decodeWindowsCli(byte[] raw) {
+        if (raw == null || raw.length == 0) {
+            return "";
+        }
+        if (raw.length >= 2 && (raw[0] & 0xFF) == 0xFF && (raw[1] & 0xFF) == 0xFE) {
+            String s = new String(raw, StandardCharsets.UTF_16LE);
+            return s.startsWith("\uFEFF") ? s.substring(1) : s;
+        }
+        if (raw.length >= 2 && raw[1] == 0 && raw[0] != 0) {
+            return new String(raw, StandardCharsets.UTF_16LE);
+        }
+        return new String(raw, StandardCharsets.UTF_8);
     }
 }

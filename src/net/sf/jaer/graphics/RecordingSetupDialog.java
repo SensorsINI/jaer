@@ -1,6 +1,8 @@
 package net.sf.jaer.graphics;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
+import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -16,7 +18,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -25,6 +28,8 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -39,15 +44,20 @@ import net.sf.jaer.util.RecentFoldersJumpCombo;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 
 /**
- * Once per JVM session, a modal start-recording prompt for folder, filename,
- * format, and AEDAT-4 compression. Defaults match {@link AEViewer} prefs and
- * the same chip-datestamp name {@link AEViewer#startRecording()} / the
- * post-recording Save dialog use. Enter activates {@code Start Recording}.
+ * Start-recording prompt for folder, filename, format, AEDAT-4 compression, and
+ * a session time limit (default none). Shown for the first
+ * {@link #MAX_AUTO_SHOWS} recordings this JVM, whenever a non-zero time limit
+ * is set, and whenever the user chooses File → Start recording (not the
+ * toolbar button or {@code L}). Enter activates {@code Start Recording}.
  * Confirmed format, compression, and folder are written back to AEViewer prefs.
+ * The time limit is sticky for this JVM only.
  */
 public final class RecordingSetupDialog extends JDialog {
 
-    private static final AtomicBoolean shownThisJvm = new AtomicBoolean(false);
+    /** Unlimited toolbar/{@code L} starts after this many accepted setup dialogs. */
+    public static final int MAX_AUTO_SHOWS = 3;
+    private static final AtomicInteger acceptedShowCount = new AtomicInteger(0);
+    private static final AtomicLong sessionTimeLimitMs = new AtomicLong(0L);
     private static final String[] FORMAT_LABELS = {
         "AEDAT-4 (.aedat4)",
         "AEDAT-2 (.aedat2)",
@@ -69,6 +79,8 @@ public final class RecordingSetupDialog extends JDialog {
     private final JTextField nameField = new JTextField(36);
     private final JComboBox<String> formatCombo = new JComboBox<>(FORMAT_LABELS);
     private final JComboBox<String> compressionCombo = new JComboBox<>(COMPRESSION_LABELS);
+    private final JComboBox<String> timeLimitPreset = new JComboBox<>(RecordingTimeLimit.PRESETS);
+    private final JTextField timeLimitField = new JTextField(16);
     private RecentFoldersJumpCombo folderCombo;
     private File folder;
     private boolean accepted;
@@ -95,19 +107,23 @@ public final class RecordingSetupDialog extends JDialog {
     }
 
     /**
-     * First interactive recording this JVM: show the dialog. Later calls return
-     * {@code true} immediately. Cancel returns {@code false} and does not start
-     * recording (the dialog will appear again). Headless: skip and proceed.
+     * Show the setup dialog when policy requires it. Cancel returns
+     * {@code false} and does not start recording. Headless: skip and proceed.
      *
      * @param host viewer that owns the dialog (and pending filename)
      * @param muxViewers synchronized cameras, or {@code null} for one viewer
+     * @param forceFromFileMenu true when File → Start recording was chosen with
+     * the mouse (not {@code L} and not the toolbar button)
      */
-    public static boolean confirmFirstThisJvm(AEViewer host, List<AEViewer> muxViewers) {
-        if (shownThisJvm.get()) {
+    public static boolean confirmIfNeeded(AEViewer host, List<AEViewer> muxViewers,
+            boolean forceFromFileMenu) {
+        if (!shouldShow(acceptedShowCount.get(), sessionTimeLimitMs.get(), forceFromFileMenu)) {
+            applySessionLimit(host, muxViewers);
             return true;
         }
         if (host == null || java.awt.GraphicsEnvironment.isHeadless()) {
-            shownThisJvm.set(true);
+            acceptedShowCount.set(MAX_AUTO_SHOWS);
+            applySessionLimit(host, muxViewers);
             return true;
         }
         boolean[] ok = {false};
@@ -124,17 +140,64 @@ public final class RecordingSetupDialog extends JDialog {
         return ok[0];
     }
 
-    public static boolean confirmFirstThisJvm(AEViewer host) {
-        return confirmFirstThisJvm(host, null);
+    public static boolean confirmIfNeeded(AEViewer host, boolean forceFromFileMenu) {
+        return confirmIfNeeded(host, null, forceFromFileMenu);
     }
 
-    /** Test hook: next {@link #confirmFirstThisJvm} shows the dialog again. */
+    /**
+     * Toolbar/{@code L} path: show for the first {@link #MAX_AUTO_SHOWS} starts
+     * and whenever a time limit is set. File menu always shows.
+     */
+    public static boolean shouldShow(int acceptedShows, long sessionLimitMs, boolean forceFromFileMenu) {
+        if (forceFromFileMenu) {
+            return true;
+        }
+        if (sessionLimitMs > 0L) {
+            return true;
+        }
+        return acceptedShows < MAX_AUTO_SHOWS;
+    }
+
+    /**
+     * True when Start recording came from a File menu click, not {@code L} and
+     * not the toolbar button. Accelerator on the same {@link JMenuItem} still
+     * delivers that item as {@link ActionEvent#getSource()}.
+     */
+    public static boolean isExplicitFileMenuStart(ActionEvent e) {
+        if (e == null) {
+            return false;
+        }
+        AWTEvent ev = EventQueue.getCurrentEvent();
+        if (ev instanceof KeyEvent) {
+            return false;
+        }
+        return e.getSource() instanceof JMenuItem;
+    }
+
+    /** Test hook: next starts can show the dialog again. */
     static void resetShownThisJvmForTests() {
-        shownThisJvm.set(false);
+        acceptedShowCount.set(0);
+        sessionTimeLimitMs.set(0L);
     }
 
     static boolean wasShownThisJvm() {
-        return shownThisJvm.get();
+        return acceptedShowCount.get() > 0;
+    }
+
+    static long sessionTimeLimitMsForTests() {
+        return sessionTimeLimitMs.get();
+    }
+
+    private static void applySessionLimit(AEViewer host, List<AEViewer> muxViewers) {
+        long ms = sessionTimeLimitMs.get();
+        List<AEViewer> targets = muxViewers != null && !muxViewers.isEmpty()
+                ? muxViewers
+                : (host != null ? List.of(host) : List.of());
+        for (AEViewer v : targets) {
+            if (v != null) {
+                v.applyRecordingTimeLimit(ms);
+            }
+        }
     }
 
     /**
@@ -267,9 +330,32 @@ public final class RecordingSetupDialog extends JDialog {
         row++;
         c.gridx = 0;
         c.gridy = row;
+        c.weightx = 0;
+        form.add(new JLabel("Time limit:"), c);
+        c.gridx = 1;
+        c.gridwidth = 2;
+        c.weightx = 1;
+        timeLimitPreset.setMaximumRowCount(RecordingTimeLimit.PRESETS.length);
+        timeLimitPreset.setToolTipText("<html>Optional duration for this JVM session (not saved in prefs).<br>"
+                + "0 or No limit: unlimited. A non-zero limit shows this dialog on every start "
+                + "so you can name the long recording.</html>");
+        RecordingTimeLimit.bindPresetChooser(timeLimitPreset, timeLimitField);
+        JPanel timeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        timeRow.add(timeLimitPreset);
+        timeRow.add(new JLabel("or type:"));
+        timeLimitField.setToolTipText("Examples: 0, 10m, 2h, 1h 15m. Bare numbers are milliseconds.");
+        timeRow.add(timeLimitField);
+        form.add(timeRow, c);
+        c.gridwidth = 1;
+
+        row++;
+        c.gridx = 0;
+        c.gridy = row;
         c.gridwidth = 3;
-        JLabel hint = new JLabel("<html><i>Shown once this session. Enter starts recording. "
-                + "Format, compression, and folder become the new AEViewer prefs.</i></html>");
+        JLabel hint = new JLabel("<html><i>First " + MAX_AUTO_SHOWS
+                + " recordings this session, File → Start recording, or any timed recording. "
+                + "Enter starts. Format, compression, and folder become AEViewer prefs. "
+                + "Time limit stays for this jAER run only.</i></html>");
         form.add(hint, c);
 
         JButton start = new JButton("Start Recording");
@@ -320,6 +406,9 @@ public final class RecordingSetupDialog extends JDialog {
         folderCombo.syncSelection(folder);
         updateMuxHint();
         updateNameTooltip();
+        String initial = RecordingTimeLimit.initialValue(sessionTimeLimitMs.get());
+        timeLimitField.setText(RecordingTimeLimit.NO_LIMIT.equals(initial) ? "0" : initial);
+        timeLimitPreset.setSelectedIndex(RecordingTimeLimit.presetIndex(initial));
     }
 
     private void setFolder(File dir) {
@@ -407,10 +496,20 @@ public final class RecordingSetupDialog extends JDialog {
     }
 
     private void acceptAndClose() {
+        long limitMs;
+        try {
+            limitMs = RecordingTimeLimit.parseMs(timeLimitField.getText());
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Bad time limit? Caught " + ex.toString(),
+                    "Error with duration", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         String version = selectedVersion();
         int compression = Aedat4Compression.clamp(compressionCombo.getSelectedIndex());
         File out = chosenFile();
         File dir = out.getParentFile() != null ? out.getParentFile() : folder;
+        sessionTimeLimitMs.set(Math.max(0L, limitMs));
         for (AEViewer v : applyTargets) {
             if (v == null) {
                 continue;
@@ -420,12 +519,13 @@ public final class RecordingSetupDialog extends JDialog {
             if (dir != null) {
                 v.setLastRecordingFolder(dir);
             }
+            v.applyRecordingTimeLimit(sessionTimeLimitMs.get());
         }
         boolean muxAedat4 = muxMany && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version);
         if (!muxMany || muxAedat4) {
             host.setPendingRecordingStartFile(out);
         }
-        shownThisJvm.set(true);
+        acceptedShowCount.incrementAndGet();
         accepted = true;
         dispose();
     }
