@@ -194,14 +194,20 @@ public abstract class AEPacket {
         } else if (this.capacity < c) {
             int newcap = (int) ENLARGE_CAPACITY_FACTOR * c;
             int[] newtimestamps = new int[newcap];
-            EventType[] newEventTypes = new EventType[newcap];
-            int[] newPixelDataArray = new int[newcap];
             System.arraycopy(timestamps, 0, newtimestamps, 0, this.capacity);
-            System.arraycopy(eventtypes, 0, newEventTypes, 0, this.capacity);
-            System.arraycopy(pixelDataArray, 0, newPixelDataArray, 0, this.capacity);
             timestamps = newtimestamps;
-            eventtypes = newEventTypes; // EventTypes and pixelDataArray just for AER3.0 Data file, no influence on 2.0
-            pixelDataArray = newPixelDataArray;
+            // AEDAT-4 slices use AEPacketRaw(addr, ts) and leave these AER 3.0 arrays null.
+            // FlexTime min-exposure append grows capacity; copy only if they exist.
+            if (eventtypes != null) {
+                EventType[] newEventTypes = new EventType[newcap];
+                System.arraycopy(eventtypes, 0, newEventTypes, 0, Math.min(this.capacity, eventtypes.length));
+                eventtypes = newEventTypes;
+            }
+            if (pixelDataArray != null) {
+                int[] newPixelDataArray = new int[newcap];
+                System.arraycopy(pixelDataArray, 0, newPixelDataArray, 0, Math.min(this.capacity, pixelDataArray.length));
+                pixelDataArray = newPixelDataArray;
+            }
             this.capacity = newcap; // only if we enlarge capacity to desired set the new capacity, otherwise leave it untouched!
         }
 
