@@ -1,5 +1,8 @@
 package net.sf.jaer.eventio.aedat4;
 
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.SnapshotCodec;
@@ -14,8 +17,9 @@ import net.sf.jaer.graphics.AEChipRenderer;
  * {@code imu}) the infoNode embeds {@code jAERConfigSnapshot} node(s)
  * (schema version {@code 1}) carrying the immutable recording-start
  * configuration snapshot as deterministic, escaped {@code <attr>} entries.
- * Snapshot nodes are siblings of {@code outInfo} under {@code <dv>} — not
- * children of {@code outInfo}. PyPI {@code aedat} 2.2.0 parses every
+ * Snapshot nodes and {@code jAERRecording} (recording-site time zone) are
+ * siblings of {@code outInfo} under {@code <dv>} — not children of
+ * {@code outInfo}. PyPI {@code aedat} 2.2.0 parses every
  * {@code outInfo} child {@code name} as a stream id ({@code u32}) and fails
  * with {@code invalid digit found in string} on {@code jAERConfigSnapshot}.
  * Muxed files emit one snapshot node per camera
@@ -26,6 +30,13 @@ public final class Aedat4InfoNode {
     /** XML node name, schema version. Kept public for reader/tests. */
     public static final String CONFIG_SNAPSHOT_NODE_NAME = "jAERConfigSnapshot";
     public static final String CONFIG_SNAPSHOT_SCHEMA_VERSION = "1";
+    /**
+     * Sibling of {@code outInfo} (not a numbered stream). Stores the recording
+     * site {@link java.time.ZoneId} so playback can show local evening time
+     * instead of converting Unix µs into the viewer's zone.
+     */
+    public static final String RECORDING_NODE_NAME = "jAERRecording";
+    public static final String TIME_ZONE_ATTR = "timeZone";
 
     private Aedat4InfoNode() {
     }
@@ -51,6 +62,11 @@ public final class Aedat4InfoNode {
      * @return the complete infoNode XML string
      */
     public static String build(AEChip chip, int compression, RecordingConfigurationSnapshot snapshot) {
+        return build(chip, compression, snapshot, null);
+    }
+
+    public static String build(AEChip chip, int compression, RecordingConfigurationSnapshot snapshot,
+            ZoneId recordingTimeZone) {
         int sx = chip == null ? 0 : chip.getSizeX();
         int sy = chip == null ? 0 : chip.getSizeY();
         String source = chip == null ? "jAER" : chip.getClass().getSimpleName();
@@ -59,7 +75,7 @@ public final class Aedat4InfoNode {
             new StreamSpec("0", "EVTS", "events", "Array of events (polarity ON/OFF).", sx, sy, source, colorFilter),
             new StreamSpec("1", "FRME", "frames", "Standard frame (8-bit image).", sx, sy, source, null),
             new StreamSpec("2", "IMUS", "imu", "Inertial Measurement Unit data samples.", sx, sy, source, null)
-        }, new RecordingConfigurationSnapshot[]{snapshot});
+        }, new RecordingConfigurationSnapshot[]{snapshot}, recordingTimeZone);
     }
 
     /**
@@ -67,12 +83,16 @@ public final class Aedat4InfoNode {
      * Geometry and {@code source} come from the frozen tracks (not live chip size).
      */
     public static String build(java.util.List<Aedat4CameraTrack> tracks, int compression) {
+        return build(tracks, compression, null);
+    }
+
+    public static String build(java.util.List<Aedat4CameraTrack> tracks, int compression, ZoneId recordingTimeZone) {
         if (tracks == null || tracks.isEmpty()) {
-            return build((AEChip) null, compression, null);
+            return build((AEChip) null, compression, null, recordingTimeZone);
         }
         if (tracks.size() == 1) {
             Aedat4CameraTrack t = tracks.get(0);
-            return build(t.chip, compression, t.snapshot);
+            return build(t.chip, compression, t.snapshot, recordingTimeZone);
         }
         java.util.List<StreamSpec> specs = new java.util.ArrayList<>(tracks.size() * 3);
         RecordingConfigurationSnapshot[] snaps = new RecordingConfigurationSnapshot[tracks.size()];
@@ -85,11 +105,11 @@ public final class Aedat4InfoNode {
                     "Inertial Measurement Unit data samples.", t.sizeX, t.sizeY, t.source, null));
             snaps[t.index] = t.snapshot;
         }
-        return buildStreams(compression, specs.toArray(new StreamSpec[0]), snaps);
+        return buildStreams(compression, specs.toArray(new StreamSpec[0]), snaps, recordingTimeZone);
     }
 
     private static String buildStreams(int compression, StreamSpec[] streams,
-            RecordingConfigurationSnapshot[] snapshots) {
+            RecordingConfigurationSnapshot[] snapshots, ZoneId recordingTimeZone) {
         String compressionName = Aedat4Compression.nameOf(Aedat4Compression.clamp(compression));
         StringBuilder sb = new StringBuilder(1024);
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -105,8 +125,50 @@ public final class Aedat4InfoNode {
                 appendConfigSnapshotNode(sb, snapshotNodeName(i), snapshots[i]);
             }
         }
+        appendRecordingNode(sb, recordingTimeZone);
         sb.append("</dv>");
         return sb.toString();
+    }
+
+    private static void appendRecordingNode(StringBuilder sb, ZoneId recordingTimeZone) {
+        ZoneId zone = recordingTimeZone != null ? recordingTimeZone : ZoneId.systemDefault();
+        sb.append("<node name=\"").append(RECORDING_NODE_NAME).append("\">");
+        attr(sb, TIME_ZONE_ATTR, "string", zone.getId());
+        sb.append("</node>");
+    }
+
+    /**
+     * Recording-site zone from a jAER {@code jAERRecording} infoNode, or
+     * {@code null} for DV files that omit it.
+     */
+    public static ZoneId parseRecordingTimeZone(String infoNode) {
+        if (infoNode == null || infoNode.isEmpty()) {
+            return null;
+        }
+        Pattern node = Pattern.compile(
+                "<node\\s+name\\s*=\\s*\"" + Pattern.quote(RECORDING_NODE_NAME) + "\"[^>]*>(.*?)</node>",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher nm = node.matcher(infoNode);
+        if (!nm.find()) {
+            return null;
+        }
+        Pattern attrPat = Pattern.compile(
+                "<attr\\s+key\\s*=\\s*\"" + Pattern.quote(TIME_ZONE_ATTR)
+                        + "\"[^>]*>([^<]*)</attr>",
+                Pattern.CASE_INSENSITIVE);
+        Matcher am = attrPat.matcher(nm.group(1));
+        if (!am.find()) {
+            return null;
+        }
+        String id = am.group(1).trim();
+        if (id.isEmpty()) {
+            return null;
+        }
+        try {
+            return ZoneId.of(id);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String snapshotNodeName(int cameraIndex) {

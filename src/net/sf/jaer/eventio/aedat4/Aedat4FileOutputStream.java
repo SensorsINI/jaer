@@ -55,6 +55,8 @@ public class Aedat4FileOutputStream implements Closeable {
     private final List<Aedat4CameraTrack> tracks;
     private Aedat4CameraTrack currentTrack;
     private final long baseUs;
+    /** Recording-site zone written into {@code jAERRecording}; display only. */
+    private final java.time.ZoneId recordingTimeZone;
     private final List<DataDefinition> dataDefinitions = new ArrayList<>();
     private final long headerPosition;
     private byte[] headerBytes;
@@ -105,7 +107,16 @@ public class Aedat4FileOutputStream implements Closeable {
      *                   original timeline, or {@code <= 0} for wall-clock now.
      */
     public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs) throws IOException {
-        this(new FileOutputStream(file), chip, compression, baseUnixUs, null, true);
+        this(file, chip, compression, baseUnixUs, null);
+    }
+
+    /**
+     * @param recordingTimeZone site zone of the source recording ({@code +02:00}
+     *                          from a jAER filename). {@code null} uses this JVM's zone.
+     */
+    public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs,
+            java.time.ZoneId recordingTimeZone) throws IOException {
+        this(new FileOutputStream(file), chip, compression, baseUnixUs, null, true, null, recordingTimeZone);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression, long baseUnixUs)
@@ -151,18 +162,26 @@ public class Aedat4FileOutputStream implements Closeable {
     private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure)
             throws IOException {
-        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, null);
+        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, null, null);
     }
 
     private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure,
             List<Aedat4CameraTrack> suppliedTracks)
             throws IOException {
+        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, suppliedTracks, null);
+    }
+
+    private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure,
+            List<Aedat4CameraTrack> suppliedTracks, java.time.ZoneId recordingTimeZone)
+            throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
         this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
+        this.recordingTimeZone = recordingTimeZone != null ? recordingTimeZone : java.time.ZoneId.systemDefault();
         ByteBuffer initializedPacketHeader;
         long initializedHeaderPosition;
         RecordingConfigurationSnapshot initializedSnapshot;
@@ -565,7 +584,7 @@ public class Aedat4FileOutputStream implements Closeable {
 
     private byte[] buildIOHeader(long dataTablePosition, RecordingConfigurationSnapshot headerSnapshot) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        int info = builder.createString(Aedat4InfoNode.build(tracks, compression));
+        int info = builder.createString(Aedat4InfoNode.build(tracks, compression, recordingTimeZone));
         int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();

@@ -68,6 +68,8 @@ public class Aedat4ConfigSnapshotDemo {
         assertTrue("a<&\"b\n\rsecond".equals(entries.get("AEChip.nasty")), "aedat4 nasty value round-trips");
         assertOneSnapshotNode(info);
         assertDescribedStreams(info);
+        java.time.ZoneId recordedZone = net.sf.jaer.eventio.aedat4.Aedat4InfoNode.parseRecordingTimeZone(info);
+        assertTrue(recordedZone != null, "jAERRecording timeZone is written");
         Files.deleteIfExists(f.toPath());
         System.out.println("PASS testSnapshotRecordedAndStable");
     }

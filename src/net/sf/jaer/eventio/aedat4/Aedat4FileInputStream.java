@@ -34,6 +34,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -108,6 +109,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private RandomAccessFile randomAccessFile;
     private FileChannel channel;
     private int compression = CompressionType.NONE;
+    private ZoneId zoneId = ZoneId.systemDefault();
 
     /**
      * Stream IDs selected for playback. DV may mux several cameras; jAER plays one
@@ -258,6 +260,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         this.file = file;
         this.chip = chip;
         this.requestedEventStreamId = eventStreamId;
+        AEDataFile.FilenameStart named = AEDataFile.parseFilenameStart(file);
+        if (named != null && named.zone != null) {
+            this.zoneId = named.zone;
+        }
         clearEventPacketCache();
         this.randomAccessFile = new RandomAccessFile(file, "r");
         this.channel = randomAccessFile.getChannel();
@@ -862,11 +868,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         compression = Aedat4Compression.clamp(header.compression());
         dataTablePosition = header.dataTablePosition();
         resolveStreamIds(header.infoNode());
+        ZoneId fromInfo = Aedat4InfoNode.parseRecordingTimeZone(header.infoNode());
+        if (fromInfo != null) {
+            zoneId = fromInfo;
+        }
         log.info(String.format(
-                "AEDAT-4 header %s: compression=%s dataTablePosition=%d",
+                "AEDAT-4 header %s: compression=%s dataTablePosition=%d timeZone=%s",
                 file.getName(),
                 Aedat4Compression.nameOf(compression),
-                dataTablePosition));
+                dataTablePosition,
+                zoneId));
     }
 
     /**
@@ -3048,7 +3059,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     @Override
-    public ZoneId getZoneId() { return ZoneId.systemDefault(); }
+    public ZoneId getZoneId() { return zoneId != null ? zoneId : ZoneId.systemDefault(); }
 
     @Override
     public int getDurationUs() {

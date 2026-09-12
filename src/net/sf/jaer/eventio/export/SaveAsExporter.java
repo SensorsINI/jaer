@@ -184,7 +184,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         log.log(Level.FINE, "No absolute start time for AEDAT-4 export", e);
                     }
                 }
-                aedat4 = new Aedat4FileOutputStream(options.outputFile, chip, options.aedat4Compression, baseUs);
+                aedat4 = new Aedat4FileOutputStream(options.outputFile, chip, options.aedat4Compression, baseUs,
+                        stream.getZoneId());
             }
             if (options.writeImu) {
                 imu = new ImuCsvSink(options.imuFile(), source);

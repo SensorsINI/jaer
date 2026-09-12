@@ -31,15 +31,9 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
-import java.text.DateFormat;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.TreeSet;
@@ -1848,35 +1842,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @return start of logging time in ms, i.e., in "java" time, since 1970
      */
     private long parseAbsoluteStartingTimeMsFromFile(File f) {
-        if (f == null) {
+        AEDataFile.FilenameStart start = AEDataFile.parseFilenameStart(f);
+        if (start == null) {
             return 0;
         }
-        try {
-            String fn = f.getName();
-            String dateStr = fn.substring(fn.indexOf('-') + 1); // guess that datestamp is right after first - which
-            // follows Chip classname, but which include -SN and other text, which is serial number of camera and other trailing text annotation
-            if (dateStr.length() < 25) {
-                log.warning(f.getName() + " name is too short to hold date/time string, not trying to parse time from it");
-                return 0;
-            }
-            dateStr = dateStr.substring(0, 24);
-            try {
-                DateTimeFormatter dtf = DateTimeFormatter.ofPattern(AEDataFile.YYYY_M_MDD_TH_HMMSS_Z).withResolverStyle(ResolverStyle.SMART);
-                ZonedDateTime zdt = ZonedDateTime.parse(dateStr, dtf);
-                zoneId = zdt.getZone();
-                return zdt.toEpochSecond() * 1000;
-            } catch (DateTimeParseException e) {
-                log.warning("could not parse a ZonedDateTime from " + dateStr + ": " + e);
-            }
-            DateFormat sdf = AEDataFile.DATE_FORMAT;
-            Date date = sdf.parse(dateStr);
-            Calendar cal = sdf.getCalendar();
-            log.info(fn + " has from file name the absolute starting date of " + date.toString() + " with time zone " + cal.getTimeZone().toString());
-            return date.getTime();
-        } catch (Exception e) {
-            log.warning(e.toString());
-            return 0;
+        if (start.zone != null) {
+            zoneId = start.zone;
         }
+        return start.epochMs;
     }
 
     @Override

@@ -11,8 +11,17 @@
  */
 package net.sf.jaer.eventio;
 
+import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.logging.Logger;
 
 /**
  * Defines file extensions for AERDAT data and index files.
@@ -160,4 +169,59 @@ public interface AEDataFile {
     public static DateFormat DATE_FORMAT = new SimpleDateFormat(YYYY_M_MDD_TH_HMMSS_Z); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
     /** end of line (EOL) ending (the "windows type") used in data files */
     public static final byte[] EOL = new byte[]{'\r','\n'};
+
+    /** Start instant parsed from a jAER filename {@code Chip-yyyy-MM-ddTHH-mm-ssZ...}. */
+    public static final class FilenameStart {
+        public final long epochMs;
+        public final ZoneId zone;
+
+        public FilenameStart(long epochMs, ZoneId zone) {
+            this.epochMs = epochMs;
+            this.zone = zone;
+        }
+    }
+
+    /**
+     * Parses the chip-class timestamp in a jAER filename, including the offset
+     * ({@code +0200}). AEDAT-4 packet times are Unix µs (UTC); this offset is
+     * only display metadata for the recording site.
+     *
+     * @return parsed start, or {@code null} if the name has no datetime
+     */
+    public static FilenameStart parseFilenameStart(File f) {
+        if (f == null) {
+            return null;
+        }
+        Logger log = Logger.getLogger("net.sf.jaer");
+        try {
+            String fn = f.getName();
+            int dash = fn.indexOf('-');
+            if (dash < 0) {
+                return null;
+            }
+            String dateStr = fn.substring(dash + 1);
+            if (dateStr.length() < 24) {
+                log.warning(fn + " name is too short to hold date/time string, not trying to parse time from it");
+                return null;
+            }
+            dateStr = dateStr.substring(0, 24);
+            try {
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern(YYYY_M_MDD_TH_HMMSS_Z)
+                        .withResolverStyle(ResolverStyle.SMART);
+                ZonedDateTime zdt = ZonedDateTime.parse(dateStr, dtf);
+                return new FilenameStart(zdt.toEpochSecond() * 1000, zdt.getZone());
+            } catch (DateTimeParseException e) {
+                log.warning("could not parse a ZonedDateTime from " + dateStr + ": " + e);
+            }
+            Date date = DATE_FORMAT.parse(dateStr);
+            Calendar cal = DATE_FORMAT.getCalendar();
+            ZoneId zone = cal.getTimeZone() != null ? cal.getTimeZone().toZoneId() : ZoneId.systemDefault();
+            log.info(fn + " has from file name the absolute starting date of " + date
+                    + " with time zone " + cal.getTimeZone());
+            return new FilenameStart(date.getTime(), zone);
+        } catch (Exception e) {
+            log.warning(e.toString());
+            return null;
+        }
+    }
 }

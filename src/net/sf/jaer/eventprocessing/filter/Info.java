@@ -69,8 +69,10 @@ through its enclosed ROI filter (used only for rate measurement).</p>
 <ul>
 <li><code>analogClock</code> / <code>digitalClock</code> &mdash; analog face and/or
 <code>HH:mm:ss.SSS</code> time.</li>
-<li><code>localTime</code> &mdash; wall-clock (from the file or live PC time) vs timestamp
-time relative to the recording start.</li>
+<li><code>localTime</code> &mdash; absolute wall-clock (file start + timestamps) vs
+elapsed timestamp time from the recording start.</li>
+<li><code>ignoreTimeZone</code> &mdash; show this computer's zone instead of the
+recording site zone (from the filename offset or AEDAT-4 <code>jAERRecording</code>).</li>
 <li><code>doResetTime</code> &mdash; zero the stopwatch on the next packet;
 <code>resetTimeOnRewind</code> does the same on each rewind.</li>
 </ul>
@@ -181,9 +183,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip(time, "digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
         setPropertyTooltip(time, "analogDigitalClockScale", "scale for drawing clock");
         setPropertyTooltip(time, "date", "show date");
-        setPropertyTooltip(time, "localTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
-        setPropertyTooltip(time, "ignoreTimeZone", "ignore the local time zone");
-        setPropertyTooltip(time, "showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
+        setPropertyTooltip(time, "localTime", "enable to show absolute time, disable to show timestamp time (usually relative to start of recording)");
+        setPropertyTooltip(time, "ignoreTimeZone", "if enabled, show this computer's time zone; if disabled, use the recording timezone from the filename or AEDAT-4 metadata");
         setPropertyTooltip(time, "timeOffsetMs", "add this time in ms to the displayed time");
         setPropertyTooltip(time, "timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
         setPropertyTooltip(rate, "eventRateScaleMax", "scale event rates to this maximum");
@@ -736,16 +737,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 minLen = 18 * analogDigitalClockScale,
                 secLen = 19 * analogDigitalClockScale,
                 msLen = 7 * analogDigitalClockScale;
-        ZonedDateTime zdt = null;
         Instant instant = Instant.ofEpochMilli(t);
 
-        if (localTime) {
-            zdt = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
-        } else if (!ignoreTimeZone && aeFileInputStream != null && aeFileInputStream.getZoneId() != null) {
-            zdt = ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
+        ZoneId zone;
+        if (ignoreTimeZone || aeFileInputStream == null || aeFileInputStream.getZoneId() == null) {
+            zone = ZoneId.systemDefault();
         } else {
-            zdt = ZonedDateTime.ofInstant(instant, ZoneId.of("GMT"));
+            zone = aeFileInputStream.getZoneId();
         }
+        ZonedDateTime zdt = ZonedDateTime.ofInstant(instant, zone);
         final int hour = zdt.getHour() % 12;
         final int hourofday = zdt.getHour();
 
