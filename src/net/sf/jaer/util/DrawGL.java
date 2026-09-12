@@ -227,6 +227,236 @@ public final class DrawGL {
     }
 
     /**
+     * Analog 12-hour clock at {@code cx,cy}. Tick marks, a translucent face,
+     * smooth second/minute/hour hands, and a short millisecond hand (one
+     * revolution per second). {@code hour12} is 0–11 (0 at 12 o'clock).
+     * Does not change the current model-view origin after return.
+     */
+    public static void drawAnalogClock(GL2 gl, float cx, float cy, float radius,
+            int hour12, int minute, int second, int milli, Color accent, Color face) {
+        if (radius < 1f) {
+            return;
+        }
+        hour12 = ((hour12 % 12) + 12) % 12;
+        minute = Math.max(0, Math.min(59, minute));
+        second = Math.max(0, Math.min(59, second));
+        milli = Math.max(0, Math.min(999, milli));
+        float ms = milli / 1000f;
+        float secF = second + ms;
+        float minF = minute + secF / 60f;
+        float hourF = hour12 + minF / 60f;
+        float w = Math.max(1f, radius / 18f);
+        Color rim = accent != null ? accent : Color.white;
+        Color fill = face != null ? face : new Color(0.1f, 0.1f, 0.12f, 0.55f);
+        int nSeg = 64;
+
+        gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_COLOR_BUFFER_BIT | GL2.GL_LINE_BIT);
+        gl.glPushMatrix();
+        try {
+            gl.glTranslatef(cx, cy, 0);
+            gl.glDisable(GL.GL_DEPTH_TEST);
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.glEnable(GL.GL_LINE_SMOOTH);
+            gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
+
+            drawClockDiskRimAndSecondTicks(gl, radius, nSeg, w, rim, fill);
+
+            gl.glColor3f(rim.getRed() / 255f, rim.getGreen() / 255f, rim.getBlue() / 255f);
+            drawClockHand(gl, radius * 0.38f, Math.max(1f, w * 0.7f), ms);
+            gl.glColor3f(1f, 0.35f, 0.28f);
+            drawClockHand(gl, radius * 0.88f, Math.max(1f, w * 0.9f), secF / 60f);
+            gl.glColor3f(1f, 1f, 1f);
+            drawClockHand(gl, radius * 0.72f, Math.max(1.5f, w * 2.2f), minF / 60f);
+            drawClockHand(gl, radius * 0.48f, Math.max(2f, w * 3.2f), hourF / 12f);
+
+            drawClockHub(gl, radius, rim);
+        } finally {
+            gl.glPopMatrix();
+            gl.glPopAttrib();
+        }
+    }
+
+    /** Flip to compare stopwatch 60/15/30/45 labels on vs off. */
+    private static final boolean STOPWATCH_SECOND_LABELS = true;
+
+    /**
+     * Analog stopwatch at {@code cx,cy}: 60-second main scale, 30-minute
+     * register at 12 o'clock, 12-hour register at 6 o'clock. The long hand is
+     * seconds (smooth with {@code milli}).
+     */
+    public static void drawAnalogStopwatch(GL2 gl, float cx, float cy, float radius,
+            int hours, int minute, int second, int milli, Color accent, Color face) {
+        if (radius < 1f) {
+            return;
+        }
+        hours = Math.max(0, hours);
+        minute = Math.max(0, Math.min(59, minute));
+        second = Math.max(0, Math.min(59, second));
+        milli = Math.max(0, Math.min(999, milli));
+        float ms = milli / 1000f;
+        float secF = second + ms;
+        float minF = minute + secF / 60f;
+        float hourF = (hours % 12) + minF / 60f;
+        float w = Math.max(1f, radius / 18f);
+        Color rim = accent != null ? accent : Color.white;
+        Color fill = face != null ? face : new Color(0.1f, 0.1f, 0.12f, 0.55f);
+        int nSeg = 64;
+        // Cardinal ticks start at 0.72R; keep a small gap so 12/6 marks stay visible.
+        float minDialR = radius * 0.30f;
+        float hourDialR = radius * 0.30f;
+        float minDialY = radius * 0.38f;
+        float hourDialY = -radius * 0.38f;
+
+        gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_COLOR_BUFFER_BIT | GL2.GL_LINE_BIT);
+        gl.glPushMatrix();
+        try {
+            gl.glTranslatef(cx, cy, 0);
+            gl.glDisable(GL.GL_DEPTH_TEST);
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.glEnable(GL.GL_LINE_SMOOTH);
+            gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
+
+            drawClockDiskRimAndSecondTicks(gl, radius, nSeg, w, rim, fill);
+
+            drawStopwatchSubdial(gl, 0, minDialY, minDialR, minF / 30f, w, nSeg, rim, fill);
+            drawStopwatchSubdial(gl, 0, hourDialY, hourDialR, hourF / 12f, w, nSeg, rim, fill);
+
+            gl.glColor3f(1f, 0.32f, 0.25f);
+            drawClockHand(gl, radius * 0.90f, Math.max(1.2f, w * 1.1f), secF / 60f);
+            gl.glColor3f(rim.getRed() / 255f, rim.getGreen() / 255f, rim.getBlue() / 255f);
+            drawClockHand(gl, radius * 0.22f, Math.max(1f, w * 0.7f), ms);
+
+            drawClockHub(gl, radius, rim);
+        } finally {
+            gl.glPopMatrix();
+            gl.glPopAttrib();
+        }
+
+        if (STOPWATCH_SECOND_LABELS) {
+            int labelSize = Math.max(2, Math.round(radius * 0.10f));
+            float labelR = radius * 1.16f;
+            Color labelColor = Color.white;
+            drawString(labelSize, cx, cy + labelR, 0.5f, labelColor, "60");
+            drawString(labelSize, cx + labelR, cy, 0.5f, labelColor, "15");
+            drawString(labelSize, cx, cy - labelR, 0.5f, labelColor, "30");
+            drawString(labelSize, cx - labelR, cy, 0.5f, labelColor, "45");
+        }
+        int mhSize = Math.max(2, Math.round(radius * 0.11f));
+        float mhGap = radius * 0.05f;
+        Color mhColor = Color.white;
+        drawString(mhSize, cx - minDialR - mhGap, cy + minDialY, 1f, mhColor, "m");
+        drawString(mhSize, cx - hourDialR - mhGap, cy + hourDialY, 1f, mhColor, "h");
+    }
+
+    private static void drawClockDiskRimAndSecondTicks(GL2 gl, float radius, int nSeg, float w,
+            Color rim, Color fill) {
+        gl.glBegin(GL.GL_TRIANGLE_FAN);
+        gl.glColor4f(fill.getRed() / 255f, fill.getGreen() / 255f, fill.getBlue() / 255f,
+                fill.getAlpha() / 255f);
+        gl.glVertex2f(0, 0);
+        for (int i = 0; i <= nSeg; i++) {
+            double a = (2 * Math.PI * i) / nSeg;
+            gl.glVertex2f(radius * (float) Math.sin(a), radius * (float) Math.cos(a));
+        }
+        gl.glEnd();
+
+        gl.glColor3f(rim.getRed() / 255f, rim.getGreen() / 255f, rim.getBlue() / 255f);
+        gl.glLineWidth(Math.max(1.5f, w * 1.4f));
+        gl.glBegin(GL.GL_LINE_LOOP);
+        for (int i = 0; i < nSeg; i++) {
+            double a = (2 * Math.PI * i) / nSeg;
+            gl.glVertex2f(radius * (float) Math.sin(a), radius * (float) Math.cos(a));
+        }
+        gl.glEnd();
+
+        gl.glLineWidth(Math.max(1f, w * 0.7f));
+        gl.glBegin(GL.GL_LINES);
+        for (int i = 0; i < 60; i++) {
+            if ((i % 5) == 0) {
+                continue;
+            }
+            double a = (2 * Math.PI * i) / 60;
+            float s = (float) Math.sin(a);
+            float c = (float) Math.cos(a);
+            gl.glVertex2f(0.90f * radius * s, 0.90f * radius * c);
+            gl.glVertex2f(0.97f * radius * s, 0.97f * radius * c);
+        }
+        gl.glEnd();
+        gl.glLineWidth(Math.max(1.5f, w * 1.6f));
+        gl.glBegin(GL.GL_LINES);
+        for (int i = 0; i < 12; i++) {
+            boolean cardinal = (i % 3) == 0;
+            double a = (2 * Math.PI * i) / 12;
+            float s = (float) Math.sin(a);
+            float c = (float) Math.cos(a);
+            float inner = cardinal ? 0.72f : 0.82f;
+            gl.glVertex2f(inner * radius * s, inner * radius * c);
+            gl.glVertex2f(0.97f * radius * s, 0.97f * radius * c);
+        }
+        gl.glEnd();
+    }
+
+    /** 30-minute or 12-hour register; origin already at main-dial center. */
+    private static void drawStopwatchSubdial(GL2 gl, float ox, float oy, float r, float turns,
+            float w, int nSeg, Color rim, Color fill) {
+        gl.glPushMatrix();
+        gl.glTranslatef(ox, oy, 0);
+        gl.glBegin(GL.GL_TRIANGLE_FAN);
+        gl.glColor4f(fill.getRed() / 255f * 0.7f, fill.getGreen() / 255f * 0.7f,
+                fill.getBlue() / 255f * 0.7f, Math.min(1f, fill.getAlpha() / 255f + 0.15f));
+        gl.glVertex2f(0, 0);
+        for (int i = 0; i <= nSeg; i++) {
+            double a = (2 * Math.PI * i) / nSeg;
+            gl.glVertex2f(r * (float) Math.sin(a), r * (float) Math.cos(a));
+        }
+        gl.glEnd();
+        gl.glColor3f(rim.getRed() / 255f, rim.getGreen() / 255f, rim.getBlue() / 255f);
+        gl.glLineWidth(Math.max(1f, w * 0.8f));
+        gl.glBegin(GL.GL_LINE_LOOP);
+        for (int i = 0; i < nSeg; i++) {
+            double a = (2 * Math.PI * i) / nSeg;
+            gl.glVertex2f(r * (float) Math.sin(a), r * (float) Math.cos(a));
+        }
+        gl.glEnd();
+        gl.glBegin(GL.GL_LINES);
+        for (int i = 0; i < 12; i++) {
+            double a = (2 * Math.PI * i) / 12;
+            float s = (float) Math.sin(a);
+            float c = (float) Math.cos(a);
+            gl.glVertex2f(0.72f * r * s, 0.72f * r * c);
+            gl.glVertex2f(0.96f * r * s, 0.96f * r * c);
+        }
+        gl.glEnd();
+        gl.glColor3f(1f, 1f, 1f);
+        drawClockHand(gl, r * 0.78f, Math.max(1f, w * 0.9f), turns);
+        gl.glPopMatrix();
+    }
+
+    private static void drawClockHub(GL2 gl, float radius, Color rim) {
+        float hub = Math.max(1.2f, radius * 0.06f);
+        gl.glBegin(GL.GL_TRIANGLE_FAN);
+        gl.glColor3f(rim.getRed() / 255f, rim.getGreen() / 255f, rim.getBlue() / 255f);
+        gl.glVertex2f(0, 0);
+        for (int i = 0; i <= 16; i++) {
+            double a = (2 * Math.PI * i) / 16;
+            gl.glVertex2f(hub * (float) Math.sin(a), hub * (float) Math.cos(a));
+        }
+        gl.glEnd();
+    }
+
+    /** Hand from origin; {@code turns} is 0 at 12 o'clock, 1 is a full revolution. */
+    private static void drawClockHand(GL2 gl, float length, float width, float turns) {
+        double a = 2 * Math.PI * turns;
+        gl.glLineWidth(width);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(0, 0);
+        gl.glVertex2f(length * (float) Math.sin(a), length * (float) Math.cos(a));
+        gl.glEnd();
+    }
+
+    /**
      * Draws a line. Set the line width before drawing, and push and pop matrix.
      *
      * @param gl
@@ -496,6 +726,16 @@ public final class DrawGL {
 
 
     /**
+     * Chip-pixel drop-shadow offset. A hairline relative to glyph size: about
+     * 0.4 px at fontSize 16. Large digital overlays used to shift a full chip
+     * pixel, which reads as a second copy of the string.
+     */
+    private static float dropShadowOffset(int fontSize) {
+        int fs = Math.max(1, fontSize);
+        return Math.max(0.12f, Math.min(0.55f, fs / 40f));
+    }
+
+    /**
      * Draws a string with drop shadow effect using TextRenderer.draw using
      * native GL coordinates, usually setup to represent pixels on AEChip
      *
@@ -509,9 +749,9 @@ public final class DrawGL {
      * @return the bounds of the text
      */
     public static Rectangle2D drawStringDropShadow(int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        drawString(fontSize, x + 1, y - 1, alignmentX, Color.black, s);
-        Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
-        return r;
+        float d = dropShadowOffset(fontSize);
+        drawString(fontSize, x + d, y - d, alignmentX, Color.black, s);
+        return drawString(fontSize, x, y, alignmentX, color, s);
     }
 
 

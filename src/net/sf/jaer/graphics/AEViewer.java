@@ -485,6 +485,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean sliderTimeOverlayAbsolute = prefs.getBoolean("AEViewer.sliderTimeOverlayAbsolute", false);
     /** When true, chip-view time overlay is shown during playback, not only while dragging the slider. */
     private boolean sliderTimeOverlayAlways = prefs.getBoolean("AEViewer.sliderTimeOverlayAlways", false);
+    /** Analog clock at lower-left of the chip view for the same time as the digital overlay. */
+    private boolean showAnalogClock = prefs.getBoolean("AEViewer.showAnalogClock", false);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
     private boolean showDnnSharedMemoryOverlay = prefs.getBoolean("AEViewer.showDnnSharedMemoryOverlay", true);
     private boolean showOpenCvOutputOverlay = prefs.getBoolean("AEViewer.showOpenCvOutputOverlay", true);
@@ -521,6 +523,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     static final long SLEEP_RESUME_WALL_ONLY_MS = 30_000L;
     private static final DateTimeFormatter SLIDER_SEEK_ABSOLUTE_FORMAT
             = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z");
+    private static final DateTimeFormatter SLIDER_SEEK_DATE_FORMAT
+            = DateTimeFormatter.ofPattern("dd-MMM-yyyy a", Locale.ENGLISH);
+    private static final DateTimeFormatter SLIDER_SEEK_TIME_FORMAT
+            = DateTimeFormatter.ofPattern("HH:mm:ss.SSS z");
     /** Cached overlay for recording time limit; refreshed at most once per second. */
     private volatile String recordingTimeLimitOverlayText = null;
     private volatile long recordingTimeLimitOverlayLastMs = 0;
@@ -11485,14 +11491,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Chip-view overlay while the playback slider is held and dragged, or always
-     * during file playback if {@link #isSliderTimeOverlayAlways()}. Relative
+     * Playback time overlay: digital caption plus analog-clock hands. Relative
      * elapsed time from the recording start (default) or absolute date/time from
      * {@link AEFileInputStreamInterface#getAbsoluteStartingTimeMs()}.
-     *
-     * @return overlay text, or {@code null} when the overlay should not be shown
      */
-    public String getSliderSeekOverlayText() {
+    public static final class SliderSeekOverlay {
+        public final String text;
+        /** {@code dd-MMM-yyyy AM/PM} under the analog clock; null if relative or no recording date. */
+        public final String dateText;
+        /** Time-only caption beside the analog clock when {@link #dateText} is set; else null. */
+        public final String timeText;
+        public final boolean absolute;
+        /** 0–11; 0 is 12 o'clock. */
+        public final int hour12;
+        public final int minute;
+        public final int second;
+        public final int milli;
+        /** 0–23; used for day/night analog coloring when {@link #absolute}. */
+        public final int hourOfDay;
+
+        SliderSeekOverlay(String text, String dateText, String timeText, boolean absolute,
+                int hour12, int minute, int second, int milli, int hourOfDay) {
+            this.text = text;
+            this.dateText = dateText;
+            this.timeText = timeText;
+            this.absolute = absolute;
+            this.hour12 = hour12;
+            this.minute = minute;
+            this.second = second;
+            this.milli = milli;
+            this.hourOfDay = hourOfDay;
+        }
+    }
+
+    /**
+     * Chip-view overlay while the playback slider is held and dragged, or always
+     * during file playback if {@link #isSliderTimeOverlayAlways()}.
+     *
+     * @return overlay, or {@code null} when it should not be shown
+     */
+    public SliderSeekOverlay getSliderSeekOverlay() {
         if (!isSliderTimeOverlayAlways()) {
             AePlayerAdvancedControlsPanel controls = getPlayerControls();
             if (controls == null || !controls.isSliderBeingAdjusted()) {
@@ -11523,11 +11561,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     zone = ZoneId.systemDefault();
                 }
                 ZonedDateTime zdt = Instant.ofEpochMilli(startMs + elapsedUs / 1000L).atZone(zone);
-                return zdt.format(SLIDER_SEEK_ABSOLUTE_FORMAT);
+                return new SliderSeekOverlay(zdt.format(SLIDER_SEEK_ABSOLUTE_FORMAT),
+                        zdt.format(SLIDER_SEEK_DATE_FORMAT), zdt.format(SLIDER_SEEK_TIME_FORMAT), true,
+                        zdt.getHour() % 12, zdt.getMinute(), zdt.getSecond(),
+                        zdt.getNano() / 1_000_000, zdt.getHour());
             }
-            return formatSliderSeekRelative(elapsedUs) + " (no recording date)";
+            AnalogClockFromElapsed rel = analogClockFromElapsedUs(elapsedUs);
+            return new SliderSeekOverlay(formatSliderSeekRelative(elapsedUs) + " (no recording date)",
+                    null, null, false, rel.hour12, rel.minute, rel.second, rel.milli, rel.hourOfDay);
         }
-        return formatSliderSeekRelative(elapsedUs);
+        AnalogClockFromElapsed rel = analogClockFromElapsedUs(elapsedUs);
+        return new SliderSeekOverlay(formatSliderSeekRelative(elapsedUs), null, null, false,
+                rel.hour12, rel.minute, rel.second, rel.milli, rel.hourOfDay);
+    }
+
+    /**
+     * Digital caption for the playback time overlay, or {@code null} when hidden.
+     */
+    public String getSliderSeekOverlayText() {
+        SliderSeekOverlay overlay = getSliderSeekOverlay();
+        return overlay == null ? null : overlay.text;
+    }
+
+    private static AnalogClockFromElapsed analogClockFromElapsedUs(long elapsedUs) {
+        long ms = Math.max(0L, elapsedUs) / 1000L;
+        int milli = (int) (ms % 1000L);
+        long totalSec = ms / 1000L;
+        int second = (int) (totalSec % 60L);
+        int minute = (int) ((totalSec / 60L) % 60L);
+        int hourOfDay = (int) ((totalSec / 3600L) % 24L);
+        int hour12 = hourOfDay % 12;
+        return new AnalogClockFromElapsed(hour12, minute, second, milli, hourOfDay);
+    }
+
+    private static final class AnalogClockFromElapsed {
+        final int hour12, minute, second, milli, hourOfDay;
+
+        AnalogClockFromElapsed(int hour12, int minute, int second, int milli, int hourOfDay) {
+            this.hour12 = hour12;
+            this.minute = minute;
+            this.second = second;
+            this.milli = milli;
+            this.hourOfDay = hourOfDay;
+        }
     }
 
     /**
@@ -11570,6 +11646,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setSliderTimeOverlayAlways(boolean sliderTimeOverlayAlways) {
         this.sliderTimeOverlayAlways = sliderTimeOverlayAlways;
         prefs.putBoolean("AEViewer.sliderTimeOverlayAlways", sliderTimeOverlayAlways);
+    }
+
+    public boolean isShowAnalogClock() {
+        return showAnalogClock;
+    }
+
+    /**
+     * When true, the playback time overlay also draws an analog clock at the
+     * lower-left of the chip viewport (relative stopwatch or absolute wall time).
+     */
+    public void setShowAnalogClock(boolean showAnalogClock) {
+        this.showAnalogClock = showAnalogClock;
+        prefs.putBoolean("AEViewer.showAnalogClock", showAnalogClock);
     }
 
     /**

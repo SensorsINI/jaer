@@ -725,19 +725,59 @@ public class ChipCanvas implements GLEventListener, Observer {
      * Pale-blue time near the bottom of the chip view while the playback slider
      * is dragged, or always during file playback if
      * {@link AEViewer#isSliderTimeOverlayAlways()} (relative or absolute; see
-     * {@link AEViewer#isSliderTimeOverlayAbsolute()}).
+     * {@link AEViewer#isSliderTimeOverlayAbsolute()}). Analog clock (or
+     * stopwatch) at the lower-left of the viewport when
+     * {@link AEViewer#isShowAnalogClock()}; otherwise the digital caption.
      */
     private void drawSliderSeekTimeOverlayIfNeeded(final GLAutoDrawable drawable) {
         AEViewer viewer = resolveAeViewer();
         if (viewer == null) {
             return;
         }
-        String text = viewer.getSliderSeekOverlayText();
-        if (text == null || text.isEmpty()) {
+        AEViewer.SliderSeekOverlay overlay = viewer.getSliderSeekOverlay();
+        if (overlay == null || overlay.text == null || overlay.text.isEmpty()) {
             return;
         }
+        String text = overlay.text;
         try {
             GL2 gl = drawable.getGL().getGL2();
+            boolean analog = viewer.isShowAnalogClock();
+            float s = getHudChipScale();
+            if (analog) {
+                float analogRadius = overlayFontSize(33);
+                float margin = overlayFontSize(2) * s;
+                boolean analogDate = overlay.absolute && overlay.dateText != null;
+                float analogCx = getViewportXAtFraction(0f) + margin + analogRadius * s;
+                int dateFontGuess = overlayFontSize(8);
+                float dateLine = analogDate ? DrawGL.lineHeight(dateFontGuess) : 0f;
+                float analogCy = getViewportYAtFraction(0f) + margin
+                        + (analogRadius + (analogDate ? dateLine * 1.15f : 0f)) * s;
+                beginHudChipScale(gl, analogCx, analogCy);
+                Color accent = SLIDER_SEEK_OVERLAY_COLOR;
+                Color face = new Color(0.08f, 0.10f, 0.14f, 0.62f);
+                if (overlay.absolute) {
+                    int h = overlay.hourOfDay;
+                    if (h >= 18 || h < 6) {
+                        accent = new Color(0.50f, 0.68f, 1f);
+                    } else {
+                        accent = new Color(1f, 0.92f, 0.50f);
+                    }
+                    DrawGL.drawAnalogClock(gl, analogCx, analogCy, analogRadius,
+                            overlay.hour12, overlay.minute, overlay.second, overlay.milli, accent, face);
+                    if (analogDate) {
+                        int dateFont = dateFontGuess;
+                        float dateX = analogCx - analogRadius;
+                        float dateY = analogCy - analogRadius - DrawGL.lineHeight(dateFont) * 1.05f;
+                        DrawGL.drawStringDropShadow(dateFont, dateX, dateY, 0f,
+                                SLIDER_SEEK_OVERLAY_COLOR, overlay.dateText);
+                    }
+                } else {
+                    DrawGL.drawAnalogStopwatch(gl, analogCx, analogCy, analogRadius,
+                            overlay.hourOfDay, overlay.minute, overlay.second, overlay.milli, accent, face);
+                }
+                endHudChipScale(gl);
+                return;
+            }
             float maxW = chip.getSizeX() * 0.92f;
             int fontsize = overlayFontSize(16);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{text}, maxW);
@@ -1710,6 +1750,20 @@ public class ChipCanvas implements GLEventListener, Observer {
             return a.getBottom() + h * fracFromBottom;
         }
         return chip != null ? chip.getSizeY() * fracFromBottom : 0f;
+    }
+
+    /**
+     * Chip-pixel X at a fraction of the current viewport width (0 left, 1
+     * right). HUD elements at the viewport edge (including the analog clock in
+     * the left-bottom border) should use this rather than chip origin.
+     */
+    public float getViewportXAtFraction(float fracFromLeft) {
+        Zoom.ClipArea a = getClipArea();
+        float w = a.getWidth();
+        if (w > 1e-3f) {
+            return a.getLeft() + w * fracFromLeft;
+        }
+        return chip != null ? chip.getSizeX() * fracFromLeft : 0f;
     }
 
     /**

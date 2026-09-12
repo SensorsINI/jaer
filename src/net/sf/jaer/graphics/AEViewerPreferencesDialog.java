@@ -159,6 +159,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private final EngineeringFormat minExposureFmt = new EngineeringFormat();
     private JRadioButton sliderTimeRelativeRB;
     private JRadioButton sliderTimeAbsoluteRB;
+    private JCheckBox sliderTimeAnalogCB;
     private JCheckBox sliderTimeAlwaysCB;
 
     private JCheckBox exitCompletelyWithXCB;
@@ -1324,6 +1325,19 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         sliderTimeAbsoluteRB.addActionListener(sliderTimeListener);
         p.add(sliderTimeRelativeRB, gbc(y++));
         p.add(sliderTimeAbsoluteRB, gbc(y++));
+        sliderTimeAnalogCB = new JCheckBox("Analog clock");
+        sliderTimeAnalogCB.setToolTipText(
+                "Show an analog clock (absolute) or stopwatch (relative) at the lower-left of the chip view instead of the digital time overlay");
+        sliderTimeAnalogCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setShowAnalogClock(sliderTimeAnalogCB.isSelected());
+            }
+        });
+        p.add(sliderTimeAnalogCB, gbc(y++));
         sliderTimeAlwaysCB = new JCheckBox("Always display time");
         sliderTimeAlwaysCB.setToolTipText(
                 "Keep the relative or absolute time overlay on the chip view during playback, not only while dragging the slider");
@@ -1678,6 +1692,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             boolean absTime = viewer.isSliderTimeOverlayAbsolute();
             sliderTimeRelativeRB.setSelected(!absTime);
             sliderTimeAbsoluteRB.setSelected(absTime);
+            sliderTimeAnalogCB.setSelected(viewer.isShowAnalogClock());
             sliderTimeAlwaysCB.setSelected(viewer.isSliderTimeOverlayAlways());
 
             rememberLastInterfaceCB.setSelected(viewer.isRememberLastInterface());
