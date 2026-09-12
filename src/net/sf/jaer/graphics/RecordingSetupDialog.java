@@ -14,16 +14,21 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -38,21 +43,24 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.RecordingFilename;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.util.FileAccessTimeout;
 import net.sf.jaer.util.OutputFilename;
 import net.sf.jaer.util.RecentFoldersJumpCombo;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 
 /**
- * Start-recording prompt for folder, filename, format, AEDAT-4 compression, and
- * a session time limit (default none). Shown for the first
- * {@link #MAX_AUTO_SHOWS} recordings this JVM, whenever a non-zero time limit
- * is set, and whenever the user chooses File → Start recording (not the
- * toolbar button or {@code L}). Enter activates {@code Start Recording}.
- * Confirmed format, compression, and folder are written back to AEViewer prefs.
- * The time limit is sticky for this JVM only.
+ * Start-recording prompt for folder, filename, format, AEDAT-4 compression,
+ * File → Enable filtering of recorded events (with the same active-filter
+ * confirmation as Save As), and a session time limit (default none). Shown for
+ * the first {@link #MAX_AUTO_SHOWS} recordings this JVM, whenever a non-zero
+ * time limit is set, and whenever the user chooses File → Start recording (not
+ * the toolbar button or {@code L}). Enter activates {@code Start Recording}.
+ * Confirmed format, compression, filtering, and folder are written back to
+ * AEViewer prefs. The time limit is sticky for this JVM only.
  */
-public final class RecordingSetupDialog extends JDialog {
+public final class RecordingSetupDialog extends JDialog implements PropertyChangeListener {
 
     /** Unlimited toolbar/{@code L} starts after this many accepted setup dialogs. */
     public static final int MAX_AUTO_SHOWS = 3;
@@ -81,10 +89,17 @@ public final class RecordingSetupDialog extends JDialog {
     private final JComboBox<String> compressionCombo = new JComboBox<>(COMPRESSION_LABELS);
     private final JComboBox<String> timeLimitPreset = new JComboBox<>(RecordingTimeLimit.PRESETS);
     private final JTextField timeLimitField = new JTextField(16);
+    private final JCheckBox recordFilteredCb = new JCheckBox(
+            "Enable filtering of recorded or network output events");
+    private final JPanel filterSummaryPanel = new JPanel(new BorderLayout(6, 0));
+    private final JLabel filterSummaryLabel = new JLabel();
     private RecentFoldersJumpCombo folderCombo;
     private File folder;
     private boolean accepted;
     private boolean updatingUi;
+    private final Map<AEViewer, Boolean> recordFilteredAtOpen = new HashMap<>();
+    private final List<EventFilter2D> filterEnabledListenTargets = new ArrayList<>();
+    private FilterChain filterEnabledListenChain;
 
     private RecordingSetupDialog(AEViewer host, List<AEViewer> muxViewers) {
         super(host, "Start recording", ModalityType.APPLICATION_MODAL);
@@ -102,6 +117,13 @@ public final class RecordingSetupDialog extends JDialog {
         }
         buildUi();
         loadFromViewer();
+        for (AEViewer v : applyTargets) {
+            if (v != null) {
+                recordFilteredAtOpen.put(v, v.isRecordFilteredEventsEnabled());
+            }
+        }
+        host.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORD_FILTERED_EVENTS, this);
+        bindFilterEnabledListeners();
         pack();
         setLocationRelativeTo(host);
     }
@@ -352,9 +374,33 @@ public final class RecordingSetupDialog extends JDialog {
         c.gridx = 0;
         c.gridy = row;
         c.gridwidth = 3;
+        c.weightx = 1;
+        recordFilteredCb.setToolTipText("<html>Same as File → Enable filtering of recorded or network output events.<br>"
+                + "Checked: recording writes the filter-chain output (events marked filteredOut are omitted).<br>"
+                + "Unchecked: record the raw stream as received.</html>");
+        recordFilteredCb.addActionListener(e -> {
+            if (updatingUi) {
+                return;
+            }
+            applyRecordFilteredToTargets(recordFilteredCb.isSelected());
+            updateFilterSummary();
+        });
+        form.add(recordFilteredCb, c);
+
+        row++;
+        c.gridy = row;
+        filterSummaryLabel.setVerticalAlignment(JLabel.TOP);
+        filterSummaryPanel.add(filterSummaryLabel, BorderLayout.CENTER);
+        form.add(filterSummaryPanel, c);
+        c.gridwidth = 1;
+
+        row++;
+        c.gridx = 0;
+        c.gridy = row;
+        c.gridwidth = 3;
         JLabel hint = new JLabel("<html><i>First " + MAX_AUTO_SHOWS
                 + " recordings this session, File → Start recording, or any timed recording. "
-                + "Enter starts. Format, compression, and folder become AEViewer prefs. "
+                + "Enter starts. Format, compression, filtering, and folder become AEViewer prefs. "
                 + "Time limit stays for this jAER run only.</i></html>");
         form.add(hint, c);
 
@@ -409,6 +455,13 @@ public final class RecordingSetupDialog extends JDialog {
         String initial = RecordingTimeLimit.initialValue(sessionTimeLimitMs.get());
         timeLimitField.setText(RecordingTimeLimit.NO_LIMIT.equals(initial) ? "0" : initial);
         timeLimitPreset.setSelectedIndex(RecordingTimeLimit.presetIndex(initial));
+        updatingUi = true;
+        try {
+            recordFilteredCb.setSelected(host.isRecordFilteredEventsEnabled());
+        } finally {
+            updatingUi = false;
+        }
+        updateFilterSummary();
     }
 
     private void setFolder(File dir) {
@@ -521,6 +574,7 @@ public final class RecordingSetupDialog extends JDialog {
             }
             v.applyRecordingTimeLimit(sessionTimeLimitMs.get());
         }
+        applyRecordFilteredToTargets(recordFilteredCb.isSelected());
         boolean muxAedat4 = muxMany && AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version);
         if (!muxMany || muxAedat4) {
             host.setPendingRecordingStartFile(out);
@@ -528,5 +582,121 @@ public final class RecordingSetupDialog extends JDialog {
         acceptedShowCount.incrementAndGet();
         accepted = true;
         dispose();
+    }
+
+    private void applyRecordFilteredToTargets(boolean enabled) {
+        for (AEViewer v : applyTargets) {
+            if (v != null) {
+                v.setRecordFilteredEventsEnabled(enabled);
+            }
+        }
+    }
+
+    private void restoreRecordFiltered() {
+        for (Map.Entry<AEViewer, Boolean> e : recordFilteredAtOpen.entrySet()) {
+            if (e.getKey() != null && e.getValue() != null) {
+                e.getKey().setRecordFilteredEventsEnabled(e.getValue());
+            }
+        }
+    }
+
+    private void updateFilterSummary() {
+        boolean apply = recordFilteredCb.isSelected();
+        boolean wasVisible = filterSummaryPanel.isVisible();
+        filterSummaryPanel.setVisible(apply);
+        boolean textChanged = false;
+        if (apply) {
+            String html = buildEnabledFiltersHtml();
+            textChanged = !html.equals(filterSummaryLabel.getText());
+            if (textChanged) {
+                filterSummaryLabel.setText(html);
+            }
+        }
+        if ((wasVisible != apply || textChanged) && isDisplayable()) {
+            pack();
+        }
+    }
+
+    private String buildEnabledFiltersHtml() {
+        FilterChain chain = host.getChip() != null ? host.getChip().getFilterChain() : null;
+        if (chain == null) {
+            return "<html>No filter chain on this chip.";
+        }
+        return chain.enabledFiltersConfirmationHtml("Recording");
+    }
+
+    private void bindFilterEnabledListeners() {
+        unbindFilterEnabledListeners();
+        FilterChain chain = host.getChip() != null ? host.getChip().getFilterChain() : null;
+        if (chain == null) {
+            return;
+        }
+        filterEnabledListenChain = chain;
+        chain.getSupport().addPropertyChangeListener("filteringEnabled", this);
+        for (EventFilter2D f : chain) {
+            if (f == null) {
+                continue;
+            }
+            f.getSupport().addPropertyChangeListener("filterEnabled", this);
+            filterEnabledListenTargets.add(f);
+        }
+    }
+
+    private void unbindFilterEnabledListeners() {
+        if (filterEnabledListenChain != null) {
+            filterEnabledListenChain.getSupport().removePropertyChangeListener("filteringEnabled", this);
+            filterEnabledListenChain = null;
+        }
+        for (EventFilter2D f : filterEnabledListenTargets) {
+            if (f != null) {
+                f.getSupport().removePropertyChangeListener("filterEnabled", this);
+            }
+        }
+        filterEnabledListenTargets.clear();
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        String n = evt.getPropertyName();
+        if (AEViewer.EVENT_RECORD_FILTERED_EVENTS.equals(n)) {
+            Object nv = evt.getNewValue();
+            if (nv instanceof Boolean) {
+                Runnable ui = () -> {
+                    if (updatingUi) {
+                        return;
+                    }
+                    updatingUi = true;
+                    try {
+                        recordFilteredCb.setSelected((Boolean) nv);
+                    } finally {
+                        updatingUi = false;
+                    }
+                    updateFilterSummary();
+                };
+                if (SwingUtilities.isEventDispatchThread()) {
+                    ui.run();
+                } else {
+                    SwingUtilities.invokeLater(ui);
+                }
+            }
+            return;
+        }
+        if ("filterEnabled".equals(n) || "filteringEnabled".equals(n)) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                updateFilterSummary();
+            } else {
+                SwingUtilities.invokeLater(this::updateFilterSummary);
+            }
+        }
+    }
+
+    @Override
+    public void dispose() {
+        unbindFilterEnabledListeners();
+        host.getSupport().removePropertyChangeListener(AEViewer.EVENT_RECORD_FILTERED_EVENTS, this);
+        if (!accepted) {
+            restoreRecordFiltered();
+        }
+        super.dispose();
     }
 }

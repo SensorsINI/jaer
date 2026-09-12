@@ -268,6 +268,8 @@ import org.opencv.core.Core;
  * <li> "chip" - when a new AEChip is built for the viewer.
  * <li> "paused" - when paused or resumed - old and new booleans are passed to
  * firePropertyChange.
+ * <li> "recordFilteredEventsEnabled" - File → Enable filtering of recorded or
+ * network output events; old and new booleans.
  * <li> "rememberLastInterface" - global Interface-menu checkbox; all AEViewers
  * stay in sync. Setter no-ops when the value is unchanged.
  * </ul>
@@ -320,7 +322,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_RECORDING_STOPPED = "recordingStopped",
             EVENT_REMEMBER_LAST_INTERFACE = "rememberLastInterface",
             EVENT_RAISE_ALL_WINDOWS_ON_FOCUS = "raiseAllWindowsOnFocus",
-            EVENT_SYNC_ENABLED = "syncEnabled";
+            EVENT_SYNC_ENABLED = "syncEnabled",
+            EVENT_RECORD_FILTERED_EVENTS = "recordFilteredEventsEnabled";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
@@ -14436,10 +14439,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     public void setRecordFilteredEventsEnabled(boolean recordFilteredEventsEnabled) {
-        //        log.info("recordFilteredEventsEnabled="+recordFilteredEventsEnabled);
+        boolean old = this.recordFilteredEventsEnabled;
         this.recordFilteredEventsEnabled = recordFilteredEventsEnabled;
         prefs.putBoolean("AEViewer.logFilteredEventsEnabled", recordFilteredEventsEnabled);
-        recordFilteredEventsCheckBoxMenuItem.setSelected(recordFilteredEventsEnabled);
+        if (recordFilteredEventsCheckBoxMenuItem != null) {
+            recordFilteredEventsCheckBoxMenuItem.setSelected(recordFilteredEventsEnabled);
+        }
+        if (old != recordFilteredEventsEnabled) {
+            getSupport().firePropertyChange(EVENT_RECORD_FILTERED_EVENTS, old, recordFilteredEventsEnabled);
+        }
     }
 
     /**

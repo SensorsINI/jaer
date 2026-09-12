@@ -14,6 +14,7 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -42,6 +43,7 @@ import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
  * FilterChain fires the following PropertyChangeEvents
  * <ul>
  * <li> processingmode - when the processing mode is changed
+ * <li> filteringEnabled - when {@link #setFilteringEnabled} changes
  * </ul>
  * FilterChains should be constructed as in the following example taken from a
  * filter:
@@ -441,7 +443,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @param b true to enable (default) or false to disable all filters
      */
     public void setFilteringEnabled(boolean b) {
+        boolean old = filteringEnabled;
         filteringEnabled = b;
+        getSupport().firePropertyChange("filteringEnabled", old, b);
     }
 
     public boolean isFilteringEnabled() {
@@ -654,9 +658,50 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     }
 
     /**
+     * HTML for Save As / Start recording: which EventFilters would run.
+     *
+     * @param outputKind short noun for the destination, e.g. {@code Export} or
+     * {@code Recording}
+     */
+    public String enabledFiltersConfirmationHtml(String outputKind) {
+        String kind = outputKind != null && !outputKind.isBlank() ? outputKind : "Output";
+        if (!isFilteringEnabled()) {
+            return "<html><b>Filter processing is globally off.</b> " + kind
+                    + " will be unfiltered.<br>Turn it on in the Filters window.";
+        }
+        List<String> names = new ArrayList<>();
+        try {
+            for (EventFilter2D f : this) {
+                if (f != null && f.isFilterEnabled()) {
+                    names.add(f.getShortName());
+                }
+            }
+        } catch (ConcurrentModificationException e) {
+            log.warning(e + " during enabled-filter confirmation");
+        }
+        if (names.isEmpty()) {
+            return "<html>No EventFilters are enabled — " + kind
+                    + " will be <b>unfiltered</b>.<br>Enable a filter in Filters if you meant to clean the data.";
+        }
+        StringBuilder sb = new StringBuilder("<html>Will apply in chain order:");
+        for (String name : names) {
+            sb.append("<br>&nbsp;&nbsp;").append(escapeHtml(name));
+        }
+        return sb.toString();
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    /**
      * FilterChain fires the following PropertyChangeEvents
      * <ul>
      * <li> processingmode - when the processing mode is changed
+     * <li> filteringEnabled - when {@link #setFilteringEnabled} changes
      * </ul>
      */
     public PropertyChangeSupport getSupport() {
