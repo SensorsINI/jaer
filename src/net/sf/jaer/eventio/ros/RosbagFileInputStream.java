@@ -392,11 +392,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                         break;
                     case "Imu":
                         hasImu.setTrue();
-                        firstImuTimestampROS = m.messageIndex.timestamp;
+                        firstImuTimestampROS = stampFromHeaderOrBag(m.messageType, m.messageIndex.timestamp);
                         break;
                     case "Image":
                         hasAps.setTrue();
-                        firstApsTimestampROS = m.messageIndex.timestamp;
+                        firstApsTimestampROS = stampFromHeaderOrBag(m.messageType, m.messageIndex.timestamp);
                         break;
                     default:
                         log.info("got unexpected type " + m);
@@ -555,6 +555,25 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
         mostRecentTimestamp = ts;
         return ts;
+    }
+
+    /**
+     * IMU and APS {@code header.stamp} (sensor time). Falls back to bag receive
+     * time when the header is missing.
+     */
+    private static Timestamp stampFromHeaderOrBag(MessageType messageType, Timestamp bagTimestamp) {
+        if (messageType != null) {
+            try {
+                MessageType header = messageType.getField("header");
+                Timestamp stamp = header.<TimeType>getField("stamp").getValue();
+                if (stamp != null) {
+                    return stamp;
+                }
+            } catch (Exception e) {
+                // use bag time
+            }
+        }
+        return bagTimestamp;
     }
 
     /**
@@ -770,14 +789,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                             case "Imu": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
                                 hasImu.setTrue();
                                 MessageType messageType = message.messageType;
-//                                List<String> fieldNames = messageType.getFieldNames();
-//                                for(String s:fieldNames){
-//                                    System.out.println("fieldName: "+s);
-//                                }
-//                                List<String> fieldNames = messageType.getFieldNames();
-//                                MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
-//                                Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                Timestamp timestamp = message.messageIndex.timestamp;
+                                Timestamp timestamp = stampFromHeaderOrBag(messageType, message.messageIndex.timestamp);
 
                                 int ts = getTimestampUsRelative(timestamp, true, forwards); // do update largest timestamp with IMU time
                                 MessageType angular_velocity = messageType.getField("angular_velocity");
@@ -809,7 +821,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 buf[IMUSampleType.gz.code] = (short) encodeImuGyro(zrot);
 //                                ApsDvsEvent e = null;
 //                                e = outItr.nextOutput();
-                                IMUSample imuSample = new IMUSample(ts, buf);
+                                IMUSample imuSample = IMUSample.fromRawUntracked(ts, buf);
                                 e.setImuSample(imuSample);
                                 e.setTimestamp(ts);
                                 log.finest(imuSample.toString());

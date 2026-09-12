@@ -199,6 +199,11 @@ public class IMUSample {
             this.nextCode = nextCode;
         }
 
+        /** Next {@link IMUSampleType#code} to fill when the sample spans AE packets. */
+        public int getNextCode() {
+            return nextCode;
+        }
+
         @Override
         public String toString() {
             return String.format("IncompleteIMUSampleException holding %s completed up to sampleType.code=%d",
@@ -293,6 +298,34 @@ public class IMUSample {
     public static int extractSampleTypeCode(final int addr) {
         final int code = ((addr & IMUSample.CODEBITMASK) >>> IMUSample.CODEBITSHIFT);
         return code;
+    }
+
+    /** True when {@code addr} is a DAVIS IMU word (any of the 7 sample types). */
+    public static boolean isImuAddress(final int addr) {
+        return (DavisChip.ADDRESS_TYPE_IMU & addr) == DavisChip.ADDRESS_TYPE_IMU;
+    }
+
+    /**
+     * Start a sample on type code 0, or resume a partial sample on the next IMU
+     * word (Save As / {@code readPacketByNumber} often splits the 7-word block).
+     */
+    public static boolean shouldDecodeImu(final int addr, final IncompleteIMUSampleException incomplete) {
+        if (!isImuAddress(addr)) {
+            return false;
+        }
+        if (incomplete != null) {
+            return true;
+        }
+        return extractSampleTypeCode(addr) == 0;
+    }
+
+    /**
+     * Raw-index increment after a completed sample, besides the extract loop's
+     * {@code i++}. Uses the incomplete state from <em>before</em> construct.
+     */
+    public static int advanceAfterCompleteSample(final IncompleteIMUSampleException incompleteBefore) {
+        final int startCode = incompleteBefore == null ? 0 : incompleteBefore.getNextCode();
+        return IMUSample.SIZE_EVENTS - startCode - 1;
     }
 
     /**

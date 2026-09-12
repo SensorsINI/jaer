@@ -2852,8 +2852,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 pendingAedat4EventStreamId = eventStreams.get(0).streamId;
             }
         }
+        RecordingChipDetector.Detection fileDetection = null;
         if (suggested == null) {
-            suggested = RecordingChipDetector.detect(file, chipClassNames);
+            fileDetection = RecordingChipDetector.detectDetailed(file, chipClassNames);
+            suggested = fileDetection == null ? null : fileDetection.chipClass;
         }
         if (suggested == null) {
             return true;
@@ -2862,6 +2864,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Class current = getAeChipClass();
         if (current != null && (current.equals(suggested)
                 || current.getSimpleName().equalsIgnoreCase(suggested.getSimpleName()))) {
+            maybeWarnRosbagInferredChip(file, fileDetection);
             return true;
         }
         String currentName = current == null ? "(none)" : current.getSimpleName();
@@ -2870,6 +2873,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     + (addedMissingChip ? suggested.getSimpleName() : currentName + " to " + suggested.getSimpleName())
                     + " for recording " + file.getName());
             setAeChipClass(suggested);
+            maybeWarnRosbagInferredChip(file, fileDetection);
             return true;
         }
         String msg = String.format(
@@ -2908,7 +2912,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.info("Keeping AEChip " + currentName + " despite recording hint "
                     + suggested.getSimpleName());
         }
+        maybeWarnRosbagInferredChip(file, fileDetection);
         return true;
+    }
+
+    private static final String ROSBAG_CHIP_SIZE_WARNING_TITLE = "ROS bag AEChip inferred from image size";
+    private static final String ROSBAG_CHIP_SIZE_WARNING_PREFS = "RosbagChipInferredFromImageSize";
+
+    /**
+     * Bags have no chip class; size 346×260 matches several Davis346 variants.
+     */
+    private void maybeWarnRosbagInferredChip(File file, RecordingChipDetector.Detection detection) {
+        if (detection == null || !detection.isRosbagSizeGuess() || detection.chipClass == null) {
+            return;
+        }
+        if (!chipClassMatches(getAeChipClass(), detection.chipClass)) {
+            return;
+        }
+        RecordingChipDetector.Hint hint = detection.hint;
+        String size = (hint.sizeX != null && hint.sizeY != null)
+                ? (hint.sizeX + "\u00d7" + hint.sizeY) : "unknown";
+        String origin = hint.origin == null ? "rosbag" : hint.origin;
+        String chipName = detection.chipClass.getSimpleName();
+        String html = String.format(
+                "<html>This ROS bag (<b>%s</b>) has no camera/chip name in the filename or message headers.<br>"
+                + "jAER inferred <b>%s</b> from image/event array size <b>%s</b> (%s).<br><br>"
+                + "Several AEChips share this resolution (for example Davis346blue, Davis346red, Davis346B) "
+                + "and APS readout order can differ.<br>"
+                + "If frames, polarity, or IMU look wrong, choose the matching chip from the AEChip/Sensor menu "
+                + "and reopen the file.</html>",
+                file.getName(), chipName, size, origin);
+        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
+                this, true, ROSBAG_CHIP_SIZE_WARNING_TITLE, html, JOptionPane.WARNING_MESSAGE);
+        d.setPrefsIdentity(ROSBAG_CHIP_SIZE_WARNING_PREFS);
+        d.setVisible(true);
     }
 
     /**
@@ -11375,21 +11412,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final File toPlay = savedFile;
         String msg = htmlMessage != null ? htmlMessage
                 : ShowFolderSaveConfirmation.htmlRecordingSavedMessage(savedFile, null);
-        ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(this, savedFile, msg, () -> {
-            try {
-                if (toPlay != null) {
-                    getAePlayer().startPlayback(toPlay);
+        ShowFolderSaveConfirmation.runAfterFileChoosersClose(() -> {
+            ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(this, savedFile, msg, () -> {
+                try {
+                    if (toPlay != null) {
+                        getAePlayer().startPlayback(toPlay);
+                    }
+                } catch (IOException e) {
+                    log.log(Level.WARNING, "Could not play saved file: " + e.toString(), e);
+                    JOptionPane.showMessageDialog(this,
+                            e.getMessage() != null ? e.getMessage() : e.toString(),
+                            "Could not play file", JOptionPane.ERROR_MESSAGE);
+                } catch (InterruptedException ex) {
+                    log.info("playback interrupted");
                 }
-            } catch (IOException e) {
-                log.log(Level.WARNING, "Could not play saved file: " + e.toString(), e);
-                JOptionPane.showMessageDialog(this,
-                        e.getMessage() != null ? e.getMessage() : e.toString(),
-                        "Could not play file", JOptionPane.ERROR_MESSAGE);
-            } catch (InterruptedException ex) {
-                log.info("playback interrupted");
-            }
+            });
+            dialog.setVisible(true);
         });
-        dialog.setVisible(true);
     }
 
     /**

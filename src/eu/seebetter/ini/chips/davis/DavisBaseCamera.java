@@ -622,12 +622,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 // The ImuSample is newed for each new sample. This is not super efficient but only occurs at max 1kHz.
                 // It does mean that the IMUSamples will build up in the ApsDvsEvent objects (which are reused), so the IMUSample
                 // field is set to null when the event is not an ImuSample
-                if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
-                    if (IMUSample.extractSampleTypeCode(data) == 0) { // / only start getting an IMUSample at code 0,
-                        // the first sample type
+                if (incompleteIMUSampleException != null && !IMUSample.isImuAddress(data)) {
+                    incompleteIMUSampleException = null;
+                }
+                if (IMUSample.shouldDecodeImu(data, incompleteIMUSampleException)) {
                         try {
-                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
-                            i += IMUSample.SIZE_EVENTS - 1;
+                            final IMUSample.IncompleteIMUSampleException prevIncomplete = incompleteIMUSampleException;
+                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, prevIncomplete);
+                            i += IMUSample.advanceAfterCompleteSample(prevIncomplete);
                             incompleteIMUSampleException = null;
                             imuSample = possibleSample; // asking for sample from AEChip now gives this value
                             final ApsDvsEvent imuEvent = new ApsDvsEvent(); // this davis event holds the IMUSample
@@ -653,8 +655,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             incompleteIMUSampleException = null;
                             continue; // continue because there may be other data
                         }
-                    }
-
                 } // not part of IMU sample follows
                 else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
                     // DVS event
@@ -852,11 +852,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 }
                 final int data = datas[i];
 
-                if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
-                    if (IMUSample.extractSampleTypeCode(data) == 0) {
-                        try {
-                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
-                            i += IMUSample.SIZE_EVENTS - 1;
+                if (incompleteIMUSampleException != null && !IMUSample.isImuAddress(data)) {
+                    incompleteIMUSampleException = null;
+                }
+                if (IMUSample.shouldDecodeImu(data, incompleteIMUSampleException)) {
+                    try {
+                            final IMUSample.IncompleteIMUSampleException prevIncomplete = incompleteIMUSampleException;
+                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, prevIncomplete);
+                            i += IMUSample.advanceAfterCompleteSample(prevIncomplete);
                             incompleteIMUSampleException = null;
                             imuSample = possibleSample;
                             // Do not flush or reset polarity here: outputIterator() resets size to 0,
@@ -877,7 +880,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             incompleteIMUSampleException = null;
                             continue;
                         }
-                    }
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
                     active = ActiveKind.POLARITY;
                     final PolarityEvent e = polItr.nextOutput();
@@ -1218,12 +1220,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 // events and still delivering frames
                 final int data = datas[i];
 
-                if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
-                    if (IMUSample.extractSampleTypeCode(data) == 0) { // / only start getting an IMUSample at code 0,
-                        // the first sample type
+                if (incompleteIMUSampleException != null && !IMUSample.isImuAddress(data)) {
+                    incompleteIMUSampleException = null;
+                }
+                if (IMUSample.shouldDecodeImu(data, incompleteIMUSampleException)) {
                         try {
-                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
-                            i += IMUSample.SIZE_EVENTS - 1;
+                            final IMUSample.IncompleteIMUSampleException prevIncomplete = incompleteIMUSampleException;
+                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, prevIncomplete);
+                            i += IMUSample.advanceAfterCompleteSample(prevIncomplete);
                             incompleteIMUSampleException = null;
                             imuSample = possibleSample; // asking for sample from AEChip now gives this value
                             final ApsDvsEvent imuEvent = new ApsDvsEvent(); // this davis event holds the IMUSample
@@ -1249,8 +1253,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             incompleteIMUSampleException = null;
                             continue; // continue because there may be other data
                         }
-                    }
-
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
                     // DVS event
                     final ApsDvsEvent e = nextApsDvsEvent(outItr);

@@ -1,10 +1,14 @@
 package net.sf.jaer.util;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +17,7 @@ import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -84,7 +89,7 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
         }
         setTitle(title != null ? title : "File saved");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setAlwaysOnTop(true);
+        setModalityType(ModalityType.DOCUMENT_MODAL);
         getContentPane().setLayout(new BorderLayout());
         JLabel msgLabel = new JLabel(msg);
         add(msgLabel, BorderLayout.CENTER);
@@ -127,8 +132,9 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
     }
 
     /**
-     * Center on the owner after {@link #pack()} and again on the next EDT turn
-     * so {@link WindowSaver} cannot leave a restored origin in place.
+     * Center on the owner after {@link #pack()}. Not always-on-top: that covers
+     * a still-open File Open chooser and the chooser's modal pump then ignores
+     * clicks on this dialog.
      */
     @Override
     public void setVisible(boolean visible) {
@@ -136,11 +142,73 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
             pack();
             setLocationRelativeTo(getOwner());
             super.setVisible(true);
-            final Window owner = getOwner();
-            SwingUtilities.invokeLater(() -> setLocationRelativeTo(owner));
             return;
         }
         super.setVisible(false);
+    }
+
+    /**
+     * True when a {@link JFileChooser} dialog (File → Open / Save) is showing.
+     * Save As completion can fire on the EDT nested in that modal pump.
+     */
+    public static Window findShowingFileChooserDialog() {
+        for (Window w : Window.getWindows()) {
+            if (w != null && w.isShowing() && containsFileChooser(w)) {
+                return w;
+            }
+        }
+        return null;
+    }
+
+    private static boolean containsFileChooser(Container c) {
+        if (c instanceof JFileChooser) {
+            return true;
+        }
+        for (Component ch : c.getComponents()) {
+            if (ch instanceof Container && containsFileChooser((Container) ch)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Run {@code action} now, or after every showing file-chooser dialog closes
+     * so a Save As confirmation is not stacked on File → Open.
+     */
+    public static void runAfterFileChoosersClose(Runnable action) {
+        if (action == null) {
+            return;
+        }
+        Window chooser = findShowingFileChooserDialog();
+        if (chooser == null) {
+            action.run();
+            return;
+        }
+        log.info("Deferring dialog until file chooser closes: " + chooser.getName());
+        WindowAdapter once = new WindowAdapter() {
+            private boolean fired;
+
+            private void fire() {
+                if (fired) {
+                    return;
+                }
+                fired = true;
+                chooser.removeWindowListener(this);
+                SwingUtilities.invokeLater(() -> runAfterFileChoosersClose(action));
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                fire();
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                fire();
+            }
+        };
+        chooser.addWindowListener(once);
     }
 
     /**

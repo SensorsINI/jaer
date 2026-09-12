@@ -90,12 +90,14 @@ public class Davis346Zynq extends Davis346BaseCamera {
                 // events and still delivering frames
                 final int data = datas[i];
 
-                if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
-                    if (IMUSample.extractSampleTypeCode(data) == 0) { // / only start getting an IMUSample at code 0,
-                        // the first sample type
+                if (incompleteIMUSampleException != null && !IMUSample.isImuAddress(data)) {
+                    incompleteIMUSampleException = null;
+                }
+                if (IMUSample.shouldDecodeImu(data, incompleteIMUSampleException)) {
                         try {
-                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
-                            i += IMUSample.SIZE_EVENTS - 1;
+                            final IMUSample.IncompleteIMUSampleException prevIncomplete = incompleteIMUSampleException;
+                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, prevIncomplete);
+                            i += IMUSample.advanceAfterCompleteSample(prevIncomplete);
                             incompleteIMUSampleException = null;
                             imuSample = possibleSample; // asking for sample from AEChip now gives this value
                             final ApsDvsEvent imuEvent = new ApsDvsEvent(); // this davis event holds the IMUSample
@@ -121,7 +123,6 @@ public class Davis346Zynq extends Davis346BaseCamera {
                             incompleteIMUSampleException = null;
                             continue; // continue because there may be other data
                         }
-                    }
 
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
                     // DVS event

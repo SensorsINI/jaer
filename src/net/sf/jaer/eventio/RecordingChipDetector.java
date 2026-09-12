@@ -21,7 +21,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.github.swrirobotics.bags.reader.BagFile;
+import com.github.swrirobotics.bags.reader.BagReader;
+import com.github.swrirobotics.bags.reader.TopicInfo;
+import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
+import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
+import com.github.swrirobotics.bags.reader.messages.serialization.UInt32Type;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
@@ -195,11 +202,37 @@ public final class RecordingChipDetector {
     }
 
     /**
+     * Chip class plus the hint that produced it (filename, header, bag image size, …).
+     */
+    public static final class Detection {
+        public final Class<? extends AEChip> chipClass;
+        public final Hint hint;
+
+        public Detection(Class<? extends AEChip> chipClass, Hint hint) {
+            this.chipClass = chipClass;
+            this.hint = hint;
+        }
+
+        /** ROS bag with no chip name; AEChip chosen from APS/DVS image size. */
+        public boolean isRosbagSizeGuess() {
+            return hint != null && hint.origin != null && hint.origin.startsWith("rosbag-size");
+        }
+    }
+
+    /**
      * Detect chip class among {@code loadedChipClassNames} (FQCN list from the
      * AEViewer device menu), then among all allowed {@link AEChip} classes.
      * Returns null if unknown or ambiguous.
      */
     public static Class<? extends AEChip> detect(File file, List<String> loadedChipClassNames) {
+        Detection d = detectDetailed(file, loadedChipClassNames);
+        return d == null ? null : d.chipClass;
+    }
+
+    /**
+     * Same as {@link #detect(File, List)} but keeps the hint (for size-guess warnings).
+     */
+    public static Detection detectDetailed(File file, List<String> loadedChipClassNames) {
         if (file == null || !file.isFile()) {
             return null;
         }
@@ -214,7 +247,7 @@ public final class RecordingChipDetector {
         if (byName != null) {
             log.info("Recording chip from filename: " + byName.getSimpleName() + " (" + fromName + ")"
                     + notOnMenuSuffix(byName, loaded));
-            return byName;
+            return new Detection(byName, fromName);
         }
 
         Hint fromHeader = fromHeader(file);
@@ -223,7 +256,7 @@ public final class RecordingChipDetector {
             if (byHeader != null) {
                 log.info("Recording chip from header: " + byHeader.getSimpleName() + " (" + fromHeader + ")"
                         + notOnMenuSuffix(byHeader, loaded));
-                return byHeader;
+                return new Detection(byHeader, fromHeader);
             }
             log.info("Could not match recording chip hint among loaded or allowed AEChips: " + fromHeader);
         }
@@ -237,7 +270,7 @@ public final class RecordingChipDetector {
                 log.info("Recording chip from legacy .dat extension: " + byDat.getSimpleName()
                         + " (" + fromLegacyDat + ")"
                         + notOnMenuSuffix(byDat, loaded));
-                return byDat;
+                return new Detection(byDat, fromLegacyDat);
             }
         }
 
@@ -372,10 +405,108 @@ public final class RecordingChipDetector {
             }
             return fromDddHdf5(file);
         }
+        if (isRosbagFilename(file.getName())) {
+            return fromRosbagImageSize(file);
+        }
         if (AEDataFile.hasDataFileExtension(file.getName())) {
             return fromAedat2AsciiHeader(file);
         }
         return null;
+    }
+
+    static boolean isRosbagFilename(String name) {
+        if (name == null) {
+            return false;
+        }
+        String lower = name.toLowerCase(Locale.ROOT);
+        return lower.endsWith("." + RosbagFileInputStream.DATA_FILE_EXTENSION) || lower.endsWith(".bag");
+    }
+
+    private static final Object BAG_PEEK_LOCK = new Object();
+    private static File bagPeekFile;
+    private static long bagPeekLen;
+    private static long bagPeekMtime;
+    private static Hint bagPeekHint;
+
+    /**
+     * First {@code sensor_msgs/Image} or DVS {@code EventArray} width×height.
+     * Bags have no AEChip name; callers treat this as an ambiguous size guess.
+     */
+    static Hint fromRosbagImageSize(File file) {
+        if (file == null || !file.isFile()) {
+            return null;
+        }
+        synchronized (BAG_PEEK_LOCK) {
+            if (file.equals(bagPeekFile) && file.length() == bagPeekLen && file.lastModified() == bagPeekMtime) {
+                return bagPeekHint;
+            }
+        }
+        Hint hint = peekRosbagImageSize(file);
+        synchronized (BAG_PEEK_LOCK) {
+            bagPeekFile = file;
+            bagPeekLen = file.length();
+            bagPeekMtime = file.lastModified();
+            bagPeekHint = hint;
+        }
+        return hint;
+    }
+
+    private static Hint peekRosbagImageSize(File file) {
+        try {
+            BagFile bag = BagReader.readFile(file);
+            Hint fromImage = peekRosbagTopicSize(bag, true);
+            if (fromImage != null) {
+                return fromImage;
+            }
+            return peekRosbagTopicSize(bag, false);
+        } catch (Exception e) {
+            log.log(Level.FINE, "Could not peek ROS bag size from " + file.getName() + ": " + e, e);
+            return null;
+        }
+    }
+
+    private static Hint peekRosbagTopicSize(BagFile bag, boolean images) {
+        try {
+            for (TopicInfo topic : bag.getTopics()) {
+                String type = topic.getMessageType() == null ? "" : topic.getMessageType();
+                String name = topic.getName() == null ? "" : topic.getName();
+                boolean match = images
+                        ? type.contains("Image") && (name.contains("image") || type.contains("sensor_msgs"))
+                        : type.contains("EventArray");
+                if (!match) {
+                    continue;
+                }
+                final Hint[] found = {null};
+                bag.forMessagesOnTopic(name, (message, connection) -> {
+                    Integer w = rosUint(message, "width");
+                    Integer h = rosUint(message, "height");
+                    if (w != null && h != null && w > 0 && h > 0) {
+                        String origin = "rosbag-size:" + name + " " + w + "x" + h;
+                        found[0] = new Hint(null, w, h, origin);
+                        return false;
+                    }
+                    return false;
+                });
+                if (found[0] != null) {
+                    return found[0];
+                }
+            }
+        } catch (Exception e) {
+            log.log(Level.FINE, "ROS bag topic size peek failed: " + e, e);
+        }
+        return null;
+    }
+
+    private static Integer rosUint(MessageType message, String field) {
+        try {
+            return message.<UInt32Type>getField(field).getValue().intValue();
+        } catch (Exception ignore) {
+            try {
+                return (int) message.<UInt16Type>getField(field).getValue();
+            } catch (Exception e) {
+                return null;
+            }
+        }
     }
 
     /**
