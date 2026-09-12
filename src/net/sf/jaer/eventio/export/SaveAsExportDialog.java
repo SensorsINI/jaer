@@ -112,6 +112,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     private final JButton closeButton = new JButton("Close");
     /** Top-level chain filters we listen to for {@code filterEnabled}. */
     private final List<EventFilter2D> filterEnabledListenTargets = new ArrayList<>();
+    private FilterChain filterEnabledListenChain;
 
     public SaveAsExportDialog(AEViewer viewer) {
         super("Save As");
@@ -598,6 +599,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         if (chain == null) {
             return;
         }
+        filterEnabledListenChain = chain;
+        chain.getSupport().addPropertyChangeListener("filteringEnabled", this);
         for (EventFilter2D f : chain) {
             if (f == null) {
                 continue;
@@ -608,6 +611,10 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     }
 
     private void unbindFilterEnabledListeners() {
+        if (filterEnabledListenChain != null) {
+            filterEnabledListenChain.getSupport().removePropertyChangeListener("filteringEnabled", this);
+            filterEnabledListenChain = null;
+        }
         for (EventFilter2D f : filterEnabledListenTargets) {
             if (f != null) {
                 f.getSupport().removePropertyChangeListener("filterEnabled", this);
@@ -621,25 +628,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         if (chain == null) {
             return "<html>No filter chain on this chip.";
         }
-        if (!chain.isFilteringEnabled()) {
-            return "<html><b>Filter processing is globally off.</b> Export will be unfiltered.<br>"
-                    + "Turn it on in the Filters window, or uncheck Apply EventFilters.";
-        }
-        List<String> names = new ArrayList<>();
-        for (EventFilter2D f : chain) {
-            if (f != null && f.isFilterEnabled()) {
-                names.add(f.getShortName());
-            }
-        }
-        if (names.isEmpty()) {
-            return "<html>No EventFilters are enabled — export will be <b>unfiltered</b>.<br>"
-                    + "Enable a denoiser in Filters if you meant to clean the file.";
-        }
-        StringBuilder sb = new StringBuilder("<html>Will apply in chain order:");
-        for (String name : names) {
-            sb.append("<br>&nbsp;&nbsp;").append(ShowFolderSaveConfirmation.escapeHtml(name));
-        }
-        return sb.toString();
+        return chain.enabledFiltersConfirmationHtml("Export");
     }
 
     private static JLabel htmlWrap(String htmlInner) {
@@ -967,7 +956,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if ("filterEnabled".equals(evt.getPropertyName())) {
+        if ("filterEnabled".equals(evt.getPropertyName())
+                || "filteringEnabled".equals(evt.getPropertyName())) {
             if (SwingUtilities.isEventDispatchThread()) {
                 updateFilterSummary();
             } else {
