@@ -199,6 +199,14 @@ public abstract class DisplayMethod implements PropertyChangeListener {
     }
 
     /**
+     * Called when the chip's AEViewer is assigned. Display methods that add
+     * viewer menus should install them here if {@link #onRegistration()} ran
+     * before the viewer existed (preferred 3D method at startup).
+     */
+    public void onAeViewerAssigned() {
+    }
+
+    /**
      * shows the status change display centered over the image
      *
      * @param drawable the OpenGL context

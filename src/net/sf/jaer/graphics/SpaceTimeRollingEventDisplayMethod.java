@@ -116,6 +116,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private float pointSize = 4f;
 
     private JMenu displayMenu = null;
+    private boolean viewerDependentUiInstalled = false;
 
     private boolean additiveColorEnabled;
     private boolean largePointSizeEnabled;
@@ -1234,6 +1235,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
+        viewerDependentUiInstalled = false;
         ChipCanvas.Zoom restoreZoom = oldZoom;
         if (restoreZoom == null) {
             restoreZoom = getChipCanvas().createZoom();
@@ -1264,33 +1266,51 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             renderer.refreshContrastActionLabels();
         }
 
-        AEViewer viewer = aeChip.getAeViewer();
-        if (viewer == null) {
-            log.warning("cannot add menu item to control SpaceTimeRollingEventDisplayMethod, AEViewer is null");
-            return;
-        }
-        displayMenu = new JMenu("3-D Display Options");
-        displayMenu.add(new JMenuItem(new SetTimeAspectRatioAction()));
-        displayMenu.add(new JCheckBoxMenuItem(new ToggleOrthoProjectionAction()));
-        displayMenu.add(new JSeparator());
-        displayMenu.add(new JCheckBoxMenuItem(new ToggleDisplayDvsFrames()));
-        displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
-        displayMenu.add(new JMenuItem(new SetFrameEventSpacingAction()));
-        displayMenu.add(new JSeparator());
-        displayMenu.add(new JCheckBoxMenuItem(new ToggleLargePointsAction()));
-        displayMenu.add(new JSeparator());
-        displayMenu.add(new JCheckBoxMenuItem(new ToggleAdditiveColorAction()));
-        displayMenu.add(new JMenuItem(new SetTransparencyAction()));
-        viewer.addMenu(displayMenu);
-
         if (chip.getRenderer() instanceof DavisRenderer) {
             chip.getRenderer().getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
         }
-        if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
-            aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+        installViewerDependentUi();
+    }
+
+    @Override
+    public void onAeViewerAssigned() {
+        installViewerDependentUi();
+    }
+
+    /**
+     * Adds the 3-D options menu and rewind listener once the AEViewer exists.
+     * {@link #onRegistration()} can run from the AEChip constructor before
+     * {@link AEChip#setAeViewer}.
+     */
+    private void installViewerDependentUi() {
+        if (viewerDependentUiInstalled || chip == null) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            return;
+        }
+        if (displayMenu == null) {
+            displayMenu = new JMenu("3-D Display Options");
+            displayMenu.add(new JMenuItem(new SetTimeAspectRatioAction()));
+            displayMenu.add(new JCheckBoxMenuItem(new ToggleOrthoProjectionAction()));
+            displayMenu.add(new JSeparator());
+            displayMenu.add(new JCheckBoxMenuItem(new ToggleDisplayDvsFrames()));
+            displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
+            displayMenu.add(new JMenuItem(new SetFrameEventSpacingAction()));
+            displayMenu.add(new JSeparator());
+            displayMenu.add(new JCheckBoxMenuItem(new ToggleLargePointsAction()));
+            displayMenu.add(new JSeparator());
+            displayMenu.add(new JCheckBoxMenuItem(new ToggleAdditiveColorAction()));
+            displayMenu.add(new JMenuItem(new SetTransparencyAction()));
+            viewer.addMenu(displayMenu);
+        }
+        if (viewer.getAePlayer() != null) {
+            viewer.getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
         showTimeWindowStatusOverlay();
-
+        viewerDependentUiInstalled = true;
     }
 
     @Override

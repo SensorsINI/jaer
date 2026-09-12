@@ -387,6 +387,9 @@ public class AEChip extends Chip2D {
         this.aeViewer = aeViewer;
         setChanged();
         notifyObservers(aeViewer);
+        if (aeViewer != null && getCanvas() != null && getCanvas().getDisplayMethod() != null) {
+            getCanvas().getDisplayMethod().onAeViewerAssigned();
+        }
     }
 
     public FilterFrame getFilterFrame() {
