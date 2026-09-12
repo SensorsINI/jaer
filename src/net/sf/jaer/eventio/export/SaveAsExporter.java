@@ -1,5 +1,6 @@
 package net.sf.jaer.eventio.export;
 
+import java.awt.Point;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -154,6 +155,13 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     prepareExportFilters(chain);
                 }
             }
+            // RotateFilter invertX&&invertY used to swap DAVIS APS SOF/EOF corners
+            // on the export chip; restore after each filterBundle so the next
+            // extractBundleTyped slice still sees original readout addresses.
+            final Point apsFirst = copyPoint(chip instanceof DavisBaseCamera
+                    ? ((DavisBaseCamera) chip).getApsFirstPixelReadOut() : null);
+            final Point apsLast = copyPoint(chip instanceof DavisBaseCamera
+                    ? ((DavisBaseCamera) chip).getApsLastPixelReadOut() : null);
             log.info(String.format("Save As %s (background): events [%d, %d) of %d, filters=%s, markers=%s, source=%s",
                     options.format, start, end, stream.size(),
                     options.applyEventFilters, options.useInOutMarkers, options.sourceFile.getName()));
@@ -252,18 +260,22 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         continue;
                     }
                     eventsIn += polarityCount(bundle, false);
+                    // Assemble leftover mixed APS using original x/y, then filter
+                    // so RotateFilter remaps FramePacket pixels instead of APS AE.
+                    bundle = toTypedBundle(bundle, assembler, chip, false);
                     if (options.applyEventFilters && chain != null) {
                         bundle = chain.filterBundle(bundle);
+                        restoreApsReadoutCorners(chip, apsFirst, apsLast);
                         if (bundle == null) {
                             continue;
                         }
                     }
                     badEvents += markOutOfBounds(bundle, chip);
                     if (aedat4 != null) {
-                        aedat4.writeBundle(toTypedBundle(bundle, assembler, chip, true), true);
+                        aedat4.writeBundle(toTypedBundle(bundle, null, chip, true), true);
                     } else {
                         for (TypedDataPacket p : bundle) {
-                            consume(p, csv, h5, imu, frames, assembler, chip);
+                            consume(p, csv, h5, imu, frames, null, chip);
                         }
                     }
                 } catch (RuntimeException | IOException ex) {
@@ -599,6 +611,20 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             }
         }
         return out;
+    }
+
+    private static Point copyPoint(Point p) {
+        return p == null ? null : new Point(p);
+    }
+
+    /** Undo RotateFilter invertX&&invertY swapping DAVIS APS SOF/EOF corners. */
+    private static void restoreApsReadoutCorners(AEChip chip, Point first, Point last) {
+        if (!(chip instanceof DavisBaseCamera) || first == null || last == null) {
+            return;
+        }
+        DavisBaseCamera davis = (DavisBaseCamera) chip;
+        davis.setApsFirstPixelReadOut(first);
+        davis.setApsLastPixelReadOut(last);
     }
 
     /** Marks polarity events outside the chip as filteredOut. Returns how many. */

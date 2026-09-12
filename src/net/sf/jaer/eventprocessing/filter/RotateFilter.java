@@ -14,6 +14,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FramePacket;
@@ -27,8 +28,11 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * modify them.
  * <p>
  * jAER 3.0: also remaps {@link FramePacket} pixels with the same geometry.
- * APS first/last readout corners are still swapped when invertX&amp;invertY so
- * legacy extractPacket SOF/EOF stay consistent.
+ * APS first/last readout corners are swapped on invertX&amp;invertY only when
+ * filtering mixed {@link ApsDvsEventPacket}s so legacy extractPacket SOF/EOF
+ * stay consistent. Typed extract (Save As / ViewLoop) assembles frames from
+ * original APS addresses before this filter runs; mutating corners there
+ * caused every rosbag APS frame to be discarded as incomplete.
  *
  * @author tobi
  */
@@ -93,7 +97,9 @@ public class RotateFilter extends EventFilter2D {
 
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        checkDavisApsHack();
+        if (in instanceof ApsDvsEventPacket) {
+            checkDavisApsHack();
+        }
         final int sx = chip.getSizeX();
         final int sy = chip.getSizeY();
         for (BasicEvent e : in) {
@@ -109,7 +115,6 @@ public class RotateFilter extends EventFilter2D {
 
     @Override
     public FramePacket processFrame(FramePacket in) {
-        checkDavisApsHack();
         if (in == null || in.isEmpty() || !anyTransformEnabled()) {
             return in;
         }
