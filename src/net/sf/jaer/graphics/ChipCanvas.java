@@ -201,6 +201,13 @@ public class ChipCanvas implements GLEventListener, Observer {
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
     /** While true, 3D display methods may render axes only (no events) during drag. */
     private boolean interactionPreview3d = false;
+    /**
+     * After this idle time (ms) during a 3D mouse drag, events and labels are
+     * drawn again. Restarted on every drag motion. Increase if full frames
+     * stutter while rotating; decrease for snappier preview.
+     */
+    public static final int INTERACTION_PREVIEW_PAUSE_MS = 150;
+    private javax.swing.Timer interactionPreview3dPauseTimer;
 
     /**
      * Flag to disable annotation for methods such as data file preview in file
@@ -1355,8 +1362,9 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * True while the user is dragging to rotate or pan a 3D view (mouse button
-     * held). Display methods can skip heavy geometry and draw axes only.
+     * True while the user is actively dragging a 3D rotate/pan. Becomes false
+     * after {@link #INTERACTION_PREVIEW_PAUSE_MS} of no motion (button may
+     * still be down) so display methods can draw events and labels again.
      */
     public boolean isInteractionPreview3d() {
         return interactionPreview3d;
@@ -1364,6 +1372,39 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     private void setInteractionPreview3d(boolean preview) {
         interactionPreview3d = preview;
+    }
+
+    /** Start or continue 3D interaction preview; arm pause-to-full-render timer. */
+    private void begin3dInteractionPreview() {
+        setInteractionPreview3d(true);
+        armInteractionPreviewPauseTimer();
+    }
+
+    /** Full 3D render; stop the pause timer (mouse released). */
+    private void end3dInteractionPreview() {
+        setInteractionPreview3d(false);
+        if (interactionPreview3dPauseTimer != null) {
+            interactionPreview3dPauseTimer.stop();
+        }
+    }
+
+    private void armInteractionPreviewPauseTimer() {
+        Runnable arm = () -> {
+            if (interactionPreview3dPauseTimer == null) {
+                interactionPreview3dPauseTimer = new javax.swing.Timer(INTERACTION_PREVIEW_PAUSE_MS, e -> {
+                    setInteractionPreview3d(false);
+                    repaint();
+                });
+                interactionPreview3dPauseTimer.setRepeats(false);
+            }
+            interactionPreview3dPauseTimer.setInitialDelay(INTERACTION_PREVIEW_PAUSE_MS);
+            interactionPreview3dPauseTimer.restart();
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            arm.run();
+        } else {
+            javax.swing.SwingUtilities.invokeLater(arm);
+        }
     }
 
     /**
@@ -3112,7 +3153,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             if (is3DEnabled()) {
                 final int btn = evt.getButton();
                 if (btn == MouseEvent.BUTTON1 || btn == MouseEvent.BUTTON3) {
-                    setInteractionPreview3d(true);
+                    begin3dInteractionPreview();
                 }
             }
             if (evt.getButton() == MouseEvent.BUTTON3) {
@@ -3136,7 +3177,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         public void mouseReleased(final MouseEvent evt) {
             final boolean wasDragging = dragging;
             dragging = false;
-            setInteractionPreview3d(false);
+            end3dInteractionPreview();
             if (is3DEnabled()) {
                 log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
                         + getOrigin3dx() + " y=" + getOrigin3dy());
@@ -3163,7 +3204,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             final int but1mask = InputEvent.BUTTON1_DOWN_MASK, but3mask = InputEvent.BUTTON3_DOWN_MASK;
             if (is3DEnabled()
                     && ((e.getModifiersEx() & but1mask) == but1mask || (e.getModifiersEx() & but3mask) == but3mask)) {
-                setInteractionPreview3d(true);
+                begin3dInteractionPreview();
             }
             if ((e.getModifiersEx() & but1mask) == but1mask) {
                 if (is3DEnabled()) {
@@ -3171,7 +3212,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                     setAngley((maxAngle * (screenX - (glCanvas.getWidth() / 2))) / glCanvas.getWidth());
                     setAnglex((maxAngle * (screenY - (glCanvas.getHeight() / 2))) / glCanvas.getHeight());
                     log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f", anglex, angley));
-                    getClipArea().setDirty();
+                    // Keep current 3D frustum; dirtying the 2D clip area changes apparent zoom.
                 }
             } else if ((e.getModifiersEx() & but3mask) == but3mask) { // right mouse button drag
                 if (is3DEnabled()) {

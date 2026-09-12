@@ -503,17 +503,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     private boolean useVolumeFitFrustum() {
-        if (!volumeFitActive || getChipCanvas().getZoom().isZoomed()) {
-            return false;
-        }
-        if (Math.abs(getChipCanvas().getAnglex() - volumeFitAnglex) > 0.05f
-                || Math.abs(getChipCanvas().getAngley() - volumeFitAngley) > 0.05f
-                || Math.abs(getChipCanvas().getOrigin3dx() - volumeFitOriginX) > 0.5f
-                || Math.abs(getChipCanvas().getOrigin3dy() - volumeFitOriginY) > 0.5f) {
-            volumeFitActive = false;
-            return false;
-        }
-        return true;
+        // Keep the Ctrl-0 frustum across rotate/pan so left-drag does not jump zoom.
+        // Mouse-wheel zoom uses ChipCanvas clip instead.
+        return volumeFitActive && !getChipCanvas().getZoom().isZoomed();
     }
 
     private void clearVolumeFit() {

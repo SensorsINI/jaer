@@ -99,6 +99,8 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 
             gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
 
+            final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
+
             // draw 3d axes
             gl.glColor3f(0, 0, 1);
             gl.glLineWidth(.4f);
@@ -114,6 +116,13 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
                 gl.glVertex3f(0, 0, 0);
                 gl.glVertex3f(0, 0, chip.getMaxSize());
                 gl.glEnd();
+            }
+
+            if (interactionPreview) {
+                checkGLError(gl);
+                gl.glPopMatrix();
+                displayStatusChangeText(drawable);
+                return;
             }
 
             // render events
