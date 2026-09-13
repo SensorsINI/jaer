@@ -1,0 +1,124 @@
+# Build Windows install4j media and Authenticode-sign with Azure Artifact Signing.
+# Public Trust publisher is the Completed individual identity (CN=Tobias Delbruck).
+# Do not enable tag-push attach until a dispatch run has been verified.
+# Prerequisites: docs in packaging/azure-artifact-signing.md
+#   Secrets: INSTALL4J_LICENSE, AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#   GitHub Environment: azure-signing (OIDC federated credential must match)
+#   Vars (optional; defaults match the West US 2 account): AZURE_CODESIGN_ACCOUNT,
+#   AZURE_CODESIGN_PROFILE, AZURE_CODESIGN_ENDPOINT
+
+name: Sign Windows (Azure)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  build-and-sign:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    environment: azure-signing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Check Ant
+        shell: pwsh
+        run: ant -version
+
+      - name: Set up install4j
+        uses: luangong/setup-install4j@v1
+        with:
+          version: '13.0.2'
+          license: ${{ secrets.INSTALL4J_LICENSE }}
+
+      - name: Read VERSION.txt
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content -Raw VERSION.txt).Trim()
+          if (-not $v) { throw 'VERSION.txt is empty' }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "jAER version: $v"
+
+      - name: Build Windows installer (ant release-windows-ci)
+        shell: pwsh
+        run: ant release-windows-ci
+
+      - name: Locate Windows installer
+        id: locate
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $dir = Join-Path 'currentInstallers' $v
+          $exe = Get-ChildItem -Path $dir -Filter 'jAER_windows-x64_*.exe' -File -ErrorAction Stop |
+            Select-Object -First 1
+          if (-not $exe) { throw "No jAER_windows-x64_*.exe under $dir" }
+          "installer_dir=$($exe.Directory.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "installer_path=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "installer_name=$($exe.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Unsigned installer: $($exe.FullName) ($([math]::Round($exe.Length/1MB,1)) MB)"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Artifact Signing
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_CODESIGN_ENDPOINT || 'https://wus2.codesigning.azure.net/' }}
+          signing-account-name: ${{ vars.AZURE_CODESIGN_ACCOUNT || 'jAER' }}
+          certificate-profile-name: ${{ vars.AZURE_CODESIGN_PROFILE || 'jaer-public' }}
+          files-folder: ${{ steps.locate.outputs.installer_dir }}
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: jAER Windows installer
+          description-url: https://jaerproject.org
+          timeout: 1800
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+
+      - name: Upload signed installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: jaer-windows-azure-signed
+          path: ${{ steps.locate.outputs.installer_path }}
+          if-no-files-found: error
+
+      - name: Summary
+        if: always()
+        shell: pwsh
+        run: |
+          @"
+          ## Azure Artifact Signing
+          - Version: `${{ steps.version.outputs.version }}`
+          - Account: `${{ vars.AZURE_CODESIGN_ACCOUNT || 'jAER' }}`
+          - Profile: `${{ vars.AZURE_CODESIGN_PROFILE || 'jaer-public' }}`
+          - Endpoint: `${{ vars.AZURE_CODESIGN_ENDPOINT || 'https://wus2.codesigning.azure.net/' }}`
+          - Installer: `${{ steps.locate.outputs.installer_name }}`
+          - Publisher on a successful sign: CN=Tobias Delbruck
+          - Download the jaer-windows-azure-signed artifact and check Properties → Digital Signatures.
+          "@ | Add-Content -Path $env:GITHUB_STEP_SUMMARY
