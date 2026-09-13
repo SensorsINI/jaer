@@ -3,14 +3,21 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
+import java.awt.LayoutManager;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.util.Locale;
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
@@ -30,11 +37,23 @@ import javax.swing.event.DocumentListener;
  * suppresses residual {@code L}/{@code l} events briefly, and rewrites the
  * filename field text directly (pathless {@link JFileChooser#setSelectedFile}
  * often fails to update the Windows L&amp;F text field).
+ * <p>
+ * On macOS Aqua, the Save As filename row is a centered {@link FlowLayout} with
+ * a 250px field ({@code AquaFileChooserUI}), which clips chip-datestamp names.
+ * When the dialog opens, that row is left-aligned and stretched to the pane.
  */
 public final class RecordingSaveDialogGuard {
 
     /** How long after dialog open to treat lone {@code l}/{@code L} as stray. */
     static final long STRAY_KEY_GUARD_MS = 1500;
+
+    /** AquaFileChooserUI hard-codes the Save As field to this width. */
+    static final int AQUA_SAVE_FILENAME_FIELD_WIDTH = 250;
+
+    /** Horizontal inset matching Aqua's New Folder / Save button struts. */
+    static final int AQUA_SAVE_FILENAME_INSET = 20;
+
+    private static final String MAC_FILENAME_LAYOUT_KEY = "jaer.macSaveFilenameLaidOut";
 
     private RecordingSaveDialogGuard() {
     }
@@ -75,6 +94,7 @@ public final class RecordingSaveDialogGuard {
 
     private static int showSaveDialogNow(JFileChooser chooser, Component parent, String defaultBase) {
         restoreSelectedFilename(chooser, defaultBase);
+        layoutMacSaveFilenameField(chooser);
 
         final long dialogOpenTimeMs = System.currentTimeMillis();
         final DocumentListener[] filenameDocumentListener = new DocumentListener[1];
@@ -83,6 +103,7 @@ public final class RecordingSaveDialogGuard {
         final PropertyChangeListener ancestorListener = evt -> {
             if (evt.getNewValue() != null) {
                 SwingUtilities.invokeLater(() -> {
+                    layoutMacSaveFilenameField(chooser);
                     restoreSelectedFilename(chooser, defaultBase);
                     installFilenameGuard(chooser, defaultBase, dialogOpenTimeMs, filenameDocumentListener);
                     if (restoreTimer[0] == null) {
@@ -168,9 +189,106 @@ public final class RecordingSaveDialogGuard {
     }
 
     /**
-     * Prefer the field next to a "File Name" label; else a field matching the
-     * selected name; else the last {@link JTextField} (Windows L&amp;F often
-     * puts the path field first).
+     * On macOS Aqua, left-align the Save As filename row and stretch the field
+     * to the chooser pane width. No-op on other platforms.
+     */
+    public static void layoutMacSaveFilenameField(JFileChooser chooser) {
+        if (chooser == null || !isMacOs()) {
+            return;
+        }
+        JTextField field = findFilenameTextField(chooser);
+        if (field != null) {
+            stretchFilenameRowToPaneWidth(field);
+        }
+    }
+
+    static boolean isMacOs() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+    }
+
+    /**
+     * Rewrites Aqua's centered 250px Save As row so the label is on the left
+     * and the text field fills the remaining pane width. Returns false if the
+     * parent is not that Aqua row (or was already rewritten).
+     */
+    static boolean stretchFilenameRowToPaneWidth(JTextField filenameField) {
+        if (filenameField == null) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(filenameField.getClientProperty(MAC_FILENAME_LAYOUT_KEY))) {
+            return true;
+        }
+        Container parent = filenameField.getParent();
+        if (parent == null || !isAquaSaveFilenameRow(parent, filenameField)) {
+            return false;
+        }
+        JLabel label = findSaveFilenameLabel(parent);
+        parent.removeAll();
+        parent.setLayout(new BorderLayout(8, 0));
+        if (parent instanceof JComponent jc) {
+            jc.setAlignmentX(Component.LEFT_ALIGNMENT);
+            jc.setBorder(BorderFactory.createEmptyBorder(0, AQUA_SAVE_FILENAME_INSET, 0, AQUA_SAVE_FILENAME_INSET));
+        }
+        int h = Math.max(filenameField.getPreferredSize().height, filenameField.getMinimumSize().height);
+        filenameField.setMinimumSize(new Dimension(120, h));
+        filenameField.setPreferredSize(new Dimension(120, h));
+        filenameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, h));
+        if (label != null) {
+            parent.add(label, BorderLayout.LINE_START);
+        }
+        parent.add(filenameField, BorderLayout.CENTER);
+        if (parent instanceof JComponent jc) {
+            jc.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(h + 4, jc.getPreferredSize().height)));
+        }
+        filenameField.putClientProperty(MAC_FILENAME_LAYOUT_KEY, Boolean.TRUE);
+        parent.invalidate();
+        parent.validate();
+        parent.repaint();
+        return true;
+    }
+
+    /**
+     * Aqua {@code labelArea}: centered {@link FlowLayout} holding the Save As
+     * label and a field capped at {@link #AQUA_SAVE_FILENAME_FIELD_WIDTH}.
+     */
+    static boolean isAquaSaveFilenameRow(Container parent, JTextField filenameField) {
+        LayoutManager layout = parent.getLayout();
+        if (!(layout instanceof FlowLayout flow) || flow.getAlignment() != FlowLayout.CENTER) {
+            return false;
+        }
+        int maxW = filenameField.getMaximumSize().width;
+        int prefW = filenameField.getPreferredSize().width;
+        return maxW <= AQUA_SAVE_FILENAME_FIELD_WIDTH && prefW <= AQUA_SAVE_FILENAME_FIELD_WIDTH;
+    }
+
+    private static JLabel findSaveFilenameLabel(Container parent) {
+        JLabel only = null;
+        int labels = 0;
+        for (Component c : parent.getComponents()) {
+            if (!(c instanceof JLabel label)) {
+                continue;
+            }
+            labels++;
+            only = label;
+            if (isFilenameChooserLabel(label.getText())) {
+                return label;
+            }
+        }
+        return labels == 1 ? only : null;
+    }
+
+    static boolean isFilenameChooserLabel(String text) {
+        if (text == null) {
+            return false;
+        }
+        String n = text.toLowerCase(Locale.ROOT);
+        return n.contains("file name") || n.contains("filename") || n.contains("save as");
+    }
+
+    /**
+     * Prefer the field next to a "File Name" / "Save As" label; else a field
+     * matching the selected name; else the last {@link JTextField} (Windows
+     * L&amp;F often puts the path field first).
      */
     static JTextField findFilenameTextField(Container parent) {
         JTextField afterFileNameLabel = findTextFieldAfterFileNameLabel(parent);
@@ -195,7 +313,7 @@ public final class RecordingSaveDialogGuard {
             Component c = comps[i];
             if (c instanceof JLabel) {
                 String text = ((JLabel) c).getText();
-                if (text != null && text.toLowerCase().contains("file name")) {
+                if (isFilenameChooserLabel(text)) {
                     for (int j = i + 1; j < comps.length; j++) {
                         if (comps[j] instanceof JTextField) {
                             return (JTextField) comps[j];

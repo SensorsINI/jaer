@@ -11,10 +11,8 @@
 package net.sf.jaer.graphics;
 
 import java.awt.Component;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.beans.PropertyChangeEvent;
@@ -33,8 +31,6 @@ import javax.swing.JSlider;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.plaf.basic.BasicSliderUI;
-import javax.swing.plaf.basic.BasicSliderUI.TrackListener;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
@@ -106,42 +102,10 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.toggleMarkerAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
-        // Jump to click on the track instead of unit-scrolling (SO 518471).
-        // Capture play/pause *before* TrackListener.setValue → doSingleStep pauses.
-        for (MouseListener l : playerSlider.getMouseListeners()) {
-            if (l instanceof TrackListener) {
-                playerSlider.removeMouseListener(l);
-            }
-        }
-        final BasicSliderUI ui = (BasicSliderUI) playerSlider.getUI();
-        BasicSliderUI.TrackListener tl = ui.new TrackListener() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                    beginSliderSeekGesture();
-                }
-                super.mousePressed(e);
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                super.mouseReleased(e);
-                endSliderSeekGesture();
-            }
-
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                Point p = e.getPoint();
-                int value = ui.valueForXPosition(p.x);
-                playerSlider.setValue(value);
-            }
-
-            @Override
-            public boolean shouldScroll(int dir) {
-                return false;
-            }
-        };
-        playerSlider.addMouseListener(tl);
+        // PlaybackSliderUI click-to-seek; begin/end before setValue so doSingleStep
+        // does not steal the pause state. Do not replace TrackListener as a
+        // MouseListener only — that drops mouseDragged on Aqua (fIsDragging).
+        playerSlider.setSeekGestureHandler(this::beginSliderSeekGesture, this::endSliderSeekGesture);
         playerSlider.setComponentPopupMenu(markerPopupMenu);
 //        playerSlider.setExtent(100);
         repeatPlaybackButton.setSelected(aePlayer.isRepeat());
