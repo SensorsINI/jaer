@@ -1,7 +1,7 @@
 # Upload install4j media from currentInstallers/<VERSION.txt>/ to the GitHub Release for that tag.
 # Requires: gh auth, VERSION.txt, media built by `ant release`.
 # Creates a *draft* GitHub Release if the tag has none (not Latest until published).
-# Default: skip jAER_windows-x64_*.exe so a SignPath-signed (or test-signed) GitHub
+# Default: skip jAER_windows-x64_*.exe so an Azure-signed GitHub
 # asset is not replaced by the local unsigned install4j build. Pass -ClobberWindows
 # only when you intend to overwrite that exe.
 # Usage (repo root):
@@ -35,7 +35,7 @@ if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jA
 $windowsExe = @($installers | Where-Object { $_.Name -like 'jAER_windows-x64_*.exe' })
 if (-not $ClobberWindows -and $windowsExe.Count -gt 0) {
     foreach ($w in $windowsExe) {
-        Write-Host ('Skipping ' + $w.Name + ' to keep the SignPath-signed GitHub asset. Overwrite unsigned: ant upload-installers-clobber-windows')
+        Write-Host ('Skipping ' + $w.Name + ' to keep the Azure-signed GitHub asset. Overwrite unsigned: ant upload-installers-clobber-windows')
     }
     $installers = @($installers | Where-Object { $_.Name -notlike 'jAER_windows-x64_*.exe' })
 }
