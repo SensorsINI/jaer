@@ -41,6 +41,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         super(parent, modal);
         this.parent=parent;
         initComponents();
+        setTitle(JaerConstants.APPLICATION_NAME);
+        aboutLabel.setText("<html><center><h1>" + JaerConstants.APPLICATION_NAME + "</h1></center></html>");
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
         Properties props = new Properties();
         // when running from webstart  we are not allowed to open a file on the local file system, but we can
@@ -58,7 +60,13 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 if (urlContents instanceof InputStream) {
                     StringWriter writer = new StringWriter();
                     IOUtils.copy((InputStream) urlContents, writer, "UTF-8");
-                    versionLabel.setText(writer.toString());
+                    String build = writer.toString().trim();
+                    String runtime = "Running on " + System.getProperty("os.name")
+                            + " " + System.getProperty("os.version")
+                            + ", Java " + System.getProperty("java.version")
+                            + " (" + System.getProperty("java.vendor") + ")";
+                    versionLabel.setText(build + "\n" + runtime + "\n"
+                            + JaerConstants.getProcessAuthenticodeSummary());
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -94,7 +102,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         });
 
         aboutLabel.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
-        aboutLabel.setText("<html> <center> <h1> jAER - Java tools for Address-Event Representation Sensors </h1> </center></html>");
+        aboutLabel.setText("<html> <center> <h1> jAER - Desktop Application for Event Sensors </h1> </center></html>");
 
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {

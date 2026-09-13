@@ -54,6 +54,13 @@ public class JaerConstants {
     public static final String ICON_IMAGE_FILTERS="/net/sf/jaer/images/jaer-filters.png";
     public static final String SPLASH_SCREEN_IMAGE="/net/sf/jaer/images/SplashScreen.png";
     public static final String VERSION_FILE="BUILDVERSION.txt";
+    /**
+     * User-facing product name (About, README). Same string as install4j
+     * {@code <application name>} / SignPath pe-file product-name.
+     */
+    public static final String APPLICATION_NAME = "jAER - Desktop Application for Event Sensors";
+    /** @deprecated use {@link #APPLICATION_NAME} */
+    public static final String INSTALLER_PRODUCT_NAME = APPLICATION_NAME;
     public static final String JAER_HOME = "https://github.com/SensorsINI/jaer.git";
     public static final String JAER_RELEASES = "https://github.com/SensorsINI/jaer/releases";
     /** Curated recordings zip on the GitHub Latest release (not packed in the installer). */
@@ -147,5 +154,50 @@ public class JaerConstants {
             log.fine("Could not read VERSION.txt: " + e);
         }
         return "dev";
+    }
+
+    /**
+     * Authenticode of <em>this process</em> (Windows PE only). Azure signs the
+     * GitHub setup {@code jAER_windows-x64_*.exe}; install4j {@code --disable-signing}
+     * leaves the installed launcher and {@code java.exe} unsigned. Linux/macOS
+     * have no Authenticode; Mac notarization is on the DMG/.app.
+     */
+    public static String getProcessAuthenticodeSummary() {
+        String os = System.getProperty("os.name", "");
+        String cmd = ProcessHandle.current().info().command().orElse("(unknown executable)");
+        if (!os.toLowerCase(java.util.Locale.ROOT).contains("win")) {
+            return "Authenticode applies to the Windows GitHub installer only (not this "
+                    + os + " process: " + cmd + ").";
+        }
+        try {
+            Path exe = Path.of(cmd);
+            if (!Files.isRegularFile(exe)) {
+                return "Windows Authenticode: could not resolve this process path (" + cmd + ").";
+            }
+            Process p = new ProcessBuilder(
+                    "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                    "$s = Get-AuthenticodeSignature -LiteralPath "
+                            + "'" + exe.toString().replace("'", "''") + "'; "
+                            + "Write-Output ($s.Status.ToString() + '|' + "
+                            + "[string]$s.SignerCertificate.Subject)")
+                    .redirectErrorStream(true)
+                    .start();
+            if (!p.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                return "Windows Authenticode: timed out querying " + exe.getFileName();
+            }
+            String out = IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8).trim();
+            int bar = out.indexOf('|');
+            String status = bar < 0 ? out : out.substring(0, bar).trim();
+            String subject = bar < 0 ? "" : out.substring(bar + 1).trim();
+            if ("Valid".equalsIgnoreCase(status) && !subject.isEmpty()) {
+                return "Windows Authenticode (this .exe): Valid, " + subject;
+            }
+            return "Windows Authenticode (this .exe): " + status
+                    + ". GitHub setup installer is signed as Tobias Delbruck; "
+                    + "the installed launcher/JVM is not.";
+        } catch (Exception e) {
+            return "Windows Authenticode: " + e.getMessage();
+        }
     }
 }
