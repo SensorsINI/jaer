@@ -695,6 +695,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             float maxW = chip.getSizeX() * 0.70f;
+            // Title ("Recording") and details (elapsed, VCR, disk, ARS) are two
+            // sizes: details start at 75% of the title, then both shrink independently
+            // so the longest line of that group still fits in 70% of chip width.
             int fontsize = overlayFontSize(7);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{recordingLine}, maxW);
             int limitFontsize = Math.max(3, Math.round(fontsize * 0.75f));
@@ -702,7 +705,9 @@ public class ChipCanvas implements GLEventListener, Observer {
             detailLines[0] = applyFiltersLine;
             System.arraycopy(limitLines, 0, detailLines, 1, limitLines.length);
             limitFontsize = DrawGL.fontSizeToFitWidth(limitFontsize, detailLines, maxW);
-            float lineSpace = fontsize * 1.35f;
+            // Title→first detail uses title size; later rows use the smaller detail size.
+            float lineSpace = fontsize * 1.6f;
+            float detailLineSpace = limitFontsize * 1.6f;
             float xpos = getViewportCenterX();
             float y = getViewportYAtFraction(0.92f);
             beginHudChipScale(gl, xpos, y);
@@ -710,10 +715,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             y -= lineSpace;
             DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f,
                     applyFilters ? Color.yellow : Color.lightGray, applyFiltersLine);
-            y -= limitFontsize * 1.4f;
+            y -= detailLineSpace;
             for (String line : limitLines) {
                 DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.yellow, line);
-                y -= limitFontsize * 1.4f;
+                y -= detailLineSpace;
             }
             endHudChipScale(gl);
         } catch (GLException e) {

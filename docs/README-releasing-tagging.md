@@ -159,6 +159,21 @@ Keep binaries for the latest 2--3 releases. Notes and tags stay.
 
 Dropbox is an optional historical archive, not the auto-update URL.
 
+## Azure Artifact Signing (Windows production)
+
+Public Trust identity **Tobias Delbruck** is Completed. Profile **`jaer-public`** is Active
+(account **jAER**, West US 2). Publisher on signed exes is that CN, not SignPath
+Foundation. Workflow: `.github/workflows/sign-windows-azure.yml` (**Sign Windows
+(Azure)**), `workflow_dispatch` only until a dry run is verified. Setup (Entra
+OIDC, GitHub environment `azure-signing`, secrets):
+[`packaging/azure-artifact-signing.md`](../packaging/azure-artifact-signing.md).
+
+    gh workflow run sign-windows-azure.yml
+
+Keep SignPath **test-signing2** as a backup. Do not switch that policy to
+**release-signing** while the Foundation cert is CSR PENDING. Do not
+`wingetcreate submit` until an Azure-signed exe is the GitHub Windows asset.
+
 ## SignPath Windows CI
 
 SignPath Foundation signs only artifacts built on GitHub-hosted runners. Local

@@ -11308,6 +11308,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 } else if (vcrSession) {
                     if (recordingVcrSession != null) {
+                        RecordingSetupDialog.persistLastTimedPrefs(
+                                recordingVcrSession.getCassetteDurationMs(),
+                                recordingVcrSession.getMode(),
+                                recordingVcrSession.getRotateKeep());
                         try {
                             recordingVcrSession.closeCurrentCassette();
                         } catch (IOException e) {
@@ -11367,12 +11371,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         html.append("<br><br>Mode: ");
         if (mode == RecordingVcrSession.Mode.ROTATE) {
             html.append("rotate ").append(RecordingSetupDialog.sessionRotateKeep());
+        } else if (mode == RecordingVcrSession.Mode.FINITE) {
+            html.append("finite ").append(RecordingSetupDialog.sessionRotateKeep());
         } else if (mode == RecordingVcrSession.Mode.INFINITE) {
             html.append("infinite");
         } else {
             html.append(mode);
         }
-        html.append("<br>Duration: ").append(formatRecordingDurationHms(elapsedMs));
+        html.append("<br>Session ran: ").append(formatRecordingDurationHms(elapsedMs));
+        if (recordingVcrSession != null) {
+            html.append(" (").append(recordingVcrSession.getCassetteIndex()).append(" cassettes)");
+        }
+        int keep = RecordingSetupDialog.sessionRotateKeep();
+        long cassetteMs = recordingVcrSession != null
+                ? recordingVcrSession.getCassetteDurationMs()
+                : recordingTimeLimit;
+        if (mode == RecordingVcrSession.Mode.ROTATE) {
+            html.append("<br>Rotate keep ").append(keep)
+                    .append(": older cassettes were deleted");
+        }
         if (folder != null) {
             html.append("<br>Folder:<br>").append(ShowFolderSaveConfirmation.escapeHtml(folder.getAbsolutePath()));
         }
@@ -11380,7 +11397,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (cassettes.isEmpty() && cassette != null && cassette.isFile()) {
             cassettes = List.of(cassette);
         }
-        html.append("<br>Cassettes: ").append(cassettes.size());
+        html.append("<br>Cassettes on disk: ").append(cassettes.size());
+        if (mode == RecordingVcrSession.Mode.ROTATE && cassetteMs > 0 && !cassettes.isEmpty()) {
+            long lastCassetteMs = recordingElapsedMs();
+            long keptMs = (cassettes.size() - 1L) * cassetteMs + Math.min(cassetteMs, lastCassetteMs);
+            html.append("<br>Kept data: ~").append(formatRecordingDurationHms(keptMs))
+                    .append(" (not the session run time)");
+        }
         for (File f : cassettes) {
             html.append("<br>&nbsp;&nbsp;").append(ShowFolderSaveConfirmation.escapeHtml(f.getName()));
             if (f.isFile()) {
@@ -11388,13 +11411,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         if (fileInfo != null && !fileInfo.isEmpty()) {
-            html.append("<br><br>").append(ShowFolderSaveConfirmation.escapeHtml(fileInfo));
+            html.append("<br><br>Last cassette: ").append(ShowFolderSaveConfirmation.escapeHtml(fileInfo));
         }
         File reveal = folder != null ? folder : cassette;
         String msg = html.toString();
+        File deck = RecordingVcrSession.deckFolder(folder);
+        Runnable merge = deck == null ? null : () -> RecordingVcrMerge.mergeInteractive(
+                AEViewer.this, deck, AEViewer.this);
         Runnable show = () -> {
             ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(
-                    AEViewer.this, reveal, msg, null, null, title);
+                    AEViewer.this, reveal, msg, null, null, title, null,
+                    merge != null ? "Merge recordings" : null,
+                    merge != null ? "Concatenate these cassettes into one AEDAT-4" : null,
+                    merge);
             dialog.setVisible(true);
         };
         if (SwingUtilities.isEventDispatchThread()) {
@@ -13359,6 +13388,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * timeout (or longer than 15 minutes when the OS timeout cannot be read),
      * ask the user to extend sleep so the computer does not suspend mid-record.
      * Infinite/rotate VCR is unbounded, so warn whenever the computer would sleep.
+     * Finite VCR is bounded by N × cassette length.
      */
     private void maybeWarnHostSleepForTimeLimitedRecording() {
         if (recordingTimeLimit <= 0L) {
@@ -13367,14 +13397,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (GraphicsEnvironment.isHeadless()) {
             return;
         }
-        boolean vcr = RecordingSetupDialog.isSessionVcrEnabled();
-        long warnLimitMs = vcr ? Long.MAX_VALUE : recordingTimeLimit;
+        RecordingVcrSession.Mode vcrMode = RecordingSetupDialog.sessionVcrMode();
+        boolean vcr = vcrMode != RecordingVcrSession.Mode.OFF;
+        long warnLimitMs;
+        if (vcrMode == RecordingVcrSession.Mode.FINITE) {
+            warnLimitMs = recordingTimeLimit * (long) RecordingSetupDialog.sessionRotateKeep();
+        } else if (vcr) {
+            warnLimitMs = Long.MAX_VALUE;
+        } else {
+            warnLimitMs = recordingTimeLimit;
+        }
         if (!HostSleepTimeout.claimWarningThisJvm(warnLimitMs)) {
             return;
         }
-        String msg = vcr
+        String msg = (vcrMode == RecordingVcrSession.Mode.INFINITE || vcrMode == RecordingVcrSession.Mode.ROTATE)
                 ? HostSleepTimeout.warningHtmlUnboundedVcr(recordingTimeLimit)
-                : HostSleepTimeout.warningHtml(recordingTimeLimit);
+                : HostSleepTimeout.warningHtml(warnLimitMs);
         log.warning("time-limited recording may hit host sleep: " + msg.replaceAll("<[^>]+>", " "));
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, msg, "Computer sleep timeout",
                 JOptionPane.WARNING_MESSAGE));
@@ -13445,8 +13483,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Close the current AEDAT-4 cassette and open the next. Keeps
-     * {@code recordingEnabled}. Used only for infinite/rotate VCR.
+     * Close the current AEDAT-4 cassette and open the next, or stop when a
+     * finite session has finished cassette N. Keeps {@code recordingEnabled}
+     * except on finite completion. Used only for VCR.
      */
     synchronized void rollRecordingCassette() {
         if (!isRecordingEnabled() || recordingVcrSession == null) {
@@ -13456,6 +13495,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         if (!aedat4RecordingOwnsClose) {
+            return;
+        }
+        if (recordingVcrSession.isFiniteComplete()) {
+            log.info("VCR finite cassette count reached ("
+                    + recordingVcrSession.getRotateKeep() + "), stopping");
+            String msg = "<html>VCR finite session finished after "
+                    + recordingVcrSession.getRotateKeep() + " cassettes.</html>";
+            stopRecording(false, msg);
             return;
         }
         if (jaerViewer != null && jaerViewer.isMuxedAedat4Recording()) {
@@ -13483,6 +13530,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         try {
             Aedat4FileOutputStream prev = aedat4RecordingOutputStream;
+            File closing = recordingFile;
+            String closedStats = prev.toString();
             long sessionBaseUs = prev.getBaseUnixUs();
             java.util.ArrayList<Aedat4CameraTrack> tracks = new java.util.ArrayList<>(prev.getTracks());
             closeRecordingWritersKeepingEnabled();
@@ -13492,6 +13541,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             recordingStartTime = System.currentTimeMillis();
             recordingLastActivityWallMs = recordingStartTime;
             invalidateRecordingTimeLimitOverlay();
+            log.info("VCR closed " + (closing != null ? closing.getName() : "?") + ": " + closedStats);
             log.info("VCR rolled to " + next.getAbsolutePath());
         } catch (IOException e) {
             log.log(Level.WARNING, "VCR cassette roll failed: " + e, e);

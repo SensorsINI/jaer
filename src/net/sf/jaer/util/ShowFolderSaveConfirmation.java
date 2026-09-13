@@ -80,6 +80,16 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
      */
     public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction,
             String playButtonLabel, String title, String playTooltip) {
+        this(owner, file, msg, playAction, playButtonLabel, title, playTooltip, null, null, null);
+    }
+
+    /**
+     * Full constructor with an extra action button (e.g. Merge recordings).
+     * Extra click disposes this dialog then runs {@code extraAction}.
+     */
+    public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction,
+            String playButtonLabel, String title, String playTooltip,
+            String extraButtonLabel, String extraTooltip, Runnable extraAction) {
         super(owner);
         this.file = file;
         this.msg = msg;
@@ -109,6 +119,15 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
             });
             buts.add(showFileLocationButton);
 
+        }
+        if (extraAction != null && extraButtonLabel != null && !extraButtonLabel.isBlank()) {
+            JButton extraB = new JButton(extraButtonLabel);
+            extraB.setToolTipText(extraTooltip != null ? extraTooltip : extraButtonLabel);
+            extraB.addActionListener((ActionEvent e) -> {
+                dispose();
+                SwingUtilities.invokeLater(extraAction);
+            });
+            buts.add(extraB);
         }
         if (playAction != null) {
             JButton playB = new JButton(playButtonLabel != null ? playButtonLabel : "Playback");
@@ -228,6 +247,28 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
         }
         if (fileInfo != null && !fileInfo.isEmpty()) {
             sb.append("<br>").append(plainToHtml(fileInfo));
+        }
+        return sb.toString();
+    }
+
+    public static String htmlVcrMergeMessage(File output, int packets, int cassetteCount) {
+        return htmlVcrMergeMessage(output, packets, cassetteCount, "Source files were not deleted.");
+    }
+
+    /**
+     * Message after File → Merge VCR deck (path + packet/cassette counts).
+     *
+     * @param sourceFate last line, e.g. whether the deck folder was deleted
+     */
+    public static String htmlVcrMergeMessage(File output, int packets, int cassetteCount, String sourceFate) {
+        StringBuilder sb = new StringBuilder("<html>Wrote ");
+        if (output != null) {
+            sb.append(escapeHtml(output.getAbsolutePath()));
+        }
+        sb.append("<br>").append(packets).append(" packets from ").append(cassetteCount)
+                .append(cassetteCount == 1 ? " cassette" : " cassettes").append('.');
+        if (sourceFate != null && !sourceFate.isBlank()) {
+            sb.append("<br>").append(escapeHtml(sourceFate));
         }
         return sb.toString();
     }

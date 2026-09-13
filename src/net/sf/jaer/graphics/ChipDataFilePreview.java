@@ -128,7 +128,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             if (w == null) {
                 w = SwingUtilities.getWindowAncestor(ChipDataFilePreview.this);
             }
-            RecordingVcrMerge.mergeInteractive(w, deck);
+            AEViewer viewer = viewerChip != null ? viewerChip.getAeViewer() : null;
+            RecordingVcrMerge.mergeInteractive(w, deck, viewer);
         });
         add(mergeVcrButton, BorderLayout.SOUTH);
         playTimer = new Timer(PLAY_PERIOD_MS, this::playTick);

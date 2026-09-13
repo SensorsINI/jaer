@@ -27,6 +27,9 @@ public final class RecordingVcrSessionDemo {
         testManifestRoundTrip();
         testStickyShouldShow();
         testLastTimedPrefs();
+        testFiniteStopsAfterN();
+        testRecentFilesReplaceAfterMerge();
+        testDeleteSourceDeck();
         testVcrAvailableAndFirstCassette();
         testAttachExistingThenNextCassette();
         testIsDeck();
@@ -59,10 +62,12 @@ public final class RecordingVcrSessionDemo {
         assertTrue(RecordingVcrSession.clampRotateKeep(8) == 8, "default");
         assertTrue(RecordingVcrSession.clampRotateKeep(10_000) == RecordingVcrSession.ROTATE_MAX, "max");
         assertTrue(RecordingVcrSession.parseMode("rotate") == RecordingVcrSession.Mode.ROTATE, "parse");
+        assertTrue(RecordingVcrSession.parseMode("finite") == RecordingVcrSession.Mode.FINITE, "finite");
         assertTrue(RecordingVcrSession.parseMode("") == RecordingVcrSession.Mode.OFF, "blank off");
         assertTrue(!RecordingVcrSession.enabled(RecordingVcrSession.Mode.OFF, 60_000L), "off disabled");
         assertTrue(!RecordingVcrSession.enabled(RecordingVcrSession.Mode.INFINITE, 0L), "no duration");
         assertTrue(RecordingVcrSession.enabled(RecordingVcrSession.Mode.ROTATE, 60_000L), "rotate on");
+        assertTrue(RecordingVcrSession.enabled(RecordingVcrSession.Mode.FINITE, 60_000L), "finite on");
         System.out.println("PASS testClampAndParse");
     }
 
@@ -91,7 +96,7 @@ public final class RecordingVcrSessionDemo {
                     RecordingVcrSession.cassetteFileName(s.getBasename(), 1)).isFile(), "c0001 deleted");
             assertTrue(!new File(s.getSessionDir(),
                     RecordingVcrSession.cassetteFileName(s.getBasename(), 2)).isFile(), "c0002 deleted");
-            assertTrue(s.overlayCassetteLabel().equals("VCR c0005/3"), s.overlayCassetteLabel());
+            assertTrue(s.overlayCassetteLabel().equals("VCR keep 3 c0005"), s.overlayCassetteLabel());
         } finally {
             deleteTree(tmp);
         }
@@ -196,8 +201,10 @@ public final class RecordingVcrSessionDemo {
         assertTrue(first.getParentFile().getName().equals("Davis346blue_t0"), first.getParent());
         assertTrue(first.getParentFile().getParentFile().equals(parent), "parent folder");
         assertTrue(RecordingVcrSession.cassetteIndexFromFile(first) == 1, "index 1");
-        assertTrue("VCR c0003/8".equals(
+        assertTrue("VCR keep 8 c0003".equals(
                 RecordingVcrSession.overlayLine(RecordingVcrSession.Mode.ROTATE, 8, 3)), "rotate overlay");
+        assertTrue("VCR c0003/8".equals(
+                RecordingVcrSession.overlayLine(RecordingVcrSession.Mode.FINITE, 8, 3)), "finite overlay");
         assertTrue("VCR c0001 ∞".equals(
                 RecordingVcrSession.overlayLine(RecordingVcrSession.Mode.INFINITE, 8, 1)), "infinite overlay");
         assertTrue(RecordingVcrSession.overlayLine(RecordingVcrSession.Mode.OFF, 8, 1) == null, "off");
@@ -243,6 +250,117 @@ public final class RecordingVcrSessionDemo {
             deleteTree(tmp);
         }
         System.out.println("PASS testIsDeck");
+    }
+
+    private static void testFiniteStopsAfterN() throws Exception {
+        File tmp = Files.createTempDirectory("vcr-finite-").toFile();
+        try {
+            RecordingVcrSession s = RecordingVcrSession.begin(tmp, "Fin_t0", new Date(0L),
+                    RecordingVcrSession.Mode.FINITE, 3, 60_000L);
+            for (int i = 1; i <= 3; i++) {
+                assertTrue(!s.isFiniteComplete(), "not complete before cassette " + i);
+                Files.writeString(s.openNextCassette().toPath(), "f" + i);
+                s.closeCurrentCassette();
+            }
+            assertTrue(s.isFiniteComplete(), "complete after 3");
+            assertTrue(s.getClosedCassettes().size() == 3, "kept 3");
+            assertTrue("VCR c0003/3".equals(s.overlayCassetteLabel()), s.overlayCassetteLabel());
+            boolean threw = false;
+            try {
+                s.openNextCassette();
+            } catch (IllegalStateException e) {
+                threw = true;
+            }
+            assertTrue(threw, "no cassette 4");
+        } finally {
+            deleteTree(tmp);
+        }
+        System.out.println("PASS testFiniteStopsAfterN");
+    }
+
+    private static void testRecentFilesReplaceAfterMerge() throws Exception {
+        javax.swing.JMenu menu = new javax.swing.JMenu("File");
+        java.util.prefs.Preferences root = java.util.prefs.Preferences.userNodeForPackage(
+                RecordingVcrSessionDemo.class);
+        java.util.prefs.Preferences p = root.node("recent-merge-test");
+        File tmp = Files.createTempDirectory("vcr-recent-").toFile();
+        File merged = new File(tmp.getParentFile(), tmp.getName() + "-concat.aedat4");
+        try {
+            try {
+                p.removeNode();
+            } catch (Exception ignore) {
+            }
+            p = root.node("recent-merge-test");
+            net.sf.jaer.util.RecentFiles recent = new net.sf.jaer.util.RecentFiles(p, menu, e -> {
+            });
+            File c1 = new File(tmp, "deck_c0001.aedat4");
+            File c2 = new File(tmp, "deck_c0002.aedat4");
+            Files.writeString(c1.toPath(), "a");
+            Files.writeString(c2.toPath(), "b");
+            Files.writeString(merged.toPath(), "m");
+            recent.addFile(c1);
+            recent.addFile(c2);
+            List<File> drop = RecordingVcrMerge.cassettesToDrop(recent, merged, List.of(c1, c2));
+            recent.replaceFilesWithMerged(merged, drop);
+            List<File> snap = recent.snapshot();
+            assertTrue(!containsAbs(snap, c1), "c1 gone");
+            assertTrue(!containsAbs(snap, c2), "c2 gone");
+            assertTrue(containsAbs(snap, merged), "merged present");
+            File firstFile = null;
+            for (File f : snap) {
+                if (f != null && f.isFile()) {
+                    firstFile = f;
+                    break;
+                }
+            }
+            assertTrue(firstFile != null && firstFile.getAbsoluteFile().equals(merged.getAbsoluteFile()),
+                    "merged at head of files");
+            String html = net.sf.jaer.util.ShowFolderSaveConfirmation.htmlVcrMergeMessage(merged, 12, 2);
+            assertTrue(html.contains("12 packets from 2 cassettes"), html);
+        } finally {
+            deleteTree(tmp);
+            Files.deleteIfExists(merged.toPath());
+            try {
+                p.removeNode();
+            } catch (Exception ignore) {
+            }
+        }
+        System.out.println("PASS testRecentFilesReplaceAfterMerge");
+    }
+
+    private static void testDeleteSourceDeck() throws Exception {
+        File tmp = Files.createTempDirectory("vcr-del-deck-").toFile();
+        File parent = tmp.getParentFile();
+        File merged = new File(parent, tmp.getName() + "-concat.aedat4");
+        try {
+            File c1 = new File(tmp, "deck_c0001.aedat4");
+            File c2 = new File(tmp, "deck_c0002.aedat4");
+            Files.writeString(c1.toPath(), "a");
+            Files.writeString(c2.toPath(), "b");
+            Files.writeString(new File(tmp, "vcr-session.txt").toPath(), "mode FINITE\n");
+            Files.writeString(merged.toPath(), "m");
+            String inside = RecordingVcrMerge.deleteSourceDeck(tmp, c1);
+            assertTrue(inside != null && inside.contains("inside"), inside);
+            assertTrue(tmp.isDirectory(), "deck remains when dest is inside");
+            String gone = RecordingVcrMerge.deleteSourceDeck(tmp, merged);
+            assertTrue(gone == null, "deleted: " + gone);
+            assertTrue(!tmp.exists(), "deck folder gone");
+            assertTrue(merged.isFile(), "merged kept");
+        } finally {
+            deleteTree(tmp);
+            Files.deleteIfExists(merged.toPath());
+        }
+        System.out.println("PASS testDeleteSourceDeck");
+    }
+
+    private static boolean containsAbs(List<File> files, File want) {
+        File abs = want.getAbsoluteFile();
+        for (File f : files) {
+            if (f != null && f.getAbsoluteFile().equals(abs)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void deleteTree(File f) {

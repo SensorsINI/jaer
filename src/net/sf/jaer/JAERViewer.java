@@ -1006,6 +1006,12 @@ public class JAERViewer {
             if (session == null || !owner.isRecordingEnabled()) {
                 return;
             }
+            if (session.isFiniteComplete()) {
+                log.info("VCR mux finite cassette count reached ("
+                        + session.getRotateKeep() + "), stopping");
+                stopSynchronizedRecording(true);
+                return;
+            }
             File sessionDir = session.getSessionDir();
             if (!RecordingDiskSpace.hasEnoughSpace(sessionDir)) {
                 long free = RecordingDiskSpace.usableBytes(sessionDir);
