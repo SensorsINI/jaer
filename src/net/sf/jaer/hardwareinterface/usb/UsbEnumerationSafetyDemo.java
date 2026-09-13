@@ -1474,8 +1474,16 @@ public final class UsbEnumerationSafetyDemo {
                 "Windows QPC jump of 95 s (wall==nano) is sleep");
         require(!net.sf.jaer.graphics.AEViewer.looksLikeSleepResume(2_000L, 0L),
                 "2 s pause is not sleep");
-        require("00h05m12s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationHms(5 * 60_000L + 12_000L)),
-                "hhmmss padding");
+        require("5m12s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationHms(5 * 60_000L + 12_000L)),
+                "compact 5m12s");
+        require("1m37s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(97_000_000L)),
+                "compact 1m37s");
+        require("1.37s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(1_370_000L)),
+                "compact 1.37s");
+        require("1h5s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(3_605_000_000L)),
+                "compact 1h5s");
+        require("0s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(0L)),
+                "compact 0s");
         require(net.sf.jaer.graphics.AEViewer.formatRecordingDurationSpoken(5 * 60_000L + 12_000L)
                 .contains("5 minutes 12 seconds"),
                 "spoken duration");

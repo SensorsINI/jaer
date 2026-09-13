@@ -70,7 +70,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     private static final int PREVIEW_BUNDLES = 30;
     private static final int EVENTS_PER_BUNDLE = 20_000;
     private static final int PLAY_PERIOD_MS = 40;
-    private static final float OVERLAY_FONT_PT = 12f;
+    /** Preview caption size (pt). 1.5× former 12pt; raise if overlay is hard to read. */
+    private static final float OVERLAY_FONT_PT = 18f;
+    /** Drop-shadow offset (px, down-right) so red text stays readable on any colorMode. */
+    private static final int OVERLAY_SHADOW_PX = 2;
+    private static final Color OVERLAY_COLOR = Color.red;
+    private static final Color OVERLAY_SHADOW = Color.black;
 
     JFileChooser chooser;
     EventExtractor2D extractor;
@@ -778,13 +783,13 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         fmt.setPrecision(1);
         StringBuilder sb = new StringBuilder();
         sb.append(fmt.format((double) file.length()).trim()).append("B");
-        double durS;
+        long durUs;
         if (stream instanceof Aedat4FileInputStream a4) {
-            durS = a4.getDurationUsLong() * 1e-6;
+            durUs = a4.getDurationUsLong();
         } else {
-            durS = stream.getDurationUs() / 1e6;
+            durUs = stream.getDurationUs();
         }
-        sb.append("  ").append(fmt.format(durS).trim()).append("s\n");
+        sb.append("  ").append(AEViewer.formatRecordingDurationUs(durUs)).append('\n');
         sb.append(fmt.format((double) stream.size()).trim()).append(" ev");
         if (aedat4 && stream instanceof Aedat4FileInputStream a4) {
             sb.append("  ").append(fmt.format((double) a4.getFrameCount()).trim()).append(" fra");
@@ -804,12 +809,14 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         if (g2 == null || fileSizeString == null || fileSizeString.isEmpty()) {
             return;
         }
-        g2.setColor(Color.red);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g2.setFont(g2.getFont().deriveFont(OVERLAY_FONT_PT));
         FontMetrics fm = g2.getFontMetrics();
         int y = fm.getAscent() + 4;
         int lines = 0;
         int maxW = Math.max(8, getWidth() - 8);
+        float x = 4f;
+        float d = OVERLAY_SHADOW_PX;
         for (String line : fileSizeString.split("\\r?\\n")) {
             if (line.isEmpty()) {
                 y += fm.getHeight();
@@ -819,7 +826,10 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             while (fm.stringWidth(draw) > maxW && draw.length() > 4) {
                 draw = draw.substring(0, draw.length() - 1);
             }
-            g2.drawString(draw, 4f, y);
+            g2.setColor(OVERLAY_SHADOW);
+            g2.drawString(draw, x + d, y + d);
+            g2.setColor(OVERLAY_COLOR);
+            g2.drawString(draw, x, y);
             y += fm.getHeight();
             if (++lines >= 6) {
                 break;

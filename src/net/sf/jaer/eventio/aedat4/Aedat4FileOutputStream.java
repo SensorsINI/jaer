@@ -35,6 +35,7 @@ import net.sf.jaer.eventio.aedat4.dv.FrameSource;
 import net.sf.jaer.eventio.aedat4.dv.IMU;
 import net.sf.jaer.eventio.aedat4.dv.IMUPacket;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.EngineeringFormat;
 
 /** Writes AEDAT-4 files with DV-compatible FlatBuffers packets and optional LZ4/ZSTD compression. */
@@ -759,14 +760,9 @@ public class Aedat4FileOutputStream implements Closeable {
         return sb.toString();
     }
 
-    /** {@code 00h11m05.25s} from a duration in microseconds (seconds to 2 decimals). */
+    /** Compact duration from microseconds, e.g. {@code 1m37s}. */
     static String formatDurationHmsUs(long durationUs) {
-        long us = Math.max(0L, durationUs);
-        long h = us / 3_600_000_000L;
-        long rem = us % 3_600_000_000L;
-        long m = rem / 60_000_000L;
-        double s = (rem % 60_000_000L) / 1_000_000.0;
-        return String.format(java.util.Locale.ROOT, "%02dh%02dm%05.2fs", h, m, s);
+        return AEViewer.formatRecordingDurationUs(durationUs);
     }
 
     private static long[] ensureLongs(long[] a, int n) {

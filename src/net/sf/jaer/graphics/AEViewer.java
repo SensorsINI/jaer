@@ -11488,7 +11488,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Overlay detail while recording: elapsed {@code Recorded XXhYYmZZs}, plus
+     * Overlay detail while recording: elapsed compact duration (e.g. {@code 1m37s}), plus
      * total and remaining when a time limit is set, free disk space
      * (volume probe at most every 5 s), and ARS skip state. Refreshed at most once per second.
      *
@@ -11519,17 +11519,61 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Formats a duration as {@code XXhYYmZZs} (hours, minutes, seconds).
+     * Compact recording duration from milliseconds, e.g. {@code 1m37s}, {@code 1.37s}.
      *
      * @param durationMs duration in milliseconds
-     * @return padded hours, minutes, and seconds
+     * @return shortest {@code h}/{@code m}/{@code s} form, hundredths only if nonzero
      */
     public static String formatRecordingDurationHms(long durationMs) {
-        long totalSec = Math.max(0L, durationMs) / 1000L;
-        long h = totalSec / 3600L;
-        long m = (totalSec % 3600L) / 60L;
-        long s = totalSec % 60L;
-        return String.format("%02dh%02dm%02ds", h, m, s);
+        return formatRecordingDurationUs(durationMs * 1000L);
+    }
+
+    /**
+     * Compact recording duration from microseconds: omit zero hours/minutes,
+     * omit trailing {@code .00}, e.g. {@code 1m37s}, {@code 37.25s}, {@code 1h5s}.
+     *
+     * @param durationUs duration in microseconds
+     */
+    public static String formatRecordingDurationUs(long durationUs) {
+        long us = Math.max(0L, durationUs);
+        long h = us / 3_600_000_000L;
+        long rem = us % 3_600_000_000L;
+        long m = rem / 60_000_000L;
+        long secUs = rem % 60_000_000L;
+        long hundredths = (secUs + 5_000L) / 10_000L;
+        if (hundredths >= 6000L) {
+            hundredths = 0L;
+            m++;
+            if (m >= 60L) {
+                m = 0L;
+                h++;
+            }
+        }
+        long s = hundredths / 100L;
+        long dd = hundredths % 100L;
+        StringBuilder sb = new StringBuilder(12);
+        if (h > 0L) {
+            sb.append(h).append('h');
+        }
+        if (m > 0L) {
+            sb.append(m).append('m');
+        }
+        boolean showSec = s > 0L || dd > 0L || sb.length() == 0;
+        if (showSec) {
+            sb.append(s);
+            if (dd > 0L) {
+                sb.append('.');
+                if (dd % 10L == 0L) {
+                    sb.append(dd / 10L);
+                } else if (dd < 10L) {
+                    sb.append('0').append(dd);
+                } else {
+                    sb.append(dd);
+                }
+            }
+            sb.append('s');
+        }
+        return sb.toString();
     }
 
     /**
@@ -11704,7 +11748,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Spoken duration plus {@code XXhYYmZZs}, e.g. {@code 5 minutes 12 seconds (00h05m12s)}.
+     * Spoken duration plus compact form, e.g. {@code 5 minutes 12 seconds (5m12s)}.
      */
     public static String formatRecordingDurationSpoken(long durationMs) {
         long totalSec = Math.max(0L, durationMs) / 1000L;

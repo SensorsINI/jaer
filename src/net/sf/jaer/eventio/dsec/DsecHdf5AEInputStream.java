@@ -27,6 +27,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -974,14 +975,12 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
 
     @Override
     public String getFileInfo() {
-        EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
-        return String.format("DSEC HDF5 %s: %,d events, %dx%d, duration=%ss",
+        return String.format("DSEC HDF5 %s: %,d events, %dx%d, duration=%s",
                 file.getName(),
                 eventCount,
                 sensorWidth,
                 sensorHeight,
-                eng.format(getDurationUs() * 1e-6).trim());
+                AEViewer.formatRecordingDurationUs(getDurationUs()));
     }
 
     @Override

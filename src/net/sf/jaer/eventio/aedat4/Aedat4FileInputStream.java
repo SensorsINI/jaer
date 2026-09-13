@@ -312,7 +312,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         log.info(String.format(
-                "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%ss (%d EVTS packets indexed)",
+                "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%s (%d EVTS packets indexed)",
                 file.getName(),
                 Aedat4Compression.nameOf(compression),
                 this.eventStreamId,
@@ -320,7 +320,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 eng.format((double) eventCount).trim(),
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
-                eng.format(getDurationUsLong() * 1e-6).trim(),
+                AEViewer.formatRecordingDurationUs(getDurationUsLong()),
                 eventRefs.length));
         support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
         log.fine("Aedat4FileInputStream constructor returning");
@@ -488,11 +488,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             sb.append(file.getAbsolutePath()).append('\n');
         }
         long durationUs = getDurationUsLong();
-        String durationStr = eng.format(durationUs * 1e-6).trim() + "s";
-        if (durationUs > 3_600_000_000L) { // more than 1 h
-            long totalMin = durationUs / 60_000_000L;
-            durationStr += String.format(" (%dh%02dm)", totalMin / 60, totalMin % 60);
-        }
+        String durationStr = AEViewer.formatRecordingDurationUs(durationUs);
         sb.append(String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples, duration=%s",
                 Aedat4Compression.nameOf(compression),
                 eng.format((double) eventCount).trim(),
