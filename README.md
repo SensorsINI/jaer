@@ -5,7 +5,7 @@
 [See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest). **Permanent link:** http://jaerproject.org
 
 **Why use proprietary vendor camera software?** 
-jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). jAER is the grandparent of all event camera software, developed by the lab that [invented the **DVS** and **HVS** events+frames cameras](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears).  <b>jAER accumulates 20 years of hands-on experience with event sensors, with daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
+jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). jAER is the grandparent of all event camera software, developed by the lab that [invented the **DVS** and **HVS** events+frames cameras](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears).  <b>jAER accumulates 20 years of hands-on experience with event sensors</b>, with daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
 
 
 (jAER gives you plug-and-play, "it just works" for the most popular commercial event cameras.)
@@ -34,12 +34,12 @@ The *install4j* installers bundle [Eclipse Temurin](https://adoptium.net/) 25 fr
 ## Features
 
 jAER [efficiently](docs/README-jaer3.md)
- * captures USB event camera output from [most devices](#device-hardware-support), 
- * denoises -- with fast and accurate algorithms
- * displays -- with a variety of color, 2D/3D, and powerful fading and sliding window event accumulation options
- * records -- in a high-speed compressed format (AEDAT-4)
- * plays back -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
- * allows complex post camera algorithmic processing of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build user-friendly UI property panels.
+ * **captures** USB event camera output from [most devices](#device-hardware-support), 
+ * **denoises** -- with fast and accurate algorithms
+ * **displays** -- with a variety of color, 2D/3D, and powerful fading and sliding window event accumulation options
+ * **records** -- in a high-speed compressed format (AEDAT-4), including **timed and rotating extended VCR recordings** that can span days or weeks.
+ * **plays back** -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
+ * allows complex **post camera algorithmic processing** of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build **user-friendly UI property panels**.
 
 Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote**. How-to for new users: **[live camera server + Python dataloaders](docs/README-DNN-OpenCV-ROS.md)**.
 
