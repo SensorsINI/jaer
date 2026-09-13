@@ -11415,9 +11415,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         File reveal = folder != null ? folder : cassette;
         String msg = html.toString();
+        File deck = RecordingVcrSession.deckFolder(folder);
+        Runnable merge = deck == null ? null : () -> RecordingVcrMerge.mergeInteractive(
+                AEViewer.this, deck, AEViewer.this);
         Runnable show = () -> {
             ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(
-                    AEViewer.this, reveal, msg, null, null, title);
+                    AEViewer.this, reveal, msg, null, null, title, null,
+                    merge != null ? "Merge recordings" : null,
+                    merge != null ? "Concatenate these cassettes into one AEDAT-4" : null,
+                    merge);
             dialog.setVisible(true);
         };
         if (SwingUtilities.isEventDispatchThread()) {

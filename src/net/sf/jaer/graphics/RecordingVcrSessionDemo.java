@@ -29,6 +29,7 @@ public final class RecordingVcrSessionDemo {
         testLastTimedPrefs();
         testFiniteStopsAfterN();
         testRecentFilesReplaceAfterMerge();
+        testDeleteSourceDeck();
         testVcrAvailableAndFirstCassette();
         testAttachExistingThenNextCassette();
         testIsDeck();
@@ -325,6 +326,31 @@ public final class RecordingVcrSessionDemo {
             }
         }
         System.out.println("PASS testRecentFilesReplaceAfterMerge");
+    }
+
+    private static void testDeleteSourceDeck() throws Exception {
+        File tmp = Files.createTempDirectory("vcr-del-deck-").toFile();
+        File parent = tmp.getParentFile();
+        File merged = new File(parent, tmp.getName() + "-concat.aedat4");
+        try {
+            File c1 = new File(tmp, "deck_c0001.aedat4");
+            File c2 = new File(tmp, "deck_c0002.aedat4");
+            Files.writeString(c1.toPath(), "a");
+            Files.writeString(c2.toPath(), "b");
+            Files.writeString(new File(tmp, "vcr-session.txt").toPath(), "mode FINITE\n");
+            Files.writeString(merged.toPath(), "m");
+            String inside = RecordingVcrMerge.deleteSourceDeck(tmp, c1);
+            assertTrue(inside != null && inside.contains("inside"), inside);
+            assertTrue(tmp.isDirectory(), "deck remains when dest is inside");
+            String gone = RecordingVcrMerge.deleteSourceDeck(tmp, merged);
+            assertTrue(gone == null, "deleted: " + gone);
+            assertTrue(!tmp.exists(), "deck folder gone");
+            assertTrue(merged.isFile(), "merged kept");
+        } finally {
+            deleteTree(tmp);
+            Files.deleteIfExists(merged.toPath());
+        }
+        System.out.println("PASS testDeleteSourceDeck");
     }
 
     private static boolean containsAbs(List<File> files, File want) {
