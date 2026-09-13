@@ -93,6 +93,7 @@ if [[ "$SOURCE_JAR" -ef "$DEST_JAR" ]]; then
 fi
 
 echo "Source: $SOURCE_JAR"
+echo "  mtime $(date -r "$SOURCE_JAR" '+%Y-%m-%d %H:%M:%S')  $(wc -c < "$SOURCE_JAR" | tr -d ' ') bytes"
 echo "Install: $ROOT"
 echo "Dest:    $DEST_JAR"
 

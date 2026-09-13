@@ -294,7 +294,9 @@ if ($srcFull -eq $dstFull) {
     throw "Source and installed jar are the same file: $srcFull"
 }
 
+$srcItem = Get-Item -LiteralPath $srcFull
 Write-Log "Source: $srcFull"
+Write-Log ("  mtime {0:yyyy-MM-dd HH:mm:ss}  {1:N1} KB" -f $srcItem.LastWriteTime, ($srcItem.Length / 1KB))
 Write-Log "Install: $root"
 Write-Log "Dest:    $dstFull"
 

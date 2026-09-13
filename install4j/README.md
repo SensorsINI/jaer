@@ -99,7 +99,7 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, pack sample data if present, `install4jc --release=…` |
 | `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
 | `install4j` | `generate-splash` then `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
-| `replace-installed-jar` | Copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
+| `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
 
 After a splash or `jaer.install4j` launcher change, rebuild media (`ant release` or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.
 

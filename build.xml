@@ -36,8 +36,7 @@ Everyday (git checkout)
   compile-fast            javac only (lib/ already filled by compile or download-deps).
   jar                     compile + dist/jAER.jar
   jar-fast                compile-fast + store-only dist/jAER.jar (optional 7z sidecar)
-  replace-installed-jar   copy dist/jAER.jar onto the install4j install (Windows UAC).
-                          Example:  ant jar-fast replace-installed-jar
+  replace-installed-jar   jar-fast, then copy dist/jAER.jar onto the install4j install (Windows UAC).
                           Override: -Djaer.install.dir=C:\Program Files\jAER
   install                 launch the current-OS installer from currentInstallers/VERSION/
                           Does not compile media. Build first: ant install4j  (or ant release)
@@ -1339,9 +1338,9 @@ Then re-run:        ant install
         </java>
     </target>
 
-    <target name="replace-installed-jar" depends="-require-dist-jar,checkos"
-            description="Copy dist/jAER.jar over the install4j install (Windows UAC). Example: ant jar-fast replace-installed-jar">
-        <echo message="Replacing install4j jAER.jar with ${dist.jar}"/>
+    <target name="replace-installed-jar" depends="jar-fast,-require-dist-jar,checkos"
+            description="Rebuild dist/jAER.jar (jar-fast) and copy it over the install4j install (Windows UAC).">
+        <echo message="Replacing install4j jAER.jar with ${dist.jar} (rebuilt by jar-fast)"/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">
             <env key="JAER_INSTALL_DIR" value="${jaer.install.dir}"/>
