@@ -233,6 +233,20 @@ public class ShowFolderSaveConfirmation extends JDialog implements WindowSaver.D
     }
 
     /**
+     * Message after File → Merge VCR deck (path + packet/cassette counts).
+     */
+    public static String htmlVcrMergeMessage(File output, int packets, int cassetteCount) {
+        StringBuilder sb = new StringBuilder("<html>Wrote ");
+        if (output != null) {
+            sb.append(escapeHtml(output.getAbsolutePath()));
+        }
+        sb.append("<br>").append(packets).append(" packets from ").append(cassetteCount)
+                .append(cassetteCount == 1 ? " cassette" : " cassettes")
+                .append(".<br>Source files were not deleted.");
+        return sb.toString();
+    }
+
+    /**
      * Message for File → Save As: original recording stats (when available) and
      * the saved file summary.
      */

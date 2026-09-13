@@ -312,6 +312,35 @@ public class RecentFiles {
         buildMenu();
     }
 
+    /**
+     * Snapshot of the stored recent files and folders (head first).
+     */
+    public List<File> snapshot() {
+        if (fileList == null) {
+            return List.of();
+        }
+        return List.copyOf(fileList);
+    }
+
+    /**
+     * Drop {@code toRemove} then put {@code merged} at the head of recent files
+     * (and its parent folder). One menu rebuild. Used after VCR merge so cassette
+     * paths leave the File menu.
+     */
+    public void replaceFilesWithMerged(File merged, Iterable<File> toRemove) {
+        if (toRemove != null) {
+            for (File f : toRemove) {
+                removeFromList(f);
+            }
+        }
+        if (merged != null) {
+            addFile(merged);
+            return;
+        }
+        putPrefs();
+        buildMenu();
+    }
+
     /** adds files and their containing folders to list of recent files. List is pruned if too long.
      @param f a file to add
      */
@@ -345,19 +374,19 @@ public class RecentFiles {
     }
     
     public void removeFile(File f){
-        if (f == null || fileList == null) {
-            return;
-        }
-        boolean removed = fileList.remove(f);
-        if (!removed) {
-            File abs = f.getAbsoluteFile();
-            removed = fileList.removeIf(x -> x != null && samePath(x, abs));
-        }
-        if (!removed) {
+        if (!removeFromList(f)) {
             return;
         }
         putPrefs();
         buildMenu();
+    }
+
+    private boolean removeFromList(File f) {
+        if (f == null || fileList == null) {
+            return false;
+        }
+        File abs = f.getAbsoluteFile();
+        return fileList.removeIf(x -> x != null && samePath(x, abs));
     }
 
     private static boolean samePath(File a, File b) {

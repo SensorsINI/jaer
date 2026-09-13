@@ -11,6 +11,9 @@ import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -88,6 +91,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private static final String PREF_TIME_LIMIT_MS = "timeLimitMs";
     private static final String PREF_VCR_MODE = "vcrMode";
     private static final String PREF_ROTATE_KEEP = "rotateKeep";
+    private static final String PREF_WRITTEN = "written";
     private static final String[] FORMAT_LABELS = {
         "AEDAT-4 (.aedat4)",
         "AEDAT-2 (.aedat2)",
@@ -107,6 +111,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private final Date stamp = new Date();
 
     private static final String VCR_INFINITE = "Infinite";
+    private static final String VCR_FINITE = "Finite";
     private static final String VCR_ROTATE = "Rotate";
 
     private final JLabel nameLabel = new JLabel("File name:");
@@ -116,7 +121,8 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private final JComboBox<String> timeLimitPreset = new JComboBox<>(RecordingTimeLimit.PRESETS);
     private final JTextField timeLimitField = new JTextField(16);
     private final JCheckBox vcrCb = new JCheckBox("VCR (multiple files)");
-    private final JComboBox<String> vcrKindCombo = new JComboBox<>(new String[] {VCR_INFINITE, VCR_ROTATE});
+    private final JComboBox<String> vcrKindCombo = new JComboBox<>(new String[] {
+        VCR_INFINITE, VCR_FINITE, VCR_ROTATE});
     private final JLabel rotateKeepLabel = new JLabel("Keep last");
     private final JSpinner rotateKeepSpinner = new JSpinner(new SpinnerNumberModel(
             RecordingVcrSession.ROTATE_DEFAULT,
@@ -131,6 +137,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private final JLabel timedCollapsedSummary = new JLabel();
     private JPanel timedBody;
     private boolean timedSectionExpanded;
+    private boolean timedPrefsAppliedThisDialog;
     private RecentFoldersJumpCombo folderCombo;
     private File folder;
     private boolean accepted;
@@ -278,11 +285,16 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         LAST_TIMED_PREFS.putLong(PREF_TIME_LIMIT_MS, last.timeLimitMs);
         LAST_TIMED_PREFS.put(PREF_VCR_MODE, last.vcrMode.name());
         LAST_TIMED_PREFS.putInt(PREF_ROTATE_KEEP, last.rotateKeep);
+        LAST_TIMED_PREFS.putBoolean(PREF_WRITTEN, true);
         try {
             LAST_TIMED_PREFS.flush();
         } catch (BackingStoreException e) {
             log.warning("could not save last timed recording prefs: " + e);
         }
+    }
+
+    static boolean lastTimedPrefsWritten() {
+        return LAST_TIMED_PREFS.getBoolean(PREF_WRITTEN, false);
     }
 
     static LastTimed lastTimedPrefs() {
@@ -295,6 +307,60 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         }
         int keep = LAST_TIMED_PREFS.getInt(PREF_ROTATE_KEEP, RecordingVcrSession.ROTATE_DEFAULT);
         return new LastTimed(ms, mode, keep);
+    }
+
+    /**
+     * Prefs if this JVM has written them; otherwise the newest {@code vcr-session.txt}
+     * under {@code searchFolder} (last recording parent).
+     */
+    static LastTimed lastTimedForRestore(File searchFolder) {
+        if (lastTimedPrefsWritten()) {
+            return lastTimedPrefs();
+        }
+        LastTimed deck = lastTimedFromNewestDeck(searchFolder);
+        return deck != null ? deck : lastTimedPrefs();
+    }
+
+    static LastTimed lastTimedFromNewestDeck(File parent) {
+        File man = newestVcrManifest(parent);
+        if (man == null) {
+            return null;
+        }
+        try {
+            RecordingVcrSession s = RecordingVcrSession.readManifest(man.getParentFile());
+            return new LastTimed(s.getCassetteDurationMs(), s.getMode(), s.getRotateKeep());
+        } catch (Exception e) {
+            log.fine("could not read last VCR deck prefs from " + man + ": " + e);
+            return null;
+        }
+    }
+
+    static File newestVcrManifest(File parent) {
+        if (parent == null || !parent.isDirectory()) {
+            return null;
+        }
+        File best = null;
+        long bestM = Long.MIN_VALUE;
+        File here = new File(parent, RecordingVcrSession.MANIFEST_NAME);
+        if (here.isFile()) {
+            best = here;
+            bestM = here.lastModified();
+        }
+        File[] kids = parent.listFiles();
+        if (kids == null) {
+            return best;
+        }
+        for (File k : kids) {
+            if (k == null || !k.isDirectory()) {
+                continue;
+            }
+            File m = new File(k, RecordingVcrSession.MANIFEST_NAME);
+            if (m.isFile() && m.lastModified() >= bestM) {
+                best = m;
+                bestM = m.lastModified();
+            }
+        }
+        return best;
     }
 
     /**
@@ -546,6 +612,18 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         row++;
         c.gridy = row;
         timedBody = buildTimedBody();
+        timedBody.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentShown(ComponentEvent e) {
+                restoreLastTimedSettingsIfNeeded();
+            }
+        });
+        timedBody.addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0
+                    && timedBody.isShowing()) {
+                restoreLastTimedSettingsIfNeeded();
+            }
+        });
         form.add(timedBody, c);
         c.gridwidth = 1;
 
@@ -626,11 +704,11 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         c.gridx = 1;
         c.weightx = 1;
         vcrCb.setToolTipText("<html>Optional: many AEDAT-4 files of the time-limit length in one folder.<br>"
-                + "Infinite keeps adding. Rotate keeps the last N closed files.<br>"
+                + "Infinite keeps adding. Finite records N files then stops. Rotate keeps the last N.<br>"
                 + "Each cassette is closed fully so a synced folder can be inspected. No Save As per cassette.<br>"
                 + "AEDAT-4 and a non-zero time limit required. Sticky for this jAER run.</html>");
-        vcrKindCombo.setToolTipText("Infinite: keep adding files. Rotate: keep only the last N cassettes.");
-        rotateKeepSpinner.setToolTipText("How many cassette files to keep (including the one being written).");
+        vcrKindCombo.setToolTipText("Infinite: keep adding. Finite: stop after N cassettes. Rotate: keep only the last N.");
+        rotateKeepSpinner.setToolTipText("Finite: stop after this many files. Rotate: how many to keep (including the one being written).");
         JSpinner.DefaultEditor keepEditor = (JSpinner.DefaultEditor) rotateKeepSpinner.getEditor();
         keepEditor.getTextField().setColumns(4);
         vcrCb.addActionListener(e -> {
@@ -653,31 +731,49 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     }
 
     private void setTimedSectionExpanded(boolean expanded) {
-        boolean restore = expanded && !timedSectionExpanded && shouldRestoreLastTimedFromPrefs();
         timedSectionExpanded = expanded;
         timedSectionToggle.setText(expanded ? "\u25BE Timed recording / VCR" : "\u25B8 Timed recording / VCR");
         if (timedBody != null) {
             timedBody.setVisible(expanded);
         }
         timedCollapsedSummary.setVisible(!expanded);
-        if (restore) {
-            LastTimed last = lastTimedPrefs();
-            applyTimedChoice(last.timeLimitMs, last.vcrMode, last.rotateKeep);
-            log.info("restored last timed recording from prefs limitMs=" + last.timeLimitMs
-                    + " vcr=" + last.vcrMode + " keep=" + last.rotateKeep);
-        }
         updateTimedCollapsedSummary();
         if (isDisplayable()) {
             pack();
         }
     }
 
+    /**
+     * First time this dialog's timed section is showing, fill last Start prefs
+     * (or the newest VCR deck in the recording folder if prefs were never written).
+     * JVM-sticky values from an earlier Start this run win.
+     */
+    private void restoreLastTimedSettingsIfNeeded() {
+        if (timedPrefsAppliedThisDialog) {
+            return;
+        }
+        if (!shouldRestoreLastTimedFromPrefs()) {
+            timedPrefsAppliedThisDialog = true;
+            return;
+        }
+        timedPrefsAppliedThisDialog = true;
+        File search = host != null ? host.getLastRecordingFolder() : folder;
+        LastTimed last = lastTimedForRestore(search);
+        applyTimedChoice(last.timeLimitMs, last.vcrMode, last.rotateKeep);
+        log.info("restored last timed recording limitMs=" + last.timeLimitMs
+                + " vcr=" + last.vcrMode + " keep=" + last.rotateKeep
+                + (lastTimedPrefsWritten() ? " (prefs)" : " (last VCR deck)"));
+    }
+
     private void updateTimedCollapsedSummary() {
         long ms = parsedTimeLimitMsOrZero();
         String limit = ms <= 0L ? "no time limit" : RecordingTimeLimit.formatForDialog(ms);
         if (vcrCb.isSelected() && vcrAvailable(selectedVersion(), ms)) {
-            if (VCR_ROTATE.equals(vcrKindCombo.getSelectedItem())) {
+            RecordingVcrSession.Mode kind = vcrModeFromKindCombo();
+            if (kind == RecordingVcrSession.Mode.ROTATE) {
                 timedCollapsedSummary.setText(limit + ", VCR rotate " + rotateKeepFromSpinner());
+            } else if (kind == RecordingVcrSession.Mode.FINITE) {
+                timedCollapsedSummary.setText(limit + ", VCR finite " + rotateKeepFromSpinner());
             } else {
                 timedCollapsedSummary.setText(limit + ", VCR infinite");
             }
@@ -718,7 +814,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             timeLimitPreset.setSelectedIndex(RecordingTimeLimit.presetIndex(initial));
             RecordingVcrSession.Mode mode = vcr == null ? RecordingVcrSession.Mode.OFF : vcr;
             vcrCb.setSelected(mode != RecordingVcrSession.Mode.OFF);
-            vcrKindCombo.setSelectedItem(mode == RecordingVcrSession.Mode.ROTATE ? VCR_ROTATE : VCR_INFINITE);
+            vcrKindCombo.setSelectedItem(vcrKindLabel(mode));
             rotateKeepSpinner.setValue(RecordingVcrSession.clampRotateKeep(keep));
         } finally {
             updatingUi = false;
@@ -797,14 +893,37 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         return RecordingVcrSession.ROTATE_DEFAULT;
     }
 
+    private RecordingVcrSession.Mode vcrModeFromKindCombo() {
+        Object sel = vcrKindCombo.getSelectedItem();
+        if (VCR_ROTATE.equals(sel)) {
+            return RecordingVcrSession.Mode.ROTATE;
+        }
+        if (VCR_FINITE.equals(sel)) {
+            return RecordingVcrSession.Mode.FINITE;
+        }
+        return RecordingVcrSession.Mode.INFINITE;
+    }
+
+    private static String vcrKindLabel(RecordingVcrSession.Mode mode) {
+        if (mode == RecordingVcrSession.Mode.ROTATE) {
+            return VCR_ROTATE;
+        }
+        if (mode == RecordingVcrSession.Mode.FINITE) {
+            return VCR_FINITE;
+        }
+        return VCR_INFINITE;
+    }
+
     private void updateVcrControls() {
         boolean avail = vcrAvailable(selectedVersion(), parsedTimeLimitMsOrZero());
         vcrCb.setEnabled(avail);
         boolean on = avail && vcrCb.isSelected();
         vcrKindCombo.setEnabled(on);
-        boolean rotate = on && VCR_ROTATE.equals(vcrKindCombo.getSelectedItem());
-        rotateKeepLabel.setEnabled(rotate);
-        rotateKeepSpinner.setEnabled(rotate);
+        RecordingVcrSession.Mode kind = vcrModeFromKindCombo();
+        boolean needsN = on && (kind == RecordingVcrSession.Mode.ROTATE || kind == RecordingVcrSession.Mode.FINITE);
+        rotateKeepLabel.setText(kind == RecordingVcrSession.Mode.FINITE ? "Stop after" : "Keep last");
+        rotateKeepLabel.setEnabled(needsN);
+        rotateKeepSpinner.setEnabled(needsN);
         if (on != nameAsSessionFolder) {
             nameAsSessionFolder = on;
             applyNameStyle(on);
@@ -934,9 +1053,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         RecordingVcrSession.Mode vcrMode = RecordingVcrSession.Mode.OFF;
         int keep = rotateKeepFromSpinner();
         if (vcrCb.isSelected() && vcrAvailable(version, limitMs)) {
-            vcrMode = VCR_ROTATE.equals(vcrKindCombo.getSelectedItem())
-                    ? RecordingVcrSession.Mode.ROTATE
-                    : RecordingVcrSession.Mode.INFINITE;
+            vcrMode = vcrModeFromKindCombo();
             parentFolder = folder != null ? folder : new File(".");
             File sessionDir = out.getParentFile();
             if (sessionDir != null && !sessionDir.isDirectory() && !sessionDir.mkdirs()) {

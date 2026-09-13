@@ -17,14 +17,15 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.RecordingFilename;
 
 /**
- * One VCR-style timed-recording session: infinite or rotating AEDAT-4 cassettes
- * in a folder named from the chip basename and start instant. {@link Mode#OFF}
- * is not a live session (single-file recording stays on {@code AEViewer}).
+ * One VCR-style timed-recording session: infinite, finite-N, or rotating
+ * AEDAT-4 cassettes in a folder named from the chip basename and start instant.
+ * {@link Mode#OFF} is not a live session (single-file recording stays on
+ * {@code AEViewer}).
  */
 public final class RecordingVcrSession {
 
     public enum Mode {
-        OFF, INFINITE, ROTATE
+        OFF, INFINITE, FINITE, ROTATE
     }
 
     public static final int ROTATE_MIN = 2;
@@ -64,7 +65,7 @@ public final class RecordingVcrSession {
     public static RecordingVcrSession begin(File parent, String chipOrMuxBasename, Date start,
             Mode mode, int rotateKeep, long cassetteDurationMs) throws IOException {
         if (mode == null || mode == Mode.OFF) {
-            throw new IllegalArgumentException("VCR session requires INFINITE or ROTATE");
+            throw new IllegalArgumentException("VCR session requires INFINITE, FINITE, or ROTATE");
         }
         if (cassetteDurationMs <= 0L) {
             throw new IllegalArgumentException("VCR cassette duration must be > 0");
@@ -95,7 +96,7 @@ public final class RecordingVcrSession {
     public static RecordingVcrSession attachExisting(File sessionDir, Mode mode, int rotateKeep,
             long cassetteDurationMs, Date start) throws IOException {
         if (mode == null || mode == Mode.OFF) {
-            throw new IllegalArgumentException("VCR session requires INFINITE or ROTATE");
+            throw new IllegalArgumentException("VCR session requires INFINITE, FINITE, or ROTATE");
         }
         if (cassetteDurationMs <= 0L) {
             throw new IllegalArgumentException("VCR cassette duration must be > 0");
@@ -316,6 +317,9 @@ public final class RecordingVcrSession {
         if (currentCassette != null) {
             throw new IllegalStateException("close current cassette before opening the next");
         }
+        if (isFiniteComplete()) {
+            throw new IllegalStateException("finite VCR already recorded " + rotateKeep + " cassettes");
+        }
         deleteOldestClosedIfNeeded();
         cassetteIndex++;
         currentCassette = new File(sessionDir, cassetteFileName(basename, cassetteIndex));
@@ -324,18 +328,30 @@ public final class RecordingVcrSession {
     }
 
     /**
-     * {@code VCR c0003/8} (rotate keep-N) or {@code VCR c0012 ∞}. {@code null} if
-     * {@link Mode#OFF}.
+     * Finite N: the current (or last closed) cassette is already cassette N, so
+     * do not open N+1.
+     */
+    public synchronized boolean isFiniteComplete() {
+        return mode == Mode.FINITE && cassetteIndex >= rotateKeep;
+    }
+
+    /**
+     * {@code VCR c0003/8} (finite stop-after-N), {@code VCR keep 8 c0003}
+     * (rotate), or {@code VCR c0012 ∞}. {@code null} if {@link Mode#OFF}.
      */
     public static String overlayLine(Mode mode, int rotateKeep, int cassetteIndex) {
         if (mode == null || mode == Mode.OFF) {
             return null;
         }
         String idx = "c" + cassetteIndexLabel(Math.max(1, cassetteIndex));
+        int n = clampRotateKeep(rotateKeep);
         if (mode == Mode.INFINITE) {
             return "VCR " + idx + " ∞";
         }
-        return "VCR " + idx + "/" + clampRotateKeep(rotateKeep);
+        if (mode == Mode.ROTATE) {
+            return "VCR keep " + n + " " + idx;
+        }
+        return "VCR " + idx + "/" + n;
     }
 
     /**
@@ -483,7 +499,9 @@ public final class RecordingVcrSession {
                 RecordingVcrSession s = readManifest(sessionDir);
                 sb.append('\n').append(s.getMode() == Mode.ROTATE
                         ? "rotate " + s.getRotateKeep()
-                        : s.getMode().name().toLowerCase());
+                        : s.getMode() == Mode.FINITE
+                                ? "finite " + s.getRotateKeep()
+                                : s.getMode().name().toLowerCase());
             }
         } catch (IOException ignore) {
         }
@@ -501,7 +519,7 @@ public final class RecordingVcrSession {
         return sb.toString();
     }
 
-    /** {@code VCR c0003/8} or {@code VCR c0012 ∞}. */
+    /** {@code VCR c0003/8}, {@code VCR keep 8 c0003}, or {@code VCR c0012 ∞}. */
     public synchronized String overlayCassetteLabel() {
         return overlayLine(mode, rotateKeep, cassetteIndex);
     }

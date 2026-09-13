@@ -47,7 +47,26 @@ public class RecordingVcrSessionTest {
                     RecordingVcrSession.cassetteFileName(s.getBasename(), 1)).isFile());
             assertTrue(new File(s.getSessionDir(),
                     RecordingVcrSession.cassetteFileName(s.getBasename(), 5)).isFile());
-            assertEquals("VCR c0005/3", s.overlayCassetteLabel());
+            assertEquals("VCR keep 3 c0005", s.overlayCassetteLabel());
+        } finally {
+            deleteTree(tmp);
+        }
+    }
+
+    @Test
+    public void finite3StopsAfterThreeCassettes() throws Exception {
+        File tmp = Files.createTempDirectory("vcr-finite-junit-").toFile();
+        try {
+            RecordingVcrSession s = RecordingVcrSession.begin(tmp, "JFin", new Date(0L),
+                    RecordingVcrSession.Mode.FINITE, 3, 60_000L);
+            for (int i = 1; i <= 3; i++) {
+                assertFalse(s.isFiniteComplete());
+                Files.writeString(s.openNextCassette().toPath(), Integer.toString(i));
+                s.closeCurrentCassette();
+            }
+            assertTrue(s.isFiniteComplete());
+            assertEquals(3, s.getClosedCassettes().size());
+            assertEquals("VCR c0003/3", s.overlayCassetteLabel());
         } finally {
             deleteTree(tmp);
         }
