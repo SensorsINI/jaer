@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -98,6 +99,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     private volatile boolean videoPreview = false;
     private BufferedImage previewImage;
     private final Object previewLock = new Object();
+    private final JButton mergeVcrButton;
+    private File currentDeck;
 
     /**
      * Creates new form ChipDataFilePreview
@@ -113,6 +116,21 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         setOpaque(true);
         setPreferredSize(new Dimension(300, 300));
         setFocusable(true);
+        mergeVcrButton = new JButton("Merge VCR deck");
+        mergeVcrButton.setToolTipText("Concatenate cassette AEDAT-4 files in this folder (sources are not deleted)");
+        mergeVcrButton.setVisible(false);
+        mergeVcrButton.addActionListener(e -> {
+            File deck = currentDeck;
+            if (deck == null) {
+                return;
+            }
+            java.awt.Window w = SwingUtilities.getWindowAncestor(chooser);
+            if (w == null) {
+                w = SwingUtilities.getWindowAncestor(ChipDataFilePreview.this);
+            }
+            RecordingVcrMerge.mergeInteractive(w, deck);
+        });
+        add(mergeVcrButton, BorderLayout.SOUTH);
         playTimer = new Timer(PLAY_PERIOD_MS, this::playTick);
         playTimer.setRepeats(true);
         // Never extract on the live viewer's extractor: Davis/DVX reusedBundle is
@@ -295,8 +313,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             log.warning("won't try to delete this index file");
             return;
         }
-        abortPreviewWork();
         File f = getCurrentFile();
+        if (RecordingVcrSession.isManifest(f)) {
+            log.warning("won't try to delete VCR session manifest");
+            return;
+        }
+        abortPreviewWork();
         if (f != null && f.isFile()) {
             boolean deleted = f.delete();
             if (deleted) {
@@ -327,8 +349,23 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         indexFileString = "";
         indexFileEnabled = isIndexFile(file);
         clearPreviewImage();
+        File deck = RecordingVcrSession.deckFolder(
+                chooser != null ? chooser.getCurrentDirectory() : null, file);
+        currentDeck = deck;
+        if (mergeVcrButton != null) {
+            mergeVcrButton.setVisible(deck != null);
+        }
         repaint();
+        if (deck != null && (file == null || !file.isFile()
+                || RecordingVcrSession.isManifest(file)
+                || (file.isDirectory() && RecordingVcrSession.isDeck(file)))) {
+            finishTextOnly(gen, RecordingVcrSession.previewOverlay(deck));
+            return;
+        }
         if (file == null || !file.isFile()) {
+            if (deck != null) {
+                finishTextOnly(gen, RecordingVcrSession.previewOverlay(deck));
+            }
             return;
         }
         final File toOpen = file;
@@ -383,6 +420,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 return;
             }
             String lower = file.getName().toLowerCase();
+            if (RecordingVcrSession.isManifest(file)) {
+                File deck = RecordingVcrSession.deckFolder(file);
+                finishTextOnly(gen, RecordingVcrSession.previewOverlay(
+                        deck != null ? deck : file.getParentFile()));
+                return;
+            }
             prepareChipForFile(file);
             if (chip == null) {
                 finishTextOnly(gen, chipNote != null && !chipNote.isEmpty()

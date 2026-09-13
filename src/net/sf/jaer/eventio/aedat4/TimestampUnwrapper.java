@@ -48,6 +48,17 @@ public final class TimestampUnwrapper {
         have = false;
     }
 
+    /** Continue unwrap state across VCR cassette files. */
+    public void copyFrom(TimestampUnwrapper other) {
+        if (other == null) {
+            reset();
+            return;
+        }
+        wrapOffset = other.wrapOffset;
+        lastRaw = other.lastRaw;
+        have = other.have;
+    }
+
     /**
      * True when {@code end} is a 32-bit wrap after {@code prev} while reading
      * forward (positive {@code int} to non-positive), matching

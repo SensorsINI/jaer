@@ -36,6 +36,23 @@ public final class Frame extends Table {
     public long timestampEndOfFrame() { int o = __offset(8); return o != 0 ? bb.getLong(o + bb_pos) : 0; }
     public long timestampStartOfExposure() { int o = __offset(10); return o != 0 ? bb.getLong(o + bb_pos) : 0; }
     public long timestampEndOfExposure() { int o = __offset(12); return o != 0 ? bb.getLong(o + bb_pos) : 0; }
+
+    /** Shift all present timestamp fields by {@code deltaUs} (VCR concat stitch). */
+    public void addToTimestamps(long deltaUs) {
+        addToLongField(4, deltaUs);
+        addToLongField(6, deltaUs);
+        addToLongField(8, deltaUs);
+        addToLongField(10, deltaUs);
+        addToLongField(12, deltaUs);
+    }
+
+    private void addToLongField(int vtableOffset, long deltaUs) {
+        int o = __offset(vtableOffset);
+        if (o != 0) {
+            bb.putLong(o + bb_pos, bb.getLong(o + bb_pos) + deltaUs);
+        }
+    }
+
     public byte format() { int o = __offset(14); return o != 0 ? bb.get(o + bb_pos) : FrameFormat.OPENCV_8U_C1; }
     public short sizeX() { int o = __offset(16); return o != 0 ? bb.getShort(o + bb_pos) : 0; }
     public short sizeY() { int o = __offset(18); return o != 0 ? bb.getShort(o + bb_pos) : 0; }

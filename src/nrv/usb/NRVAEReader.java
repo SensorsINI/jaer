@@ -15,6 +15,7 @@ import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -408,6 +409,11 @@ public class NRVAEReader {
     }
 
     private void logOverrun(int startEvent, int maxEvents, int committed) {
+        if (!isViewerRecording()) {
+            // Live display during modal dialogs (setup, save, etc.) does not consume
+            // USB as fast; extra events are already dropped. Do not warn.
+            return;
+        }
         final long now = System.currentTimeMillis();
         if (now - lastOverrunLogMs < OVERRUN_LOG_INTERVAL_MS) {
             return;
@@ -417,6 +423,16 @@ public class NRVAEReader {
                 "NRV AEPacketRaw buffer overrun at event index %d (capacity %d, committed %d). "
                         + "Increase via Control > Set rendering AE buffer size (NRV needs ~500k+).",
                 startEvent, maxEvents, committed));
+    }
+
+    /** True when the attached AEViewer is writing a recording (not merely live). */
+    private boolean isViewerRecording() {
+        AEChip chip = monitor.getChip();
+        if (chip == null) {
+            return false;
+        }
+        AEViewer viewer = chip.getAeViewer();
+        return viewer != null && viewer.isRecordingEnabled();
     }
 
     private class ProcessAEData implements RestrictedTransferCallback {

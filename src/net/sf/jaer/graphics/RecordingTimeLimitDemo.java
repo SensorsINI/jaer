@@ -38,6 +38,7 @@ public final class RecordingTimeLimitDemo {
         assertTrue(!RecordingSetupDialog.shouldShow(3, 0L, false), "fourth L/button skips");
         assertTrue(RecordingSetupDialog.shouldShow(3, 0L, true), "File menu always shows");
         assertTrue(RecordingSetupDialog.shouldShow(3, 2L * 3600_000L, false), "timed recording always shows");
+        assertTrue(RecordingSetupDialog.shouldShow(3, 0L, false, true), "VCR always shows");
         assertTrue(!RecordingSetupDialog.shouldShow(10, 0L, false), "many short recordings skip");
         System.out.println("PASS testShouldShow");
     }

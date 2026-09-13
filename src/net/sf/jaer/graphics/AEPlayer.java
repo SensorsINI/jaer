@@ -364,6 +364,13 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if ((file == null) || !file.isFile()) {
             throw new FileNotFoundException("file not found: " + file);
         }
+        if (RecordingVcrSession.isManifest(file)) {
+            JOptionPane.showMessageDialog(viewer,
+                    "<html><code>vcr-session.txt</code> is the VCR folder manifest, not a recording.<br>"
+                    + "Open a cassette <code>.aedat4</code>, or use File → Merge VCR deck…</html>",
+                    "VCR session", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         // Stop ViewLoop from opening USB / flipping to LIVE before any AEChip switch.
         // Chip switch may close a live interface; doing that while ViewLoop is in LIVE hangs
         // (seen with NRV plugged in). Known race: ViewLoop openAEMonitor() can set LIVE.

@@ -24,6 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -36,9 +39,14 @@ import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.RecordingFilename;
@@ -55,17 +63,31 @@ import net.sf.jaer.util.ShowFolderSaveConfirmation;
  * File → Enable filtering of recorded events (with the same active-filter
  * confirmation as Save As), and a session time limit (default none). Shown for
  * the first {@link #MAX_AUTO_SHOWS} recordings this JVM, whenever a non-zero
- * time limit is set, and whenever the user chooses File → Start recording (not
- * the toolbar button or {@code L}). Enter activates {@code Start Recording}.
- * Confirmed format, compression, filtering, and folder are written back to
- * AEViewer prefs. The time limit is sticky for this JVM only.
+ * time limit is set, whenever VCR (multiple cassettes) is on, and whenever the
+ * user chooses File → Start recording (not the toolbar button or {@code L}).
+ * Enter activates {@code Start Recording}. Confirmed format, compression,
+ * filtering, and folder are written back to AEViewer prefs. The time limit and
+ * VCR mode are sticky for this JVM; last-used values also persist in this
+ * class's hidden Preferences and refill the timed section when it is expanded
+ * (not applied on jAER launch, so toolbar/{@code L} stay unlimited).
  */
 public final class RecordingSetupDialog extends JDialog implements PropertyChangeListener {
+
+    private static final java.util.logging.Logger log = java.util.logging.Logger.getLogger("net.sf.jaer");
 
     /** Unlimited toolbar/{@code L} starts after this many accepted setup dialogs. */
     public static final int MAX_AUTO_SHOWS = 3;
     private static final AtomicInteger acceptedShowCount = new AtomicInteger(0);
     private static final AtomicLong sessionTimeLimitMs = new AtomicLong(0L);
+    private static final AtomicReference<RecordingVcrSession.Mode> stickyVcrMode
+            = new AtomicReference<>(RecordingVcrSession.Mode.OFF);
+    private static final AtomicInteger stickyRotateKeep
+            = new AtomicInteger(RecordingVcrSession.ROTATE_DEFAULT);
+    private static final Preferences LAST_TIMED_PREFS
+            = Preferences.userNodeForPackage(RecordingSetupDialog.class);
+    private static final String PREF_TIME_LIMIT_MS = "timeLimitMs";
+    private static final String PREF_VCR_MODE = "vcrMode";
+    private static final String PREF_ROTATE_KEEP = "rotateKeep";
     private static final String[] FORMAT_LABELS = {
         "AEDAT-4 (.aedat4)",
         "AEDAT-2 (.aedat2)",
@@ -84,19 +106,36 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private final boolean muxMany;
     private final Date stamp = new Date();
 
+    private static final String VCR_INFINITE = "Infinite";
+    private static final String VCR_ROTATE = "Rotate";
+
+    private final JLabel nameLabel = new JLabel("File name:");
     private final JTextField nameField = new JTextField(36);
     private final JComboBox<String> formatCombo = new JComboBox<>(FORMAT_LABELS);
     private final JComboBox<String> compressionCombo = new JComboBox<>(COMPRESSION_LABELS);
     private final JComboBox<String> timeLimitPreset = new JComboBox<>(RecordingTimeLimit.PRESETS);
     private final JTextField timeLimitField = new JTextField(16);
+    private final JCheckBox vcrCb = new JCheckBox("VCR (multiple files)");
+    private final JComboBox<String> vcrKindCombo = new JComboBox<>(new String[] {VCR_INFINITE, VCR_ROTATE});
+    private final JLabel rotateKeepLabel = new JLabel("Keep last");
+    private final JSpinner rotateKeepSpinner = new JSpinner(new SpinnerNumberModel(
+            RecordingVcrSession.ROTATE_DEFAULT,
+            RecordingVcrSession.ROTATE_MIN,
+            RecordingVcrSession.ROTATE_MAX,
+            1));
     private final JCheckBox recordFilteredCb = new JCheckBox(
             "Enable filtering of recorded or network output events");
     private final JPanel filterSummaryPanel = new JPanel(new BorderLayout(6, 0));
     private final JLabel filterSummaryLabel = new JLabel();
+    private final JButton timedSectionToggle = new JButton();
+    private final JLabel timedCollapsedSummary = new JLabel();
+    private JPanel timedBody;
+    private boolean timedSectionExpanded;
     private RecentFoldersJumpCombo folderCombo;
     private File folder;
     private boolean accepted;
     private boolean updatingUi;
+    private boolean nameAsSessionFolder;
     private final Map<AEViewer, Boolean> recordFilteredAtOpen = new HashMap<>();
     private final List<EventFilter2D> filterEnabledListenTargets = new ArrayList<>();
     private FilterChain filterEnabledListenChain;
@@ -139,7 +178,8 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
      */
     public static boolean confirmIfNeeded(AEViewer host, List<AEViewer> muxViewers,
             boolean forceFromFileMenu) {
-        if (!shouldShow(acceptedShowCount.get(), sessionTimeLimitMs.get(), forceFromFileMenu)) {
+        if (!shouldShow(acceptedShowCount.get(), sessionTimeLimitMs.get(), forceFromFileMenu,
+                isSessionVcrEnabled())) {
             applySessionLimit(host, muxViewers);
             return true;
         }
@@ -168,16 +208,106 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
 
     /**
      * Toolbar/{@code L} path: show for the first {@link #MAX_AUTO_SHOWS} starts
-     * and whenever a time limit is set. File menu always shows.
+     * and whenever a time limit is set. File menu always shows. VCR is treated
+     * as off.
      */
     public static boolean shouldShow(int acceptedShows, long sessionLimitMs, boolean forceFromFileMenu) {
+        return shouldShow(acceptedShows, sessionLimitMs, forceFromFileMenu, false);
+    }
+
+    /**
+     * Same as {@link #shouldShow(int, long, boolean)} but also show whenever
+     * VCR (multiple cassettes) is enabled.
+     */
+    public static boolean shouldShow(int acceptedShows, long sessionLimitMs, boolean forceFromFileMenu,
+            boolean vcrEnabled) {
         if (forceFromFileMenu) {
             return true;
         }
         if (sessionLimitMs > 0L) {
             return true;
         }
+        if (vcrEnabled) {
+            return true;
+        }
         return acceptedShows < MAX_AUTO_SHOWS;
+    }
+
+    /** Sticky VCR mode for this JVM ({@link RecordingVcrSession.Mode#OFF} by default). */
+    public static RecordingVcrSession.Mode sessionVcrMode() {
+        return stickyVcrMode.get();
+    }
+
+    /** Sticky rotate keep-count for this JVM. */
+    public static int sessionRotateKeep() {
+        return stickyRotateKeep.get();
+    }
+
+    public static boolean isSessionVcrEnabled() {
+        return stickyVcrMode.get() != RecordingVcrSession.Mode.OFF;
+    }
+
+    /**
+     * Sticky VCR choice for this JVM. {@link RecordingVcrSession.Mode#OFF} is
+     * the default (single-file timed recording).
+     */
+    public static void setSessionVcr(RecordingVcrSession.Mode mode, int rotateKeep) {
+        stickyVcrMode.set(mode == null ? RecordingVcrSession.Mode.OFF : mode);
+        stickyRotateKeep.set(RecordingVcrSession.clampRotateKeep(rotateKeep));
+    }
+
+    /**
+     * Last Start values. Not loaded into JVM-sticky on launch; used when the
+     * user expands Timed recording / VCR.
+     */
+    static final class LastTimed {
+        final long timeLimitMs;
+        final RecordingVcrSession.Mode vcrMode;
+        final int rotateKeep;
+
+        LastTimed(long timeLimitMs, RecordingVcrSession.Mode vcrMode, int rotateKeep) {
+            this.timeLimitMs = Math.max(0L, timeLimitMs);
+            this.vcrMode = vcrMode == null ? RecordingVcrSession.Mode.OFF : vcrMode;
+            this.rotateKeep = RecordingVcrSession.clampRotateKeep(rotateKeep);
+        }
+    }
+
+    /** Write on accepted Start only (including No limit / VCR off). Cancel does not write. */
+    static void persistLastTimedPrefs(long timeLimitMs, RecordingVcrSession.Mode mode, int rotateKeep) {
+        LastTimed last = new LastTimed(timeLimitMs, mode, rotateKeep);
+        LAST_TIMED_PREFS.putLong(PREF_TIME_LIMIT_MS, last.timeLimitMs);
+        LAST_TIMED_PREFS.put(PREF_VCR_MODE, last.vcrMode.name());
+        LAST_TIMED_PREFS.putInt(PREF_ROTATE_KEEP, last.rotateKeep);
+        try {
+            LAST_TIMED_PREFS.flush();
+        } catch (BackingStoreException e) {
+            log.warning("could not save last timed recording prefs: " + e);
+        }
+    }
+
+    static LastTimed lastTimedPrefs() {
+        long ms = LAST_TIMED_PREFS.getLong(PREF_TIME_LIMIT_MS, 0L);
+        RecordingVcrSession.Mode mode;
+        try {
+            mode = RecordingVcrSession.parseMode(LAST_TIMED_PREFS.get(PREF_VCR_MODE, "OFF"));
+        } catch (IllegalArgumentException e) {
+            mode = RecordingVcrSession.Mode.OFF;
+        }
+        int keep = LAST_TIMED_PREFS.getInt(PREF_ROTATE_KEEP, RecordingVcrSession.ROTATE_DEFAULT);
+        return new LastTimed(ms, mode, keep);
+    }
+
+    /**
+     * Prefs refill the expand-open controls when this JVM has not yet accepted
+     * a timed or VCR Start.
+     */
+    static boolean shouldRestoreLastTimedFromPrefs() {
+        return sessionTimeLimitMs.get() <= 0L && !isSessionVcrEnabled();
+    }
+
+    /** VCR is AEDAT-4 only and needs a positive cassette length (the time limit). */
+    public static boolean vcrAvailable(String version, long cassetteDurationMs) {
+        return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version) && cassetteDurationMs > 0L;
     }
 
     /**
@@ -200,6 +330,8 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     static void resetShownThisJvmForTests() {
         acceptedShowCount.set(0);
         sessionTimeLimitMs.set(0L);
+        stickyVcrMode.set(RecordingVcrSession.Mode.OFF);
+        stickyRotateKeep.set(RecordingVcrSession.ROTATE_DEFAULT);
     }
 
     static boolean wasShownThisJvm() {
@@ -258,6 +390,8 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         } finally {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(strayL);
         }
+        log.info("recording setup dialog closed accepted=" + d.accepted
+                + " alreadyRecording=" + (host != null && host.isRecordingEnabled()));
         return d.accepted;
     }
 
@@ -292,7 +426,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         c.gridx = 0;
         c.gridy = row;
         c.weightx = 0;
-        form.add(new JLabel("File name:"), c);
+        form.add(nameLabel, c);
         c.gridx = 1;
         c.weightx = 1;
         nameField.setToolTipText("<html>Same chip + date name as Start recording / Save recorded data.<br>"
@@ -331,8 +465,10 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
                 return;
             }
             updateCompressionEnabled();
-            updateNameExtension();
-            updateMuxHint();
+            updateVcrControls();
+            if (!vcrUiActive()) {
+                updateNameExtension();
+            }
         });
         form.add(formatCombo, c);
         c.gridwidth = 1;
@@ -352,29 +488,10 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         row++;
         c.gridx = 0;
         c.gridy = row;
-        c.weightx = 0;
-        form.add(new JLabel("Time limit:"), c);
-        c.gridx = 1;
-        c.gridwidth = 2;
-        c.weightx = 1;
-        timeLimitPreset.setMaximumRowCount(RecordingTimeLimit.PRESETS.length);
-        timeLimitPreset.setToolTipText("<html>Optional duration for this JVM session (not saved in prefs).<br>"
-                + "0 or No limit: unlimited. A non-zero limit shows this dialog on every start "
-                + "so you can name the long recording.</html>");
-        RecordingTimeLimit.bindPresetChooser(timeLimitPreset, timeLimitField);
-        JPanel timeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        timeRow.add(timeLimitPreset);
-        timeRow.add(new JLabel("or type:"));
-        timeLimitField.setToolTipText("Examples: 0, 10m, 2h, 1h 15m. Bare numbers are milliseconds.");
-        timeRow.add(timeLimitField);
-        form.add(timeRow, c);
-        c.gridwidth = 1;
-
-        row++;
-        c.gridx = 0;
-        c.gridy = row;
         c.gridwidth = 3;
         c.weightx = 1;
+        JPanel filterSection = new JPanel(new BorderLayout(6, 4));
+        filterSection.setBorder(BorderFactory.createTitledBorder("Filtering"));
         recordFilteredCb.setToolTipText("<html>Same as File → Enable filtering of recorded or network output events.<br>"
                 + "Checked: recording writes the filter-chain output (events marked filteredOut are omitted).<br>"
                 + "Unchecked: record the raw stream as received.</html>");
@@ -385,13 +502,17 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             applyRecordFilteredToTargets(recordFilteredCb.isSelected());
             updateFilterSummary();
         });
-        form.add(recordFilteredCb, c);
-
-        row++;
-        c.gridy = row;
+        JButton showFiltersBtn = new JButton("Show filters");
+        showFiltersBtn.setToolTipText("Open the Filters window (same as View → Show filters) to enable and configure EventFilters.");
+        showFiltersBtn.addActionListener(e -> openFiltersWindow());
+        JPanel filterNorth = new JPanel(new BorderLayout(8, 0));
+        filterNorth.add(recordFilteredCb, BorderLayout.CENTER);
+        filterNorth.add(showFiltersBtn, BorderLayout.EAST);
+        filterSection.add(filterNorth, BorderLayout.NORTH);
         filterSummaryLabel.setVerticalAlignment(JLabel.TOP);
         filterSummaryPanel.add(filterSummaryLabel, BorderLayout.CENTER);
-        form.add(filterSummaryPanel, c);
+        filterSection.add(filterSummaryPanel, BorderLayout.CENTER);
+        form.add(filterSection, c);
         c.gridwidth = 1;
 
         row++;
@@ -399,10 +520,34 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         c.gridy = row;
         c.gridwidth = 3;
         JLabel hint = new JLabel("<html><i>First " + MAX_AUTO_SHOWS
-                + " recordings this session, File → Start recording, or any timed recording. "
-                + "Enter starts. Format, compression, filtering, and folder become AEViewer prefs. "
-                + "Time limit stays for this jAER run only.</i></html>");
+                + " recordings this session, File → Start recording, any timed recording, or VCR. "
+                + "Enter starts. Format, compression, filtering, and folder become AEViewer prefs.</i></html>");
         form.add(hint, c);
+
+        row++;
+        c.gridy = row;
+        form.add(new JSeparator(), c);
+
+        row++;
+        c.gridy = row;
+        timedSectionToggle.setBorderPainted(false);
+        timedSectionToggle.setContentAreaFilled(false);
+        timedSectionToggle.setFocusPainted(false);
+        timedSectionToggle.setHorizontalAlignment(JButton.LEFT);
+        timedSectionToggle.setMargin(new Insets(0, 0, 0, 0));
+        timedSectionToggle.setToolTipText("Time limit and optional VCR (multiple cassette files). Last Start values refill when you expand this section.");
+        timedSectionToggle.addActionListener(e -> setTimedSectionExpanded(!timedSectionExpanded));
+        timedCollapsedSummary.setFont(timedCollapsedSummary.getFont().deriveFont(java.awt.Font.ITALIC));
+        JPanel timedHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        timedHeader.add(timedSectionToggle);
+        timedHeader.add(timedCollapsedSummary);
+        form.add(timedHeader, c);
+
+        row++;
+        c.gridy = row;
+        timedBody = buildTimedBody();
+        form.add(timedBody, c);
+        c.gridwidth = 1;
 
         JButton start = new JButton("Start Recording");
         start.addActionListener(e -> acceptAndClose());
@@ -433,6 +578,114 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         });
     }
 
+    private JPanel buildTimedBody() {
+        JPanel body = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(3, 3, 3, 3);
+        c.anchor = GridBagConstraints.WEST;
+        c.fill = GridBagConstraints.HORIZONTAL;
+
+        c.gridx = 0;
+        c.gridy = 0;
+        c.weightx = 0;
+        body.add(new JLabel("Time limit:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        timeLimitPreset.setMaximumRowCount(RecordingTimeLimit.PRESETS.length);
+        timeLimitPreset.setToolTipText("<html>Optional duration for this JVM session (not saved in prefs).<br>"
+                + "0 or No limit: unlimited. A non-zero limit shows this dialog on every start "
+                + "so you can name the long recording. With VCR this is the length of each cassette.</html>");
+        RecordingTimeLimit.bindPresetChooser(timeLimitPreset, timeLimitField);
+        JPanel timeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        timeRow.add(timeLimitPreset);
+        timeRow.add(new JLabel("or type:"));
+        timeLimitField.setToolTipText("Examples: 0, 10m, 2h, 1h 15m. Bare numbers are milliseconds.");
+        timeRow.add(timeLimitField);
+        timeLimitField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                onTimeLimitEdited();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                onTimeLimitEdited();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                onTimeLimitEdited();
+            }
+        });
+        body.add(timeRow, c);
+
+        c.gridx = 0;
+        c.gridy = 1;
+        c.weightx = 0;
+        body.add(new JLabel("VCR:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        vcrCb.setToolTipText("<html>Optional: many AEDAT-4 files of the time-limit length in one folder.<br>"
+                + "Infinite keeps adding. Rotate keeps the last N closed files.<br>"
+                + "Each cassette is closed fully so a synced folder can be inspected. No Save As per cassette.<br>"
+                + "AEDAT-4 and a non-zero time limit required. Sticky for this jAER run.</html>");
+        vcrKindCombo.setToolTipText("Infinite: keep adding files. Rotate: keep only the last N cassettes.");
+        rotateKeepSpinner.setToolTipText("How many cassette files to keep (including the one being written).");
+        JSpinner.DefaultEditor keepEditor = (JSpinner.DefaultEditor) rotateKeepSpinner.getEditor();
+        keepEditor.getTextField().setColumns(4);
+        vcrCb.addActionListener(e -> {
+            if (!updatingUi) {
+                updateVcrControls();
+            }
+        });
+        vcrKindCombo.addActionListener(e -> {
+            if (!updatingUi) {
+                updateVcrControls();
+            }
+        });
+        JPanel vcrRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        vcrRow.add(vcrCb);
+        vcrRow.add(vcrKindCombo);
+        vcrRow.add(rotateKeepLabel);
+        vcrRow.add(rotateKeepSpinner);
+        body.add(vcrRow, c);
+        return body;
+    }
+
+    private void setTimedSectionExpanded(boolean expanded) {
+        boolean restore = expanded && !timedSectionExpanded && shouldRestoreLastTimedFromPrefs();
+        timedSectionExpanded = expanded;
+        timedSectionToggle.setText(expanded ? "\u25BE Timed recording / VCR" : "\u25B8 Timed recording / VCR");
+        if (timedBody != null) {
+            timedBody.setVisible(expanded);
+        }
+        timedCollapsedSummary.setVisible(!expanded);
+        if (restore) {
+            LastTimed last = lastTimedPrefs();
+            applyTimedChoice(last.timeLimitMs, last.vcrMode, last.rotateKeep);
+            log.info("restored last timed recording from prefs limitMs=" + last.timeLimitMs
+                    + " vcr=" + last.vcrMode + " keep=" + last.rotateKeep);
+        }
+        updateTimedCollapsedSummary();
+        if (isDisplayable()) {
+            pack();
+        }
+    }
+
+    private void updateTimedCollapsedSummary() {
+        long ms = parsedTimeLimitMsOrZero();
+        String limit = ms <= 0L ? "no time limit" : RecordingTimeLimit.formatForDialog(ms);
+        if (vcrCb.isSelected() && vcrAvailable(selectedVersion(), ms)) {
+            if (VCR_ROTATE.equals(vcrKindCombo.getSelectedItem())) {
+                timedCollapsedSummary.setText(limit + ", VCR rotate " + rotateKeepFromSpinner());
+            } else {
+                timedCollapsedSummary.setText(limit + ", VCR infinite");
+            }
+        } else {
+            timedCollapsedSummary.setText(limit);
+        }
+    }
+
     private void loadFromViewer() {
         updatingUi = true;
         try {
@@ -450,18 +703,27 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         }
         folderCombo.refresh();
         folderCombo.syncSelection(folder);
-        updateMuxHint();
-        updateNameTooltip();
-        String initial = RecordingTimeLimit.initialValue(sessionTimeLimitMs.get());
-        timeLimitField.setText(RecordingTimeLimit.NO_LIMIT.equals(initial) ? "0" : initial);
-        timeLimitPreset.setSelectedIndex(RecordingTimeLimit.presetIndex(initial));
+        recordFilteredCb.setSelected(host.isRecordFilteredEventsEnabled());
+        applyTimedChoice(sessionTimeLimitMs.get(), stickyVcrMode.get(), stickyRotateKeep.get());
+        updateFilterSummary();
+        boolean expandTimed = sessionTimeLimitMs.get() > 0L || isSessionVcrEnabled();
+        setTimedSectionExpanded(expandTimed);
+    }
+
+    private void applyTimedChoice(long limitMs, RecordingVcrSession.Mode vcr, int keep) {
         updatingUi = true;
         try {
-            recordFilteredCb.setSelected(host.isRecordFilteredEventsEnabled());
+            String initial = RecordingTimeLimit.initialValue(limitMs);
+            timeLimitField.setText(RecordingTimeLimit.NO_LIMIT.equals(initial) ? "0" : initial);
+            timeLimitPreset.setSelectedIndex(RecordingTimeLimit.presetIndex(initial));
+            RecordingVcrSession.Mode mode = vcr == null ? RecordingVcrSession.Mode.OFF : vcr;
+            vcrCb.setSelected(mode != RecordingVcrSession.Mode.OFF);
+            vcrKindCombo.setSelectedItem(mode == RecordingVcrSession.Mode.ROTATE ? VCR_ROTATE : VCR_INFINITE);
+            rotateKeepSpinner.setValue(RecordingVcrSession.clampRotateKeep(keep));
         } finally {
             updatingUi = false;
         }
-        updateFilterSummary();
+        updateVcrControls();
     }
 
     private void setFolder(File dir) {
@@ -492,21 +754,104 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
                 AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(selectedVersion()));
     }
 
-    private void updateNameExtension() {
-        String cur = nameField.getText().trim();
-        if (cur.isEmpty()) {
-            File proposed = proposedFile(host, applyTargets, selectedVersion(), stamp, folder);
-            nameField.setText(proposed.getName());
+    private void onTimeLimitEdited() {
+        if (updatingUi) {
+            return;
+        }
+        updateVcrControls();
+    }
+
+    /**
+     * Filters window is a separate JFrame; this setup dialog is application-modal,
+     * so drop modality once so the user can enable filters without closing Start recording.
+     */
+    private void openFiltersWindow() {
+        if (isVisible() && getModalityType() != ModalityType.MODELESS) {
+            setVisible(false);
+            setModalityType(ModalityType.MODELESS);
+            setVisible(true);
+        }
+        host.showFilters(true);
+        if (host.getFilterFrame() != null) {
+            host.getFilterFrame().toFront();
+        }
+    }
+
+    private long parsedTimeLimitMsOrZero() {
+        try {
+            return Math.max(0L, RecordingTimeLimit.parseMs(timeLimitField.getText()));
+        } catch (IllegalArgumentException e) {
+            return 0L;
+        }
+    }
+
+    private boolean vcrUiActive() {
+        return vcrCb.isSelected() && vcrAvailable(selectedVersion(), parsedTimeLimitMsOrZero());
+    }
+
+    private int rotateKeepFromSpinner() {
+        Object v = rotateKeepSpinner.getValue();
+        if (v instanceof Number) {
+            return RecordingVcrSession.clampRotateKeep(((Number) v).intValue());
+        }
+        return RecordingVcrSession.ROTATE_DEFAULT;
+    }
+
+    private void updateVcrControls() {
+        boolean avail = vcrAvailable(selectedVersion(), parsedTimeLimitMsOrZero());
+        vcrCb.setEnabled(avail);
+        boolean on = avail && vcrCb.isSelected();
+        vcrKindCombo.setEnabled(on);
+        boolean rotate = on && VCR_ROTATE.equals(vcrKindCombo.getSelectedItem());
+        rotateKeepLabel.setEnabled(rotate);
+        rotateKeepSpinner.setEnabled(rotate);
+        if (on != nameAsSessionFolder) {
+            nameAsSessionFolder = on;
+            applyNameStyle(on);
         } else {
-            nameField.setText(withFormatExtension(cur, selectedVersion()));
+            updateNameTooltip();
+        }
+        updateMuxHint();
+        updateTimedCollapsedSummary();
+    }
+
+    private String proposedSessionFolderName() {
+        return RecordingVcrSession.vcrSessionFolderName(
+                proposedFile(host, applyTargets, selectedVersion(), stamp, folder).getName());
+    }
+
+    private void applyNameStyle(boolean sessionFolder) {
+        if (sessionFolder) {
+            nameLabel.setText("Session folder:");
+            String cur = nameField.getText().trim();
+            if (cur.isEmpty()) {
+                nameField.setText(proposedSessionFolderName());
+            } else {
+                nameField.setText(RecordingVcrSession.ensureVcrFolderMark(cur));
+            }
+        } else {
+            nameLabel.setText("File name:");
+            String cur = nameField.getText().trim();
+            if (cur.isEmpty()) {
+                nameField.setText(proposedFile(host, applyTargets, selectedVersion(), stamp, folder).getName());
+            } else {
+                nameField.setText(withFormatExtension(
+                        RecordingVcrSession.stripVcrFolderMark(cur), selectedVersion()));
+            }
         }
         updateNameTooltip();
     }
 
+    private void updateNameExtension() {
+        nameAsSessionFolder = vcrUiActive();
+        applyNameStyle(nameAsSessionFolder);
+    }
+
     private void updateMuxHint() {
         boolean perFile = muxMany && !AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(selectedVersion());
-        nameField.setEnabled(!perFile);
-        if (perFile) {
+        boolean session = vcrUiActive();
+        nameField.setEnabled(!perFile || session);
+        if (perFile && !session) {
             nameField.setToolTipText("Each camera gets its own chip-datestamp file in this folder");
         } else {
             updateNameTooltip();
@@ -514,6 +859,16 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     }
 
     private void updateNameTooltip() {
+        if (vcrUiActive()) {
+            File cassette = chosenFile();
+            File sessionDir = cassette.getParentFile();
+            nameField.setToolTipText("<html>Session folder "
+                    + ShowFolderSaveConfirmation.escapeHtml(sessionDir.getAbsolutePath())
+                    + "<br>Cassettes: "
+                    + ShowFolderSaveConfirmation.escapeHtml(cassette.getName())
+                    + ", _c0002, … (closed so a synced folder can be inspected)</html>");
+            return;
+        }
         File f = chosenFile();
         nameField.setToolTipText("<html>" + ShowFolderSaveConfirmation.escapeHtml(f.getAbsolutePath())
                 + "<br>Folder is the row below.</html>");
@@ -521,12 +876,19 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
 
     private File chosenFile() {
         applyPathPaste();
+        File dir = folder != null ? folder : new File(".");
+        if (vcrUiActive()) {
+            String session = nameField.getText().trim();
+            if (session.isEmpty()) {
+                session = proposedSessionFolderName();
+            }
+            return RecordingVcrSession.firstCassetteFile(dir, session);
+        }
         String name = nameField.getText().trim();
         if (name.isEmpty()) {
             name = proposedFile(host, applyTargets, selectedVersion(), stamp, folder).getName();
         }
         name = withFormatExtension(name, selectedVersion());
-        File dir = folder != null ? folder : new File(".");
         return new File(dir, name);
     }
 
@@ -549,6 +911,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     }
 
     private void acceptAndClose() {
+        hideComboPopups();
         long limitMs;
         try {
             limitMs = RecordingTimeLimit.parseMs(timeLimitField.getText());
@@ -561,17 +924,38 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         String version = selectedVersion();
         int compression = Aedat4Compression.clamp(compressionCombo.getSelectedIndex());
         File out = chosenFile();
-        File dir = out.getParentFile() != null ? out.getParentFile() : folder;
+        File parentFolder = folder != null ? folder : (out.getParentFile() != null ? out.getParentFile() : new File("."));
+        if (vcrCb.isSelected() && !vcrAvailable(version, limitMs)) {
+            JOptionPane.showMessageDialog(this,
+                    "VCR (multiple files) needs AEDAT-4 and a non-zero time limit (cassette length).",
+                    "VCR not available", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        RecordingVcrSession.Mode vcrMode = RecordingVcrSession.Mode.OFF;
+        int keep = rotateKeepFromSpinner();
+        if (vcrCb.isSelected() && vcrAvailable(version, limitMs)) {
+            vcrMode = VCR_ROTATE.equals(vcrKindCombo.getSelectedItem())
+                    ? RecordingVcrSession.Mode.ROTATE
+                    : RecordingVcrSession.Mode.INFINITE;
+            parentFolder = folder != null ? folder : new File(".");
+            File sessionDir = out.getParentFile();
+            if (sessionDir != null && !sessionDir.isDirectory() && !sessionDir.mkdirs()) {
+                JOptionPane.showMessageDialog(this,
+                        "Could not create VCR session folder:\n" + sessionDir.getAbsolutePath(),
+                        "VCR folder", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
         sessionTimeLimitMs.set(Math.max(0L, limitMs));
+        setSessionVcr(vcrMode, keep);
+        persistLastTimedPrefs(sessionTimeLimitMs.get(), vcrMode, keep);
         for (AEViewer v : applyTargets) {
             if (v == null) {
                 continue;
             }
             v.setRecordingDataFileVersion(version);
             v.setAedat4Compression(compression);
-            if (dir != null) {
-                v.setLastRecordingFolder(dir);
-            }
+            v.setLastRecordingFolder(parentFolder);
             v.applyRecordingTimeLimit(sessionTimeLimitMs.get());
         }
         applyRecordFilteredToTargets(recordFilteredCb.isSelected());
@@ -581,7 +965,50 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         }
         acceptedShowCount.incrementAndGet();
         accepted = true;
-        dispose();
+        log.info("recording setup accepted vcr=" + vcrMode + " pending="
+                + (out != null ? out.getAbsolutePath() : "null"));
+        // Start the file *before* closing the modal. On Windows, dispose() with a
+        // JComboBox popup open can leave setVisible(true) blocked (jAER-0.log
+        // 2026-09-13 9:14:48: accepted, no startRecording, ViewLoop kept running).
+        startRecordingNow();
+        closeToStart();
+    }
+
+    private void startRecordingNow() {
+        if (host != null && host.isRecordingEnabled()) {
+            return;
+        }
+        if (muxMany && host != null && host.getJaerViewer() != null) {
+            host.getJaerViewer().startSynchronizedRecording();
+            return;
+        }
+        if (host != null) {
+            host.startRecording();
+        }
+    }
+
+    /**
+     * Unblock {@code setVisible(true)} without hanging on an open JComboBox
+     * popup (Windows). Hide popups, then defer hide/dispose so popup teardown
+     * can finish before the modal secondary loop is torn down.
+     */
+    private void closeToStart() {
+        hideComboPopups();
+        SwingUtilities.invokeLater(() -> {
+            hideComboPopups();
+            setVisible(false);
+            dispose();
+        });
+    }
+
+    private void hideComboPopups() {
+        formatCombo.hidePopup();
+        compressionCombo.hidePopup();
+        timeLimitPreset.hidePopup();
+        vcrKindCombo.hidePopup();
+        if (folderCombo != null) {
+            folderCombo.hidePopup();
+        }
     }
 
     private void applyRecordFilteredToTargets(boolean enabled) {

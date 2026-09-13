@@ -58,6 +58,8 @@ import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.RecordingSetupDialog;
+import net.sf.jaer.graphics.RecordingVcrSession;
+import net.sf.jaer.util.RecordingDiskSpace;
 import net.sf.jaer.util.OutputFilename;
 import net.sf.jaer.util.JaerIssueReporter;
 import net.sf.jaer.util.JaerPreferencesStore;
@@ -808,6 +810,8 @@ public class JAERViewer {
     }
     File indexFile = null;
     Aedat4FileOutputStream muxedAedat4OutputStream = null;
+    /** Serializes mux writes with VCR cassette roll (close old file, open next). */
+    public final Object muxedAedat4RollLock = new Object();
     /** Viewers attached to the current muxed AEDAT-4 (excludes idle WAITING). */
     private List<AEViewer> muxedRecordingViewers = new ArrayList<>();
     final String indexFileNameHeader = "JAERViewer-";
@@ -984,6 +988,57 @@ public class JAERViewer {
         }
     }
 
+    public boolean isMuxedAedat4Recording() {
+        return muxedAedat4OutputStream != null;
+    }
+
+    /**
+     * Silent VCR cassette roll for the shared mux file. Caller should hold
+     * {@link #muxedAedat4RollLock} when coming from a view loop write.
+     */
+    public void rollMuxedAedat4Cassette() {
+        synchronized (muxedAedat4RollLock) {
+            if (muxedAedat4OutputStream == null || muxedRecordingViewers.isEmpty()) {
+                return;
+            }
+            AEViewer owner = muxedRecordingViewers.get(0);
+            RecordingVcrSession session = owner.recordingVcrSession();
+            if (session == null || !owner.isRecordingEnabled()) {
+                return;
+            }
+            File sessionDir = session.getSessionDir();
+            if (!RecordingDiskSpace.hasEnoughSpace(sessionDir)) {
+                long free = RecordingDiskSpace.usableBytes(sessionDir);
+                log.warning("VCR mux roll aborted: free space "
+                        + RecordingDiskSpace.formatBytes(free)
+                        + " below " + RecordingDiskSpace.minFreeSpaceLabel());
+                stopSynchronizedRecording(true);
+                return;
+            }
+            List<Aedat4CameraTrack> oldTracks = muxedAedat4OutputStream.getTracks();
+            long sessionBaseUs = muxedAedat4OutputStream.getBaseUnixUs();
+            int compression = owner.getAedat4Compression();
+            List<Aedat4CameraTrack> tracks = new ArrayList<>(oldTracks);
+            log.info("VCR mux cassette time reached, rolling to next file");
+            try {
+                owner.closeRecordingWritersKeepingEnabled();
+                session.closeCurrentCassette();
+                File next = session.openNextCassette();
+                FileOutputStream fos = new FileOutputStream(next);
+                muxedAedat4OutputStream = new Aedat4FileOutputStream(fos, tracks, compression, sessionBaseUs);
+                int idx = 0;
+                for (AEViewer v : muxedRecordingViewers) {
+                    v.rebindMuxedAedat4AfterVcrRoll(muxedAedat4OutputStream, next, idx, idx == 0);
+                    idx++;
+                }
+                log.info("VCR mux rolled to " + next.getAbsolutePath() + " cameras=" + tracks.size());
+            } catch (IOException e) {
+                log.log(Level.WARNING, "VCR mux cassette roll failed: " + e, e);
+                stopSynchronizedRecording(true);
+            }
+        }
+    }
+
     public void stopSynchronizedRecording() {
         stopSynchronizedRecording(true);
     }
@@ -1093,12 +1148,17 @@ public class JAERViewer {
             host = rec.get(0);
         }
         if (!RecordingSetupDialog.confirmIfNeeded(host, rec.isEmpty() ? null : rec, forceSetupDialog)) {
+            if (recordingEnabled) {
+                return;
+            }
             if (host != null) {
                 host.fixRecordingControls();
             }
             return;
         }
-        startSynchronizedRecording();
+        if (!recordingEnabled) {
+            startSynchronizedRecording();
+        }
     }
 
     public void zeroTimestamps() {

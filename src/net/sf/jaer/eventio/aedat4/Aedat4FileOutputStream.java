@@ -144,6 +144,15 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     /**
+     * Same as {@link #Aedat4FileOutputStream(FileOutputStream, AEChip, int, RecordingConfigurationSnapshot)}
+     * with an explicit Unix-µs origin (VCR cassette roll must reuse the session origin).
+     */
+    public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            RecordingConfigurationSnapshot snapshot, long baseUnixUs) throws IOException {
+        this(outputStream, chip, compression, baseUnixUs, snapshot, false, null);
+    }
+
+    /**
      * Muxed cameras sharing one file. Tracks must be frozen before this call
      * (snapshots, source labels, stream bases). Shared {@code baseUnixUs}.
      */
@@ -228,6 +237,11 @@ public class Aedat4FileOutputStream implements Closeable {
 
     public int getCompression() {
         return compression;
+    }
+
+    /** Unix-µs origin used by {@code toUnixUs}; keep this across VCR cassette rolls. */
+    public long getBaseUnixUs() {
+        return baseUs;
     }
 
     public long getEventsWritten() {

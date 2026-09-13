@@ -20,6 +20,10 @@ public final class Event extends Struct {
         return bb.getLong(bb_pos);
     }
 
+    public void mutateTimestamp(long timestamp) {
+        bb.putLong(bb_pos, timestamp);
+    }
+
     public short x() {
         return bb.getShort(bb_pos + 8);
     }

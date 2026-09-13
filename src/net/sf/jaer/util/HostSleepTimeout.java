@@ -95,6 +95,31 @@ public final class HostSleepTimeout {
     }
 
     /**
+     * VCR infinite/rotate runs until the user stops (or disk/sleep). Warn when
+     * the computer would sleep at all, even if each cassette is shorter than that.
+     */
+    public static String warningHtmlUnboundedVcr(long cassetteMs) {
+        return warningHtmlUnboundedVcr(cassetteMs, query());
+    }
+
+    public static String warningHtmlUnboundedVcr(long cassetteMs, OptionalLong sleepTimeoutMs) {
+        String cassette = formatDuration(Math.max(0L, cassetteMs));
+        if (sleepTimeoutMs != null && sleepTimeoutMs.isPresent() && sleepTimeoutMs.getAsLong() > 0L) {
+            return "<html>This VCR session records until you stop it (or the disk fills). "
+                    + "Each cassette is <b>" + cassette + "</b>.<br><br>"
+                    + "This computer is set to sleep after <b>"
+                    + formatDuration(sleepTimeoutMs.getAsLong()) + "</b>. "
+                    + "If it sleeps, jAER stops the recording.<br><br>"
+                    + "Extend or disable the OS sleep timeout before a long VCR session.</html>";
+        }
+        return "<html>This VCR session records until you stop it (or the disk fills). "
+                + "Each cassette is <b>" + cassette + "</b>, and the session can outlast a typical "
+                + formatDuration(TYPICAL_MS) + " sleep timeout.<br><br>"
+                + "If the computer sleeps, jAER stops the recording.<br><br>"
+                + "Extend or disable the OS sleep timeout before a long VCR session.</html>";
+    }
+
+    /**
      * True if this JVM has not yet shown the recording/sleep warning and
      * {@link #shouldWarn(long)} is true. First successful claim wins.
      */

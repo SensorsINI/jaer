@@ -88,6 +88,15 @@
                 <Property name="toolTipText" type="java.lang.String" value="Starts or stops recording to disk"/>
               </Properties>
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="mergeVcrDeckMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Merge VCR deck&#x2026;"/>
+                <Property name="toolTipText" type="java.lang.String" value="Concatenate cassette AEDAT-4 files from a VCR session folder"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="mergeVcrDeckMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="recordingPlaybackImmediatelyCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Playback recorded data immediately after recording"/>

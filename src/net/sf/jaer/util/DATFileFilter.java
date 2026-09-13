@@ -15,6 +15,7 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import net.sf.jaer.graphics.RecordingVcrSession;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
@@ -110,6 +111,9 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         }
         if (f.isDirectory()) {
             return true;
+        }
+        if (RecordingVcrSession.isManifest(f)) {
+            return category == Category.ALL_FILES;
         }
         if (category == Category.ALL_FILES) {
             return true;

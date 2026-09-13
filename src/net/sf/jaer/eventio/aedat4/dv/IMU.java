@@ -17,6 +17,13 @@ public final class IMU extends Table {
     }
 
     public long timestamp() { int o = __offset(4); return o != 0 ? bb.getLong(o + bb_pos) : 0; }
+
+    public void addToTimestamp(long deltaUs) {
+        int o = __offset(4);
+        if (o != 0) {
+            bb.putLong(o + bb_pos, bb.getLong(o + bb_pos) + deltaUs);
+        }
+    }
     public float temperature() { int o = __offset(6); return o != 0 ? bb.getFloat(o + bb_pos) : 0; }
     public float accelerometerX() { int o = __offset(8); return o != 0 ? bb.getFloat(o + bb_pos) : 0; }
     public float accelerometerY() { int o = __offset(10); return o != 0 ? bb.getFloat(o + bb_pos) : 0; }

@@ -47,5 +47,29 @@ public class RecordingSetupDialogTest {
         assertTrue(!RecordingSetupDialog.shouldShow(3, 0L, false));
         assertTrue(RecordingSetupDialog.shouldShow(3, 0L, true));
         assertTrue(RecordingSetupDialog.shouldShow(99, 60_000L, false));
+        assertTrue(RecordingSetupDialog.shouldShow(99, 0L, false, true));
+        assertTrue(!RecordingSetupDialog.shouldShow(99, 0L, false, false));
+        assertTrue(RecordingSetupDialog.vcrAvailable(AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4, 1L));
+        assertTrue(!RecordingSetupDialog.vcrAvailable(AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2, 1L));
+    }
+
+    @Test
+    public void lastTimedPrefsRoundTripAndStickySkip() {
+        RecordingSetupDialog.LastTimed previous = RecordingSetupDialog.lastTimedPrefs();
+        try {
+            RecordingSetupDialog.resetShownThisJvmForTests();
+            RecordingSetupDialog.persistLastTimedPrefs(60_000L, RecordingVcrSession.Mode.ROTATE, 3);
+            RecordingSetupDialog.resetShownThisJvmForTests();
+            assertTrue(RecordingSetupDialog.shouldRestoreLastTimedFromPrefs());
+            RecordingSetupDialog.LastTimed loaded = RecordingSetupDialog.lastTimedPrefs();
+            assertEquals(60_000L, loaded.timeLimitMs);
+            assertEquals(RecordingVcrSession.Mode.ROTATE, loaded.vcrMode);
+            assertEquals(3, loaded.rotateKeep);
+            RecordingSetupDialog.setSessionVcr(RecordingVcrSession.Mode.INFINITE, 8);
+            assertTrue(!RecordingSetupDialog.shouldRestoreLastTimedFromPrefs());
+        } finally {
+            RecordingSetupDialog.persistLastTimedPrefs(previous.timeLimitMs, previous.vcrMode, previous.rotateKeep);
+            RecordingSetupDialog.resetShownThisJvmForTests();
+        }
     }
 }
