@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Upload install4j media from currentInstallers/<VERSION>/ to the GitHub Release for that tag.
-# Default: skip jAER_windows-x64_*.exe so a SignPath-signed GitHub asset is not
+# Default: skip jAER_windows-x64_*.exe so an Azure-signed GitHub asset is not
 # replaced. Pass --clobber-windows to upload the local unsigned exe.
 # Usage (repo root):
 #   bash scripts/upload-github-release-installers.sh

@@ -13,7 +13,7 @@ From the repo root: `ant release`, `ant install4j` (regenerates splash from `VER
 
 ## macOS code signing / notarization
 
-On the Mini, `scripts/run-install4jc.sh` (from `ant release` / `ant install4j`) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git). GitHub Mac `.dmg` assets must be the Mini-notarized files (`ant upload-installers` from this machine).
+On the Mini, `ant release-macos` (or `ant install4j-macos` with an existing jar) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git). GitHub Mac `.dmg` assets must be the Mini-notarized files (`ant upload-installers` from this machine **after** the version tag exists).
 
 Media ids 38/39 use `installerName` / `volumeName` `jAER ${compiler:sys.version} Installer` so Finder shows a short installer name. That is Mac-only; do not change the global application name (SignPath Windows `product-name`).
 
@@ -96,9 +96,12 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | Target | What it does |
 |--------|----------------|
 | `generate-splash` | Overlay `VERSION.txt` → `images/800w`, `1024w`, `256h` |
-| `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, pack sample data if present, `install4jc --release=…` |
+| `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, pack sample data if present, all-OS `install4jc --release=…`, then git tag |
+| `release-macos` | Mini only: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. **No git tag** |
+| `install4j-macos` | Mini: splash then macOS DMGs only (existing `dist/jAER.jar`; faster compression) |
+| `azure-sign-ci` | `gh workflow run sign-windows-azure.yml` (Windows Authenticode) |
 | `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
-| `install4j` | `generate-splash` then `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
+| `install4j` | `generate-splash` then all-OS `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
 | `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
 
 After a splash or `jaer.install4j` launcher change, rebuild media (`ant release` or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.
