@@ -21,9 +21,6 @@ on:
           - test-signing2
           - release-signing
         default: test-signing2
-  push:
-    tags:
-      - '3.*'
 
 permissions:
   actions: read

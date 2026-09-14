@@ -289,7 +289,7 @@ certificate. Do not buy a commercial CA cert unless they tell you to.
 
   File: .github/workflows/sign-windows-test.yml
   Name: Sign Windows (SignPath)
-  Triggers: workflow_dispatch (policy choice), or push of tags matching 3.*
+  Triggers: workflow_dispatch only (no tag push). Production Windows is Azure.
   Policy: dispatch input `signing_policy`, else GitHub variable
   SIGNPATH_SIGNING_POLICY_SLUG, else `test-signing2`.
   Steps: JDK 25 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
@@ -305,9 +305,8 @@ certificate. Do not buy a commercial CA cert unless they tell you to.
      summary / SignPath email and **Approve** (as yourself, not as CI builds)
   4. Download the jaer-windows-signed artifact; check Properties → Digital Signatures
      (test-signing publisher is the test certificate, not yet SignPath Foundation)
-  5. For a tagged release, push tag matching VERSION.txt; workflow attaches the signed
-     Windows exe to the GitHub Release. Use **release-signing** on that tag only
-     after the policy is ACTIVE and VALID (set SIGNPATH_SIGNING_POLICY_SLUG first).
+  5. Do **not** attach SignPath-signed exes to GitHub Releases. Production Windows
+     is Azure (`ant azure-sign-ci`). SignPath stays a manual backup.
 
 Non-interactive Windows-only local/CI Ant target (no confirm prompt):
 
