@@ -378,7 +378,11 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
 
     @Override
     public void resetTimestamps() {
-        originNanos.set(System.nanoTime());
+        synchronized (pool) {
+            originNanos.set(System.nanoTime());
+            pool.reset();
+        }
+        log.info("OpenCV resetTimestamps(): zeroing host nanoTime origin (" + label + ")");
     }
 
     @Override
@@ -445,11 +449,11 @@ public class OpenCvCameraHardwareInterface implements AEMonitorInterface {
             int ch = mat.channels();
             applyChipGeometry(w, h);
             copyMatToFrame(mat, w, h, ch, frame);
-            long us = timestampUs();
-            frame.setTimestampStartUs(us);
-            frame.setTimestampEndUs(us);
-            frame.setExposureUs(0);
             synchronized (pool) {
+                long us = timestampUs();
+                frame.setTimestampStartUs(us);
+                frame.setTimestampEndUs(us);
+                frame.setExposureUs(0);
                 PacketBundle wb = pool.writeBuffer();
                 if (!wb.isEmpty()) {
                     overrun.set(true);

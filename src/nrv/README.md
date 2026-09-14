@@ -41,8 +41,16 @@ NRV timestamps are **absolute on the device**, unlike DAVIS 15-bit relative time
 Notes learned in practice:
 
 - Reference ms wraps about every **70 minutes**; internal math must use `long` (`refMs * 1000` overflows `int` after ~35 minutes).
-- jAER relative timestamps are signed 32-bit µs. After ~2147 s of session span they **big-wrap** through about −2147 s and continue (same convention as DAVIS/DVX). Press **`0`** to re-zero at the current device time (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
-- Timestamp cadence in the USB stream is set by I2C **`TSTAMP_SUB_UNIT_VAL`** (`0x32B1:32B2`, LSB exposed in UI as `0x32B2`) and **`TSTAMP_REF_UNIT_VAL`** (`0x32B3:32B4`). Factory presets scale SUB with nominal output rate (e.g. 100 fps → `0x0B`, 1000 fps → `0x7D`); **lower SUB → more frequent sub-timestamp packets**.
+- jAER relative timestamps are signed 32-bit µs. After ~2147 s of session span they **big-wrap** through about −2147 s and continue (same convention as DAVIS/DVX). Press **`0`** to re-zero at the current device time (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV). USB buffers are flushed on zero so pre-zero events are not recorded.
+- Timestamp cadence in the USB stream is set by I2C **`TSTAMP_SUB_UNIT_VAL`** (`0x32B1:32B2`, LSB exposed in UI as `0x32B2`) and **`TSTAMP_REF_UNIT_VAL`** (`0x32B3:32B4`). Factory presets scale SUB with nominal output rate (e.g. 100 fps → `0x0B`, 1000 fps → `0x7D`); **lower SUB → more frequent sub-timestamp packets**. Those registers are packet cadence, not a host-side multiplier (NRV `PacketParser.cpp` never scales by them).
+
+**Sub-timestamp decode** matches NRV SDK `PacketParser.cpp` (`S5KRC1SDataProcess`): dedicated ref/sub packets (`header==0x08`, `P=0`) update `fullTimeStampUs` as **microseconds** (`refMs×1000 + sub`). Column address packets (`0x04`) set `posX` only — the embedded 10-bit sub field is **not** applied. Many events in one column share the same output timestamp until the next ref/sub packet. See [`S5KRC1SParser.java`](usb/S5KRC1SParser.java).
+
+**CX3 prototype clock (~6% fast):** on engineering-sample DELTA01 (Cypress `04b4:00f1`), reconstructed device time runs about **6% fast vs `System.nanoTime()`**. That is not a jAER decode error (same formula as the SDK). Muxed OpenCV/UVC frames are stamped with host nanoTime, so playback with File→Synchronize would drift (~300 ms in 5 s) if NRV timestamps were left as device time.
+
+jAER keeps the SDK reconstruction, then at USB decode maps each event onto host time: `outUs = round(deviceRelUs / hostScale)` with `hostScale = deviceElapsed / hostElapsed` (EMA after 0.5 s). Code: `S5KRC1SParser.updateHostScale` / `toOutputTimestamp`. Default **on**; Timing checkbox “Stretch timestamps to host clock (CX3 prototype)” or `-Djaer.nrv.hostTimeStretch=false`. Remove this when firmware matches host time. Vendor note: [`NRV-timestamp-clock-drift-report.txt`](NRV-timestamp-clock-drift-report.txt).
+
+After a software zero (**`0`** or mux record start), `NRV clock vs host` is **FINE** in `%TEMP%\jaer\jAER-0.log` (not the console): every 5 s for 3 min, then once a minute (`NRVTrace.logClockDrift`). Silent until that zero. Disable with `-Djaer.nrv.trace.clockDrift=false`.
 
 Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
 
@@ -59,8 +67,6 @@ Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-
 If using `ant run`, include the full JVM argument set from `project.properties` **plus** trace flags in one `-Drun.jvmargs="..."` string.
 
 Logs every 2 s (INFO): chunks/s, MB/s, keps, and average µs for `parse`, `commitLock`, `limitLock`, `byteCopy`, `arrayCopy`. CSV rows are per USB chunk with thread name. NRV and EVK4 both use async `USBTransferThread` (threads `NRVAEReaderThread` / `PropheseeAEReader`); `usbReadNs` is only non-zero on legacy sync paths.
-
-**Sub-timestamp decode (matches NRV SDK `PacketParser.cpp`):** dedicated ref/sub packets (`header==0x08`, `P=0`) update `fullTimeStampUs` using the 10-bit sub field as **microseconds within the ref ms** (`refMs×1000 + sub`). Column address packets (`0x04`) set `posX` only — the embedded 10-bit sub field is **not** applied (SDK behaviour). Many events in one column share the same output timestamp until the next ref/sub packet.
 
 ## Biasing and settings files
 

@@ -214,14 +214,25 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
     }
 
-    /** Push TSTAMP_REF / TSTAMP_SUB from loaded settings into the live USB parser. */
+    /** Push TSTAMP_REF / TSTAMP_SUB and host-time stretch into the live USB parser. */
     public void syncParserTimestampScale() {
-        if (aeReader == null || chip == null || !(chip.getBiasgen() instanceof NRVConfig config)) {
+        if (aeReader == null) {
             return;
         }
-        aeReader.getParser().setTimestampScale(
-                config.getTstampRefUnitVal(),
-                config.getTimestampSubUnit());
+        if (chip != null && chip.getBiasgen() instanceof NRVConfig config) {
+            aeReader.getParser().setTimestampScale(
+                    config.getTstampRefUnitVal(),
+                    config.getTimestampSubUnit());
+            aeReader.getParser().setHostTimeStretchEnabled(config.isHostTimeStretchEnabled());
+        } else {
+            aeReader.getParser().setHostTimeStretchEnabled(S5KRC1SParser.defaultHostTimeStretchEnabled());
+        }
+    }
+
+    public void setHostTimeStretchEnabled(boolean enabled) {
+        if (aeReader != null) {
+            aeReader.getParser().setHostTimeStretchEnabled(enabled);
+        }
     }
 
     @Override
@@ -663,6 +674,13 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         log.info("NRV resetTimestamps(): zeroing jAER time at current device time (no hardware reset on CX3/FX20)");
         if (aeReader != null) {
             aeReader.resetTimestamps();
+        }
+        // Drop events already parsed with the previous origin so muxed recordings
+        // do not mix ~session-age timestamps with the new zero.
+        synchronized (aePacketRawPool) {
+            aePacketRawPool.reset();
+            packetBundlePool.reset();
+            eventCounter = 0;
         }
     }
 

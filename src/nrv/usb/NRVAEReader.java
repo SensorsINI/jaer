@@ -3,6 +3,7 @@ package nrv.usb;
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
@@ -52,6 +53,8 @@ public class NRVAEReader {
     private int[] stagingAddresses;
     private int[] stagingTimestamps;
     private long lastOverrunLogMs;
+    /** Drops USB chunks parsed before {@link #resetTimestamps()} commits. */
+    private final AtomicInteger timestampEpoch = new AtomicInteger();
     /** Reused parse result to avoid per-USB-transfer allocation. */
     private final ParsedChunk parseScratchChunk = new ParsedChunk(0, false);
 
@@ -144,6 +147,7 @@ public class NRVAEReader {
                 + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED
                 + ", timingTrace=" + NRVTrace.TIMING_ENABLED
                 + (NRVTrace.TIMING_ENABLED ? ", timingIntervalMs=" + NRVTrace.TIMING_INTERVAL_MS : "")
+                + ", hostTimeStretch=" + parser.isHostTimeStretchEnabled()
                 + ", pipelineBench=" + UsbPipelineBench.ENABLED
                 + (UsbPipelineBench.ENABLED && System.getProperty("jaer.usb.trace.file") != null
                         ? ", traceFile=" + System.getProperty("jaer.usb.trace.file") : "")
@@ -213,6 +217,7 @@ public class NRVAEReader {
 
     public void resetTimestamps() {
         parser.resetTimestampOrigin();
+        timestampEpoch.incrementAndGet();
     }
 
     /** Re-base ref/full timestamp tracking after live timing-register I2C writes. */
@@ -291,6 +296,7 @@ public class NRVAEReader {
         }
         ensureStaging(parseLimit);
 
+        final int epoch = timestampEpoch.get();
         final long parseStart = sample != null ? System.nanoTime() : 0;
         final S5KRC1SParser.ParseResult result = parser.parseWithResult(parseScratch, bytesAvailable,
                 stagingAddresses, stagingTimestamps, 0, parseLimit);
@@ -313,11 +319,16 @@ public class NRVAEReader {
         }
         parseScratchChunk.parsed = result.eventsWritten;
         parseScratchChunk.overflowed = result.overflowed;
+        parseScratchChunk.epoch = epoch;
+        NRVTrace.logClockDrift(parser);
         return parseScratchChunk;
     }
 
     private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
         if (chunk == ParsedChunk.EMPTY) {
+            return;
+        }
+        if (chunk.epoch != timestampEpoch.get()) {
             return;
         }
         final long commitStart = sample != null ? System.nanoTime() : 0;
@@ -401,6 +412,7 @@ public class NRVAEReader {
 
         int parsed;
         boolean overflowed;
+        int epoch;
 
         ParsedChunk(int parsed, boolean overflowed) {
             this.parsed = parsed;

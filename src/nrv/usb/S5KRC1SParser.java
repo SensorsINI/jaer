@@ -16,6 +16,12 @@ import java.util.logging.Logger;
  * starting at 0. When relative time exceeds {@link Integer#MAX_VALUE} (~2147 s), output wraps
  * through {@link Integer#MIN_VALUE} and continues (DAVIS/DVX big-wrap convention).
  *
+ * <p>CX3 prototypes run the reconstructed device clock ~6% fast vs the PC. USB decode still
+ * uses the SDK formula {@code ref_ms * 1000 + sub}; {@link #toOutputTimestamp} then stretches
+ * that device µs onto {@link System#nanoTime()} so live packets and AEDAT-4 recordings share
+ * host time with OpenCV. Disable with {@code -Djaer.nrv.hostTimeStretch=false} or the Timing
+ * checkbox. Remove the stretch when firmware matches host time.
+ *
  * <p>Reference/sub timestamp packets are normal packets (P=0). Group event packets
  * (P=1) can also have {@code pkt[0] & 0x7C == 0x08} when the group-2 row offset is 2;
  * they must not be parsed as timestamps (see NRV FileStream timestamp detection).
@@ -85,10 +91,55 @@ public class S5KRC1SParser {
     private int tstampSubUnitVal = 0x7D;
     /** Absolute device time (µs) subtracted from output; jAER time 0 = this value. */
     private long timestampOriginUs = -1;
-    /** Last emitted absolute timestamp (µs), for monotonic output. */
-    private long lastOutputAbsoluteUs = -1;
+    /** Last emitted device-domain absolute timestamp (µs), for monotonic device time. */
+    private long lastDeviceAbsoluteUs = -1;
+    /** Last emitted host-stretched relative µs (before signed-int wrap). */
+    private long lastStretchedRelUs = -1;
+    /** {@link System#nanoTime()} when {@link #timestampOriginUs} was set. */
+    private long hostOriginNanos = -1;
+    /** Software +1 ms corrections in {@link #applySubTimestamp} since last origin. */
+    private long extraMsBumps;
     /** Count of signed 32-bit output timestamp big-wraps since {@link #reset()}. */
     private int bigWrapCount;
+    /** Map device µs onto host nanoTime at USB decode (CX3 prototype clock). */
+    private boolean hostTimeStretchEnabled = defaultHostTimeStretchEnabled();
+    /** {@code deviceElapsed / hostElapsed}; 1.0 until warmup or stretch is off. */
+    private double hostScale = 1.0;
+    private boolean hostScaleReady;
+    private long lastScaleUpdateNanos = -1;
+    /** Wall time when {@link #resetTimestampOrigin()} armed clock-drift FINE logs; {@code -1} until then. */
+    private long clockDriftLogArmMs = -1;
+
+    private static final long HOST_SCALE_WARMUP_US = 500_000L;
+    private static final double HOST_SCALE_MIN = 0.90;
+    private static final double HOST_SCALE_MAX = 1.20;
+    private static final double HOST_SCALE_EMA_TAU_S = 2.0;
+
+    /** Host vs device elapsed time since the current jAER origin. */
+    static final class ClockDrift {
+        final long deviceElapsedUs;
+        final long hostElapsedUs;
+        final long driftUs;
+        final long extraMsBumps;
+        final double hostScale;
+        final long stretchedElapsedUs;
+        final boolean stretchEnabled;
+
+        ClockDrift(long deviceElapsedUs, long hostElapsedUs, long extraMsBumps,
+                double hostScale, long stretchedElapsedUs, boolean stretchEnabled) {
+            this.deviceElapsedUs = deviceElapsedUs;
+            this.hostElapsedUs = hostElapsedUs;
+            this.driftUs = deviceElapsedUs - hostElapsedUs;
+            this.extraMsBumps = extraMsBumps;
+            this.hostScale = hostScale;
+            this.stretchedElapsedUs = stretchedElapsedUs;
+            this.stretchEnabled = stretchEnabled;
+        }
+    }
+
+    public static boolean defaultHostTimeStretchEnabled() {
+        return !"false".equalsIgnoreCase(System.getProperty("jaer.nrv.hostTimeStretch", "true"));
+    }
 
     public S5KRC1SParser() {
         reset();
@@ -100,7 +151,7 @@ public class S5KRC1SParser {
      */
     public synchronized void resyncTimingState(int regAddr, String reason) {
         final long savedOrigin = timestampOriginUs;
-        final long savedLastOut = lastOutputAbsoluteUs;
+        final long savedLastOut = lastDeviceAbsoluteUs;
         final int savedPosX0 = posX[0];
         for (int i = 0; i < SENSOR_COUNT; i++) {
             refTimeStampMs[i] = 0;
@@ -132,8 +183,15 @@ public class S5KRC1SParser {
         mirrorFlag = false;
         droppedEventsBeforeColumnAddress = false;
         timestampOriginUs = -1;
-        lastOutputAbsoluteUs = -1;
+        lastDeviceAbsoluteUs = -1;
+        lastStretchedRelUs = -1;
+        hostOriginNanos = -1;
+        extraMsBumps = 0;
         bigWrapCount = 0;
+        hostScale = 1.0;
+        hostScaleReady = false;
+        lastScaleUpdateNanos = -1;
+        clockDriftLogArmMs = -1;
     }
 
     /** Signed 32-bit output wraps since the last {@link #reset()}. */
@@ -147,12 +205,56 @@ public class S5KRC1SParser {
      * NRV CX3/FX20 firmware exposes no DAVIS-style hardware timestamp-reset command.
      */
     public synchronized void resetTimestampOrigin() {
-        long anchorUs = lastOutputAbsoluteUs;
+        long anchorUs = lastDeviceAbsoluteUs;
         if (anchorUs < 0) {
             anchorUs = Math.max(fullTimeStampUs[0], fullTimeStampUs[1]);
         }
         timestampOriginUs = anchorUs;
-        lastOutputAbsoluteUs = anchorUs;
+        lastDeviceAbsoluteUs = anchorUs;
+        lastStretchedRelUs = 0;
+        markHostOrigin();
+        clockDriftLogArmMs = System.currentTimeMillis();
+        NRVTrace.onClockDriftOriginReset();
+    }
+
+    /** {@code -1} until {@link #resetTimestampOrigin()} (press {@code 0} or mux record). */
+    synchronized long getClockDriftLogArmMs() {
+        return clockDriftLogArmMs;
+    }
+
+    public synchronized void setHostTimeStretchEnabled(boolean enabled) {
+        hostTimeStretchEnabled = enabled;
+    }
+
+    public synchronized boolean isHostTimeStretchEnabled() {
+        return hostTimeStretchEnabled;
+    }
+
+    /**
+     * Device µs vs host nanoTime since the current origin, or {@code null} until
+     * the first event (or {@link #resetTimestampOrigin()}) has anchored both.
+     * {@code deviceElapsedUs} is the unstretched SDK reconstruction so the log
+     * still shows the raw CX3 rate error after stretch is applied to output.
+     */
+    synchronized ClockDrift sampleClockDrift() {
+        if (timestampOriginUs < 0 || hostOriginNanos < 0 || lastDeviceAbsoluteUs < 0) {
+            return null;
+        }
+        long hostUs = (System.nanoTime() - hostOriginNanos) / 1000L;
+        if (hostUs < 0) {
+            hostUs = 0;
+        }
+        long deviceUs = lastDeviceAbsoluteUs - timestampOriginUs;
+        if (deviceUs < 0) {
+            deviceUs = 0;
+        }
+        long stretchedUs = lastStretchedRelUs >= 0 ? lastStretchedRelUs : deviceUs;
+        return new ClockDrift(deviceUs, hostUs, extraMsBumps, hostScale, stretchedUs, hostTimeStretchEnabled);
+    }
+
+    private void markHostOrigin() {
+        hostOriginNanos = System.nanoTime();
+        extraMsBumps = 0;
     }
 
     public void setSkipPeriodMs(int skipPeriodMs) {
@@ -222,6 +324,7 @@ public class S5KRC1SParser {
             int eventOffset, int maxEvents) {
         int eventCount = eventOffset;
         boolean overflowed = false;
+        updateHostScale();
         final long skipFrameStart = frameStartTimeMs;
         final int skipPeriod = skipPeriodMs;
         final boolean traceTiming = NRVTrace.TIMING_ENABLED;
@@ -316,7 +419,7 @@ public class S5KRC1SParser {
         if (traceTiming) {
             timingStats.refMs0 = refTimeStampMs[0];
             timingStats.fullUs0 = fullTimeStampUs[0];
-            timingStats.lastOutUs = lastOutputAbsoluteUs;
+            timingStats.lastOutUs = lastDeviceAbsoluteUs;
             timingStats.posX0 = posX[0];
             NRVTrace.logTimingSummary(timingStats);
         }
@@ -365,6 +468,7 @@ public class S5KRC1SParser {
             final long currentRefBucketMs = absoluteRefUs(sensorID) / 1000L;
             if (prevRefMs == currentRefBucketMs) {
                 refTimeStampMs[sensorID]++;
+                extraMsBumps++;
                 if (refTimeStampMs[sensorID] > REF_MS_MASK) {
                     refTimeStampMs[sensorID] = 0;
                     refWrapUs[sensorID] += REF_WRAP_US;
@@ -376,18 +480,63 @@ public class S5KRC1SParser {
         syncFullTimestampToOtherSensors(sensorID, newTs);
     }
 
+    private void updateHostScale() {
+        if (!hostTimeStretchEnabled || timestampOriginUs < 0 || hostOriginNanos < 0
+                || lastDeviceAbsoluteUs < 0) {
+            return;
+        }
+        final long nowNanos = System.nanoTime();
+        long hostUs = (nowNanos - hostOriginNanos) / 1000L;
+        long deviceUs = lastDeviceAbsoluteUs - timestampOriginUs;
+        if (hostUs < HOST_SCALE_WARMUP_US || deviceUs < HOST_SCALE_WARMUP_US) {
+            lastScaleUpdateNanos = nowNanos;
+            return;
+        }
+        final double instant = (double) deviceUs / (double) hostUs;
+        if (instant < HOST_SCALE_MIN || instant > HOST_SCALE_MAX) {
+            lastScaleUpdateNanos = nowNanos;
+            return;
+        }
+        if (!hostScaleReady) {
+            hostScale = instant;
+            hostScaleReady = true;
+            Logger.getLogger("net.sf.jaer").info(String.format(
+                    "NRV host-time stretch: scale=%.5f (device µs / host nanoTime)", hostScale));
+        } else {
+            final double dtS = lastScaleUpdateNanos > 0
+                    ? (nowNanos - lastScaleUpdateNanos) / 1e9 : 0.01;
+            double alpha = 1.0 - Math.exp(-Math.max(0.0, dtS) / HOST_SCALE_EMA_TAU_S);
+            if (alpha > 1.0) {
+                alpha = 1.0;
+            }
+            hostScale += alpha * (instant - hostScale);
+        }
+        lastScaleUpdateNanos = nowNanos;
+    }
+
     private int toOutputTimestamp(long absoluteUs) {
         // Allow equal timestamps for events in the same hardware time bucket (like EVT3).
-        // Only clamp backward jumps so output stays weakly monotonic.
-        if (lastOutputAbsoluteUs >= 0 && absoluteUs < lastOutputAbsoluteUs) {
-            absoluteUs = lastOutputAbsoluteUs;
-        } else if (absoluteUs > lastOutputAbsoluteUs) {
-            lastOutputAbsoluteUs = absoluteUs;
+        // Only clamp backward jumps so device time stays weakly monotonic.
+        if (lastDeviceAbsoluteUs >= 0 && absoluteUs < lastDeviceAbsoluteUs) {
+            absoluteUs = lastDeviceAbsoluteUs;
+        } else if (absoluteUs > lastDeviceAbsoluteUs) {
+            lastDeviceAbsoluteUs = absoluteUs;
         }
         if (timestampOriginUs < 0) {
             timestampOriginUs = absoluteUs;
+            lastDeviceAbsoluteUs = absoluteUs;
+            markHostOrigin();
         }
-        long outUs = absoluteUs - timestampOriginUs;
+        long deviceRelUs = absoluteUs - timestampOriginUs;
+        long outUs = deviceRelUs;
+        if (hostTimeStretchEnabled && hostScale > 0.0) {
+            outUs = Math.round(deviceRelUs / hostScale);
+        }
+        if (lastStretchedRelUs >= 0 && outUs < lastStretchedRelUs) {
+            outUs = lastStretchedRelUs;
+        } else {
+            lastStretchedRelUs = outUs;
+        }
         while (outUs > Integer.MAX_VALUE) {
             outUs -= OUTPUT_INT_US_SPAN;
             bigWrapCount++;

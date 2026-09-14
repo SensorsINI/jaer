@@ -30,7 +30,8 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
     private static final String BIAS_SECTION_TOOLTIP = "<html>Sliders tweak loaded settings around file values.<br>"
             + "<b>Undo/Redo</b> in the Biases toolbar; <b>File→Revert</b> restores the .txt.";
     private static final String TIMING_SECTION_TOOLTIP = "<html>Scan rate morphs DTAG registers (0x321D:321E and block).<br>"
-            + "Sub-timestamp (0x32B2) is USB packet cadence within each ms.";
+            + "Sub-timestamp (0x32B2) is USB packet cadence within each ms.<br>"
+            + "Host-time stretch maps decoded event µs onto System.nanoTime() (CX3 prototype clock).";
     private static final String GLOBAL_SETTING_TOOLTIP = "<html>Global settings for the NRV sensor (0x320C register).";
     private static final int SUB_UNIT_MIN = 1;
     private static final int SUB_UNIT_MAX = 0x7F;
@@ -40,6 +41,8 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
     private final JSlider timestampSubSlider = new JSlider(SUB_UNIT_MIN, SUB_UNIT_MAX, 0x21);
     private final JCheckBox globalResetCheckBox = new JCheckBox("Enable global reset mode (0x320C[1])");
     private final JCheckBox globalHoldCheckBox = new JCheckBox("Enable global hold mode (0x320C[0])");
+    private final JCheckBox hostTimeStretchCheckBox = new JCheckBox(
+            "Stretch timestamps to host clock (CX3 prototype)");
     private final JLabel thresholdValueLabel = new JLabel();
     private final JLabel onOffValueLabel = new JLabel();
     private final JLabel kRatioLabel = new JLabel();
@@ -99,6 +102,11 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
                 config.setGlobalHoldModeEnabled(globalHoldCheckBox.isSelected());
             }
         });
+        hostTimeStretchCheckBox.addActionListener(e -> {
+            if (!updatingFromConfig) {
+                config.setHostTimeStretchEnabled(hostTimeStretchCheckBox.isSelected());
+            }
+        });
     }
 
     private JPanel buildTimingSection() {
@@ -111,6 +119,12 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
         section.add(Box.createVerticalStrut(6));
         section.add(wrapSlider("Sub-timestamp (0x32B2)", timestampSubSlider, timestampSubValueLabel));
         section.add(subTimestampTimingLabel);
+        section.add(Box.createVerticalStrut(6));
+        hostTimeStretchCheckBox.setToolTipText("<html>USB decode still uses SDK t_us = ref_ms*1000+sub.<br>"
+                + "Then each event is rounded onto System.nanoTime() so muxed OpenCV stays in sync.<br>"
+                + "Turn off when CX3 firmware matches host time.");
+        hostTimeStretchCheckBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(hostTimeStretchCheckBox);
         stretchHorizontal(section);
         return section;
     }
@@ -145,6 +159,7 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
                     config.getBaselineTimestampSub()));
             globalResetCheckBox.setSelected(config.isGlobalResetModeEnabled());
             globalHoldCheckBox.setSelected(config.isGlobalHoldModeEnabled());
+            hostTimeStretchCheckBox.setSelected(config.isHostTimeStretchEnabled());
         } finally {
             updatingFromConfig = false;
         }
@@ -217,6 +232,10 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
             timestampSubSlider.setValue(v);
             updatingFromConfig = false;
             updateChipSpecificLabels();
+        } else if (NRVConfig.PROPERTY_HOST_TIME_STRETCH.equals(name) && evt.getNewValue() instanceof Boolean v) {
+            updatingFromConfig = true;
+            hostTimeStretchCheckBox.setSelected(v);
+            updatingFromConfig = false;
         } else if (NRVConfig.PROPERTY_FRAME_MARGIN.equals(name)
                 || NRVConfig.PROPERTY_THRESHOLD.equals(name)
                 || NRVConfig.PROPERTY_ON_OFF_BALANCE.equals(name)

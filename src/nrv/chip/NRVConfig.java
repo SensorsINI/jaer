@@ -21,6 +21,7 @@ import net.sf.jaer.util.VendorPrefsMigration;
 import nrv.usb.NRVHardwareInterface;
 import nrv.usb.NRVRegisterSetting;
 import nrv.usb.NRVSettingsParser;
+import nrv.usb.S5KRC1SParser;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.biasgen.PotTweakerUtilities;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
@@ -97,6 +98,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final String PROPERTY_SCAN_RATE_HZ = "nrvScanRateHz";
     public static final String PROPERTY_REGISTER_UPDATED = "nrvRegisterUpdated";
     public static final String PROPERTY_PIXEL_BIAS = "nrvPixelBias";
+    public static final String PROPERTY_HOST_TIME_STRETCH = "nrvHostTimeStretch";
+    public static final String PREFS_HOST_TIME_STRETCH = "NRV.hostTimeStretch";
 
     private static final float TWEAK_MAX_RATIO = 8f;
     private static final int REG_VALUE_MIN = 1;
@@ -978,6 +981,25 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     /** Enables or disables global hold mode through {@code 0x320C[0]}. */
     public void setGlobalHoldModeEnabled(boolean enabled) {
         setDtagModeBit(DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK, enabled, "global hold mode");
+    }
+
+    /**
+     * Stretch USB-decoded event timestamps onto {@link System#nanoTime()} so muxed
+     * OpenCV frames share host time. Default on for CX3 prototypes; prefs sticky.
+     * {@code -Djaer.nrv.hostTimeStretch=false} is the default only until prefs exist.
+     */
+    public boolean isHostTimeStretchEnabled() {
+        return getChip().getPrefs().getBoolean(PREFS_HOST_TIME_STRETCH,
+                S5KRC1SParser.defaultHostTimeStretchEnabled());
+    }
+
+    public void setHostTimeStretchEnabled(boolean enabled) {
+        boolean old = isHostTimeStretchEnabled();
+        getChip().getPrefs().putBoolean(PREFS_HOST_TIME_STRETCH, enabled);
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
+            hw.setHostTimeStretchEnabled(enabled);
+        }
+        support.firePropertyChange(PROPERTY_HOST_TIME_STRETCH, old, enabled);
     }
 
     private void setDtagModeBit(int mask, boolean enabled, String comment) {

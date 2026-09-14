@@ -45,7 +45,7 @@ True format enums (DirectShow `GetStreamCaps`, V4L2 `VIDIOC_ENUM_FMT`) are not u
 
 - RGB frames are written as DV `OPENCV_8U_C3` (BGR in the file).
 - AEDZ cannot store frames; the first record on this chip offers AEDAT-4 (same as Davis).
-- Muxed AEDAT-4 with an event camera: **File → Synchronize**, then record. `JAERViewer` zeros timestamps on all recording viewers at muxed start so USB counters and the webcam clock share t=0 for that file. Alignment is **software** (about one frame period), not a hardware trigger.
+- Muxed AEDAT-4 with an event camera: **File → Synchronize**, then record. `JAERViewer` zeros timestamps on all recording viewers at muxed start so USB counters and the webcam clock share t=0 for that file. Alignment is **software** (about one frame period), not a hardware trigger. OpenCV timestamps are host `nanoTime`. Live NRV USB decode stretches device µs onto the same host clock (CX3 prototype ~6% fast). After that zero, `NRV clock vs host` is FINE in `%t/jaer/jAER-0.log` (every 5 s for 3 min, then once a minute): raw `drift` stays ~+6%; `stretchedDrift` should stay near 0 ms after ~0.5 s warmup.
 
 Playback of muxed files assigns EVTS cameras as before and FRME-only cameras (or OpenCV EVTS+FRME with the same `source`) to `OpenCvFrameCamera`.
 

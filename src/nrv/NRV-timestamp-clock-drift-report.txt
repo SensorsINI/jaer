@@ -1,0 +1,147 @@
+NRV DELTA01 / S5KRC1S timestamp clock vs host time
+==================================================
+From: Institute of Neuroinformatics / jAER
+      https://github.com/SensorsINI/jaer
+Date: 13 September 2026
+Contact: Tobi Delbruck
+
+Hardware: NRV DELTA01, Samsung S5KRC1S, Cypress CX3 (USB VID:PID 04b4:00f1)
+Host: Windows 11
+Host software: jAER USB parser, port of DVS_SDK_FX20 PacketParser::S5KRC1SDataProcess
+Settings: factory I2C file S5KRC1S_300_CX3.txt (default on this unit)
+
+  TSTAMP_SUB_UNIT_VAL  0x32B1:32B2 = 0x0021  (33)
+  TSTAMP_REF_UNIT_VAL  0x32B3:32B4 = 0x03E7  (999)
+  OUTIF                0x3911      = 0x7C    (comment in file: event clock 1 us)
+
+
+SUMMARY
+-------
+Event timestamps reconstructed from the USB stream run about 6% fast compared
+with the PC host clock. That is far larger than a typical crystal (ppm) error.
+After a few seconds of live capture, device time is already hundreds of
+milliseconds ahead of wall time.
+
+We compared our decoder with NRV DVS_SDK_FX20 (PacketParser.cpp). The host-side
+formula is the same. The 6% is therefore in the device timestamp clock (or in
+the intended meaning of the 22-bit / 10-bit fields), not a jAER scale bug.
+
+
+HOW TIME IS RECONSTRUCTED (matches DVS_SDK_FX20)
+------------------------------------------------
+USB words are 4 bytes. Timestamp packets are normal packets (P=0) with
+header (pkt[0] & 0x7C) == 0x08. Same test as FileStream.cpp.
+
+  Reference packet (pkt[1] bit7 = 0):
+    22-bit field stored as milliseconds:
+      ref_ms = ((pkt[1] & 0x3F) << 16) | (pkt[2] << 8) | pkt[3]
+
+  Sub packet (pkt[1] bit7 = 1):
+    10-bit field treated as microseconds within that millisecond:
+      sub    = ((pkt[2] & 0x03) << 8) | pkt[3]
+      t_us   = ref_ms * 1000 + sub
+
+This is PacketParser::S5KRC1SDataProcess:
+
+      uint32_t subTS = (((uint32_t)(pkt[i+2] & 0x03) << 8) |
+                        (uint32_t)(pkt[i+3] & 0xFF));
+      uint32_t newTs = subTS + mRefTimeStamp[sensorID] * 1000;
+      mFullTimeStamp[sensorID] = newTs;
+
+Events inherit the last mFullTimeStamp (no interpolation).
+
+Column packets (header 0x04) comment mentions a 10-bit sub field. The SDK
+does not apply that field to mFullTimeStamp. jAER does the same.
+
+If newTs would go backwards, both SDK and jAER increment ref_ms by 1.
+On this unit that software bump is only ~0.3/s (~0.03%) and does not explain
+the 6%.
+
+
+TSTAMP_REF / TSTAMP_SUB ARE NOT USED IN THE SDK PARSER
+------------------------------------------------------
+DVS_SDK_FX20 C++ sources contain no references to TSTAMP_REF, TSTAMP_SUB,
+0x32B1, or 0x32B3. Those I2C registers change how often sub-timestamp packets
+appear in the USB stream. They are not a host-side multiplier on the 10-bit
+field.
+
+Samsung-style note in the settings / datasheet material:
+
+      sub_interval_us = (TSTAMP_REF_UNIT + 1) / TSTAMP_SUB_UNIT
+
+At the 300 fps CX3 preset that is (999+1)/33 ~= 30.3 us. The USB parser still
+adds the 10-bit field as 1 us ticks. We did not invent a second scale; we
+followed PacketParser.cpp.
+
+FX3Stream::SetStart() has a hardware timestamp reset commented out:
+
+      // Sensor Timestamp Reset to 0
+      // WriteI2CReg(0x20, 0x3238, 0x01);
+      // WriteI2CReg(0x20, 0x3238, 0x00);
+
+jAER therefore subtracts a software origin (same idea as a host-side zero).
+That only shifts the origin. It does not change the 6% rate.
+
+
+MEASUREMENT 1 — live NRV vs host (no OpenCV needed)
+---------------------------------------------------
+After a software timestamp zero, jAER logs every ~2 s:
+
+  device elapsed  = reconstructed t_us since origin
+  host elapsed    = System.nanoTime() since the same origin
+
+Representative line after zero at 19:02:44 local time:
+
+  host 27.101 s   device 28.769 s   drift +1668 ms   (+6.16%)
+  extraMsBumps=8  (0.30/s)
+
+The rate stayed about +5.9% to +6.2% for the rest of the run. Before zero,
+device time was already ~2815 s into the session; after zero the *rate* was
+unchanged. extraMsBumps is not the 6%.
+
+
+MEASUREMENT 2 — muxed AEDAT-4 with a UVC webcam
+-----------------------------------------------
+File (jAER muxed recording, both streams zeroed at record start):
+
+  NRVS5KRC1S-us1addr1_OpenCvFrameCamera-cam0_2026-09-13T18-22-16-0400.aedat4
+
+OpenCV / UVC frames are stamped with host System.nanoTime() (not the webcam
+SOF clock). Independent stream durations in the file:
+
+  OpenCV FRME   11.68 s   (309 frames, ~26.4 fps)
+  NRV    EVTS   12.38 s
+  start offset after zero:  -11 ms
+  rate NRV/OpenCV = 1.060
+
+At 5 s of host time, NRV timestamps are about +299 ms ahead. That matches
+the visual desync when the two streams are played back locked to event time.
+
+
+WHAT WE ARE ASKING
+------------------
+1. Is t_us = ref_ms * 1000 + sub the official reconstruction for S5KRC1S
+   AER USB packets on CX3 / DELTA01? If not, what is the formula, including
+   TSTAMP_REF, TSTAMP_SUB, and OUTIF 0x3911?
+
+2. What physical clock drives the 22-bit reference millisecond counter?
+   Sensor, CX3, or PLL from OUTIF? Expected accuracy vs 1 ms wall time?
+
+3. Does the official NRV viewer / SDK sample apply any host-side calibration
+   of event timestamps to PC time? We found none in PacketParser.cpp /
+   FX3Stream.cpp / DeviceStream.cpp.
+
+4. At TSTAMP_SUB=33 / TSTAMP_REF=999, should the 10-bit sub field be read as
+   microseconds, or as ticks of (REF+1)/SUB (~30.3 us)? Treating ticks as
+   microseconds would make reconstructed time *slower*, not faster, so it
+   does not by itself explain +6%.
+
+5. Is I2C 0x3238 the supported hardware timestamp reset on CX3? The SDK
+   leaves it commented out. Is there a recommended reset sequence so host
+   and device share a common origin without a software subtract?
+
+6. Can you reproduce ~+6% vs a PC clock (or vs a UVC camera on the same
+   host) with this 300 fps CX3 preset on DELTA01?
+
+
+We can share the AEDAT-4 file and the live log on request.
