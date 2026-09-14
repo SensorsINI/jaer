@@ -25,11 +25,13 @@ import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.eventio.AEFileInputStream;
@@ -536,6 +538,10 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         updateCountModeControlEnablement();
 
         pauseButton.setAction(aePlayer.pausePlayAction);
+        // Space is the Playback menu accelerator. The button would also
+        // register SPACE on WHEN_IN_FOCUSED_WINDOW and double-toggle.
+        pauseButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("SPACE"), "none");
         playForwardsButton.setAction(aePlayer.playAction);
         reverseButton.setAction(aePlayer.reverseAction);
         playBackwardsButton.setAction(aePlayer.playBackwardsAction);
@@ -548,6 +554,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         setInB.setAction(aePlayer.markInAction);
         setOutB.setAction(aePlayer.markOutAction);
         toggleMarkerB.setAction(aePlayer.toggleMarkerAction);
+
+        if (markerPopupMenu != null) {
+            markerPopupMenu.removeAll();
+            markerPopupMenu.add(aePlayer.pausePlayAction);
+            markerPopupMenu.add(aePlayer.markInAction);
+            markerPopupMenu.add(aePlayer.markOutAction);
+            markerPopupMenu.add(aePlayer.toggleMarkerAction);
+            markerPopupMenu.add(aePlayer.clearMarksAction);
+        }
 
         showMoreControlsButton.setAction(moreLessAction);
 

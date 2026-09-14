@@ -210,8 +210,11 @@ viewers keep autobind (`autobindOnWaiting`) so a restart rebinds without Interfa
 File → New stays WAITING until the user picks a camera.
 
 Interface / Refresh calls `userRequestedOpen` on **that** viewer and always
-succeeds. Native `open()` waits on `USB_OPEN_SERIAL_LOCK` if another camera is
-still in `open()`. A map miss does not set `nullInterface`.
+succeeds. After bind, that viewer **unpauses** (not during PLAYBACK) so ViewLoop
+can `openAEMonitor` and show live events; pause leftover from synced playback
+used to bind the camera and sit in WAITING forever. Native `open()` waits on
+`USB_OPEN_SERIAL_LOCK` if another camera is still in `open()`. A map miss does
+not set `nullInterface`.
 
 `AEViewer.openAEMonitor()` uses thread `jaer-aemon-open` and
 `USB_OPEN_SERIAL_LOCK`. Bind uses `HARDWARE_CLAIM_LOCK` (chooser is not held).

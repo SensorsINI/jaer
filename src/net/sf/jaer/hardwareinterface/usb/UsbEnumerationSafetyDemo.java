@@ -1192,6 +1192,8 @@ public final class UsbEnumerationSafetyDemo {
         require(jvSrc.indexOf("SessionCameraOpenCoordinator.beginUiRestore")
                 < jvSrc.indexOf("restoringSessionViewers = true"),
                 "UI restore gate is armed before session windows are created");
+        require(jvSrc.contains("rebindPlaybackControlsOnAllViewers()"),
+                "adding a viewer rebinds Pause/Space to SyncPlayer");
         Path ws = Paths.get("src", "net", "sf", "jaer", "util", "WindowSaver.java");
         String wsSrc = Files.readString(ws, StandardCharsets.UTF_8);
         require(wsSrc.contains("runAfterQueuedRestores"),
@@ -1202,6 +1204,10 @@ public final class UsbEnumerationSafetyDemo {
                 "ViewLoop bind/open is gated during UI restore");
         require(v.contains("SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this);"),
                 "Interface always requests open (no early return)");
+        require(v.contains("bindPlaybackControlsToActivePlayer()"),
+                "Playback Pause/Space uses getAePlayer (SyncPlayer when synced)");
+        require(v.contains("unpauseForLiveUsbOpen()"),
+                "Interface/Refresh unpause so WAITING can open USB after playback pause");
         require(!v.contains("if (!SessionCameraOpenCoordinator.userRequestedOpen(AEViewer.this))"),
                 "Interface does not drop the click when another camera is opening");
         require(v.contains("leftover same-family"),

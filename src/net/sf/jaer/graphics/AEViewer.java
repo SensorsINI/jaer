@@ -935,10 +935,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
                 playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
                 jaerViewer.getSyncPlayer().getSupport().addPropertyChangeListener(playerControls);
-                if (jaerViewer.isSyncEnabled()) {
-                    playerControls.setAePlayer(jaerViewer.getSyncPlayer());
-                }
             }
+            bindPlaybackControlsToActivePlayer();
         } else {
             autobindOnWaiting = true;
             setViewerInstanceIndex(0);
@@ -4025,6 +4023,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         } finally {
                             hardwareSwitchInProgress = false;
                         }
+                        // After bind: leftover pause from playback skipped grabInput /
+                        // openAEMonitor (jAER-0.log 05:25:10 NRV Interface bind, never hold).
+                        unpauseForLiveUsbOpen();
                         // Wake WAITING sleep only after bind. interruptViewloop during
                         // openAEMonitor must not unbind the camera that is still opening.
                         interruptViewloop();
@@ -5521,6 +5522,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (nextHi != null && nextHi != opening) {
                             nullInterface = false;
                             SessionCameraOpenCoordinator.userRequestedOpen(this);
+                            unpauseForLiveUsbOpen();
                             log.info("openAEMonitor: keeping newly bound " + nextHi
                                     + " after abort of hung " + opening);
                             return;
@@ -8839,6 +8841,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pauseRenderingCheckBoxMenuItem.setAction(aePlayer.pausePlayAction);
         pauseRenderingCheckBoxMenuItem.setText("Pause");
+        pauseRenderingCheckBoxMenuItem.setToolTipText(
+                "Pause or resume playback. Space. With synchronized playback, all AEViewers.");
         playbackMenu.add(pauseRenderingCheckBoxMenuItem);
 
         viewStepForwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
@@ -9801,6 +9805,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         buildInterfaceMenu();
                         if (bound) {
+                            unpauseForLiveUsbOpen();
                             interruptViewloop();
                             showActionText("Found 1 hardware interface, opening…");
                         } else if (n > 1) {
@@ -14129,6 +14134,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Resume so ViewLoop {@code grabInput} / {@code openAEMonitor} can run.
+     * Pause leftover from synced playback bound a camera on Interface but never
+     * opened USB (jAER-0.log 05:25:10). Does not resume file PLAYBACK.
+     */
+    private void unpauseForLiveUsbOpen() {
+        if (!isPaused()) {
+            return;
+        }
+        PlayMode mode = getPlayMode();
+        if (mode == PlayMode.PLAYBACK || mode == PlayMode.FILTER_INPUT) {
+            return;
+        }
+        log.info("unpausing " + getViewerWindowLabel() + " so USB can open and show live events");
+        setPaused(false);
+    }
+
+    /**
      * Sets paused. If viewing is synchronized, then all viwewers will be
      * paused. Fires PropertyChangeEvent "paused". Interrupts the ViewLoop.
      *
@@ -14753,6 +14775,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     public JCheckBoxMenuItem getSyncEnabledCheckBoxMenuItem() {
         return syncEnabledCheckBoxMenuItem;
+    }
+
+    /**
+     * Bind Playback menu Pause/Space and the player panel to
+     * {@link #getAePlayer()} (SyncPlayer when multi-viewer sync is on).
+     * Space used to toggle only this window's local {@code aePlayer} while
+     * ViewLoop read SyncPlayer (interaction log 09:23:18 Space, heartbeat
+     * {@code paused=false}).
+     */
+    public void bindPlaybackControlsToActivePlayer() {
+        AbstractAEPlayer p = getAePlayer();
+        if (p == null) {
+            return;
+        }
+        if (pauseRenderingCheckBoxMenuItem != null) {
+            pauseRenderingCheckBoxMenuItem.setAction(p.pausePlayAction);
+            boolean paused = p.isPaused();
+            pauseRenderingCheckBoxMenuItem.setText(paused ? "Play" : "Pause");
+            pauseRenderingCheckBoxMenuItem.setSelected(paused);
+        }
+        if (playerControls != null) {
+            playerControls.setAePlayer(p);
+        }
     }
 
     /**

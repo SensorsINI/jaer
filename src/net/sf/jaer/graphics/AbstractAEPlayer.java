@@ -920,11 +920,31 @@ public abstract class AbstractAEPlayer {
         public PausePlayAction() {
             super("Pause", "Pause16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("SPACE"));
-            putValue(Action.SHORT_DESCRIPTION, "Pause or resume playback");
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Pause or resume playback (all AEViewers when synchronized)");
         }
 
+        /** Ignore a second Space in the same key event (menu + panel button). */
+        private long lastPerformNs;
+
         public void actionPerformed(ActionEvent e) {
+            if (viewer != null) {
+                AbstractAEPlayer active = viewer.getAePlayer();
+                if (active.pausePlayAction != this) {
+                    active.pausePlayAction.actionPerformed(e);
+                    return;
+                }
+            }
+            long now = System.nanoTime();
+            if (now - lastPerformNs < 80_000_000L) {
+                return;
+            }
+            lastPerformNs = now;
             showAction();
+            if (viewer != null) {
+                viewer.setPaused(!viewer.isPaused());
+                return;
+            }
             if (isPaused()) {
                 setPaused(false);
                 setPauseAction();
@@ -1231,7 +1251,8 @@ public abstract class AbstractAEPlayer {
 
         public PauseAction() {
             super("Pause", "Pause16");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0));
+            // Space is PausePlayAction only (toggle). A second SPACE accelerator
+            // here raced the Playback menu during sync playback.
         }
 
         public void actionPerformed(ActionEvent e) {

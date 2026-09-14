@@ -680,6 +680,7 @@ public class JAERViewer {
             }
         });
         buildMenus(viewer);
+        rebindPlaybackControlsOnAllViewers();
         refreshViewerTitles();
         refreshWaitingWelcomeOverlays();
     }
@@ -761,6 +762,7 @@ public class JAERViewer {
         for (AbstractButton bb : syncEnableButtons) {
             bb.setEnabled(en);
         }
+        rebindPlaybackControlsOnAllViewers();
         refreshViewerTitles();
         refreshWaitingWelcomeOverlays();
     }
@@ -1340,11 +1342,15 @@ public class JAERViewer {
         }
         for (AEViewer v : viewers) {
             v.applySyncEnabledUi(syncEnabled);
-            AbstractAEPlayer p = syncEnabled ? syncPlayer : v.aePlayer;
-            if (v.getPlayerControls() != null) {
-                v.getPlayerControls().setAePlayer(p);
-            }
+            v.bindPlaybackControlsToActivePlayer();
             v.getSupport().firePropertyChange(AEViewer.EVENT_SYNC_ENABLED, old, syncEnabled);
+        }
+    }
+
+    /** Playback Pause/Space follows SyncPlayer when sync is on and there are 2+ viewers. */
+    void rebindPlaybackControlsOnAllViewers() {
+        for (AEViewer v : viewers) {
+            v.bindPlaybackControlsToActivePlayer();
         }
     }
 
