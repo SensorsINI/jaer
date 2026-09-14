@@ -73,7 +73,7 @@ function Send-ReleaseNotesWebp([string]$FilePath) {
     return [string]$href
 }
 
-$lines = @(Get-Content -LiteralPath $notes)
+$lines = @(Get-Content -LiteralPath $notes -Encoding UTF8)
 Write-Host "Release notes: $notes"
 
 $out = New-Object System.Collections.Generic.List[string]
