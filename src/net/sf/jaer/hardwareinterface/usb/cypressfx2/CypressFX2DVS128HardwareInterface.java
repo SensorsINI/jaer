@@ -75,7 +75,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }
-
+        flushPoolsOnTimestampReset();
     }
 
     public long getLastHardwareResetEventNanos() {
@@ -218,6 +218,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         this.resetTimestamps();
                         lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
                         lastHardwareResetEventNanos = System.nanoTime();
+                        discardPreResetCapturedEvents();
                         if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) || ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
                             log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0x3f) << 8))));
                         }

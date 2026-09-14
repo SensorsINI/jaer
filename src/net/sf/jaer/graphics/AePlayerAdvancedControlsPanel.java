@@ -27,6 +27,7 @@ import javax.swing.Action;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
@@ -1200,11 +1201,25 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 }//GEN-LAST:event_fixedTimeSliceButtonActionPerformed
 
     private void fixedPacketSizeButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fixedPacketSizeButtonActionPerformed
+        if (aeViewer != null && aeViewer.synchronizedPlaybackRequiresCountDuration()) {
+            JOptionPane.showMessageDialog(this,
+                    "Synchronized playback uses CountDuration so all viewers show the same time slices.");
+            aePlayer.setPlaybackMode(PlaybackMode.FixedTimeSlice);
+            updateCountModeControlEnablement();
+            return;
+        }
         aePlayer.setPlaybackMode(PlaybackMode.FixedPacketSize);
         updateCountModeControlEnablement();
 }//GEN-LAST:event_fixedPacketSizeButtonActionPerformed
 
     private void areaEventCountButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        if (aeViewer != null && aeViewer.synchronizedPlaybackRequiresCountDuration()) {
+            JOptionPane.showMessageDialog(this,
+                    "Synchronized playback uses CountDuration so all viewers show the same time slices.");
+            aePlayer.setPlaybackMode(PlaybackMode.FixedTimeSlice);
+            updateCountModeControlEnablement();
+            return;
+        }
         aePlayer.setPlaybackMode(PlaybackMode.AreaEventCount);
         if (aePlayer.getAreaEventCountExposer() != null) {
             packetSizeSpinner.setValue(aePlayer.getAreaEventCountExposer().getEventCount());

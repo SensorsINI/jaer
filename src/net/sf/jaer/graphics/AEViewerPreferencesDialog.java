@@ -1099,7 +1099,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 if (updatingUi) {
                     return;
                 }
-                viewer.getFrameRater().setDesiredFPS(((Number) desiredFpsSpinner.getValue()).intValue());
+                viewer.setDesiredFrameRate(((Number) desiredFpsSpinner.getValue()).intValue());
             }
         });
         p.add(desiredFpsSpinner, gbcField(y++));

@@ -50,6 +50,22 @@ public class UsbPolarityBundleBuilder {
         fill.allocate(targetCapacity);
     }
 
+    /**
+     * Drop polarity already decoded into the current write slot. Used when the
+     * device timestamp counter is zeroed so muxed recordings do not mix
+     * pre-reset leftovers with {@code t=0}.
+     */
+    public synchronized void rewindCurrentSlot() {
+        if (polarity != null) {
+            polarity.clear();
+            polarityOut = polarity.outputIterator();
+            polarityInBundle = false;
+        }
+        if (out != null) {
+            out.clear();
+        }
+    }
+
     public synchronized void attach(PacketBundle writeBundle) {
         if (writeBundle == null) {
             return;

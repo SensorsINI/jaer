@@ -39,6 +39,16 @@ final class SciDVSGaerRawSink implements SciDVSGaerSink {
         return eventCounter;
     }
 
+    /** Forget events already written into the current raw packet (device timestamp reset). */
+    void rewindCapture() {
+        eventCounter = 0;
+        if (packet != null) {
+            packet.clear();
+            packet.lastCaptureIndex = 0;
+            packet.lastCaptureLength = 0;
+        }
+    }
+
     @Override
     public void onTimestampReset() {
         timestampResetHandler.run();

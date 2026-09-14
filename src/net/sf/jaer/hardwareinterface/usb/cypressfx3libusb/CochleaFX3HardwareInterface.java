@@ -199,6 +199,7 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 										currentTimestamp = 0;
 
 										updateTimestampMasterStatus();
+										discardPreResetCapturedEvents();
 
 										CypressFX3.log.info("Timestamp reset event received on " + super.toString());
 										break;

@@ -704,10 +704,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     }
 
     /**
-     * Reset the timestamps to zero. This has two effects. First it sends a
-     * vendor request down the control endpoint to tell the device to reset its
-     * own internal timestamp counters. Second, it tells the AEReader object to
-     * reset its timestamps, meaning to reset its unwrap counter.
+     * Reset the timestamps to zero. Sends an FPGA mux pulse so the device
+     * resets its counters (a USB timestamp-reset special event follows) and
+     * drops events already sitting in the capture pools so muxed recordings do
+     * not mix pre-reset leftover timestamps with {@code t=0}.
      */
     @Override
     synchronized public void resetTimestamps() {
@@ -727,6 +727,50 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             configSequence.sendConfigSequence();
         } catch (final HardwareInterfaceException e) {
             CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
+        }
+        flushPoolsOnTimestampReset();
+    }
+
+    /**
+     * Drop packets already queued for ViewLoop plus the current write cursor.
+     * Host {@code 0} / mux-record start: the FPGA reset event has not arrived yet.
+     */
+    protected void flushPoolsOnTimestampReset() {
+        synchronized (aePacketRawPool) {
+            final int dropped = eventCounter
+                    + aePacketRawPool.readBuffer().getNumEvents()
+                    + aePacketRawPool.writeBuffer().getNumEvents();
+            aePacketRawPool.reset();
+            packetBundlePool.reset();
+            eventCounter = 0;
+            realTimeEventCounterStart = 0;
+            if (aeReader != null) {
+                aeReader.rewindTypedBuildersAfterTimestampReset();
+            }
+            if (dropped > 0) {
+                CypressFX3.log.info(this + ": flushed " + dropped
+                        + " pre-reset events from capture pools");
+            }
+        }
+    }
+
+    /**
+     * Drop events already translated into the current write buffers. Caller
+     * must hold {@link #aePacketRawPool} (USB {@code translateEvents}).
+     */
+    protected void discardPreResetCapturedEvents() {
+        final int dropped = eventCounter;
+        eventCounter = 0;
+        realTimeEventCounterStart = 0;
+        final AEPacketRaw write = aePacketRawPool.writeBuffer();
+        write.clear();
+        write.lastCaptureIndex = 0;
+        write.lastCaptureLength = 0;
+        write.overrunOccuredFlag = false;
+        packetBundlePool.writeBuffer().clear();
+        if (dropped > 0) {
+            CypressFX3.log.info(this + ": dropping " + dropped
+                    + " pre-reset events from current USB write buffer");
         }
     }
 
@@ -1358,6 +1402,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
          */
         protected void translateEvents(final ByteBuffer buffer) {
             CypressFX3.log.severe("Error: This method should never be called, it must be overridden!");
+        }
+
+        /**
+         * Rewind USB typed builders after a timestamp reset. DAVIS / DVX
+         * override; default is a no-op.
+         */
+        protected void rewindTypedBuildersAfterTimestampReset() {
         }
 
         class ProcessAEData implements RestrictedTransferCallback {

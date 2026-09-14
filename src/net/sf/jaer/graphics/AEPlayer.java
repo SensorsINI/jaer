@@ -820,6 +820,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void rewind() {
+        if (viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()
+                && viewer.getJaerViewer() != null && viewer.getJaerViewer().getSyncPlayer() != null) {
+            viewer.getJaerViewer().getSyncPlayer().rewind();
+            return;
+        }
+        rewindStreamOnly();
+    }
+
+    /** Rewind this viewer's stream only. {@link net.sf.jaer.SyncPlayer} calls this for every member. */
+    public void rewindStreamOnly() {
         cancelJog();
         if (aeInputStream == null) {
             return;
@@ -829,7 +839,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             resetDavisApsAssembler();
             clearAreaEventLeftover();
             if (viewer != null) {
-                viewer.filterChain.reset(); // already done in aePlayer
+                viewer.filterChain.reset();
                 viewer.getRenderer().resetAccumulation();
             } else {
                 log.warning("null AEViewer, cannot reset filter change or accumulation mode");
@@ -969,6 +979,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             log.fine(String.format("%s: %s", player.getAEInputStream().getFile(), e.toString()));
             cancelJog();
             setDirectionForwards(true);
+            if (viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()
+                    && viewer.getJaerViewer() != null && viewer.getJaerViewer().getSyncPlayer() != null) {
+                viewer.getJaerViewer().getSyncPlayer().noteSliceEndedPrematurely();
+                return aeRaw != null ? aeRaw : new AEPacketRaw(0);
+            }
             try {
                 Thread.sleep(200);
             } catch (InterruptedException ignore) {

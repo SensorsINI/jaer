@@ -142,6 +142,32 @@ public class DavisUsbPacketBundleBuilder {
         this.rollingShutter = rollingShutter;
     }
 
+    /**
+     * Drop events already decoded into the current write slot. Used when the
+     * device timestamp counter is zeroed so muxed recordings do not mix
+     * pre-reset leftovers with {@code t=0}.
+     */
+    public void rewindCurrentSlot() {
+        if (polarity != null) {
+            polarity.clear();
+            polarityOut = polarity.outputIterator();
+            polarityInBundle = false;
+        }
+        if (imu != null) {
+            imu.clear();
+            imuInBundle = false;
+        }
+        if (external != null) {
+            external.clear();
+            externalOut = external.outputIterator();
+            externalInBundle = false;
+        }
+        if (out != null) {
+            out.clear();
+        }
+        resetAssembler();
+    }
+
     /** Drop in-progress APS assembly. Called when the USB reader is restarted. */
     public void resetAssembler() {
         if (frameAssembler != null) {

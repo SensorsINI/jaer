@@ -1207,6 +1207,11 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
             polarityBuilder.attach(packetBundlePool.writeBuffer());
         }
 
+        @Override
+        protected void rewindTypedBuildersAfterTimestampReset() {
+            polarityBuilder.rewindCurrentSlot();
+        }
+
         private void endTypedDemux(final AEPacketRaw buffer) {
             buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
             if (usbTypedDemuxActive) {
@@ -1291,6 +1296,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 implements Biasgen
                                         currentTimestamp = 0;
 
                                         updateTimestampMasterStatus();
+                                        discardPreResetCapturedEvents();
+                                        rewindTypedBuildersAfterTimestampReset();
 
                                         CypressFX3.log.info(String.format("Timestamp reset event received on %s at System.currentTimeMillis() = %d",
                                             super.toString(), System.currentTimeMillis()));

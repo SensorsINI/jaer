@@ -3,6 +3,7 @@ package prophesee.usb;
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
@@ -43,6 +44,7 @@ public class PropheseeAEReader {
     private final PropheseeHardwareInterface monitor;
     private final Evt3Parser parser = new Evt3Parser();
     private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
+    private final AtomicInteger timestampEpoch = new AtomicInteger();
     private final UsbAsyncBulkReaderLifecycle bufferLifecycle;
     private USBTransferThread usbTransfer;
     private volatile boolean readerActive;
@@ -336,6 +338,7 @@ public class PropheseeAEReader {
         }
 
         final long parseStart = sample != null ? System.nanoTime() : 0;
+        final int epoch = timestampEpoch.get();
         final int[] addr = parseLimit > 0 ? stagingAddresses : DISCARD_INTS;
         final int[] ts = parseLimit > 0 ? stagingTimestamps : DISCARD_INTS;
         final int parsed = parser.parse(parseScratch, bytesAvailable, addr, ts, 0, parseLimit, true);
@@ -361,11 +364,15 @@ public class PropheseeAEReader {
         }
         parseScratchChunk.parsed = parsed;
         parseScratchChunk.parseLimit = parseLimit;
+        parseScratchChunk.epoch = epoch;
         return parseScratchChunk;
     }
 
     private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
         if (chunk == ParsedChunk.EMPTY) {
+            return;
+        }
+        if (chunk.epoch != timestampEpoch.get()) {
             return;
         }
         final boolean demux = monitor.isUsbTypedDemuxActive();
@@ -455,6 +462,7 @@ public class PropheseeAEReader {
 
         int parsed;
         int parseLimit;
+        int epoch;
 
         ParsedChunk(int parsed, int parseLimit) {
             this.parsed = parsed;
@@ -463,7 +471,9 @@ public class PropheseeAEReader {
     }
 
     public void resetTimestamps() {
+        timestampEpoch.incrementAndGet();
         parser.resetTimestampOrigin();
+        polarityBuilder.rewindCurrentSlot();
     }
 
     Evt3Parser getParser() {

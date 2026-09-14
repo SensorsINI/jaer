@@ -3244,7 +3244,19 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     @Override
     public synchronized void setPositionFromTimestamp(int timestampUs) {
-        position(eventIndexNearestTimestamp(timestampUs & 0xffffffffL));
+        long t = timestampUs & 0xffffffffL;
+        if (hasPolarity() && eventRefs.length > 0 && t > eventRefs[eventRefs.length - 1].unixEnd) {
+            position(playableSize());
+            return;
+        }
+        if (!hasPolarity() && timelineTimestamps.length > 0
+                && t > (timelineTimestamps[timelineTimestamps.length - 1] & 0xffffffffL)) {
+            position(playableSize());
+            typedPlayheadUs = t;
+            typedPlayheadSet = true;
+            return;
+        }
+        position(eventIndexNearestTimestamp(t));
     }
 
     /**

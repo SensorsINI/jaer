@@ -853,6 +853,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             aeReader.resetTimestamps();
             log.info("Prophesee resetTimestamps(): zeroing jAER time at current EVT3 time");
         }
+        synchronized (aePacketRawPool) {
+            aePacketRawPool.reset();
+            packetBundlePool.reset();
+            eventCounter = 0;
+        }
     }
 
     @Override

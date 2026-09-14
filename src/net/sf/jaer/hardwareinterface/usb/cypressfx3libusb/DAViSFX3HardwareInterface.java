@@ -421,8 +421,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
         private void handleGaerTimestampReset() {
             updateTimestampMasterStatus();
+            discardPreResetCapturedEvents();
+            rewindTypedBuildersAfterTimestampReset();
             CypressFX3.log.info("Timestamp reset event received on " + super.toString()
                     + " at System.currentTimeMillis()=" + System.currentTimeMillis());
+        }
+
+        @Override
+        protected void rewindTypedBuildersAfterTimestampReset() {
+            typedBuilder.rewindCurrentSlot();
+            gaerRawSink.rewindCapture();
         }
 
         private void checkMonotonicTimestamp() {
@@ -550,6 +558,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                         currentTimestamp = 0;
 
                                         updateTimestampMasterStatus();
+                                        discardPreResetCapturedEvents();
+                                        rewindTypedBuildersAfterTimestampReset();
 
                                         CypressFX3.log.info("Timestamp reset event received on " + super.toString()
                                                 + " at System.currentTimeMillis()=" + System.currentTimeMillis());

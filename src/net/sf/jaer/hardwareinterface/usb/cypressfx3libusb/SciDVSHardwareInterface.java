@@ -213,8 +213,15 @@ public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 
 		private void handleTimestampReset() {
 			updateTimestampMasterStatus();
+			discardPreResetCapturedEvents();
+			rewindTypedBuildersAfterTimestampReset();
 			CypressFX3.log.info("Timestamp reset event received on " + super.toString()
 				+ " at System.currentTimeMillis()=" + System.currentTimeMillis());
+		}
+
+		@Override
+		protected void rewindTypedBuildersAfterTimestampReset() {
+			gaerRawSink.rewindCapture();
 		}
 
 		@Override

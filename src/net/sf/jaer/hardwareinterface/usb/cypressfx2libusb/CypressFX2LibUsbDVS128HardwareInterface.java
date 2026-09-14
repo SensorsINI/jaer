@@ -127,7 +127,41 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
         } catch (final HardwareInterfaceException e) {
             CypressFX2.log.warning(e.toString());
         }
+        flushPoolsOnTimestampReset();
+    }
 
+    @Override
+    protected void flushPoolsOnTimestampReset() {
+        synchronized (aePacketRawPool) {
+            final int dropped = eventCounter
+                    + aePacketRawPool.readBuffer().getNumEvents()
+                    + aePacketRawPool.writeBuffer().getNumEvents();
+            aePacketRawPool.reset();
+            packetBundlePool.reset();
+            eventCounter = 0;
+            polarityBuilder.rewindCurrentSlot();
+            if (dropped > 0) {
+                CypressFX2.log.info(this + ": flushed " + dropped
+                        + " pre-reset events from capture pools");
+            }
+        }
+    }
+
+    @Override
+    protected void discardPreResetCapturedEvents() {
+        final int dropped = eventCounter;
+        eventCounter = 0;
+        final AEPacketRaw write = aePacketRawPool.writeBuffer();
+        write.clear();
+        write.lastCaptureIndex = 0;
+        write.lastCaptureLength = 0;
+        write.overrunOccuredFlag = false;
+        packetBundlePool.writeBuffer().clear();
+        polarityBuilder.rewindCurrentSlot();
+        if (dropped > 0) {
+            CypressFX2.log.info(this + ": dropping " + dropped
+                    + " pre-reset events from current USB write buffer");
+        }
     }
 
     @Override
@@ -281,6 +315,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                         resetTimestamps();
                         lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
                         noteHardwareResetEvent();
+                        discardPreResetCapturedEvents();
                         if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT)
                                 || ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
                             CypressFX2.log.info(this + ".translateEvents got reset event from hardware, timestamp "

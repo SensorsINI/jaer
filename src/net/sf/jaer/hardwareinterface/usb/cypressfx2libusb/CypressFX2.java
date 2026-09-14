@@ -677,6 +677,49 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         } catch (final HardwareInterfaceException e) {
             CypressFX2.log.warning("CypressFX2.resetTimestamps: couldn't send vendor request to reset timestamps");
         }
+        flushPoolsOnTimestampReset();
+    }
+
+    /**
+     * Drop packets already queued for ViewLoop plus the current write cursor.
+     * Host {@code 0} / mux-record start: the firmware reset event has not arrived yet.
+     */
+    protected void flushPoolsOnTimestampReset() {
+        synchronized (aePacketRawPool) {
+            final int dropped = eventCounter
+                    + aePacketRawPool.readBuffer().getNumEvents()
+                    + aePacketRawPool.writeBuffer().getNumEvents();
+            aePacketRawPool.reset();
+            eventCounter = 0;
+            rewindTypedBuildersAfterTimestampReset();
+            if (dropped > 0) {
+                CypressFX2.log.info(this + ": flushed " + dropped
+                        + " pre-reset events from capture pools");
+            }
+        }
+    }
+
+    /**
+     * Drop events already translated into the current write buffer. Caller
+     * should already hold {@link #aePacketRawPool} (USB {@code translateEvents}).
+     */
+    protected void discardPreResetCapturedEvents() {
+        final int dropped = eventCounter;
+        eventCounter = 0;
+        final AEPacketRaw write = aePacketRawPool.writeBuffer();
+        write.clear();
+        write.lastCaptureIndex = 0;
+        write.lastCaptureLength = 0;
+        write.overrunOccuredFlag = false;
+        rewindTypedBuildersAfterTimestampReset();
+        if (dropped > 0) {
+            CypressFX2.log.info(this + ": dropping " + dropped
+                    + " pre-reset events from current USB write buffer");
+        }
+    }
+
+    /** DVS128 typed demux overrides to rewind {@code UsbPolarityBundleBuilder}. */
+    protected void rewindTypedBuildersAfterTimestampReset() {
     }
 
     /** Host-side time of the last firmware timestamp-reset (status pipe or DVS128 reset event). */

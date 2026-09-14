@@ -15,12 +15,14 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
@@ -77,6 +79,12 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     // used to sync up viewers for playback
     int numPlayers = 0;
     private ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
+    private boolean enforcingCountDuration;
+    /** R or EOF: rewind every playback viewer on the next barrier, not one stream alone. */
+    private final AtomicBoolean rewindRequested = new AtomicBoolean();
+    /** One viewer hit EOF this slice; group-rewind after the barrier. */
+    private final AtomicBoolean sliceEndedPrematurely = new AtomicBoolean();
+    private boolean applyingGroupRewind;
     static Preferences prefs;
 
     /**
@@ -154,10 +162,19 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         barrier = new CyclicBarrier(numPlayers, new Runnable() {
 
             public void run() {
-                // this is run after await synchronization; it updates the time to read events from each AEInputStream
-//                        log.info(Thread.currentThread()+" resetting barrier");
-                barrier.reset();
-                setTime(getTime() + getTimesliceUs());
+                // Do not CyclicBarrier.reset() here: the barrier already starts the next
+                // generation after this action. reset() races a fast viewer into
+                // BrokenBarrierException and the views drift (seen mid-file).
+                if (rewindRequested.get() || sliceEndedPrematurely.get()) {
+                    log.info("synchronized rewind (R or EOF) at t=" + getTime()
+                            + " us requested=" + rewindRequested.get()
+                            + " eof=" + sliceEndedPrematurely.get());
+                    applyGroupRewind();
+                    rewindRequested.set(false);
+                    sliceEndedPrematurely.set(false);
+                } else if (!isPaused()) {
+                    currentTime = getTime() + getTimesliceUs();
+                }
             }
         });
     }
@@ -283,6 +300,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 getPlayingViewers().add(v);
             }
             initTime();
+            enforceSynchronizedPlaybackContract();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -379,6 +397,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         log.info("AEDAT-4 multi-stream playback: " + numPlayers + " viewers for " + file.getName());
         makeBarrier();
         initTime();
+        enforceSynchronizedPlaybackContract();
         outer.setPlayBack(true);
         for (AEViewer v : getPlayingViewers()) {
             v.setCursor(Cursor.getDefaultCursor());
@@ -508,13 +527,39 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     }
 
     /**
-     * rewinds all players
+     * rewinds all players. While ViewLoops are running, only set a flag so the
+     * CyclicBarrier action rewinds every stream together. Immediate rewind
+     * while paused (no grab in flight).
      */
     public void rewind() {
-        for (AEViewer v : outer.getViewers()) {
-            v.aePlayer.rewind();
+        rewindRequested.set(true);
+        if (isPaused()) {
+            applyGroupRewind();
+            rewindRequested.set(false);
         }
-        initTime();
+    }
+
+    /**
+     * Local rewind of every playback stream and shared playhead. Called from
+     * the barrier action or when paused.
+     */
+    void applyGroupRewind() {
+        applyingGroupRewind = true;
+        try {
+            for (AEViewer v : syncGroup()) {
+                if (v.aePlayer != null) {
+                    v.aePlayer.rewindStreamOnly();
+                }
+            }
+            initTime();
+        } finally {
+            applyingGroupRewind = false;
+        }
+    }
+
+    /** One synced viewer reached EOF; rewind the group after this barrier. */
+    public void noteSliceEndedPrematurely() {
+        sliceEndedPrematurely.set(true);
     }
 
     /**
@@ -553,58 +598,83 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         // Since currentStartTimestamp is set by each player to whatever time it happens to end at
         // (which is not nessarily the last timestamp plust the delta time), we have to keep synchrnozing the players
         if (numPlayers < 2 || getPlayingViewers().size() < 2) {
-            return player.getNextPacket(player);
+            if (outer.isSyncEnabled()) {
+                rebuildPlayingViewersFromOpenPlayback();
+            }
+            if (numPlayers < 2 || getPlayingViewers().size() < 2) {
+                return player.getNextPacket(player);
+            }
         }
-        int maxtime = Integer.MIN_VALUE;
-        try {
-            boolean eventAuthority = false;
-            for (AEViewer v : getPlayingViewers()) {
-                AEFileInputStreamInterface s = v.getAeFileInputStream();
-                if (s instanceof Aedat4FileInputStream a4 && a4.hasEventPackets()) {
-                    eventAuthority = true;
-                    break;
+        // Shared CountDuration playhead. Do not take max(getMostRecentTimestamp()):
+        // AEDAT-4 readPacketByTime walks file position, and a capped high-rate
+        // slice on one camera then pulled the other to a different time.
+        if (rewindRequested.get() || playheadPastGroupEnd()) {
+            if (!rewindRequested.get() && playheadPastGroupEnd()) {
+                if (groupRepeatEnabled()) {
+                    sliceEndedPrematurely.set(true);
+                } else {
+                    setPaused(true);
                 }
             }
-            for (AEViewer v : getPlayingViewers()) {
-                if (eventAuthority) {
-                    AEFileInputStreamInterface s = v.getAeFileInputStream();
-                    if (!(s instanceof Aedat4FileInputStream a4 && a4.hasEventPackets())) {
-                        continue;
-                    }
-                }
-                int t = v.aePlayer.getTime();
-                if (t > maxtime) {
-                    maxtime = t;
-                }
-            }
-        } catch (ConcurrentModificationException e) {
-            log.warning("caught " + e.toString() + " when finding current packet times from all viewers");
+            AEPacketRaw empty = new AEPacketRaw(0);
+            awaitSyncBarrier();
+            return empty;
         }
-        if (maxtime != Integer.MIN_VALUE) {
-            setTime(maxtime);
-        }
-
+        player.seekPlayhead(getTime());
         AEPacketRaw ae = player.getNextPacket(player);
+        awaitSyncBarrier();
+        return ae;
+    }
+
+    /**
+     * AEDAT-4 {@code setPositionFromTimestamp} clamps to the last event, so
+     * {@code readPacketByTime} never throws EOF and the playhead sits on the
+     * last packet. Repeat must be decided here from the shared time, not from
+     * a per-stream auto-rewind (that seeks back to the end on the next slice).
+     */
+    private boolean playheadPastGroupEnd() {
+        long t = getTime() & 0xffffffffL;
+        Long shortest = null;
+        for (AEViewer v : getPlayingViewers()) {
+            AEFileInputStreamInterface s = v.getAeFileInputStream();
+            if (s == null) {
+                continue;
+            }
+            if (s instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets()) {
+                continue;
+            }
+            long last = s.getLastTimestamp() & 0xffffffffL;
+            if (shortest == null || last < shortest) {
+                shortest = last;
+            }
+        }
+        return shortest != null && t >= shortest;
+    }
+
+    private boolean groupRepeatEnabled() {
+        for (AEViewer v : getPlayingViewers()) {
+            if (v.aePlayer != null && v.aePlayer.isRepeat()) {
+                return true;
+            }
+        }
+        return isRepeat();
+    }
+
+    private void awaitSyncBarrier() {
         try {
             if (barrier == null) {
                 makeBarrier();
             }
             if (barrier == null) {
-                return ae;
+                return;
             }
-//                log.info(Thread.currentThread()+" starting wait on barrier "+barrier+", number threads already waiting="+barrier.getNumberWaiting());
-//            int awaitVal = barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
-            int awaitVal = barrier.await(); // SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
+            barrier.await();
         } catch (InterruptedException e) {
-//            log.warning(Thread.currentThread() + " interrupted");
-        } catch (BrokenBarrierException ignore) {
-//        } catch ( TimeoutException e ){
-//            if ( !isPaused() ){
-//                log.warning(e + ": stopping playback for all viewers");
-//                stopPlayback();
-//            }
+            Thread.currentThread().interrupt();
+        } catch (BrokenBarrierException e) {
+            log.warning("sync barrier broken; remaking so the next slice can join");
+            makeBarrier();
         }
-        return ae;
     }
 
     public float getFractionalPosition() {
@@ -665,7 +735,24 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     public void setTimesliceUs(int samplePeriodUs) {
         super.setTimesliceUs(samplePeriodUs);
         for (AEViewer v : getPlayingViewers()) {
-            v.aePlayer.setTimesliceUs(samplePeriodUs);
+            v.aePlayer.applySharedTimesliceUs(samplePeriodUs);
+        }
+    }
+
+    @Override
+    public void setPlaybackMode(PlaybackMode playbackMode) {
+        if (playbackMode == PlaybackMode.FixedPacketSize || playbackMode == PlaybackMode.AreaEventCount) {
+            log.info("synchronized playback requires CountDuration; ignoring " + playbackMode);
+            playbackMode = PlaybackMode.FixedTimeSlice;
+            if (viewer != null) {
+                viewer.showActionText("CountDuration required for synchronized playback");
+            }
+        }
+        super.setPlaybackMode(playbackMode);
+        for (AEViewer v : syncGroup()) {
+            if (v.aePlayer != null && v.aePlayer.getPlaybackMode() != playbackMode) {
+                v.aePlayer.setPlaybackMode(playbackMode);
+            }
         }
     }
 
@@ -743,11 +830,16 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
-            // comes from AEFileInputStream when file reaches end and AEViewer rewinds the file
             for (AEViewer v : outer.getViewers()) {
-                v.getChip().getRenderer().resetFrame(v.getChip().getRenderer().getGrayValue());
+                if (v.getChip() != null && v.getChip().getRenderer() != null) {
+                    v.getChip().getRenderer().resetFrame(v.getChip().getRenderer().getGrayValue());
+                }
             }
-            log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
+            if (!applyingGroupRewind) {
+                rewindRequested.set(true);
+            }
+            log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource()
+                    + " groupRewind=" + applyingGroupRewind);
         }
     }
 
@@ -772,6 +864,113 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     public ArrayList<AEViewer> getPlayingViewers() {
         return playingViewers;
+    }
+
+    private List<AEViewer> syncGroup() {
+        return getPlayingViewers().isEmpty() ? outer.getViewers() : getPlayingViewers();
+    }
+
+    /**
+     * CountDuration on every playback viewer, shared timeslice, shared target
+     * FPS. ConstantCount / AreaEventCount would advance each camera by a
+     * different event-time window per barrier cycle.
+     */
+    public void enforceSynchronizedPlaybackContract() {
+        List<AEViewer> group = new ArrayList<>();
+        for (AEViewer v : syncGroup()) {
+            if (v.getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                    || getPlayingViewers().contains(v)) {
+                group.add(v);
+            }
+        }
+        if (group.size() < 2 && getPlayingViewers().size() < 2) {
+            return;
+        }
+        if (enforcingCountDuration) {
+            return;
+        }
+        enforcingCountDuration = true;
+        try {
+            int sliceUs = getTimesliceUs();
+            if (sliceUs == 0) {
+                sliceUs = 20000;
+            }
+            for (AEViewer v : group) {
+                if (v.aePlayer == null) {
+                    continue;
+                }
+                if (v.aePlayer.getAEInputStream() != null) {
+                    // Per-stream repeat rewinds one camera, then the next seekPlayhead
+                    // pulls it back to the old shared time. SyncPlayer loops the group.
+                    v.aePlayer.getAEInputStream().setRepeat(false);
+                }
+                AbstractAEPlayer.PlaybackMode mode = v.aePlayer.getPlaybackMode();
+                if (mode == AbstractAEPlayer.PlaybackMode.FixedPacketSize
+                        || mode == AbstractAEPlayer.PlaybackMode.AreaEventCount) {
+                    v.aePlayer.setFixedTimesliceEnabled();
+                }
+                if (sliceUs == 20000 && v.aePlayer.getTimesliceUs() != 0) {
+                    sliceUs = v.aePlayer.getTimesliceUs();
+                }
+            }
+            setTimesliceUs(sliceUs);
+            super.setPlaybackMode(AbstractAEPlayer.PlaybackMode.FixedTimeSlice);
+            equalizeDesiredFrameRate(group);
+            for (AEViewer v : group) {
+                SwingUtilities.invokeLater(v::refreshPlaybackAccumulationControls);
+            }
+            log.info("synchronized playback: CountDuration timesliceUs=" + sliceUs
+                    + " viewers=" + group.size());
+        } finally {
+            enforcingCountDuration = false;
+        }
+    }
+
+    /**
+     * LEFT/RIGHT on one window used to change only that chip's FrameRater, so
+     * slices painted at different wall-clock rates. Share the slowest target.
+     */
+    void equalizeDesiredFrameRate(List<AEViewer> group) {
+        int minFps = Integer.MAX_VALUE;
+        for (AEViewer v : group) {
+            int fps = v.getDesiredFrameRate();
+            if (fps > 0 && fps < minFps) {
+                minFps = fps;
+            }
+        }
+        if (minFps == Integer.MAX_VALUE || minFps < 1) {
+            return;
+        }
+        outer.setDesiredFrameRateForSyncedPlayback(minFps);
+    }
+
+    /**
+     * File → Synchronize with already-open files never filled
+     * {@code playingViewers}; muxed AEDAT-4 {@link #resetSyncGroup()} can also
+     * leave a stale empty list. Rebuild from PLAYBACK streams so the barrier
+     * actually joins.
+     */
+    synchronized void rebuildPlayingViewersFromOpenPlayback() {
+        ArrayList<AEViewer> found = new ArrayList<>();
+        for (AEViewer v : outer.getViewers()) {
+            if (v.getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                    && v.aePlayer != null && v.aePlayer.getAEInputStream() != null) {
+                found.add(v);
+            }
+        }
+        if (found.size() < 2) {
+            return;
+        }
+        if (found.size() == playingViewers.size() && playingViewers.containsAll(found)
+                && numPlayers == found.size() && barrier != null) {
+            return;
+        }
+        playingViewers.clear();
+        playingViewers.addAll(found);
+        numPlayers = playingViewers.size();
+        log.info("rebuilt sync group: " + numPlayers + " playback viewers");
+        makeBarrier();
+        enforceSynchronizedPlaybackContract();
     }
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes
 

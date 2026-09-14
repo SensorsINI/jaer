@@ -1343,7 +1343,12 @@ public class JAERViewer {
         for (AEViewer v : viewers) {
             v.applySyncEnabledUi(syncEnabled);
             v.bindPlaybackControlsToActivePlayer();
+            v.refreshPlaybackAccumulationControls();
             v.getSupport().firePropertyChange(AEViewer.EVENT_SYNC_ENABLED, old, syncEnabled);
+        }
+        if (syncEnabled && syncPlayer != null) {
+            syncPlayer.rebuildPlayingViewersFromOpenPlayback();
+            syncPlayer.enforceSynchronizedPlaybackContract();
         }
     }
 
@@ -1356,6 +1361,37 @@ public class JAERViewer {
 
     public void pause() {
         log.info("this pause shouldn't normally be called");
+    }
+
+    /**
+     * True when File → Synchronize is on and at least two viewers are in
+     * PLAYBACK. Those viewers must share CountDuration slices and a rendering
+     * FPS so they paint the same event-time window together.
+     */
+    public boolean isSynchronizedPlayback() {
+        if (!syncEnabled || viewers.size() < 2) {
+            return false;
+        }
+        int n = 0;
+        for (AEViewer v : viewers) {
+            if (v.getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                n++;
+            }
+        }
+        return n >= 2;
+    }
+
+    /**
+     * LEFT/RIGHT and Preferences FPS apply to every playback viewer in a sync
+     * group. Writes each chip's FrameRater prefs.
+     */
+    public void setDesiredFrameRateForSyncedPlayback(int fps) {
+        for (AEViewer v : viewers) {
+            if (v.getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                    || (syncPlayer != null && syncPlayer.getPlayingViewers().contains(v))) {
+                v.applySyncedDesiredFrameRate(fps);
+            }
+        }
     }
 
     public SyncPlayer getSyncPlayer() {

@@ -4364,7 +4364,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         public FrameRateIncreaseAction() {
             super("Increase rendering rate", "Faster16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
-            putValue(Action.SHORT_DESCRIPTION, "Increase the (target) rendering frame rate");
+            putValue(Action.SHORT_DESCRIPTION, "Increase the (target) rendering frame rate. During synchronized playback this rate is shared by all viewers.");
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -4381,7 +4381,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         public FrameRateDecreaseAction() {
             super("Decrease rendering rate", "Slower16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
-            putValue(Action.SHORT_DESCRIPTION, "Decrease the (target) rendering frame rate");
+            putValue(Action.SHORT_DESCRIPTION, "Decrease the (target) rendering frame rate. During synchronized playback this rate is shared by all viewers.");
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -6394,6 +6394,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         JRadioButtonMenuItem item = new JRadioButtonMenuItem(label);
         item.setToolTipText(tip);
         item.addActionListener(e -> {
+            if (jaerViewer != null && jaerViewer.isSynchronizedPlayback()
+                    && (mode == AbstractAEPlayer.PlaybackMode.FixedPacketSize
+                    || mode == AbstractAEPlayer.PlaybackMode.AreaEventCount)) {
+                JOptionPane.showMessageDialog(this,
+                        "Synchronized playback uses CountDuration so all viewers show the same time slices.");
+                updatePlaybackModeMenuSelection();
+                return;
+            }
             if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.getViewers().size() > 1
                     && mode != AbstractAEPlayer.PlaybackMode.FixedTimeSlice
                     && !anyPlayingEventAedat4()) {
@@ -6418,15 +6426,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackModeMenuItems.put(mode, item);
     }
 
-    void refreshPlaybackAccumulationControls() {
+    public void refreshPlaybackAccumulationControls() {
         updatePlaybackModeMenuSelection();
+        if (flextimePlaybackEnabledCheckBoxMenuItem != null && getPlayMode() == PlayMode.PLAYBACK) {
+            flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(!synchronizedPlaybackRequiresCountDuration());
+        }
     }
 
     private void updatePlaybackModeMenuSelection() {
         if (aePlayer == null) {
             return;
         }
-        boolean eventCountOk = aePlayer.eventCountSlicingAllowed();
+        boolean eventCountOk = aePlayer.eventCountSlicingAllowed()
+                && !synchronizedPlaybackRequiresCountDuration();
         JRadioButtonMenuItem countItem = playbackModeMenuItems.get(AbstractAEPlayer.PlaybackMode.FixedPacketSize);
         JRadioButtonMenuItem areaItem = playbackModeMenuItems.get(AbstractAEPlayer.PlaybackMode.AreaEventCount);
         if (countItem != null) {
@@ -6515,7 +6527,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increasePlaybackSpeedMenuItem.setEnabled(yes);
         decreasePlaybackSpeedMenuItem.setEnabled(yes);
         rewindPlaybackMenuItem.setEnabled(yes);
-        flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes);
+        flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes && !synchronizedPlaybackRequiresCountDuration());
         if (playbackModeMenu != null) {
             playbackModeMenu.setEnabled(yes);
         }
@@ -14116,12 +14128,37 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Sets desired frame rate of FrameRater
+     * Sets desired frame rate of FrameRater. During synchronized playback the
+     * same target is applied to every playback viewer so slices paint together.
      *
      * @param renderDesiredFrameRateHz frame rate in Hz
      */
     public void setDesiredFrameRate(int renderDesiredFrameRateHz) {
+        if (!applyingSyncedFps && jaerViewer != null && jaerViewer.isSynchronizedPlayback()) {
+            jaerViewer.setDesiredFrameRateForSyncedPlayback(renderDesiredFrameRateHz);
+            return;
+        }
         frameRater.setDesiredFPS(renderDesiredFrameRateHz);
+    }
+
+    private boolean applyingSyncedFps;
+
+    /** Apply a shared FPS without re-entering {@link JAERViewer#setDesiredFrameRateForSyncedPlayback}. */
+    public void applySyncedDesiredFrameRate(int fps) {
+        applyingSyncedFps = true;
+        try {
+            frameRater.setDesiredFPS(fps);
+        } finally {
+            applyingSyncedFps = false;
+        }
+    }
+
+    /**
+     * File → Synchronize with two or more PLAYBACK viewers. Those viewers must
+     * use CountDuration (not ConstantCount / AreaEventCount).
+     */
+    public boolean synchronizedPlaybackRequiresCountDuration() {
+        return jaerViewer != null && jaerViewer.isSynchronizedPlayback();
     }
 
     /**

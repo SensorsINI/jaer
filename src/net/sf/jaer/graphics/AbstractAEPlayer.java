@@ -27,6 +27,7 @@ import java.io.File;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.SyncPlayer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
@@ -398,14 +399,32 @@ public abstract class AbstractAEPlayer {
      */
     public void setPlaybackMode(PlaybackMode playbackMode) {
         PlaybackMode old = this.playbackMode;
+        PlaybackMode requested = playbackMode;
         if ((playbackMode == PlaybackMode.FixedPacketSize || playbackMode == PlaybackMode.AreaEventCount)
                 && !eventCountSlicingAllowed()) {
             log.info("event-count playback is disabled for frame/IMU-only AEDAT-4; using CountDuration");
             playbackMode = PlaybackMode.FixedTimeSlice;
         }
+        if ((playbackMode == PlaybackMode.FixedPacketSize || playbackMode == PlaybackMode.AreaEventCount)
+                && viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()) {
+            log.info("synchronized playback requires CountDuration; ignoring " + requested);
+            playbackMode = PlaybackMode.FixedTimeSlice;
+            if (viewer != null) {
+                viewer.showActionText("CountDuration required for synchronized playback");
+                viewer.refreshPlaybackAccumulationControls();
+            }
+        }
         this.playbackMode = playbackMode;
         prefs.put("AbstractAEPlayer.playbackMode", playbackMode.name());
-        support.firePropertyChange(EVENT_PLAYBACKMODE, old, playbackMode);
+        // If a ConstantCount/AreaEventCount click was rejected, fire requested→actual
+        // so radios snap back even when we were already on CountDuration.
+        support.firePropertyChange(EVENT_PLAYBACKMODE,
+                requested != playbackMode ? requested : old, playbackMode);
+        if (requested != playbackMode && viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()
+                && viewer.getJaerViewer() != null && viewer.getJaerViewer().getSyncPlayer() != null
+                && !(this instanceof SyncPlayer)) {
+            viewer.getJaerViewer().getSyncPlayer().enforceSynchronizedPlaybackContract();
+        }
     }
 
     /**
@@ -587,6 +606,20 @@ public abstract class AbstractAEPlayer {
 
     public AEFileInputStreamInterface getAEInputStream() {
         return aeInputStream;
+    }
+
+    /**
+     * Move the file playhead to {@code timeUs} without resetting filters.
+     * Synchronized playback uses this so every viewer reads the same
+     * CountDuration window.
+     */
+    public void seekPlayhead(int timeUs) {
+        AEFileInputStreamInterface stream = getAEInputStream();
+        if (stream == null) {
+            return;
+        }
+        stream.setPositionFromTimestamp(timeUs);
+        stream.setCurrentStartTimestamp(timeUs);
     }
 
     abstract public int getTime();
@@ -811,11 +844,27 @@ public abstract class AbstractAEPlayer {
         setPlaybackMode(PlaybackMode.RealTime);
     }
 
+    private boolean applyingSharedTimeslice;
+
     public void setTimesliceUs(int samplePeriodUs) {
         int old = this.timesliceUs;
         this.timesliceUs = samplePeriodUs;
         support.firePropertyChange(EVENT_TIMESLICE_US, old, timesliceUs);
-//        log.info(this + "      set time slice =" + this.timesliceUs);
+        if (!applyingSharedTimeslice && !(this instanceof SyncPlayer)
+                && viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()
+                && viewer.getJaerViewer() != null && viewer.getJaerViewer().getSyncPlayer() != null) {
+            viewer.getJaerViewer().getSyncPlayer().setTimesliceUs(samplePeriodUs);
+        }
+    }
+
+    /** Apply a shared timeslice without re-entering {@link net.sf.jaer.SyncPlayer#setTimesliceUs}. */
+    public void applySharedTimesliceUs(int samplePeriodUs) {
+        applyingSharedTimeslice = true;
+        try {
+            setTimesliceUs(samplePeriodUs);
+        } finally {
+            applyingSharedTimeslice = false;
+        }
     }
 
     /**
@@ -845,6 +894,11 @@ public abstract class AbstractAEPlayer {
      * If mode is RealTime, has no effect.
      */
     void toggleFlexTime() {
+        if (viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()) {
+            setFixedTimesliceEnabled();
+            viewer.showActionText("CountDuration required for synchronized playback");
+            return;
+        }
         if (playbackMode == PlaybackMode.RealTime) {
             log.warning("cannot toggle flex time since we are in RealTime playback mode now");
             return;
