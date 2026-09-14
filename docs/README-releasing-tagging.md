@@ -62,7 +62,7 @@ Download counts: `ant count-asset-downloads`. After a rebuild, hashes in `update
 
 - install4j application version (synced into `install4j/jaer.install4j`; also `install4jc --release=...`)
 - splash overlay text (full `VERSION.txt`, e.g. 3.2.0) on generated 1024 / 256 / 800 PNGs
-- About / `BUILDVERSION.txt` first line on jar build
+- About / `BUILDVERSION.txt` first line on jar build (also git commit SHA, `git describe`, subject, and a copy next to `VERSION.txt` in the installer)
 
 See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsINI/jaer/tags .
 

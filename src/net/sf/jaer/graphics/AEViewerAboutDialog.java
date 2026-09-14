@@ -7,24 +7,26 @@ package net.sf.jaer.graphics;
 
 import java.awt.Cursor;
 import java.awt.Desktop;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.StringWriter;
+import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.net.URI;
-import java.net.URL;
-import java.util.Enumeration;
-import java.util.Properties;
+import java.util.List;
 import java.util.logging.Logger;
 
-import javax.swing.JOptionPane;
+import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
+
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
-import org.apache.commons.io.IOUtils;
 
 /**
- * The About dialog. It displays About information and latest SVN commit and
- * build dates. The version information file is updated by the project
- * build.xml.
+ * The About dialog. Version and git commit come from
+ * {@link net.sf.jaer.JaerConstants#getBuildVersion()} ({@code BUILDVERSION.txt}
+ * written by Ant).
  *
  * @author tobi
  */
@@ -44,38 +46,51 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         setTitle(JaerConstants.APPLICATION_NAME);
         aboutLabel.setText("<html><center><h1>" + JaerConstants.APPLICATION_NAME + "</h1></center></html>");
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
-        Properties props = new Properties();
-        // when running from webstart  we are not allowed to open a file on the local file system, but we can
-        // get a the contents of a resource, which in this case is the echo'ed date stamp written by ant on the last build
-        ClassLoader cl = this.getClass().getClassLoader(); // get this class'es class loader
-        log.info("Loading version info from resource " + VERSION_FILE);
-        URL versionURL = cl.getResource(VERSION_FILE); // get a URL to the time stamp file
-        log.info("Version URL=" + versionURL);
-        if (versionURL != null) {
-            try {
-                Object urlContents = versionURL.getContent();
-                //            System.out.println("contents="+urlContents);
-                //            JOptionPane.showMessageDialog(parent,"urlContents="+urlContents);
-                BufferedReader in = null;
-                if (urlContents instanceof InputStream) {
-                    StringWriter writer = new StringWriter();
-                    IOUtils.copy((InputStream) urlContents, writer, "UTF-8");
-                    String build = writer.toString().trim();
-                    String runtime = "Running on " + System.getProperty("os.name")
-                            + " " + System.getProperty("os.version")
-                            + ", Java " + System.getProperty("java.version")
-                            + " (" + System.getProperty("java.vendor") + ")";
-                    versionLabel.setText(build + "\n" + runtime + "\n"
-                            + JaerConstants.getProcessAuthenticodeSummary());
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(parent, e);
-            }
-        } else {
-            props.setProperty("version", "missing file " + VERSION_FILE + " in jAER.jar");
-        }
+        fillIdentityTable();
         pack();
+        setSize(Math.max(getWidth(), 720), Math.max(getHeight(), 480));
+        setLocationRelativeTo(parent);
+    }
+
+    private void fillIdentityTable() {
+        List<String[]> rows = JaerConstants.getBuildIdentityRows();
+        DefaultTableModel model = new DefaultTableModel(new Object[] { "Field", "Value" }, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        for (String[] row : rows) {
+            model.addRow(row);
+        }
+        identityTable.setModel(model);
+        identityTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        identityTable.setRowHeight(22);
+        identityTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        identityTable.setCellSelectionEnabled(true);
+        identityTable.getTableHeader().setReorderingAllowed(false);
+        identityTable.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        identityTable.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        TableColumn fieldCol = identityTable.getColumnModel().getColumn(0);
+        fieldCol.setPreferredWidth(120);
+        fieldCol.setMaxWidth(160);
+        identityTable.getColumnModel().getColumn(1).setPreferredWidth(520);
+        identityTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                java.awt.Component c = super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column);
+                setToolTipText(value == null ? null : value.toString());
+                return c;
+            }
+        });
+    }
+
+    private void copyIdentityTable() {
+        String tsv = JaerConstants.getBuildIdentityTable();
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(tsv), null);
+        log.info("Copied build identity table to clipboard");
     }
 
     /**
@@ -90,8 +105,9 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         okButton = new javax.swing.JButton();
         jaerProjectLinkLabel = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        versionLabel = new javax.swing.JTextArea();
+        identityTable = new javax.swing.JTable();
         updatesButton = new javax.swing.JButton();
+        copyButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setIconImage(null);
@@ -125,15 +141,21 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             }
         });
 
-        versionLabel.setEditable(false);
-        versionLabel.setColumns(20);
-        versionLabel.setRows(5);
-        jScrollPane1.setViewportView(versionLabel);
+        identityTable.setFillsViewportHeight(true);
+        jScrollPane1.setViewportView(identityTable);
 
         updatesButton.setText("Check for updates...");
         updatesButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 updatesButtonActionPerformed(evt);
+            }
+        });
+
+        copyButton.setText("Copy");
+        copyButton.setToolTipText("Copy Field / Value table as tab-separated text");
+        copyButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                copyButtonActionPerformed(evt);
             }
         });
 
@@ -147,6 +169,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                         .add(77, 77, 77)
                         .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                         .add(56, 56, 56)
+                        .add(copyButton)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                         .add(updatesButton)
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 30, Short.MAX_VALUE)
                         .add(okButton))
@@ -162,11 +186,12 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 .addContainerGap()
                 .add(aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 166, Short.MAX_VALUE)
+                .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 280, Short.MAX_VALUE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(okButton)
                     .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(copyButton)
                     .add(updatesButton))
                 .addContainerGap())
         );
@@ -218,6 +243,10 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             setCursor(Cursor.getDefaultCursor());
 	}//GEN-LAST:event_jaerProjectLinkLabelMouseExited
 
+    private void copyButtonActionPerformed(java.awt.event.ActionEvent evt) {
+        copyIdentityTable();
+    }
+
     private void updatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updatesButtonActionPerformed
         dispose();
         if(parent.getJaerUpdaterFrame()==null){
@@ -229,11 +258,12 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutLabel;
+    private javax.swing.JButton copyButton;
+    private javax.swing.JTable identityTable;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel jaerProjectLinkLabel;
     private javax.swing.JButton okButton;
     private javax.swing.JButton updatesButton;
-    private javax.swing.JTextArea versionLabel;
     // End of variables declaration//GEN-END:variables
 
 }

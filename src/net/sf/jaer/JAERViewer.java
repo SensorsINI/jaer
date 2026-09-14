@@ -1463,6 +1463,7 @@ public class JAERViewer {
             log.info("Java splash present; log overlay off (-Djaer.splashLogOverlay=true to enable)");
         }
         log.info("jAERViewer starting up");
+        JaerConstants.getBuildVersion();
         StartupProfiler.mark("after Logger init / splash");
         final File launchFile = fileArgs.length > 0
                 ? net.sf.jaer.util.Install4jFileOpen.parseLaunchArgument(fileArgs[0]) : null;

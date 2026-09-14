@@ -346,7 +346,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     
     <!-- Ivy hook for normal compile (overrides empty NetBeans placeholders in build-impl.xml). -->
     <target name="-pre-compile-ivy" depends="download-deps"/>
-    <target name="-pre-compile" depends="check-jdk,-pre-compile-ivy,generate-splash"/>
+    <target name="-pre-compile" depends="check-jdk,-pre-compile-ivy,generate-splash,jaer-setBuildVersion"/>
 
     <target name="-pre-compile-single-ivy" depends="download-deps"/>
     <target name="-pre-compile-single" depends="check-jdk,-pre-compile-single-ivy"/>
@@ -383,7 +383,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     </target>
 
     <target name="compile-fast"
-            depends="check-jdk,init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile,generate-splash"
+            depends="check-jdk,init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile,generate-splash,jaer-setBuildVersion"
             description="Compile Java only without Ivy resolve/retrieve."/>
 
     <target name="compile-single-fast"
@@ -610,24 +610,103 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
   
 
 
-    <!-- builds a file with the output of svnversion that is used for the About dialogs -->
-    <!--TODO fix to get rev info from git-->
+    <!-- About / issue reports / install-root BUILDVERSION.txt. First line is VERSION.txt. -->
     <target name="jaer-setBuildVersion" depends="init,-load-version">
         <tstamp/>
-        <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog." />
-        <delete file="${buildversion.outputfile}"/>
-        <echo message="${jaer.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
-        <echo message="Built ${TODAY} at ${TSTAMP} by ${user.name}${line.separator}" append="true" file="${buildversion.outputfile}" />
-        <echo message="os.name=${os.name}${line.separator}" append="true" file="${buildversion.outputfile}" />
-        <echo message="os.version=${os.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
-        <echo message="java.version=${java.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
-        <echo message="java.vendor=${java.vendor}${line.separator}" append="true" file="${buildversion.outputfile}" />
-        <echo message="&quot;:git describe&quot; output: " append="true" file="${buildversion.outputfile}" />
-        <!-- run version command to get revision numnber -->
-        <exec executable="git" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true" searchpath="true">
-            <arg line="describe --tags --abbrev=0"/>
+        <mkdir dir="${build.classes.dir}"/>
+        <echo message="Writing ${buildversion.outputfile} (git identity for About and installers)"/>
+        <exec executable="git" failifexecutionfails="false" failonerror="false"
+              resultproperty="git.rev.result" outputproperty="git.commit"
+              errorproperty="git.rev.err" searchpath="true" dir="${basedir}">
+            <arg value="rev-parse"/>
+            <arg value="HEAD"/>
         </exec>
-        <echo message="${line.separator}" append="true" file="${buildversion.outputfile}" />
+        <exec executable="git" failifexecutionfails="false" failonerror="false"
+              resultproperty="git.describe.result" outputproperty="git.describe"
+              errorproperty="git.describe.err" searchpath="true" dir="${basedir}">
+            <arg value="describe"/>
+            <arg value="--tags"/>
+            <arg value="--always"/>
+            <arg value="--dirty"/>
+        </exec>
+        <exec executable="git" failifexecutionfails="false" failonerror="false"
+              resultproperty="git.subject.result" outputproperty="git.subject"
+              errorproperty="git.subject.err" searchpath="true" dir="${basedir}">
+            <arg value="log"/>
+            <arg value="-1"/>
+            <arg value="--pretty=format:%s"/>
+        </exec>
+        <exec executable="git" failifexecutionfails="false" failonerror="false"
+              resultproperty="git.date.result" outputproperty="git.date"
+              errorproperty="git.date.err" searchpath="true" dir="${basedir}">
+            <arg value="log"/>
+            <arg value="-1"/>
+            <arg value="--pretty=format:%cI"/>
+        </exec>
+        <exec executable="git" failifexecutionfails="false" failonerror="false"
+              resultproperty="git.author.result" outputproperty="git.author"
+              errorproperty="git.author.err" searchpath="true" dir="${basedir}">
+            <arg value="log"/>
+            <arg value="-1"/>
+            <arg value="--pretty=format:%an"/>
+        </exec>
+        <condition property="git.available">
+            <and>
+                <isset property="git.rev.result"/>
+                <equals arg1="${git.rev.result}" arg2="0"/>
+                <isset property="git.commit"/>
+            </and>
+        </condition>
+        <condition property="git.commit.effective" value="${git.commit}" else="(unavailable)">
+            <isset property="git.available"/>
+        </condition>
+        <condition property="git.describe.effective" value="${git.describe}" else="(unavailable)">
+            <and>
+                <isset property="git.describe.result"/>
+                <equals arg1="${git.describe.result}" arg2="0"/>
+                <isset property="git.describe"/>
+            </and>
+        </condition>
+        <condition property="git.subject.effective" value="${git.subject}" else="(unavailable)">
+            <and>
+                <isset property="git.subject.result"/>
+                <equals arg1="${git.subject.result}" arg2="0"/>
+                <isset property="git.subject"/>
+            </and>
+        </condition>
+        <condition property="git.date.effective" value="${git.date}" else="(unavailable)">
+            <and>
+                <isset property="git.date.result"/>
+                <equals arg1="${git.date.result}" arg2="0"/>
+                <isset property="git.date"/>
+            </and>
+        </condition>
+        <condition property="git.author.effective" value="${git.author}" else="(unavailable)">
+            <and>
+                <isset property="git.author.result"/>
+                <equals arg1="${git.author.result}" arg2="0"/>
+                <isset property="git.author"/>
+            </and>
+        </condition>
+        <condition property="git.url.effective"
+                   value="https://github.com/SensorsINI/jaer/commit/${git.commit.effective}"
+                   else="(unavailable)">
+            <isset property="git.available"/>
+        </condition>
+        <delete file="${buildversion.outputfile}"/>
+        <echo encoding="UTF-8" file="${buildversion.outputfile}">${jaer.version}
+git.commit=${git.commit.effective}
+git.describe=${git.describe.effective}
+git.subject=${git.subject.effective}
+git.date=${git.date.effective}
+git.author=${git.author.effective}
+git.url=${git.url.effective}
+Built ${TODAY} at ${TSTAMP} by ${user.name}
+os.name=${os.name}
+os.version=${os.version}
+java.version=${java.version}
+java.vendor=${java.vendor}
+</echo>
         <concat>
             <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
         </concat>

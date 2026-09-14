@@ -80,6 +80,9 @@
           <entry location=".settings" />
           <entry location=".idea" />
           <entry location=".cursor" />
+          <entry location=".cursorignore" />
+          <entry location=".cursorindexingignore" />
+          <entry location="AGENTS.md" />
           <entry location=".vscode" />
           <entry location=".travis.yml" />
           <entry location="jaer.code-workspace" />
@@ -212,6 +215,8 @@
            next to the exe for the native launcher splash. 256h/1024w are compile-time only
            (iconImageFiles); fileEntry.subDirectory does not relocate them. -->
       <fileEntry mountPoint="24" file="../images/800w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <!-- Generated at jar time; build/ is excluded from the dirEntry. Next to VERSION.txt. -->
+      <fileEntry mountPoint="24" file="../build/classes/BUILDVERSION.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
       <fileEntry mountPoint="24" file="../sampleData/README.md" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer/sampleData" />
       <fileEntry mountPoint="24" file="../sampleData/SIZE.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer/sampleData" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->

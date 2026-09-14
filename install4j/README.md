@@ -81,7 +81,7 @@ Classpath copy: `ant jar` target `jaer-copySplashImage` puts `images/800w/Splash
 
 ## Media fileset vs splash
 
-The main `dirEntry` packs the repo root into `jaer/` and **excludes** `images/` (large art / demos), `sampleData/` recordings, repo-root `*.webp` (e.g. `jaer3.webp`), Dropbox `*conflicted copy*` files, and `.dropboxignore`. Splash is re-added as a single `fileEntry` so it sits next to the exe as `SplashScreen.png`. `sampleData/README.md` and `SIZE.txt` are fileEntries under `jaer/sampleData`. Do not add a second `SplashScreen.png` from `256h` or `1024w`.
+The main `dirEntry` packs the repo root into `jaer/` and **excludes** `images/` (large art / demos), `sampleData/` recordings, repo-root `*.webp` (e.g. `jaer3.webp`), Dropbox `*conflicted copy*` files, `.dropboxignore`, `AGENTS.md`, `.cursor/`, `.cursorignore`, and `.cursorindexingignore`. Splash is re-added as a single `fileEntry` so it sits next to the exe as `SplashScreen.png`. `BUILDVERSION.txt` (git commit written by `ant jar`) is a fileEntry next to `VERSION.txt` because `build/` is excluded. `sampleData/README.md` and `SIZE.txt` are fileEntries under `jaer/sampleData`. Do not add a second `SplashScreen.png` from `256h` or `1024w`.
 
 Do **not** treat `.gitignore` as the media exclude list. Ivy `lib/`, `jars/`, and `dist/jAER.jar` are gitignored but required at runtime. The fileset lists VCS/IDE/docs/scratch excludes explicitly (including local `deviceSettings/olderSystemsAndExperimental`, `Benchmarking_7_9_2026`, `native`). Help → **Git update and build jAER (experimental)** is the only in-app git rebuild path; a normal install does not need `.git` or sources.
 

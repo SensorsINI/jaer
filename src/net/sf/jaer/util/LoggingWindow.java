@@ -8,16 +8,9 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Properties;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -28,9 +21,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import net.sf.jaer.JaerConstants;
-
-import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AEViewerAboutDialog;
 
 /** A frame with text area to show logging results in. Has buttons to copy to clipboard and to mail text to developers. */
 public class LoggingWindow extends JFrame {
@@ -161,37 +151,7 @@ public class LoggingWindow extends JFrame {
     }
 
     public void addVersionInfo() {
-        Properties props = new Properties();
-        // when running from webstart  we are not allowed to open a file on the local file system, but we can
-        // get a the contents of a resource, which in this case is the echo'ed date stamp written by ant on the last build
-        ClassLoader cl = this.getClass().getClassLoader(); // get this class'es class loader
-        addLogInfo("\nLoading version info from resource " + AEViewerAboutDialog.VERSION_FILE);
-        URL versionURL = cl.getResource(AEViewerAboutDialog.VERSION_FILE); // get a URL to the time stamp file
-        addLogInfo("\nVersion URL=" + versionURL + "\n");
-
-        if (versionURL != null) {
-            try {
-                Object urlContents = versionURL.getContent();
-                BufferedReader in = null;
-                if (urlContents instanceof InputStream) {
-                    props.load((InputStream) urlContents);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(2048);
-            PrintWriter ps = new PrintWriter(baos);
-            props.list(ps);
-            ps.flush();
-            try {
-                addLogInfo("\n" + baos.toString("UTF-8"));
-            } catch (UnsupportedEncodingException ex) {
-                System.err.println("cannot encode version information in LoggingWindow.addVersionInfo: " + ex.toString());
-            }
-        } else {
-            props.setProperty("version", "missing file " + AEViewerAboutDialog.VERSION_FILE + " in jAER.jar");
-        }
-
+        addLogInfo("\n" + JaerConstants.getBuildIdentityTable());
     }
 
     void mailToDevelopers() {

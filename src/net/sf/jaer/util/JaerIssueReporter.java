@@ -134,7 +134,7 @@ public final class JaerIssueReporter {
     public static String systemInfo() {
         StringBuilder sb = new StringBuilder(512);
         sb.append("jAER version: ").append(JaerConstants.getReleaseVersion()).append('\n');
-        sb.append("jAER build:\n").append(JaerConstants.getBuildVersion()).append('\n');
+        sb.append(JaerConstants.getBuildIdentityTable());
         appendProp(sb, "os.name");
         appendProp(sb, "os.version");
         appendProp(sb, "os.arch");
