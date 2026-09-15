@@ -732,7 +732,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      * {@link AEViewer#isSliderTimeOverlayAlways()} (relative or absolute; see
      * {@link AEViewer#isSliderTimeOverlayAbsolute()}). Analog clock (or
      * stopwatch) at the lower-left of the viewport when
-     * {@link AEViewer#isShowAnalogClock()}; otherwise the digital caption.
+     * {@link AEViewer#isShowAnalogClock()}, with {@code hh:mm:ss.dd} above the
+     * face and the date below; otherwise the digital caption.
      */
     private void drawSliderSeekTimeOverlayIfNeeded(final GLAutoDrawable drawable) {
         AEViewer viewer = resolveAeViewer();
@@ -753,8 +754,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                 float margin = overlayFontSize(2) * s;
                 boolean analogDate = overlay.absolute && overlay.dateText != null;
                 float analogCx = getViewportXAtFraction(0f) + margin + analogRadius * s;
-                int dateFontGuess = overlayFontSize(8);
-                float dateLine = analogDate ? DrawGL.lineHeight(dateFontGuess) : 0f;
+                int captionFont = overlayFontSize(8 / 1.3f);
+                float dateLine = analogDate ? DrawGL.lineHeight(captionFont) : 0f;
                 float analogCy = getViewportYAtFraction(0f) + margin
                         + (analogRadius + (analogDate ? dateLine * 1.15f : 0f)) * s;
                 beginHudChipScale(gl, analogCx, analogCy);
@@ -770,15 +771,19 @@ public class ChipCanvas implements GLEventListener, Observer {
                     DrawGL.drawAnalogClock(gl, analogCx, analogCy, analogRadius,
                             overlay.hour12, overlay.minute, overlay.second, overlay.milli, accent, face);
                     if (analogDate) {
-                        int dateFont = dateFontGuess;
                         float dateX = analogCx - analogRadius;
-                        float dateY = analogCy - analogRadius - DrawGL.lineHeight(dateFont) * 1.05f;
-                        DrawGL.drawStringDropShadow(dateFont, dateX, dateY, 0f,
+                        float dateY = analogCy - analogRadius - DrawGL.lineHeight(captionFont) * 1.05f;
+                        DrawGL.drawStringDropShadow(captionFont, dateX, dateY, 0f,
                                 SLIDER_SEEK_OVERLAY_COLOR, overlay.dateText);
                     }
                 } else {
                     DrawGL.drawAnalogStopwatch(gl, analogCx, analogCy, analogRadius,
                             overlay.hourOfDay, overlay.minute, overlay.second, overlay.milli, accent, face);
+                }
+                if (overlay.timeText != null && !overlay.timeText.isEmpty()) {
+                    float timeY = analogCy + analogRadius + DrawGL.lineHeight(captionFont) * 0.25f;
+                    DrawGL.drawStringDropShadow(captionFont, analogCx, timeY, 0.5f,
+                            SLIDER_SEEK_OVERLAY_COLOR, overlay.timeText);
                 }
                 endHudChipScale(gl);
                 return;

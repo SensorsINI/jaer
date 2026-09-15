@@ -1345,7 +1345,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         p.add(sliderTimeAbsoluteRB, gbc(y++));
         sliderTimeAnalogCB = new JCheckBox("Analog clock");
         sliderTimeAnalogCB.setToolTipText(
-                "Show an analog clock (absolute) or stopwatch (relative) at the lower-left of the chip view instead of the digital time overlay");
+                "Show an analog clock (absolute) or stopwatch (relative) at the lower-left of the chip view, with hh:mm:ss.dd above and the date below");
         sliderTimeAnalogCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

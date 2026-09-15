@@ -530,9 +530,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final DateTimeFormatter SLIDER_SEEK_ABSOLUTE_FORMAT
             = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z");
     private static final DateTimeFormatter SLIDER_SEEK_DATE_FORMAT
-            = DateTimeFormatter.ofPattern("dd-MMM-yyyy a", Locale.ENGLISH);
-    private static final DateTimeFormatter SLIDER_SEEK_TIME_FORMAT
-            = DateTimeFormatter.ofPattern("HH:mm:ss.SSS z");
+            = DateTimeFormatter.ofPattern("dd-MMM-yy a", Locale.ENGLISH);
     /** Cached overlay for recording time limit; refreshed at most once per second. */
     private volatile String recordingTimeLimitOverlayText = null;
     private volatile long recordingTimeLimitOverlayLastMs = 0;
@@ -11786,9 +11784,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public static final class SliderSeekOverlay {
         public final String text;
-        /** {@code dd-MMM-yyyy AM/PM} under the analog clock; null if relative or no recording date. */
+        /** {@code dd-MMM-yy AM/PM} under the analog clock; null if relative or no recording date. */
         public final String dateText;
-        /** Time-only caption beside the analog clock when {@link #dateText} is set; else null. */
+        /** {@code hh:mm:ss.dd} (hundredths) above the analog clock or stopwatch. */
         public final String timeText;
         public final boolean absolute;
         /** 0–11; 0 is 12 o'clock. */
@@ -11850,17 +11848,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     zone = ZoneId.systemDefault();
                 }
                 ZonedDateTime zdt = Instant.ofEpochMilli(startMs + elapsedUs / 1000L).atZone(zone);
+                int milli = zdt.getNano() / 1_000_000;
                 return new SliderSeekOverlay(zdt.format(SLIDER_SEEK_ABSOLUTE_FORMAT),
-                        zdt.format(SLIDER_SEEK_DATE_FORMAT), zdt.format(SLIDER_SEEK_TIME_FORMAT), true,
-                        zdt.getHour() % 12, zdt.getMinute(), zdt.getSecond(),
-                        zdt.getNano() / 1_000_000, zdt.getHour());
+                        zdt.format(SLIDER_SEEK_DATE_FORMAT),
+                        formatSliderSeekAnalogDigitalTime(zdt.getHour(), zdt.getMinute(), zdt.getSecond(), milli),
+                        true, zdt.getHour() % 12, zdt.getMinute(), zdt.getSecond(), milli, zdt.getHour());
             }
             AnalogClockFromElapsed rel = analogClockFromElapsedUs(elapsedUs);
             return new SliderSeekOverlay(formatSliderSeekRelative(elapsedUs) + " (no recording date)",
-                    null, null, false, rel.hour12, rel.minute, rel.second, rel.milli, rel.hourOfDay);
+                    null, formatSliderSeekAnalogDigitalTime(rel.hourOfDay, rel.minute, rel.second, rel.milli),
+                    false, rel.hour12, rel.minute, rel.second, rel.milli, rel.hourOfDay);
         }
         AnalogClockFromElapsed rel = analogClockFromElapsedUs(elapsedUs);
-        return new SliderSeekOverlay(formatSliderSeekRelative(elapsedUs), null, null, false,
+        return new SliderSeekOverlay(formatSliderSeekRelative(elapsedUs), null,
+                formatSliderSeekAnalogDigitalTime(rel.hourOfDay, rel.minute, rel.second, rel.milli), false,
                 rel.hour12, rel.minute, rel.second, rel.milli, rel.hourOfDay);
     }
 
@@ -11893,6 +11894,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             this.milli = milli;
             this.hourOfDay = hourOfDay;
         }
+    }
+
+    /**
+     * Digital time above the analog clock: {@code hh:mm:ss.dd} with hundredths of a
+     * second. Hours are 0–23 (wall time) or elapsed hours modulo 24 (stopwatch).
+     */
+    static String formatSliderSeekAnalogDigitalTime(int hourOfDay, int minute, int second, int milli) {
+        int h = Math.floorMod(hourOfDay, 24);
+        int m = Math.max(0, Math.min(59, minute));
+        int s = Math.max(0, Math.min(59, second));
+        int hundredths = Math.max(0, Math.min(99, milli / 10));
+        return String.format(Locale.ENGLISH, "%02d:%02d:%02d.%02d", h, m, s, hundredths);
     }
 
     /**
