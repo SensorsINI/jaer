@@ -603,6 +603,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         return;
                     }
                     aeInputStream = stream;
+                    resetViewHistoryOrigin();
                     if (stream instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets()) {
                         if (isFlexTimeEnabled() || isAreaEventCountEnabled()) {
                             setFixedTimesliceEnabled();
@@ -803,6 +804,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 aeInputStream = null;
             }
             clearAreaEventLeftover();
+            viewHistory.clear();
         } catch (IOException ignore) {
             ignore.printStackTrace();
         }
@@ -832,12 +834,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public void rewindStreamOnly() {
         cancelJog();
         if (aeInputStream == null) {
+            viewHistory.clear();
             return;
         }
         try {
             aeInputStream.rewind();
             resetDavisApsAssembler();
             clearAreaEventLeftover();
+            resetViewHistoryOrigin();
             if (viewer != null) {
                 viewer.filterChain.reset();
                 viewer.getRenderer().resetAccumulation();
@@ -908,21 +912,43 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             boolean area = !typedOnly && viewer.aePlayer.isAreaEventCountEnabled();
             boolean flex = !typedOnly && !area && viewer.aePlayer.isFlexTimeEnabled();
             if (!jogOccuring || jogPacketsLeft == 0) {
-                if (followEvents) {
-                    aeRaw = latchToEventSlice();
-                } else if (area) {
-                    aeRaw = readPacketByAreaEventCount();
-                } else {
-                    int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
-                    if (!flex) {
-                        aeRaw = aeInputStream.readPacketByTime(slice);
+                if (area && !isPlayingForwards()) {
+                    PlaybackSliceHistory.RewindResult r = viewHistory.rewind(1);
+                    if (r.stepsTaken > 0) {
+                        aeRaw = replayBookmark(r, followEvents, area, flex);
                     } else {
-                        aeRaw = extendToMinimumExposure(aeInputStream.readPacketByNumber(slice));
+                        notifyHistoryStart(r);
+                        setDirectionForwards(true);
+                        aeRaw = r.stateBefore != null
+                                ? replayBookmark(r, followEvents, area, flex)
+                                : new AEPacketRaw(0);
+                    }
+                } else {
+                    aeRaw = readOnePlaybackSlice(followEvents, area, flex);
+                    if (isPlayingForwards()) {
+                        recordForwardViewSlice(aeRaw);
                     }
                 }
+            } else if (jogPacketsLeft < 0) {
+                int want = -jogPacketsLeft;
+                PlaybackSliceHistory.RewindResult r = viewHistory.rewind(want);
+                if (r.stepsTaken > 0) {
+                    aeRaw = replayBookmark(r, followEvents, area, flex);
+                    jogPacketsLeft += r.stepsTaken;
+                    if (jogPacketsLeft < 0) {
+                        notifyHistoryStart(r);
+                        jogPacketsLeft = 0;
+                    }
+                } else {
+                    notifyHistoryStart(r);
+                    jogPacketsLeft = 0;
+                    aeRaw = r.stateBefore != null
+                            ? replayBookmark(r, followEvents, area, flex)
+                            : new AEPacketRaw(0);
+                }
+                finishJogIfComplete();
             } else {
-                // Must re-read slice AFTER setDirection* — previously slice was captured once
-                // while still positive, so jog-backwards kept calling readPacket*(+dt).
+                // Jog forward still reads the file (no redo stack).
                 if (log.isLoggable(Level.FINE)) {
                     log.fine(String.format(
                             "jog begin left=%d flex=%s pos=%d stream=%s",
@@ -932,47 +958,24 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 }
                 // Check jogOccuring each step so Esc (cancelJog on EDT) can abort remaining
                 // queued steps between slow reads (e.g. DSEC HDF5 window loads).
-                while (jogOccuring && jogPacketsLeft != 0) {
-                    boolean forwards = jogPacketsLeft >= 0;
-                    setDirectionForwards(forwards);
+                while (jogOccuring && jogPacketsLeft > 0) {
+                    setDirectionForwards(true);
                     long posBefore = aeInputStream.position();
                     int slice = area ? 0 : (flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs());
-                    if (followEvents) {
-                        aeRaw = latchToEventSlice();
-                    } else if (area) {
-                        aeRaw = readPacketByAreaEventCount();
-                    } else if (!flex) {
-                        aeRaw = aeInputStream.readPacketByTime(slice);
-                    } else {
-                        aeRaw = extendToMinimumExposure(aeInputStream.readPacketByNumber(slice));
-                    }
+                    aeRaw = readOnePlaybackSlice(followEvents, area, flex);
+                    recordForwardViewSlice(aeRaw);
                     if (log.isLoggable(Level.FINE)) {
                         log.fine(String.format(
-                                "jog step forwards=%s slice=%d pos %d->%d events=%d left=%d",
-                                forwards, slice, posBefore, aeInputStream.position(),
+                                "jog step forwards=true slice=%d pos %d->%d events=%d left=%d",
+                                slice, posBefore, aeInputStream.position(),
                                 aeRaw != null ? aeRaw.getNumEvents() : -1, jogPacketsLeft));
                     }
                     if (!jogOccuring) {
                         break; // cancelled during read
                     }
-                    if (jogPacketsLeft < 0) {
-                        jogPacketsLeft++;
-                    } else if (jogPacketsLeft > 0) {
-                        jogPacketsLeft--;
-                    }
+                    jogPacketsLeft--;
                 }
-                if (jogOccuring && jogPacketsLeft == 0) {
-                    jogOccuring = false;
-                    setDirectionForwards(true);
-                    setJogWaitCursor(false);
-                    if (log.isLoggable(Level.FINE)) {
-                        log.fine(String.format("jog done pos=%d",
-                                aeInputStream != null ? aeInputStream.position() : -1));
-                    }
-                } else if (!jogOccuring) {
-                    // cancelled mid-drain; cancelJog already cleared cursor
-                    setJogWaitCursor(false);
-                }
+                finishJogIfComplete();
             }
             return aeRaw;
         } catch (EOFException e) {
@@ -1013,6 +1016,99 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 anyOtherException.printStackTrace();
             }
             return new AEPacketRaw(0);
+        }
+    }
+
+    private AEPacketRaw readOnePlaybackSlice(boolean followEvents, boolean area, boolean flex) throws IOException {
+        if (followEvents) {
+            return latchToEventSlice();
+        }
+        if (area) {
+            return readPacketByAreaEventCount();
+        }
+        int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
+        if (!flex) {
+            return aeInputStream.readPacketByTime(slice);
+        }
+        return extendToMinimumExposure(aeInputStream.readPacketByNumber(slice));
+    }
+
+    private void recordForwardViewSlice(AEPacketRaw aeRaw) {
+        if (aeRaw == null || aeRaw.getNumEvents() <= 0 || aeInputStream == null) {
+            return;
+        }
+        viewHistory.push(areaEventLeftover, aeInputStream.position(),
+                aeInputStream.getCurrentStartTimestamp());
+    }
+
+    /**
+     * Restore the playhead from before the target slice and re-read that slice
+     * forward. Always reads forward even if reverse play is armed (B / comma).
+     */
+    private AEPacketRaw replayBookmark(PlaybackSliceHistory.RewindResult r, boolean followEvents,
+            boolean area, boolean flex) throws IOException {
+        PlaybackSliceHistory.Bookmark state = r == null ? null : r.stateBefore;
+        if (state == null || aeInputStream == null) {
+            return new AEPacketRaw(0);
+        }
+        boolean wasForward = isPlayingForwards();
+        setDirectionForwards(true);
+        aeInputStream.position(state.positionAfter);
+        aeInputStream.setCurrentStartTimestamp(state.currentStartTimestamp);
+        clearAreaEventLeftover();
+        areaEventLeftover = PlaybackSliceHistory.copyPacket(state.leftover);
+        resetPlaybackView(true, false);
+        AEPacketRaw packet = readOnePlaybackSlice(followEvents, area, flex);
+        if (!wasForward) {
+            setDirectionForwards(false);
+        }
+        return packet != null ? packet : new AEPacketRaw(0);
+    }
+
+    private void notifyHistoryStart(PlaybackSliceHistory.RewindResult r) {
+        if (viewer == null) {
+            return;
+        }
+        if (r == null || r.stateBefore == null) {
+            viewer.showActionText("View history empty — play forward first");
+            return;
+        }
+        if (r.stepsTaken > 0) {
+            String where = viewHistory.originPosition() <= 0 ? "start of recording" : "start of history";
+            viewer.showActionText(String.format("Rewound %d view slices (%s)", r.stepsTaken, where));
+        } else if (r.atOldest) {
+            viewer.showActionText(viewHistory.originPosition() <= 0
+                    ? "Start of recording"
+                    : "Start of view history");
+        }
+    }
+
+    private void resetViewHistoryOrigin() {
+        if (aeInputStream == null) {
+            viewHistory.clear();
+            return;
+        }
+        viewHistory.resetOrigin(aeInputStream.position(), aeInputStream.getCurrentStartTimestamp(),
+                areaEventLeftover);
+    }
+
+    @Override
+    protected void discardViewHistory() {
+        resetViewHistoryOrigin();
+    }
+
+    private void finishJogIfComplete() {
+        if (jogOccuring && jogPacketsLeft == 0) {
+            jogOccuring = false;
+            setDirectionForwards(true);
+            setJogWaitCursor(false);
+            if (log.isLoggable(Level.FINE)) {
+                log.fine(String.format("jog done pos=%d history=%d",
+                        aeInputStream != null ? aeInputStream.position() : -1,
+                        viewHistory.size()));
+            }
+        } else if (!jogOccuring) {
+            setJogWaitCursor(false);
         }
     }
 
@@ -1259,7 +1355,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         aeInputStream.setPlaybackSliderFraction(frac);
-        resetPlaybackView(!isPlaybackSliderDragging());
+        resetPlaybackView(!isPlaybackSliderDragging(), true);
     }
 
     private boolean isPlaybackSliderDragging() {
@@ -1269,10 +1365,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     /** Reset renderer accumulation; reset filters unless the playback slider is mid-drag. */
     private void resetPlaybackView() {
-        resetPlaybackView(!isPlaybackSliderDragging());
+        resetPlaybackView(!isPlaybackSliderDragging(), true);
     }
 
     private void resetPlaybackView(boolean resetFilters) {
+        resetPlaybackView(resetFilters, resetFilters);
+    }
+
+    private void resetPlaybackView(boolean resetFilters, boolean clearHistory) {
+        if (clearHistory) {
+            resetViewHistoryOrigin();
+        }
         if (viewer == null) {
             return;
         }
@@ -1309,7 +1412,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         aeInputStream.setPositionFromTimestamp(timestampUs);
-        resetPlaybackView(resetFilters);
+        resetPlaybackView(resetFilters, true);
     }
 
     @Override

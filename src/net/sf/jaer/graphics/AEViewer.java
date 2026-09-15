@@ -8942,8 +8942,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackMenu.add(jogForwardMI);
 
         jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        jogBackwardsMI.setText("Jog back N packets");
-        jogBackwardsMI.setToolTipText("Or use SHIFT+mouse wheel");
+        jogBackwardsMI.setText("Jog back N view slices");
+        jogBackwardsMI.setToolTipText("Jump N forward view slices (SHIFT+mouse wheel). History covers this playback session through the start of the recording (or last seek).");
         jogBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jogBackwardsMIActionPerformed(evt);

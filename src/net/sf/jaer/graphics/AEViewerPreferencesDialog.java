@@ -1252,6 +1252,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
         p.add(new JLabel("Jog packet count:"), gbcLabel(y));
         jogPacketCountSpinner = new JSpinner(new SpinnerNumberModel(100, 1, 1000000, 1));
+        jogPacketCountSpinner.setToolTipText("N for jog forward/back. Back jumps to the Nth previous forward slice from this session (through recording start unless you seeked).");
         jogPacketCountSpinner.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {

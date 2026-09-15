@@ -125,6 +125,7 @@ public abstract class AbstractAEPlayer {
         support.addPropertyChangeListener(viewer);
         repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
         jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 100);
+        viewHistory.setJogPacketCount(jogPacketCount);
         try {
             playbackMode = PlaybackMode.valueOf(prefs.get("AbstractAEPlayer.playbackMode", PlaybackMode.FixedTimeSlice.name()));
         } catch (IllegalArgumentException e) {
@@ -238,6 +239,17 @@ public abstract class AbstractAEPlayer {
     volatile protected int jogPacketsLeft = 0;
     /** True while a jog queue is being drained; volatile for Esc cancel from EDT. */
     volatile protected boolean jogOccuring = false;
+    /**
+     * Session-long index of forward view slices for jog-back. Restores the
+     * playhead before a prior slice and re-reads that one slice; does not
+     * reverse-read the file.
+     */
+    protected final PlaybackSliceHistory viewHistory = new PlaybackSliceHistory();
+
+    /** Seek / rewind / mode change: drop slice bookmarks. AEPlayer records a new origin. */
+    protected void discardViewHistory() {
+        viewHistory.clear();
+    }
 
     abstract public void openAEInputFileDialog();
 
@@ -416,6 +428,9 @@ public abstract class AbstractAEPlayer {
         }
         this.playbackMode = playbackMode;
         prefs.put("AbstractAEPlayer.playbackMode", playbackMode.name());
+        if (old != playbackMode) {
+            discardViewHistory();
+        }
         // If a ConstantCount/AreaEventCount click was rejected, fire requested→actual
         // so radios snap back even when we were already on CountDuration.
         support.firePropertyChange(EVENT_PLAYBACKMODE,
@@ -1460,12 +1475,15 @@ public abstract class AbstractAEPlayer {
         public JogBackwardAction() {
             super("Jog backward", "StepBack16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
-            putValue(Action.SHORT_DESCRIPTION, "Jogs backwards N packets");
+            putValue(Action.SHORT_DESCRIPTION, "Jumps back N forward view slices (to recording start if history covers it)");
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction(String.format("Jog backwards %d", getJogPacketCount()));
+            showAction(String.format("Jog backwards %d view slices", getJogPacketCount()));
             jogBackwards(getJogPacketCount());
+            if (isPaused()) {
+                doSingleStep(); // ViewLoop is parked while paused; drain the history jump now
+            }
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1536,6 +1554,7 @@ public abstract class AbstractAEPlayer {
     public void setJogPacketCount(int jogPacketCount) {
         this.jogPacketCount = jogPacketCount;
         viewer.prefs.putInt("AbstractAEPlayer.jogPacketCount", jogPacketCount);
+        viewHistory.setJogPacketCount(jogPacketCount);
     }
 
 }
