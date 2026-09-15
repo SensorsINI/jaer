@@ -97,10 +97,12 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             final DavisRenderer frameRenderer = (DavisRenderer) renderer;
             dvsEventsMap = frameRenderer.getDvsEventsMap();
 //			offMap = frameRenderer.getOffMap();
-            annotateMap = frameRenderer.getAnnotateMap();
             displayFrames = frameRenderer.isDisplayFrames();
             displayEvents = frameRenderer.isDisplayEvents();
             displayAnnotation = frameRenderer.isDisplayAnnotation();
+            if (displayAnnotation) {
+                annotateMap = frameRenderer.getAnnotateMap();
+            }
         }
 
         final int width = renderer.getWidth();

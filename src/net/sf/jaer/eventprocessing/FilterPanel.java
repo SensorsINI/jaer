@@ -70,6 +70,7 @@ import javax.swing.BoxLayout;
 import javax.swing.ComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JColorChooser;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -113,6 +114,8 @@ import net.sf.jaer.util.XMLFileFilter;
  * a JTextBox control that also allows changes from mouse wheel or arrow keys.
  * <li> boolean properties construct a JCheckBox control.
  * <li> String properties construct a JTextField control.
+ * <li> {@link java.awt.Color} properties construct a swatch + chooser
+ * ({@link javax.swing.JColorChooser}).
  * <li> enum properties construct a JComboBox control, which all the possible
  * enum constant values.
  * <li> If the filter class is annotated with {@link net.sf.jaer.Help}, a
@@ -976,6 +979,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                         control = new StringControl(p.getName(), p);
                         myadd(control, name, inherited);
+                    } else if ((c == Color.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                        control = new ColorControl(p.getName(), p);
+                        myadd(control, name, inherited);
                     } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new EnumControl(p.getName(), p, c);
                         myadd(control, name, inherited);
@@ -1547,6 +1553,73 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
     }
+
+    class ColorControl extends MyControl {
+
+        final JPanel swatch;
+        final JButton colorButton;
+
+        public ColorControl(final String name, final PropertyDescriptor p) {
+            super(p);
+            label = new JLabel(name);
+            label.setAlignmentX(LEFT_ALIGNMENT);
+            setFontSizeStyle(label);
+            addTip(getFilter(), label);
+            add(label);
+
+            swatch = new JPanel();
+            swatch.setOpaque(true);
+            swatch.setPreferredSize(new Dimension(28, 18));
+            swatch.setMinimumSize(new Dimension(28, 18));
+            swatch.setMaximumSize(new Dimension(28, 18));
+            swatch.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY));
+            add(Box.createHorizontalStrut(6));
+            add(swatch);
+
+            colorButton = new JButton("Choose");
+            colorButton.setMaximumSize(new Dimension(90, 24));
+            colorButton.setPreferredSize(new Dimension(72, 22));
+            setFontSizeStyle(colorButton);
+            addTip(getFilter(), colorButton);
+            add(Box.createHorizontalStrut(6));
+            add(colorButton);
+            add(Box.createHorizontalGlue());
+
+            try {
+                Color x = (Color) read.invoke(getFilter());
+                if (x == null) {
+                    log.warning("null Color returned from read method " + read);
+                    return;
+                }
+                setCurrentState(x);
+                setGuiState(x);
+            } catch (Exception e) {
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
+                e.printStackTrace();
+            }
+            colorButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    highlightClearingOthers();
+                    Color current = currentState instanceof Color ? (Color) currentState : Color.BLUE;
+                    Color chosen = JColorChooser.showDialog(FilterPanel.this, "Choose " + name, current);
+                    if (chosen != null) {
+                        setUndoableState(chosen);
+                    }
+                }
+            });
+        }
+
+        @Override
+        void setGuiState(Object o) {
+            if (!(o instanceof Color c)) {
+                return;
+            }
+            swatch.setBackground(c);
+            colorButton.setText(String.format("#%06X", c.getRGB() & 0xFFFFFF));
+        }
+    }
+
     private final float KEY_FACTOR = (float) Math.sqrt(2), WHEEL_FACTOR = (float) Math.pow(2, 1. / 16); // factors to change by with arrow and mouse wheel
 
     class BooleanControl extends MyControl {
