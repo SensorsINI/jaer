@@ -34,32 +34,81 @@ Then open http://127.0.0.1:8080/
    The Pages screen stays empty (“Use a suggested workflow…”) until the first deploy
    finishes; that is normal.
 4. After a green run, the project URL is https://sensorsini.github.io/jaer/
-5. **Custom domain:** `jaerproject.org`. Wait for the DNS check, then **Enforce HTTPS**.
+5. Still on **Settings → Pages**, **Custom domain** = `jaerproject.org` → **Save**, then
+   wait for the DNS check and **Enforce HTTPS**. Do this **before** (or right as) you
+   change Swizzonic DNS. With an Actions publishing source, GitHub ignores `website/CNAME`
+   until this field is set.
 
 Verify the org domain in **SensorsINI → Settings → Pages → Verified domains** so another repo cannot claim it.
 
-## DNS cutover (registrar)
+## DNS cutover (Swizzonic)
 
-Today `jaerproject.org` **URL-forwards** to the GitHub repo. Remove that forwarding or it will fight Pages.
+The old setup was a Darwin / Plesk web host (`ns1.darwin.sui-inter.net` /
+`ns2.darwin.sui-inter.net`, A record `94.126.18.110`) plus URL forwarding to GitHub.
+The new setup is **DNS A records** so the browser stays on `jaerproject.org` and
+GitHub Pages serves the landing page.
 
-Apex `A` records for `@`:
+Swizzonic shows **Our configurations have been disabled** and has no **Advanced**
+editor because the nameservers are still Darwin. **Start the DNS modification**
+changes nameservers; it is not the A-record editor. Do not click it until lab IT
+and/or Swizzonic support agree.
 
-- `185.199.108.153`
-- `185.199.109.153`
-- `185.199.110.153`
-- `185.199.111.153`
+**Intended end state (easier to self-manage):** Swizzonic nameservers
+(`dns1.swizzonic.ch` / `dns2.swizzonic.ch`), then **DNS configuration → Advanced**
+in this control panel. Ask lab IT first (mail, other Darwin hosts). Then a
+Swizzonic support ticket can move NS and plant the GitHub records.
 
-Apex `AAAA` for `@`:
+Paste for IT / Swizzonic:
 
-- `2606:50c0:8000::153`
-- `2606:50c0:8001::153`
-- `2606:50c0:8002::153`
-- `2606:50c0:8003::153`
+> Please point jaerproject.org nameservers at Swizzonic (dns1.swizzonic.ch /
+> dns2.swizzonic.ch) so we can edit the zone in the Swizzonic control panel.
+> Current NS: ns1.darwin.sui-inter.net / ns2.darwin.sui-inter.net (legacy Plesk).
+> After the move, set website records to GitHub Pages (no SWIZZ hosting, no
+> redirect to github.com): four A + four AAAA on jaerproject.org as in
+> https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site
+> (185.199.108.153 … 111.153 and 2606:50c0:8000::153 … 8003::153);
+> CNAME www → sensorsini.github.io.
+> Preserve MX mail.jaerproject.org unless we confirm that mailbox is unused.
+> jaerproject.net should URL-forward (301) to https://jaerproject.org only.
 
-`CNAME` `www` → `sensorsini.github.io`
+Do not turn on SWIZZ hosting for `.org`.
 
-Then in repo Pages settings set the custom domain to `jaerproject.org` (this folder’s `CNAME` file already has that name). TLS can take up to about an hour.
+### jaerproject.org (this is the Pages site)
 
-Leave `jaerproject.net` and `jaerproject.ch` as registrar **301 / URL forward → https://jaerproject.org**. GitHub’s `CNAME` file may list only one domain.
+In [controlpanel.swizzonic.ch](https://controlpanel.swizzonic.ch), select **jaerproject.org**
+(right-hand domain list), then:
+
+1. Open **Domain & DNS** → **DNS configuration** → **Advanced** → **OK**.
+   ([Swizzonic: manage DNS zone](https://swizzonic.support/en/manage-dns-zone/))
+2. **Turn off** any redirect / web-forwarding / cPanel Redirect that sends `.org` to
+   GitHub. Leave **MX / mail / TXT** alone unless you know they are unused.
+3. Replace the apex website records. Swizzonic does not use `@`; the name is
+   `jaerproject.org` (no `www`).
+
+   Delete existing **A** (and **AAAA**, if any) for `jaerproject.org` that point at
+   Swizzonic or a redirect host. Add **four A** and **four AAAA**:
+
+   | Type | Name | Value |
+   |------|------|--------|
+   | A | `jaerproject.org` | `185.199.108.153` |
+   | A | `jaerproject.org` | `185.199.109.153` |
+   | A | `jaerproject.org` | `185.199.110.153` |
+   | A | `jaerproject.org` | `185.199.111.153` |
+   | AAAA | `jaerproject.org` | `2606:50c0:8000::153` |
+   | AAAA | `jaerproject.org` | `2606:50c0:8001::153` |
+   | AAAA | `jaerproject.org` | `2606:50c0:8002::153` |
+   | AAAA | `jaerproject.org` | `2606:50c0:8003::153` |
+
+4. **www:** add (or edit) **CNAME** name `www` → `sensorsini.github.io`
+   (trailing dot if the form requires it: `sensorsini.github.io.`).
+5. **Apply**. Propagation is often 1–2 hours (TTL). Then GitHub Pages **Enforce HTTPS**.
+
+Check from PowerShell: `Resolve-DnsName jaerproject.org -Type A` should list those four
+GitHub IPs, not a Swizzonic redirect host.
+
+### jaerproject.net (and .ch)
+
+Keep **URL forward / 301 → `https://jaerproject.org`**. Do **not** point `.net` at the
+GitHub Pages A records. GitHub’s custom domain is only `jaerproject.org`.
 
 Do not change the Authenticode `description-url` (`https://jaerproject.org`).
