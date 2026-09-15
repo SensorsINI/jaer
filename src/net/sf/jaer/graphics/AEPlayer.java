@@ -1330,10 +1330,19 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public boolean toggleMarker() {
-        if (aeInputStream != null) {
-            return aeInputStream.toggleMarker();
+        lastMarkerReactionOffsetMs = 0;
+        if (aeInputStream == null) {
+            return false;
         }
-        return false;
+        if (!isPaused() && isPlayingForwards() && markerReactionTimeMs > 0) {
+            PlaybackSliceHistory.Bookmark b = viewHistory.findRenderedAgo(markerReactionTimeMs * 1_000_000L);
+            if (b != null) {
+                long lagNs = System.nanoTime() - b.renderedAtNanos;
+                lastMarkerReactionOffsetMs = (int) Math.max(0L, lagNs / 1_000_000L);
+                return aeInputStream.toggleMarkerAt(b.positionAfter);
+            }
+        }
+        return aeInputStream.toggleMarker();
     }
 
     @Override

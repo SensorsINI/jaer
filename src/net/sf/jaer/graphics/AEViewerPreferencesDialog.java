@@ -153,6 +153,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
+    private JSpinner markerReactionTimeSpinner;
     private JTextField minExposureTimeTF;
     private JTextField maxExposureTimeTF;
     private JSpinner numAreasSpinner;
@@ -1268,6 +1269,24 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
+        p.add(new JLabel("Marker reaction time (ms):"), gbcLabel(y));
+        markerReactionTimeSpinner = new JSpinner(new SpinnerNumberModel(
+                AbstractAEPlayer.MARKER_REACTION_TIME_MS_DEFAULT, 0, 2000, 50));
+        markerReactionTimeSpinner.setToolTipText("While playing, m places the marker this many milliseconds earlier (typical human reaction ~400 ms). 0 = current slice. Paused playback always uses the current slice.");
+        markerReactionTimeSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                AbstractAEPlayer player = viewer.getAePlayer();
+                if (player != null) {
+                    player.setMarkerReactionTimeMs(((Number) markerReactionTimeSpinner.getValue()).intValue());
+                }
+            }
+        });
+        p.add(markerReactionTimeSpinner, gbcField(y++));
+
         p.add(new JLabel("Min exposure (count modes):"), gbcLabel(y));
         minExposureTimeTF = new JTextField(8);
         minExposureTimeTF.setHorizontalAlignment(JTextField.RIGHT);
@@ -1704,6 +1723,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             if (player != null) {
                 repeatPlaybackCB.setSelected(player.isRepeat());
                 jogPacketCountSpinner.setValue(Math.max(1, player.getJogPacketCount()));
+                markerReactionTimeSpinner.setValue(Math.max(0, player.getMarkerReactionTimeMs()));
                 numAreasSpinner.setValue(Math.max(1, player.getNumAreas()));
                 refreshMinExposureTextFromPlayer();
                 refreshMaxExposureTextFromPlayer();

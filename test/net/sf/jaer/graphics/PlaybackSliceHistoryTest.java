@@ -117,6 +117,30 @@ public class PlaybackSliceHistoryTest {
     }
 
     @Test
+    public void findRenderedAgoPicksSliceAtLeastDelayOld() {
+        PlaybackSliceHistory h = new PlaybackSliceHistory();
+        h.resetOrigin(0L, 0, null);
+        long t0 = 1_000_000_000L;
+        h.push(null, 10, 1, t0);
+        h.push(null, 20, 2, t0 + 100_000_000L);
+        h.push(null, 30, 3, t0 + 250_000_000L);
+        h.push(null, 40, 4, t0 + 500_000_000L);
+        long now = t0 + 500_000_000L;
+        PlaybackSliceHistory.Bookmark b = h.findRenderedAgo(400_000_000L, now);
+        assertEquals(20, b.positionAfter);
+        b = h.findRenderedAgo(50_000_000L, now);
+        assertEquals(30, b.positionAfter);
+        b = h.findRenderedAgo(10_000_000_000L, now);
+        assertEquals(10, b.positionAfter);
+    }
+
+    @Test
+    public void findRenderedAgoEmptyIsNull() {
+        PlaybackSliceHistory h = new PlaybackSliceHistory();
+        assertNull(h.findRenderedAgo(400_000_000L, 1L));
+    }
+
+    @Test
     public void copyPacketNullAndEmpty() {
         assertNull(PlaybackSliceHistory.copyPacket(null));
         AEPacketRaw empty = PlaybackSliceHistory.copyPacket(new AEPacketRaw(0));

@@ -246,6 +246,14 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      */
     public boolean toggleMarker();
 
+    /**
+     * Adds or removes a marker at {@code eventPos} without moving the playhead.
+     * Default toggles at the current position (formats that only support that).
+     */
+    default boolean toggleMarkerAt(long eventPos) {
+        return toggleMarker();
+    }
+
     public boolean jumpToNextMarker();
 
     public boolean jumpToPrevMarker();

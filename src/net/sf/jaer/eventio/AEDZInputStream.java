@@ -855,7 +855,12 @@ public class AEDZInputStream implements AEFileInputStreamInterface, java.io.Clos
 
     @Override
     public boolean toggleMarker() {
-        Long pos = Long.valueOf(position);
+        return toggleMarkerAt(position);
+    }
+
+    @Override
+    public boolean toggleMarkerAt(long eventPos) {
+        Long pos = Long.valueOf(eventPos);
         if (otherMarks.contains(pos)) {
             otherMarks.remove(pos);
             return false;

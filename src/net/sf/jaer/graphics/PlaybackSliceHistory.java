@@ -31,11 +31,18 @@ public final class PlaybackSliceHistory {
         public final AEPacketRaw leftover;
         public final long positionAfter;
         public final int currentStartTimestamp;
+        /** {@link System#nanoTime()} when this slice was handed to ViewLoop for display. */
+        public final long renderedAtNanos;
 
         Bookmark(AEPacketRaw leftover, long positionAfter, int currentStartTimestamp) {
+            this(leftover, positionAfter, currentStartTimestamp, 0L);
+        }
+
+        Bookmark(AEPacketRaw leftover, long positionAfter, int currentStartTimestamp, long renderedAtNanos) {
             this.leftover = leftover;
             this.positionAfter = positionAfter;
             this.currentStartTimestamp = currentStartTimestamp;
+            this.renderedAtNanos = renderedAtNanos;
         }
     }
 
@@ -103,6 +110,11 @@ public final class PlaybackSliceHistory {
      * after the cursor (play-forward after jog-back).
      */
     public synchronized void push(AEPacketRaw leftover, long positionAfter, int currentStartTimestamp) {
+        push(leftover, positionAfter, currentStartTimestamp, System.nanoTime());
+    }
+
+    public synchronized void push(AEPacketRaw leftover, long positionAfter, int currentStartTimestamp,
+            long renderedAtNanos) {
         if (!originSet) {
             originSet = true;
             origin = new Bookmark(null, 0L, currentStartTimestamp);
@@ -110,8 +122,33 @@ public final class PlaybackSliceHistory {
         while (bookmarks.size() > cursor + 1) {
             bookmarks.remove(bookmarks.size() - 1);
         }
-        bookmarks.add(new Bookmark(copyLeftover(leftover), positionAfter, currentStartTimestamp));
+        bookmarks.add(new Bookmark(copyLeftover(leftover), positionAfter, currentStartTimestamp, renderedAtNanos));
         cursor = bookmarks.size() - 1;
+    }
+
+    /**
+     * Newest bookmark whose render stamp is at least {@code delayNs} ago, or
+     * the oldest bookmark if history is shorter than the delay. {@code null}
+     * if nothing has been displayed yet.
+     */
+    public synchronized Bookmark findRenderedAgo(long delayNs) {
+        return findRenderedAgo(delayNs, System.nanoTime());
+    }
+
+    synchronized Bookmark findRenderedAgo(long delayNs, long nowNanos) {
+        if (bookmarks.isEmpty() || cursor < 0) {
+            return null;
+        }
+        long delay = delayNs < 0 ? 0 : delayNs;
+        long target = nowNanos - delay;
+        Bookmark oldest = bookmarks.get(0);
+        for (int i = cursor; i >= 0; i--) {
+            Bookmark b = bookmarks.get(i);
+            if (b.renderedAtNanos <= target) {
+                return b;
+            }
+        }
+        return oldest;
     }
 
     /**

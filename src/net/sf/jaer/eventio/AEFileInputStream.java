@@ -1139,8 +1139,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     @Override
     public boolean toggleMarker() {
+        return toggleMarkerAt(position());
+    }
+
+    @Override
+    public boolean toggleMarkerAt(long eventPos) {
         final long EVENT_COUNT_TOLERANCE = 1000000L;
-        long here = (position() / eventSizeBytes) * eventSizeBytes;
+        long here = (eventPos / eventSizeBytes) * eventSizeBytes;
         boolean added = false;
         Long ceil = marks.otherMarks.ceiling(here), floor = marks.otherMarks.floor(here);
 

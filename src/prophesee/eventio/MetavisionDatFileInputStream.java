@@ -543,7 +543,12 @@ public class MetavisionDatFileInputStream implements AEFileInputStreamInterface 
 
     @Override
     public boolean toggleMarker() {
-        Long here = position;
+        return toggleMarkerAt(position);
+    }
+
+    @Override
+    public boolean toggleMarkerAt(long eventPos) {
+        Long here = eventPos;
         boolean added = markers.add(here);
         if (!added) {
             markers.remove(here);

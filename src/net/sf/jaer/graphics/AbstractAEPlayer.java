@@ -110,6 +110,8 @@ public abstract class AbstractAEPlayer {
     public static final float MINIMUM_EXPOSURE_TIME_S_DEFAULT = 1e-3f;
     /** Default maximum slice duration (0 = no cap). AreaEventCount used to hard-cap at 1 s. */
     public static final float MAXIMUM_EXPOSURE_TIME_S_DEFAULT = 0f;
+    /** Default wall-clock lag when placing a marker with m while playing. 0 disables. */
+    public static final int MARKER_REACTION_TIME_MS_DEFAULT = 400;
 
     /**
      * Creates new instance of AbstractAEPlayer and adds the viewer (if not
@@ -133,6 +135,7 @@ public abstract class AbstractAEPlayer {
         }
         minimumExposureTimeS = prefs.getFloat("AbstractAEPlayer.minimumExposureTimeS", MINIMUM_EXPOSURE_TIME_S_DEFAULT);
         maximumExposureTimeS = prefs.getFloat("AbstractAEPlayer.maximumExposureTimeS", MAXIMUM_EXPOSURE_TIME_S_DEFAULT);
+        markerReactionTimeMs = viewer.prefs.getInt("AbstractAEPlayer.markerReactionTimeMs", MARKER_REACTION_TIME_MS_DEFAULT);
         minExposureFmt.setPrecision(2);
     }
 
@@ -233,6 +236,9 @@ public abstract class AbstractAEPlayer {
      */
     protected float minimumExposureTimeS = MINIMUM_EXPOSURE_TIME_S_DEFAULT;
     protected float maximumExposureTimeS = MAXIMUM_EXPOSURE_TIME_S_DEFAULT;
+    protected int markerReactionTimeMs = MARKER_REACTION_TIME_MS_DEFAULT;
+    /** Last reaction-time offset used by {@link #toggleMarker()}; 0 if none. */
+    protected int lastMarkerReactionOffsetMs = 0;
     private final EngineeringFormat minExposureFmt = new EngineeringFormat();
     protected int jogPacketCount = 20;
     /** Remaining jog steps; written from EDT (Esc cancel) and read on ViewLoop — must be volatile. */
@@ -1093,15 +1099,20 @@ public abstract class AbstractAEPlayer {
         public ToggleMarkAction() {
             super("Toggle marker", "ToggleMarker16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed m"));
-            putValue(Action.SHORT_DESCRIPTION, "Add or remove a marker at current location");
+            putValue(Action.SHORT_DESCRIPTION, "Add or remove a marker. While playing, places it ~reaction-time earlier (Preferences).");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             boolean addedMarker = toggleMarker();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, addedMarker ? "Added marker" : "Removed marker");
-            showAction();
+            int off = getLastMarkerReactionOffsetMs();
+            if (addedMarker && off > 0) {
+                showAction(String.format("Added marker (−%d ms)", off));
+            } else {
+                putValue(Action.SHORT_DESCRIPTION, addedMarker ? "Added marker" : "Removed marker");
+                showAction();
+            }
         }
     }
 
@@ -1555,6 +1566,25 @@ public abstract class AbstractAEPlayer {
         this.jogPacketCount = jogPacketCount;
         viewer.prefs.putInt("AbstractAEPlayer.jogPacketCount", jogPacketCount);
         viewHistory.setJogPacketCount(jogPacketCount);
+    }
+
+    public int getMarkerReactionTimeMs() {
+        return markerReactionTimeMs;
+    }
+
+    public int getLastMarkerReactionOffsetMs() {
+        return lastMarkerReactionOffsetMs;
+    }
+
+    /**
+     * Wall-clock lag for {@code m} while playing (0 = mark at the current slice).
+     */
+    public void setMarkerReactionTimeMs(int markerReactionTimeMs) {
+        if (markerReactionTimeMs < 0) {
+            markerReactionTimeMs = 0;
+        }
+        this.markerReactionTimeMs = markerReactionTimeMs;
+        viewer.prefs.putInt("AbstractAEPlayer.markerReactionTimeMs", markerReactionTimeMs);
     }
 
 }
