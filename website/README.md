@@ -49,9 +49,22 @@ The new setup is **DNS A records** so the browser stays on `jaerproject.org` and
 GitHub Pages serves the landing page.
 
 Swizzonic shows **Our configurations have been disabled** and has no **Advanced**
-editor because the nameservers are still Darwin. **Start the DNS modification**
-changes nameservers; it is not the A-record editor. Do not click it until lab IT
-and/or Swizzonic support agree.
+editor because the nameservers are still Darwin.
+
+**Start the DNS modification** is a **nameserver switch**, not the A-record editor.
+Darwin does not have to “give up” the domain first. Swizzonic is already the
+registrar; changing NS from Darwin to Swizzonic is how Darwin stops answering.
+After TTL (hours, sometimes a day), **Advanced** appears.
+
+The **Edit DNS** warning is written for the *other* direction: leaving Swizzonic
+default DNS for someone else’s NS, which turns off Swizzonic extras (redirect,
+hosting DNS). You are **already** on Darwin, so those extras are already off.
+Checking the box and **PROCEED** is only useful if the next screen sets
+**Swizzonic default DNS** (`dns1.swizzonic.ch` / `dns2.swizzonic.ch`), not Darwin.
+
+Do not proceed until lab IT confirms `mail.jaerproject.org` can break or will be
+recreated on Swizzonic. After NS is Swizzonic, add the GitHub A/AAAA/CNAME below;
+do not point A records at SWIZZfree hosting.
 
 **Intended end state (easier to self-manage):** Swizzonic nameservers
 (`dns1.swizzonic.ch` / `dns2.swizzonic.ch`), then **DNS configuration → Advanced**
