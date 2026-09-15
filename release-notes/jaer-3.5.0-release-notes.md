@@ -18,7 +18,7 @@
     tab-overlay-hints.png (7 s color / accumulation reminder after File Open)
 -->
 
-**jAER 3.5.0** is a feature release after **[3.4.0](https://github.com/SensorsINI/jaer/releases/tag/3.4.0)**. **Signed Windows and macOS installers**, **timed / rotating VCR recordings**, **sample-data install and download**, **one jAER instance with cross-platform AEDAT file association**, and **OpenCV cameras** (synchronized webcam / USB frame recording next to an event sensor) are the main user-facing additions. Export video, Save As, and playback UI also moved a long way. This pre-release **replaces 3.4.1** (that short bug-fix pre-release is folded in here). See [Highlights](#highlights) below.
+**jAER 3.5.0** is a feature release after **[3.4.0](https://github.com/SensorsINI/jaer/releases/tag/3.4.0)**. A new **[homepage](https://sensorsini.github.io/jaer/)** (also [jaerproject.org](https://jaerproject.org/)) serves the installer for your OS. **Signed Windows and macOS installers**, **timed / rotating VCR recordings**, **sample-data install and download**, **one jAER instance with cross-platform AEDAT file association**, and **OpenCV cameras** (synchronized webcam / USB frame recording next to an event sensor) are the other main user-facing additions. Export video, Save As, and playback UI also moved a long way. This pre-release **replaces 3.4.1** (that short bug-fix pre-release is folded in here). See [Highlights](#highlights) below.
 
 ## Download
 
@@ -66,6 +66,7 @@ Apple menu → About This Mac: **Chip** Apple M1–M4 → `aarch64` DMG; **Proce
 
 ### Highlights
 
+* [Homepage](#homepage) — OS-specific download, GitHub README, and Releases
 * [Signed Windows and macOS installers](#signed-installers) — Authenticode + notarized Developer ID
 * [Timed / rotating VCR recordings](#vcr) — cassette files, merge on stop
 * [Sample recordings](#sample-data) — installer + Help → Sample data; writable folder when Program Files is locked
@@ -75,6 +76,12 @@ Apple menu → About This Mac: **Chip** Apple M1–M4 → `aarch64` DMG; **Proce
 * [Playback marks and time](#playback) — IN/OUT/m on the sparkline; analog clock; FlexTime min/max
 * [Save As](#save-as) — background export; record-order AEDAT-4; taskbar ETA
 * [Bug fixes](#bug-fixes-and-minor-improvements)
+
+<h4 id="homepage">Homepage</h4>
+
+**[sensorsini.github.io/jaer](https://sensorsini.github.io/jaer/)** (canonical [jaerproject.org](https://jaerproject.org/)) is the public landing page. It detects your OS and offers **Download jAER for Windows / macOS / Linux**, plus **View on GitHub** ([README](https://github.com/SensorsINI/jaer#readme)) and **See Releases**. Platform links cover Windows x64, macOS Apple Silicon, macOS Intel, and Linux x64. Installer binaries stay on GitHub Releases; the page only links to Latest.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.0/jaer-github-io.png" alt="jAER homepage with OS-specific download, View on GitHub, and See Releases" width="80%" />
 
 <h4 id="signed-installers">Signed Windows and macOS installers</h4>
 
