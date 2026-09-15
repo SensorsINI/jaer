@@ -23,6 +23,7 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 | Linux `.sh` | Any OS with install4j | `ant release -Dskip.github.draft=true` (or full `ant release`) | none |
 | Git tag + draft Release | Any box with `gh` | `ant create-draft-release` | n/a |
 | Attach media to that tag | Mini for DMGs; any box for `.sh`; **never** overwrite Azure exe | `ant upload-installers` | n/a |
+| Same Mac + upload, from another box | **SSH into the Mini** (ZeroTier). Cursor Cloud Agents cannot notarize. | See [Remote Mini (SSH / Cursor CLI)](#remote-mini-ssh--cursor-cli) | same as Mini row |
 
 Do **not** use `ant release` when you only want Mac. On the Mini that command builds Windows+Linux too, waits on Apple notarization, then **tags `VERSION.txt`**. Use `ant release-macos` for Mac-only with no tag.
 
@@ -56,6 +57,70 @@ Media-only without tagging: stop after step 2 or 3. `ant upload-installers` will
 Upload extras: dry run `ant "-Djaer.upload.whatif=true" upload-installers`. Other tag: `ant "-Djaer.upload.tag=3.4.1" upload-installers`. PowerShell: **quote** `-Dname=value`. Also uploads `jaer-sample-data.zip` when present. Does **not** overwrite the GitHub body on an existing draft.
 
 Download counts: `ant count-asset-downloads`. After a rebuild, hashes in `updates.xml` change — repeat `copy-updates-xml`, upload, and push `updates.xml` or the updater checksum-fails.
+
+## Remote Mini (SSH / Cursor CLI)
+
+Mac DMGs must run on this Mini (`~/jaer`): Developer ID, App Store Connect `.p8`, and install4j live here. A normal **SSH session is enough**. You do not need Cursor on the Mini for a build or `gh` upload.
+
+Cursor **Cloud Agents** (cursor.com/agents, or CLI `&` handoff) run on a Cursor VM. They cannot see `signpath/`, the login keychain, or `install4j/license.txt`. Do not send notarization there.
+
+### SSH (preferred)
+
+From Windows PowerShell on the ZeroTier `jaer` network (Mini address from `zerotier-cli listnetworks` on the Mini; currently `10.144.5.238`):
+
+```powershell
+ssh tobidelbruck@10.144.5.238
+```
+
+On the Mini, use bash. Notarization can sit for hours — use `tmux` (or `screen`) so a dropped SSH session does not kill install4j:
+
+```bash
+tmux new -s jaer-release   # later: tmux attach -t jaer-release
+cd ~/jaer
+git pull
+gh auth status             # needs repo scope for SensorsINI/jaer
+```
+
+Pick the GitHub Release to attach to: the **newest Release object**, including **draft** and **prerelease** (candidate), not only `/releases/latest/` (that is the published Latest flag):
+
+```bash
+gh release list --limit 15
+TAG=$(gh release list --limit 30 --json tagName,createdAt \
+  --jq 'sort_by(.createdAt) | reverse | .[0].tagName')
+gh release view "$TAG" --json tagName,isDraft,isPrerelease,isLatest,url
+```
+
+`VERSION.txt` and `currentInstallers/<tag>/` must match `$TAG`. If they do not, set `VERSION.txt`, push, then build. Confirm, then:
+
+```bash
+ant release-macos
+xcrun stapler validate currentInstallers/"$TAG"/jAER_macos_aarch64_*.dmg
+spctl -a -t open --context context:primary-signature -vv \
+  currentInstallers/"$TAG"/jAER_macos_aarch64_*.dmg
+# Expect source=Notarized Developer ID. Repeat for jAER_macos_*.dmg (Intel).
+
+ant "-Djaer.upload.whatif=true" "-Djaer.upload.tag=$TAG" upload-installers
+ant "-Djaer.upload.tag=$TAG" upload-installers
+```
+
+Default `upload-installers` skips the local Windows `.exe` (keeps the Azure-signed GitHub asset). Do not `upload-installers-clobber-windows` after Azure has signed. Do not upload Mac DMGs built on Windows/Linux.
+
+The `createdAt` picker only sees Release objects that already exist. For a brand-new `VERSION.txt` with no GitHub Release yet, skip the picker: `ant create-draft-release` then `ant upload-installers`. Bare `upload-installers` (no `-Djaer.upload.tag`) still **creates the git tag and a draft** if they are missing — do not run it until you intend that.
+
+### Optional: Cursor CLI on the Mini
+
+Same machine, same Ant/`gh` commands. The CLI is only a terminal agent in that SSH session.
+
+```bash
+curl https://cursor.com/install -fsS | bash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.bashrc if needed
+cd ~/jaer
+agent                                  # login once; then prompt from repo root
+```
+
+Docs: [CLI overview](https://cursor.com/docs/cli/overview). Useful: `agent "…"` one-shot, `agent ls` / `agent resume`, `/sandbox` → **disabled** (install4j and Apple tools need keychain + network). Do **not** prefix a message with `&` (Cloud Agent handoff). Do not ask the agent to print `signpath/` or `install4j/license.txt`.
+
+Windows can also run `agent` locally; that still cannot notarize. SSH to the Mini and run Ant there.
 
 ## Version (VERSION.txt)
 
@@ -362,6 +427,8 @@ Apple secrets live in gitignored repo-root `signpath/` on this Mini only (not
 Dropbox). Details: [packaging/macos-notarization.md](../packaging/macos-notarization.md).
 
 ### Maintainer: build and upload (Mini)
+
+From another machine, SSH into this Mini and run the same commands ([Remote Mini (SSH / Cursor CLI)](#remote-mini-ssh--cursor-cli)). Do not use a Cursor Cloud Agent.
 
 1. Confirm `signpath/` has the `.p12`, `AuthKey.p8`, issuer/key txt, and
    `macos-p12-password.txt` (or `JAER_MAC_KEYSTORE_PASSWORD`).
