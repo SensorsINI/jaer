@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jAER — Desktop application for event cameras</title>
+  <meta name="description" content="Download jAER, a cross-platform desktop application for neuromorphic event cameras and silicon cochleas. Windows, macOS, and Linux installers.">
+  <link rel="canonical" href="https://jaerproject.org/">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <h1>jAER</h1>
+    <p class="blurb">
+      Full-featured desktop application for neuromorphic event cameras and silicon cochleas
+      from iniVation, inilabs, Prophesee, and NRV.
+      Windows, Linux, and macOS.
+      Developed by the
+      <a href="https://sensors.ini.ch">Sensors Group, Institute of Neuroinformatics, UZH-ETH Zurich</a>.
+    </p>
+
+    <div class="cta">
+      <a id="download-btn" class="btn primary" href="https://github.com/SensorsINI/jaer/releases/latest">Download jAER</a>
+      <a class="btn secondary" href="https://github.com/SensorsINI/jaer">View on GitHub</a>
+      <a class="btn secondary" href="https://github.com/SensorsINI/jaer/releases">See Releases</a>
+    </div>
+    <p id="download-meta" class="meta" hidden></p>
+    <p id="download-note" class="note" hidden></p>
+
+    <ul id="other-platforms" class="platforms">
+      <li><a data-key="windows" href="https://github.com/SensorsINI/jaer/releases/latest">Windows x64</a></li>
+      <li><a data-key="macos_aarch64" href="https://github.com/SensorsINI/jaer/releases/latest">macOS Apple Silicon</a></li>
+      <li><a data-key="macos_intel" href="https://github.com/SensorsINI/jaer/releases/latest">macOS Intel</a></li>
+      <li><a data-key="linux" href="https://github.com/SensorsINI/jaer/releases/latest">Linux x64</a></li>
+    </ul>
+
+    <figure class="hero">
+      <img
+        src="https://github.com/user-attachments/assets/aec58330-25d1-4b8a-b8bd-5b841be8a2c5"
+        width="720"
+        height="480"
+        alt="jAER displaying live event-camera data">
+    </figure>
+
+    <section class="features" aria-labelledby="features-heading">
+      <h2 id="features-heading">Features</h2>
+      <ul>
+        <li><strong>Captures</strong> USB output from
+          <a href="https://github.com/SensorsINI/jaer#device-hardware-support">most event cameras</a>
+          (iniVation, Prophesee, NRV, SensorsINI cochleas).</li>
+        <li><strong>Denoises</strong> with fast, accurate algorithms.</li>
+        <li><strong>Displays</strong> with color, 2D/3D, fading, and sliding-window accumulation
+          (<a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-jaer3.md">pipeline</a>).</li>
+        <li><strong>Records</strong> compressed <a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-file-formats.md">AEDAT-4</a>,
+          including timed and rotating VCR sessions that can span days.</li>
+        <li><strong>Plays back</strong> AEDAT, Metavision RAW/DAT, DSEC HDF5, ROS bags, CSV —
+          with rate control, markers, and IN/OUT points.</li>
+        <li><strong>Processes</strong> live or recorded streams with
+          <a href="https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc">EventFilter</a>
+          chains (auto-built property panels) and
+          <a href="https://github.com/SensorsINI/jaer#jaer-applications">application demos</a>.</li>
+        <li><strong>Serves</strong> live or recorded data via File → Remote:
+          <a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md#dnn-shared-memory">DNN shared memory</a>,
+          <a href="https://opencv.org/">OpenCV</a>
+          <a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md#opencv-live-camera">HTTP MJPEG / Linux webcam</a>,
+          <a href="https://www.ros.org/">ROS2</a> /
+          <a href="https://foxglove.dev/">Foxglove</a>
+          <a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md#ros2-and-foxglove">publisher</a>.</li>
+        <li><strong>Exports</strong> CSV, HDF5, or AEDAT-4
+          (<a href="https://github.com/SensorsINI/jaer/blob/master/docs/README-DNN-OpenCV-ROS.md#python-dataloaders">Python dataloaders</a>)
+          and MP4 via File → Export video.</li>
+      </ul>
+    </section>
+  </main>
+  <script src="download.js"></script>
+</body>
+</html>

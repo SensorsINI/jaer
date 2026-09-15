@@ -90,6 +90,7 @@
           <entry location="build" />
           <entry location="build.xml" />
           <entry location="docs" />
+          <entry location="website" />
           <entry location="dist/javadoc" />
           <entry location="dist/jAER.jar.7z" />
           <entry location="dvs-slice-avi-writer.exe4j" />

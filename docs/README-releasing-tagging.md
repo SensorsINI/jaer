@@ -2,12 +2,13 @@
 
 GitHub Release **assets** (the installers) always sit on a **git tag**. There is no way to attach a DMG/exe to GitHub without creating that tag. Building media does **not** require a tag.
 
-Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to the same directory" hint.
+Two hosts for binaries vs updater XML; the public download page is GitHub Pages (`website/`). Do not follow install4j's "upload updates.xml and media to the same directory" hint.
 
 | What | Where | Who writes it |
 |------|--------|----------------|
 | Update descriptor | `https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml` | git: commit and push repo-root `updates.xml` |
 | Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `ant upload-installers` (Mini for Mac DMGs) |
+| Public download page | `https://jaerproject.org` | GitHub Pages from [`website/`](../website/); workflow [`.github/workflows/pages.yml`](../.github/workflows/pages.yml). DNS: [`website/README.md`](../website/README.md) |
 
 `updates.xml` `baseUrl` must be `https://github.com/SensorsINI/jaer/releases/latest/download/`. `ant copy-updates-xml` sets that; do not edit it by hand. The in-app checker reads the raw GitHub file, then downloads `baseUrl` + `fileName` (for example `jAER_windows-x64_3_2_0.exe`).
 
