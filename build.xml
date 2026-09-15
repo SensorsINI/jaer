@@ -45,6 +45,9 @@ Everyday (git checkout)
   clean                   delete build/ products (not lib/)
   javadoc                 build Javadoc
   test                    unit tests
+  website                 bake website/latest.json, serve website/ at
+                          http://127.0.0.1:8080/, open the default browser.
+                          Stop with Ctrl+C. Port: -Djaer.website.port=8080
 
 Dependencies (Ivy)
   download-deps           resolve/retrieve jars into lib/
@@ -1479,6 +1482,7 @@ Then re-run:        ant install
     <!-- VS Code/Cursor ignore .vscode/keybindings.json. Merge Ctrl+F5 into this
          machine's user keybindings. Default editor=cursor; also code|both. -->
     <property name="jaer.shortcut.editor" value="cursor"/>
+    <property name="jaer.website.port" value="8080"/>
 
     <target name="-compile-install-jaer-run-shortcut-tool" depends="init">
         <mkdir dir="${build.dir}/tools"/>
@@ -1499,6 +1503,25 @@ Then re-run:        ant install
               failonerror="true">
             <arg value="${jaer.shortcut.editor}"/>
         </java>
+    </target>
+
+    <target name="website" depends="checkos"
+            description="Bake website/latest.json, serve website/ locally, open the default browser">
+        <echo message="Landing page preview at http://127.0.0.1:${jaer.website.port}/  (Ctrl+C to stop)"/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <env key="JAER_WEBSITE_PORT" value="${jaer.website.port}"/>
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/website-preview.ps1"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <env key="JAER_WEBSITE_PORT" value="${jaer.website.port}"/>
+            <arg file="${basedir}/scripts/website-preview.sh"/>
+        </exec>
     </target>
 
     <target name="replace-installed-jar" depends="jar-fast,-require-dist-jar,checkos"

@@ -35,8 +35,22 @@ a {
   padding: 3rem 1.25rem 4rem;
 }
 
-h1 {
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
   margin: 0 0 0.75rem;
+}
+
+.brand-mark {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+h1 {
+  margin: 0;
   font-size: 2.4rem;
   font-weight: 650;
   letter-spacing: -0.03em;

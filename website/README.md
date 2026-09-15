@@ -5,6 +5,14 @@ Static files in this folder are published to **GitHub Pages** by [`.github/workf
 Local preview (from repo root):
 
 ```powershell
+ant website
+```
+
+That bakes `latest.json`, serves `website/` at http://127.0.0.1:8080/, and opens the default browser. Ctrl+C stops the server. Another port: `ant website -Djaer.website.port=8081`.
+
+Same steps by hand:
+
+```powershell
 python website/bake-latest.py
 python -m http.server 8080 --directory website
 ```
