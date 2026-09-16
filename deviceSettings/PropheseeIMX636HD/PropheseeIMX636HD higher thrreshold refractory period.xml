@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="PropheseeIMX636HD">
+          <map>
+            <entry key="colorScale" value="7"/>
+            <entry key="borderSpacePixels" value="20"/>
+            <entry key="ChipCanvas.origin3dx" value="0"/>
+            <entry key="ChipCanvas.origin3dy" value="0"/>
+            <entry key="FilterFrame.lastFilterSelected" value=""/>
+            <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
+            <entry key="AEViewer.adaptiveRenderSkippingEnabled" value="true"/>
+            <entry key="PropheseeConfig.bias.pr" value="124"/>
+            <entry key="PropheseeConfig.bias.fo" value="74"/>
+            <entry key="PropheseeConfig.bias.hpf" value="0"/>
+            <entry key="PropheseeConfig.bias.diffOn" value="130"/>
+            <entry key="PropheseeConfig.bias.diff" value="77"/>
+            <entry key="PropheseeConfig.bias.diffOff" value="111"/>
+            <entry key="PropheseeConfig.bias.inv" value="91"/>
+            <entry key="PropheseeConfig.bias.refr" value="4"/>
+            <entry key="PropheseeConfig.bias.reqpuy" value="140"/>
+            <entry key="PropheseeConfig.bias.reqpux" value="124"/>
+            <entry key="PropheseeConfig.bias.sendreqpdy" value="148"/>
+            <entry key="PropheseeConfig.bias.unknown1" value="116"/>
+            <entry key="PropheseeConfig.bias.unknown2" value="81"/>
+            <entry key="PropheseeConfig.displayEvents" value="true"/>
+            <entry key="PropheseeConfig.displayFrames" value="false"/>
+            <entry key="PropheseeConfig.useAutoContrast" value="false"/>
+            <entry key="PropheseeConfig.contrast" value="1.0"/>
+            <entry key="PropheseeConfig.brightness" value="0.0"/>
+            <entry key="PropheseeConfig.gamma" value="1.0"/>
+            <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAANdwQAAAANdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAOm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuRGVwcmVzc2luZ1N5bmFwc2VGaWx0ZXJ0ADNuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJlZnJhY3RvcnlGaWx0ZXJ0ACtldS5zZWViZXR0ZXIuaW5pLmNoaXBzLmRhdmlzLkhvdFBpeGVsRmlsdGVydAAnbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5JbmZvdAAybmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5DZWxsU3RhdHNQcm9iZXJ0AChuZXQuc2YuamFlci51dGlsLmF2aW91dHB1dC5KYWVyQXZpV3JpdGVydAAzbmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuRE5OT3V0cHV0VmlhU2hhcmVkTWVtb3J5dAAibmV0LnNmLmphZXIuZXZlbnRpby5yb3MyLlJPU091dHB1dHQAJ25ldC5zZi5qYWVyLmV2ZW50aW8ub3BlbmN2Lk9wZW5DVk91dHB1dHQAL2NoLnVuaXpoLmluaS5qYWVyLmNoaXAucmV0aW5hLkRWU0JpYXNDb250cm9sbGVyeA=="/>
+            <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
+            <entry key="AEViewer.skipPacketsRenderingNumberMax" value="5"/>
+            <entry key="AbstractAEPlayer.packetSizeEvents" value="2434"/>
+            <entry key="PropheseeIMX636HD.preferredDisplayMethod" value="net.sf.jaer.graphics.ChipRendererDisplayMethod"/>
+            <entry key="fadingFrames" value="16"/>
+            <entry key="ChipCanvas.angley" value="5.672269"/>
+            <entry key="ChipCanvas.anglex" value="-3.06383"/>
+            <entry key="largePointSizeEnabled" value="true"/>
+            <entry key="ChipRenderer.colorMode" value="GrayLevel"/>
+            <entry key="fadingEnabled" value="false"/>
+            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\PropheseeIMX636HD\PropheseeIMX636HD higher thrreshold refractory period.xml"/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAACdwQAAAACc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABOQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXFByb3BoZXNlZUlNWDYzNkhEdwIAXHhzcQB+AAJ0AGRDOlxVc2Vyc1x0b2JpZFxEcm9wYm94XEdpdEh1YlxTZW5zb3JzSU5JXGphZXJcZGV2aWNlU2V0dGluZ3NcUHJvcGhlc2VlSU1YNjM2SERcUHJvcGhlc2VlSU1YNjM2SEQueG1sdwIAXHh4"/>
+          </map>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
