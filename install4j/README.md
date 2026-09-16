@@ -2,7 +2,7 @@
 
 Open [`jaer.install4j`](jaer.install4j) in the [install4j](https://www.ej-technologies.com/products/install4j/overview.html) IDE. Media output is `currentInstallers/<VERSION.txt>/`. Release steps: [`../docs/README-releasing-tagging.md`](../docs/README-releasing-tagging.md).
 
-From the repo root: `ant install4j` (splash from `VERSION.txt` then all-OS smoke media), `ant macos-build-notarize` / `ant release-linux` for production OS media, or `ant generate-splash` for PNGs only.
+From the repo root: `ant install4j` (splash from `VERSION.txt` then all-OS smoke media), `ant install4j-linux` / `install4j-mac` / `install4j-win` for one OS, `ant macos-build-notarize` / `ant release-linux` for production OS media, or `ant generate-splash` for PNGs only.
 
 | File | Role |
 |------|------|
@@ -107,6 +107,9 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | `make-sample-data-previews` | Encode `preview-src` MP4/AVI → `sampleData/previews/*.webp` (ffmpeg) |
 | `upload-sample-data` | WebP + pack + `gh release upload` of `jaer-sample-data.zip` |
 | `install4j` | `generate-splash` then all-OS `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
+| `install4j-linux` | Same as `install4j`, Unix `.sh` only |
+| `install4j-mac` | Same as `install4j`, macOS DMGs only (Intel + Apple Silicon) |
+| `install4j-win` | Same as `install4j`, Windows `.exe` only |
 | `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
 
 After a splash or `jaer.install4j` launcher change, rebuild media (`ant macos-build-notarize`, `ant release-linux`, or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.

@@ -91,9 +91,12 @@ Releases
                           Other tag: ant "-Djaer.upload.tag=3.5.0" upload-sample-data
                           Skip WebP: ant "-Dskip.sampleData.previews=true" upload-sample-data
   release-windows-ci      Windows-only media, no confirm (Azure CI)
-  install4j               generate-splash (VERSION.txt), then install4jc (needs dist/jAER.jar)
+  install4j               generate-splash (VERSION.txt), then all-OS install4jc (needs dist/jAER.jar)
                           Local: compression 5 + --faster (no LZMA). Release stays 9+LZMA.
                           Override: -Djaer.install4j.compression=7 -Djaer.install4j.faster=false
+  install4j-linux         same as install4j, Unix .sh only
+  install4j-mac           same as install4j, macOS DMGs only (Intel + Apple Silicon)
+  install4j-win           same as install4j, Windows .exe only
   generate-splash         VERSION.txt overlay on splash PNGs (1024/256 icons, 800 splash)
   copy-updates-xml        currentInstallers/<version>/updates.xml -> repo root
   count-asset-downloads   GitHub Release asset download counts (needs gh auth)
@@ -994,6 +997,7 @@ java.vendor=${java.vendor}
         <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
             <arg file="${basedir}/scripts/run-install4jc.sh"/>
             <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=${jaer.install4j.media.types}" if:set="jaer.install4j.media.types"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
@@ -1006,6 +1010,7 @@ java.vendor=${java.vendor}
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=${jaer.install4j.media.types}" if:set="jaer.install4j.media.types"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
@@ -1025,6 +1030,7 @@ java.vendor=${java.vendor}
         <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
             <arg file="${basedir}/scripts/run-install4jc.sh"/>
             <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=${jaer.install4j.media.types}" if:set="jaer.install4j.media.types"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
@@ -1036,6 +1042,7 @@ java.vendor=${java.vendor}
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=${jaer.install4j.media.types}" if:set="jaer.install4j.media.types"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
@@ -1067,6 +1074,41 @@ java.vendor=${java.vendor}
         <echo message="Output: currentInstallers/${jaer.version}/"/>
         <echo message="Did not clean or rebuild the jar. Production: ant macos-build-notarize / release-linux / azure-sign-ci"/>
         <echo message="To try the installer on this machine: ant install"/>
+    </target>
+
+    <!-- Same local media path as install4j, one OS. Unset jaer.install4j.media.types = all media. -->
+    <target name="-install4j-media-linux">
+        <property name="jaer.install4j.media.types" value="unixInstaller"/>
+    </target>
+    <target name="-install4j-media-mac">
+        <property name="jaer.install4j.media.types" value="macosFolder"/>
+    </target>
+    <target name="-install4j-media-win">
+        <property name="jaer.install4j.media.types" value="windows"/>
+    </target>
+
+    <target name="install4j-linux"
+            depends="-install4j-media-linux,-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,generate-splash,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="Like install4j, Unix .sh only (existing dist/jAER.jar; local compression 5).">
+        <echo message="${line.separator}install4j Unix media finished for ${jaer.version} (existing jar)."/>
+        <echo message="Output: currentInstallers/${jaer.version}/jAER_unix_*.sh"/>
+        <echo message="Did not clean or rebuild the jar. Production Unix: ant release-linux"/>
+    </target>
+
+    <target name="install4j-mac"
+            depends="-install4j-media-mac,-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,generate-splash,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="Like install4j, macOS DMGs only (existing dist/jAER.jar; local compression 5).">
+        <echo message="${line.separator}install4j macOS media finished for ${jaer.version} (existing jar)."/>
+        <echo message="Output: currentInstallers/${jaer.version}/jAER_macos_*.dmg and jAER_macos_aarch64_*.dmg"/>
+        <echo message="Did not clean or rebuild the jar. Production notarized Mini: ant macos-build-notarize"/>
+    </target>
+
+    <target name="install4j-win"
+            depends="-install4j-media-win,-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,generate-splash,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
+            description="Like install4j, Windows .exe only (existing dist/jAER.jar; local compression 5).">
+        <echo message="${line.separator}install4j Windows media finished for ${jaer.version} (existing jar)."/>
+        <echo message="Output: currentInstallers/${jaer.version}/jAER_windows-x64_*.exe"/>
+        <echo message="Did not clean or rebuild the jar. Production Authenticode: ant azure-sign-ci"/>
     </target>
 
     <!-- Launch the already-built media for this OS. Does not run install4jc.
