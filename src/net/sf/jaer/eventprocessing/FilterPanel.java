@@ -2334,8 +2334,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     }
                     final MyControl setter = tmpSetter;
                     if (setter == null) {
+                        // Notification events (rate updates, controlState, etc.) are not GUI-bound.
                         if (!printedSetterWarning) {
-                            log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
+                            log.fine("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
                             printedSetterWarning = true;
                         }
                     } else {

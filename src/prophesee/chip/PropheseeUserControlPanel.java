@@ -59,7 +59,8 @@ public class PropheseeUserControlPanel extends DVSUserControlPanel {
         configurePotTweaker(bandwidthTweaker, "Pixel low-pass", "Slower", "Faster",
                 "Pixel low-pass (bias_fo): faster = wider bandwidth, shorter τ_LP, more flicker/noise.");
         configurePotTweaker(maxFiringRateTweaker, "Maximum firing rate", "Slower", "Faster",
-                "Pixel refractory (bias_refr): right shortens refractory / raises max rate.");
+                "Pixel refractory (bias_refr): right shortens dead time / more events (Metavision +235). "
+                        + "Left only −20 from factory, so this is a weak rate limiter — use threshold to cut keps.");
         configurePotTweaker(highpassTweaker, "Pixel high-pass", "Pass slow changes", "Reject slow / background",
                 "Pixel high-pass (bias_hpf): right rejects more slow/DC change (shorter τ_HP).");
         highpassTweaker.addChangeListener(e -> {

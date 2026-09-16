@@ -6,23 +6,25 @@
 package net.sf.jaer.hardwareinterface.usb;
 
 /**
- * Indicates that class can collect and show USB statistics
+ * Hardware interface can collect USB IN transfer statistics (packet size vs
+ * FIFO, interval, throughput) for buffer tuning.
+ *
  * @author tobi
  */
 public interface HasUsbStatistics {
-    
-    /** Shows statistics graphically
-     * 
-     * @param yes 
+
+    /**
+     * Reserved for a future graphical view; currently unused.
      */
     public void setShowUsbStatistics(boolean yes);
-    
-    /** Prints statistics to System.out 
-     * 
-     * @param yes 
+
+    /**
+     * When true, log throttled USB IN stats to the jAER logger (~1 Hz).
+     * Default is false (USB thread work only while enabled).
      */
     public void setPrintUsbStatistics(boolean yes);
-    
+
     public boolean isShowUsbStatistics();
+
     public boolean isPrintUsbStatistics();
 }

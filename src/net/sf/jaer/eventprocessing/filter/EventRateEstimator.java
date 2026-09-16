@@ -158,6 +158,16 @@ public class EventRateEstimator extends EventFilter2D {
         return true;
     }
 
+    /**
+     * Start a new measurement window without clearing
+     * {@link #getFilteredEventRate()}. Use after a gap (e.g. ignoring
+     * bias-change noise) so the gap is not counted as a near-zero rate.
+     */
+    public synchronized void resyncTime() {
+        initialized = false;
+        numEventsSinceLastUpdate = 0;
+    }
+
     @Override
     public void resetFilter() {
 //        filter.reset();

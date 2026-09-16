@@ -1389,7 +1389,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
                     return;
                 }
                 cycleCounter++;
-                usbPacketStatistics.addSample(transfer);
+                usbPacketStatistics.addSample(transfer, getFifoSize(), getNumBuffers());
 
                 synchronized (aePacketRawPool) {
                     if (!bufferLifecycle.isCurrent(generation)) {

@@ -70,7 +70,9 @@ public interface AEMonitorInterface extends HardwareInterface{
     public boolean overrunOccurred();
 
     /**
-     * Data-loss state for the last {@link #acquireAvailableEventsFromDriver()} call.
+     * Data-loss state for the last {@link #acquireAvailableEventsFromDriver()}
+     * (or typed {@link #acquireAvailablePacketBundle()}) call. Sample <em>after</em>
+     * that acquire so the swapped read buffer holds this frame's flag.
      * Default maps {@link #overrunOccurred()} to {@link DroppedDataInfo#hostBufferOverrun()}.
      */
     default DroppedDataInfo getDroppedDataInfo() {

@@ -65,7 +65,7 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     public static final int FO_NEG = 35;
     public static final int HPF_POS = 120;
     public static final int HPF_NEG = 0;
-    public static final int REFR_POS = 80;
+    public static final int REFR_POS = 235;
     public static final int REFR_NEG = 20;
 
     private static final String PREFS_BIAS = "PropheseeConfig.bias.";

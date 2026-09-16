@@ -81,6 +81,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     private boolean measurePerformanceEnabled = false;
     volatile private boolean resetPerformanceMeasurementStatistics = false; // flag to reset everyone on this cycle
     static final Logger log = Logger.getLogger("net.sf.jaer");
+    private static final long FILTER_BUNDLE_FINER_INTERVAL_NS = 1_000_000_000L;
+    private long lastFilterBundleFinerNs;
+    private int filterBundleFinerSkipped;
     AEChip chip;
     private boolean filteringEnabled = true;
     /**
@@ -249,9 +252,18 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         // extractor, or next reuse of Davis/DVX reusedBundle) cannot CME this loop.
         final TypedDataPacket[] slice = in.snapshot();
         if (log.isLoggable(Level.FINER)) {
-            log.finer(String.format("filterBundle n=%d bundle@%08x thread=%s %s",
-                    slice.length, System.identityHashCode(in),
-                    Thread.currentThread().getName(), in));
+            long now = System.nanoTime();
+            if (now - lastFilterBundleFinerNs >= FILTER_BUNDLE_FINER_INTERVAL_NS) {
+                int skipped = filterBundleFinerSkipped;
+                filterBundleFinerSkipped = 0;
+                lastFilterBundleFinerNs = now;
+                log.finer(String.format("filterBundle n=%d bundle@%08x thread=%s %s%s",
+                        slice.length, System.identityHashCode(in),
+                        Thread.currentThread().getName(), in,
+                        skipped > 0 ? " (skipped " + skipped + ")" : ""));
+            } else {
+                filterBundleFinerSkipped++;
+            }
         }
         for (TypedDataPacket p : slice) {
             TypedDataPacket cur = p;

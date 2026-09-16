@@ -6,6 +6,7 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -17,7 +18,6 @@ import javax.swing.SwingUtilities;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.gl2.GLUT;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -33,6 +33,7 @@ import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 
@@ -76,7 +77,8 @@ and <code>eventRateBoundsHysteresisFactor</code>.</li>
 <code>outputRawInput</code> is unselected). <code>correlationTimeS</code> sets
 its window. With <code>outputRawInput</code> (default), the live packet is
 passed through. <code>showAnnotation</code> overlays a short active label;
-<code>showDetailedInformation</code> adds rates, SNR, and tweak bars. Optional
+<code>showDetailedInformation</code> (default) adds the active goal, relevant rates or SNR,
+and only the tweak bar that goal controls. Optional
 CSV logging from FilterFrame Options.</p>
 <h3>Reference</h3>
 <p>T. Delbruck, R. Graca, and M. Paluch, “<a href="https://doi.org/10.1109/CVPRW53098.2021.00146">Feedback control of event cameras</a>,” IEEE, Jun. 2021. doi: 10.1109/cvprw53098.2021.00146</p>
@@ -112,13 +114,13 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     private int minCommandIntervalMs = getInt("minCommandIntervalMs", 300);
     protected int ignoreEventsAfterBiasChangeMs = getInt("ignoreEventsAfterBiasChangeMs", 100);
     private long lastBiasChangeTimeMs = 0;
+    private boolean ignoringBiasChangeEvents = false;
     private float tweakStepAmount = getFloat("tweakStepAmount", .01f);
     private boolean showAnnotation = getBoolean("showAnnotation", true);
-    private boolean showDetailedInformation = getBoolean("showDetailedInformation", false);
+    private boolean showDetailedInformation = getBoolean("showDetailedInformation", true);
     protected boolean outputRawInput = getBoolean("outputRawInput", true);
     private EventRateEstimator denoisedRateEstimator, inputRateEstimator;
     private SpatioTemporalCorrelationFilter noiseFilter;
-    final GLUT glut = new GLUT();
     TobiLogger tobiLogger;
     private boolean writeLogEnabled = false;
     long timeNowMs = 0;
@@ -237,7 +239,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                 + "<li> <b>LimitNoise</b>: control bandwidth to a per-pixel noise limit</li>"
                 + "</ul>");
         setPropertyTooltip(display, "showAnnotation", "overlay a short 'DVSBiasController active' label (or full state if showDetailedInformation is selected)");
-        setPropertyTooltip(display, "showDetailedInformation", "overlay goal, rates, SNR, and tweak bars; if unselected, only 'DVSBiasController active' is shown");
+        setPropertyTooltip(display, "showDetailedInformation", "overlay goal, the rates/SNR for that goal, and only the controlled tweak (Thr, BW, or Refr); unselected shows only 'DVSBiasController active'");
         setPropertyTooltip(options, "writeLogEnabled", "writes a log file called DVSBiasController-xxx.txt to the startup folder (root of jaer) to allow analyzing controller dynamics");
         setPropertyTooltip(options, "correlationTimeS", "sets correlation time for noise filter");
         applyNoiseFilterEnablement();
@@ -340,13 +342,18 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         }
         long dtMs = System.currentTimeMillis() - lastBiasChangeTimeMs;
         if (dtMs < ignoreEventsAfterBiasChangeMs) {
-            inputRateEstimator.resetFilter();
-            if (needsNoiseEstimate()) {
-                denoisedRateEstimator.resetFilter();
-                noiseFilter.resetFilter();
+            // Hold the last rate; resetFilter() would NaN it (overlay showed "0") and
+            // HIGH_RATE would stick because NaN comparisons never succeed.
+            if (!ignoringBiasChangeEvents) {
+                ignoringBiasChangeEvents = true;
+                inputRateEstimator.resyncTime();
+                if (needsNoiseEstimate()) {
+                    denoisedRateEstimator.resyncTime();
+                }
             }
             return in;
         }
+        ignoringBiasChangeEvents = false;
         applyNoiseFilterEnablement();
         EventPacket<? extends BasicEvent> out = getEnclosedFilterChain().filterPacket(in);
         setEventRateStates();
@@ -426,11 +433,17 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     }
 
     private void setEventRateStates() {
-        inputEventRate = inputRateEstimator.getFilteredEventRate();
+        float measured = inputRateEstimator.getFilteredEventRate();
+        if (Float.isFinite(measured)) {
+            inputEventRate = measured;
+        }
         if (needsNoiseEstimate()) {
-            signalEventRate = denoisedRateEstimator.getFilteredEventRate();
+            float sig = denoisedRateEstimator.getFilteredEventRate();
+            if (Float.isFinite(sig)) {
+                signalEventRate = sig;
+            }
             float newNoiseRate = inputEventRate - signalEventRate;
-            if (newNoiseRate >= 0) {
+            if (Float.isFinite(newNoiseRate) && newNoiseRate >= 0) {
                 noiseEventRate = newNoiseRate;
             }
         } else {
@@ -440,6 +453,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         }
         lastEventRateState = eventRateState;
         float r = inputEventRate;
+        if (!Float.isFinite(r)) {
+            return;
+        }
         switch (eventRateState) {
             case LOW_RATE:
                 if (r > (eventRateLowHz * eventRateBoundsHysteresisFactor)) {
@@ -656,169 +672,280 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     EngineeringFormat fmt = new EngineeringFormat();
 
+    /** Target overlay height in screen pixels; converted to chip pixels via canvas scale. */
+    private static final float OVERLAY_TARGET_SCREEN_PX = 12f / 1.3f;
+    private static final float OVERLAY_LINE_SPACING = 1.3f;
+    /** EngineeringFormat field width so rate/tweak labels do not change length as values change. */
+    private static final int ENG_FIELD_WIDTH = 8;
+
+    /**
+     * Chip-pixel font size that stays about {@link #OVERLAY_TARGET_SCREEN_PX} on
+     * screen, from DVS128 to HD, independent of zoom.
+     */
+    private int overlayFontSize() {
+        float scale = 1f;
+        if (chip.getCanvas() != null) {
+            scale = chip.getCanvas().getScale();
+        }
+        if (scale < 0.2f) {
+            scale = 0.2f;
+        }
+        return Math.max(6, Math.min(36, Math.round(OVERLAY_TARGET_SCREEN_PX / scale)));
+    }
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if (!showAnnotation) {
             return;
         }
+        final int sx = chip.getSizeX();
+        if (sx <= 0 || chip.getSizeY() <= 0) {
+            return;
+        }
         GL2 gl = drawable.getGL().getGL2();
+        int fs = overlayFontSize();
+        final float x0 = Math.max(2f, sx * 0.006f);
+        final float lineH = DrawGL.lineHeight(fs);
+
         if (!showDetailedInformation) {
-            gl.glPushMatrix();
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(1, 1, 0);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, "DVSBiasController active");
-            gl.glPopMatrix();
-            return;
-        }
-        if (dvsTweaks == null) {
+            DrawGL.drawStringDropShadow(fs, x0, lineH * 0.35f, 0, Color.WHITE, "DVSBiasController active");
             return;
         }
 
-        gl.glPushMatrix();
-        int ypos = (int) (chip.getSizeY() * .2);
-        int ystep = 8;
-        gl.glColor3f(1, 1, 1);
-        gl.glRasterPos3f(0, ypos, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, String.format("goal=%s, eventRateState=%s noiseState=%s snrState=%s", goal.toString(), eventRateState.toString(), noiseEventRateState.toString(), snrState.toString()));
-        gl.glPopMatrix();
-        final int xmin = 120, xmax = chip.getSizeX(), xwid = xmax - xmin, xmid = xmin + xwid / 2;
+        final boolean showRate = goal == Goal.BoundEventRate || goal == Goal.LimitEventRate;
+        final boolean showNoise = goal == Goal.LimitNoise;
+        final boolean showSnr = goal == Goal.TargetSNR;
+        final String tweakName = controlledTweakName();
+        final boolean showTweak = tweakName != null && dvsTweaks != null;
 
-        {
-            ypos += ystep;
-            gl.glPushMatrix();
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(0, ypos, 0);
-            float logRate = (float) Math.log10(inputEventRate);
-            float logRateLow = (float) Math.log10(eventRateLowHz);
-            float logRateHigh = (float) Math.log10(eventRateHighHz);
-            float logRateMin = logRateLow - 1, logRateMax = logRateHigh + 1;
-            float logRangeTotal = logRateMax - logRateMin;
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("Inp/Sig/Noise Hz: %6s/%6s/%6sHz",
-                            fmt.format(inputEventRate),
-                            fmt.format(signalEventRate),
-                            fmt.format(inputEventRate - signalEventRate)
-                    ));
-            gl.glLineWidth(2);
-            float x;
-            gl.glBegin(GL.GL_LINES);
-            x = xmin + xwid * (logRateLow - logRateMin) / logRangeTotal;
-            gl.glVertex2f(x, ypos - 3);
-            gl.glVertex2f(x, ypos + 3);
-            x = xmin + xwid * (logRateHigh - logRateMin) / logRangeTotal;
-            gl.glVertex2f(x, ypos - 3);
-            gl.glVertex2f(x, ypos + 3);
-            gl.glEnd();
-            x = xmin + xwid * (logRate - logRateMin) / logRangeTotal;
-            switch (eventRateState) {
-                case LOW_RATE:
-                    gl.glColor3f(0, 0, 1);
-                    break;
-                case HIGH_RATE:
-                    gl.glColor3f(1, 0, 0);
-                    break;
-                case MEDIUM_RATE:
-                    gl.glColor3f(0, 1, 0);
-                    break;
-                default:
-                    gl.glColor3f(.5f, .5f, 0);
-            }
-            gl.glLineWidth(4);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(xmin, ypos);
-            gl.glVertex2f(x, ypos);
-            gl.glEnd();
-            gl.glPopMatrix();
+        ArrayList<String> lines = new ArrayList<>(6);
+        String goalLine = String.format("goal=%s", goal);
+        String stateLine = overlayStateLine();
+        lines.add(goalLine);
+        if (stateLine != null) {
+            lines.add(stateLine);
         }
-        {
-            ypos += ystep;
-            gl.glPushMatrix();
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(0, ypos, 0);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("Noise/Limit Hz/pix: %6sHz/%6sHz",
-                            fmt.format(noiseEventRate / Math.max(1, chip.getNumPixels())),
-                            fmt.format(noiseLimitHzPerPixel)
-                    ));
-            gl.glLineWidth(2);
-            float rate = noiseEventRate / Math.max(1, chip.getNumPixels());
-            float rateMax = noiseLimitHzPerPixel * 5;
-            float x;
-            gl.glBegin(GL.GL_LINES);
-            x = xmin + xwid * noiseLimitHzPerPixel / rateMax;
-            gl.glVertex2f(x, ypos - 3);
-            gl.glVertex2f(x, ypos + 3);
-            gl.glEnd();
-            x = xmin + xwid * rate / rateMax;
-            switch (noiseEventRateState) {
-                case LOW_RATE:
-                    gl.glColor3f(0, 0, 1);
-                    break;
-                case HIGH_RATE:
-                    gl.glColor3f(1, 0, 0);
-                    break;
-                case MEDIUM_RATE:
-                    gl.glColor3f(0, 1, 0);
-                    break;
-                default:
-                    gl.glColor3f(.5f, .5f, 0);
-            }
-            gl.glLineWidth(4);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(xmin, ypos);
-            gl.glVertex2f(x, ypos);
-            gl.glEnd();
-            gl.glPopMatrix();
+        String rateLine = null, noiseLine = null, snrLine = null, tweakLine = null;
+        if (showRate) {
+            rateLine = String.format("Input Hz: %s  [%s–%s]",
+                    engFixed(inputEventRate), engFixed(eventRateLowHz), engFixed(eventRateHighHz));
+            lines.add(rateLine);
         }
-        {
-            ypos += ystep;
-            gl.glPushMatrix();
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(0, ypos, 0);
-            float snrDB = 20 * (float) Math.log10(snr);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("SNR=%10s(%sdB)", fmt.format(snr), fmt.format(snrDB)));
-            gl.glLineWidth(2);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(xmid, ypos - 3);
-            gl.glVertex2f(xmid, ypos + 3);
-            gl.glEnd();
-            if (snr < targetSNR) {
-                gl.glColor3f(1, 0, 0);
-            } else {
-                gl.glColor3f(0, 1, 0);
-            }
-            float x = xmid + xwid / 2 * (snr - targetSNR);
-            gl.glLineWidth(4);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(xmid, ypos);
-            gl.glVertex2f(x, ypos);
-            gl.glEnd();
-            gl.glPopMatrix();
+        if (showNoise) {
+            noiseLine = String.format("Noise/Limit Hz/pix: %s/%s",
+                    engFixed(noiseEventRate / Math.max(1, chip.getNumPixels())),
+                    engFixed(noiseLimitHzPerPixel));
+            lines.add(noiseLine);
+        }
+        if (showSnr) {
+            float snrDB = 20f * (float) Math.log10(snr);
+            snrLine = String.format("SNR=%s (%sdB)  target=%s",
+                    engFixed(snr), engFixed(snrDB), engFixed(targetSNR));
+            lines.add(snrLine);
+        }
+        if (showTweak) {
+            tweakLine = String.format("%s: %s", tweakName, engFixed(controlledTweakValue()));
+            lines.add(tweakLine);
+        }
 
-            ypos += ystep;
-            drawTweak(gl, ypos, dvsTweaks.getThresholdTweak(), "Thr");
-            ypos += ystep;
-            drawTweak(gl, ypos, dvsTweaks.getBandwidthTweak(), "BW");
-            ypos += ystep;
-            drawTweak(gl, ypos, dvsTweaks.getMaxFiringRateTweak(), "Refr");
+        fs = DrawGL.fontSizeToFitWidth(fs, lines.toArray(new String[0]), sx * 0.96f - x0);
+        final float adv = DrawGL.lineAdvance(fs, OVERLAY_LINE_SPACING);
+        final float lh = DrawGL.lineHeight(fs);
+        final float y0 = lh * 0.35f;
+        final float panelTop = y0 + (lines.size() - 1) * adv + lh;
+
+        gl.glEnable(GL.GL_BLEND);
+        gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glColor4f(0, 0, 0, 0.5f);
+        gl.glRectf(0, 0, sx, panelTop + lh * 0.35f);
+
+        float y = y0;
+        y = drawOverlayLine(gl, fs, x0, y, adv, lh, sx, goalLine, null);
+        if (stateLine != null) {
+            y = drawOverlayLine(gl, fs, x0, y, adv, lh, sx, stateLine, null);
+        }
+        if (rateLine != null) {
+            y = drawOverlayLine(gl, fs, x0, y, adv, lh, sx, rateLine, OverlayBar.LOG_RATE);
+        }
+        if (noiseLine != null) {
+            y = drawOverlayLine(gl, fs, x0, y, adv, lh, sx, noiseLine, OverlayBar.NOISE);
+        }
+        if (snrLine != null) {
+            y = drawOverlayLine(gl, fs, x0, y, adv, lh, sx, snrLine, OverlayBar.SNR);
+        }
+        if (tweakLine != null) {
+            y = drawOverlayLine(gl, fs, x0, y, adv, lh, sx, tweakLine, OverlayBar.TWEAK);
         }
     }
 
-    private void drawTweak(GL2 gl, float ypos, float tweak, String name) {
-        gl.glPushMatrix();
+    private enum OverlayBar {
+        LOG_RATE, NOISE, SNR, TWEAK
+    }
+
+    /** State text for the active goal only (avoids a wrap-around megastring). */
+    private String overlayStateLine() {
+        switch (goal) {
+            case BoundEventRate:
+            case LimitEventRate:
+                return "eventRateState=" + eventRateState;
+            case LimitNoise:
+                return "noiseState=" + noiseEventRateState;
+            case TargetSNR:
+                return "snrState=" + snrState;
+            default:
+                return null;
+        }
+    }
+
+    private String controlledTweakName() {
+        switch (goal) {
+            case BoundEventRate:
+                return "Thr";
+            case LimitEventRate:
+                return "Refr";
+            case TargetSNR:
+            case LimitNoise:
+                return "BW";
+            default:
+                return null;
+        }
+    }
+
+    private float controlledTweakValue() {
+        if (dvsTweaks == null) {
+            return Float.NaN;
+        }
+        switch (goal) {
+            case BoundEventRate:
+                return dvsTweaks.getThresholdTweak();
+            case LimitEventRate:
+                return dvsTweaks.getMaxFiringRateTweak();
+            case TargetSNR:
+            case LimitNoise:
+                return dvsTweaks.getBandwidthTweak();
+            default:
+                return Float.NaN;
+        }
+    }
+
+    /** Pad an engineering-format number to {@link #ENG_FIELD_WIDTH} characters. */
+    private String engFixed(float v) {
+        return String.format("%" + ENG_FIELD_WIDTH + "s", fmt.format(v).trim());
+    }
+
+    private float drawOverlayLine(GL2 gl, int fs, float x0, float y, float adv, float lh, int sx,
+            String text, OverlayBar bar) {
+        if (bar == null) {
+            DrawGL.drawStringDropShadow(fs, x0, y, 0, Color.WHITE, text);
+            return y + adv;
+        }
+        float gap = Math.max(6f, sx * 0.012f);
+        float barRight = sx * 0.98f;
+        // Right-hand bar column is independent of live digit widths (SansSerif is proportional).
+        float barW = Math.max(sx * 0.30f, lh * 8f);
+        float barLeft = barRight - barW;
+        float textW = DrawGL.measureStringWidth(fs, text);
+        boolean overlap = barLeft < x0 + textW + gap;
+        if (overlap) {
+            drawOverlayBar(gl, bar, x0, sx * 0.96f, y, lh);
+            DrawGL.drawStringDropShadow(fs, x0, y, 0, Color.WHITE, text);
+        } else {
+            DrawGL.drawStringDropShadow(fs, x0, y, 0, Color.WHITE, text);
+            drawOverlayBar(gl, bar, barLeft, barRight, y, lh);
+        }
+        return y + adv;
+    }
+
+    private void drawOverlayBar(GL2 gl, OverlayBar bar, float x0, float x1, float y, float lh) {
+        switch (bar) {
+            case LOG_RATE: {
+                float inR = Math.max(1e-3f, inputEventRate);
+                float lo = Math.max(1e-3f, eventRateLowHz);
+                float hi = Math.max(lo * 1.01f, eventRateHighHz);
+                float logMin = (float) Math.log10(lo) - 1f;
+                float logMax = (float) Math.log10(hi) + 1f;
+                float range = Math.max(1e-6f, logMax - logMin);
+                float v = (((float) Math.log10(inR)) - logMin) / range;
+                float tLo = (((float) Math.log10(lo)) - logMin) / range;
+                float tHi = (((float) Math.log10(hi)) - logMin) / range;
+                drawUnipolarBar(gl, x0, x1, y, lh, v, eventRateStateColor(), tLo, tHi);
+                break;
+            }
+            case NOISE: {
+                float rate = noiseEventRate / Math.max(1, chip.getNumPixels());
+                float rateMax = Math.max(noiseLimitHzPerPixel * 5f, 1e-6f);
+                float tick = noiseLimitHzPerPixel / rateMax;
+                drawUnipolarBar(gl, x0, x1, y, lh, rate / rateMax, eventRateStateColor(noiseEventRateState), tick);
+                break;
+            }
+            case SNR: {
+                Color c = snr < targetSNR ? Color.RED : Color.GREEN;
+                drawBipolarBar(gl, x0, x1, y, lh, snr - targetSNR, c);
+                break;
+            }
+            case TWEAK:
+                drawBipolarBar(gl, x0, x1, y, lh, controlledTweakValue(), Color.CYAN);
+                break;
+            default:
+        }
+    }
+
+    private Color eventRateStateColor() {
+        return eventRateStateColor(eventRateState);
+    }
+
+    private Color eventRateStateColor(EventRateState s) {
+        switch (s) {
+            case LOW_RATE:
+                return Color.BLUE;
+            case HIGH_RATE:
+                return Color.RED;
+            case MEDIUM_RATE:
+                return Color.GREEN;
+            default:
+                return Color.YELLOW;
+        }
+    }
+
+    private void drawUnipolarBar(GL2 gl, float x0, float x1, float y, float lh, float frac, Color color, float... ticks) {
+        float half = lh * 0.38f;
         gl.glColor3f(1, 1, 1);
-        gl.glRasterPos3f(0, ypos, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%s: %10s", name, fmt.format(tweak)));
         gl.glLineWidth(2);
-        int xmid = chip.getSizeX() / 2;
         gl.glBegin(GL.GL_LINES);
-        gl.glVertex2f(xmid, ypos - 3);
-        gl.glVertex2f(xmid, ypos + 3);
+        for (float t : ticks) {
+            float xt = lerpX(x0, x1, t);
+            gl.glVertex2f(xt, y - half);
+            gl.glVertex2f(xt, y + half);
+        }
         gl.glEnd();
-        gl.glColor3f(0, 0, 1);
-        float xpt = xmid + chip.getSizeX() * tweak / 2;
-        gl.glRectf(xpt, ypos - 1, xmid, ypos + 1);
-        gl.glPopMatrix();
+        gl.glColor3f(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f);
+        float xv = lerpX(x0, x1, frac);
+        gl.glRectf(x0, y - half * 0.45f, xv, y + half * 0.45f);
+    }
+
+    private void drawBipolarBar(GL2 gl, float x0, float x1, float y, float lh, float signed, Color color) {
+        float half = lh * 0.38f;
+        float mid = (x0 + x1) * 0.5f;
+        gl.glColor3f(1, 1, 1);
+        gl.glLineWidth(2);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(mid, y - half);
+        gl.glVertex2f(mid, y + half);
+        gl.glEnd();
+        gl.glColor3f(color.getRed() / 255f, color.getGreen() / 255f, color.getBlue() / 255f);
+        float xpt = mid + (x1 - x0) * 0.5f * clamp(signed, -1f, 1f);
+        gl.glRectf(xpt, y - half * 0.45f, mid, y + half * 0.45f);
+    }
+
+    private static float lerpX(float x0, float x1, float frac) {
+        return x0 + (x1 - x0) * clamp(frac, 0f, 1f);
+    }
+
+    private static float clamp(float v, float lo, float hi) {
+        if (!Float.isFinite(v)) {
+            return lo;
+        }
+        return v < lo ? lo : (v > hi ? hi : v);
     }
 
     synchronized public boolean isWriteLogEnabled() {
@@ -1063,18 +1190,8 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             return;
         }
         lastUiFireMs = now;
-        getSupport().firePropertyChange(EVENT_INPUT_RATE, null, inputEventRate);
-        getSupport().firePropertyChange(EVENT_SIGNAL_RATE, null, signalEventRate);
-        getSupport().firePropertyChange(EVENT_NOISE_RATE, null, noiseEventRate);
-        getSupport().firePropertyChange(EVENT_SNR, null, snr);
-        getSupport().firePropertyChange(EVENT_RATE_STATE, null, eventRateState);
-        getSupport().firePropertyChange(EVENT_NOISE_STATE, null, noiseEventRateState);
-        getSupport().firePropertyChange(EVENT_SNR_STATE, null, snrState);
-        if (dvsTweaks != null) {
-            getSupport().firePropertyChange(EVENT_THRESHOLD_TWEAK, null, dvsTweaks.getThresholdTweak());
-            getSupport().firePropertyChange(EVENT_BANDWIDTH_TWEAK, null, dvsTweaks.getBandwidthTweak());
-            getSupport().firePropertyChange(EVENT_MAX_FIRING_RATE_TWEAK, null, dvsTweaks.getMaxFiringRateTweak());
-        }
+        // Biasgen live panel listens to this; do not fire read-only rates here —
+        // FilterPanel would look for setters that do not exist.
         getSupport().firePropertyChange(EVENT_CONTROL_STATE, null, this);
     }
 

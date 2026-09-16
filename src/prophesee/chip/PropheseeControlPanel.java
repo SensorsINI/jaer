@@ -106,8 +106,10 @@ public class PropheseeControlPanel extends JPanel implements PropertyChangeListe
         c.weightx = 1.0;
         c.fill = GridBagConstraints.HORIZONTAL;
         c.insets = new Insets(4, 4, 8, 4);
-        add(new JLabel("<html>Raw 8-bit <b>idac_ctl</b> bytes (0x00–0xFF) written to IMX636 bias registers.<br>"
+        add(new JLabel("<html>Raw 8-bit <b>idac_ctl</b> bytes (0x00–0xFF) written to IMX636 bias registers <b>while you drag</b>.<br>"
                 + "Prefer the <b>User-Friendly Controls</b> tab for threshold, ON/OFF balance, and filters.<br>"
+                + "<b>refr</b>: higher idac shortens dead time (more events). IMX636 can only lengthen dead time by about "
+                + "−20 from factory, so rate limiting is weak — use threshold instead.<br>"
                 + "Use <b>Undo</b> / <b>Redo</b> in the Biases toolbar. "
                 + "<b>Revert</b> or <b>File → Load settings</b> restores saved preferences/XML."), c);
         return row + 1;
@@ -146,9 +148,7 @@ public class PropheseeControlPanel extends JPanel implements PropertyChangeListe
             }
             final int v = slider.getValue();
             valueLabel.setText(String.format("0x%02X", v));
-            if (!slider.getValueIsAdjusting()) {
-                setter.accept(v);
-            }
+            setter.accept(v);
             if (!slider.getValueIsAdjusting() && biasRow.dragStartValue < 0 && biasRow.lastStableValue != v) {
                 postBiasEdit(biasRow, biasRow.lastStableValue, v);
                 biasRow.lastStableValue = v;

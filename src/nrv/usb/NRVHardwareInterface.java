@@ -27,11 +27,14 @@ import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
 import nrv.chip.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import li.longi.USBTransferThread.RestrictedTransfer;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 
 /**
@@ -41,7 +44,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
  *
  * @see https://nrv.kr/
  */
-public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitorInterface, ReaderBufferControl, USBInterface {
+public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitorInterface, ReaderBufferControl, USBInterface, HasUsbStatistics {
 
     public static final short VID = (short) 0x04B4;
     public static final short PID_FX20 = (short) 0x00F0;
@@ -87,6 +90,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private PacketBundle lastPacketBundle = new PacketBundle();
     private volatile boolean usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private final USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
     private boolean isOpened = false;
     private volatile boolean usbTransferFailed = false;
@@ -903,5 +907,30 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     @Override
     public PropertyChangeSupport getReaderSupport() {
         return support;
+    }
+
+    void noteUsbTransfer(RestrictedTransfer transfer) {
+        usbPacketStatistics.addSample(transfer, getActiveFifoSize(), getActiveNumBuffers());
+    }
+
+    @Override
+    public void setShowUsbStatistics(boolean yes) {
+        usbPacketStatistics.setShowUsbStatistics(yes);
+    }
+
+    @Override
+    public void setPrintUsbStatistics(boolean yes) {
+        usbPacketStatistics.setPipeParams(getActiveFifoSize(), getActiveNumBuffers());
+        usbPacketStatistics.setPrintUsbStatistics(yes);
+    }
+
+    @Override
+    public boolean isShowUsbStatistics() {
+        return usbPacketStatistics.isShowUsbStatistics();
+    }
+
+    @Override
+    public boolean isPrintUsbStatistics() {
+        return usbPacketStatistics.isPrintUsbStatistics();
     }
 }

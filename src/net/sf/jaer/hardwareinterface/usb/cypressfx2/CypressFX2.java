@@ -1609,6 +1609,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         public void processData(UsbIoBuf Buf) {
             cycleCounter++;
 
+            usbPacketStatistics.setPipeParams(getFifoSize(), getNumBuffers());
             usbPacketStatistics.addSample(Buf);
 
 ////             instrument cycle times

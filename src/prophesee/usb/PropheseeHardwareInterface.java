@@ -37,6 +37,7 @@ import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.aemonitor.DroppedDataInfo;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import prophesee.chip.PropheseeConfig;
@@ -50,13 +51,16 @@ import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
+import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbLog;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
+import li.longi.USBTransferThread.RestrictedTransfer;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Imx636Init;
 
@@ -66,7 +70,7 @@ import prophesee.usb.evk4.Imx636Init;
  * @see https://www.prophesee.ai/
  */
 public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEMonitorInterface,
-        ReaderBufferControl, HasLiveDisplayEventCap, USBInterface {
+        ReaderBufferControl, HasLiveDisplayEventCap, USBInterface, HasUsbStatistics {
 
     public static final short VID = (short) 0x04B4;
     public static final short PID_EVK4_HD = (short) 0x00F5;
@@ -139,6 +143,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private PacketBundle lastPacketBundle = new PacketBundle();
     private volatile boolean usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private final USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
     private String serial = "";
     private PropheseeBiases biases = new PropheseeBiases();
@@ -866,6 +871,20 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     @Override
+    public DroppedDataInfo getDroppedDataInfo() {
+        if (!overrunOccurred()) {
+            return DroppedDataInfo.none();
+        }
+        final int kept = usbTypedDemuxActive
+                ? lastPacketBundle.getNumPolarityEvents()
+                : aePacketRawPool.readBuffer().getNumEvents();
+        final int cap = aeReader != null
+                ? aeReader.displayEventCap()
+                : Math.min(Math.max(getAEBufferSize(), 1000), Math.max(1000, getLiveDisplayEventCap()));
+        return DroppedDataInfo.liveKeepCap(kept, cap, estimatedEventRate);
+    }
+
+    @Override
     public int getAEBufferSize() {
         return buffersize;
     }
@@ -1124,6 +1143,31 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     @Override
     public PropertyChangeSupport getReaderSupport() {
         return support;
+    }
+
+    void noteUsbTransfer(RestrictedTransfer transfer) {
+        usbPacketStatistics.addSample(transfer, getActiveFifoSize(), getActiveNumBuffers());
+    }
+
+    @Override
+    public void setShowUsbStatistics(boolean yes) {
+        usbPacketStatistics.setShowUsbStatistics(yes);
+    }
+
+    @Override
+    public void setPrintUsbStatistics(boolean yes) {
+        usbPacketStatistics.setPipeParams(getActiveFifoSize(), getActiveNumBuffers());
+        usbPacketStatistics.setPrintUsbStatistics(yes);
+    }
+
+    @Override
+    public boolean isShowUsbStatistics() {
+        return usbPacketStatistics.isShowUsbStatistics();
+    }
+
+    @Override
+    public boolean isPrintUsbStatistics() {
+        return usbPacketStatistics.isPrintUsbStatistics();
     }
 
     @Override

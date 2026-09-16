@@ -43,7 +43,11 @@ public class EngineeringFormat {
      * (no Formatter/FormatSpecifier allocation).
      */
     final public void append(StringBuilder sb, double x) {
-        if (x == 0 || Double.isNaN(x)) {
+        if (Double.isNaN(x)) {
+            sb.append("NaN");
+            return;
+        }
+        if (x == 0) {
             sb.append('0');
             return;
         }

@@ -365,6 +365,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Live USB / ISSD step under {@link #pendingOpeningCameraLabel}; {@code null} uses the generic hint. */
     private volatile String pendingOpeningCameraStatus = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
+    /** Keep (DROP)/(overrun) on the HUD after the flag clears so it does not flicker. */
+    private static final long DROPPED_DATA_HUD_HOLD_MS = 1500L;
+    private static final long DROPPED_ACTION_TEXT_INTERVAL_MS = 4000L;
+    private volatile long droppedDataInfoHoldUntilMs;
+    private volatile long lastDroppedActionTextMs;
     int tickUs = 1;
     public AEPlayer aePlayer;
     int noEventCounter = 0;
@@ -550,7 +555,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
             + "<b>N/M evts</b> — events this slice before/after filters (N evts if no filter). t: cycle accumulation method<br>"
-            + "<b>(overrun)</b> — dropped data; the bar turns red<br>"
+            + "<b>(DROP)</b> / <b>(overrun)</b> — live events discarded (keep cap or host buffer); bar turns red. Lower DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
             + "<b>eps</b> — event rate (events per second)<br>"
             + "<b>nX</b> — playback speedup vs real time (1X = realtime); Live/Seq or Paused otherwise<br>"
             + "<b>A/B fps, Dms</b> — achieved/target render rate, delay after frame<br>"
@@ -5635,7 +5640,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
 
                     if (aemon instanceof HasUsbStatistics) {
+                        printUSBStatisticsCBMI.setEnabled(true);
                         printUSBStatisticsCBMI.setSelected(((HasUsbStatistics) aemon).isPrintUsbStatistics());
+                    } else {
+                        printUSBStatisticsCBMI.setEnabled(false);
+                        printUSBStatisticsCBMI.setSelected(false);
                     }
                     showUsbLinkOverlayAfterOpen();
                     } finally {
@@ -6665,6 +6674,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     hwBundle = null;
                                 } else if ((aemon != null) && aemon.isOpen()) {
                                     hwBundle = aemon.acquireAvailablePacketBundle();
+                                    if (hwBundle != null) {
+                                        noteDroppedData(aemon.getDroppedDataInfo());
+                                    }
                                 }
                             } catch (Exception ex) {
                                 if (ex instanceof HardwareInterfaceException
@@ -6694,6 +6706,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             cookedBundle = hwBundle;
                             if (cookedBundle.isEmpty()) {
                                 // Still finish FrameRater sample so close/pacing stay responsive
+                                if (droppedDataInfo.any()) {
+                                    makeStatisticsLabel(emptyCookedPacket);
+                                }
                                 getFrameRater().takeAfter();
                                 paceViewLoopFrame();
                                 continue;
@@ -6775,6 +6790,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if (isRecordingEnabled() && chipCanvas != null) {
                                 // Skip pixmap render but keep the recording overlay updating.
                                 chipCanvas.paintFrame();
+                            }
+                            if (cookedPacket != null) {
+                                makeStatisticsLabel(cookedPacket);
+                            } else if (droppedDataInfo.any()) {
+                                makeStatisticsLabel(emptyCookedPacket);
                             }
                             paceViewLoopFrame();
                             continue;
@@ -7145,7 +7165,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         liveOpenMisses = 0;
                     }
-                    droppedDataInfo = aemon.getDroppedDataInfo();
                     try {
                         aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
                         if (aemon == null) {
@@ -7153,6 +7172,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
                         AEPacketRaw liveRaw = aemon.acquireAvailableEventsFromDriver();
+                        noteDroppedData(aemon.getDroppedDataInfo());
                         SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this);
                         return liveRaw;
                     } catch (HardwareInterfaceException | IllegalArgumentException e) {
@@ -7188,7 +7208,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     // log.fine("ViewLoop.grabInput PLAYBACK paused=" + isPaused() + ...);
                     getAePlayer().adjustTimesliceForRealtimePlayback();
-                    droppedDataInfo = DroppedDataInfo.none();
+                    clearDroppedDataHud();
                     AEPacketRaw pb = getAePlayer().getNextPacket(aePlayer);
                     // log.fine("ViewLoop.grabInput PLAYBACK packet n=" + (pb == null ? -1 : pb.getNumEvents()));
                     return pb;
@@ -7537,6 +7557,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             if (packet.getSize() == 0) {
+                if (droppedDataInfo.any()
+                        && (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)) {
+                    consecutiveEmptyLivePackets = 0;
+                    setStatisticsLabel("Live: dropping events (DROP) — raise DVS threshold / refractory");
+                    statisticsLabel.setForeground(Color.RED);
+                    String detail = droppedDataInfo.getDetail();
+                    statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML
+                            + (detail.isEmpty() ? ""
+                                    : "<br><br><font color='red'><b>Dropped data</b> — "
+                                    + ShowFolderSaveConfirmation.escapeHtml(detail) + "</font>");
+                    return;
+                }
                 if ((getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)
                         && aemon != null && aemon.isOpen()) {
                     consecutiveEmptyLivePackets++;
@@ -7885,6 +7917,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Latest status-line text from ViewLoop; EDT reads this in a coalesced invokeLater. */
     private volatile String pendingStatisticsLabelText;
     private final AtomicBoolean statisticsLabelUpdateScheduled = new AtomicBoolean(false);
+
+    /**
+     * Record live drop/overrun for the HUD. Must run <em>after</em>
+     * {@code acquireAvailableEventsFromDriver} / {@code acquireAvailablePacketBundle}
+     * so the swapped read buffer holds this frame's flag. Typed USB demux never
+     * enters {@code grabInput}, so that path must call this itself.
+     */
+    void noteDroppedData(DroppedDataInfo info) {
+        boolean was = droppedDataInfo.any();
+        if (info != null && info.any()) {
+            droppedDataInfo = info;
+            droppedDataInfoHoldUntilMs = System.currentTimeMillis() + DROPPED_DATA_HUD_HOLD_MS;
+            if (!was) {
+                long now = System.currentTimeMillis();
+                if (now - lastDroppedActionTextMs >= DROPPED_ACTION_TEXT_INTERVAL_MS) {
+                    lastDroppedActionTextMs = now;
+                    showActionText("Dropping events — raise DVS threshold / refractory");
+                }
+            }
+        } else if (System.currentTimeMillis() >= droppedDataInfoHoldUntilMs) {
+            droppedDataInfo = DroppedDataInfo.none();
+        }
+    }
+
+    void clearDroppedDataHud() {
+        droppedDataInfo = DroppedDataInfo.none();
+        droppedDataInfoHoldUntilMs = 0;
+        statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML;
+    }
 
     void setStatisticsLabel(final String s) {
         pendingStatisticsLabelText = s;
@@ -9144,9 +9205,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(jSeparator5);
 
         printUSBStatisticsCBMI.setMnemonic('t');
-        printUSBStatisticsCBMI.setSelected(true);
-        printUSBStatisticsCBMI.setText("Show USB statistics");
-        printUSBStatisticsCBMI.setToolTipText("Prints statistics about USB packet sizes and packet intervals to System.out (only visible in standard console, not built in logging console)");
+        printUSBStatisticsCBMI.setSelected(false);
+        printUSBStatisticsCBMI.setText("Log USB statistics");
+        printUSBStatisticsCBMI.setToolTipText("<html>When selected, logs USB IN stats about once per second to the jAER log<br>"
+                + "(console and jAER-0.log): packet size vs FIFO, interval, and throughput.<br>"
+                + "Use with <b>USB tuning…</b> to see if transfers are filling the FIFO (raise FIFO/buffers)<br>"
+                + "or staying sparse (FIFO larger than the camera needs). Off by default.<br>"
+                + "Enabled only for interfaces that report transfer sizes (Cypress FX2/FX3, Prophesee, NRV).");
         printUSBStatisticsCBMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 printUSBStatisticsCBMIActionPerformed(evt);
@@ -10051,6 +10116,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         ((JMenuItem) c).setEnabled(true);
                     }
                 }
+                printUSBStatisticsCBMI.setEnabled(aemon instanceof HasUsbStatistics);
             }
         });
     }
@@ -13936,6 +14002,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof HasUsbStatistics)) {
             HasUsbStatistics usbStatistics = (HasUsbStatistics) chip.getHardwareInterface();
             usbStatistics.setPrintUsbStatistics(printUSBStatisticsCBMI.isSelected());
+        } else {
+            printUSBStatisticsCBMI.setSelected(false);
+            log.info("USB statistics logging is not available for this interface");
         }
     }//GEN-LAST:event_printUSBStatisticsCBMIActionPerformed
 

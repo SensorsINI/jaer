@@ -1445,7 +1445,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         if (monitor instanceof DVXplorerFX3HardwareInterface dvx) {
                             dvx.noteUsbTransfer(LibUsb.TRANSFER_COMPLETED, transfer.actualLength());
                         }
-                        usbPacketStatistics.addSample(transfer);
+                        usbPacketStatistics.addSample(transfer, getFifoSize(), getNumBuffers());
                         translateEvents(transfer.buffer());
 
                         if (!usbTypedDemuxActive && (chip != null) && (chip.getFilterChain() != null)

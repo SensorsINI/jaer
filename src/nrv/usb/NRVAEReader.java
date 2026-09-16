@@ -467,6 +467,7 @@ public class NRVAEReader {
                 return;
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                monitor.noteUsbTransfer(transfer);
                 if (!bufferLifecycle.isCurrent(generation)) {
                     return;
                 }

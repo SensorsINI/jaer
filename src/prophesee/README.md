@@ -82,7 +82,9 @@ Bias workflow:
 
 1. On open, `Imx636Init` runs the ISSD bring-up sequence and reads chip defaults into `PropheseeBiases` (used as factory for range clamping).
 2. `PropheseeConfig` loads saved values from the chip Preferences node (`PropheseeConfig.bias.*`); those become the friendly-slider center.
-3. Friendly or raw slider changes apply immediately over USB; **Revert** restores the last saved snapshot and re-centers tweaks.
+3. Friendly sliders apply over USB while dragging. Raw idac sliders now do the same (previously only on mouse-up). **Revert** restores the last saved snapshot and re-centers tweaks.
+
+`bias_refr` (IMX636): **higher idac shortens pixel dead time** (more events). Metavision offset range is **−20…+235** from factory. Lengthening dead time to cut global keps is therefore weak; use **threshold** (`diff_on`/`diff_off`) to limit rate. The user-friendly max-rate slider uses that full +235 / −20 range.
 4. Export/import bias XML via the Biases frame (same mechanism as DVS128). XML with legacy package paths is rewritten on import.
 
 Default preferences file (when present): `deviceSettings/PropheseeIMX636HD/PropheseeIMX636HD.xml`.

@@ -108,7 +108,42 @@ public final class Imx636Init {
 
     private static void writeBias(DeviceHandle handle, int address, int idacCtl)
             throws HardwareInterfaceException {
+        log.fine(String.format("Prophesee bias 0x%04X (%s) idac=0x%02X",
+                address, biasName(address), idacCtl & 0xff));
         Evk4BoardCommand.writeRegister(handle, address, Evk4BoardCommand.encodeBiasValue(idacCtl));
+    }
+
+    private static String biasName(int address) {
+        switch (address) {
+            case REG_BIAS_PR:
+                return "pr";
+            case REG_BIAS_FO:
+                return "fo";
+            case REG_BIAS_HPF:
+                return "hpf";
+            case REG_BIAS_DIFF_ON:
+                return "diff_on";
+            case REG_BIAS_DIFF:
+                return "diff";
+            case REG_BIAS_DIFF_OFF:
+                return "diff_off";
+            case REG_BIAS_INV:
+                return "inv";
+            case REG_BIAS_REFR:
+                return "refr";
+            case REG_BIAS_REQPUY:
+                return "reqpuy";
+            case REG_BIAS_REQPUX:
+                return "reqpux";
+            case REG_BIAS_SENDREQPDY:
+                return "sendreqpdy";
+            case REG_BIAS_UNKNOWN1:
+                return "unk1";
+            case REG_BIAS_UNKNOWN2:
+                return "unk2";
+            default:
+                return "?";
+        }
     }
 
     public static InitResult initialize(DeviceHandle handle, PropheseeBiases biases)

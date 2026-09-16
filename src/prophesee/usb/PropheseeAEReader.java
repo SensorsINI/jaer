@@ -514,11 +514,9 @@ public class PropheseeAEReader {
                 "Prophesee live view saturating: only the first %,d events per display frame are kept "
                         + "(packet was at %,d, kept %,d from this USB chunk). "
                         + "Further polarity events are discarded until the next frame; EVT3 timebase still advances. "
-                        + "Effective keep limit is min(AE render packet, Live keep limit) from USB tuning. "
-                        + "Live view and AEDAT logging both use this capped packet - a recording will miss the discarded events. "
-                        + "Raise Live keep limit and Render events together if you need more per frame, "
-                        + "or lower the sensor rate (biases / ROI / less motion). "
-                        + "If the live image already looks fine, you can ignore this warning.",
+                        + "The HUD shows (DROP) in red — lower the DVS event rate "
+                        + "(raise threshold or refractory, or enable DVS Auto Controller). "
+                        + "Live view and AEDAT logging both use this capped packet; a recording will have timestamp gaps.",
                 maxEvents, startEvent, committed));
     }
     private void maybeLogTraceStats(int parsed, int bytesAvailable) {
@@ -556,6 +554,7 @@ public class PropheseeAEReader {
                 return;
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                monitor.noteUsbTransfer(transfer);
                 if (!bufferLifecycle.isCurrent(generation)) {
                     return;
                 }

@@ -1,5 +1,7 @@
 package net.sf.jaer.aemonitor;
 
+import java.util.Locale;
+
 /**
  * Snapshot of data-loss state for one acquisition poll cycle.
  * <p>
@@ -13,7 +15,9 @@ public final class DroppedDataInfo {
         NONE,
         HOST_BUFFER_OVERRUN,
         USB_OR_PARSE_LOSS,
-        SENSOR_REPORTED_DROP
+        SENSOR_REPORTED_DROP,
+        /** Live keep-cap truncated the packet; further events dropped until the next frame. */
+        LIVE_KEEP_CAP
     }
 
     private static final int STATS_LINE_WIDTH = 10;
@@ -50,6 +54,29 @@ public final class DroppedDataInfo {
                 detail,
                 1,
                 0);
+    }
+
+    /**
+     * Host kept only the first {@code kept} events of this display frame
+     * (cap {@code cap}). Remaining polarity events were discarded; the
+     * sensor timebase still advanced. {@code rateHz} is the kept-burst rate
+     * (n / first-to-last timestamp), 0 if unknown.
+     */
+    public static DroppedDataInfo liveKeepCap(int kept, int cap, int rateHz) {
+        String rate = rateHz > 0 ? String.format(Locale.US, ", ~%,d eps", rateHz) : "";
+        String detail = String.format(Locale.US,
+                "Live keep cap %,d events/frame hit (kept %,d this frame%s). "
+                        + "Further polarity events are discarded until the next display frame; "
+                        + "timestamps still advance, so recordings show gaps. "
+                        + "Lower the DVS event rate: raise threshold or refractory on Biasgen, "
+                        + "or enable DVS Auto Controller (LimitEventRate / BoundEventRate).",
+                cap, kept, rate);
+        return new DroppedDataInfo(
+                Kind.LIVE_KEEP_CAP,
+                statsToken("(DROP)"),
+                detail,
+                kept,
+                cap);
     }
 
     public Kind getKind() {
