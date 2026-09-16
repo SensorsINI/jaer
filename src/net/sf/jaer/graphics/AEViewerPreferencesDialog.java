@@ -1346,7 +1346,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 "Show elapsed time from the start of the recording on the chip view (while press-sliding, or always if Always display time is on)");
         sliderTimeAbsoluteRB = new JRadioButton("Absolute date/time");
         sliderTimeAbsoluteRB.setToolTipText(
-                "Show wall-clock date/time from the recording start on the chip view (while press-sliding, or always if Always display time is on)");
+                "<html>Show wall-clock date/time from the recording start on the chip view<br>"
+                + "(while press-sliding, or always if Always display time is on)<br>"
+                + "(Shown in your local timezone, not recording timezone).</html>");
         ButtonGroup sliderTimeGroup = new ButtonGroup();
         sliderTimeGroup.add(sliderTimeRelativeRB);
         sliderTimeGroup.add(sliderTimeAbsoluteRB);
