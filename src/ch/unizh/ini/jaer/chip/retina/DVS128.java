@@ -25,6 +25,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
 import javax.swing.text.html.HTML;
 
 import net.sf.jaer.Description;
@@ -229,7 +230,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     /**
      * Don't-show-again dialog. Skip child left/right chips inside a pair.
      */
-    protected void showTimestampMasterWarning() {
+    protected synchronized void showTimestampMasterWarning() {
         AEViewer v = getAeViewer();
         if (v == null || v.getChip() != this) {
             return;
@@ -238,9 +239,16 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             return;
         }
         timestampMasterWarningShown = true;
-        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
-                v, false, timestampMasterWarningTitle(), timestampsDisabledWarningHtml());
-        d.setVisible(true);
+        Runnable show = () -> {
+            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
+                    v, false, timestampMasterWarningTitle(), timestampsDisabledWarningHtml());
+            d.setVisible(true);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            SwingUtilities.invokeLater(show);
+        }
     }
 
     protected String timestampMasterWarningTitle() {

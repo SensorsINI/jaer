@@ -7,6 +7,9 @@ package ch.unizh.ini.jaer.chip.flyeye;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
@@ -20,6 +23,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FlyEyeEvent;
@@ -69,6 +73,8 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         left = new DVS128();
         right = new DVS128();
         setName("FlyEye");
+        pointDefaultPreferencesAtDvs128XmlIfNeeded();
+        adoptDvs128BiasesIfUninitialized();
         setEventClass(FlyEyeEvent.class);
         setNumCellTypes(4);
         overlapPixels = FlyEyeGeometry.clampOverlap(
@@ -144,6 +150,64 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         log.info("FlyEye ignoring single-device bind " + hw + "; claiming DVS128 pair");
         if (!bindDvs128PairIfAvailable()) {
             super.setHardwareInterface(null);
+        }
+    }
+
+    /**
+     * {@link DVS128} sets {@code deviceSettings/DVS128/<SimpleName>.xml}, which
+     * is {@code FlyEye.xml} for this subclass. Fall back to the DVS128 preset
+     * when that file is missing.
+     */
+    private void pointDefaultPreferencesAtDvs128XmlIfNeeded() {
+        File flyXml = new File("deviceSettings/DVS128/FlyEye.xml");
+        File dvsXml = new File("deviceSettings/DVS128/DVS128.xml");
+        if (!flyXml.isFile() && dvsXml.isFile()) {
+            setDefaultPreferencesFile("deviceSettings/DVS128/DVS128.xml");
+        }
+    }
+
+    /**
+     * FlyEye uses {@code /jaer/chips/FlyEye}, which has no IPot keys on first
+     * use. {@link #sendConfiguration} then writes all-zero biases and the
+     * cameras emit wrap/reset USB traffic but no polarity (jAER 10:19:10).
+     * Import shipped {@code deviceSettings/DVS128/FlyEye.xml}, else copy the
+     * child DVS128 pots from {@code /jaer/chips/DVS128}.
+     */
+    private void adoptDvs128BiasesIfUninitialized() {
+        net.sf.jaer.biasgen.Biasgen dest = getBiasgen();
+        if (dest == null || dest.isInitialized()) {
+            return;
+        }
+        File flyXml = new File("deviceSettings/DVS128/FlyEye.xml");
+        if (flyXml.isFile()) {
+            dest.startBatchEdit();
+            try (InputStream is = new FileInputStream(flyXml)) {
+                java.util.prefs.Preferences.importPreferences(is);
+                dest.loadPreferences();
+                log.info("FlyEye imported factory biases from " + flyXml.getPath());
+                return;
+            } catch (Exception e) {
+                log.warning("FlyEye could not import " + flyXml + ": " + e);
+            } finally {
+                dest.setBatchEditOccurring(false);
+            }
+        }
+        net.sf.jaer.biasgen.Biasgen src = left != null ? left.getBiasgen() : null;
+        if (src == null || !src.isInitialized()) {
+            return;
+        }
+        dest.startBatchEdit();
+        try {
+            for (Pot p : dest.getPotArray().getPots()) {
+                Pot q = src.getPotByName(p.getName());
+                if (q != null) {
+                    p.setBitValue(q.getBitValue());
+                }
+            }
+            dest.storePreferences();
+            log.info("FlyEye adopted DVS128 bias values (FlyEye prefs had all-zero pots)");
+        } finally {
+            dest.setBatchEditOccurring(false);
         }
     }
 
@@ -266,6 +330,11 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
 
     @Override
     protected void maybeWarnWhenNotDirectSyncInterface() {
+        // Composite FlyEye HI is never HasSyncEventOutput, so DVS128.update would
+        // warn on every setHardwareInterface. NONE = both cameras are masters.
+        if (timestampMaster == TimestampMaster.NONE) {
+            return;
+        }
         showTimestampMasterWarning();
     }
 
