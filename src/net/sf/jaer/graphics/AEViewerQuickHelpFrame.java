@@ -16,8 +16,12 @@ import net.sf.jaer.util.HtmlHelpFrame;
 
 /**
  * Nonmodal HTML help window with type-to-search (Esc, F3 / Shift+F3).
- * Default constructor loads {@code /net/sf/jaer/quickhelp.html}. Other
- * constructors take a title and {@link #setHtml(String)} content.
+ * Default constructor loads {@code /net/sf/jaer/quickhelp.html}. AEViewer F1
+ * screenshots live in {@code images/help/} (not under {@code src/}).
+ * {@code ant compile} copies them to classpath {@code /net/sf/jaer/help/}, so
+ * HTML uses {@code <img src="help/file.png">}. Filter {@code @Help} images stay
+ * next to the filter class. Other constructors take a title and
+ * {@link #setHtml(String)} content.
  */
 public class AEViewerQuickHelpFrame extends HtmlHelpFrame {
 

@@ -20,7 +20,7 @@ import net.sf.jaer.util.HtmlHelpFrame;
 /**
  * Nonmodal HTML help for an {@link EventFilter}. Uses {@link HtmlHelpFrame}
  * type-to-search. Relative {@code <img src>} / {@code href} resolve against the
- * filter class package.
+ * filter class package (put the PNG next to the filter {@code .java}).
  *
  * @see EventFilter#showHelpDialog()
  * @see net.sf.jaer.Help

@@ -101,8 +101,9 @@
                not treat ${build.dir} as a compiler variable. -->
           <entry location="$${build.dir}" />
           <entry location="$${build.generated.sources.dir}" />
-          <!-- Repo art / demos (~29MB). Splash PNGs are added as fileEntries after this dirEntry
-               so they sit next to the exe / under jaer/ for the native splash and Swing fallback. -->
+          <!-- Repo art / demos (~29MB). Splash is a fileEntry after this dirEntry.
+               F1 screenshots (images/help/) ship inside jAER.jar, not this fileset.
+               Filter @Help PNGs also ship in the jar (copied from src next to the class). -->
           <entry location="images" />
           <entry location="installers" />
           <entry location="currentInstallers" />

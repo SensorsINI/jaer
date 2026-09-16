@@ -12,6 +12,10 @@ Ctrl+mouse wheel or Ctrl+<b>=</b> / Ctrl+<b>-</b> zoom this help text.</p>
 Menu names match the AEViewer menus. Chip classes that add a menu
 (DAVIS, DVXplorer, …) have their own shortcuts; see <b>Camera chip menus</b> below.</p>
 
+<h2>Top display bar</h2>
+<p><img src="help/display-bar.png" alt="Menu bar and status line" width="100%"></p>
+<p>Click the numbers for a legend of each field. Click elsewhere to dismiss it.</p>
+
 <h2>Mouse on the event display</h2>
 <table border="1" cellpadding="4" cellspacing="0">
   <tr><th>Action</th><th>What it does</th></tr>
@@ -111,11 +115,9 @@ these accelerators. Open that menu to see what it offers.</p>
   <tr><td>B</td><td>Reverse playback direction</td></tr>
   <tr><td>f</td><td>Play Faster (more time or events). </td></tr>
   <tr><td>s</td><td>Play slower (less time or events)</td></tr>
-  <tr><td>, (comma)</td><td>Step backward one packet</td></tr># events before/after filering shown in top bar
-  <tr><td>. (period)</td><td>Step forward one packet</td></tr>
   <tr><td>R</td><td>Rewind to start</td></tr>
   <tr><td>Space</td><td>Pause / play</td></tr>
-  <tr><td>T</td><td>Cycle accumulation method: fixed duration, fixed event count, then area event count
+  <tr><td>T</td><td><b>Cycle accumulation method</b>: fixed duration, fixed event count, then area event count
     (expose when any spatial cell reaches N events; default 32 areas / 1000 events; f/s changes N).
     ConstantCount default is nearest power of two of (pixels/64): 256 for DVS128, 16k for EVK4.
     File → Preferences has <b># areas</b>.
@@ -125,11 +127,10 @@ these accelerators. Open that menu to see what it offers.</p>
 <h3>Jog and speed</h3>
 <table border="1" cellpadding="4" cellspacing="0">
   <tr><th>Key</th><th>Action</th></tr>
-  <tr><td>Ctrl+Shift+,</td><td>Jog backward by N packets</td></tr>
-  <tr><td>Ctrl+Shift+.</td><td>Jog forward by N packets</td></tr>
+  <tr><td>,/. (comma/period)</td><td>Step backward/forward one packet</td></tr>
+  <tr><td>Ctrl+Shift+,</td><td><b>Jog backward</b> by N packets</td></tr>
+  <tr><td>Ctrl+Shift+.</td><td><b>Jog forward</b> by N packets</td></tr>
   <tr><td>Esc</td><td>Cancel jog</td></tr>
-  <tr><td>F</td><td>Increase accumulation (longer time slice / more events)</td></tr>
-  <tr><td>S</td><td>Decrease accumulation</td></tr>
 </table>
 <p>Shift+mouse wheel jogs; Shift+Alt+wheel changes accumulation. Set N under Playback → Set jog packet count.</p>
 

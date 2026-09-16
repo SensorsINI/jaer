@@ -99,7 +99,9 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
@@ -544,7 +546,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** AEDAT-4 {@link net.sf.jaer.eventio.aedat4.dv.CompressionType} (default LZ4). */
     private int aedat4Compression = prefs.getInt("AEViewer.aedat4Compression",
             net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4);
+    /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
+    private static final String STATISTICS_BAR_HELP_HTML = "<html>"
+            + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
+            + "<b>N/M evts</b> — events this slice before/after filters (N evts if no filter). t: cycle accumulation method<br>"
+            + "<b>(overrun)</b> — dropped data; the bar turns red<br>"
+            + "<b>eps</b> — event rate (events per second)<br>"
+            + "<b>nX</b> — playback speedup vs real time (1X = realtime); Live/Seq or Paused otherwise<br>"
+            + "<b>A/B fps, Dms</b> — achieved/target render rate, delay after frame<br>"
+            + "<b>ARS</b> — adaptive render skipping (Ctrl+Shift+A); ld = ViewLoop load<br>"
+            + "<b>FS/AS</b> — full-scale or autoscale contrast (mouse wheel). FS=N is events at white";
     private DynamicFontSizeJLabel statisticsLabel;
+    private JPopupMenu statisticsHelpPopup;
+    private volatile String statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private JaerUpdaterFrame jaerUpdaterFrame = null;
     /** Nonmodal File/Show file info window; reused while this viewer is open. */
@@ -944,8 +958,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         statisticsLabel = new DynamicFontSizeJLabel();
         //        statisticsLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 8));
-        statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Graphics rendering frame rate desired/achieved, Time speedup X, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
+        installStatisticsBarHelp();
         PropertyChangeListener[] list = statisticsLabel.getPropertyChangeListeners();
         for (PropertyChangeListener p : list) {
             statisticsLabel.removePropertyChangeListener(p);
@@ -7704,14 +7718,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setStatisticsLabel(sb.toString());
                 if (droppedDataInfo.any()) {
                     statisticsLabel.setForeground(Color.RED);
-                    if (!droppedDataInfo.getDetail().isEmpty()) {
-                        statisticsLabel.setToolTipText(droppedDataInfo.getDetail());
+                    String detail = droppedDataInfo.getDetail();
+                    if (!detail.isEmpty()) {
+                        statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML
+                                + "<br><br><font color='red'><b>Dropped data</b> — "
+                                + ShowFolderSaveConfirmation.escapeHtml(detail) + "</font>";
                     } else {
-                        statisticsLabel.setToolTipText(null);
+                        statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML;
                     }
                 } else {
                     statisticsLabel.setForeground(Color.BLACK);
-                    statisticsLabel.setToolTipText(null);
+                    statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML;
                 }
         }
     }
@@ -7901,6 +7918,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //            });
         //        } catch (Exception e) {
         //        }
+    }
+
+    /** Click the statistics bar for an HTML legend; click elsewhere to dismiss. */
+    private void installStatisticsBarHelp() {
+        statisticsLabel.setToolTipText(null);
+        Cursor hand = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+        statisticsLabel.setCursor(hand);
+        statisticsPanel.setCursor(hand);
+        MouseAdapter click = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (!SwingUtilities.isLeftMouseButton(e)) {
+                    return;
+                }
+                showStatisticsHelpPopup(e.getComponent());
+            }
+        };
+        statisticsLabel.addMouseListener(click);
+        statisticsPanel.addMouseListener(click);
+    }
+
+    private void showStatisticsHelpPopup(Component invoker) {
+        if (statisticsHelpPopup != null && statisticsHelpPopup.isVisible()) {
+            statisticsHelpPopup.setVisible(false);
+            return;
+        }
+        JLabel tip = new JLabel(statisticsBarHelpHtml);
+        tip.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        statisticsHelpPopup = new JPopupMenu();
+        statisticsHelpPopup.setLightWeightPopupEnabled(false);
+        statisticsHelpPopup.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        statisticsHelpPopup.add(tip);
+        int y = invoker != null ? invoker.getHeight() : statisticsLabel.getHeight();
+        statisticsHelpPopup.show(invoker != null ? invoker : statisticsLabel, 8, y);
     }
 
     int getScreenRefreshRate() {

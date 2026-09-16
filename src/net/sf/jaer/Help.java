@@ -24,6 +24,8 @@ import java.lang.annotation.Target;
  * one-line tooltip. Links are clickable in the dialog. Relative
  * {@code <img src="file.png">} paths resolve against the annotated class package
  * (put the PNG next to the {@code .java} file; Ant copies it onto the classpath).
+ * Filter diagrams stay with the filter. AEViewer F1 screenshots are
+ * {@code images/help/}, not this convention.
  * <pre>
  * {@code
  * @Description("Short tooltip")

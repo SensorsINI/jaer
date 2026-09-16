@@ -250,11 +250,11 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         </j2seproject1:java>
     </target>
 
-    <target name="-post-compile" depends="-generate-allowed-subclasses">
+    <target name="-post-compile" depends="-generate-allowed-subclasses,jaer-copyHelpImages">
         <antcall target="-revert-project-properties-if-only-datestamp"/>
     </target>
 
-    <target name="-post-compile-single" depends="-generate-allowed-subclasses">
+    <target name="-post-compile-single" depends="-generate-allowed-subclasses,jaer-copyHelpImages">
         <antcall target="-revert-project-properties-if-only-datestamp"/>
     </target>
 
@@ -482,7 +482,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     </target>
 
     <!-- makes sure that the build version is written to the jar -->
-    <target name="-pre-jar" depends="jaer-setBuildVersion,jaer-copySplashImage" >
+    <target name="-pre-jar" depends="jaer-setBuildVersion,jaer-copySplashImage,jaer-copyHelpImages" >
         <echo message="build.xml project opened"/>
         <echo> Having trouble building or running?
             See the jAER user forum at https://groups.google.com/forum/#!forum/jaer-users
@@ -576,6 +576,16 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
     <!-- Overlay VERSION.txt, then copy 800×800 splash into the jar. -->
     <target name="jaer-copySplashImage" depends="generate-splash">
         <copy file="images/800w/SplashScreen.png" todir="build/classes"/>
+    </target>
+
+    <!-- AEViewer F1 screenshots only (images/help/). Filter @Help PNGs stay
+         next to the filter .java and are copied from src/ with other resources. -->
+    <target name="jaer-copyHelpImages" depends="init">
+        <mkdir dir="${build.classes.dir}/net/sf/jaer/help"/>
+        <copy todir="${build.classes.dir}/net/sf/jaer/help" failonerror="false">
+            <fileset dir="${basedir}/images/help" erroronmissingdir="false"
+                     includes="*.png,*.gif,*.jpg,*.jpeg"/>
+        </copy>
     </target>
 
     <!-- Windows/macOS/Linux launchers come from install4j (ant macos-build-notarize / release-linux / install4j/jaer.install4j).
