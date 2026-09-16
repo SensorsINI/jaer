@@ -1194,6 +1194,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (more == null || more.getNumEvents() == 0) {
             return packet;
         }
+        if (more.getNumEvents() > packet.getNumEvents() && log.isLoggable(Level.FINE)) {
+            log.fine(String.format(
+                    "ConstantCount: %d events spanned %d us; min exposure %d us added %d events (%d us)",
+                    packet.getNumEvents(), dt, minUs, more.getNumEvents(), remaining));
+        }
         try {
             packet.append(more);
             return packet;

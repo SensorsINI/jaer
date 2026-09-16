@@ -108,6 +108,12 @@ public abstract class AbstractAEPlayer {
             EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen", EVENT_REPEAT = "repeat"; // TODO not used yet in code
     /** Default minimum slice duration for ConstantCount / AreaEventCount (1 ms). 0 disables. */
     public static final float MINIMUM_EXPOSURE_TIME_S_DEFAULT = 1e-3f;
+    /**
+     * Stored min at or above the default CountDuration slice (20 ms) makes
+     * ConstantCount / AreaEventCount look like CountDuration. RealTime's 1/FPS
+     * timeslice is typically in this range and was being kept as this pref.
+     */
+    public static final float MINIMUM_EXPOSURE_TIME_S_TIMESLICE_FLOOR = 20e-3f;
     /** Default maximum slice duration (0 = no cap). AreaEventCount used to hard-cap at 1 s. */
     public static final float MAXIMUM_EXPOSURE_TIME_S_DEFAULT = 0f;
     /** Default wall-clock lag when placing a marker with m while playing. 0 disables. */
@@ -135,8 +141,29 @@ public abstract class AbstractAEPlayer {
         }
         minimumExposureTimeS = prefs.getFloat("AbstractAEPlayer.minimumExposureTimeS", MINIMUM_EXPOSURE_TIME_S_DEFAULT);
         maximumExposureTimeS = prefs.getFloat("AbstractAEPlayer.maximumExposureTimeS", MAXIMUM_EXPOSURE_TIME_S_DEFAULT);
+        maybeClearTimesliceSizedMinimumExposure();
         markerReactionTimeMs = viewer.prefs.getInt("AbstractAEPlayer.markerReactionTimeMs", MARKER_REACTION_TIME_MS_DEFAULT);
         minExposureFmt.setPrecision(2);
+    }
+
+    /**
+     * RealTime servo's timeslice to ~1/FPS (often 20–40 ms). That value was
+     * stored as {@code minimumExposureTimeS}, so ConstantCount/AreaEventCount
+     * always waited a full CountDuration-sized window after the count.
+     */
+    private void maybeClearTimesliceSizedMinimumExposure() {
+        if (!(minimumExposureTimeS >= MINIMUM_EXPOSURE_TIME_S_TIMESLICE_FLOOR)) {
+            return;
+        }
+        log.warning(String.format(
+                "Clearing stored min exposure %.3fs (RealTime/CountDuration-sized). "
+                        + "ConstantCount and AreaEventCount were waiting this long after the count, so f/s had no effect. Set Playback min exposure if you still want a floor.",
+                minimumExposureTimeS));
+        minimumExposureTimeS = 0f;
+        prefs.putFloat("AbstractAEPlayer.minimumExposureTimeS", 0f);
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.setDurationMinUs(0);
+        }
     }
 
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -220,6 +247,9 @@ public abstract class AbstractAEPlayer {
     protected PlaybackMode playbackMode = PlaybackMode.FixedTimeSlice;
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
+    /** CountDuration slice before {@link PlaybackMode#RealTime} started adjusting it. */
+    private int timesliceUsBeforeRealtime = 20000;
+    private boolean haveTimesliceBeforeRealtime;
     /**
      * Fallback ConstantCount size before a chip is set. Real default is
      * {@link #defaultPacketSizeEventsForChip(AEChip)} (256 for DVS128, 16k for EVK4).
@@ -432,8 +462,17 @@ public abstract class AbstractAEPlayer {
                 viewer.refreshPlaybackAccumulationControls();
             }
         }
+        if (old != PlaybackMode.RealTime && playbackMode == PlaybackMode.RealTime) {
+            timesliceUsBeforeRealtime = timesliceUs == 0 ? 20000 : timesliceUs;
+            haveTimesliceBeforeRealtime = true;
+        }
         this.playbackMode = playbackMode;
         prefs.put("AbstractAEPlayer.playbackMode", playbackMode.name());
+        if (old == PlaybackMode.RealTime && playbackMode != PlaybackMode.RealTime
+                && haveTimesliceBeforeRealtime) {
+            haveTimesliceBeforeRealtime = false;
+            setTimesliceUs(timesliceUsBeforeRealtime);
+        }
         if (old != playbackMode) {
             discardViewHistory();
         }
@@ -898,8 +937,14 @@ public abstract class AbstractAEPlayer {
             int n = exposer != null ? exposer.getEventCount() : AreaEventCountExposer.EVENT_COUNT_DEFAULT;
             int areas = exposer != null ? exposer.getAllocatedAreaCount() : AreaEventCountExposer.NUM_AREAS_DEFAULT;
             s = String.format("AreaEventCount: expose when any of %d areas reaches %d events", areas, n);
+            if (getMinimumExposureTimeUs() > 0) {
+                s += String.format(" (min %s)", formatMinimumExposureTimeS());
+            }
         } else if (isFlexTimeEnabled()) {
             s = String.format("ConstantCount: %d events/frame", getPacketSizeEvents());
+            if (getMinimumExposureTimeUs() > 0) {
+                s += String.format(" (min %s)", formatMinimumExposureTimeS());
+            }
         } else if (isRealtimeEnabled()) {
             s = "RealTime playback";
         } else {
@@ -912,7 +957,7 @@ public abstract class AbstractAEPlayer {
 
     /**
      * Cycles CountDuration → ConstantCount → AreaEventCount → CountDuration.
-     * If mode is RealTime, has no effect.
+     * RealTime (T) returns to CountDuration and restores the pre-RealTime timeslice.
      */
     void toggleFlexTime() {
         if (viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()) {
@@ -921,7 +966,7 @@ public abstract class AbstractAEPlayer {
             return;
         }
         if (playbackMode == PlaybackMode.RealTime) {
-            log.warning("cannot toggle flex time since we are in RealTime playback mode now");
+            setFixedTimesliceEnabled();
             return;
         }
         if (!eventCountSlicingAllowed()) {
@@ -1547,8 +1592,9 @@ public abstract class AbstractAEPlayer {
     @Override
     public String toString() {
         AreaEventCountExposer exposer = areaEventCountExposer;
-        return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d areaEventCount=%s",
+        return String.format("AEPlayer paused=%s repeat=%s playBackDirection=%s playBackMode=%s timesliceUs=%d packetSizeEvents=%d minExposure=%ss maxExposure=%ss areaEventCount=%s",
                 paused, repeat, playbackDirection, playbackMode, timesliceUs, packetSizeEvents,
+                formatMinimumExposureTimeS(), formatMaximumExposureTimeS(),
                 exposer != null ? Integer.toString(exposer.getEventCount()) : "n/a");
     }
 
