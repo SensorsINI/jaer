@@ -1,12 +1,11 @@
-# Upload install4j media from currentInstallers/<VERSION.txt>/ to the GitHub Release for that tag.
-# Requires: gh auth, VERSION.txt, media built by `ant release`.
-# Creates a *draft* GitHub Release if the tag has none (not Latest until published).
-# Default: skip jAER_windows-x64_*.exe so an Azure-signed GitHub
-# asset is not replaced by the local unsigned install4j build. Pass -ClobberWindows
-# only when you intend to overwrite that exe.
+# Upload installer media from currentInstallers/<VERSION>/ to an existing GitHub Release.
+# Does not create a tag or draft (ant create-draft-release first).
+# Default: skip Windows .exe (keeps Azure-signed GitHub asset) and skip macOS .dmg
+# unless this host is macOS (Mini notarized builds). Linux .sh from any OS.
+# Sample zip is ant upload-sample-data, not this script.
 # Usage (repo root):
 #   powershell -File scripts/upload-github-release-installers.ps1
-#   powershell -File scripts/upload-github-release-installers.ps1 -Tag 3.2.0
+#   powershell -File scripts/upload-github-release-installers.ps1 -Tag 3.5.0
 #   powershell -File scripts/upload-github-release-installers.ps1 -WhatIf
 #   powershell -File scripts/upload-github-release-installers.ps1 -ClobberWindows
 
@@ -26,28 +25,44 @@ if (-not $Tag) {
 if (-not $Tag) { throw "VERSION.txt is empty and -Tag was not set" }
 
 $dir = Join-Path $root "currentInstallers\$Tag"
-if (-not (Test-Path $dir)) { throw "Missing $dir -- run ant release first" }
+if (-not (Test-Path $dir)) { throw "Missing $dir -- build media first (ant macos-build-notarize / release-linux / azure-sign-ci)" }
+
+$onMac = Test-Path -LiteralPath "/System/Library/CoreServices/SystemVersion.plist"
 
 $installers = @(Get-ChildItem -Path $dir -File | Where-Object {
     $_.Name -match '^jAER_(windows-x64|macos|unix)_.*\.(exe|dmg|sh)$'
 })
 if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jAER_unix_*.sh under $dir" }
-$windowsExe = @($installers | Where-Object { $_.Name -like 'jAER_windows-x64_*.exe' })
-if (-not $ClobberWindows -and $windowsExe.Count -gt 0) {
-    foreach ($w in $windowsExe) {
-        Write-Host ('Skipping ' + $w.Name + ' to keep the Azure-signed GitHub asset. Overwrite unsigned: ant upload-installers-clobber-windows')
+
+$files = New-Object System.Collections.Generic.List[object]
+foreach ($f in $installers) {
+    if ($f.Name -like 'jAER_windows-x64_*.exe') {
+        if ($ClobberWindows) {
+            Write-Host ("WARNING: uploading local unsigned $($f.Name) --clobber over the Azure-signed GitHub exe")
+            [void]$files.Add($f)
+        } else {
+            Write-Host ("Skipping $($f.Name) to keep the Azure-signed GitHub asset. Do not ant upload-installers-clobber-windows after Azure.")
+        }
+        continue
     }
-    $installers = @($installers | Where-Object { $_.Name -notlike 'jAER_windows-x64_*.exe' })
+    if ($f.Name -like 'jAER_macos_*.dmg') {
+        if (-not $onMac) {
+            Write-Host ("Skipping $($f.Name) (not macOS). Mac DMGs must be uploaded from the Mini after ant macos-build-notarize.")
+            continue
+        }
+        [void]$files.Add($f)
+        continue
+    }
+    [void]$files.Add($f)
 }
+
 $sampleZip = Join-Path $dir "jaer-sample-data.zip"
-$files = @($installers)
 if (Test-Path -LiteralPath $sampleZip) {
-    $files += Get-Item -LiteralPath $sampleZip
-} else {
-    Write-Host "WARNING: $sampleZip missing - run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset."
+    Write-Host "Not attaching jaer-sample-data.zip here. Use: ant upload-sample-data"
 }
-if (-not $files) {
-    throw ('Nothing to upload. Windows exe is skipped unless ClobberWindows is set. No macOS/Linux/sample zip under ' + $dir)
+
+if ($files.Count -eq 0) {
+    throw 'Nothing to upload. Windows exe is skipped unless -ClobberWindows. Mac DMGs only from macOS. Linux: ant release-linux then re-run.'
 }
 
 Write-Host "Release tag: $Tag"
@@ -60,31 +75,20 @@ if ($WhatIf) {
     return
 }
 
-# PS 5.1 + ErrorActionPreference Stop treats native stderr as terminating;
-# "release not found" is expected when creating the first 3.x GitHub release.
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 gh release view $Tag --json tagName 2>$null | Out-Null
 $releaseMissing = ($LASTEXITCODE -ne 0)
 $ErrorActionPreference = $prevEap
-$notesFile = Join-Path $root "release-notes\jaer-$Tag-release-notes.md"
 if ($releaseMissing) {
-    Write-Host "Creating GitHub draft release $Tag (publish later; not Latest)"
-    if (Test-Path $notesFile) {
-        gh release create $Tag --draft --latest=false --title "jaer-$Tag" --notes-file $notesFile
-    } else {
-        gh release create $Tag --draft --latest=false --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
-    }
-} else {
-    Write-Host "Leaving GitHub release body unchanged (use ant upload-release-notes to push notes)."
+    throw "GitHub Release $Tag does not exist. Create it first: ant create-draft-release"
 }
-# One file at a time so the console shows which asset is in flight.
-# GH_SPINNER_DISABLED replaces the clock-hand spinner with a text progress line.
+Write-Host "Leaving GitHub release body unchanged (use ant upload-release-notes to push notes)."
+
 $env:GH_SPINNER_DISABLED = "yes"
 $items = @($files)
 $total = $items.Count
 $n = 0
-$prevEap = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 foreach ($f in $items) {
     $n++
@@ -102,4 +106,4 @@ foreach ($f in $items) {
 }
 $ErrorActionPreference = $prevEap
 Write-Host "Uploaded $total installer(s) to https://github.com/SensorsINI/jaer/releases/tag/$Tag"
-Write-Host "Then: commit updates.xml (ant copy-updates-xml) and prune older assets (scripts/prune-old-release-assets.ps1)."
+Write-Host "Sample zip: ant upload-sample-data. Then ant copy-updates-xml after publish."

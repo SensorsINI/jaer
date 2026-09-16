@@ -27,7 +27,7 @@ Gitignored (`/signpath/` in `.gitignore`) and listed in `.cursorignore`. Do not 
 
 ## Build signed DMGs (this Mini only)
 
-`ant release-macos` (latest source, production compression, **no git tag**) or `ant install4j-macos` (existing `dist/jAER.jar`). Both call `scripts/run-install4jc.sh` with `--media-types=macosFolder`. Do not use `ant release` for Mac-only (it tags `VERSION.txt`). Windows/CI must not upload unsigned Mac DMGs over these files. GitHub Mac assets: build here, then `ant upload-installers` **after** you are ready to create the version tag.
+`ant macos-build-notarize` (latest source, production compression, **no git tag**) or `ant install4j-macos` (existing `dist/jAER.jar`). Both call `scripts/run-install4jc.sh` with `--media-types=macosFolder`. Windows/CI must not upload unsigned Mac DMGs over these files. GitHub Mac assets: build here, then `ant upload-installers` **from this Mini** after `ant create-draft-release`.
 
 Finder: double-click the `.dmg`, then **`jAER <version> Installer`**. That bundle name is `installerName` on media 38/39 (`jaer.install4j`). Get Info does not show notarization. After a successful build:
 

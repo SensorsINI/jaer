@@ -8,6 +8,7 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 |------|--------|----------------|
 | Update descriptor | `https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml` | git: commit and push repo-root `updates.xml` |
 | Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `ant upload-installers` (Mini for Mac DMGs) |
+| Sample recordings zip | `https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip` | `ant upload-sample-data` |
 | Public download page | `https://jaerproject.org` | GitHub Pages from [`website/`](../website/); workflow [`.github/workflows/pages.yml`](../.github/workflows/pages.yml). DNS: [`website/README.md`](../website/README.md) |
 
 `updates.xml` `baseUrl` must be `https://github.com/SensorsINI/jaer/releases/latest/download/`. `ant copy-updates-xml` sets that; do not edit it by hand. The in-app checker reads the raw GitHub file, then downloads `baseUrl` + `fileName` (for example `jAER_windows-x64_3_2_0.exe`).
@@ -18,27 +19,28 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 
 | Asset | Where it **must** be built | Ant / command | Signing |
 |-------|---------------------------|---------------|---------|
-| macOS Intel + Apple Silicon `.dmg` | **Mini only** | `ant release-macos` | Developer ID + Apple notarization (`scripts/run-install4jc.sh`) |
+| macOS Intel + Apple Silicon `.dmg` | **Mini only** | `ant macos-build-notarize` | Developer ID + Apple notarization (`scripts/run-install4jc.sh`) |
 | Windows `.exe` (production) | **GitHub Actions** (any box can *trigger*) | `ant azure-sign-ci` or `gh workflow run sign-windows-azure.yml` | Azure Artifact Signing, publisher **Tobias Delbruck** |
-| Linux `.sh` | Any OS with install4j | `ant release -Dskip.github.draft=true` (or full `ant release`) | none |
+| Linux `.sh` | Any OS with install4j | `ant release-linux` | none |
 | Git tag + draft Release | Any box with `gh` | `ant create-draft-release` | n/a |
-| Attach media to that tag | Mini for DMGs; any box for `.sh`; **never** overwrite Azure exe | `ant upload-installers` | n/a |
+| Sample recordings zip | Any box with `sampleData/` recordings | `ant upload-sample-data` | n/a |
+| Attach Mac + Linux to that tag | **Mini** for DMGs; any box for `.sh` | `ant upload-installers` | n/a |
 | Same Mac + upload, from another box | **SSH into the Mini** (ZeroTier). Cursor Cloud Agents cannot notarize. | See [Remote Mini (SSH / Cursor CLI)](#remote-mini-ssh--cursor-cli) | same as Mini row |
 
-Do **not** use `ant release` when you only want Mac. On the Mini that command builds Windows+Linux too, waits on Apple notarization, then **tags `VERSION.txt`**. Use `ant release-macos` for Mac-only with no tag.
+Do **not** run `ant release`. That all-OS + tag target is **removed**; it built unsigned Windows and (off the Mini) unsigned Mac media and tagged `VERSION.txt`.
 
-Do **not** `ant upload-installers-clobber-windows` after Azure has signed the exe. Default `ant upload-installers` skips the local unsigned `.exe`.
+`ant upload-installers` uses `gh release upload --clobber`. It **skips** the local Windows `.exe` (keeps Azure). It **skips** Mac `.dmg` unless this host is macOS. Do **not** `ant upload-installers-clobber-windows` after Azure has signed. Sample zip is `ant upload-sample-data`, not this target.
 
-Do **not** upload Mac DMGs built on Windows/Linux (`--disable-signing`). That clobbers a stapled Mini build.
+`ant upload-installers` requires an existing GitHub Release (`ant create-draft-release`). It no longer creates a tag or draft.
 
-SignPath (`ant signpath-ci`, workflow **Sign Windows (SignPath)**) is a **backup**. Production Windows is Azure.
+Production Windows is Azure (`ant azure-sign-ci`). SignPath workflow **Sign Windows (SignPath)** remains in the repo as a backup only (`gh workflow run sign-windows-test.yml`).
 
-Existing jar only, Mac DMGs (dev compression): `ant install4j-macos`. Latest source + production compression: `ant release-macos`.
+Existing jar only, Mac DMGs (dev compression): `ant install4j-macos`. Latest source + production compression: `ant macos-build-notarize`.
 
 ## Release candidate (typical)
 
 1. Set `VERSION.txt` (e.g. `3.5.0`) and push `master`.
-2. **Mini:** `ant release-macos`. Output: `currentInstallers/<VERSION>/jAER_macos_*.dmg` and `jAER_macos_aarch64_*.dmg`. Proof:
+2. **Mini:** `ant macos-build-notarize`. Output: `currentInstallers/<VERSION>/jAER_macos_*.dmg` and `jAER_macos_aarch64_*.dmg`. Proof:
 
        xcrun stapler validate currentInstallers/<ver>/jAER_macos_aarch64_*.dmg
        spctl -a -t open --context context:primary-signature -vv currentInstallers/<ver>/jAER_macos_aarch64_*.dmg
@@ -46,15 +48,16 @@ Existing jar only, Mac DMGs (dev compression): `ant install4j-macos`. Latest sou
    Expect `source=Notarized Developer ID`. Repeat for `jAER_macos_*.dmg` (Intel).
 3. **Any box:** `ant azure-sign-ci` then `gh run watch`. Download artifact `jaer-windows-azure-signed`.
 4. When the source on `master` is the release: `ant create-draft-release` (this **creates and pushes tag `VERSION.txt`** and a GitHub **draft**).
-5. **Mini:** `ant upload-installers` (DMGs + Linux `.sh` if present + sample zip; skips Windows exe).
+5. **Mini:** `ant upload-installers` (notarized DMGs; Linux `.sh` if present). Skips Windows exe. Skips Mac DMGs on non-Mac hosts. Does **not** attach the sample zip.
 6. Attach the Azure-signed exe on the draft (`gh release upload <tag> path/to/exe --clobber`) if Actions did not already.
-7. Notes: `ant upload-release-notes`. Publish: `gh release edit <VERSION.txt> --draft=false`. Then `ant copy-updates-xml`, commit and push `updates.xml`.
+7. **Any box with recordings in `sampleData/`:** `ant upload-sample-data`. Encodes WebP thumbs when ffmpeg and `preview-src` videos are present, packs `jaer-sample-data.zip`, uploads it (`--clobber`). Help → Sample data and `/latest/download/jaer-sample-data.zip` need this. If WebP files changed, commit `sampleData/previews/*.webp`.
+8. Notes: `ant upload-release-notes`. Publish: `gh release edit <VERSION.txt> --draft=false --latest`. Then `ant copy-updates-xml`, commit and push `updates.xml`.
 
-Media-only without tagging: stop after step 2 or 3. `ant upload-installers` will create tag `VERSION.txt` if it does not exist — do not run it until you intend to tag.
+Media-only without tagging: stop after step 2 or 3. `ant upload-installers` **fails** if the GitHub Release is missing — create it with `ant create-draft-release` first.
 
-`ant release` (all OS + tag) is the old all-in-one. Prefer the table above. Skip its tag/draft with `-Dskip.github.draft=true`.
+`ant release` is removed. See the table above.
 
-Upload extras: dry run `ant "-Djaer.upload.whatif=true" upload-installers`. Other tag: `ant "-Djaer.upload.tag=3.4.1" upload-installers`. PowerShell: **quote** `-Dname=value`. Also uploads `jaer-sample-data.zip` when present. Does **not** overwrite the GitHub body on an existing draft.
+Upload extras: dry run `ant "-Djaer.upload.whatif=true" upload-installers`. Other tag: `ant "-Djaer.upload.tag=3.4.1" upload-installers`. PowerShell: **quote** `-Dname=value`. Sample zip: `ant upload-sample-data`.
 
 Download counts: `ant count-asset-downloads`. After a rebuild, hashes in `updates.xml` change — repeat `copy-updates-xml`, upload, and push `updates.xml` or the updater checksum-fails.
 
@@ -93,7 +96,7 @@ gh release view "$TAG" --json tagName,isDraft,isPrerelease,isLatest,url
 `VERSION.txt` and `currentInstallers/<tag>/` must match `$TAG`. If they do not, set `VERSION.txt`, push, then build. Confirm, then:
 
 ```bash
-ant release-macos
+ant macos-build-notarize
 xcrun stapler validate currentInstallers/"$TAG"/jAER_macos_aarch64_*.dmg
 spctl -a -t open --context context:primary-signature -vv \
   currentInstallers/"$TAG"/jAER_macos_aarch64_*.dmg
@@ -101,11 +104,13 @@ spctl -a -t open --context context:primary-signature -vv \
 
 ant "-Djaer.upload.whatif=true" "-Djaer.upload.tag=$TAG" upload-installers
 ant "-Djaer.upload.tag=$TAG" upload-installers
+# Sample zip is a separate step (any box with recordings, not Mini-only):
+# ant upload-sample-data
 ```
 
-Default `upload-installers` skips the local Windows `.exe` (keeps the Azure-signed GitHub asset). Do not `upload-installers-clobber-windows` after Azure has signed. Do not upload Mac DMGs built on Windows/Linux.
+Default `upload-installers` skips the local Windows `.exe` and (off macOS) Mac `.dmg`. It does not create a tag. Do not `upload-installers-clobber-windows` after Azure has signed.
 
-The `createdAt` picker only sees Release objects that already exist. For a brand-new `VERSION.txt` with no GitHub Release yet, skip the picker: `ant create-draft-release` then `ant upload-installers`. Bare `upload-installers` (no `-Djaer.upload.tag`) still **creates the git tag and a draft** if they are missing — do not run it until you intend that.
+The `createdAt` picker only sees Release objects that already exist. For a brand-new `VERSION.txt` with no GitHub Release yet: `ant create-draft-release` then `ant upload-installers`.
 
 ### Optional: Cursor CLI on the Mini
 
@@ -132,7 +137,7 @@ Windows can also run `agent` locally; that still cannot notarize. SSH to the Min
 
 See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsINI/jaer/tags .
 
-## Install4j build (`ant release`)
+## Install4j build
 
 Prerequisites:
 
@@ -141,14 +146,19 @@ Prerequisites:
 3. `VERSION.txt` set
 4. `images/SplashScreen.png` is the text-free 1024x1024 base art (`images/SplashScreen.pdf` when the art changes)
 
-    ant release
+Production media is per OS, not all-in-one:
 
-On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w`, `images/256h`, `images/800w`), syncs `install4j/jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> install4j/jaer.install4j`, then tags `HEAD` and creates a GitHub **draft** Release. It does not copy repo-root `updates.xml`; publish the GitHub draft, then run `ant copy-updates-xml`.
+    ant macos-build-notarize     # Mini only, notarized DMGs, no tag
+    ant azure-sign-ci     # Windows Authenticode via GitHub Actions
+    ant release-linux     # Unix .sh, no tag
+    ant install4j         # local all-OS smoke (dev compression); do not upload Mac/Windows from this
 
-Splash: `ant generate-splash` writes gitignored `images/800w`, `256h`, and `1024w` from `images/SplashScreen.png` + `VERSION.txt`. `ant install4j` and `ant release` run that first. The launcher splash is the **800×800** PNG; **256h** / **1024w** are compile-time icons only. Details: [`install4j/README.md`](../install4j/README.md).
+`ant create-draft-release` tags `HEAD` and opens a GitHub **draft**. It does not copy repo-root `updates.xml`; publish the GitHub draft, then run `ant copy-updates-xml`.
+
+Splash: `ant generate-splash` writes gitignored `images/800w`, `256h`, and `1024w` from `images/SplashScreen.png` + `VERSION.txt`. `ant install4j`, `ant macos-build-notarize`, and `ant release-linux` run that first. The launcher splash is the **800×800** PNG; **256h** / **1024w** are compile-time icons only. Details: [`install4j/README.md`](../install4j/README.md).
 
 TensorFlow for MLPNoiseFilter (two layers):
-- Ivy (lib/ for compile & ant release tree): tensorflow-core-api + unclassified
+- Ivy (lib/ for compile and the install4j tree): tensorflow-core-api + unclassified
   tensorflow-core-native stub, plus org.bytedeco:javacpp:1.5.10 (TF requires this; do not
   leave javacpp-1.4 from hdf5 on the classpath). Not tensorflow-core-platform.
 - install4j: still lists the large OS classifier jars under dirEntry excludes as a safety net
@@ -166,7 +176,7 @@ TensorFlow for MLPNoiseFilter (two layers):
   `dist/jAER.jar` are gitignored but required at runtime.
 - Sample recordings: see [`README-sample-data.md`](README-sample-data.md). `sampleData/` is excluded from media except `README.md` and `SIZE.txt`.
 - OpenCV: Ivy keeps the openpnp fat jar (`opencv-4.8.1-0.jar`, ~102MB, all OS natives) in
-  `lib/` for compile and `ant run`. `ant release` runs `split-opencv-natives` and each
+  `lib/` for compile and `ant run`. `ant macos-build-notarize` / `release-linux` / `install4j` run `split-opencv-natives` and each
   install4j media fileset packs only that OS's slim jar (same filename under `lib/`).
   Newer openpnp 4.9.0-0 is still a fat jar; bytedeco classifiers are a different Java API.
   Standalone: `ant split-opencv-natives`. Slim output is `build/opencv-slim/<platform>/lib/`.
@@ -178,18 +188,17 @@ Use the install4j IDE when you change installer options other than version
 
 1. Open install4j/jaer.install4j in the install4j GUI
 2. Confirm General Settings -> Application Info version matches VERSION.txt
-   (ant release keeps this in sync; after manual GUI edits, re-check VERSION.txt)
+   (`ant macos-build-notarize` / `release-linux` / `install4j` keep this in sync; after manual GUI edits, re-check VERSION.txt)
 3. Dry-run / test build from the GUI Build step (or CLI test mode) before a full media build:
        install4jc --test install4j/jaer.install4j
    --test does not write media files; use it to validate project config.
    For a faster platform-only smoke test you can also use the IDE "Build" selection
    or: install4jc --build-selected install4j/jaer.install4j
-4. When config looks good, prefer ant release again so VERSION.txt, splash, clean jar,
-   and install4jc --release stay consistent
+4. When config looks good, rebuild the OS you ship (`ant macos-build-notarize`, `ant release-linux`, or Azure) so VERSION.txt, splash, clean jar, and install4jc `--release` stay consistent
 
 ## Tagging
 
-`ant release` (and `ant create-draft-release`) create an annotated git tag `<VERSION.txt>` on `HEAD`, push it, and open a **draft** GitHub Release. Drafts are not Latest and are not the public release page until you publish. The upload script also creates a **draft** if the Release is missing.
+`ant create-draft-release` creates an annotated git tag `<VERSION.txt>` on `HEAD`, pushes it, and opens a **draft** GitHub Release. Drafts are not Latest and are not the public release page until you publish. `ant upload-installers` does **not** create a tag or draft.
 
 If the tag already points at an older commit, delete and recreate it after the release source is on `master` (do not `--force` from Ant):
 
@@ -231,21 +240,14 @@ Keep SignPath **test-signing2** as a backup. Do not switch that policy to
 
 ## SignPath Windows CI
 
-SignPath Foundation signs only artifacts built on GitHub-hosted runners. Local
-`ant release` Windows media cannot be signed as-is. Use GitHub Actions to rebuild
-Windows media and submit SignPath (**test-signing2** now; **release-signing** after
-that policy is ACTIVE and its certificate is VALID).
+SignPath Foundation signs only artifacts built on GitHub-hosted runners. Local Windows media cannot be signed as-is. Use GitHub Actions to rebuild Windows media and submit SignPath (**test-signing2** now; **release-signing** after that policy is ACTIVE and its certificate is VALID).
 
-Signed Windows comes from Actions; local `ant release` is still fine for unsigned
-Mac/Unix media and for local Windows smoke tests. Include the Windows `.exe` with:
-
-    ant upload-installers-clobber-windows
+Signed Windows comes from Actions. Do not `ant upload-installers-clobber-windows` after Azure has signed.
 
 Remote trigger (does not run signing on your PC; starts the GitHub workflow):
 
-    ant signpath-ci
-    ant signpath-ci -Dsignpath.policy=release-signing
     gh workflow run sign-windows-test.yml -f signing_policy=test-signing2
+    gh workflow run sign-windows-test.yml -f signing_policy=release-signing
 
 Or GitHub → Actions → **Sign Windows (SignPath)** → Run workflow. Push the workflow
 file first. Watch with `gh run watch`. Approve the SignPath request as yourself.
@@ -266,7 +268,7 @@ Recreate stubs if needed:
 
     powershell -File scripts/init-signpath-local.ps1
 
-Local Ant reads `install4j/license.txt` when non-empty, else `packaging/signpath/install4j-license.txt` (`ant release` /
+Local Ant reads `install4j/license.txt` when non-empty, else `packaging/signpath/install4j-license.txt` (`ant macos-build-notarize` /
 `ant release-windows-ci`) so you need not set session env vars.
 
 ### Push credentials to GitHub Actions (not to git)
@@ -346,7 +348,7 @@ policy (submitter **CI builds**, approver you).
      variable used on tag pushes). Do not paste the API token into chat.
   5. Push the workflow if needed, then trigger **release-signing**:
 
-         ant signpath-ci -Dsignpath.policy=release-signing
+         gh workflow run sign-windows-test.yml -f signing_policy=release-signing
 
 If CSR stays PENDING, ask SignPath Foundation to issue/import the production
 certificate. Do not buy a commercial CA cert unless they tell you to.
@@ -366,7 +368,7 @@ certificate. Do not buy a commercial CA cert unless they tell you to.
 
   1. Confirm SignPath submitter/approver and GitHub `SIGNPATH_API_TOKEN` as above
   2. Actions → **Sign Windows (SignPath)** → Run workflow → policy **test-signing2**
-     (or `ant signpath-ci`). The Actions page does not set the submitter.
+     (or `gh workflow run sign-windows-test.yml -f signing_policy=test-signing2`). The Actions page does not set the submitter.
   3. When the job waits on SignPath, open the signing-request URL from the job
      summary / SignPath email and **Approve** (as yourself, not as CI builds)
   4. Download the jaer-windows-signed artifact; check Properties → Digital Signatures
@@ -432,7 +434,7 @@ From another machine, SSH into this Mini and run the same commands ([Remote Mini
 
 1. Confirm `signpath/` has the `.p12`, `AuthKey.p8`, issuer/key txt, and
    `macos-p12-password.txt` (or `JAER_MAC_KEYSTORE_PASSWORD`).
-2. `ant release-macos` (latest source, no tag) or `ant install4j-macos` (existing jar).
+2. `ant macos-build-notarize` (latest source, no tag) or `ant install4j-macos` (existing jar).
    First-account notarization can sit on `Waiting for notarization result` for hours.
 3. Proof (not Finder Get Info, not a stale `*.dmg.notarization.log`):
 
@@ -441,7 +443,7 @@ From another machine, SSH into this Mini and run the same commands ([Remote Mini
 
    Expect `source=Notarized Developer ID`. Repeat for `jAER_macos_*.dmg` (Intel).
 4. When you are ready to tag `VERSION.txt`: `ant create-draft-release` then from this Mini
-   `ant upload-installers`. Do not overwrite stapled DMGs later from a Windows `ant release`.
+   `ant upload-installers`. Do not overwrite stapled DMGs later from Windows/Linux.
 
 Finder: double-click the `.dmg` (mounts a volume). Then double-click
 **`jAER <VERSION.txt> Installer`**. That name is `installerName` / `volumeName` on
@@ -461,6 +463,6 @@ Individual Apple Developer Program. Gatekeeper shows the personal legal name.
 
 ## Build notes
 
-Compile / jar is local Ant. Mac notarized DMGs: Mini `ant release-macos`. Windows Authenticode:
+Compile / jar is local Ant. Mac notarized DMGs: Mini `ant macos-build-notarize`. Windows Authenticode:
 `.github/workflows/sign-windows-azure.yml` / `ant azure-sign-ci`. SignPath
-(`.github/workflows/sign-windows-test.yml`, `ant signpath-ci`) is a backup.
+(`.github/workflows/sign-windows-test.yml`) is a backup.

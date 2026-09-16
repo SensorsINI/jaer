@@ -17,7 +17,8 @@ param(
     [double]$Duration = 5,
     [int]$Fps = 12,
     [int]$Quality = 50,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$AllowNoFfmpeg
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +30,10 @@ if (-not $ffmpeg) {
     $ffmpeg = Get-Command ffmpeg.exe -ErrorAction SilentlyContinue
 }
 if (-not $ffmpeg) {
+    if ($AllowNoFfmpeg) {
+        Write-Host "ffmpeg not on PATH; skipping WebP encode (existing sampleData/previews/ kept)"
+        return
+    }
     throw "ffmpeg not found on PATH"
 }
 
@@ -132,7 +137,12 @@ foreach ($rec in $recordings) {
 
 Write-Host ("done: encoded={0} skipped={1} missing={2} failed={3} -> {4}" -f $ok, $skip, $miss, $fail, $Out)
 if ($ok -eq 0 -and $skip -eq 0) {
-    throw ("Drop MP4/AVI files named like the .aedat4 stems into {0} and re-run." -f (Join-Path $sampleDir "preview-src"))
+    $existing = @(Get-ChildItem -LiteralPath $Out -File -Filter "*.webp" -ErrorAction SilentlyContinue)
+    if ($existing.Count -gt 0) {
+        Write-Host ("No preview-src videos to encode; keeping {0} existing WebP(s) in {1}" -f $existing.Count, $Out)
+    } else {
+        throw ("Drop MP4/AVI files named like the .aedat4 stems into {0} and re-run." -f (Join-Path $sampleDir "preview-src"))
+    }
 }
 if ($fail -gt 0) {
     throw "ffmpeg failed for one or more files"

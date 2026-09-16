@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Upload install4j media from currentInstallers/<VERSION>/ to the GitHub Release for that tag.
-# Default: skip jAER_windows-x64_*.exe so an Azure-signed GitHub asset is not
-# replaced. Pass --clobber-windows to upload the local unsigned exe.
+# Upload installer media from currentInstallers/<VERSION>/ to an existing GitHub Release.
+# Does not create a tag or draft (ant create-draft-release first).
+# Default: skip Windows .exe (keeps Azure-signed GitHub asset) and skip macOS .dmg
+# unless this host is Darwin. Linux .sh from any OS.
+# Sample zip is ant upload-sample-data, not this script.
 # Usage (repo root):
 #   bash scripts/upload-github-release-installers.sh
-#   bash scripts/upload-github-release-installers.sh 3.3.0
+#   bash scripts/upload-github-release-installers.sh --tag 3.5.0
 #   bash scripts/upload-github-release-installers.sh --what-if
-#   bash scripts/upload-github-release-installers.sh -WhatIf
 #   bash scripts/upload-github-release-installers.sh --clobber-windows
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -68,38 +69,53 @@ fi
 
 DIR="$ROOT/currentInstallers/$TAG"
 if [ ! -d "$DIR" ]; then
-  echo "Missing $DIR — run ant release first" >&2
+  echo "Missing $DIR — build media first (ant macos-build-notarize / release-linux / azure-sign-ci)" >&2
   exit 1
 fi
+
+ON_MAC=0
+if [ "$(uname -s 2>/dev/null || true)" = Darwin ]; then
+  ON_MAC=1
+fi
+
 shopt -s nullglob
-installers=("$DIR"/jAER_windows-x64_*.exe "$DIR"/jAER_macos_*.dmg "$DIR"/jAER_unix_*.sh)
-if [ ${#installers[@]} -eq 0 ]; then
+candidates=("$DIR"/jAER_windows-x64_*.exe "$DIR"/jAER_macos_*.dmg "$DIR"/jAER_unix_*.sh)
+if [ ${#candidates[@]} -eq 0 ]; then
   echo "No installer media under $DIR" >&2
   exit 1
 fi
-if [ "$CLOBBER_WINDOWS" -eq 0 ]; then
-  kept=()
-  for f in "${installers[@]}"; do
-    base="$(basename "$f")"
-    case "$base" in
-      jAER_windows-x64_*.exe)
-        echo "Skipping $base (keeps SignPath-signed GitHub asset). Overwrite unsigned: ant upload-installers-clobber-windows"
-        ;;
-      *)
-        kept+=("$f")
-        ;;
-    esac
-  done
-  installers=("${kept[@]+"${kept[@]}"}")
-fi
-files=("${installers[@]+"${installers[@]}"}")
+
+files=()
+for f in "${candidates[@]}"; do
+  base="$(basename "$f")"
+  case "$base" in
+    jAER_windows-x64_*.exe)
+      if [ "$CLOBBER_WINDOWS" -eq 1 ]; then
+        echo "WARNING: uploading local unsigned $base --clobber over the Azure-signed GitHub exe"
+        files+=("$f")
+      else
+        echo "Skipping $base to keep the Azure-signed GitHub asset. Do not ant upload-installers-clobber-windows after Azure."
+      fi
+      ;;
+    jAER_macos_*.dmg)
+      if [ "$ON_MAC" -eq 0 ]; then
+        echo "Skipping $base (not macOS). Mac DMGs must be uploaded from the Mini after ant macos-build-notarize."
+      else
+        files+=("$f")
+      fi
+      ;;
+    *)
+      files+=("$f")
+      ;;
+  esac
+done
+
 if [ -f "$DIR/jaer-sample-data.zip" ]; then
-  files+=("$DIR/jaer-sample-data.zip")
-else
-  echo "WARNING: $DIR/jaer-sample-data.zip missing — run ant pack-sample-data (or ant release) before upload so Latest has the sample-data asset." >&2
+  echo "Not attaching jaer-sample-data.zip here. Use: ant upload-sample-data"
 fi
+
 if [ ${#files[@]} -eq 0 ]; then
-  echo "Nothing to upload (Windows exe skipped unless --clobber-windows; no macOS/Linux/sample zip under $DIR)" >&2
+  echo "Nothing to upload. Windows exe is skipped unless --clobber-windows. Mac DMGs only from macOS. Linux: ant release-linux then re-run." >&2
   exit 1
 fi
 
@@ -122,17 +138,12 @@ if [ "$WHATIF" -eq 1 ]; then
   exit 0
 fi
 
-NOTES="$ROOT/release-notes/jaer-${TAG}-release-notes.md"
 if ! gh release view "$TAG" >/dev/null 2>&1; then
-  echo "Creating GitHub draft release $TAG (publish later; not Latest)"
-  if [ -f "$NOTES" ]; then
-    gh release create "$TAG" --draft --latest=false --title "jaer-$TAG" --notes-file "$NOTES"
-  else
-    gh release create "$TAG" --draft --latest=false --title "jaer-$TAG" --notes "jAER $TAG installers. See release-notes/."
-  fi
-elif [ -f "$NOTES" ]; then
-  echo "Leaving GitHub release body unchanged (use ant upload-release-notes to push notes)."
+  echo "GitHub Release $TAG does not exist. Create it first: ant create-draft-release" >&2
+  exit 1
 fi
+echo "Leaving GitHub release body unchanged (use ant upload-release-notes to push notes)."
+
 export GH_SPINNER_DISABLED=yes
 n=0
 for f in "${files[@]}"; do
@@ -143,3 +154,4 @@ for f in "${files[@]}"; do
   echo "[$n/${#files[@]}] Uploaded $(basename "$f") in $(( $(date +%s) - start ))s"
 done
 echo "Uploaded ${#files[@]} installer(s) to https://github.com/SensorsINI/jaer/releases/tag/$TAG"
+echo "Sample zip: ant upload-sample-data. Then ant copy-updates-xml after publish."

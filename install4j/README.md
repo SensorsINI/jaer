@@ -2,7 +2,7 @@
 
 Open [`jaer.install4j`](jaer.install4j) in the [install4j](https://www.ej-technologies.com/products/install4j/overview.html) IDE. Media output is `currentInstallers/<VERSION.txt>/`. Release steps: [`../docs/README-releasing-tagging.md`](../docs/README-releasing-tagging.md).
 
-From the repo root: `ant release`, `ant install4j` (regenerates splash from `VERSION.txt` then compile media), or `ant generate-splash` for PNGs only.
+From the repo root: `ant install4j` (splash from `VERSION.txt` then all-OS smoke media), `ant macos-build-notarize` / `ant release-linux` for production OS media, or `ant generate-splash` for PNGs only.
 
 | File | Role |
 |------|------|
@@ -13,15 +13,15 @@ From the repo root: `ant release`, `ant install4j` (regenerates splash from `VER
 
 ## macOS code signing / notarization
 
-On the Mini, `ant release-macos` (or `ant install4j-macos` with an existing jar) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git). GitHub Mac `.dmg` assets must be the Mini-notarized files (`ant upload-installers` from this machine **after** the version tag exists).
+On the Mini, `ant macos-build-notarize` (or `ant install4j-macos` with an existing jar) reads gitignored `signpath/` files and passes App Store Connect compiler variables. Do not type issuer / key ID / `.p12` password into the project file (that would land in git). GitHub Mac `.dmg` assets must be the Mini-notarized files (`ant upload-installers` from this machine **after** the version tag exists).
 
 Media ids 38/39 use `installerName` / `volumeName` `jAER ${compiler:sys.version} Installer` so Finder shows a short installer name. That is Mac-only; do not change the global application name (SignPath Windows `product-name`).
 
-If the install4j IDE has `jaer.install4j` open, reload it after a git pull. Prefer `ant` for signed Mac media. Windows `ant release` and CI use `--disable-signing` (SignPath signs the exe).
+If the install4j IDE has `jaer.install4j` open, reload it after a git pull. Prefer `ant` for signed Mac media. Windows CI and `ant install4j` on Windows use `--disable-signing` (Azure / SignPath signs the exe).
 
 ## Generated splash / icon PNGs
 
-`ant generate-splash` overlays **jAER** and the full `VERSION.txt` string on the text-free base art and writes three squares. Those output folders are **gitignored build products** (`ant install4j`, `ant release`, `ant jar`, and `ant run` all run `generate-splash`). Track only `images/SplashScreen.png` (and the PDF). The 256h / 1024w files are compile-time icon sources; they are **not** copied into `C:\Program Files\jAER`. The 800 PNG is shipped as `SplashScreen.png` next to the launcher (and inside `jAER.jar`).
+`ant generate-splash` overlays **jAER** and the full `VERSION.txt` string on the text-free base art and writes three squares. Those output folders are **gitignored build products** (`ant install4j`, `ant macos-build-notarize`, `ant release-linux`, `ant jar`, and `ant run` all run `generate-splash`). Track only `images/SplashScreen.png` (and the PDF). The 256h / 1024w files are compile-time icon sources; they are **not** copied into `C:\Program Files\jAER`. The 800 PNG is shipped as `SplashScreen.png` next to the launcher (and inside `jAER.jar`).
 
 | Path | Size | Used for |
 |------|------|----------|
@@ -96,16 +96,19 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | Target | What it does |
 |--------|----------------|
 | `generate-splash` | Overlay `VERSION.txt` → `images/800w`, `1024w`, `256h` |
-| `release` | Confirm version, splash, sync `jaer.install4j` version, `clean` + `jar`, pack sample data if present, all-OS `install4jc --release=…`, then git tag |
-| `release-macos` | Mini only: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. **No git tag** |
+| `release` | **Removed.** Fails. Use `macos-build-notarize` / `azure-sign-ci` / `release-linux` / `create-draft-release` |
+| `macos-build-notarize` | Mini only: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. **No git tag** |
+| `release-linux` | `clean` + `jar` + Unix `.sh`. **No git tag** |
 | `install4j-macos` | Mini: splash then macOS DMGs only (existing `dist/jAER.jar`; faster compression) |
 | `azure-sign-ci` | `gh workflow run sign-windows-azure.yml` (Windows Authenticode) |
 | `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
+| `make-sample-data-previews` | Encode `preview-src` MP4/AVI → `sampleData/previews/*.webp` (ffmpeg) |
+| `upload-sample-data` | WebP + pack + `gh release upload` of `jaer-sample-data.zip` |
 | `install4j` | `generate-splash` then all-OS `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
 | `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
 
-After a splash or `jaer.install4j` launcher change, rebuild media (`ant release` or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.
+After a splash or `jaer.install4j` launcher change, rebuild media (`ant macos-build-notarize`, `ant release-linux`, or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.
 
 ## GUI / dry run
 
-Use the install4j IDE for screens, file sets, JRE bundles, code signing, and media types. After GUI edits, confirm Application Info version still matches `VERSION.txt` (`ant release` keeps that in sync). `install4jc --test install4j/jaer.install4j` validates config without writing media.
+Use the install4j IDE for screens, file sets, JRE bundles, code signing, and media types. After GUI edits, confirm Application Info version still matches `VERSION.txt` (`ant macos-build-notarize` / `release-linux` / `install4j` keep that in sync). `install4jc --test install4j/jaer.install4j` validates config without writing media.

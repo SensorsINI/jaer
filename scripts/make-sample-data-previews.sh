@@ -21,13 +21,14 @@ FPS=12
 QUALITY=50
 START_DEFAULT=0
 FORCE=0
+ALLOW_NO_FFMPEG=0
 SRC_DIR=""
 SAMPLE="$ROOT/sampleData"
 OUT="$SAMPLE/previews"
 OFFSETS="$OUT/offsets.txt"
 
 usage() {
-  echo "Usage: $0 [--src DIR] [--out DIR] [--width N] [--duration SEC] [--fps N] [--quality 0-100] [--force]" >&2
+  echo "Usage: $0 [--src DIR] [--out DIR] [--width N] [--duration SEC] [--fps N] [--quality 0-100] [--force] [--allow-no-ffmpeg]" >&2
 }
 
 while [ $# -gt 0 ]; do
@@ -64,6 +65,10 @@ while [ $# -gt 0 ]; do
       FORCE=1
       shift
       ;;
+    --allow-no-ffmpeg)
+      ALLOW_NO_FFMPEG=1
+      shift
+      ;;
     *)
       echo "Unknown option: $1" >&2
       usage
@@ -73,6 +78,10 @@ while [ $# -gt 0 ]; do
 done
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
+  if [ "$ALLOW_NO_FFMPEG" -eq 1 ]; then
+    echo "ffmpeg not on PATH; skipping WebP encode (existing sampleData/previews/ kept)"
+    exit 0
+  fi
   echo "ffmpeg not found on PATH" >&2
   exit 1
 fi
@@ -194,8 +203,15 @@ done
 
 echo "done: encoded=$ok skipped=$skip missing=$miss failed=$fail -> $OUT"
 if [ "$ok" -eq 0 ] && [ "$skip" -eq 0 ]; then
-  echo "Drop MP4/AVI files named like the .aedat4 stems into $SAMPLE/preview-src/ and re-run." >&2
-  exit 1
+  shopt -s nullglob
+  existing=("$OUT"/*.webp)
+  shopt -u nullglob
+  if [ ${#existing[@]} -gt 0 ]; then
+    echo "No preview-src videos to encode; keeping ${#existing[@]} existing WebP(s) in $OUT"
+  else
+    echo "Drop MP4/AVI files named like the .aedat4 stems into $SAMPLE/preview-src/ and re-run." >&2
+    exit 1
+  fi
 fi
 if [ "$fail" -gt 0 ]; then
   exit 1

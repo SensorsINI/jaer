@@ -29,23 +29,23 @@ Unpack so files land **in** the folder you choose (zip root is the files, not a 
 ## Pack
 
 1. Drop recordings into `sampleData/` (gitignored).
-2. `ant pack-sample-data` (or `ant release` when recordings are present).
+2. After exporting a rendered MP4 or AVI of each recording (File → Export video), name it like the `.aedat4` (same stem) and drop it in `sampleData/preview-src/` (gitignored).
+3. `ant upload-sample-data` (needs `gh`, an existing GitHub Release for `VERSION.txt`, recordings in `sampleData/`).
 
-Writes `currentInstallers/<VERSION>/jaer-sample-data.zip` (store / no deflate; AEDAT-4 is already compressed) and `sampleData/SIZE.txt`. Skips the zip if a name+size stamp still matches. Force: `scripts/pack-sample-data.ps1 -Force` or `bash scripts/pack-sample-data.sh --force`.
+That encodes looping 5 s / 240 px WebP thumbs when ffmpeg and preview sources are present, zips recordings to `currentInstallers/<VERSION>/jaer-sample-data.zip`, writes `sampleData/SIZE.txt`, and `gh release upload`s the zip (`--clobber`). Dry run: `ant "-Djaer.upload.whatif=true" upload-sample-data`. Other tag: `ant "-Djaer.upload.tag=3.5.0" upload-sample-data`. Skip WebP: `ant "-Dskip.sampleData.previews=true" upload-sample-data`. Force a new zip: `ant "-Djaer.sampleData.force=true" upload-sample-data`.
+
+Standalone pieces (same as the upload pre-steps):
+
+```powershell
+ant make-sample-data-previews
+ant pack-sample-data
+```
+
+`pack-sample-data` (also run from `ant macos-build-notarize` / `release-linux` / `install4j` when recordings are present) writes the zip (store / no deflate; AEDAT-4 is already compressed) and `SIZE.txt`. Skips the zip if a name+size stamp still matches. Force: `ant "-Djaer.sampleData.force=true" pack-sample-data`, or `scripts/pack-sample-data.ps1 -Force` / `bash scripts/pack-sample-data.sh --force`.
 
 The pack scripts refresh the **Size** column in the `sampleData/README.md` file table (matched by the backtick filename) and the **That downloads about N MB** line. Add new recordings as a row in that table; pack does not invent descriptions. Only `*.aedat4` (and `.aedat` / `.dat` / `.raw`) are zipped; WebP previews and source MP4/AVI are skipped.
 
-## README preview clips
-
-After exporting a rendered MP4 or AVI of each recording (File → Export video), name the file like the `.aedat4` (same stem) and drop it in `sampleData/preview-src/` (gitignored). Then:
-
-```bash
-bash scripts/make-sample-data-previews.sh
-```
-
-Windows: `powershell -File scripts/make-sample-data-previews.ps1`
-
-That writes looping 5 s, 240 px-wide animated WebP to `sampleData/previews/` (`-loop 0`, 12 fps, quality 50). Defaults live in the scripts (`WIDTH` / `-Width`); there is no separate config file. Re-encode with `--force`. Optional start times (seconds into the source) go in `sampleData/previews/offsets.txt`:
+`make-sample-data-previews` looks for sources in `sampleData/preview-src/`, then `sampleData/`. Re-encode with `--force` on the scripts. Optional start times (seconds into the source) go in `sampleData/previews/offsets.txt`:
 
 ```
 DVS128 DVS09 2006 mouse behavior over 3 days  60
@@ -53,7 +53,7 @@ DVS128 DVS09 2006 mouse behavior over 3 days  60
 
 Commit the `.webp` files so the GitHub README table shows them. They are not packed into `jaer-sample-data.zip`.
 
-Upload the zip with the release (`scripts/upload-github-release-installers.ps1` / `.sh`) so `/latest/download/jaer-sample-data.zip` is valid.
+`upload-installers` does **not** attach the sample zip. Run `ant upload-sample-data`.
 
 Installer checkbox sizes come from `SIZE.txt` at `install4jc` time (`-Djaer.sampleDataZipMiB` / `jaer.sampleDataUnpackedMiB`). `SIZE.txt` and `README.md` are install4j `fileEntry`s under `jaer/sampleData`.
 

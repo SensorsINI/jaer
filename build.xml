@@ -39,7 +39,7 @@ Everyday (git checkout)
   replace-installed-jar   jar-fast, then copy dist/jAER.jar onto the install4j install (Windows UAC).
                           Override: -Djaer.install.dir=C:\Program Files\jAER
   install                 launch the current-OS installer from currentInstallers/VERSION/
-                          Does not compile media. Build first: ant install4j  (or ant release)
+                          Does not compile media. Build first: ant install4j  (or ant macos-build-notarize / release-linux)
   install-jaer-run-shortcut  once per computer: Ctrl+F5 in Cursor runs jAER: ant run
                           VS Code too: -Djaer.shortcut.editor=both
   clean                   delete build/ products (not lib/)
@@ -54,6 +54,7 @@ Dependencies (Ivy)
   clean-deps              delete lib/
   clean-ivy               clean-deps
   clean-ivy-cache         delete ivy/ cache (next compile re-downloads)
+  split-opencv-natives    per-OS slim OpenCV jars for install4j (runs from install4j / macos-build-notarize / release-*)
 
 macOS
   install-macos-libusb    Homebrew libusb on Apple Silicon (also runs from ant run).
@@ -61,23 +62,18 @@ macOS
 
 Releases
   See docs/README-releasing-tagging.md (who/where matrix). GitHub Release assets
-  need a git tag; ant upload-installers creates tag VERSION.txt if it is missing.
-  release-macos           Mini only: clean/jar + notarized Intel+Apple Silicon DMGs.
+  need a git tag; ant create-draft-release makes it. ant upload-installers does not.
+  macos-build-notarize    Mini only (Apple notarization). clean/jar + Intel+Apple Silicon DMGs.
                           No git tag. Needs signpath/ Developer ID + App Store Connect.
   azure-sign-ci           any box with gh: GitHub Actions Azure Authenticode (Windows).
-  signpath-ci             backup Windows signing (SignPath test-signing2).
-  release                 confirm VERSION.txt, splash, clean/jar, all-OS install4jc,
-                          then git tag + GitHub draft Release (needs gh).
-                          Skip tag/draft: -Dskip.github.draft=true
-                          On the Mini this also notarizes Mac DMGs (slow). Prefer
-                          release-macos for Mac-only. Windows exe from this run is
-                          unsigned; do not upload it over an Azure-signed asset.
+  release-linux           any box: clean/jar + Unix .sh (production compression). No tag.
+  release                 REMOVED. Fails. Use the split targets above.
   create-draft-release    git tag VERSION.txt, push, GitHub draft (no install4jc)
-  upload-installers       currentInstallers/<VERSION>/ macOS/Linux jAER_* (+ sample zip)
-                          to GitHub draft (needs gh). Skips Windows .exe so an
-                          Azure-signed GitHub asset is kept.
+  upload-installers       existing GitHub Release: Mini Mac DMGs + Linux .sh (needs gh).
+                          Skips Windows .exe. Skips Mac .dmg unless this host is macOS.
+                          Does not attach sample zip (ant upload-sample-data).
   upload-installers-clobber-windows
-                          same, including the local unsigned Windows .exe
+                          DO NOT USE after Azure has signed. Uploads local unsigned .exe.
                           PowerShell: ant "-Djaer.upload.clobberWindows=true" upload-installers
                           (quote -D...=true or PS splits on = and Ant looks for target "true")
                           Dry run: ant "-Djaer.upload.whatif=true" upload-installers
@@ -87,9 +83,14 @@ Releases
                           <!-- webp: --> files to GitHub user-attachments, rewrite notes
                           Dry run: -Djaer.upload.whatif=true
   upload-release-notes    media first, then GitHub Release body from release-notes/ (needs gh)
-  release-windows-ci      Windows-only media, no confirm (Azure / SignPath CI)
-  signpath-ci             trigger GitHub SignPath workflow (needs gh; push first).
-                          Policy: -Dsignpath.policy=test-signing2|release-signing
+  pack-sample-data        zip sampleData recordings, write SIZE.txt (skips if zip+name/size stamp match)
+                          Force rebuild: ant "-Djaer.sampleData.force=true" pack-sample-data
+  make-sample-data-previews  5s 240px WebP thumbs from sampleData/preview-src (needs ffmpeg)
+  upload-sample-data      WebP (if ffmpeg/sources) + pack-sample-data + gh upload zip (needs gh).
+                          Release must already exist. Dry run: ant "-Djaer.upload.whatif=true" upload-sample-data
+                          Other tag: ant "-Djaer.upload.tag=3.5.0" upload-sample-data
+                          Skip WebP: ant "-Dskip.sampleData.previews=true" upload-sample-data
+  release-windows-ci      Windows-only media, no confirm (Azure CI)
   install4j               generate-splash (VERSION.txt), then install4jc (needs dist/jAER.jar)
                           Local: compression 5 + --faster (no LZMA). Release stays 9+LZMA.
                           Override: -Djaer.install4j.compression=7 -Djaer.install4j.faster=false
@@ -99,13 +100,9 @@ Releases
                           One tag: -Djaer.asset.downloads.tag=3.3.0
                           More rows: -Djaer.asset.downloads.limit=20
                           All files: -Djaer.asset.downloads.all=true
-  split-opencv-natives    per-OS slim OpenCV jars for install4j
-  pack-sample-data        zip sampleData recordings, write SIZE.txt (skips if zip+name/size stamp match)
-  jaer-runtime-archive    zip a runtime tree (legacy; prefer install4j)
 
 Scripts (not Ant)
   scripts/run-jaer-fast.bat|.sh    launch from build/classes without ant
-  scripts/make-sample-data-previews.sh|.ps1    5s 120px WebP thumbs from sample MP4/AVI
 ]]></echo>
         <taskdef name="printfilestostdout" classname="PrintFileToStdout"
                  classpath="${java.io.tmpdir}/jaer-ant-help-tool"/>
@@ -581,37 +578,11 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         <copy file="images/800w/SplashScreen.png" todir="build/classes"/>
     </target>
 
-    <!-- Windows/macOS/Linux launchers come from install4j (ant release / install4j/jaer.install4j).
+    <!-- Windows/macOS/Linux launchers come from install4j (ant macos-build-notarize / release-linux / install4j/jaer.install4j).
          The old exe4j jAERViewer_win64.exe path was removed. -->
 
     <target name="-post-jar" depends="-revert-project-properties-if-only-datestamp">
     </target>
-
-
-    <!-- builds a runtime archive for end users who don't want to develop -->
-    <target name="jaer-runtime-archive" depends="jar">
-        <tstamp/>
-        <exec executable="git" outputproperty="git.tag">
-            <arg value="describe"/>
-            <arg value="--tags"/>
-            <arg value="--abbrev=0"/>
-        </exec>
-        <echo message="Git tag is ${git.tag}"/>
-        <echo message="Building jaer-runtime-${git.tag}.zip"/>
-        <!--<delete file="../jaer-runtime-\*.zip" failonerror="false"/>-->
-        <property name="runtimeZipFileName" value="../jaer-runtime-${git.tag}.zip"/>
-        <zip destfile="${runtimeZipFileName}" level="9"
-             comment="jAER runtime release - see https://jaerproject.org">
-            <zipfileset prefix="jAER-runtime"
-                        dir="."
-                        excludes="**/*.zip, ivy/**, **/*.private, **/*.hprof, **/*.log, **/*.ncb, installers/**, currentInstallers/**, jaer-older-installers/**, .git/**, exe4j*/**"
-                        defaultexcludes="false"
-            />
-        </zip>
-    </target>
-
-  
-
 
     <!-- About / issue reports / install-root BUILDVERSION.txt. First line is VERSION.txt. -->
     <target name="jaer-setBuildVersion" depends="init,-load-version">
@@ -781,7 +752,7 @@ java.vendor=${java.vendor}
         <echo message="Synced install4j/jaer.install4j application version to ${jaer.version}"/>
     </target>
 
-    <!-- ant install4j (dev): gzip 5 + skip LZMA. ant release / CI: project file stays compression 9 + LZMA. -->
+    <!-- ant install4j (dev): gzip 5 + skip LZMA. ant macos-build-notarize / release-linux / CI: project file stays compression 9 + LZMA. -->
     <target name="-install4j-local-media-options">
         <property name="jaer.install4j.compression" value="5"/>
         <property name="jaer.install4j.faster" value="true"/>
@@ -934,6 +905,7 @@ java.vendor=${java.vendor}
     <target name="pack-sample-data" depends="-load-version"
             description="Zip sampleData recordings and write SIZE.txt (skip if zip exists and recording name+size unchanged).">
         <fail unless="jaer.version" message="VERSION.txt empty"/>
+        <property name="jaer.sampleData.force" value="false"/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">
             <arg value="-NoProfile"/>
@@ -941,13 +913,36 @@ java.vendor=${java.vendor}
             <arg value="Bypass"/>
             <arg value="-File"/>
             <arg file="${basedir}/scripts/pack-sample-data.ps1"/>
+            <arg value="-Force" if:true="${jaer.sampleData.force}"/>
         </exec>
         <exec executable="bash" osfamily="unix" searchpath="true"
               failonerror="true" dir="${basedir}">
             <arg file="${basedir}/scripts/pack-sample-data.sh"/>
+            <arg value="--force" if:true="${jaer.sampleData.force}"/>
         </exec>
         <property file="${basedir}/sampleData/SIZE.txt"/>
         <echo message="sampleData zip ${zipMiB} MB download, ${unpackedMiB} MB unpacked"/>
+    </target>
+
+    <target name="make-sample-data-previews" depends="checkos" unless="skip.sampleData.previews"
+            description="Encode sampleData/preview-src MP4/AVI to looping WebP thumbs (needs ffmpeg).">
+        <property name="jaer.sampleData.previews.optional" value="false"/>
+        <echo message="Encoding sample-data WebP previews (optional=${jaer.sampleData.previews.optional})."/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/make-sample-data-previews.ps1"/>
+            <arg value="-AllowNoFfmpeg" if:true="${jaer.sampleData.previews.optional}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/make-sample-data-previews.sh"/>
+            <arg value="--allow-no-ffmpeg" if:true="${jaer.sampleData.previews.optional}"/>
+        </exec>
+        <echo message="WebP thumbs are not in the zip. Commit sampleData/previews/*.webp if they changed."/>
     </target>
 
     <target name="-maybe-pack-sample-data" depends="-detect-sample-data" if="jaer.sampleData.hasRecordings">
@@ -1050,7 +1045,7 @@ java.vendor=${java.vendor}
     <target name="-require-opencv-slim">
         <available type="dir" file="${opencv.slim.dir}" property="opencv.slim.dir.exists"/>
         <fail unless="opencv.slim.dir.exists"
-              message="Missing ${opencv.slim.dir}. Run ant split-opencv-natives first (or ant release)."/>
+              message="Missing ${opencv.slim.dir}. Run ant split-opencv-natives first (or ant macos-build-notarize / release-linux)."/>
     </target>
 
     <!-- Public name: Ant treats CLI args starting with "-" as options, so
@@ -1060,7 +1055,7 @@ java.vendor=${java.vendor}
             description="generate-splash then install4jc (existing dist/jAER.jar; local compression 5, no LZMA).">
         <echo message="${line.separator}install4j media build finished for ${jaer.version} (splash + install4jc)."/>
         <echo message="Output: currentInstallers/${jaer.version}/"/>
-        <echo message="Did not clean or rebuild the jar. Full pipeline: ant release"/>
+        <echo message="Did not clean or rebuild the jar. Production: ant macos-build-notarize / release-linux / azure-sign-ci"/>
         <echo message="To try the installer on this machine: ant install"/>
     </target>
 
@@ -1102,7 +1097,7 @@ java.vendor=${java.vendor}
         <available file="${jaer.installer.file}" property="jaer.installer.exists"/>
         <fail unless="jaer.installer.exists"><![CDATA[
 Missing installer: ${jaer.installer.file}
-Build media first:  ant install4j    or    ant release
+Build media first:  ant install4j    or    ant macos-build-notarize / release-linux / azure-sign-ci
 Then re-run:        ant install
 ]]></fail>
         <echo message="Launching ${jaer.installer.file}"/>
@@ -1171,11 +1166,79 @@ Then re-run:        ant install
     <target name="-run-install4jc-windows"
             depends="split-opencv-natives,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
+    <target name="-run-install4jc-linux-with-license"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
+            if="jaer.install4j.license">
+        <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/run-install4jc.sh"/>
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=unixInstaller"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
+        </exec>
+        <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--license=${jaer.install4j.license}"/>
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=unixInstaller"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="--disable-signing"/>
+            <arg value="--disable-notarization"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
+        </exec>
+    </target>
+
+    <target name="-run-install4jc-linux-without-license"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local,-apply-install4j-media-options"
+            unless="jaer.install4j.license">
+        <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/run-install4jc.sh"/>
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=unixInstaller"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
+        </exec>
+        <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=unixInstaller"/>
+            <arg value="--faster" if:true="${jaer.install4j.faster}"/>
+            <arg value="--disable-signing"/>
+            <arg value="--disable-notarization"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
+            <arg value="-D"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="${jaer.install4j.project.effective}"/>
+        </exec>
+    </target>
+
+    <target name="-run-install4jc-linux"
+            depends="split-opencv-natives,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-linux-with-license,-run-install4jc-linux-without-license"/>
+
     <!-- Mini only: Intel (id 38) + Apple Silicon (id 39) DMGs. run-install4jc.sh
          injects Developer ID + App Store Connect API (not logged). No Windows/Unix media. -->
     <target name="-require-macos-notarize" depends="checkos">
         <fail unless="isMac"
-              message="ant release-macos / install4j-macos is Mini-only (Developer ID + notarization). On Windows/Linux the Mac DMGs would be unsigned."/>
+              message="ant macos-build-notarize / install4j-macos is Mini-only (Developer ID + notarization). On Windows/Linux the Mac DMGs would be unsigned."/>
     </target>
 
     <target name="-run-install4jc-macos-with-license"
@@ -1222,19 +1285,25 @@ Then re-run:        ant install
             description="Mini: generate-splash then notarized macOS DMGs only (existing dist/jAER.jar; compression 5).">
         <echo message="${line.separator}macOS install4j media finished for ${jaer.version} (existing jar)."/>
         <echo message="Output: currentInstallers/${jaer.version}/jAER_macos_*.dmg"/>
-        <echo message="Did not rebuild the jar. Latest source: ant release-macos"/>
-        <echo message="Did not git tag. GitHub assets need a tag: ant create-draft-release, then ant upload-installers"/>
+        <echo message="Did not rebuild the jar. Latest source: ant macos-build-notarize"/>
+        <echo message="Did not git tag. GitHub assets need a tag: ant create-draft-release, then Mini ant upload-installers"/>
     </target>
 
-    <target name="release-macos"
+    <target name="macos-build-notarize"
             depends="-load-version,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc-macos"
-            description="Mini: clean/jar + notarized Intel+Apple Silicon DMGs. No git tag.">
+            description="Mini only: clean/jar + notarized Intel+Apple Silicon DMGs. No git tag.">
         <echo message="${line.separator}macOS notarized media finished for ${jaer.version}."/>
         <echo message="Output: currentInstallers/${jaer.version}/jAER_macos_*.dmg and jAER_macos_aarch64_*.dmg"/>
         <echo message="Did not git tag or create a GitHub Release (assets require a tag)."/>
-        <echo message="When you are ready to tag VERSION.txt: ant create-draft-release &amp;&amp; ant upload-installers"/>
+        <echo message="When you are ready to tag VERSION.txt: ant create-draft-release, then from this Mini: ant upload-installers"/>
+        <echo message="Sample zip (not in this target): ant upload-sample-data"/>
         <echo message="Proof: xcrun stapler validate currentInstallers/${jaer.version}/jAER_macos_aarch64_*.dmg"/>
         <echo message="See docs/README-releasing-tagging.md"/>
+    </target>
+
+    <target name="release-macos"
+            description="Renamed to macos-build-notarize.">
+        <fail message="ant release-macos was renamed to ant macos-build-notarize (Mini notarization only; no git tag)."/>
     </target>
 
     <!-- Copy install4j updates.xml from currentInstallers/<version>/ to repo root (auto-update descriptor). -->
@@ -1244,7 +1313,7 @@ Then re-run:        ant install
                       value="${basedir}/currentInstallers/${jaer.version}/updates.xml"/>
             <available file="${jaer.updates.xml.source}" property="jaer.updates.xml.source.exists"/>
             <fail unless="jaer.updates.xml.source.exists"
-                  message="Missing ${jaer.updates.xml.source} — run ant release (or install4jc) first."/>
+                  message="Missing ${jaer.updates.xml.source} — run ant macos-build-notarize, release-linux, or install4jc first."/>
             <copy file="${jaer.updates.xml.source}"
                   tofile="${basedir}/updates.xml"
                   overwrite="true"/>
@@ -1255,7 +1324,7 @@ Then re-run:        ant install
             <echo message="Copied ${jaer.updates.xml.source} -&gt; ${basedir}/updates.xml"/>
             <echo message="Set updates.xml baseUrl to GitHub Releases latest/download/."/>
             <echo message="When the GitHub Release is ready, commit and push updates.xml so auto-update can see ${jaer.version}."/>
-            <echo message="Upload currentInstallers/${jaer.version}/jAER_* to the GitHub Release: ant upload-installers"/>
+            <echo message="Upload currentInstallers/${jaer.version}/jAER_* from the machine that built them: Mini ant upload-installers (Mac); Azure exe separately. Sample zip: ant upload-sample-data"/>
         </sequential>
     </macrodef>
 
@@ -1277,8 +1346,9 @@ Then re-run:        ant install
     </target>
 
     <target name="upload-installers" depends="checkos,-resolve-upload-tag"
-            description="Upload macOS/Linux (+ sample zip) to GitHub Release. Skips Windows exe. Include it: ant upload-installers-clobber-windows">
+            description="Upload Mini Mac DMGs (macOS host only) + Linux .sh. Skips Windows exe. Needs existing GitHub Release.">
         <echo message="Uploading installers for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif}, clobberWindows=${jaer.upload.clobberWindows})."/>
+        <echo message="Skips Windows exe and (off macOS) Mac DMGs. Sample zip: ant upload-sample-data."/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">
             <arg value="-NoProfile"/>
@@ -1302,10 +1372,37 @@ Then re-run:        ant install
     </target>
 
     <target name="upload-installers-clobber-windows"
-            description="Same as upload-installers, including the local unsigned Windows exe (overwrites SignPath asset).">
+            description="DO NOT USE after Azure signed. Uploads local unsigned Windows exe over the GitHub asset.">
         <antcall target="upload-installers">
             <param name="jaer.upload.clobberWindows" value="true"/>
         </antcall>
+    </target>
+
+    <target name="upload-sample-data" depends="checkos,-resolve-upload-tag"
+            description="WebP thumbs, pack jaer-sample-data.zip, upload to GitHub Release (needs gh).">
+        <echo message="Uploading sample data for tag ${jaer.upload.tag.effective} (whatif=${jaer.upload.whatif})."/>
+        <antcall target="make-sample-data-previews">
+            <param name="jaer.sampleData.previews.optional" value="true"/>
+        </antcall>
+        <antcall target="pack-sample-data"/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/upload-github-release-sample-data.ps1"/>
+            <arg value="-Tag"/>
+            <arg value="${jaer.upload.tag.effective}"/>
+            <arg value="-WhatIf" if:true="${jaer.upload.whatif}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/upload-github-release-sample-data.sh"/>
+            <arg value="--tag"/>
+            <arg value="${jaer.upload.tag.effective}"/>
+            <arg value="--what-if" if:true="${jaer.upload.whatif}"/>
+        </exec>
     </target>
 
     <property name="jaer.asset.downloads.tag" value=""/>
@@ -1409,17 +1506,36 @@ Then re-run:        ant install
     </target>
 
     <target name="release"
-            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
-            description="Confirm VERSION.txt (default y), splash, clean/jar, install4jc, then git tag + GitHub draft.">
-        <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
-        <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
-        <antcall target="create-draft-release"/>
-        <echo message="Upload installers to the draft: ant upload-installers"/>
-        <echo message="Include local unsigned Windows exe (overwrites Azure-signed): ant upload-installers-clobber-windows"/>
-        <echo message="PowerShell -D must be quoted: ant &quot;-Djaer.upload.clobberWindows=true&quot; upload-installers"/>
-        <echo message="That upload includes jaer-sample-data.zip when pack-sample-data produced it."/>
-        <echo message="Publish on GitHub when ready (or: gh release edit ${jaer.version} --draft=false),"/>
-        <echo message="then ant copy-updates-xml. Skip the draft step: ant release -Dskip.github.draft=true"/>
+            description="Removed. Use macos-build-notarize, azure-sign-ci, release-linux, create-draft-release.">
+        <fail><![CDATA[
+ant release is removed.
+
+It built all-OS media (unsigned Windows, and unsigned Mac off the Mini), tagged VERSION.txt,
+and made it too easy to clobber Azure-signed Windows and Mini-notarized Mac GitHub assets.
+
+Use instead:
+  Mac DMGs:     ant macos-build-notarize          (Mini only)
+  Windows exe:  ant azure-sign-ci
+  Linux .sh:    ant release-linux
+  Git tag:      ant create-draft-release
+  Upload Mac:   Mini: ant upload-installers
+                (skips Windows exe; skips Mac DMGs unless this host is macOS)
+  Sample zip:   ant upload-sample-data
+  Notes:        ant upload-release-notes
+
+Local all-OS smoke media (dev compression): ant install4j
+Do not ant upload-installers-clobber-windows after Azure has signed.
+
+See docs/README-releasing-tagging.md
+]]></fail>
+    </target>
+
+    <target name="release-linux"
+            depends="-load-version,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc-linux"
+            description="clean/jar + Unix .sh installer (production compression). No git tag.">
+        <echo message="${line.separator}Linux install4j media finished for ${jaer.version}."/>
+        <echo message="Output: currentInstallers/${jaer.version}/jAER_unix_*.sh"/>
+        <echo message="Did not git tag. GitHub assets need a tag: ant create-draft-release, then ant upload-installers"/>
         <echo message="See docs/README-releasing-tagging.md"/>
     </target>
 
@@ -1440,26 +1556,6 @@ Then re-run:        ant install
         </exec>
         <echo message="Started Sign Windows (Azure). Watch: gh run watch"/>
         <echo message="Download artifact jaer-windows-azure-signed. Do not ant upload-installers-clobber-windows over it."/>
-    </target>
-
-    <!-- Remote GitHub Actions: SignPath signs only runner-built Windows media. Default policy
-         is test-signing2. Use release-signing only after that policy is ACTIVE and VALID. -->
-    <property name="signpath.policy" value="test-signing2"/>
-
-    <target name="signpath-ci"
-            description="Trigger GitHub Actions SignPath Windows signing (gh workflow run).">
-        <exec executable="gh" failonerror="true" searchpath="true" dir="${basedir}">
-            <arg value="workflow"/>
-            <arg value="run"/>
-            <arg value="sign-windows-test.yml"/>
-            <arg value="-f"/>
-            <arg value="signing_policy=${signpath.policy}"/>
-        </exec>
-        <echo message="Triggered Sign Windows (SignPath) with signing_policy=${signpath.policy}."/>
-        <echo message="Watch:  gh run watch"/>
-        <echo message="Approve the SignPath request as yourself (not CI builds)."/>
-        <echo message="Do not use release-signing until that policy is ACTIVE and the certificate is VALID."/>
-        <echo message="See docs/README-releasing-tagging.md"/>
     </target>
 
     <target name="jaer-sign-jar" depends="jar">
