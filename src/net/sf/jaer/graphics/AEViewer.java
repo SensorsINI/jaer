@@ -202,7 +202,6 @@ import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.opencv.OpenCvCameraFactory;
 import net.sf.jaer.hardwareinterface.opencv.OpenCvCameraHardwareInterface;
 import net.sf.jaer.chip.opencv.OpenCvFrameCamera;
-import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
@@ -5639,13 +5638,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(!checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
                     }
 
-                    if (aemon instanceof HasUsbStatistics) {
-                        printUSBStatisticsCBMI.setEnabled(true);
-                        printUSBStatisticsCBMI.setSelected(((HasUsbStatistics) aemon).isPrintUsbStatistics());
-                    } else {
-                        printUSBStatisticsCBMI.setEnabled(false);
-                        printUSBStatisticsCBMI.setSelected(false);
-                    }
+                    notifyUsbTuningFrameDeviceChanged();
                     showUsbLinkOverlayAfterOpen();
                     } finally {
                         if (serialHeld) {
@@ -8388,8 +8381,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator26 = new javax.swing.JPopupMenu.Separator();
         usbTuningMenuItem = new javax.swing.JMenuItem();
         jSeparator5 = new javax.swing.JSeparator();
-        printUSBStatisticsCBMI = new javax.swing.JCheckBoxMenuItem();
-        jSeparator24 = new javax.swing.JPopupMenu.Separator();
         zeroTimestampsMenuItem = new javax.swing.JMenuItem();
         resetUsbInterfaceMenuItem = new javax.swing.JMenuItem();
         monSeqMenu = new javax.swing.JMenu();
@@ -9195,7 +9186,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(jSeparator26);
 
         usbTuningMenuItem.setText("USB tuning...");
-        usbTuningMenuItem.setToolTipText("<html>Open a separate window to adjust USB FIFO, buffer count, and AE render packet size<br>with spinner arrows, typed values, and keyboard while the camera is running.");
+        usbTuningMenuItem.setToolTipText("<html>Open a window to adjust USB FIFO, buffer count, and AE render packet size<br>"
+                + "while the camera is running. The table shows USB IN fill, interval, and throughput (~1 s).");
         usbTuningMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 usbTuningMenuItemActionPerformed(evt);
@@ -9203,22 +9195,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         controlMenu.add(usbTuningMenuItem);
         controlMenu.add(jSeparator5);
-
-        printUSBStatisticsCBMI.setMnemonic('t');
-        printUSBStatisticsCBMI.setSelected(false);
-        printUSBStatisticsCBMI.setText("Log USB statistics");
-        printUSBStatisticsCBMI.setToolTipText("<html>When selected, logs USB IN stats about once per second to the jAER log<br>"
-                + "(console and jAER-0.log): packet size vs FIFO, interval, and throughput.<br>"
-                + "Use with <b>USB tuning…</b> to see if transfers are filling the FIFO (raise FIFO/buffers)<br>"
-                + "or staying sparse (FIFO larger than the camera needs). Off by default.<br>"
-                + "Enabled only for interfaces that report transfer sizes (Cypress FX2/FX3, Prophesee, NRV).");
-        printUSBStatisticsCBMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                printUSBStatisticsCBMIActionPerformed(evt);
-            }
-        });
-        controlMenu.add(printUSBStatisticsCBMI);
-        controlMenu.add(jSeparator24);
 
         zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
         zeroTimestampsMenuItem.setText("Zero timestamps");
@@ -10116,7 +10092,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         ((JMenuItem) c).setEnabled(true);
                     }
                 }
-                printUSBStatisticsCBMI.setEnabled(aemon instanceof HasUsbStatistics);
             }
         });
     }
@@ -10186,6 +10161,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             usbTuningFrame = new UsbTuningFrame(this);
         }
         usbTuningFrame.showForCurrentDevice();
+    }
+
+    private void notifyUsbTuningFrameDeviceChanged() {
+        if (usbTuningFrame != null && usbTuningFrame.isDisplayable()) {
+            usbTuningFrame.deviceChanged();
+        }
     }
 
 	private void viewFiltersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewFiltersMenuItemActionPerformed
@@ -13998,16 +13979,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         showUsbTuningFrame();
     }//GEN-LAST:event_usbTuningMenuItemActionPerformed
 
-    private void printUSBStatisticsCBMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_printUSBStatisticsCBMIActionPerformed
-        if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof HasUsbStatistics)) {
-            HasUsbStatistics usbStatistics = (HasUsbStatistics) chip.getHardwareInterface();
-            usbStatistics.setPrintUsbStatistics(printUSBStatisticsCBMI.isSelected());
-        } else {
-            printUSBStatisticsCBMI.setSelected(false);
-            log.info("USB statistics logging is not available for this interface");
-        }
-    }//GEN-LAST:event_printUSBStatisticsCBMIActionPerformed
-
     private void setFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setFrameRateMenuItemActionPerformed
         int fpsNow = getFrameRater().getDesiredFPS();
         String fpsString = JOptionPane.showInputDialog(this, "Desired frame rate?", Integer.toString(fpsNow));
@@ -15357,7 +15328,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator21;
     private javax.swing.JSeparator jSeparator22;
     private javax.swing.JPopupMenu.Separator jSeparator23;
-    private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JPopupMenu.Separator jSeparator26;
     private javax.swing.JPopupMenu.Separator jSeparator28;
@@ -15396,7 +15366,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem pauseRenderingCheckBoxMenuItem;
     private javax.swing.JMenu playbackMenu;
     private javax.swing.JPanel playerControlPanel;
-    private javax.swing.JCheckBoxMenuItem printUSBStatisticsCBMI;
     private javax.swing.JMenuItem refreshInterfaceMenuItem;
     private javax.swing.JMenu remoteMenu;
     private javax.swing.ButtonGroup renderModeButtonGroup;

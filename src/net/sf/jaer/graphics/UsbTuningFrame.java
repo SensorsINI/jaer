@@ -1,8 +1,11 @@
 package net.sf.jaer.graphics;
 
-import java.awt.Component;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -21,33 +24,89 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
+
+import org.apache.commons.text.WordUtils;
 
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
+import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.WindowSaver;
 
 /**
  * Separate top-level window for live USB FIFO / buffer count / AE render-packet
  * size (and Prophesee live keep limit when available). Spinner and typed edits
  * auto-apply after a short pause so touchpad / arrow-key adjustments stay usable
- * while the camera runs.
+ * while the camera runs. While this window is open, USB IN transfer statistics
+ * are collected and shown in the table (~1 s windows).
  */
 public class UsbTuningFrame extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final int UI_DEBOUNCE_MS = 350;
+    private static final int STATS_POLL_MS = 1000;
     private static final int RENDER_MIN = 1 << 16;
     private static final int RENDER_MAX = 1 << 23;
+    private static final int NOTE_WRAP = 32;
+    private static final String DASH = "—";
+    private static final int ROW_FIFO = 0;
+    private static final int ROW_BUFFERS = 1;
+    private static final int ROW_FILL = 2;
+    private static final int ROW_THROUGHPUT = 7;
+    private static final int ROW_ERRORS = 11;
+    private static final int ROW_NOTE = 12;
+    private static final Color FILL_YELLOW = new Color(255, 230, 80);
+    private static final Color FILL_ORANGE = new Color(255, 160, 40);
+    private static final Color FILL_RED = new Color(220, 50, 50);
+    private static final String[] STAT_ROWS = {
+        "FIFO",
+        "Buffers",
+        "Fill",
+        "Avg size",
+        "Min size",
+        "Max size",
+        "Interval",
+        "Throughput",
+        "Completions",
+        "Empty",
+        "Short",
+        "Errors",
+        "Note"
+    };
+    private static final String[] STAT_TIPS = {
+        "Host bulk-IN buffer (URB) size you set on the left. The camera may complete far less than this.",
+        "Number of those URBs queued at once.",
+        "Avg completed size / FIFO. Low fill with min=max means the camera always finishes a small, fixed burst.",
+        "Mean bytes per completed USB bulk IN in the last second. Not event count.",
+        "Smallest completed bulk IN in the last second.",
+        "Largest completed bulk IN in the last second.",
+        "Mean time between completed bulk INs.",
+        "Bytes completed per second (size × completions).",
+        "Completed bulk INs per second.",
+        "Completions with 0 bytes (ZLP).",
+        "Completions shorter than FIFO (normal if the camera sends less than the URB).",
+        "Failed USB transfers in the last second.",
+        "Hint from fill vs FIFO."
+    };
 
     private final AEViewer viewer;
     private final NumberFormat intFormat = NumberFormat.getIntegerInstance();
+    private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private JSpinner fifoSpinner;
     private JSpinner buffersSpinner;
@@ -58,11 +117,18 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private JLabel activeLabel;
     private JLabel allocationLabel;
     private JLabel statusLabel;
+    private JLabel statsStatusLabel;
+    private DefaultTableModel statsModel;
+    private JTable statsTable;
+    private float lastFillFraction = Float.NaN;
+    private int lastErrorCount;
 
     private boolean updatingUi;
     private Timer applyTimer;
+    private Timer statsTimer;
     private PropertyChangeSupport subscribedSupport;
     private AEMonitorInterface boundMonitor;
+    private HasUsbStatistics boundStats;
 
     public UsbTuningFrame(AEViewer viewer) {
         super("USB tuning" + (viewer != null && viewer.getTitle() != null ? " — " + viewer.getTitle() : ""));
@@ -76,6 +142,9 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
 
         applyTimer = new Timer(UI_DEBOUNCE_MS, this::applyPendingEdits);
         applyTimer.setRepeats(false);
+        statsTimer = new Timer(STATS_POLL_MS, e -> pollStatisticsTable());
+        statsTimer.setRepeats(true);
+        statsTimer.setInitialDelay(STATS_POLL_MS);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -88,6 +157,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     public void showForCurrentDevice() {
         refreshFromHardware();
         resubscribe();
+        bindStatisticsCollection();
         packToContent();
         if (!isVisible()) {
             setLocationRelativeTo(viewer);
@@ -96,8 +166,24 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             packToContent();
             setLocationRelativeTo(viewer);
         }
+        if (statsTimer != null && !statsTimer.isRunning()) {
+            statsTimer.start();
+        }
         toFront();
         requestFocus();
+    }
+
+    /**
+     * Rebind after the viewer opens or switches a camera while this window is
+     * already showing.
+     */
+    public void deviceChanged() {
+        if (!isDisplayable()) {
+            return;
+        }
+        refreshFromHardware();
+        resubscribe();
+        bindStatisticsCollection();
     }
 
     /** Size the frame to the layout after all components (and their values) are in place. */
@@ -179,13 +265,20 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
 
         final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         final JButton refresh = new JButton("Refresh");
-        refresh.addActionListener(e -> refreshFromHardware());
+        refresh.addActionListener(e -> {
+            refreshFromHardware();
+            pollStatisticsTable();
+        });
         final JButton close = new JButton("Close");
         close.addActionListener(e -> dispose());
         buttons.add(refresh);
         buttons.add(close);
 
-        root.add(form, BorderLayout.CENTER);
+        final JPanel body = new JPanel(new BorderLayout(12, 8));
+        body.add(form, BorderLayout.WEST);
+        body.add(buildStatsPanel(), BorderLayout.CENTER);
+
+        root.add(body, BorderLayout.CENTER);
         root.add(buttons, BorderLayout.SOUTH);
         setContentPane(root);
 
@@ -193,6 +286,102 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         buffersSpinner.addChangeListener(this::onSpinnerChanged);
         renderSpinner.addChangeListener(this::onSpinnerChanged);
         keepSpinner.addChangeListener(this::onSpinnerChanged);
+    }
+
+    private JPanel buildStatsPanel() {
+        statsModel = new DefaultTableModel(new Object[] {"Metric", "Value"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        for (String name : STAT_ROWS) {
+            statsModel.addRow(new Object[] {name, DASH});
+        }
+        statsTable = new JTable(statsModel);
+        statsTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        statsTable.setRowHeight(20);
+        statsTable.setShowGrid(true);
+        statsTable.setFillsViewportHeight(true);
+        statsTable.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+        statsTable.setCellSelectionEnabled(true);
+        statsTable.getTableHeader().setReorderingAllowed(false);
+        statsTable.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        statsTable.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        statsTable.setToolTipText("<html>USB bulk IN completions for the last 1 s (updates at 1 Hz).<br>"
+                + "Size rows are bytes delivered when libusb finishes one read, not DVS events.<br>"
+                + "Fill is that size divided by the host FIFO. Hover a row for details.</html>");
+        TableColumn metricCol = statsTable.getColumnModel().getColumn(0);
+        metricCol.setPreferredWidth(120);
+        metricCol.setMaxWidth(150);
+        statsTable.getColumnModel().getColumn(1).setPreferredWidth(240);
+        StatsCellRenderer renderer = new StatsCellRenderer();
+        statsTable.getColumnModel().getColumn(0).setCellRenderer(renderer);
+        statsTable.getColumnModel().getColumn(1).setCellRenderer(renderer);
+
+        final JScrollPane scroll = new JScrollPane(statsTable);
+        scroll.setPreferredSize(new Dimension(360, 13 * 20 + 48));
+
+        statsStatusLabel = new JLabel("USB IN: waiting for device");
+        statsStatusLabel.setBorder(BorderFactory.createEmptyBorder(4, 2, 0, 2));
+
+        final JPanel panel = new JPanel(new BorderLayout(4, 4));
+        panel.setBorder(BorderFactory.createTitledBorder("USB IN statistics"));
+        panel.add(scroll, BorderLayout.CENTER);
+        panel.add(statsStatusLabel, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private final class StatsCellRenderer extends DefaultTableCellRenderer {
+        private final Font paramFont = new Font(Font.SANS_SERIF, Font.ITALIC, 12);
+        private final Font paramValueFont = new Font(Font.MONOSPACED, Font.ITALIC, 12);
+        private final Font measureFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        private final Font measureValueFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+        private final Font criticalFont = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+        private final Font criticalValueFont = new Font(Font.MONOSPACED, Font.BOLD, 12);
+        private final Font noteFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            boolean valueCol = column == 1;
+            boolean note = row == ROW_NOTE;
+            setHorizontalAlignment(note ? SwingConstants.LEFT : (valueCol ? SwingConstants.RIGHT : SwingConstants.LEFT));
+            setVerticalAlignment(note ? SwingConstants.TOP : SwingConstants.CENTER);
+            if (row == ROW_FIFO || row == ROW_BUFFERS) {
+                setFont(valueCol ? paramValueFont : paramFont);
+            } else if (row == ROW_FILL || row == ROW_THROUGHPUT) {
+                setFont(valueCol ? criticalValueFont : criticalFont);
+            } else if (note) {
+                setFont(noteFont);
+            } else {
+                setFont(valueCol ? measureValueFont : measureFont);
+            }
+            if (row >= 0 && row < STAT_TIPS.length) {
+                setToolTipText(STAT_TIPS[row]);
+            }
+            if (isSelected) {
+                return this;
+            }
+            setForeground(table.getForeground());
+            setBackground(table.getBackground());
+            if (row == ROW_FILL && !Float.isNaN(lastFillFraction)) {
+                if (lastFillFraction > 1f) {
+                    setBackground(FILL_RED);
+                    setForeground(Color.WHITE);
+                } else if (lastFillFraction > 0.75f) {
+                    setBackground(FILL_ORANGE);
+                    setForeground(Color.BLACK);
+                } else if (lastFillFraction > 0.50f) {
+                    setBackground(FILL_YELLOW);
+                    setForeground(Color.BLACK);
+                }
+            } else if (row == ROW_ERRORS && lastErrorCount > 0) {
+                setForeground(Color.RED);
+            }
+            return this;
+        }
     }
 
     private static void addRow(JPanel form, GridBagConstraints c, int row, String label, JSpinner spinner) {
@@ -388,6 +577,121 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
                 : null);
     }
 
+    private void bindStatisticsCollection() {
+        final HasUsbStatistics next = viewer.aemon instanceof HasUsbStatistics
+                ? (HasUsbStatistics) viewer.aemon
+                : null;
+        if (boundStats != next) {
+            if (boundStats != null) {
+                boundStats.setShowUsbStatistics(false);
+            }
+            boundStats = next;
+            if (boundStats != null) {
+                boundStats.setShowUsbStatistics(true);
+            }
+        } else if (boundStats != null && !boundStats.isShowUsbStatistics()) {
+            boundStats.setShowUsbStatistics(true);
+        }
+    }
+
+    private void unbindStatisticsCollection() {
+        if (boundStats != null) {
+            boundStats.setShowUsbStatistics(false);
+            boundStats = null;
+        }
+    }
+
+    private void pollStatisticsTable() {
+        final HasUsbStatistics current = viewer.aemon instanceof HasUsbStatistics
+                ? (HasUsbStatistics) viewer.aemon
+                : null;
+        if (current != boundStats) {
+            bindStatisticsCollection();
+        }
+        if (boundStats == null) {
+            fillStatsDashes();
+            statsStatusLabel.setText(viewer.aemon == null
+                    ? "USB IN: no device open"
+                    : "USB IN: this interface does not report transfer sizes");
+            return;
+        }
+        applySnapshotToTable(boundStats.takeUsbStatisticsSnapshot());
+    }
+
+    private void applySnapshotToTable(USBPacketStatistics.Snapshot s) {
+        if (statsModel == null) {
+            return;
+        }
+        if (s == null || !s.ready) {
+            fillStatsDashes();
+            statsStatusLabel.setText("USB IN: collecting… (1 s)");
+            return;
+        }
+        float fill = s.fillFraction();
+        lastFillFraction = fill;
+        lastErrorCount = s.errorCount;
+        setStat(ROW_FIFO, exactBytes(s.fifoSizeBytes));
+        setStat(ROW_BUFFERS, s.numBuffers > 0 ? intFormat.format(s.numBuffers) : DASH);
+        setStat(ROW_FILL, Float.isNaN(fill) ? DASH : Math.round(100 * fill) + "%");
+        setStat(3, exactBytes(s.avgPacketBytes));
+        setStat(4, s.minBytes > 0 ? exactBytes(s.minBytes) : DASH);
+        setStat(5, s.maxBytes > 0 ? exactBytes(s.maxBytes) : DASH);
+        setStat(6, s.avgIntervalUs > 0 ? eng(s.avgIntervalUs * 1e-6) + "s" : DASH);
+        setStat(ROW_THROUGHPUT, s.bytesPerSec > 0 ? eng(s.bytesPerSec) + "B/s" : DASH);
+        setStat(8, intFormat.format(s.transfers) + "/s");
+        setStat(9, intFormat.format(s.emptyCount) + "/s");
+        setStat(10, intFormat.format(s.shortCount) + "/s");
+        setStat(ROW_ERRORS, intFormat.format(s.errorCount) + "/s");
+        setNote(s.hint);
+        statsStatusLabel.setText(String.format("USB IN: 1 Hz  #%d  (%.2f s)", s.seq, s.elapsedS));
+        if (statsTable != null) {
+            statsTable.repaint();
+        }
+    }
+
+    private void fillStatsDashes() {
+        lastFillFraction = Float.NaN;
+        lastErrorCount = 0;
+        for (int i = 0; i < STAT_ROWS.length; i++) {
+            setStat(i, DASH);
+        }
+        if (statsTable != null) {
+            statsTable.setRowHeight(ROW_NOTE, 20);
+            statsTable.repaint();
+        }
+    }
+
+    private void setStat(int row, String value) {
+        statsModel.setValueAt(value, row, 1);
+    }
+
+    private void setNote(String hint) {
+        if (hint == null || hint.isEmpty()) {
+            setStat(ROW_NOTE, DASH);
+            if (statsTable != null) {
+                statsTable.setRowHeight(ROW_NOTE, 20);
+            }
+            return;
+        }
+        String wrapped = WordUtils.wrap(hint, NOTE_WRAP);
+        int lines = wrapped.split("\n", -1).length;
+        setStat(ROW_NOTE, "<html>" + wrapped.replace("\n", "<br>") + "</html>");
+        if (statsTable != null) {
+            statsTable.setRowHeight(ROW_NOTE, Math.max(20, lines * 18 + 6));
+        }
+    }
+
+    private String exactBytes(double n) {
+        if (n <= 0) {
+            return DASH;
+        }
+        return intFormat.format(Math.round(n)) + " B";
+    }
+
+    private String eng(double n) {
+        return engFmt.format(n).trim();
+    }
+
     private void resubscribe() {
         unsubscribe();
         final AEMonitorInterface monitor = viewer.aemon;
@@ -421,7 +725,11 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         if (applyTimer != null) {
             applyTimer.stop();
         }
+        if (statsTimer != null) {
+            statsTimer.stop();
+        }
         unsubscribe();
+        unbindStatisticsCollection();
     }
 
     @Override
@@ -435,8 +743,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             }
             final AEMonitorInterface monitor = viewer.aemon;
             if (monitor != boundMonitor) {
-                refreshFromHardware();
-                resubscribe();
+                deviceChanged();
                 return;
             }
             if (!updatingUi && !applyTimer.isRunning()) {

@@ -1151,6 +1151,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     @Override
     public void setShowUsbStatistics(boolean yes) {
+        usbPacketStatistics.setPipeParams(getActiveFifoSize(), getActiveNumBuffers());
         usbPacketStatistics.setShowUsbStatistics(yes);
     }
 
@@ -1168,6 +1169,16 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     @Override
     public boolean isPrintUsbStatistics() {
         return usbPacketStatistics.isPrintUsbStatistics();
+    }
+
+    @Override
+    public USBPacketStatistics.Snapshot snapshotUsbStatistics() {
+        return usbPacketStatistics.peekSnapshot();
+    }
+
+    @Override
+    public USBPacketStatistics.Snapshot takeUsbStatisticsSnapshot() {
+        return usbPacketStatistics.takeSnapshot();
     }
 
     @Override

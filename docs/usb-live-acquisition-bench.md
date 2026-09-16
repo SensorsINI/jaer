@@ -87,12 +87,17 @@ halved FIFO, so the requested size is not silently degraded.
 ## USB tuning window (manual)
 
 USB > **USB tuning...** opens a separate top-level window usable with mouse and
-arrow keys (no wheel required). Values auto-apply after a short pause.
+arrow keys (no wheel required). Values auto-apply after a short pause. While the
+window is open, a **USB IN statistics** table updates about once per second
+(fill vs FIFO, interval, throughput, empty/short/error counts). Collection stops
+when the window is closed. There is no separate USB-menu statistics item.
 
 For each live device above:
 
 1. Open the window during acquisition; confirm **Requested**, **Active session**,
-   allocation (`fifo × buffers`), and **Status** match the current setup.
+   allocation (`fifo × buffers`), and **Status** match the current setup. After
+   about one second the statistics table should leave “collecting…” and show fill
+   and throughput. Change FIFO/buffers and watch fill and the Note row.
 2. Change FIFO with spinner arrows and by typing; confirm Status goes
    `Queued` → `Restarting` → `Active` and Active session updates after the pause.
 3. Rapidly change buffers several times; confirm only the final value restarts

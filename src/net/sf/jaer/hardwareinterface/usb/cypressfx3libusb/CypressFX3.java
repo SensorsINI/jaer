@@ -2630,6 +2630,16 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         return usbPacketStatistics.isPrintUsbStatistics();
     }
 
+    @Override
+    public USBPacketStatistics.Snapshot snapshotUsbStatistics() {
+        return usbPacketStatistics.peekSnapshot();
+    }
+
+    @Override
+    public USBPacketStatistics.Snapshot takeUsbStatisticsSnapshot() {
+        return usbPacketStatistics.takeSnapshot();
+    }
+
     private AtomicBoolean isMaster = new AtomicBoolean(true);
 
     public boolean isTimestampMaster() {

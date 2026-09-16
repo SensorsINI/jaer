@@ -795,26 +795,13 @@
             <MenuItem class="javax.swing.JMenuItem" name="usbTuningMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="USB tuning..."/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Open a separate window to adjust USB FIFO, buffer count, and AE render packet size&lt;br&gt;with spinner arrows, typed values, and keyboard while the camera is running."/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Open a window to adjust USB FIFO, buffer count, and AE render packet size&lt;br&gt;while the camera is running. The table shows USB IN fill, interval, and throughput (~1 s)."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="usbTuningMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="printUSBStatisticsCBMI">
-              <Properties>
-                <Property name="mnemonic" type="int" value="116"/>
-                <Property name="selected" type="boolean" value="true"/>
-                <Property name="text" type="java.lang.String" value="Show USB statistics"/>
-                <Property name="toolTipText" type="java.lang.String" value="Prints statistics about USB packet sizes and packet intervals to System.out (only visible in standard console, not built in logging console)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="printUSBStatisticsCBMIActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator24">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="zeroTimestampsMenuItem">
               <Properties>
