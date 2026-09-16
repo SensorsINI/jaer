@@ -8,6 +8,7 @@ package ch.unizh.ini.jaer.chip.flyeye;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
@@ -44,6 +45,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private final PacketBundle bundle0 = new PacketBundle();
     private final PacketBundle bundle1 = new PacketBundle();
     private boolean useSlot0 = true;
+    private long lastEmptyMergeLogMs;
 
     public FlyEyeHardwareInterface(FlyEye flyEye, AEMonitorInterface left, AEMonitorInterface right) {
         super(left, right);
@@ -291,13 +293,19 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                     return TimestampResetResult.failed("interrupted");
                 }
             }
+            if (bothEvents && deltaUs == null) {
+                // Firmware reset on both cameras is enough. Polarity often
+                // arrives only after sendConfiguration (FlyEye pots started at 0).
+                log.info("FlyEye timestamp reset: both cameras sent reset events (attempt "
+                        + attempt + "/" + TIMESTAMP_RESET_TRIES
+                        + "); no polarity packets yet to measure Δt");
+                return TimestampResetResult.resetEventsOnly();
+            }
             last = deltaUs != null
                     ? TimestampResetResult.misaligned(deltaUs, bothEvents)
-                    : TimestampResetResult.failed(bothEvents
-                            ? "reset events from both cameras but no polarity packets"
-                            : "no reset event from "
-                                    + (lastHardwareResetNanos(left) > t0L ? "right" : "left")
-                                    + " camera");
+                    : TimestampResetResult.failed("no reset event from "
+                            + (lastHardwareResetNanos(left) > t0L ? "right" : "left")
+                            + " camera");
             log.warning("FlyEye timestamp reset attempt " + attempt + "/"
                     + TIMESTAMP_RESET_TRIES + ": " + last.detail);
         }
@@ -346,10 +354,12 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         AEViewer viewer = flyEye.getAeViewer();
         boolean masterEnabled = flyEye.getTimestampMaster() != FlyEye.TimestampMaster.NONE;
         Runnable show;
-        if (result.aligned) {
+        if (result.aligned && result.deltaUs == null) {
+            return;
+        } else if (result.aligned) {
             String msg = String.format(
                     "<html>FlyEye timestamps aligned.<br>Left and right PacketBundle last timestamps differ by %,d µs (limit 10 ms).",
-                    result.deltaUs == null ? 0L : Math.abs(result.deltaUs));
+                    Math.abs(result.deltaUs));
             show = () -> JOptionPane.showMessageDialog(viewer, msg,
                     "FlyEye timestamps", JOptionPane.INFORMATION_MESSAGE);
         } else if (masterEnabled) {
@@ -396,6 +406,11 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
 
         static TimestampResetResult failed(String detail) {
             return new TimestampResetResult(false, false, null, detail);
+        }
+
+        static TimestampResetResult resetEventsOnly() {
+            return new TimestampResetResult(true, true, null,
+                    "both reset events, no polarity Δt");
         }
     }
 
@@ -452,6 +467,13 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private void mergePolarity(EventPacket<FlyEyeEvent> dest, EventPacket<?> leftPkt, EventPacket<?> rightPkt) {
         int nL = leftPkt == null ? 0 : leftPkt.getSize();
         int nR = rightPkt == null ? 0 : rightPkt.getSize();
+        if (nL == 0 && nR == 0 && log.isLoggable(Level.FINE)) {
+            long now = System.currentTimeMillis();
+            if (now - lastEmptyMergeLogMs > 2000) {
+                lastEmptyMergeLogMs = now;
+                log.fine("FlyEye merge empty nL=0 nR=0");
+            }
+        }
         OutputEventIterator<FlyEyeEvent> out = dest.outputIterator();
         int iL = 0;
         int iR = 0;

@@ -117,6 +117,26 @@ public final class UsbEnumerationSafetyDemo {
                 "FlyEye open retries timestamp reset on both cameras");
         require(flyHw.contains("TIMESTAMP_ALIGN_US"),
                 "FlyEye confirms reset when PacketBundle timestamps are within 10 ms");
+        require(flyHw.contains("no polarity packets yet to measure"),
+                "FlyEye timestamp reset must accept both firmware resets without polarity");
+        require(flyHw.contains("resetEventsOnly"),
+                "FlyEye must not warn when both cameras reset but polarity is still empty");
+        require(flyChip.contains("adoptDvs128BiasesIfUninitialized"),
+                "FlyEye must copy DVS128 pots when FlyEye prefs are all-zero");
+        require(flyChip.contains("imported factory biases from"),
+                "FlyEye imports deviceSettings/DVS128/FlyEye.xml when pots are zero");
+        require(flyChip.contains("timestampMaster == TimestampMaster.NONE"),
+                "FlyEye must not warn about timestamp master when both cameras are masters");
+        require(flyChip.contains("adopted DVS128 bias values"),
+                "FlyEye logs when it adopts DVS128 bias values");
+        String flyXml = Files.readString(Paths.get("deviceSettings", "DVS128", "FlyEye.xml"),
+                StandardCharsets.UTF_8);
+        require(flyXml.contains("name=\"FlyEye\""),
+                "factory FlyEye.xml must import into /jaer/chips/FlyEye");
+        require(flyXml.contains("IPot.Pr"),
+                "factory FlyEye.xml must include DVS128 IPot values");
+        require(!flyXml.contains("/home/"),
+                "factory FlyEye.xml must not include machine paths");
         require(flyHw.contains("both DVS128s are timestamp masters"),
                 "without Timestamp master, both cameras emit reset events (right must not stay slave)");
         String flyRen = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics",
