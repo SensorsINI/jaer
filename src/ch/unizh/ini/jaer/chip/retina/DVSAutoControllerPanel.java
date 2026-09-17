@@ -90,8 +90,8 @@ public class DVSAutoControllerPanel extends JPanel implements PropertyChangeList
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(new EmptyBorder(8, 10, 10, 10));
 
-        JLabel help = new JLabel(DVSUserControlPanel.htmlWrapped(HELP_HTML,
-                DVSUserControlPanel.PREFERRED_PANEL_WIDTH - 48));
+        JLabel help = new DVSUserControlPanel.HtmlHintLabel(HELP_HTML,
+                DVSUserControlPanel.PREFERRED_PANEL_WIDTH - 48);
         help.setAlignmentX(Component.LEFT_ALIGNMENT);
         if (controller.getDescription() != null) {
             help.setToolTipText(controller.getDescription());

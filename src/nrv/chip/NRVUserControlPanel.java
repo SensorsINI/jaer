@@ -12,7 +12,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
-import javax.swing.border.EmptyBorder;
 
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
@@ -56,6 +55,12 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
         this.config = config;
         finishInit();
         syncFromConfig();
+        applyPreferredSizeFromContent();
+    }
+
+    @Override
+    protected String helpHtml() {
+        return BIAS_SECTION_TOOLTIP;
     }
 
     @Override
@@ -64,14 +69,15 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
                 "Right: lower 0x0167 / higher 0x0168 → raise both |Θ|.");
         configurePotTweaker(onOffBalanceTweaker, "ON / OFF balance", "More OFF", "More ON",
                 "Right: more ON events (independent of threshold).");
-        thresholdTweaker.getSlider().setPaintLabels(false);
-        onOffBalanceTweaker.getSlider().setPaintLabels(false);
-        thresholdTweaker.setPreferredSize(new Dimension(200, 48));
-        onOffBalanceTweaker.setPreferredSize(new Dimension(200, 48));
     }
 
     @Override
     protected void addExtraControls(JPanel extra) {
+        for (JLabel lab : new JLabel[] {thresholdValueLabel, onOffValueLabel, kRatioLabel,
+                scanRateValueLabel, scanRateDetailLabel, timestampSubValueLabel, subTimestampTimingLabel}) {
+            lab.setAlignmentX(Component.LEFT_ALIGNMENT);
+            lab.setText(" ");
+        }
         extra.add(thresholdValueLabel);
         extra.add(onOffValueLabel);
         extra.add(kRatioLabel);
@@ -114,6 +120,12 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBorder(BorderFactory.createTitledBorder("Timing / readout"));
         section.setToolTipText(TIMING_SECTION_TOOLTIP);
+        configureReadoutSlider(scanRateSlider, 500, 100);
+        scanRateSlider.setToolTipText("<html>Nominal sensor scan / frame-end rate (100–2000 Hz).<br>"
+                + "Interpolates DTAG Scan Rate registers between factory anchors.");
+        configureReadoutSlider(timestampSubSlider, 0x20, 0);
+        timestampSubSlider.setToolTipText("<html>Register 0x32B2 — USB packet cadence within each ref ms.<br>"
+                + "Auto-updated with scan rate; fine-tune here.");
         section.add(wrapSlider("Scan rate (100–2000 Hz)", scanRateSlider, scanRateValueLabel));
         section.add(scanRateDetailLabel);
         section.add(Box.createVerticalStrut(6));
@@ -134,10 +146,26 @@ public class NRVUserControlPanel extends DVSUserControlPanel {
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBorder(BorderFactory.createTitledBorder("Global setting"));
         section.setToolTipText(GLOBAL_SETTING_TOOLTIP);
+        globalResetCheckBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        globalHoldCheckBox.setAlignmentX(Component.LEFT_ALIGNMENT);
         section.add(globalResetCheckBox);
         section.add(globalHoldCheckBox);
         stretchHorizontal(section);
         return section;
+    }
+
+    private static void configureReadoutSlider(JSlider slider, int majorTick, int minorTick) {
+        slider.setMajorTickSpacing(majorTick);
+        if (minorTick > 0) {
+            slider.setMinorTickSpacing(minorTick);
+        }
+        slider.setPaintTicks(true);
+        slider.setPaintLabels(false);
+        int sliderH = Math.max(slider.getPreferredSize().height, 36);
+        slider.setPreferredSize(new Dimension(120, sliderH));
+        slider.setMinimumSize(new Dimension(0, sliderH));
+        slider.setMaximumSize(new Dimension(Integer.MAX_VALUE, sliderH));
+        slider.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
     private static JPanel wrapSlider(String title, JSlider slider, JLabel valueLabel) {

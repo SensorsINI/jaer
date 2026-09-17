@@ -6,6 +6,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
@@ -51,6 +53,7 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
     protected final JPanel extraControls = new JPanel();
     protected boolean updatingFromConfig;
     private final EngineeringFormat eng = new EngineeringFormat();
+    private final JPanel contentPanel = new JPanel();
     private final JPanel thresholdRow = new JPanel();
     private final JPanel onOffRow = new JPanel();
     private final JPanel bandwidthRow = new JPanel();
@@ -101,7 +104,7 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
             chip.getSupport().addPropertyChangeListener(this);
         }
 
-        JPanel content = new JPanel();
+        JPanel content = contentPanel;
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(new EmptyBorder(4, 8, 8, 8));
         content.add(helpLabel());
@@ -136,10 +139,15 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
         stretchChildren(content);
 
         add(widthTrackingScrollPane(content), BorderLayout.CENTER);
-        int contentH = content.getPreferredSize().height + 32;
-        setPreferredSize(new Dimension(PREFERRED_PANEL_WIDTH, Math.min(Math.max(contentH, 400), 720)));
         setMinimumSize(new Dimension(320, 280));
         syncFromTweaks();
+        applyPreferredSizeFromContent();
+    }
+
+    /** Recalculate tab height after subclass extra controls and labels are filled. */
+    protected final void applyPreferredSizeFromContent() {
+        int contentH = contentPanel.getPreferredSize().height + 32;
+        setPreferredSize(new Dimension(PREFERRED_PANEL_WIDTH, Math.min(Math.max(contentH, 400), 720)));
     }
 
     protected String helpHtml() {
@@ -147,9 +155,7 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
     }
 
     private JLabel helpLabel() {
-        JLabel help = new JLabel(htmlWrapped(helpHtml(), PREFERRED_PANEL_WIDTH - 48));
-        help.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return help;
+        return new HtmlHintLabel(helpHtml(), PREFERRED_PANEL_WIDTH - 48);
     }
 
     protected void configureTweakers() {
@@ -323,16 +329,26 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
 
     private static void stretchChildren(JPanel panel) {
         for (Component child : panel.getComponents()) {
+            if (child instanceof HtmlHintLabel || child instanceof Box.Filler) {
+                continue;
+            }
             if (child instanceof JComponent jc) {
                 stretchHorizontal(jc);
             }
         }
     }
 
+    /**
+     * Stretch to the BoxLayout width. Keep a minimum height so sliders cannot
+     * collapse, but do not cap maximum height — extra labels and HTML wrap
+     * need to grow after construction.
+     */
     protected static void stretchHorizontal(JComponent c) {
         c.setAlignmentX(Component.LEFT_ALIGNMENT);
         int h = Math.max(c.getPreferredSize().height, 1);
-        c.setMaximumSize(new Dimension(Integer.MAX_VALUE, h));
+        c.setMaximumSize(new Dimension(Integer.MAX_VALUE, Short.MAX_VALUE));
+        Dimension min = c.isMinimumSizeSet() ? c.getMinimumSize() : new Dimension(0, 0);
+        c.setMinimumSize(new Dimension(0, Math.max(min.height, h)));
     }
 
     /** Wrap HTML so a JLabel does not force {@code pack()} to a single long line. */
@@ -347,10 +363,47 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
         return "<html><body style='width:" + widthPx + "px'>" + body;
     }
 
+    /** HTML hint that reflows when the Biasgen tab is narrower than {@link #PREFERRED_PANEL_WIDTH}. */
+    static final class HtmlHintLabel extends JLabel {
+
+        private final String sourceHtml;
+        private int wrapWidth = -1;
+
+        HtmlHintLabel(String sourceHtml, int initialWrapPx) {
+            this.sourceHtml = sourceHtml == null ? "" : sourceHtml;
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+            applyWrap(initialWrapPx, false);
+            addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    applyWrap(getWidth() - 4, true);
+                }
+            });
+        }
+
+        private void applyWrap(int widthPx, boolean revalidateIfChanged) {
+            int w = Math.max(widthPx, 120);
+            if (Math.abs(w - wrapWidth) < 4) {
+                return;
+            }
+            int oldH = wrapWidth < 0 ? -1 : getPreferredSize().height;
+            wrapWidth = w;
+            setText(htmlWrapped(sourceHtml, w));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, Short.MAX_VALUE));
+            if (revalidateIfChanged && getPreferredSize().height != oldH) {
+                revalidate();
+            }
+        }
+    }
+
     /**
      * Vertical scroll; width tracks the viewport so {@link PotTweaker} sliders
      * follow the Biasgen frame instead of staying at their preferred width.
      */
+    static JScrollPane widthTrackingScrollPane(JComponent content) {
+        return scrollPane(content, true);
+    }
+
     /** Keep {@code pack()} from using a wide expert/raw tab as the default frame size. */
     public static void capTabbedPanePreferredWidth(JTabbedPane tabs) {
         if (tabs == null) {
@@ -358,10 +411,6 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
         }
         Dimension pref = tabs.getPreferredSize();
         tabs.setPreferredSize(new Dimension(PREFERRED_PANEL_WIDTH, pref.height));
-    }
-
-    static JScrollPane widthTrackingScrollPane(JComponent content) {
-        return scrollPane(content, true);
     }
 
     /**
