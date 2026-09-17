@@ -66,6 +66,7 @@ import net.sf.jaer.eventprocessing.filter.AreaEventCountExposer;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.HtmlHelpFrame;
 import net.sf.jaer.util.HtmlHelpStyle;
+import net.sf.jaer.util.JaerInstall4jRestart;
 import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecordingDiskSpace;
@@ -547,14 +548,28 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     }
 
     private void offerQuitAndRestart(String whatHappened) {
-        String msg = "<html>" + whatHappened
-                + "<p>Quit and restart jAER so this session reloads from the Preferences store."
-                + "<p>In-memory settings are not updated live.";
-        int quit = JOptionPane.showConfirmDialog(this, msg, "Quit and restart jAER?",
-                JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
-        if (quit == JOptionPane.YES_OPTION) {
-            quitJaer();
+        boolean canRestart = JaerInstall4jRestart.isAvailable();
+        StringBuilder msg = new StringBuilder("<html>");
+        msg.append(whatHappened);
+        msg.append("<p>In-memory settings are not updated live. Restart jAER so this session reloads from the Preferences store.");
+        if (canRestart) {
+            msg.append("<p>Restart jAER now?");
+        } else {
+            msg.append("<p>Automatic restart needs the installed jAER launcher, not ant run.");
+            msg.append("<p>Quit jAER now?");
         }
+        String title = canRestart ? "Restart jAER?" : "Quit jAER?";
+        int go = JOptionPane.showConfirmDialog(this, msg.toString(), title,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+        if (go != JOptionPane.OK_OPTION) {
+            return;
+        }
+        if (canRestart && !JaerInstall4jRestart.scheduleAfterThisProcessExits(JAERViewer.getRunningSemaphoreFile())) {
+            JOptionPane.showMessageDialog(this,
+                    "<html>Could not schedule a restart from the install4j launcher.<p>jAER will quit; start it again from the installed shortcut.",
+                    "Restart failed", JOptionPane.WARNING_MESSAGE);
+        }
+        quitJaer();
     }
 
     private void quitJaer() {

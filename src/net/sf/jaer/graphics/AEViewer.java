@@ -10342,6 +10342,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         biasesToggleButton.setSelected(false);
                     }
                 });
+                WindowSaver.placeAdjacent(this, biasgenFrame);
             }
             getBiasgenFrame().setVisible(true);
             biasesToggleButton.setSelected(true);

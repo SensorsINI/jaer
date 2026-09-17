@@ -6,9 +6,11 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
@@ -27,6 +29,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
@@ -37,8 +40,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 
-import org.apache.commons.text.WordUtils;
-
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
@@ -55,6 +57,9 @@ import net.sf.jaer.util.WindowSaver;
  * auto-apply after a short pause so touchpad / arrow-key adjustments stay usable
  * while the camera runs. While this window is open, USB IN transfer statistics
  * are collected and shown in the table (~1 s windows).
+ * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may
+ * still restore. {@link WindowSaver} applies bounds on a later EDT turn than
+ * {@code WINDOW_OPENED}, so this frame packs again after that restore.
  */
 public class UsbTuningFrame extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
@@ -62,14 +67,18 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private static final int STATS_POLL_MS = 1000;
     private static final int RENDER_MIN = 1 << 16;
     private static final int RENDER_MAX = 1 << 23;
-    private static final int NOTE_WRAP = 32;
+    private static final int SPINNER_COLUMNS = 9;
+    private static final int METRIC_COL_WIDTH = 108;
+    private static final int VALUE_COL_WIDTH = 112;
+    private static final int NOTE_PREF_WIDTH = 400;
+    private static final int NOTE_PREF_HEIGHT = 56;
+    private static final int TABLE_ROW_HEIGHT = 20;
     private static final String DASH = "—";
     private static final int ROW_FIFO = 0;
     private static final int ROW_BUFFERS = 1;
     private static final int ROW_FILL = 2;
     private static final int ROW_THROUGHPUT = 7;
     private static final int ROW_ERRORS = 11;
-    private static final int ROW_NOTE = 12;
     private static final Color FILL_YELLOW = new Color(255, 230, 80);
     private static final Color FILL_ORANGE = new Color(255, 160, 40);
     private static final Color FILL_RED = new Color(220, 50, 50);
@@ -85,8 +94,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         "Completions",
         "Empty",
         "Short",
-        "Errors",
-        "Note"
+        "Errors"
     };
     private static final String[] STAT_TIPS = {
         "Host bulk-IN buffer (URB) size you set on the left. The camera may complete far less than this.",
@@ -100,8 +108,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         "Completed bulk INs per second.",
         "Completions with 0 bytes (ZLP).",
         "Completions shorter than FIFO (normal if the camera sends less than the URB).",
-        "Failed USB transfers in the last second.",
-        "Hint from fill vs FIFO."
+        "Failed USB transfers in the last second."
     };
 
     private final AEViewer viewer;
@@ -120,6 +127,9 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private JLabel statsStatusLabel;
     private DefaultTableModel statsModel;
     private JTable statsTable;
+    private JScrollPane statsScroll;
+    private JTextArea noteArea;
+    private JPanel notePanel;
     private float lastFillFraction = Float.NaN;
     private int lastErrorCount;
 
@@ -134,7 +144,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         super("USB tuning" + (viewer != null && viewer.getTitle() != null ? " — " + viewer.getTitle() : ""));
         this.viewer = viewer;
         setName("UsbTuning");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(HIDE_ON_CLOSE);
         if (viewer != null && viewer.getIconImage() != null) {
             setIconImage(viewer.getIconImage());
         }
@@ -148,6 +158,11 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
 
         addWindowListener(new WindowAdapter() {
             @Override
+            public void windowClosing(WindowEvent e) {
+                teardown();
+            }
+
+            @Override
             public void windowClosed(WindowEvent e) {
                 teardown();
             }
@@ -158,13 +173,22 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         refreshFromHardware();
         resubscribe();
         bindStatisticsCollection();
-        packToContent();
         if (!isVisible()) {
-            setLocationRelativeTo(viewer);
-            setVisible(true);
-            // Windows: decorations exist only after the peer is created.
+            boolean firstShow = !isDisplayable();
             packToContent();
-            setLocationRelativeTo(viewer);
+            if (firstShow) {
+                setLocationRelativeTo(viewer);
+                setVisible(true);
+                WindowSaver.runAfterQueuedRestores(() -> {
+                    packToContent();
+                    if (!hasSavedUsbTuningOrigin()) {
+                        setLocationRelativeTo(viewer);
+                    }
+                    WindowSaver.clampToScreen(this);
+                });
+            } else {
+                setVisible(true);
+            }
         }
         if (statsTimer != null && !statsTimer.isRunning()) {
             statsTimer.start();
@@ -190,7 +214,23 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private void packToContent() {
         invalidate();
         pack();
-        setMinimumSize(getPreferredSize());
+        Rectangle usable = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        Dimension pref = getPreferredSize();
+        int w = pref.width;
+        int h = pref.height;
+        if (usable != null) {
+            w = Math.min(w, usable.width);
+            h = Math.min(h, usable.height);
+        }
+        if (getWidth() != w || getHeight() != h) {
+            setSize(w, h);
+        }
+        setMinimumSize(new Dimension(Math.min(pref.width, w), Math.min(pref.height, h)));
+        WindowSaver.clampToScreen(this);
+    }
+
+    private static boolean hasSavedUsbTuningOrigin() {
+        return JaerConstants.PREFS_ROOT.node("WindowSaver").get("UsbTuning.x", null) != null;
     }
 
     private void buildUi() {
@@ -201,6 +241,8 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         final GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
         c.anchor = GridBagConstraints.WEST;
+        c.fill = GridBagConstraints.NONE;
+        c.weightx = 0;
 
         fifoSpinner = new JSpinner(new OctaveSpinnerNumberModel(
                 UsbReaderBufferSettings.MIN_FIFO_SIZE,
@@ -241,8 +283,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         c.weightx = 0;
         form.add(keepLabel, c);
         c.gridx = 1;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weightx = 1;
         form.add(keepSpinner, c);
         row++;
 
@@ -254,7 +294,8 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         c.gridx = 0;
         c.gridy = row++;
         c.gridwidth = 2;
-        c.fill = GridBagConstraints.HORIZONTAL;
+        c.fill = GridBagConstraints.NONE;
+        c.weightx = 0;
         form.add(requestedLabel, c);
         c.gridy = row++;
         form.add(activeLabel, c);
@@ -270,16 +311,49 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             pollStatisticsTable();
         });
         final JButton close = new JButton("Close");
-        close.addActionListener(e -> dispose());
+        close.addActionListener(e -> dispatchEvent(new WindowEvent(UsbTuningFrame.this, WindowEvent.WINDOW_CLOSING)));
         buttons.add(refresh);
         buttons.add(close);
 
-        final JPanel body = new JPanel(new BorderLayout(12, 8));
-        body.add(form, BorderLayout.WEST);
-        body.add(buildStatsPanel(), BorderLayout.CENTER);
+        noteArea = new JTextArea(2, 20);
+        noteArea.setLineWrap(true);
+        noteArea.setWrapStyleWord(true);
+        noteArea.setEditable(false);
+        noteArea.setOpaque(false);
+        noteArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        noteArea.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        noteArea.setToolTipText("Hint from USB fill vs FIFO.");
+        noteArea.setPreferredSize(new Dimension(NOTE_PREF_WIDTH, NOTE_PREF_HEIGHT));
+        notePanel = new JPanel(new BorderLayout());
+        notePanel.setBorder(BorderFactory.createTitledBorder("Note"));
+        notePanel.add(noteArea, BorderLayout.CENTER);
+        notePanel.setPreferredSize(new Dimension(NOTE_PREF_WIDTH, NOTE_PREF_HEIGHT + 22));
+        notePanel.setVisible(false);
 
-        root.add(body, BorderLayout.CENTER);
-        root.add(buttons, BorderLayout.SOUTH);
+        final JPanel left = new JPanel(new BorderLayout());
+        left.add(form, BorderLayout.NORTH);
+        final JPanel body = new JPanel(new GridBagLayout());
+        final GridBagConstraints bc = new GridBagConstraints();
+        bc.gridy = 0;
+        bc.insets = new Insets(0, 0, 0, 0);
+        bc.anchor = GridBagConstraints.NORTHWEST;
+        bc.fill = GridBagConstraints.NONE;
+        bc.weightx = 0;
+        bc.weighty = 0;
+        bc.gridx = 0;
+        body.add(left, bc);
+        bc.gridx = 1;
+        bc.insets = new Insets(0, 12, 0, 0);
+        body.add(buildStatsPanel(), bc);
+
+        final JPanel south = new JPanel(new BorderLayout(0, 4));
+        south.add(notePanel, BorderLayout.CENTER);
+        south.add(buttons, BorderLayout.SOUTH);
+
+        final JPanel bodyWrap = new JPanel(new BorderLayout());
+        bodyWrap.add(body, BorderLayout.NORTH);
+        root.add(bodyWrap, BorderLayout.CENTER);
+        root.add(south, BorderLayout.SOUTH);
         setContentPane(root);
 
         fifoSpinner.addChangeListener(this::onSpinnerChanged);
@@ -299,10 +373,10 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             statsModel.addRow(new Object[] {name, DASH});
         }
         statsTable = new JTable(statsModel);
-        statsTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        statsTable.setRowHeight(20);
+        statsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        statsTable.setRowHeight(TABLE_ROW_HEIGHT);
         statsTable.setShowGrid(true);
-        statsTable.setFillsViewportHeight(true);
+        statsTable.setFillsViewportHeight(false);
         statsTable.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
         statsTable.setCellSelectionEnabled(true);
         statsTable.getTableHeader().setReorderingAllowed(false);
@@ -312,22 +386,32 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
                 + "Size rows are bytes delivered when libusb finishes one read, not DVS events.<br>"
                 + "Fill is that size divided by the host FIFO. Hover a row for details.</html>");
         TableColumn metricCol = statsTable.getColumnModel().getColumn(0);
-        metricCol.setPreferredWidth(120);
-        metricCol.setMaxWidth(150);
-        statsTable.getColumnModel().getColumn(1).setPreferredWidth(240);
+        metricCol.setMinWidth(METRIC_COL_WIDTH);
+        metricCol.setPreferredWidth(METRIC_COL_WIDTH);
+        metricCol.setMaxWidth(METRIC_COL_WIDTH);
+        TableColumn valueCol = statsTable.getColumnModel().getColumn(1);
+        valueCol.setMinWidth(VALUE_COL_WIDTH);
+        valueCol.setPreferredWidth(VALUE_COL_WIDTH);
+        valueCol.setMaxWidth(VALUE_COL_WIDTH);
         StatsCellRenderer renderer = new StatsCellRenderer();
-        statsTable.getColumnModel().getColumn(0).setCellRenderer(renderer);
-        statsTable.getColumnModel().getColumn(1).setCellRenderer(renderer);
+        metricCol.setCellRenderer(renderer);
+        valueCol.setCellRenderer(renderer);
 
-        final JScrollPane scroll = new JScrollPane(statsTable);
-        scroll.setPreferredSize(new Dimension(360, 13 * 20 + 48));
+        statsScroll = new JScrollPane(statsTable);
+        statsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        statsScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        int tableW = METRIC_COL_WIDTH + VALUE_COL_WIDTH + 4;
+        int tableH = STAT_ROWS.length * TABLE_ROW_HEIGHT + 28;
+        Dimension tableSize = new Dimension(tableW, tableH);
+        statsScroll.setPreferredSize(tableSize);
+        statsScroll.setMinimumSize(tableSize);
 
         statsStatusLabel = new JLabel("USB IN: waiting for device");
         statsStatusLabel.setBorder(BorderFactory.createEmptyBorder(4, 2, 0, 2));
 
         final JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.setBorder(BorderFactory.createTitledBorder("USB IN statistics"));
-        panel.add(scroll, BorderLayout.CENTER);
+        panel.add(statsScroll, BorderLayout.CENTER);
         panel.add(statsStatusLabel, BorderLayout.SOUTH);
         return panel;
     }
@@ -339,22 +423,18 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         private final Font measureValueFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
         private final Font criticalFont = new Font(Font.SANS_SERIF, Font.BOLD, 12);
         private final Font criticalValueFont = new Font(Font.MONOSPACED, Font.BOLD, 12);
-        private final Font noteFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             boolean valueCol = column == 1;
-            boolean note = row == ROW_NOTE;
-            setHorizontalAlignment(note ? SwingConstants.LEFT : (valueCol ? SwingConstants.RIGHT : SwingConstants.LEFT));
-            setVerticalAlignment(note ? SwingConstants.TOP : SwingConstants.CENTER);
+            setHorizontalAlignment(valueCol ? SwingConstants.RIGHT : SwingConstants.LEFT);
+            setVerticalAlignment(SwingConstants.CENTER);
             if (row == ROW_FIFO || row == ROW_BUFFERS) {
                 setFont(valueCol ? paramValueFont : paramFont);
             } else if (row == ROW_FILL || row == ROW_THROUGHPUT) {
                 setFont(valueCol ? criticalValueFont : criticalFont);
-            } else if (note) {
-                setFont(noteFont);
             } else {
                 setFont(valueCol ? measureValueFont : measureFont);
             }
@@ -392,15 +472,17 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         c.weightx = 0;
         form.add(new JLabel(label), c);
         c.gridx = 1;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weightx = 1;
         form.add(spinner, c);
     }
 
     private static void configureSpinnerEditor(JSpinner spinner) {
         spinner.setEditor(new JSpinner.NumberEditor(spinner, "#,##0"));
         final JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor) spinner.getEditor();
-        editor.getTextField().setColumns(11);
+        editor.getTextField().setColumns(SPINNER_COLUMNS);
+        editor.getTextField().setHorizontalAlignment(SwingConstants.RIGHT);
+        Dimension pref = spinner.getPreferredSize();
+        spinner.setPreferredSize(pref);
+        spinner.setMaximumSize(pref);
         installMouseWheel(spinner);
     }
 
@@ -655,8 +737,8 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         for (int i = 0; i < STAT_ROWS.length; i++) {
             setStat(i, DASH);
         }
+        setNote("");
         if (statsTable != null) {
-            statsTable.setRowHeight(ROW_NOTE, 20);
             statsTable.repaint();
         }
     }
@@ -665,19 +747,22 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         statsModel.setValueAt(value, row, 1);
     }
 
+    /** Show a wrapping bottom panel only when the sampler has a hint. */
     private void setNote(String hint) {
-        if (hint == null || hint.isEmpty()) {
-            setStat(ROW_NOTE, DASH);
-            if (statsTable != null) {
-                statsTable.setRowHeight(ROW_NOTE, 20);
-            }
+        if (notePanel == null || noteArea == null) {
             return;
         }
-        String wrapped = WordUtils.wrap(hint, NOTE_WRAP);
-        int lines = wrapped.split("\n", -1).length;
-        setStat(ROW_NOTE, "<html>" + wrapped.replace("\n", "<br>") + "</html>");
-        if (statsTable != null) {
-            statsTable.setRowHeight(ROW_NOTE, Math.max(20, lines * 18 + 6));
+        boolean has = hint != null && !hint.isEmpty();
+        noteArea.setText(has ? hint : "");
+        if (notePanel.isVisible() == has) {
+            return;
+        }
+        notePanel.setVisible(has);
+        if (isDisplayable()) {
+            packToContent();
+        } else {
+            getContentPane().revalidate();
+            getContentPane().repaint();
         }
     }
 
