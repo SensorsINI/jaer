@@ -1,4 +1,6 @@
 {
+    // F5 / Ctrl+F5 run the "jAER: ant run" task (see User keybindings.json).
+    "jaer.runOnF5": true,
     "terminal.integrated.automationProfile.windows": {
         "path": "cmd.exe",
         "args": ["/d", "/c"]

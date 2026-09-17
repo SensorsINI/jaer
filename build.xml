@@ -40,8 +40,9 @@ Everyday (git checkout)
                           Override: -Djaer.install.dir=C:\Program Files\jAER
   install                 launch the current-OS installer from currentInstallers/VERSION/
                           Does not compile media. Build first: ant install4j  (or ant macos-build-notarize / release-linux)
-  install-jaer-run-shortcut  once per computer: Ctrl+F5 in Cursor runs jAER: ant run
-                          VS Code too: -Djaer.shortcut.editor=both
+  install-jaer-run-shortcut  once per computer: F5 in Cursor runs jAER: ant run
+                          (no debug toolbar). VS Code too: -Djaer.shortcut.editor=both
+                          See docs/README-vscode-cursor-run-shortcut.md
   clean                   delete build/ products (not lib/)
   javadoc                 build Javadoc
   test                    unit tests
@@ -1627,8 +1628,8 @@ See docs/README-releasing-tagging.md
         <fail unless="jaer.install4j.exists" message="install4j/jaer.install4j not found"/>
     </target>
 
-    <!-- VS Code/Cursor ignore .vscode/keybindings.json. Merge Ctrl+F5 into this
-         machine's user keybindings. Default editor=cursor; also code|both. -->
+    <!-- VS Code/Cursor ignore .vscode/keybindings.json. Merge F5 / Ctrl+F5 into
+         this machine's user keybindings. Default editor=cursor; also code|both. -->
     <property name="jaer.shortcut.editor" value="cursor"/>
     <property name="jaer.website.port" value="8080"/>
 
@@ -1644,7 +1645,7 @@ See docs/README-releasing-tagging.md
     </target>
 
     <target name="install-jaer-run-shortcut" depends="-compile-install-jaer-run-shortcut-tool"
-            description="Once per computer: Ctrl+F5 in Cursor runs the jAER: ant run task. VS Code: -Djaer.shortcut.editor=both">
+            description="Once per computer: F5 in Cursor runs the jAER: ant run task. VS Code: -Djaer.shortcut.editor=both">
         <java classname="InstallJaerRunShortcut"
               classpath="${build.dir}/tools"
               fork="true"

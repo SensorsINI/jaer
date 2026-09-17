@@ -168,7 +168,7 @@ jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works 
 
    To test `dist/jAER.jar` inside an already-installed install4j copy (no installer rebuild): `ant replace-installed-jar` (runs `jar-fast` first). The task reads `applicationId` / `shortName` from `install4j/jaer.install4j` (Windows: install4j registry, else `C:\Program Files\jAER`). On Windows, if Program Files is not writable, PowerShell shows a UAC prompt (`Start-Process -Verb RunAs`) and waits; approve it in the Cursor terminal session. Override with `-Djaer.install.dir=...`. Close `jaer.exe` first. A `jAER.jar.bak` is left next to the replaced file.
 4. **Prefer Ant over the IDE compiler for packaging a runnable tree.** The Java language server can leave Eclipse-style stub `.class` files (`Unresolved compilation problem`) under `build/classes` if its output path overlaps Ant’s. This repo’s VS Code settings disable Java autobuild and point output at `build/classes`; if launch fails with that error, run `ant clean` then `ant compile`.
-5. Use the included `.vscode/launch.json` configs (**jAER**, **jAER (fast)**, **jAER (fast debug)**) once dependencies are in `lib/` (created by Ivy on `ant compile` / `ant run`).
+5. **F5 runs `ant run`** as a task (no debug toolbar) after a one-time `ant install-jaer-run-shortcut` on that computer. Clones get the task; they do not get the F5 key. Details: [`docs/README-vscode-cursor-run-shortcut.md`](docs/README-vscode-cursor-run-shortcut.md). Needs `lib/` from Ivy (`ant compile` / `ant run`).
 
 Ask the agent for Ant targets, chip/filter code under `src/`, and device USB notes rather than inventing a Maven layout.
 

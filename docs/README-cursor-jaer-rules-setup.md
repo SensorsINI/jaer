@@ -39,6 +39,7 @@ tree. Rules under `.cursor/rules/` **are** tracked.
 | Cursor **User Rules** (Settings → Rules, or `~/.cursor/` user rules) | Machine/account preferences only (editor, shell habits). They apply to **every** project, including siblings such as `rpg_e2vid` |
 | User-global plans folder (`~/.cursor/plans`) | CreatePlan writes here. **Not** canonical. Same turn: copy to `jaer/.cursor/plans/` |
 | `*.code-workspace` | Gitignored (machine paths, JDK home) |
+| Cursor/VS Code **User** `keybindings.json` | F5 → `ant run`. One-time: `ant install-jaer-run-shortcut`. [README-vscode-cursor-run-shortcut.md](README-vscode-cursor-run-shortcut.md) |
 
 Do **not** put the jAER pipeline summary in User Rules.
 
@@ -52,7 +53,7 @@ Do **not** put the jAER pipeline summary in User Rules.
 4. Open a file under `src/` (for example `AEViewer.java`) and start another Agent turn. The **Rules** slice should also list `jaer3-architecture` (and the attached `README-jaer3.md`).
 5. If a rule is missing: Project Rules in Cursor Settings → confirm `.cursor/rules/*.mdc` are enabled for this workspace. Restart Agent if you just pulled the files.
 
-JDK, Ant, and the Java extension: [README.md](../README.md#developing-in-an-llm-ai-client-cursor-vs-code-).
+JDK, Ant, and the Java extension: [README.md](../README.md#developing-in-an-llm-ai-client-cursor-vs-code-). F5 to run jAER: [README-vscode-cursor-run-shortcut.md](README-vscode-cursor-run-shortcut.md) (`ant install-jaer-run-shortcut` once per computer).
 
 ---
 
@@ -104,3 +105,4 @@ alwaysApply: false            # true = every chat; ignores globs
 - [README-jaer3.md](README-jaer3.md) — event processing pipeline
 - [README-usb.md](README-usb.md) — USB enumeration, Interface menu, EDT
 - [dropbox-notes.md](dropbox-notes.md) — ignore `build/` / `dist/` so compile output stays local
+- [README-vscode-cursor-run-shortcut.md](README-vscode-cursor-run-shortcut.md) — F5 runs `ant run` (install once per computer)

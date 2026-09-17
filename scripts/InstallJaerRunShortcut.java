@@ -10,16 +10,16 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Merges the jAER Ctrl+F5 task keybinding into Cursor (or VS Code) user
+ * Merges the jAER F5 / Ctrl+F5 task keybindings into Cursor (or VS Code) user
  * {@code keybindings.json}. VS Code/Cursor do not load {@code .vscode/keybindings.json}.
  *
  * <p>Usage: {@code java InstallJaerRunShortcut [cursor|code|both]}
  */
 public final class InstallJaerRunShortcut {
 
-    static final String ARGS_MARKER = "\"args\": \"jAER: ant run\"";
+    static final String NEW_MARKER = "config.jaer.runOnF5";
 
-    static final String BINDING = String.join("\n",
+    static final String OLD_BINDING = String.join("\n",
             "    {",
             "        // jAER: Ctrl+F5 runs ant run as a task (no debugger). Output reuses the",
             "        // \"jAER: ant run\" terminal. F5 stays Java/debug launch.",
@@ -28,6 +28,41 @@ public final class InstallJaerRunShortcut {
             "        \"command\": \"workbench.action.tasks.runTask\",",
             "        \"args\": \"jAER: ant run\",",
             "        \"when\": \"workspaceName == 'jaer'\"",
+            "    }");
+
+    static final String BINDING = String.join("\n",
+            "    {",
+            "        // jAER workspace sets \"jaer.runOnF5\": true. Unbind+rebind so this wins over",
+            "        // the default Start/Run Debugging bindings (those show the debug toolbar).",
+            "        // Installed by: ant install-jaer-run-shortcut",
+            "        \"key\": \"f5\",",
+            "        \"command\": \"-workbench.action.debug.start\"",
+            "    },",
+            "    {",
+            "        \"key\": \"ctrl+f5\",",
+            "        \"command\": \"-workbench.action.debug.run\"",
+            "    },",
+            "    {",
+            "        \"key\": \"f5\",",
+            "        \"command\": \"workbench.action.tasks.runTask\",",
+            "        \"args\": \"jAER: ant run\",",
+            "        \"when\": \"config.jaer.runOnF5 && debugState == 'inactive'\"",
+            "    },",
+            "    {",
+            "        \"key\": \"ctrl+f5\",",
+            "        \"command\": \"workbench.action.tasks.runTask\",",
+            "        \"args\": \"jAER: ant run\",",
+            "        \"when\": \"config.jaer.runOnF5 && debugState != 'initializing'\"",
+            "    },",
+            "    {",
+            "        \"key\": \"f5\",",
+            "        \"command\": \"workbench.action.debug.start\",",
+            "        \"when\": \"!config.jaer.runOnF5 && debuggersAvailable && debugState == 'inactive'\"",
+            "    },",
+            "    {",
+            "        \"key\": \"ctrl+f5\",",
+            "        \"command\": \"workbench.action.debug.run\",",
+            "        \"when\": \"!config.jaer.runOnF5 && debuggersAvailable && debugState != 'initializing'\"",
             "    }");
 
     public static void main(String[] args) throws IOException {
@@ -50,7 +85,7 @@ public final class InstallJaerRunShortcut {
             }
         }
         if (changed > 0) {
-            System.out.println("Reload the Cursor/VS Code window if Ctrl+F5 does not take effect.");
+            System.out.println("Reload the Cursor/VS Code window if F5 does not take effect.");
         }
     }
 
@@ -71,7 +106,7 @@ public final class InstallJaerRunShortcut {
                     this.message = "Created " + path;
                     break;
                 case UPDATED:
-                    this.message = "Added jAER Ctrl+F5 binding to " + path;
+                    this.message = "Wrote jAER F5 bindings to " + path;
                     break;
                 default:
                     this.message = "Already installed in " + path;
@@ -123,12 +158,30 @@ public final class InstallJaerRunShortcut {
         if (text.startsWith("\uFEFF")) {
             text = text.substring(1);
         }
-        if (text.contains(ARGS_MARKER)) {
+        if (text.contains(NEW_MARKER)) {
             return new Result(Status.ALREADY, path);
         }
+        text = removeOldBinding(text);
         String merged = insertBinding(text);
         Files.write(path, merged.getBytes(StandardCharsets.UTF_8));
         return new Result(Status.UPDATED, path);
+    }
+
+    static String removeOldBinding(String text) {
+        int idx = text.indexOf(OLD_BINDING);
+        if (idx < 0) {
+            return text;
+        }
+        int start = idx;
+        int i = start - 1;
+        while (i >= 0 && Character.isWhitespace(text.charAt(i))) {
+            i--;
+        }
+        if (i >= 0 && text.charAt(i) == ',') {
+            start = i;
+        }
+        int end = idx + OLD_BINDING.length();
+        return text.substring(0, start) + text.substring(end);
     }
 
     static String insertBinding(String text) {
@@ -188,10 +241,14 @@ public final class InstallJaerRunShortcut {
 
     static void selfTest() {
         String added = insertBinding("[\n]\n");
-        require(added.contains(ARGS_MARKER), "empty array");
+        require(added.contains(NEW_MARKER), "empty array");
         String withItem = insertBinding("[\n    { \"key\": \"alt+x\", \"command\": \"foo\" }\n]\n");
-        require(withItem.contains("\"command\": \"foo\"") && withItem.contains(ARGS_MARKER), "append");
-        require(("[\n" + BINDING + "\n]\n").contains(ARGS_MARKER), "marker");
+        require(withItem.contains("\"command\": \"foo\"") && withItem.contains(NEW_MARKER), "append");
+        require(("[\n" + BINDING + "\n]\n").contains(NEW_MARKER), "marker");
+        String oldOnly = "[\n" + OLD_BINDING + "\n]\n";
+        String stripped = removeOldBinding(oldOnly);
+        require(!stripped.contains("workspaceName == 'jaer'"), "remove old");
+        require(insertBinding(stripped).contains(NEW_MARKER), "upgrade old");
         System.out.println("self-test ok");
     }
 

@@ -1,6 +1,8 @@
 {
-    // Ctrl+F5 → this "jAER: ant run" task. Cursor/VS Code do not load workspace
-    // keybindings; once per computer:  ant install-jaer-run-shortcut
+    // F5 / Ctrl+F5 → "jAER: ant run" (a Task, not a launch config, so no debug toolbar).
+    // Cursor does not load workspace keybindings. Once per computer:
+    //   ant install-jaer-run-shortcut
+    // Details: docs/README-vscode-cursor-run-shortcut.md
     "version": "2.0.0",
     "tasks": [
         {
@@ -42,6 +44,9 @@
                 "focus": false,
                 "showReuseMessage": false,
                 "clear": false
+            },
+            "runOptions": {
+                "instanceLimit": 1
             },
             "problemMatcher": []
         }
