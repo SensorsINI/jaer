@@ -57,34 +57,29 @@ jobs:
         run: |
           python3 <<'PY'
           import base64, os, pathlib, stat
-          need = (
-              'MAC_DEVELOPER_ID_P12', 'MAC_P12_PASSWORD',
-              'APPLE_API_ISSUER_ID', 'APPLE_API_KEY_ID', 'APPLE_API_P8',
-              'INSTALL4J_LICENSE',
-          )
-          missing = [k for k in need if not os.environ.get(k, '').strip()]
-          if missing:
-              raise SystemExit('missing environment secrets: ' + ', '.join(missing))
+
+          def secret(name):
+              v = os.environ.get(name, '').lstrip('\ufeff').strip()
+              if not v:
+                  raise SystemExit('missing environment secret: ' + name)
+              return v
+
           sp = pathlib.Path('signpath')
           sp.mkdir(mode=0o700, exist_ok=True)
-          b64 = ''.join(os.environ['MAC_DEVELOPER_ID_P12'].split())
+          b64 = ''.join(c for c in secret('MAC_DEVELOPER_ID_P12') if c.isalnum() or c in '+/=')
           p12 = base64.b64decode(b64)
           if len(p12) < 100:
               raise SystemExit('MAC_DEVELOPER_ID_P12 decoded too small')
           (sp / 'macos-developer-id-application.p12').write_bytes(p12)
-          p8 = os.environ['APPLE_API_P8'].replace('\r\n', '\n').strip()
+          p8 = secret('APPLE_API_P8').replace('\r\n', '\n')
           if 'BEGIN' in p8 and '\n' not in p8:
               p8 = p8.replace('\\n', '\n')
           (sp / 'AuthKey.p8').write_text(p8 + '\n', encoding='utf-8')
-          (sp / 'apple-issuer-id.txt').write_text(
-              os.environ['APPLE_API_ISSUER_ID'].strip() + '\n', encoding='utf-8')
-          (sp / 'apple-key-id.txt').write_text(
-              os.environ['APPLE_API_KEY_ID'].strip() + '\n', encoding='utf-8')
-          (sp / 'macos-p12-password.txt').write_text(
-              os.environ['MAC_P12_PASSWORD'].strip() + '\n', encoding='utf-8')
+          (sp / 'apple-issuer-id.txt').write_text(secret('APPLE_API_ISSUER_ID') + '\n', encoding='utf-8')
+          (sp / 'apple-key-id.txt').write_text(secret('APPLE_API_KEY_ID') + '\n', encoding='utf-8')
+          (sp / 'macos-p12-password.txt').write_text(secret('MAC_P12_PASSWORD') + '\n', encoding='utf-8')
           pathlib.Path('install4j').mkdir(exist_ok=True)
-          pathlib.Path('install4j/license.txt').write_text(
-              os.environ['INSTALL4J_LICENSE'].strip() + '\n', encoding='utf-8')
+          pathlib.Path('install4j/license.txt').write_text(secret('INSTALL4J_LICENSE') + '\n', encoding='utf-8')
           mode = stat.S_IRUSR | stat.S_IWUSR
           for p in sp.iterdir():
               p.chmod(mode)
