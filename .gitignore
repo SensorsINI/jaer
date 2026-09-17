@@ -79,6 +79,9 @@ Benchmarking_7_9_2026/PropheseeIMX636HD-2026-07-10T18-21-21-0400--0 disk with 1i
 # Local Dropbox archive of obsolete biasgen presets (not shipped)
 deviceSettings/olderSystemsAndExperimental/
 
+# Windows copy of Apple Developer ID / App Store Connect API (never commit)
+/packaging/macos/
+
 # Local SignPath / install4j credentials (never commit secrets)
 /packaging/signpath/**
 !/packaging/signpath/README.txt

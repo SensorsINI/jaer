@@ -1,6 +1,8 @@
 # Local secrets: never index, never attach to the agent.
 # Git already ignores these; this file is the Cursor-side lock.
 
+packaging/macos/**
+
 signpath/**
 !signpath/README.txt
 
@@ -14,3 +16,4 @@ install4j License key*.txt
 *.pem
 *.keystore
 *.jks
+

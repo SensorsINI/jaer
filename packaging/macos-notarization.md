@@ -12,6 +12,17 @@ Keep Intel media id 38; Apple Silicon is media id 39.
 
 jAER media is **macosFolder** DMGs, not a `.pkg`. Skip **Developer ID Installer**. install4j **13.0.2** signs with Developer ID Application and notarizes with the **App Store Connect API** (issuer + key ID + `.p8`). It does **not** use `notarytool` Apple ID passwords.
 
+## GitHub Actions dry run
+
+Workflow [`.github/workflows/build-macos.yml`](../.github/workflows/build-macos.yml) (**Build macOS (notarize)**). `workflow_dispatch` only. `runs-on: macos-latest`, `environment: macos-notarize`. Writes Environment secrets into gitignored `signpath/` for `scripts/run-install4jc.sh`, runs `ant macos-build-notarize`, checks stapler/`source=Notarized Developer ID`, uploads artifact `jaer-macos-notarized`. Does **not** `gh release upload`. Wipes `signpath/` at the end.
+
+```text
+gh workflow run build-macos.yml
+gh run watch
+```
+
+Windows copy of the Apple files is gitignored `packaging/macos/` (never commit; agents must not read it). Mini still uses repo-root `signpath/`.
+
 ## Secrets on this Mini (repo-root `signpath/`, not Dropbox)
 
 Gitignored (`/signpath/` in `.gitignore`) and listed in `.cursorignore`. Do not paste contents into chat.

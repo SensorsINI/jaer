@@ -1,0 +1,159 @@
+# Notarized Intel + Apple Silicon DMGs. Artifacts only — does not attach to a GitHub Release.
+# Environment macos-notarize (Apple + install4j secrets). Do not run this against 3.5.0 Latest.
+# Prerequisites: packaging/macos-notarization.md and .cursor/plans/ci_release_orchestration.plan.md
+#   Environment secrets: MAC_DEVELOPER_ID_P12 (base64 of the .p12), MAC_P12_PASSWORD,
+#   APPLE_API_ISSUER_ID, APPLE_API_KEY_ID, APPLE_API_P8 (PEM), INSTALL4J_LICENSE
+
+name: Build macOS (notarize)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notarize:
+    runs-on: macos-latest
+    timeout-minutes: 360
+    environment: macos-notarize
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install Ant
+        run: |
+          ANT_VER=1.10.15
+          curl -fsSL "https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VER}-bin.tar.gz" \
+            | tar xz -C "$HOME"
+          echo "$HOME/apache-ant-${ANT_VER}/bin" >> "$GITHUB_PATH"
+
+      - name: Check Ant
+        run: ant -version
+
+      - name: Set up install4j
+        uses: luangong/setup-install4j@v1
+        with:
+          version: '13.0.2'
+          license: ${{ secrets.INSTALL4J_LICENSE }}
+
+      - name: Write Apple secrets into signpath/
+        env:
+          MAC_DEVELOPER_ID_P12: ${{ secrets.MAC_DEVELOPER_ID_P12 }}
+          MAC_P12_PASSWORD: ${{ secrets.MAC_P12_PASSWORD }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_P8: ${{ secrets.APPLE_API_P8 }}
+          INSTALL4J_LICENSE: ${{ secrets.INSTALL4J_LICENSE }}
+        run: |
+          python3 <<'PY'
+          import base64, os, pathlib, stat
+          need = (
+              'MAC_DEVELOPER_ID_P12', 'MAC_P12_PASSWORD',
+              'APPLE_API_ISSUER_ID', 'APPLE_API_KEY_ID', 'APPLE_API_P8',
+              'INSTALL4J_LICENSE',
+          )
+          missing = [k for k in need if not os.environ.get(k, '').strip()]
+          if missing:
+              raise SystemExit('missing environment secrets: ' + ', '.join(missing))
+          sp = pathlib.Path('signpath')
+          sp.mkdir(mode=0o700, exist_ok=True)
+          b64 = ''.join(os.environ['MAC_DEVELOPER_ID_P12'].split())
+          p12 = base64.b64decode(b64)
+          if len(p12) < 100:
+              raise SystemExit('MAC_DEVELOPER_ID_P12 decoded too small')
+          (sp / 'macos-developer-id-application.p12').write_bytes(p12)
+          p8 = os.environ['APPLE_API_P8'].replace('\r\n', '\n').strip()
+          if 'BEGIN' in p8 and '\n' not in p8:
+              p8 = p8.replace('\\n', '\n')
+          (sp / 'AuthKey.p8').write_text(p8 + '\n', encoding='utf-8')
+          (sp / 'apple-issuer-id.txt').write_text(
+              os.environ['APPLE_API_ISSUER_ID'].strip() + '\n', encoding='utf-8')
+          (sp / 'apple-key-id.txt').write_text(
+              os.environ['APPLE_API_KEY_ID'].strip() + '\n', encoding='utf-8')
+          (sp / 'macos-p12-password.txt').write_text(
+              os.environ['MAC_P12_PASSWORD'].strip() + '\n', encoding='utf-8')
+          pathlib.Path('install4j').mkdir(exist_ok=True)
+          pathlib.Path('install4j/license.txt').write_text(
+              os.environ['INSTALL4J_LICENSE'].strip() + '\n', encoding='utf-8')
+          mode = stat.S_IRUSR | stat.S_IWUSR
+          for p in sp.iterdir():
+              p.chmod(mode)
+          pathlib.Path('install4j/license.txt').chmod(mode)
+          print('Wrote signpath/ and install4j/license.txt (contents not logged)')
+          PY
+
+      - name: Read VERSION.txt
+        id: version
+        run: |
+          v=$(tr -d '[:space:]' < VERSION.txt)
+          if [[ -z "$v" ]]; then echo 'VERSION.txt is empty' >&2; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "jAER version: $v"
+
+      - name: Build notarized DMGs (ant macos-build-notarize)
+        run: ant macos-build-notarize
+
+      - name: Stapler / Gatekeeper proof
+        id: locate
+        run: |
+          set -euo pipefail
+          v='${{ steps.version.outputs.version }}'
+          dir="currentInstallers/${v}"
+          shopt -s nullglob
+          intel=("$dir"/jAER_macos_[0-9]*.dmg)
+          arm=("$dir"/jAER_macos_aarch64_*.dmg)
+          if [[ ${#intel[@]} -ne 1 || ${#arm[@]} -ne 1 ]]; then
+            echo "Expected one Intel and one Apple Silicon DMG under $dir" >&2
+            ls -la "$dir" >&2 || true
+            exit 1
+          fi
+          for dmg in "${intel[0]}" "${arm[0]}"; do
+            echo "stapler validate $dmg"
+            xcrun stapler validate "$dmg"
+            echo "spctl $dmg"
+            out=$(spctl -a -t open --context context:primary-signature -vv "$dmg" 2>&1) || true
+            echo "$out"
+            echo "$out" | grep -q 'source=Notarized Developer ID'
+          done
+          echo "intel_name=$(basename "${intel[0]}")" >> "$GITHUB_OUTPUT"
+          echo "arm_name=$(basename "${arm[0]}")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload notarized DMGs
+        uses: actions/upload-artifact@v7
+        with:
+          name: jaer-macos-notarized
+          path: |
+            currentInstallers/${{ steps.version.outputs.version }}/jAER_macos_[0-9]*.dmg
+            currentInstallers/${{ steps.version.outputs.version }}/jAER_macos_aarch64_*.dmg
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Wipe Apple secrets from the runner
+        if: always()
+        run: |
+          rm -rf signpath
+          rm -f install4j/license.txt
+          echo 'Removed signpath/ and install4j/license.txt'
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## macOS notarize (dry run)'
+            echo "- Version: \`${{ steps.version.outputs.version }}\`"
+            echo "- Runner: \`macos-latest\` / environment \`macos-notarize\`"
+            echo "- Intel: \`${{ steps.locate.outputs.intel_name }}\`"
+            echo "- Apple Silicon: \`${{ steps.locate.outputs.arm_name }}\`"
+            echo '- Did **not** attach to a GitHub Release. Download artifact `jaer-macos-notarized`.'
+            echo '- Proof on the job log: `source=Notarized Developer ID`.'
+          } >> "$GITHUB_STEP_SUMMARY"

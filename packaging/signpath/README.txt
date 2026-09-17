@@ -3,8 +3,8 @@ Local SignPath / install4j credentials
 
 This folder stays on your machine (gitignored except this README and
 artifact-configurations/*.xml). Do not commit API tokens or license keys.
-Apple Developer ID `.p12` / App Store Connect `.p8` on the Mini live in
-gitignored repo-root `signpath/`, not here.
+Apple Developer ID `.p12` / App Store Connect `.p8`: Mini uses gitignored
+repo-root `signpath/`. Windows uses gitignored `packaging/macos/`. Not here.
 
 Fill in these files (one value per file; see stubs created beside this README):
 

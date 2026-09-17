@@ -29,7 +29,7 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 
 Plans for this repo: `.cursor/plans/` (CreatePlan’s user-global file must be copied there the same turn). Shell: bash on Linux/WSL, PowerShell 5.1 on native Windows (`.cursor/rules/shell-by-platform.mdc`).
 
-**Secrets:** never read or print `install4j/license.txt`, repo-root `signpath/**`, or `*.p12` / `*.p8`. Those files are gitignored and listed in `.cursorignore`.
+**Secrets:** never read, list, or print `packaging/macos/**`, `install4j/license.txt`, repo-root `signpath/**`, or `*.p12` / `*.p8`. Those paths are gitignored and listed in `.cursorignore`.
 
 ## Progress reports
 
