@@ -744,6 +744,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     /** @deprecated test helper wrapping {@link #etaRemainingNs} */
+    @Deprecated
     static String formatEta(long elapsedNs, long covered, long range) {
         if (elapsedNs < 1_000_000_000L) {
             return null;

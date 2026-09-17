@@ -63,6 +63,7 @@ public class JaerConstants {
      */
     public static final String APPLICATION_NAME = "jAER - Desktop Application for Event Sensors";
     /** @deprecated use {@link #APPLICATION_NAME} */
+    @Deprecated
     public static final String INSTALLER_PRODUCT_NAME = APPLICATION_NAME;
     public static final String JAER_HOME = "https://github.com/SensorsINI/jaer.git";
     public static final String JAER_RELEASES = "https://github.com/SensorsINI/jaer/releases";
