@@ -119,6 +119,11 @@ In [controlpanel.swizzonic.ch](https://controlpanel.swizzonic.ch), select **jaer
 Check from PowerShell: `Resolve-DnsName jaerproject.org -Type A` should list those four
 GitHub IPs, not a Swizzonic redirect host.
 
+If the address bar still opens `github.com/SensorsINI/jaer`, that is a **cached 301**
+from the old URL-forward. Shift+F5 and `chrome://net-internals/#hsts` delete did
+**not** clear it here. Chrome: `chrome://settings/clearBrowserData` → **Cached images
+and files** (All time) did. Incognito also bypasses it.
+
 ### jaerproject.net (and .ch)
 
 Keep **URL forward / 301 → `https://jaerproject.org`**. Do **not** point `.net` at the
