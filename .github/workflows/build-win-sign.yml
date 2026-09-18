@@ -1,16 +1,17 @@
 # Build Windows install4j media and Authenticode-sign with Azure Artifact Signing.
 # Public Trust publisher is the Completed individual identity (CN=Tobias Delbruck).
-# Do not enable tag-push attach until a dispatch run has been verified.
+# workflow_dispatch: Actions artifact only. Tag attach is assemble in release.yml.
 # Prerequisites: docs in packaging/azure-artifact-signing.md
 #   Secrets: INSTALL4J_LICENSE, AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
 #   GitHub Environment: azure-signing (OIDC federated credential must match)
 #   Vars (optional; defaults match the West US 2 account): AZURE_CODESIGN_ACCOUNT,
 #   AZURE_CODESIGN_PROFILE, AZURE_CODESIGN_ENDPOINT
 
-name: Sign Windows (Azure)
+name: Build Windows (sign)
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   id-token: write

@@ -1,4 +1,5 @@
-# Notarized Intel + Apple Silicon DMGs. Artifacts only — does not attach to a GitHub Release.
+# Notarized Intel + Apple Silicon DMGs. Artifacts only on workflow_dispatch — does not attach to a GitHub Release.
+# Tag attach is assemble in release.yml (`workflow_call`).
 # Environment macos-notarize (Apple + install4j secrets). Do not run this against 3.5.0 Latest.
 # Prerequisites: packaging/macos-notarization.md and .cursor/plans/ci_release_orchestration.plan.md
 #   Environment secrets: MAC_DEVELOPER_ID_P12 (base64 of the .p12), MAC_P12_PASSWORD,
@@ -8,6 +9,7 @@ name: Build macOS (notarize)
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

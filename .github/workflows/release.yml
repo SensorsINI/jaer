@@ -1,0 +1,251 @@
+# Tag-driven production release. Do not `gh workflow run` this on master.
+# Trigger: annotated tag  N.N.N  or  N.N.N-rc.N  (no v prefix). Checkout is the tag SHA.
+# Assemble is the only job that `gh release upload`s. Dry-run workflows stay artifacts-only.
+# Refuses tag 3.5.0 so nothing lands on current GitHub Latest.
+# Prerequisites: .cursor/plans/ci_release_orchestration.plan.md
+
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      public: ${{ steps.meta.outputs.public }}
+      is_rc: ${{ steps.meta.outputs.is_rc }}
+      notes: ${{ steps.meta.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Check tag, VERSION.txt, release notes
+        id: meta
+        run: |
+          set -euo pipefail
+          tag='${{ github.ref_name }}'
+          if [[ ! "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "Tag $tag is not N.N.N or N.N.N-rc.N" >&2
+            exit 1
+          fi
+          public="${tag%-rc.*}"
+          if [[ "$tag" == '3.5.0' || "$public" == '3.5.0' ]]; then
+            echo 'Refusing the orchestrator for 3.5.0 (GitHub Latest). Use the dry-run workflows.' >&2
+            exit 1
+          fi
+          ver=$(tr -d '[:space:]' < VERSION.txt)
+          if [[ "$ver" != "$public" ]]; then
+            echo "VERSION.txt ($ver) != public version of tag ($public)" >&2
+            exit 1
+          fi
+          notes="release-notes/jaer-${public}-release-notes.md"
+          if [[ ! -f "$notes" ]]; then
+            echo "Missing $notes" >&2
+            exit 1
+          fi
+          if [[ "$tag" == *'-rc.'* ]]; then is_rc=true; else is_rc=false; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "public=$public" >> "$GITHUB_OUTPUT"
+          echo "is_rc=$is_rc" >> "$GITHUB_OUTPUT"
+          echo "notes=$notes" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag public=$public is_rc=$is_rc sha=${{ github.sha }}"
+
+  linux:
+    needs: preflight
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    permissions:
+      contents: read
+
+  macos:
+    needs: preflight
+    uses: ./.github/workflows/build-macos-notarize.yml
+    secrets: inherit
+    permissions:
+      contents: read
+
+  windows:
+    needs: preflight
+    uses: ./.github/workflows/build-win-sign.yml
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+
+  assemble:
+    needs: [preflight, linux, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          pattern: jaer-*
+          merge-multiple: true
+
+      - name: Require the four installers
+        id: files
+        run: |
+          set -euo pipefail
+          v='${{ needs.preflight.outputs.public }}'
+          us="${v//./_}"
+          dir=dist
+          find "$dir" -type f -printf '%p %s\n' || true
+          exe="jAER_windows-x64_${us}.exe"
+          intel="jAER_macos_${us}.dmg"
+          arm="jAER_macos_aarch64_${us}.dmg"
+          unix="jAER_unix_${us}.sh"
+          missing=0
+          for f in "$exe" "$intel" "$arm" "$unix"; do
+            if [[ ! -f "$dir/$f" ]]; then
+              echo "missing $dir/$f" >&2
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+          echo "exe=$exe" >> "$GITHUB_OUTPUT"
+          echo "intel=$intel" >> "$GITHUB_OUTPUT"
+          echo "arm=$arm" >> "$GITHUB_OUTPUT"
+          echo "unix=$unix" >> "$GITHUB_OUTPUT"
+
+      - name: Copy sample zip from sample-data-current
+        run: |
+          set -euo pipefail
+          if ! gh release download sample-data-current --pattern jaer-sample-data.zip --dir dist; then
+            echo 'Missing GitHub Release tag sample-data-current with jaer-sample-data.zip.' >&2
+            echo 'Create that Release (never Latest) then re-run by pushing a new -rc.N. Do not retag.' >&2
+            exit 1
+          fi
+          test -f dist/jaer-sample-data.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create or update GitHub Release (not Latest)
+        run: |
+          set -euo pipefail
+          tag='${{ needs.preflight.outputs.tag }}'
+          public='${{ needs.preflight.outputs.public }}'
+          notes='${{ needs.preflight.outputs.notes }}'
+          is_rc='${{ needs.preflight.outputs.is_rc }}'
+          assets=(
+            "dist/${{ steps.files.outputs.exe }}"
+            "dist/${{ steps.files.outputs.intel }}"
+            "dist/${{ steps.files.outputs.arm }}"
+            "dist/${{ steps.files.outputs.unix }}"
+            dist/jaer-sample-data.zip
+          )
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --clobber
+            if [[ "$is_rc" == true ]]; then
+              gh release edit "$tag" --notes-file "$notes" --prerelease --latest=false --draft=false
+            else
+              gh release edit "$tag" --notes-file "$notes" --latest=false --draft=true
+            fi
+          else
+            if [[ "$is_rc" == true ]]; then
+              gh release create "$tag" "${assets[@]}" \
+                --title "jAER $tag" \
+                --notes-file "$notes" \
+                --target '${{ github.sha }}' \
+                --prerelease \
+                --latest=false
+            else
+              gh release create "$tag" "${assets[@]}" \
+                --title "jAER $public" \
+                --notes-file "$notes" \
+                --target '${{ github.sha }}' \
+                --draft \
+                --latest=false
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Generate updates.xml (public tags only; committed at publish)
+        if: needs.preflight.outputs.is_rc != 'true'
+        run: |
+          python3 scripts/generate-updates-xml.py \
+            --dir dist \
+            --version '${{ needs.preflight.outputs.public }}' \
+            --out dist/updates.xml
+
+      - uses: actions/upload-artifact@v7
+        if: needs.preflight.outputs.is_rc != 'true'
+        with:
+          name: jaer-updates-xml
+          path: dist/updates.xml
+          if-no-files-found: error
+
+      - name: Summary
+        run: |
+          {
+            echo '## Assemble'
+            echo "- Tag: \`${{ needs.preflight.outputs.tag }}\`"
+            echo "- Public: \`${{ needs.preflight.outputs.public }}\`"
+            echo "- rc: \`${{ needs.preflight.outputs.is_rc }}\`"
+            echo '- Did **not** set GitHub Latest. testers use the prerelease (rc) or the draft (public) until publish-release is approved.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-release:
+    if: needs.preflight.outputs.is_rc != 'true'
+    needs: [preflight, assemble]
+    runs-on: ubuntu-latest
+    environment: publish-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: jaer-updates-xml
+          path: dist
+
+      - name: Commit updates.xml to master, then flip Latest
+        run: |
+          set -euo pipefail
+          tag='${{ needs.preflight.outputs.tag }}'
+          public='${{ needs.preflight.outputs.public }}'
+          if [[ "$tag" == '3.5.0' || "$public" == '3.5.0' ]]; then
+            echo 'Refusing to publish 3.5.0' >&2
+            exit 1
+          fi
+          cp dist/updates.xml updates.xml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add updates.xml
+          if git diff --cached --quiet; then
+            echo 'updates.xml already matches'
+          else
+            git commit -m "Point updates.xml at ${public}"
+            git push origin HEAD:master
+          fi
+          gh release edit "$tag" --draft=false --latest --prerelease=false
+        env:
+          GH_TOKEN: ${{ github.token }}

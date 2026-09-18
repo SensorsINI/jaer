@@ -102,7 +102,7 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | `macos-build-notarize` | GitHub Actions or Mini: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. Production compression + `shrinkRuntime`. **No git tag** |
 | `release-linux` | `clean` + `jar` + Unix `.sh`. **No git tag**. GitHub Actions: `.github/workflows/build-linux.yml` (`gh workflow run build-linux.yml`) |
 | `install4j-macos` | Mini: splash then macOS DMGs only (existing `dist/jAER.jar`; faster compression) |
-| `azure-sign-ci` | `gh workflow run sign-windows-azure.yml` (Windows Authenticode) |
+| `azure-sign-ci` | `gh workflow run build-win-sign.yml` (Windows Authenticode) |
 | `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
 | `make-sample-data-previews` | Encode `preview-src` MP4/AVI → `sampleData/previews/*.webp` (ffmpeg) |
 | `upload-sample-data` | WebP + pack + `gh release upload` of `jaer-sample-data.zip` |

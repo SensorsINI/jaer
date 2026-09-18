@@ -19,8 +19,8 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 
 | Asset | Where it **must** be built | Ant / command | Signing |
 |-------|---------------------------|---------------|---------|
-| macOS Intel + Apple Silicon `.dmg` | **Mini only** | `ant macos-build-notarize` | Developer ID + Apple notarization (`scripts/run-install4jc.sh`) |
-| Windows `.exe` (production) | **GitHub Actions** (any box can *trigger*) | `ant azure-sign-ci` or `gh workflow run sign-windows-azure.yml` | Azure Artifact Signing, publisher **Tobias Delbruck** |
+| macOS Intel + Apple Silicon `.dmg` | **GitHub Actions** (`macos-latest`) | `gh workflow run build-macos-notarize.yml` / Mini `ant macos-build-notarize` | Developer ID + Apple notarization |
+| Windows `.exe` (production) | **GitHub Actions** (any box can *trigger*) | `ant azure-sign-ci` or `gh workflow run build-win-sign.yml` | Azure Artifact Signing, publisher **Tobias Delbruck** |
 | Linux `.sh` | **GitHub Actions** (`ubuntu-latest`) or any OS with install4j | `gh workflow run build-linux.yml` / `ant release-linux` | none |
 | Git tag + draft Release | Any box with `gh` | `ant create-draft-release` | n/a |
 | Sample recordings zip | Any box with `sampleData/` recordings | `ant upload-sample-data` | n/a |
@@ -37,12 +37,14 @@ Production Windows is Azure (`ant azure-sign-ci`). SignPath workflow **Sign Wind
 
 Existing jar only, Mac DMGs (dev compression): `ant install4j-macos`. Latest source + production compression: `ant macos-build-notarize`.
 
+Production installers (all three OSes, GitHub-hosted, Azure-signed Windows): push an annotated tag `N.N.N-rc.N` or `N.N.N` (no `v` prefix) after `VERSION.txt` matches the public version and `release-notes/jaer-<public>-release-notes.md` exists. Workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) builds, notarizes, signs, and attaches assets. **rc** → GitHub **prerelease** (not Latest). **Public** tag → **draft** until you Approve Environment `publish-release` (that job writes `updates.xml` to `master` and then sets Latest). Do **not** `gh workflow run release.yml` on `master`. Do **not** tag `3.5.0`.
+
 GitHub Actions dry runs (`workflow_dispatch` only, **artifacts only**, do **not** attach to Latest `3.5.0`):
 
 ```text
-gh workflow run build-macos.yml          # artifact jaer-macos-notarized
-gh workflow run build-linux.yml          # artifact jaer-linux
-gh workflow run sign-windows-azure.yml   # artifact jaer-windows-azure-signed
+gh workflow run build-macos-notarize.yml  # artifact jaer-macos-notarized
+gh workflow run build-linux.yml           # artifact jaer-linux
+gh workflow run build-win-sign.yml        # artifact jaer-windows-azure-signed
 ```
 
 Mac details: [`packaging/macos-notarization.md`](../packaging/macos-notarization.md). Linux needs repository secret `INSTALL4J_LICENSE` (not only an Environment copy).
@@ -237,12 +239,12 @@ Dropbox is an optional historical archive, not the auto-update URL.
 
 Public Trust identity **Tobias Delbruck** is Completed. Profile **`jaer-public`** is Active
 (account **jAER**, West US 2). Publisher on signed exes is that CN, not SignPath
-Foundation. Workflow: `.github/workflows/sign-windows-azure.yml` (**Sign Windows
-(Azure)**). Trigger from any box: `ant azure-sign-ci`. Setup (Entra
+Foundation. Workflow: `.github/workflows/build-win-sign.yml` (**Build Windows
+(sign)**). Trigger from any box: `ant azure-sign-ci`. Setup (Entra
 OIDC, GitHub environment `azure-signing`, secrets):
 [`packaging/azure-artifact-signing.md`](../packaging/azure-artifact-signing.md).
 
-    gh workflow run sign-windows-azure.yml
+    gh workflow run build-win-sign.yml
 
 Keep SignPath **test-signing2** as a backup. Do not switch that policy to
 **release-signing** while the Foundation cert is CSR PENDING. Do not
@@ -474,5 +476,5 @@ Individual Apple Developer Program. Gatekeeper shows the personal legal name.
 ## Build notes
 
 Compile / jar is local Ant. Mac notarized DMGs: Mini `ant macos-build-notarize`. Windows Authenticode:
-`.github/workflows/sign-windows-azure.yml` / `ant azure-sign-ci`. SignPath
+`.github/workflows/build-win-sign.yml` / `ant azure-sign-ci`. SignPath
 (`.github/workflows/sign-windows-test.yml`) is a backup.

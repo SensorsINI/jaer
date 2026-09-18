@@ -14,10 +14,10 @@ jAER media is **macosFolder** DMGs, not a `.pkg`. Skip **Developer ID Installer*
 
 ## GitHub Actions dry run
 
-Workflow [`.github/workflows/build-macos.yml`](../.github/workflows/build-macos.yml) (**Build macOS (notarize)**). `workflow_dispatch` only. `runs-on: macos-latest`, `environment: macos-notarize`. Writes Environment secrets into gitignored `signpath/` for `scripts/run-install4jc.sh`, runs `ant macos-build-notarize`, checks stapler/`source=Notarized Developer ID`, uploads artifact `jaer-macos-notarized`. Does **not** `gh release upload`. Wipes `signpath/` at the end.
+Workflow [`.github/workflows/build-macos-notarize.yml`](../.github/workflows/build-macos-notarize.yml) (**Build macOS (notarize)**). `workflow_dispatch` or `workflow_call` from `release.yml`. `runs-on: macos-latest`, `environment: macos-notarize`. Writes Environment secrets into gitignored `signpath/` for `scripts/run-install4jc.sh`, runs `ant macos-build-notarize`, checks stapler/`source=Notarized Developer ID`, uploads artifact `jaer-macos-notarized`. Does **not** `gh release upload`. Wipes `signpath/` at the end.
 
 ```text
-gh workflow run build-macos.yml
+gh workflow run build-macos-notarize.yml
 gh run watch
 ```
 

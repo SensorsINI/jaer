@@ -1,4 +1,5 @@
-# Unix .sh installer (production compression + shrinkRuntime). Artifacts only — does not attach to a GitHub Release.
+# Unix .sh installer (production compression + shrinkRuntime). Artifacts only on workflow_dispatch — does not attach to a GitHub Release.
+# Tag attach is assemble in release.yml (`workflow_call`).
 # install4j 13.1 matches the Mini. 13.0.2 jlink on ubuntu produced a ~378 MB .sh vs Mini ~220 MB.
 # Repo secret INSTALL4J_LICENSE (Actions → Secrets). Environment-only copies on macos-notarize /
 # azure-signing are not visible here. Do not run this against 3.5.0 Latest.
@@ -8,6 +9,7 @@ name: Build Linux
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

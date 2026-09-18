@@ -1612,9 +1612,9 @@ See docs/README-releasing-tagging.md
         <exec executable="gh" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="workflow"/>
             <arg value="run"/>
-            <arg value="sign-windows-azure.yml"/>
+            <arg value="build-win-sign.yml"/>
         </exec>
-        <echo message="Started Sign Windows (Azure). Watch: gh run watch"/>
+        <echo message="Started Build Windows (sign). Watch: gh run watch"/>
         <echo message="Download artifact jaer-windows-azure-signed. Do not ant upload-installers-clobber-windows over it."/>
     </target>
 

@@ -4,7 +4,7 @@ Public Trust identity **Tobias Delbruck** (Completed). Certificate profile **`ja
 
 Leaf certificates rotate every few days; that is expected. Identity expires **2027-09-13** — renew in the portal before then. Publisher on signed exes is **Tobias Delbruck** (not Sensors Group, not SignPath Foundation).
 
-GitHub workflow: `.github/workflows/sign-windows-azure.yml` (**Sign Windows (Azure)**). `workflow_dispatch` only until a signed artifact is verified. SignPath test-signing stays on `.github/workflows/sign-windows-test.yml`.
+GitHub workflow: `.github/workflows/build-win-sign.yml` (**Build Windows (sign)**). `workflow_dispatch` or `workflow_call` from `release.yml`. SignPath test-signing stays on `.github/workflows/sign-windows-test.yml`.
 
 ## One-time: Entra app + GitHub OIDC
 
@@ -46,11 +46,11 @@ No Azure client secret. OIDC only.
 Push the workflow file to `master`, then:
 
 ```text
-gh workflow run sign-windows-azure.yml
+gh workflow run build-win-sign.yml
 gh run watch
 ```
 
-Or Actions → **Sign Windows (Azure)** → Run workflow.
+Or Actions → **Build Windows (sign)** → Run workflow.
 
 Job takes ~30–50 minutes (install4j media). Download artifact **jaer-windows-azure-signed**. On Windows: Properties → Digital Signatures → signer **Tobias Delbruck**, timestamp Microsoft.
 
