@@ -99,7 +99,7 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 |--------|----------------|
 | `generate-splash` | Overlay `VERSION.txt` → `images/800w`, `1024w`, `256h` |
 | `release` | **Removed.** Fails. Use `macos-build-notarize` / `azure-sign-ci` / `release-linux` / `create-draft-release` |
-| `macos-build-notarize` | Mini only: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. **No git tag** |
+| `macos-build-notarize` | GitHub Actions or Mini: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. Production compression + `shrinkRuntime`. **No git tag** |
 | `release-linux` | `clean` + `jar` + Unix `.sh`. **No git tag** |
 | `install4j-macos` | Mini: splash then macOS DMGs only (existing `dist/jAER.jar`; faster compression) |
 | `azure-sign-ci` | `gh workflow run sign-windows-azure.yml` (Windows Authenticode) |

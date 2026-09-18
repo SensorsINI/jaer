@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
   <directoryPresets config="../images/800w" />
-  <!-- shrinkRuntime=false: skip "Shrinking runtime" (unused i4jruntime classes) on every media. Saves minutes; installer is a few MB larger. -->
-  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="false" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.5.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
+  <!-- Production: shrinkRuntime=true and JRE module set. defaultModules all packed the
+       whole JDK (~185 MB extra per media on GHA). Local ant install4j sets shrinkRuntime=false. -->
+  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.5.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
@@ -27,7 +28,7 @@
     <!-- 3.3.0: Adoptium Temurin 25 LTS (matches ant run). 3.2.0 media stays 21.0.12. -->
     <jreBundles jdkProviderId="Adoptium" release="25/jdk-25.0.4+7">
       <modules>
-        <defaultModules set="all" />
+        <defaultModules set="jre" />
       </modules>
     </jreBundles>
   </application>

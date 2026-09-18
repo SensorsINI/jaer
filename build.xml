@@ -766,21 +766,28 @@ java.vendor=${java.vendor}
         <echo message="Synced install4j/jaer.install4j application version to ${jaer.version}"/>
     </target>
 
-    <!-- ant install4j (dev): gzip 5 + skip LZMA. ant macos-build-notarize / release-linux / CI: project file stays compression 9 + LZMA. -->
+    <!-- ant install4j (dev): gzip 5, skip LZMA, skip shrinkRuntime. macos-build-notarize /
+         release-linux / release-windows-ci: compression 9 + LZMA + shrinkRuntime. -->
     <target name="-install4j-local-media-options">
         <property name="jaer.install4j.compression" value="5"/>
         <property name="jaer.install4j.faster" value="true"/>
+        <property name="jaer.install4j.shrinkRuntime" value="false"/>
     </target>
 
     <target name="-apply-install4j-media-options" depends="-require-install4j-project">
         <property name="jaer.install4j.compression" value="9"/>
         <property name="jaer.install4j.faster" value="false"/>
+        <property name="jaer.install4j.shrinkRuntime" value="true"/>
         <copy file="${jaer.install4j.project}" tofile="${jaer.install4j.project.effective}" overwrite="true"/>
         <replaceregexp file="${jaer.install4j.project.effective}"
                        match='compression="[0-9]"'
                        replace='compression="${jaer.install4j.compression}"'
                        byline="true"/>
-        <echo message="install4j media compression=${jaer.install4j.compression}; --faster=${jaer.install4j.faster} (unset = LZMA from project)"/>
+        <replaceregexp file="${jaer.install4j.project.effective}"
+                       match='shrinkRuntime="(true|false)"'
+                       replace='shrinkRuntime="${jaer.install4j.shrinkRuntime}"'
+                       byline="true"/>
+        <echo message="install4j media compression=${jaer.install4j.compression}; shrinkRuntime=${jaer.install4j.shrinkRuntime}; --faster=${jaer.install4j.faster}"/>
     </target>
 
     <target name="-confirm-release" depends="-load-version">
