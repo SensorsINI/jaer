@@ -1,0 +1,131 @@
+# Unix .sh installer (production compression + shrinkRuntime). Artifacts only — does not attach to a GitHub Release.
+# Repo secret INSTALL4J_LICENSE (Actions → Secrets). Environment-only copies on macos-notarize /
+# azure-signing are not visible here. Do not run this against 3.5.0 Latest.
+# Prerequisites: .cursor/plans/ci_release_orchestration.plan.md
+
+name: Build Linux
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install Ant
+        run: |
+          ANT_VER=1.10.15
+          curl -fsSL "https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VER}-bin.tar.gz" \
+            | tar xz -C "$HOME"
+          echo "$HOME/apache-ant-${ANT_VER}/bin" >> "$GITHUB_PATH"
+
+      - name: Check Ant
+        run: ant -version
+
+      - name: Set up install4j
+        uses: luangong/setup-install4j@v1
+        with:
+          version: '13.0.2'
+          license: ${{ secrets.INSTALL4J_LICENSE }}
+
+      - name: Write install4j license
+        env:
+          INSTALL4J_LICENSE: ${{ secrets.INSTALL4J_LICENSE }}
+        run: |
+          python3 <<'PY'
+          import os, pathlib, stat
+
+          v = os.environ.get('INSTALL4J_LICENSE', '').lstrip('\ufeff').strip()
+          if not v:
+              raise SystemExit(
+                  'Missing repository secret INSTALL4J_LICENSE '
+                  '(Settings → Secrets and variables → Actions). '
+                  'Secrets that exist only on Environments macos-notarize or azure-signing '
+                  'are not visible to this job.'
+              )
+          pathlib.Path('install4j').mkdir(exist_ok=True)
+          p = pathlib.Path('install4j/license.txt')
+          p.write_text(v + '\n', encoding='utf-8')
+          p.chmod(stat.S_IRUSR | stat.S_IWUSR)
+          print('Wrote install4j/license.txt (contents not logged)')
+          PY
+
+      - name: Read VERSION.txt
+        id: version
+        run: |
+          v=$(tr -d '[:space:]' < VERSION.txt)
+          if [[ -z "$v" ]]; then echo 'VERSION.txt is empty' >&2; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "jAER version: $v"
+
+      - name: Build Unix installer (ant release-linux)
+        env:
+          JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
+        run: ant release-linux
+
+      - name: Locate Unix installer
+        id: locate
+        run: |
+          set -euo pipefail
+          v='${{ steps.version.outputs.version }}'
+          dir="currentInstallers/${v}"
+          shopt -s nullglob
+          shs=("$dir"/jAER_unix_*.sh)
+          if [[ ${#shs[@]} -ne 1 ]]; then
+            echo "Expected one jAER_unix_*.sh under $dir" >&2
+            ls -la "$dir" >&2 || true
+            exit 1
+          fi
+          f="${shs[0]}"
+          bytes=$(stat -c%s "$f")
+          mib=$((bytes / 1024 / 1024))
+          echo "Unix installer: $f (${mib} MiB)"
+          if [[ "$bytes" -lt 50000000 ]]; then
+            echo "Installer is only ${bytes} bytes; expected a bundled-JRE .sh" >&2
+            exit 1
+          fi
+          head -n 8 "$f" || true
+          echo "installer_name=$(basename "$f")" >> "$GITHUB_OUTPUT"
+          echo "installer_mib=${mib}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Unix installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: jaer-linux
+          path: currentInstallers/${{ steps.version.outputs.version }}/jAER_unix_*.sh
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Wipe install4j license from the runner
+        if: always()
+        run: |
+          rm -f install4j/license.txt
+          echo 'Removed install4j/license.txt'
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## Linux installer (dry run)'
+            echo "- Version: \`${{ steps.version.outputs.version }}\`"
+            echo "- Runner: \`ubuntu-latest\`"
+            echo "- Installer: \`${{ steps.locate.outputs.installer_name }}\` (${{ steps.locate.outputs.installer_mib }} MiB)"
+            echo '- Did **not** attach to a GitHub Release. Download artifact `jaer-linux`.'
+            echo '- Filenames may still say `3_5_0`. Do not upload them onto Latest `3.5.0`.'
+          } >> "$GITHUB_STEP_SUMMARY"

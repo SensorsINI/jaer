@@ -21,7 +21,7 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 |-------|---------------------------|---------------|---------|
 | macOS Intel + Apple Silicon `.dmg` | **Mini only** | `ant macos-build-notarize` | Developer ID + Apple notarization (`scripts/run-install4jc.sh`) |
 | Windows `.exe` (production) | **GitHub Actions** (any box can *trigger*) | `ant azure-sign-ci` or `gh workflow run sign-windows-azure.yml` | Azure Artifact Signing, publisher **Tobias Delbruck** |
-| Linux `.sh` | Any OS with install4j | `ant release-linux` | none |
+| Linux `.sh` | **GitHub Actions** (`ubuntu-latest`) or any OS with install4j | `gh workflow run build-linux.yml` / `ant release-linux` | none |
 | Git tag + draft Release | Any box with `gh` | `ant create-draft-release` | n/a |
 | Sample recordings zip | Any box with `sampleData/` recordings | `ant upload-sample-data` | n/a |
 | Attach Mac + Linux to that tag | **Mini** for DMGs; any box for `.sh` | `ant upload-installers` | n/a |
@@ -36,6 +36,16 @@ Do **not** run `ant release`. That all-OS + tag target is **removed**; it built 
 Production Windows is Azure (`ant azure-sign-ci`). SignPath workflow **Sign Windows (SignPath)** remains in the repo as a backup only (`gh workflow run sign-windows-test.yml`).
 
 Existing jar only, Mac DMGs (dev compression): `ant install4j-macos`. Latest source + production compression: `ant macos-build-notarize`.
+
+GitHub Actions dry runs (`workflow_dispatch` only, **artifacts only**, do **not** attach to Latest `3.5.0`):
+
+```text
+gh workflow run build-macos.yml          # artifact jaer-macos-notarized
+gh workflow run build-linux.yml          # artifact jaer-linux
+gh workflow run sign-windows-azure.yml   # artifact jaer-windows-azure-signed
+```
+
+Mac details: [`packaging/macos-notarization.md`](../packaging/macos-notarization.md). Linux needs repository secret `INSTALL4J_LICENSE` (not only an Environment copy).
 
 ## Release candidate (typical)
 
