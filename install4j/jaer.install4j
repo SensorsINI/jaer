@@ -60,7 +60,7 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.webp,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore">
+      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.webp,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore,install4j_linux*,install4j_macos*,install4j_windows*">
         <exclude>
           <!-- Do not honor .gitignore wholesale: lib/, jars/, and dist/jAER.jar are
                gitignored Ivy/build products but are required at runtime. Exclude local
@@ -69,7 +69,14 @@
           <entry location=".signpath" />
           <entry location="install4j" />
           <entry location="install4j License key  2024-01-02 0834.txt" />
+          <!-- setup-install4j downloads these into the workspace root. The Windows exe
+               was already excluded; GHA Linux packed install4j_linux-x64_13_0_2.sh
+               (~176 MiB) into the Unix media. -->
           <entry location="install4j_windows-x64_13_0_2.exe" />
+          <entry location="install4j_linux-x64_13_0_2.sh" />
+          <entry location="install4j_linux-x64_13_1.sh" />
+          <entry location="install4j_macos_13_0_2.dmg" />
+          <entry location="install4j_macos_13_1.dmg" />
           <!-- VCS / IDE / CI / editor — not needed to run jAER. .install4j is created by
                the installer at install time; do not exclude it. -->
           <entry location=".git" />
@@ -680,8 +687,10 @@ if (hsErr != null) {
     }
 }
 File[] i4jSetup = installRoot.listFiles((d, n) -&gt;
-    d != null &amp;&amp; ((n.startsWith("install4j_windows") &amp;&amp; n.toLowerCase().endsWith(".exe"))
-    || n.startsWith("install4j License key")));
+    d != null &amp;&amp; (n.startsWith("install4j License key")
+    || (n.startsWith("install4j_windows") &amp;&amp; n.toLowerCase().endsWith(".exe"))
+    || (n.startsWith("install4j_linux") &amp;&amp; n.endsWith(".sh"))
+    || (n.startsWith("install4j_macos") &amp;&amp; (n.endsWith(".dmg") || n.endsWith(".sh") || n.endsWith(".tgz")))));
 if (i4jSetup != null) {
     for (File f : i4jSetup) {
         if (f.isFile() &amp;&amp; f.delete()) {

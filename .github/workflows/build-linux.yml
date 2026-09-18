@@ -45,6 +45,14 @@ jobs:
           version: '13.1'
           license: ${{ secrets.INSTALL4J_LICENSE }}
 
+      - name: Remove install4j setup download from workspace
+        run: |
+          set -euo pipefail
+          echo 'setup-install4j leaves install4j_* in the checkout; dirEntry packs ..'
+          ls -lh install4j_linux* install4j_macos* install4j_windows* 2>/dev/null || echo '(no install4j_* in workspace)'
+          rm -f install4j_linux* install4j_macos* install4j_windows*
+          test ! -e install4j_linux-x64_13_1.sh
+
       - name: Check install4j
         run: install4jc --version
 
@@ -83,8 +91,26 @@ jobs:
           JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
         run: ant release-linux
 
+      - name: Inventory lib/ jars/ opencv slim (workspace, not the .sh)
+        if: always()
+        run: |
+          set -euo pipefail
+          echo '## Workspace after ant (what install4j can pack)'
+          echo '=== lib/ largest ==='
+          if [[ -d lib ]]; then find lib -type f -printf '%10s  %p\n' | sort -nr | head -40; else echo '(no lib/)'; fi
+          echo '=== jars/ (git; libusb is NOT per-OS split) ==='
+          if [[ -d jars ]]; then find jars -type f -printf '%10s  %p\n' | sort -nr; else echo '(no jars/)'; fi
+          echo '=== OpenCV fat vs slim ==='
+          ls -lh lib/opencv-4.8.1-0.jar 2>/dev/null || echo 'no fat lib/opencv-4.8.1-0.jar'
+          find build/opencv-slim -name 'opencv*.jar' -printf '%10s  %p\n' 2>/dev/null || echo 'no slim jars'
+          echo '=== libusb4java (all platforms currently packed into every media) ==='
+          ls -lh jars/libusb4java-*.jar 2>/dev/null || true
+          echo '=== dist/ ==='
+          ls -lh dist/jAER.jar 2>/dev/null || true
+
       - name: Locate Unix installer
         id: locate
+        if: always()
         run: |
           set -euo pipefail
           v='${{ steps.version.outputs.version }}'
@@ -100,20 +126,101 @@ jobs:
           bytes=$(stat -c%s "$f")
           mib=$((bytes / 1024 / 1024))
           echo "Unix installer: $f (${mib} MiB)"
-          if [[ "$bytes" -lt 50000000 ]]; then
-            echo "Installer is only ${bytes} bytes; expected a bundled-JRE .sh" >&2
-            exit 1
-          fi
-          # Mini 3.5.0 unix .sh is ~220 MB. GHA 13.0.2 produced 378 MB (un-stripped JDK tree).
-          if [[ "$mib" -gt 280 ]]; then
-            echo "Installer is ${mib} MiB; expected ~220 MiB (Mini jlink ~71 MB linux tarball)." >&2
-            echo "install4j cache:" >&2
-            find "${XDG_CACHE_HOME:-$HOME/.cache}/install4j" -name 'linux-*.tar.gz' -ls >&2 || true
-            exit 1
-          fi
-          head -n 8 "$f" || true
           echo "installer_name=$(basename "$f")" >> "$GITHUB_OUTPUT"
           echo "installer_mib=${mib}" >> "$GITHUB_OUTPUT"
+          echo "installer_path=$f" >> "$GITHUB_OUTPUT"
+
+      - name: List payload inside the .sh
+        if: always() && steps.locate.outcome == 'success'
+        run: |
+          set -euo pipefail
+          f='${{ steps.locate.outputs.installer_path }}'
+          python3 <<'PY'
+          import os, struct, subprocess, sys, tarfile, tempfile, zipfile
+          from pathlib import Path
+
+          sh = Path(os.environ['INSTALLER_SH'])
+          data = sh.read_bytes()
+          print(f'sh bytes={len(data)}')
+          magics = {
+              'gzip': b'\x1f\x8b',
+              'xz': b'\xfd7zXZ\x00',
+              'bzip2': b'BZh',
+              'zip': b'PK\x03\x04',
+          }
+          hits = []
+          for name, mag in magics.items():
+              i = 0
+              while True:
+                  j = data.find(mag, i)
+                  if j < 0:
+                      break
+                  hits.append((j, name))
+                  i = j + 1
+          hits.sort()
+          print('compression magic offsets (first 8):', hits[:8])
+          if not hits:
+              sys.exit('no gzip/xz/zip payload found in .sh')
+          off, kind = hits[0]
+          # skip tiny false positives in the shell header
+          for off, kind in hits:
+              if off > 200:
+                  break
+          else:
+              off, kind = hits[0]
+          print(f'using payload at offset {off} kind={kind}')
+          payload = data[off:]
+          tmp = Path(tempfile.mkdtemp(prefix='jaer-payload-'))
+          blob = tmp / ('payload.bin')
+          blob.write_bytes(payload)
+
+          def show_members(names_sizes):
+              names_sizes.sort(key=lambda x: -x[0])
+              print('=== payload largest 40 ===')
+              for sz, name in names_sizes[:40]:
+                  print(f'{sz:12d}  {name}')
+              print('=== opencv / libusb / jre natives ===')
+              for sz, name in names_sizes:
+                  n = name.lower()
+                  if any(s in n for s in ('opencv', 'libusb', 'usb4java', 'libjvm', 'jre', 'jogamp')):
+                      print(f'{sz:12d}  {name}')
+
+          if kind == 'zip':
+              with zipfile.ZipFile(blob) as z:
+                  show_members([(i.file_size, i.filename) for i in z.infolist()])
+          else:
+              # gzip/xz/bzip2 often wrap tar
+              tar_path = tmp / 'payload.tar'
+              if kind == 'gzip':
+                  subprocess.check_call(['gzip', '-dc', str(blob)], stdout=open(tar_path, 'wb'))
+              elif kind == 'xz':
+                  subprocess.check_call(['xz', '-dc', str(blob)], stdout=open(tar_path, 'wb'))
+              elif kind == 'bzip2':
+                  subprocess.check_call(['bzip2', '-dc', str(blob)], stdout=open(tar_path, 'wb'))
+              if tarfile.is_tarfile(tar_path):
+                  with tarfile.open(tar_path) as t:
+                      show_members([(m.size, m.name) for m in t.getmembers() if m.isfile()])
+              else:
+                  print(f'decompressed payload is not tar ({tar_path.stat().st_size} bytes)')
+          PY
+        env:
+          INSTALLER_SH: ${{ steps.locate.outputs.installer_path }}
+
+      - name: Fail if Unix installer is oversized
+        if: always() && steps.locate.outcome == 'success'
+        run: |
+          set -euo pipefail
+          mib='${{ steps.locate.outputs.installer_mib }}'
+          echo "Installer ${mib} MiB (Mini unix .sh ~220 MiB)"
+          if [[ "$mib" -lt 50 ]]; then
+            echo 'Installer too small; expected a bundled-JRE .sh' >&2
+            exit 1
+          fi
+          if [[ "$mib" -gt 280 ]]; then
+            echo "Installer is ${mib} MiB; expected ~220 MiB." >&2
+            echo 'See Inventory and List payload steps for fat opencv / libusb / JRE natives.' >&2
+            exit 1
+          fi
 
       - name: Report jlink JRE cache
         if: always()

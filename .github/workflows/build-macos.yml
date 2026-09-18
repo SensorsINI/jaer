@@ -46,6 +46,14 @@ jobs:
           version: '13.0.2'
           license: ${{ secrets.INSTALL4J_LICENSE }}
 
+      - name: Remove install4j setup download from workspace
+        run: |
+          set -euo pipefail
+          echo 'setup-install4j leaves install4j_macos_*.dmg in the checkout; dirEntry packs ..'
+          ls -lh install4j_linux* install4j_macos* install4j_windows* 2>/dev/null || echo '(no install4j_* in workspace)'
+          rm -f install4j_linux* install4j_macos* install4j_windows*
+          test ! -e install4j_macos_13_0_2.dmg
+
       - name: Write Apple secrets into signpath/
         env:
           MAC_DEVELOPER_ID_P12: ${{ secrets.MAC_DEVELOPER_ID_P12 }}
@@ -122,6 +130,19 @@ jobs:
           done
           echo "intel_name=$(basename "${intel[0]}")" >> "$GITHUB_OUTPUT"
           echo "arm_name=$(basename "${arm[0]}")" >> "$GITHUB_OUTPUT"
+          intel_mib=$(( $(stat -f%z "${intel[0]}") / 1024 / 1024 ))
+          arm_mib=$(( $(stat -f%z "${arm[0]}") / 1024 / 1024 ))
+          echo "intel_mib=${intel_mib}" >> "$GITHUB_OUTPUT"
+          echo "arm_mib=${arm_mib}" >> "$GITHUB_OUTPUT"
+          echo "Intel ${intel_mib} MiB / Apple Silicon ${arm_mib} MiB (Mini ~210–230 MiB)"
+          if [[ "$intel_mib" -lt 50 || "$arm_mib" -lt 50 ]]; then
+            echo 'DMG too small; expected a bundled-JRE media file' >&2
+            exit 1
+          fi
+          if [[ "$intel_mib" -gt 280 || "$arm_mib" -gt 280 ]]; then
+            echo "DMG is oversized; expected ~220 MiB after excluding install4j_macos_*.dmg" >&2
+            exit 1
+          fi
 
       - name: Upload notarized DMGs
         uses: actions/upload-artifact@v7
@@ -147,8 +168,8 @@ jobs:
             echo '## macOS notarize (dry run)'
             echo "- Version: \`${{ steps.version.outputs.version }}\`"
             echo "- Runner: \`macos-latest\` / environment \`macos-notarize\`"
-            echo "- Intel: \`${{ steps.locate.outputs.intel_name }}\`"
-            echo "- Apple Silicon: \`${{ steps.locate.outputs.arm_name }}\`"
+            echo "- Intel: \`${{ steps.locate.outputs.intel_name }}\` (${{ steps.locate.outputs.intel_mib }} MiB)"
+            echo "- Apple Silicon: \`${{ steps.locate.outputs.arm_name }}\` (${{ steps.locate.outputs.arm_mib }} MiB)"
             echo '- Did **not** attach to a GitHub Release. Download artifact `jaer-macos-notarized`.'
             echo '- Proof on the job log: `source=Notarized Developer ID`.'
           } >> "$GITHUB_STEP_SUMMARY"
