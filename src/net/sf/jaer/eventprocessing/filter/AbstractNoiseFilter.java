@@ -55,7 +55,16 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     @Preferred
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     @Preferred
-    private int showFilteringStatisticsFontSize = getInt("showFilteringStatisticsFontSize", 9);
+    private float showFilteringStatisticsFontSize = getFloat("showFilteringStatisticsFontSize", defaultShowFilteringStatisticsFontSize());
+    /**
+     * True after {@link #maybeFitStatisticsFontToChipWidth(String)} has
+     * measured this instance against the current chip width (or skipped because
+     * the user chose a size).
+     */
+    private boolean statisticsFontSizeChecked = false;
+    /** True while {@link #maybeFitStatisticsFontToChipWidth(String)} is writing the auto-fit size (do not treat as a user choice). */
+    private boolean statisticsFontFitting = false;
+    private static final String PREF_STATS_FONT_AUTO = "showFilteringStatisticsFontSizeAuto";
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
     /**
@@ -139,7 +148,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setEnclosedFilterChain(enclosedFilterChain);
 
         setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
-        setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics (default scales with chip width)");
+        setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "Font size for statistics (chip pixels, fractional). On first use it is chosen to fit the chip width; change this to stop auto-sizing.");
         setPropertyTooltipBold(TT_FILT_CONTROL, "threshold", "Threshold for classifying event as signal event");
         setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
         String sigmaDistPixelsTooltip = "Neighborhood radisu in pixels to consider for event support";
@@ -227,21 +236,73 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     /**
-     * Default statistics overlay is about 81 characters. Linearly interpolate
-     * font size from DVS128 ({@code sizeX=128} → 3) to Prophesee
-     * ({@code sizeX=1280} → 23).
+     * Approximate SansSerif advance in chip pixels per font-size unit for mixed
+     * ASCII. Used when GL measurement is not available yet.
      */
-    protected int defaultShowFilteringStatisticsFontSize() {
+    private static final float STATS_FONT_CHAR_ADVANCE = 0.55f;
+    /**
+     * Typical overlay length ({@link #infoString()} plus {@code filtered out %xx.x}).
+     */
+    private static final int STATS_OVERLAY_CHARS = 90;
+
+    /**
+     * Heuristic font size so a typical statistics line fills the chip width.
+     * First annotate then measures the real string with
+     * {@link DrawGL#fontSizeToFitWidth}.
+     */
+    protected float defaultShowFilteringStatisticsFontSize() {
         int sizeX = (chip != null) ? chip.getSizeX() : 0;
         if (sizeX <= 0) {
-            return 9;
+            return 9f;
         }
-        return Math.max(1, Math.round(3f + (sizeX - 128f) * (23f - 3f) / (1280f - 128f)));
+        float fs = (sizeX * 0.96f) / (STATS_OVERLAY_CHARS * STATS_FONT_CHAR_ADVANCE);
+        return Math.max(DrawGL.MIN_FONT_SIZE, Math.min(fs, 48f));
+    }
+
+    /**
+     * Pick a font that fills the chip width. Runs while the auto flag is set
+     * (first use, or after Defaults). A user change of
+     * {@code showFilteringStatisticsFontSize} clears the auto flag.
+     *
+     * @param s overlay line to fit
+     */
+    private void maybeFitStatisticsFontToChipWidth(String s) {
+        if (statisticsFontSizeChecked) {
+            return;
+        }
+        if (!getBoolean(PREF_STATS_FONT_AUTO, true)) {
+            statisticsFontSizeChecked = true;
+            return;
+        }
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0 || s == null || s.isEmpty()) {
+            return;
+        }
+        try {
+            float start = Math.max(Math.max(24f, sizeX / 4f), showFilteringStatisticsFontSize);
+            float fitted = DrawGL.fontSizeToFitWidth(start, new String[]{s}, sizeX * 0.99f);
+            statisticsFontFitting = true;
+            try {
+                setShowFilteringStatisticsFontSize(fitted);
+                putBoolean(PREF_STATS_FONT_AUTO, true);
+            } finally {
+                statisticsFontFitting = false;
+            }
+            statisticsFontSizeChecked = true;
+        } catch (RuntimeException e) {
+            // TextRenderer needs a current GL context; retry next frame
+        }
     }
 
     @Override
     public void initFilter() {
-        showFilteringStatisticsFontSize = getInt("showFilteringStatisticsFontSize", defaultShowFilteringStatisticsFontSize());
+        if (!isPreferenceStored("showFilteringStatisticsFontSize")) {
+            showFilteringStatisticsFontSize = defaultShowFilteringStatisticsFontSize();
+            statisticsFontSizeChecked = false;
+        } else {
+            showFilteringStatisticsFontSize = getFloat("showFilteringStatisticsFontSize", defaultShowFilteringStatisticsFontSize());
+            statisticsFontSizeChecked = false;
+        }
     }
 
     @Override
@@ -312,8 +373,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
 //        gl.glRasterPos3f(0, getAnnotationRasterYPosition(), 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
+        String info = infoString();
+        // Probe uses a full-width percent so first-packet NaN/short values do not pick an oversized font.
+        maybeFitStatisticsFontToChipWidth(String.format("%s: filtered out %%%6.1f", info, 99.9f));
         String s = String.format("%s: filtered out %%%6.1f",
-                infoString(),
+                info,
                 filteredOutPercent);
         DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
         gl.glPopMatrix();
@@ -333,9 +397,10 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             return noiseStatDrawingMap.get(key);
         }
 
+        float dy = Math.max(12f, getShowFilteringStatisticsFontSize() + 4f);
         int statisticsDrawingPosition = 10;
         for (int y : noiseStatDrawingMap.values()) {
-            statisticsDrawingPosition += 20;
+            statisticsDrawingPosition += Math.round(dy);
         }
         noiseStatDrawingMap.put(key, statisticsDrawingPosition);
         return statisticsDrawingPosition;
@@ -530,6 +595,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 break;
             case AEViewer.EVENT_CHIP:
                 resetFilter();
+                statisticsFontSizeChecked = false;
                 break;
             case "sigmaDistPixels":
                 setSigmaDistPixels((int) evt.getNewValue());
@@ -648,7 +714,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * @return the showFilteringStatisticsFontSize
      */
-    public int getShowFilteringStatisticsFontSize() {
+    public float getShowFilteringStatisticsFontSize() {
         return showFilteringStatisticsFontSize;
     }
 
@@ -656,9 +722,18 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @param showFilteringStatisticsFontSize the
      * showFilteringStatisticsFontSize to set
      */
-    public void setShowFilteringStatisticsFontSize(int showFilteringStatisticsFontSize) {
+    public void setShowFilteringStatisticsFontSize(float showFilteringStatisticsFontSize) {
+        float old = this.showFilteringStatisticsFontSize;
+        if (showFilteringStatisticsFontSize < DrawGL.MIN_FONT_SIZE) {
+            showFilteringStatisticsFontSize = DrawGL.MIN_FONT_SIZE;
+        }
         this.showFilteringStatisticsFontSize = showFilteringStatisticsFontSize;
-        putInt("showFilteringStatisticsFontSize", showFilteringStatisticsFontSize);
+        putFloat("showFilteringStatisticsFontSize", showFilteringStatisticsFontSize);
+        if (!statisticsFontFitting) {
+            putBoolean(PREF_STATS_FONT_AUTO, false);
+            statisticsFontSizeChecked = true;
+        }
+        getSupport().firePropertyChange("showFilteringStatisticsFontSize", old, this.showFilteringStatisticsFontSize);
     }
 
     /**

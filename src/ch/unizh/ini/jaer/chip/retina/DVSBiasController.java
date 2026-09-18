@@ -703,7 +703,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
-        int fs = overlayFontSize();
+        float fs = overlayFontSize();
         final float x0 = Math.max(2f, sx * 0.006f);
         final float lineH = DrawGL.lineHeight(fs);
 
@@ -833,7 +833,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         return String.format("%" + ENG_FIELD_WIDTH + "s", fmt.format(v).trim());
     }
 
-    private float drawOverlayLine(GL2 gl, int fs, float x0, float y, float adv, float lh, int sx,
+    private float drawOverlayLine(GL2 gl, float fs, float x0, float y, float adv, float lh, int sx,
             String text, OverlayBar bar) {
         if (bar == null) {
             DrawGL.drawStringDropShadow(fs, x0, y, 0, Color.WHITE, text);

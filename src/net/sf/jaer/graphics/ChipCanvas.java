@@ -698,9 +698,9 @@ public class ChipCanvas implements GLEventListener, Observer {
             // Title ("Recording") and details (elapsed, VCR, disk, ARS) are two
             // sizes: details start at 75% of the title, then both shrink independently
             // so the longest line of that group still fits in 70% of chip width.
-            int fontsize = overlayFontSize(7);
+            float fontsize = overlayFontSize(7);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{recordingLine}, maxW);
-            int limitFontsize = Math.max(3, Math.round(fontsize * 0.75f));
+            float limitFontsize = Math.max(DrawGL.MIN_FONT_SIZE, fontsize * 0.75f);
             String[] detailLines = new String[1 + limitLines.length];
             detailLines[0] = applyFiltersLine;
             System.arraycopy(limitLines, 0, detailLines, 1, limitLines.length);
@@ -754,7 +754,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 float margin = overlayFontSize(2) * s;
                 boolean analogDate = overlay.absolute && overlay.dateText != null;
                 float analogCx = getViewportXAtFraction(0f) + margin + analogRadius * s;
-                int captionFont = overlayFontSize(8 / 1.3f);
+                float captionFont = overlayFontSize(8 / 1.3f);
                 float dateLine = analogDate ? DrawGL.lineHeight(captionFont) : 0f;
                 float analogCy = getViewportYAtFraction(0f) + margin
                         + (analogRadius + (analogDate ? dateLine * 1.15f : 0f)) * s;
@@ -789,7 +789,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 return;
             }
             float maxW = chip.getSizeX() * 0.92f;
-            int fontsize = overlayFontSize(16);
+            float fontsize = overlayFontSize(16);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{text}, maxW);
             float xpos = getViewportCenterX();
             float y = getViewportYAtFraction(0.07f);
@@ -971,7 +971,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             float chipW = Math.max(1, chip.getSizeX());
-            int fontsize = overlayFontSize(12);
+            float fontsize = overlayFontSize(12);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.2f;
             float xpos = getViewportCenterX();
@@ -1040,7 +1040,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         try {
             GL2 gl = drawable.getGL().getGL2();
             // ~1.5× smaller than initial welcome overlay sizing
-            int fontsize = overlayFontSize(10 / 1.5f);
+            float fontsize = overlayFontSize(10 / 1.5f);
             float scale = 1f;
             if (fontsize < 10) {
                 fontsize *= 2;
@@ -1102,7 +1102,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             GL2 gl = drawable.getGL().getGL2();
             String[] lines = text.split("\n", -1);
             float chipW = Math.max(1, chip.getSizeX());
-            int fontsize = overlayFontSize(6);
+            float fontsize = overlayFontSize(6);
             fontsize = DrawGL.fontSizeToFitWidth(fontsize, lines, chipW * 0.94f);
             float lineSpace = fontsize * 2.0f;
             float blockH = lineSpace * lines.length;
@@ -1781,11 +1781,11 @@ public class ChipCanvas implements GLEventListener, Observer {
      * chip (DAVIS346). Scales with {@link Chip2D#getSizeX()} so on-screen size
      * is similar across chips (a floor of 8 made DVS128 overlays huge).
      */
-    public int overlayFontSize(float sizeAt346) {
+    public float overlayFontSize(float sizeAt346) {
         if (chip == null || chip.getSizeX() <= 0) {
-            return Math.max(1, Math.round(sizeAt346));
+            return Math.max(DrawGL.MIN_FONT_SIZE, sizeAt346);
         }
-        return Math.max(1, Math.round(sizeAt346 * (chip.getSizeX() / 346f)));
+        return Math.max(DrawGL.MIN_FONT_SIZE, sizeAt346 * (chip.getSizeX() / 346f));
     }
 
     /**

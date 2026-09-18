@@ -3109,7 +3109,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 DrawGL.drawCross(gl, x, y, L, 0);
                 gl.glPopMatrix();
                 gl.glPushMatrix();
-                int fs = getShowFilteringStatisticsFontSize();
+                float fs = getShowFilteringStatisticsFontSize();
                 DrawGL.drawString(fs, x + L, y - fs / 2, 0, Color.gray, "avg");
                 gl.glPopMatrix();
 
@@ -3345,7 +3345,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Override
-    public void setShowFilteringStatisticsFontSize(int size) {
+    public void setShowFilteringStatisticsFontSize(float size) {
         super.setShowFilteringStatisticsFontSize(size);
         for (AbstractNoiseFilter f : noiseFilters) {
             if (f == null) {

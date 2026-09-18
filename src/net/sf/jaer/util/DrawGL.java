@@ -487,24 +487,28 @@ public final class DrawGL {
      */
     private static final Object TEXT_RENDERER_CACHE_LOCK = new Object();
     private static final IdentityHashMap<GLContext, Map<Integer, TextRenderer>> textRenderersByContext = new IdentityHashMap<>();
-    /** Cached chip-pixel line height per requested {@code fontSize} (before the fontSize&lt;10 scale). */
-    private static final Map<Integer, Float> cachedLineHeights = new HashMap<>();
+    /** Cached {@code "Ag"} height in atlas pixels, keyed by {@link #atlasFontSize}. */
+    private static final Map<Integer, Float> cachedAtlasLineHeights = new HashMap<>();
+    /** Smallest chip-pixel font size {@link #drawString} will draw. */
+    public static final float MIN_FONT_SIZE = 0.5f;
 
     /**
-     * Atlas size for {@code TextRenderer}'s Font. Sizes below 10 are drawn with a 4×
-     * font at scale 0.25 so glyphs stay sharp; the cache key is this atlas size so
-     * requested 8 and atlas 32 share one renderer.
+     * Atlas size for {@code TextRenderer}'s Font. Chip-pixel size is
+     * {@code atlas * drawScale}. Sizes below 10 use a 4× atlas so fractional
+     * sizes stay sharp; the cache key is this atlas size.
      */
-    private static int atlasFontSize(int fontSize) {
-        if (fontSize < 1) {
-            fontSize = 1;
+    private static int atlasFontSize(float fontSize) {
+        float fs = Math.max(MIN_FONT_SIZE, fontSize);
+        if (fs < 10f) {
+            return Math.max(4, Math.round(fs * 4f));
         }
-        return fontSize < 10 ? fontSize * 4 : fontSize;
+        return Math.max(1, Math.round(fs));
     }
 
-    /** draw3D scale matching {@link #atlasFontSize}. */
-    private static float drawScale(int fontSize) {
-        return fontSize < 10 ? 0.25f : 1f;
+    /** draw3D scale matching {@link #atlasFontSize}: {@code fontSize / atlas}. */
+    private static float drawScale(float fontSize) {
+        float fs = Math.max(MIN_FONT_SIZE, fontSize);
+        return fs / atlasFontSize(fs);
     }
 
     /**
@@ -512,7 +516,7 @@ public final class DrawGL {
      * current GL context. Only place {@code new TextRenderer} runs in this class,
      * and only on a cache miss for that context.
      */
-    private static TextRenderer textRendererFor(int requestedFontSize) {
+    private static TextRenderer textRendererFor(float requestedFontSize) {
         GLContext ctx = GLContext.getCurrent();
         if (ctx == null) {
             throw new GLException("DrawGL TextRenderer requires a current GL context");
@@ -583,7 +587,8 @@ public final class DrawGL {
      * usually setup to represent pixels on AEChip. Embedded newlines are not
      * rendered as additional lines.
      *
-     * @param fontSize typically 5 to 18, font is Font("SansSerif", Font.PLAIN, fontSize)
+     * @param fontSize chip-pixel size (fractional values allowed; typically 5 to 18).
+     * Font is SansSerif PLAIN; sizes below 10 use a 4× glyph atlas.
      * @param x x position (0 at left)
      * @param y y position (0 at bottom)
      * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
@@ -594,7 +599,7 @@ public final class DrawGL {
      *         allocation); height is {@link #lineHeight}. Use
      *         {@link #measureStringWidth} when layout needs the string width.
      */
-    public static Rectangle2D drawString(int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
+    public static Rectangle2D drawString(float fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
         final float scale = drawScale(fontSize);
         // Line height uses getBounds; must not run inside begin3DRendering.
         final float leftAlignHeight = (alignmentX == 0) ? lineHeight(fontSize) : 0;
@@ -619,36 +624,35 @@ public final class DrawGL {
 
     /**
      * Cached chip-pixel line height for {@code fontSize}, using the same
-     * fontSize&lt;10 scale as {@link #drawString}. Measures a probe string once
-     * per size. Call from the GL thread (same as {@code drawString}).
+     * atlas/scale as {@link #drawString}. Measures a probe string once per atlas
+     * size. Call from the GL thread (same as {@code drawString}).
      */
-    public static float lineHeight(int fontSize) {
-        if (fontSize < 1) {
-            fontSize = 1;
+    public static float lineHeight(float fontSize) {
+        float fs = Math.max(MIN_FONT_SIZE, fontSize);
+        int atlas = atlasFontSize(fs);
+        float scale = fs / atlas;
+        Float atlasH = cachedAtlasLineHeights.get(atlas);
+        if (atlasH != null) {
+            return atlasH * scale;
         }
-        Float cached = cachedLineHeights.get(fontSize);
-        if (cached != null) {
-            return cached;
-        }
-        final int requested = fontSize;
         try {
-            Rectangle2D r = textRendererFor(requested).getBounds("Ag");
-            float h = (float) (r.getHeight() * drawScale(requested));
-            if (h < 1f) {
-                h = requested * 1.25f;
+            Rectangle2D r = textRendererFor(fs).getBounds("Ag");
+            atlasH = (float) r.getHeight();
+            if (atlasH < 1f) {
+                atlasH = atlas * 1.25f;
             }
-            cachedLineHeights.put(requested, h);
-            return h;
+            cachedAtlasLineHeights.put(atlas, atlasH);
+            return atlasH * scale;
         } catch (RuntimeException e) {
-            return requested * 1.25f;
+            return fs * 1.25f;
         }
     }
 
     /**
      * Chip-pixel width of {@code s} at {@code fontSize}, using the same
-     * fontSize&lt;10 scale as {@link #drawString}.
+     * atlas/scale as {@link #drawString}.
      */
-    public static float measureStringWidth(int fontSize, String s) {
+    public static float measureStringWidth(float fontSize, String s) {
         if (s == null || s.isEmpty()) {
             return 0;
         }
@@ -656,22 +660,37 @@ public final class DrawGL {
         return (float) (r.getWidth() * drawScale(fontSize));
     }
 
+    private static float longestStringWidth(float fontSize, String[] lines) {
+        float longest = 0;
+        for (String line : lines) {
+            longest = Math.max(longest, measureStringWidth(fontSize, line));
+        }
+        return longest;
+    }
+
     /**
-     * Shrinks {@code startFontSize} so every line fits in {@code maxChipWidth}.
+     * Font size {@code ≤ startFontSize} whose lines fit in {@code maxChipWidth}.
+     * Width scales with font size, so this is a linear shrink (one measure, plus
+     * a correction if start and result use different atlas sizes). Does not grow
+     * past {@code startFontSize}.
      */
-    public static int fontSizeToFitWidth(int startFontSize, String[] lines, float maxChipWidth) {
-        int fs = Math.max(1, startFontSize);
+    public static float fontSizeToFitWidth(float startFontSize, String[] lines, float maxChipWidth) {
+        float fs = Math.max(MIN_FONT_SIZE, startFontSize);
         if (lines == null || lines.length == 0 || maxChipWidth <= 0) {
             return fs;
         }
-        float longest = 0;
-        for (String line : lines) {
-            longest = Math.max(longest, measureStringWidth(fs, line));
-        }
+        float longest = longestStringWidth(fs, lines);
         if (longest <= maxChipWidth || longest <= 0) {
             return fs;
         }
-        return Math.max(1, (int) Math.floor(fs * maxChipWidth / longest));
+        float fitted = fs * (maxChipWidth / longest);
+        if (fitted < fs) {
+            float w = longestStringWidth(fitted, lines);
+            if (w > 0) {
+                fitted = fitted * (maxChipWidth / w);
+            }
+        }
+        return Math.max(MIN_FONT_SIZE, Math.min(fs, fitted));
     }
 
     /**
@@ -690,10 +709,10 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      * @deprecated Only for backward capability, use
-     * #drawString(int,float,float,float,Color,String)
+     * #drawString(float,float,float,float,Color,String)
      */
     @Deprecated
-    public static Rectangle2D drawString(GLAutoDrawable drawable, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawString(GLAutoDrawable drawable, float fontSize, float x, float y, float alignmentX, Color color, String s) {
         Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
         return r;
     }
@@ -716,10 +735,10 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      * @deprecated Only for backward capability, use
-     * #drawString(int,float,float,float,Color,String)
+     * #drawString(float,float,float,float,Color,String)
      */
     @Deprecated
-    public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
+    public static Rectangle2D drawString(GL2 gl, float fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
         Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
         return r;
     }
@@ -730,8 +749,8 @@ public final class DrawGL {
      * 0.4 px at fontSize 16. Large digital overlays used to shift a full chip
      * pixel, which reads as a second copy of the string.
      */
-    private static float dropShadowOffset(int fontSize) {
-        int fs = Math.max(1, fontSize);
+    private static float dropShadowOffset(float fontSize) {
+        float fs = Math.max(MIN_FONT_SIZE, fontSize);
         return Math.max(0.12f, Math.min(0.55f, fs / 40f));
     }
 
@@ -748,7 +767,7 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      */
-    public static Rectangle2D drawStringDropShadow(int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawStringDropShadow(float fontSize, float x, float y, float alignmentX, Color color, String s) {
         float d = dropShadowOffset(fontSize);
         drawString(fontSize, x + d, y - d, alignmentX, Color.black, s);
         return drawString(fontSize, x, y, alignmentX, color, s);
@@ -758,23 +777,23 @@ public final class DrawGL {
     /**
      * Standard leading for stacked overlay lines (CSS-style 1.5).
      * {@link #drawString} does not wrap on {@code \n}; use
-     * {@link #lineAdvance(int)} between lines.
+     * {@link #lineAdvance(float)} between lines.
      */
     public static final float DEFAULT_LINE_SPACING = 1.5f;
 
     /**
      * Chip-pixel Y step between baselines for multiline text:
-     * {@link #lineHeight(int)} times {@link #DEFAULT_LINE_SPACING}.
+     * {@link #lineHeight(float)} times {@link #DEFAULT_LINE_SPACING}.
      */
-    public static float lineAdvance(int fontSize) {
+    public static float lineAdvance(float fontSize) {
         return lineAdvance(fontSize, DEFAULT_LINE_SPACING);
     }
 
     /**
-     * Chip-pixel Y step between baselines: {@link #lineHeight(int)} times
+     * Chip-pixel Y step between baselines: {@link #lineHeight(float)} times
      * {@code spacing} (1.5 is conventional).
      */
-    public static float lineAdvance(int fontSize, float spacing) {
+    public static float lineAdvance(float fontSize, float spacing) {
         return lineHeight(fontSize) * spacing;
     }
 
@@ -785,7 +804,7 @@ public final class DrawGL {
      * @param spacing multiplier of {@link #lineHeight}; use
      * {@link #DEFAULT_LINE_SPACING} for 1.5.
      */
-    public static Rectangle2D drawLinesDropShadow(int fontSize, float x, float yTop, float alignmentX,
+    public static Rectangle2D drawLinesDropShadow(float fontSize, float x, float yTop, float alignmentX,
             Color color, String[] lines, float spacing) {
         Rectangle2D last = null;
         if (lines == null) {
@@ -803,16 +822,16 @@ public final class DrawGL {
         return last;
     }
 
-    public static Rectangle2D drawLinesDropShadow(int fontSize, float x, float yTop, float alignmentX,
+    public static Rectangle2D drawLinesDropShadow(float fontSize, float x, float yTop, float alignmentX,
             Color color, String[] lines) {
         return drawLinesDropShadow(fontSize, x, yTop, alignmentX, color, lines, DEFAULT_LINE_SPACING);
     }
 
     /**
-     * @deprecated use {@link #drawStringDropShadow(int, float, float, float, Color, String)}
+     * @deprecated use {@link #drawStringDropShadow(float, float, float, float, Color, String)}
      */
     @Deprecated
-    public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawStringDropShadow(GL2 gl, float fontSize, float x, float y, float alignmentX, Color color, String s) {
         return drawStringDropShadow(fontSize, x, y, alignmentX, color, s);
     }
 

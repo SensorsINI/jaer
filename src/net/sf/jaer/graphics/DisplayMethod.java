@@ -236,7 +236,7 @@ public abstract class DisplayMethod implements PropertyChangeListener {
             return;
         }
 
-        int fontsize = chipCanvas.overlayFontSize(8);
+        float fontsize = chipCanvas.overlayFontSize(8);
         fontsize = DrawGL.fontSizeToFitWidth(fontsize, ss, Math.max(1, chip.getSizeX()) * 0.94f);
         float adv = DrawGL.lineAdvance(fontsize);
         float ht = adv * nlines;
