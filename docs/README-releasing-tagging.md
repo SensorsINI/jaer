@@ -8,7 +8,7 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 |------|--------|----------------|
 | Update descriptor | `https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml` | git: commit and push repo-root `updates.xml` |
 | Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `ant upload-installers` (Mini for Mac DMGs) |
-| Sample recordings zip | `https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip` | `ant upload-sample-data` |
+| Sample recordings zip | `https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip` (after Latest) | `ant upload-sample-data-current` then `release.yml` copies onto the product/rc Release |
 | Public download page | `https://jaerproject.org` | GitHub Pages from [`website/`](../website/); workflow [`.github/workflows/pages.yml`](../.github/workflows/pages.yml). DNS: [`website/README.md`](../website/README.md) |
 
 `updates.xml` `baseUrl` must be `https://github.com/SensorsINI/jaer/releases/latest/download/`. `ant copy-updates-xml` sets that; do not edit it by hand. The in-app checker reads the raw GitHub file, then downloads `baseUrl` + `fileName` (for example `jAER_windows-x64_3_2_0.exe`).
@@ -23,13 +23,13 @@ Two hosts for binaries vs updater XML; the public download page is GitHub Pages 
 | Windows `.exe` (production) | **GitHub Actions** (any box can *trigger*) | `ant azure-sign-ci` or `gh workflow run build-win-sign.yml` | Azure Artifact Signing, publisher **Tobias Delbruck** |
 | Linux `.sh` | **GitHub Actions** (`ubuntu-latest`) or any OS with install4j | `gh workflow run build-linux.yml` / `ant release-linux` | none |
 | Git tag + draft Release | Any box with `gh` | `ant create-draft-release` | n/a |
-| Sample recordings zip | Any box with `sampleData/` recordings | `ant upload-sample-data` | n/a |
+| Sample recordings zip | Any box with `sampleData/` recordings | `ant upload-sample-data-current` (durable Release `sample-data-current`). Mini-era product attach: `ant upload-sample-data` | n/a |
 | Attach Mac + Linux to that tag | **Mini** for DMGs; any box for `.sh` | `ant upload-installers` | n/a |
 | Same Mac + upload, from another box | **SSH into the Mini** (ZeroTier). Cursor Cloud Agents cannot notarize. | See [Remote Mini (SSH / Cursor CLI)](#remote-mini-ssh--cursor-cli) | same as Mini row |
 
 Do **not** run `ant release`. That all-OS + tag target is **removed**; it built unsigned Windows and (off the Mini) unsigned Mac media and tagged `VERSION.txt`.
 
-`ant upload-installers` uses `gh release upload --clobber`. It **skips** the local Windows `.exe` (keeps Azure). It **skips** Mac `.dmg` unless this host is macOS. Do **not** `ant upload-installers-clobber-windows` after Azure has signed. Sample zip is `ant upload-sample-data`, not this target.
+`ant upload-installers` uses `gh release upload --clobber`. It **skips** the local Windows `.exe` (keeps Azure). It **skips** Mac `.dmg` unless this host is macOS. Do **not** `ant upload-installers-clobber-windows` after Azure has signed. Sample zip for CI is `ant upload-sample-data-current`, not this target.
 
 `ant upload-installers` requires an existing GitHub Release (`ant create-draft-release`). It no longer creates a tag or draft.
 
@@ -37,7 +37,29 @@ Production Windows is Azure (`ant azure-sign-ci`). SignPath workflow **Sign Wind
 
 Existing jar only, Mac DMGs (dev compression): `ant install4j-macos`. Latest source + production compression: `ant macos-build-notarize`.
 
-Production installers (all three OSes, GitHub-hosted, Azure-signed Windows): push an annotated tag `N.N.N-rc.N` or `N.N.N` (no `v` prefix) after `VERSION.txt` matches the public version and `release-notes/jaer-<public>-release-notes.md` exists. Workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) builds, notarizes, signs, and attaches assets. **rc** → GitHub **prerelease** (not Latest). **Public** tag → **draft** until you Approve Environment `publish-release` (that job writes `updates.xml` to `master` and then sets Latest). Do **not** `gh workflow run release.yml` on `master`. Do **not** tag `3.5.0`.
+Production installers (all three OSes, GitHub-hosted, Azure-signed Windows): push an annotated tag `N.N.N-rc.N` or `N.N.N` (no `v` prefix) after `VERSION.txt` matches the public version, `release-notes/jaer-<public>-release-notes.md` exists, and GitHub Release **`sample-data-current`** already has `jaer-sample-data.zip` (see below). Workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) builds, notarizes, signs, and attaches assets. **rc** → GitHub **prerelease** (not Latest). **Public** tag → **draft** until you Approve Environment `publish-release` (that job writes `updates.xml` to `master` and then sets Latest). Do **not** `gh workflow run release.yml` on `master`. Do **not** tag `3.5.0`.
+
+## Sample recordings for CI (`sample-data-current`)
+
+Recordings are **not** in git. `release.yml` does not pack them; assemble **copies** `jaer-sample-data.zip` from a durable GitHub Release whose tag is exactly `sample-data-current`. If that Release or zip is missing, assemble **fails**. Do this **once** (and again when recordings change) on a box that has `sampleData/*.aedat4` (or `.aedat` / `.dat` / `.raw`) **before** tagging `N.N.N-rc.N`:
+
+```text
+ant upload-sample-data-current
+```
+
+That runs `pack-sample-data` (writes `currentInstallers/<VERSION.txt>/jaer-sample-data.zip`) then `gh release create` (first time) or `gh release upload --clobber` (later). The Release is a **prerelease** with `--latest=false`. The tag name is not `N.N.N`, so it does not fire `release.yml`.
+
+Check:
+
+```text
+gh release view sample-data-current
+```
+
+Do **not** `gh release edit sample-data-current --latest`. Do **not** `ant create-draft-release` or `ant upload-sample-data` for this step: those target `VERSION.txt` (a product Release), and `upload-sample-data` also looks for the zip under `currentInstallers/<that-tag>/`, not `currentInstallers/<VERSION.txt>/`.
+
+Refresh recordings later: same `ant upload-sample-data-current` (clobbers the zip). Existing product/rc Releases keep the zip they already have until a new `-rc.N` assemble copies the new file.
+
+Dry run (packs locally, skips `gh`): `ant "-Djaer.upload.whatif=true" upload-sample-data-current`.
 
 GitHub Actions dry runs (`workflow_dispatch` only, **artifacts only**, do **not** attach to Latest `3.5.0`):
 
@@ -62,14 +84,14 @@ Mac details: [`packaging/macos-notarization.md`](../packaging/macos-notarization
 4. When the source on `master` is the release: `ant create-draft-release` (this **creates and pushes tag `VERSION.txt`** and a GitHub **draft**).
 5. **Mini:** `ant upload-installers` (notarized DMGs; Linux `.sh` if present). Skips Windows exe. Skips Mac DMGs on non-Mac hosts. Does **not** attach the sample zip.
 6. Attach the Azure-signed exe on the draft (`gh release upload <tag> path/to/exe --clobber`) if Actions did not already.
-7. **Any box with recordings in `sampleData/`:** `ant upload-sample-data`. Encodes WebP thumbs when ffmpeg and `preview-src` videos are present, packs `jaer-sample-data.zip`, uploads it (`--clobber`). Help → Sample data and `/latest/download/jaer-sample-data.zip` need this. If WebP files changed, commit `sampleData/previews/*.webp`.
+7. **Any box with recordings in `sampleData/`:** for the cloud pipeline use `ant upload-sample-data-current` **before** tagging (copies onto each product/rc Release). Mini-era attach onto an existing product Release: `ant upload-sample-data`. Help → Sample data and `/latest/download/jaer-sample-data.zip` need the zip on the **Latest** product Release. If WebP files changed, commit `sampleData/previews/*.webp`.
 8. Notes: `ant upload-release-notes`. Publish: `gh release edit <VERSION.txt> --draft=false --latest`. Then `ant copy-updates-xml`, commit and push `updates.xml`.
 
 Media-only without tagging: stop after step 2 or 3. `ant upload-installers` **fails** if the GitHub Release is missing — create it with `ant create-draft-release` first.
 
 `ant release` is removed. See the table above.
 
-Upload extras: dry run `ant "-Djaer.upload.whatif=true" upload-installers`. Other tag: `ant "-Djaer.upload.tag=3.4.1" upload-installers`. PowerShell: **quote** `-Dname=value`. Sample zip: `ant upload-sample-data`.
+Upload extras: dry run `ant "-Djaer.upload.whatif=true" upload-installers`. Other tag: `ant "-Djaer.upload.tag=3.4.1" upload-installers`. PowerShell: **quote** `-Dname=value`. Sample zip for CI: `ant upload-sample-data-current`.
 
 Download counts: `ant count-asset-downloads`. After a rebuild, hashes in `updates.xml` change — repeat `copy-updates-xml`, upload, and push `updates.xml` or the updater checksum-fails.
 
@@ -116,8 +138,8 @@ spctl -a -t open --context context:primary-signature -vv \
 
 ant "-Djaer.upload.whatif=true" "-Djaer.upload.tag=$TAG" upload-installers
 ant "-Djaer.upload.tag=$TAG" upload-installers
-# Sample zip is a separate step (any box with recordings, not Mini-only):
-# ant upload-sample-data
+# Sample zip for CI (any box with recordings, not Mini-only):
+# ant upload-sample-data-current
 ```
 
 Default `upload-installers` skips the local Windows `.exe` and (off macOS) Mac `.dmg`. It does not create a tag. Do not `upload-installers-clobber-windows` after Azure has signed.

@@ -30,9 +30,12 @@ Unpack so files land **in** the folder you choose (zip root is the files, not a 
 
 1. Drop recordings into `sampleData/` (gitignored).
 2. After exporting a rendered MP4 or AVI of each recording (File → Export video), name it like the `.aedat4` (same stem) and drop it in `sampleData/preview-src/` (gitignored).
-3. `ant upload-sample-data` (needs `gh`, an existing GitHub Release for `VERSION.txt`, recordings in `sampleData/`).
+3. For the cloud release pipeline (`release.yml`): `ant upload-sample-data-current` (needs `gh` and recordings). That zips to `currentInstallers/<VERSION.txt>/jaer-sample-data.zip` and creates or updates GitHub Release **`sample-data-current`** (prerelease, never Latest). Assemble copies that zip onto each product/rc Release. Do this **before** tagging `N.N.N-rc.N`.
+4. Mini-era attach onto an existing **product** Release (`VERSION.txt` or `-Djaer.upload.tag=`): `ant upload-sample-data`. Needs `gh` and that Release already created. Encodes WebP thumbs when ffmpeg and preview sources are present, then `gh release upload` (`--clobber`). Dry run: `ant "-Djaer.upload.whatif=true" upload-sample-data`. Skip WebP: `ant "-Dskip.sampleData.previews=true" upload-sample-data`. Force a new zip: `ant "-Djaer.sampleData.force=true" upload-sample-data`.
 
-That encodes looping 5 s / 240 px WebP thumbs when ffmpeg and preview sources are present, zips recordings to `currentInstallers/<VERSION>/jaer-sample-data.zip`, writes `sampleData/SIZE.txt`, and `gh release upload`s the zip (`--clobber`). Dry run: `ant "-Djaer.upload.whatif=true" upload-sample-data`. Other tag: `ant "-Djaer.upload.tag=3.5.0" upload-sample-data`. Skip WebP: `ant "-Dskip.sampleData.previews=true" upload-sample-data`. Force a new zip: `ant "-Djaer.sampleData.force=true" upload-sample-data`.
+Do **not** `ant "-Djaer.upload.tag=sample-data-current" upload-sample-data`: that script looks for `currentInstallers/sample-data-current/jaer-sample-data.zip`, which pack never writes. Do **not** `ant create-draft-release` to make `sample-data-current` (that tags `VERSION.txt`).
+
+Dry run for the durable Release (packs locally, skips `gh`): `ant "-Djaer.upload.whatif=true" upload-sample-data-current`. Check: `gh release view sample-data-current`. Never `gh release edit sample-data-current --latest`.
 
 Standalone pieces (same as the upload pre-steps):
 
@@ -53,7 +56,7 @@ DVS128 DVS09 2006 mouse behavior over 3 days  60
 
 Commit the `.webp` files so the GitHub README table shows them. They are not packed into `jaer-sample-data.zip`.
 
-`upload-installers` does **not** attach the sample zip. Run `ant upload-sample-data`.
+`upload-installers` does **not** attach the sample zip. Cloud pipeline: `ant upload-sample-data-current` before tagging. Mini-era product Release: `ant upload-sample-data`.
 
 Installer checkbox sizes come from `SIZE.txt` at `install4jc` time (`-Djaer.sampleDataZipMiB` / `jaer.sampleDataUnpackedMiB`). `SIZE.txt` and `README.md` are install4j `fileEntry`s under `jaer/sampleData`.
 

@@ -33,6 +33,9 @@ Then open http://127.0.0.1:8080/
 3. **Actions → Deploy landing page → Run workflow** (or any later push under `website/`).
    The Pages screen stays empty (“Use a suggested workflow…”) until the first deploy
    finishes; that is normal.
+   A published product Release (`N.N.N`, no `-rc.N`, not `sample-data-current`) also
+   runs this workflow and rebakes `latest.json` from GitHub Latest. Prereleases are
+   skipped. The job always checks out `master` (Pages environment protection).
 4. After a green run, the project URL is https://sensorsini.github.io/jaer/
 5. Still on **Settings → Pages**, **Custom domain** = `jaerproject.org` → **Save**, then
    wait for the DNS check and **Enforce HTTPS**. Do this **before** (or right as) you

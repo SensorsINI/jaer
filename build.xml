@@ -87,9 +87,13 @@ Releases
   pack-sample-data        zip sampleData recordings, write SIZE.txt (skips if zip+name/size stamp match)
                           Force rebuild: ant "-Djaer.sampleData.force=true" pack-sample-data
   make-sample-data-previews  5s 240px WebP thumbs from sampleData/preview-src (needs ffmpeg)
-  upload-sample-data      WebP (if ffmpeg/sources) + pack-sample-data + gh upload zip (needs gh).
-                          Release must already exist. Dry run: ant "-Djaer.upload.whatif=true" upload-sample-data
-                          Other tag: ant "-Djaer.upload.tag=3.5.0" upload-sample-data
+  upload-sample-data-current
+                          pack-sample-data then create/update GitHub Release sample-data-current
+                          (prerelease, never Latest) with jaer-sample-data.zip. Required before
+                          tagging N.N.N-rc.N. Dry run: ant "-Djaer.upload.whatif=true" upload-sample-data-current
+  upload-sample-data      WebP (if ffmpeg/sources) + pack-sample-data + gh upload zip onto a
+                          product Release (VERSION.txt or -Djaer.upload.tag=). Release must already exist.
+                          Dry run: ant "-Djaer.upload.whatif=true" upload-sample-data
                           Skip WebP: ant "-Dskip.sampleData.previews=true" upload-sample-data
   release-windows-ci      Windows-only media, no confirm (Azure CI)
   install4j               generate-splash (VERSION.txt), then all-OS install4jc (needs dist/jAER.jar)
@@ -1436,6 +1440,25 @@ Then re-run:        ant install
         <antcall target="upload-installers">
             <param name="jaer.upload.clobberWindows" value="true"/>
         </antcall>
+    </target>
+
+    <target name="upload-sample-data-current" depends="checkos,pack-sample-data"
+            description="Pack recordings and put jaer-sample-data.zip on GitHub Release sample-data-current (never Latest).">
+        <echo message="Uploading jaer-sample-data.zip to GitHub Release sample-data-current (never Latest, whatif=${jaer.upload.whatif})."/>
+        <exec executable="powershell.exe" osfamily="windows" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg value="-NoProfile"/>
+            <arg value="-ExecutionPolicy"/>
+            <arg value="Bypass"/>
+            <arg value="-File"/>
+            <arg file="${basedir}/scripts/upload-sample-data-current.ps1"/>
+            <arg value="-WhatIf" if:true="${jaer.upload.whatif}"/>
+        </exec>
+        <exec executable="bash" osfamily="unix" searchpath="true"
+              failonerror="true" dir="${basedir}">
+            <arg file="${basedir}/scripts/upload-sample-data-current.sh"/>
+            <arg value="--what-if" if:true="${jaer.upload.whatif}"/>
+        </exec>
     </target>
 
     <target name="upload-sample-data" depends="checkos,-resolve-upload-tag"
