@@ -1,4 +1,5 @@
 # Unix .sh installer (production compression + shrinkRuntime). Artifacts only — does not attach to a GitHub Release.
+# install4j 13.1 matches the Mini. 13.0.2 jlink on ubuntu produced a ~378 MB .sh vs Mini ~220 MB.
 # Repo secret INSTALL4J_LICENSE (Actions → Secrets). Environment-only copies on macos-notarize /
 # azure-signing are not visible here. Do not run this against 3.5.0 Latest.
 # Prerequisites: .cursor/plans/ci_release_orchestration.plan.md
@@ -41,8 +42,11 @@ jobs:
       - name: Set up install4j
         uses: luangong/setup-install4j@v1
         with:
-          version: '13.0.2'
+          version: '13.1'
           license: ${{ secrets.INSTALL4J_LICENSE }}
+
+      - name: Check install4j
+        run: install4jc --version
 
       - name: Write install4j license
         env:
@@ -100,9 +104,36 @@ jobs:
             echo "Installer is only ${bytes} bytes; expected a bundled-JRE .sh" >&2
             exit 1
           fi
+          # Mini 3.5.0 unix .sh is ~220 MB. GHA 13.0.2 produced 378 MB (un-stripped JDK tree).
+          if [[ "$mib" -gt 280 ]]; then
+            echo "Installer is ${mib} MiB; expected ~220 MiB (Mini jlink ~71 MB linux tarball)." >&2
+            echo "install4j cache:" >&2
+            find "${XDG_CACHE_HOME:-$HOME/.cache}/install4j" -name 'linux-*.tar.gz' -ls >&2 || true
+            exit 1
+          fi
           head -n 8 "$f" || true
           echo "installer_name=$(basename "$f")" >> "$GITHUB_OUTPUT"
           echo "installer_mib=${mib}" >> "$GITHUB_OUTPUT"
+
+      - name: Report jlink JRE cache
+        if: always()
+        run: |
+          set -euo pipefail
+          cache="${XDG_CACHE_HOME:-$HOME/.cache}/install4j"
+          echo "install4j cache under $cache"
+          find "$cache" -name '*.tar.gz' -printf '%s %p\n' 2>/dev/null | sort || true
+          gen=$(find "$cache" -path '*/generated/*/linux-*.tar.gz' 2>/dev/null | head -1 || true)
+          if [[ -n "$gen" ]]; then
+            echo "Generated Linux JRE: $gen ($(du -h "$gen" | cut -f1))"
+            echo "jmods in archive: $(tar -tzf "$gen" | grep -c '/jmods/' || true)"
+            echo "src.zip in archive: $(tar -tzf "$gen" | grep -c 'src.zip' || true)"
+            rel=$(tar -tzf "$gen" | grep -E '(^|/)release$' | head -1 || true)
+            if [[ -n "$rel" ]]; then
+              tar -xOf "$gen" "$rel" | grep -E '^(JAVA_VERSION|MODULES)=' || true
+            fi
+          else
+            echo 'No generated linux-*.tar.gz found'
+          fi
 
       - name: Upload Unix installer
         uses: actions/upload-artifact@v7
@@ -124,7 +155,7 @@ jobs:
           {
             echo '## Linux installer (dry run)'
             echo "- Version: \`${{ steps.version.outputs.version }}\`"
-            echo "- Runner: \`ubuntu-latest\`"
+            echo "- Runner: \`ubuntu-latest\` / install4j 13.1"
             echo "- Installer: \`${{ steps.locate.outputs.installer_name }}\` (${{ steps.locate.outputs.installer_mib }} MiB)"
             echo '- Did **not** attach to a GitHub Release. Download artifact `jaer-linux`.'
             echo '- Filenames may still say `3_5_0`. Do not upload them onto Latest `3.5.0`.'
