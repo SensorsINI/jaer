@@ -132,76 +132,40 @@ jobs:
 
       - name: List payload inside the .sh
         if: always() && steps.locate.outcome == 'success'
+        continue-on-error: true
         run: |
           set -euo pipefail
-          f='${{ steps.locate.outputs.installer_path }}'
           python3 <<'PY'
-          import os, struct, subprocess, sys, tarfile, tempfile, zipfile
+          import gzip, os, re, tarfile
           from pathlib import Path
 
           sh = Path(os.environ['INSTALLER_SH'])
-          data = sh.read_bytes()
-          print(f'sh bytes={len(data)}')
-          magics = {
-              'gzip': b'\x1f\x8b',
-              'xz': b'\xfd7zXZ\x00',
-              'bzip2': b'BZh',
-              'zip': b'PK\x03\x04',
-          }
-          hits = []
-          for name, mag in magics.items():
-              i = 0
-              while True:
-                  j = data.find(mag, i)
-                  if j < 0:
-                      break
-                  hits.append((j, name))
-                  i = j + 1
-          hits.sort()
-          print('compression magic offsets (first 8):', hits[:8])
-          if not hits:
-              sys.exit('no gzip/xz/zip payload found in .sh')
-          off, kind = hits[0]
-          # skip tiny false positives in the shell header
-          for off, kind in hits:
-              if off > 200:
-                  break
-          else:
-              off, kind = hits[0]
-          print(f'using payload at offset {off} kind={kind}')
-          payload = data[off:]
-          tmp = Path(tempfile.mkdtemp(prefix='jaer-payload-'))
-          blob = tmp / ('payload.bin')
-          blob.write_bytes(payload)
-
-          def show_members(names_sizes):
-              names_sizes.sort(key=lambda x: -x[0])
-              print('=== payload largest 40 ===')
-              for sz, name in names_sizes[:40]:
-                  print(f'{sz:12d}  {name}')
-              print('=== opencv / libusb / jre natives ===')
-              for sz, name in names_sizes:
-                  n = name.lower()
-                  if any(s in n for s in ('opencv', 'libusb', 'usb4java', 'libjvm', 'jre', 'jogamp')):
-                      print(f'{sz:12d}  {name}')
-
-          if kind == 'zip':
-              with zipfile.ZipFile(blob) as z:
-                  show_members([(i.file_size, i.filename) for i in z.infolist()])
-          else:
-              # gzip/xz/bzip2 often wrap tar
-              tar_path = tmp / 'payload.tar'
-              if kind == 'gzip':
-                  subprocess.check_call(['gzip', '-dc', str(blob)], stdout=open(tar_path, 'wb'))
-              elif kind == 'xz':
-                  subprocess.check_call(['xz', '-dc', str(blob)], stdout=open(tar_path, 'wb'))
-              elif kind == 'bzip2':
-                  subprocess.check_call(['bzip2', '-dc', str(blob)], stdout=open(tar_path, 'wb'))
-              if tarfile.is_tarfile(tar_path):
-                  with tarfile.open(tar_path) as t:
-                      show_members([(m.size, m.name) for m in t.getmembers() if m.isfile()])
-              else:
-                  print(f'decompressed payload is not tar ({tar_path.stat().st_size} bytes)')
+          size = sh.stat().st_size
+          print(f'sh bytes={size}')
+          head = sh.read_bytes()[:65536]
+          text = head.decode('latin1', errors='replace')
+          m = re.search(r'tail -c (\d+)', text)
+          if not m:
+              raise SystemExit('no tail -c N in installer stub')
+          tail_len = int(m.group(1))
+          off = size - tail_len
+          print(f'sfx gzip offset={off} length={tail_len}')
+          with sh.open('rb') as f:
+              f.seek(off)
+              mag = f.read(3)
+          print(f'tail magic={mag.hex()}')
+          members = []
+          with sh.open('rb') as f:
+              f.seek(off)
+              with gzip.GzipFile(fileobj=f) as gz:
+                  with tarfile.open(fileobj=gz, mode='r|') as tar:
+                      for ent in tar:
+                          if ent.isfile():
+                              members.append((ent.size, ent.name))
+          members.sort(key=lambda x: -x[0])
+          print('=== sfx_archive largest ===')
+          for sz, name in members:
+              print(f'{sz:12d}  {name}')
           PY
         env:
           INSTALLER_SH: ${{ steps.locate.outputs.installer_path }}
