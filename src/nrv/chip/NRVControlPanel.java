@@ -128,6 +128,7 @@ public class NRVControlPanel extends JPanel {
         tabs.addTab("Pixel Biases", pixelBiasPanel);
         tabs.addTab("Register Table", registerPanel);
         DVSUserControlPanel.capTabbedPanePreferredWidth(tabs);
+        DVSUserControlPanel.selectUserFriendlyTab(tabs);
         add(tabs, BorderLayout.CENTER);
 
         addAncestorListener(new javax.swing.event.AncestorListener() {

@@ -2,12 +2,14 @@ package ch.unizh.ini.jaer.chip.retina;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.util.Locale;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
@@ -411,6 +413,73 @@ public class DVSUserControlPanel extends JPanel implements PropertyChangeListene
         }
         Dimension pref = tabs.getPreferredSize();
         tabs.setPreferredSize(new Dimension(PREFERRED_PANEL_WIDTH, pref.height));
+    }
+
+    /**
+     * True for the tab new users should see first: Davis/Prophesee/NRV
+     * {@code User-Friendly Controls} (possibly HTML-styled) or DVS/Cochlea
+     * {@code Basic controls}.
+     */
+    public static boolean isUserFriendlyTabTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return false;
+        }
+        String plain = title.replaceAll("(?is)<[^>]*>", " ").replace("&nbsp;", " ")
+                .replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+        return plain.startsWith("user-friendly") || plain.equals("basic controls");
+    }
+
+    /**
+     * Selects the user-friendly / basic-controls tab if present.
+     *
+     * @return selected index, or {@code -1} if this pane has no such tab
+     */
+    public static int selectUserFriendlyTab(JTabbedPane tabs) {
+        if (tabs == null) {
+            return -1;
+        }
+        for (int i = 0; i < tabs.getTabCount(); i++) {
+            if (isUserFriendlyTabTitle(tabs.getTitleAt(i))) {
+                tabs.setSelectedIndex(i);
+                Rectangle bounds = tabs.getBoundsAt(i);
+                if (bounds != null) {
+                    tabs.scrollRectToVisible(bounds);
+                }
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Finds a nested {@link JTabbedPane} that has a user-friendly tab and
+     * selects it. Hardware Configuration should not open on expert SPI / bias
+     * pages even when prefs or shipped XML restore a later tab index.
+     *
+     * @return true if a user-friendly tab was selected
+     */
+    public static boolean selectUserFriendlyTabIn(Component root) {
+        JTabbedPane pane = findTabbedPaneWithUserFriendlyTab(root);
+        return pane != null && selectUserFriendlyTab(pane) >= 0;
+    }
+
+    private static JTabbedPane findTabbedPaneWithUserFriendlyTab(Component root) {
+        if (root instanceof JTabbedPane tabs) {
+            for (int i = 0; i < tabs.getTabCount(); i++) {
+                if (isUserFriendlyTabTitle(tabs.getTitleAt(i))) {
+                    return tabs;
+                }
+            }
+        }
+        if (root instanceof Container c) {
+            for (Component child : c.getComponents()) {
+                JTabbedPane found = findTabbedPaneWithUserFriendlyTab(child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     /**

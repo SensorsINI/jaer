@@ -25,6 +25,7 @@ import javax.swing.JTabbedPane;
 
 import ch.unizh.ini.jaer.chip.retina.DVSAutoControllerPanel;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
@@ -554,12 +555,11 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         getVideoControl().addObserver(videoParameterControlPanel);
         getVideoControl().getContrastContoller().addObserver(videoParameterControlPanel);
 
-        // make special dual view panel for seeing effect of userFriendlyControls on bias currents
-        try {
-            configTabbedPane.setSelectedIndex(getChip().getPrefs().getInt("DavisBaseCamera.bgTabbedPaneSelectedIndex", 0));
-        } catch (final IndexOutOfBoundsException e) {
-            configTabbedPane.setSelectedIndex(0);
-        }
+        // Always open on User-Friendly Controls. Restoring
+        // DavisBaseCamera.bgTabbedPaneSelectedIndex from prefs or shipped XML
+        // (Davis346blue.xml stored 8) landed on Chip Config after extra tabs
+        // such as DVS Auto Controller were inserted.
+        DVSUserControlPanel.selectUserFriendlyTab(configTabbedPane);
         // add listener to store last selected tab
         configTabbedPane.addMouseListener(new MouseAdapter() {
             @Override

@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.CannotRedoException;
@@ -46,6 +47,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.XMLFileFilter;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
 import nrv.chip.NRVConfig;
 import prophesee.chip.PropheseeConfig;
 import nrv.usb.NRVSettingsFileFilter;
@@ -129,6 +131,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
+        DVSUserControlPanel.selectUserFriendlyTabIn(getContentPane());
 //        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu; // TODO assumes POTGUIControl is only type of control, not true anymore
 //        mainMenuBar.add(viewBiasOptionsMenu, 2);
 //        viewBiasOptionsMenu.addMenuListener(new MenuListener() {
@@ -184,6 +187,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setTitle(chip.getName() + " - " + lastFile.getName() + " - Biases ");
         //        saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
+        SwingUtilities.invokeLater(() -> DVSUserControlPanel.selectUserFriendlyTabIn(getContentPane()));
 
         // check and warn users about uninitialized biases (skip on first-hardware-use UX from AEViewer)
         if (chip.getBiasgen() != null) {

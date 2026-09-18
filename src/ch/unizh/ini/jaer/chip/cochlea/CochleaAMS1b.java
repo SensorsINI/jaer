@@ -47,6 +47,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
 
 /**
  * Extends Shih-Chii's AMS cochlea AER chip to
@@ -326,7 +327,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     pane.addTab("Basic controls", basicTab = new CochleaAMS1bBasicPanel(CochleaAMS1b.this));      //creates a new basic (user friendly) panel
                     pane.addTab("Expert controls", expertTab = new CochleaAMS1bControlPanel(CochleaAMS1b.this));  //creates a new expert panel with all biases
                     panel.add(pane, BorderLayout.CENTER);
-                    pane.setSelectedIndex(getPrefs().getInt("CochleaAMS1b.selectedBiasgenControlTab", 0));
+                    DVSUserControlPanel.selectUserFriendlyTab(pane);
                     pane.addMouseListener(new java.awt.event.MouseAdapter() {
 
                     @Override

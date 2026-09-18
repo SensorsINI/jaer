@@ -767,7 +767,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             pane.addTab("Expert controls", expertTab = super.buildControlPanel());
             DVSUserControlPanel.capTabbedPanePreferredWidth(pane);
             panel.add(pane, BorderLayout.CENTER);
-            pane.setSelectedIndex(getPrefs().getInt("DVS128.selectedBiasgenControlTab", 0));
+            DVSUserControlPanel.selectUserFriendlyTab(pane);
             pane.addMouseListener(new java.awt.event.MouseAdapter() {
 
                 @Override

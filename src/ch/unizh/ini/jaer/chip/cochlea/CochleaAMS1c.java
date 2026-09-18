@@ -38,6 +38,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
+import ch.unizh.ini.jaer.chip.retina.DVSUserControlPanel;
 import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 import net.sf.jaer.Description;
@@ -734,7 +735,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
             pane.addTab("Basic controls", basicTab = new CochleaAMS1cBasicPanel(CochleaAMS1c.this));      //creates a new basic (user friendly) panel
             pane.addTab("Expert controls", expertTab = new CochleaAMS1cControlPanel(CochleaAMS1c.this));  //creates a new expert panel with all biases
             panel.add(pane, BorderLayout.CENTER);
-            pane.setSelectedIndex(getPrefs().getInt("CochleaAMS1c.selectedBiasgenControlTab", 0));
+            DVSUserControlPanel.selectUserFriendlyTab(pane);
             pane.addMouseListener(new java.awt.event.MouseAdapter() {
 
             @Override

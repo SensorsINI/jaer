@@ -725,6 +725,7 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
             DVSAutoControllerPanel.addTab(tabs, getChip() instanceof AEChip ae ? ae : null);
             tabs.addTab("Raw biases", rawControlPanel);
             DVSUserControlPanel.capTabbedPanePreferredWidth(tabs);
+            DVSUserControlPanel.selectUserFriendlyTab(tabs);
             controlPanel = new JPanel(new BorderLayout());
             controlPanel.add(tabs, BorderLayout.CENTER);
         }

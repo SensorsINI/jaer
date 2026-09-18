@@ -203,7 +203,7 @@
             <entry key="DVS.Run" value="true"/>
             <entry key="DVS.WaitOnTransferStall" value="false"/>
             <entry key="Davis346blue.preferredDisplayMethod" value="net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod"/>
-            <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="8"/>
+            <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
             <entry key="DavisBaseCamera.showImageHistogram" value="true"/>
             <entry key="DavisVideoContrastController.autoContrastControlTimeConstantMs" value="0.0"/>
             <entry key="DavisVideoContrastController.brightness" value="0.0"/>
