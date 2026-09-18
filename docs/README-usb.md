@@ -449,6 +449,11 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
   requests `0xBA` / `0xAB`. Exceptional AEReader shutdown must
   `closeHostOffReaderThread` (same as FX2/FX3): a dead reader that does not
   `close()` leaves LIVE with no events.
+- `USBTransferThread` resubmits while the S5KRC1S fills bulk IN, so a 3 s join
+  times out and `abandonNativeHandle` leaves WinUSB claimed
+  (`LIBUSB_ERROR_ACCESS` on playback→LIVE / FIFO change). Stop the sensor
+  first: I2C `MODE_SELECT_r` (`0x0100`) = 0, join, then = 1 after new URBs
+  are queued (same pattern as EVK4 ISSD stop and Mini/Micro `DVS_RUN=0`).
 
 ### DVS128 Cypress FX2 libusb
 

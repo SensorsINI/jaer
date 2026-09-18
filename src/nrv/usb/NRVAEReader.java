@@ -201,12 +201,16 @@ public class NRVAEReader {
             return true;
         }
         log.info("Stopping NRV AEReader");
+        usbTransfer.interrupt();
+        monitor.quiesceStreamingForUsbRestart();
         final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
                 usbTransfer, STOP_JOIN_TIMEOUT_MS, log, "NRV AEReader");
         if (!stopped) {
             bufferLifecycle.markFailed();
-            monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
-                    "NRV AEReader did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms"));
+            if (!monitor.isClosing()) {
+                monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                        "NRV AEReader did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms"));
+            }
             return false;
         }
         usbTransfer = null;
@@ -516,6 +520,10 @@ public class NRVAEReader {
             if (usbTransfer == null) {
                 return true;
             }
+            // USBTransferThread resubmits until the list is empty; a live
+            // S5KRC1S never joins. ViewLoop pause does not write MODE_SELECT.
+            usbTransfer.interrupt();
+            monitor.quiesceStreamingForUsbRestart();
             final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
                     usbTransfer, joinTimeoutMs, log, "NRV AEReader");
             if (!stopped) {
@@ -530,6 +538,7 @@ public class NRVAEReader {
         public Config startSession(Config requested, long generation) throws Exception {
             syncUsbBufferSettings(requested.fifoSize, requested.numBuffers);
             startThreadInternal(false, generation);
+            monitor.resumeStreamingAfterUsbRestart();
             return requested;
         }
 

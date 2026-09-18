@@ -58,6 +58,16 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private static final int DEFAULT_USB_NUM_BUFFERS = 16;
     /** After hotplug, Linux can list the CX3 before config 1 / iface 0 exist. */
     private static final long CLAIM_RETRY_MS = 2000L;
+    /**
+     * S5KRC1S {@code MODE_SELECT_r}. Settings files write {@code 20:0100=01} (stream on).
+     * 0 is software standby. {@code USBTransferThread} resubmits while the sensor fills
+     * bulk IN, so FIFO replace and playback pause must stand the chip down before join.
+     */
+    public static final int REG_MODE_SELECT = 0x0100;
+    public static final int MODE_SELECT_STANDBY = 0;
+    public static final int MODE_SELECT_STREAM = 1;
+    /** Let in-flight URBs complete after stream-off before joining the reader. */
+    private static final long STREAM_OFF_DRAIN_MS = 50L;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(NRVHardwareInterface.class, "NewEvents", null, null);
 
@@ -93,9 +103,12 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private final USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
     private boolean isOpened = false;
+    private volatile boolean closing = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
     private boolean settingsApplied = false;
+    /** True after {@code MODE_SELECT=1} (settings file or resume). */
+    private volatile boolean sensorStreaming = false;
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private String[] stringDescriptors = new String[3];
@@ -187,6 +200,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             } else {
                 i2cTransport.writeReg(setting.getSlaveAddr(), setting.getRegAddr(), setting.getValue());
                 setting.setApplied(true);
+                if (setting.getSlaveAddr() == NRVConfig.I2C_SLAVE
+                        && setting.getRegAddr() == REG_MODE_SELECT) {
+                    sensorStreaming = (setting.getValue() & 0xff) != MODE_SELECT_STANDBY;
+                }
             }
         }
         loadedSettings = settings;
@@ -275,6 +292,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
                     + " (skipping USB string descriptors)");
 
             usbTransferFailed = false;
+            closing = false;
+            sensorStreaming = false;
             isOpened = true;
             LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
         } catch (HardwareInterfaceException | RuntimeException e) {
@@ -324,7 +343,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
      * Must not call {@link #close()} on the transfer thread (would deadlock).
      */
     void markUsbDisconnected(int transferStatus) {
-        if (usbTransferFailed) {
+        if (usbTransferFailed || closing) {
             return;
         }
         usbTransferFailed = true;
@@ -336,7 +355,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     void recoverFailedBufferReconfig(Exception cause) {
         log.warning("NRV USB reader session failed (" + cause + "); closing device instead of overlapping transfers");
-        if (!isOpen()) {
+        if (!isOpen() || closing) {
             return;
         }
         markUsbDisconnected(LibUsb.ERROR_IO);
@@ -344,6 +363,48 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     boolean isUsbTransferFailed() {
         return usbTransferFailed;
+    }
+
+    boolean isClosing() {
+        return closing;
+    }
+
+    /**
+     * Stand the S5KRC1S down ({@code MODE_SELECT=0}) so {@code USBTransferThread}
+     * can drain URBs. Call before {@code interruptAndJoin}. Same role as EVK4
+     * ISSD stop and Mini/Micro {@code DVS_RUN=0}.
+     */
+    void quiesceStreamingForUsbRestart() {
+        writeModeSelect(MODE_SELECT_STANDBY, true);
+    }
+
+    /**
+     * Restore streaming after URBs are queued (FIFO replace or playback→LIVE).
+     */
+    void resumeStreamingAfterUsbRestart() {
+        writeModeSelect(MODE_SELECT_STREAM, false);
+    }
+
+    private void writeModeSelect(int value, boolean drainAfterStandby) {
+        final NRVI2CTransport i2c = i2cTransport;
+        if (i2c == null || !isOpened) {
+            return;
+        }
+        try {
+            i2c.writeReg(NRVConfig.I2C_SLAVE, REG_MODE_SELECT, value);
+            sensorStreaming = value != MODE_SELECT_STANDBY;
+            log.info("NRV MODE_SELECT=" + value
+                    + (value == MODE_SELECT_STANDBY
+                            ? " (stream off before USB join)"
+                            : " (stream on)"));
+            if (drainAfterStandby && value == MODE_SELECT_STANDBY) {
+                Thread.sleep(STREAM_OFF_DRAIN_MS);
+            }
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV MODE_SELECT=" + value + ": " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void selectI2CTransport(short pid) throws HardwareInterfaceException {
@@ -440,42 +501,54 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             return;
         }
         final NRVAEReader reader;
-        final DeviceHandle handle;
-        boolean readerDead = true;
         synchronized (this) {
-            if (!isOpen()) {
+            if (!isOpened && deviceHandle == null) {
                 return;
             }
-            // Mark closed first so ViewLoop / acquire stop using this interface
-            // even if USB teardown blocks in native code. CX3/FX20 have no
-            // chip-reset I2C command in this tree (resetTimestamps is software).
-            log.info("NRV close: no hardware chip-reset on CX3/FX20; stopping AEReader only");
-            isOpened = false;
-            eventAcquisitionEnabled = false;
+            if (closing) {
+                return;
+            }
+            closing = true;
             reader = aeReader;
-            aeReader = null;
-            handle = deviceHandle;
-            deviceHandle = null;
-            deviceDescriptor = null;
-            i2cTransport = null;
-            settingsApplied = false;
-            usbTransferFailed = false;
-            aePacketRawPool.reset();
         }
-        if (reader != null) {
-            try {
-                readerDead = reader.stopThread();
-            } catch (Exception e) {
-                log.warning("Error stopping NRV AEReader on close: " + e.getMessage());
-                readerDead = false;
+        log.info("NRV close: MODE_SELECT=0 then stop AEReader");
+        boolean readerDead = true;
+        try {
+            quiesceStreamingForUsbRestart();
+            if (reader != null) {
+                try {
+                    readerDead = reader.stopThread();
+                } catch (Exception e) {
+                    log.warning("Error stopping NRV AEReader on close: " + e.getMessage());
+                    readerDead = false;
+                }
+            }
+        } finally {
+            // Keep I2C until after stream-off + join. ViewLoop sees closing=true.
+            synchronized (this) {
+                isOpened = false;
+                eventAcquisitionEnabled = false;
+                aeReader = null;
+                deviceDescriptor = null;
+                i2cTransport = null;
+                settingsApplied = false;
+                sensorStreaming = false;
+                usbTransferFailed = false;
+                aePacketRawPool.reset();
             }
         }
-        if (handle == null) {
-            return;
+        final DeviceHandle handle;
+        synchronized (this) {
+            handle = deviceHandle;
+            deviceHandle = null;
         }
-        if (UsbAsyncBulkReaderLifecycle.abandonNativeHandle(readerDead, log, "NRV")) {
-            return;
-        }
+        try {
+            if (handle == null) {
+                return;
+            }
+            if (UsbAsyncBulkReaderLifecycle.abandonNativeHandle(readerDead, log, "NRV")) {
+                return;
+            }
         // releaseInterface / LibUsb.close can hang forever on Windows WinUSB; bound it.
         Thread usbClose = new Thread(() -> {
             try {
@@ -502,6 +575,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         if (usbClose.isAlive()) {
             log.warning("NRV LibUsb.close/releaseInterface timed out after "
                     + LIBUSB_CLOSE_TIMEOUT_MS + " ms; abandoning daemon teardown thread");
+        }
+        } finally {
+            closing = false;
         }
     }
 
@@ -546,7 +622,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        if (usbTransferFailed) {
+        if (usbTransferFailed || closing) {
             throw new HardwareInterfaceException("NRV USB device disconnected");
         }
         if (!isOpen()) {
@@ -718,6 +794,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+        if (closing) {
+            return;
+        }
         if (enable) {
             ensureSettingsBeforeAcquisition();
             if (!settingsApplied) {
@@ -731,6 +810,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             }
             syncParserTimestampScale();
             aeReader.startThread();
+            resumeStreamingAfterUsbRestart();
         } else if (aeReader != null) {
             aeReader.stopThread();
         }

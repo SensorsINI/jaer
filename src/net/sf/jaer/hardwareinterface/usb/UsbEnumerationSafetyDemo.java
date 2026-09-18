@@ -34,6 +34,7 @@ public final class UsbEnumerationSafetyDemo {
         testHotplugUnplugDoesNotBlockReplug();
         testChipSwitchKeepsHotplugListener();
         testNrvClaimAfterHotplug();
+        testNrvQuiesceStreamingForUsbRestart();
         testFactoryCacheDoesNotWaitForScan();
         testWindowsUsbPollSchedule();
         testRememberLastInterfaceMap();
@@ -738,6 +739,60 @@ public final class UsbEnumerationSafetyDemo {
                 StandardCharsets.UTF_8);
         require(nrvFactory.contains("UsbIds.mergeLibUsbDeviceScan("),
                 "NRV factory refresh must keep Device refs by bus/addr, not Device.equals");
+    }
+
+    /**
+     * USBTransferThread never joins while S5KRC1S is filling bulk IN. FIFO
+     * replace and playback pause must write MODE_SELECT=0 before join
+     * (18 Sep 2026: 3 s timeout → abandonNativeHandle → ACCESS on Ctrl+W LIVE).
+     */
+    private static void testNrvQuiesceStreamingForUsbRestart() throws Exception {
+        Path hw = Paths.get("src", "nrv", "usb", "NRVHardwareInterface.java");
+        String hi = Files.readString(hw, StandardCharsets.UTF_8);
+        require(hi.contains("void quiesceStreamingForUsbRestart()"),
+                "NRV quiesceStreamingForUsbRestart writes MODE_SELECT=0");
+        require(hi.contains("void resumeStreamingAfterUsbRestart()"),
+                "NRV resumeStreamingAfterUsbRestart writes MODE_SELECT=1");
+        require(hi.contains("REG_MODE_SELECT = 0x0100"),
+                "MODE_SELECT_r is 0x0100 (settings files 20:0100=01)");
+        String close = methodBody(hw, "public void close() {", "public boolean isOpen()");
+        require(close.contains("quiesceStreamingForUsbRestart()"),
+                "NRV close stream-off while I2C is still live");
+        require(close.indexOf("quiesceStreamingForUsbRestart()")
+                        < close.indexOf("abandonNativeHandle"),
+                "MODE_SELECT=0 before abandoning a hung reader handle");
+        require(close.indexOf("quiesceStreamingForUsbRestart()")
+                        < close.indexOf("i2cTransport = null"),
+                "must not null I2C before MODE_SELECT=0");
+        String enable = methodBody(hw,
+                "public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {",
+                "public boolean isEventAcquisitionEnabled() {");
+        require(enable.indexOf("aeReader.startThread()")
+                        < enable.indexOf("resumeStreamingAfterUsbRestart()"),
+                "playback→LIVE must queue URBs before MODE_SELECT=1");
+        Path reader = Paths.get("src", "nrv", "usb", "NRVAEReader.java");
+        String stop = methodBody(reader,
+                "public boolean stopSession(long generation, long joinTimeoutMs) {",
+                "public Config startSession(Config requested, long generation) throws Exception {");
+        require(stop.contains("quiesceStreamingForUsbRestart()"),
+                "FIFO replace stopSession must MODE_SELECT=0 before join");
+        require(stop.indexOf("quiesceStreamingForUsbRestart()")
+                        < stop.indexOf("interruptAndJoin"),
+                "stream-off before interruptAndJoin");
+        String start = methodBody(reader,
+                "public Config startSession(Config requested, long generation) throws Exception {",
+                "public void applyIdleConfig(Config config) {");
+        require(start.indexOf("startThreadInternal(")
+                        < start.indexOf("resumeStreamingAfterUsbRestart()"),
+                "FIFO replace must not MODE_SELECT=1 until new URBs are queued");
+        String stopThread = methodBody(reader,
+                "public boolean stopThread() {",
+                "public void resetTimestamps() {");
+        require(stopThread.contains("quiesceStreamingForUsbRestart()"),
+                "playback pause stopThread must MODE_SELECT=0 before join");
+        require(stopThread.indexOf("quiesceStreamingForUsbRestart()")
+                        < stopThread.indexOf("interruptAndJoin"),
+                "stopThread stream-off before join");
     }
 
     /**
@@ -1483,8 +1538,8 @@ public final class UsbEnumerationSafetyDemo {
                 "Prophesee close best-attempt ISSD Stop/Destroy before abandoning the handle");
         Path nrv = Paths.get("src", "nrv", "usb", "NRVHardwareInterface.java");
         String nrvClose = methodBody(nrv, "public void close() {", "public boolean isOpen()");
-        require(nrvClose.contains("no hardware chip-reset"),
-                "NRV close logs that CX3/FX20 has no chip-reset I2C command");
+        require(nrvClose.contains("quiesceStreamingForUsbRestart()"),
+                "NRV close best-attempt MODE_SELECT=0 before abandoning the handle");
     }
 
     /**

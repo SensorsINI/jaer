@@ -21,6 +21,8 @@ Factory presets for biasing live in [`deviceSettings/NRV/`](../../deviceSettings
 
 NRV uses **pipelined async bulk transfer** (`USBTransferThread`): default 16 buffers × 128 KiB each. Parsing runs on the transfer callback **outside** the `AEPacketRawPool` lock; only a brief lock is taken to commit parsed events into the jAER packet buffer.
 
+The transfer thread resubmits every completed URB, so a streaming sensor never joins. FIFO/buffer changes and file-playback pause write I2C **`MODE_SELECT_r` (`0x0100`) = 0** (software standby) before joining, then **= 1** after new URBs are queued. Settings files already end with `20:0100=01` (stream on). Skipping that stand-down left WinUSB claimed (`LIBUSB_ERROR_ACCESS`) after Ctrl+W back to LIVE.
+
 Wire format is **4 bytes per USB word** (port of NRV SDK `PacketParser::S5KRC1SDataProcess`):
 
 - **Normal events** (`P=0`): column-address packets (`header 0x04`) set `posX`; individual events follow in later words.
