@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<install4j version="13.0.1" transformSequenceNumber="13">
+<install4j version="13.1.1" transformSequenceNumber="13">
   <directoryPresets config="../images/800w" />
   <!-- Production: shrinkRuntime=true and JRE module set. defaultModules all packed the
        whole JDK (~185 MB extra per media on GHA). Local ant install4j sets shrinkRuntime=false. -->
@@ -12,6 +12,11 @@
     <variables>
       <variable name="appleIssuerId" />
       <variable name="appleKeyId" />
+      <!-- Defaults so the install4j IDE can build without Ant. ant install4j* / release-*
+           override these from sampleData/SIZE.txt via -D. Keep in sync when the zip grows. -->
+      <variable name="jaer.sampleDataZipMiB" value="995" />
+      <variable name="jaer.sampleDataUnpackedMiB" value="995" />
+      <variable name="jaer.sampleDataEta" value="about 1.7 min at 10 MB/s Wi-Fi" />
     </variables>
     <codeSigning macEnabled="true" macPkcs12File="../signpath/macos-developer-id-application.p12" macNotarize="true" macApiIssuer="${compiler:appleIssuerId}" macApiKey="${compiler:appleKeyId}" macApiPrivateKey="../signpath/AuthKey.p8">
       <macAdditionalBinaries>
@@ -32,11 +37,6 @@
       </modules>
     </jreBundles>
   </application>
-  <compilerVariables>
-    <variable name="jaer.sampleDataZipMiB" value="0" />
-    <variable name="jaer.sampleDataUnpackedMiB" value="0" />
-    <variable name="jaer.sampleDataEta" value="about 1-2 min at 10 MB/s Wi-Fi" />
-  </compilerVariables>
   <files>
     <!-- Per-OS OpenCV slim jars (ant split-opencv-natives). Fat lib/opencv-4.8.1-0.jar
          is excluded below; each media keeps one fileset so calibration works offline. -->
@@ -54,6 +54,9 @@
     </roots>
     <mountPoints>
       <mountPoint id="24" />
+      <!-- 13.1 fileEntry has no subDirectory; destination is the mount point location. -->
+      <mountPoint id="9030" location="jaer" />
+      <mountPoint id="9031" location="jaer/sampleData" />
       <mountPoint id="9021" root="9011" />
       <mountPoint id="9022" root="9012" />
       <mountPoint id="9023" root="9013" />
@@ -226,9 +229,9 @@
            (iconImageFiles); fileEntry.subDirectory does not relocate them. -->
       <fileEntry mountPoint="24" file="../images/800w/SplashScreen.png" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
       <!-- Generated at jar time; build/ is excluded from the dirEntry. Next to VERSION.txt. -->
-      <fileEntry mountPoint="24" file="../build/classes/BUILDVERSION.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
-      <fileEntry mountPoint="24" file="../sampleData/README.md" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer/sampleData" />
-      <fileEntry mountPoint="24" file="../sampleData/SIZE.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer/sampleData" />
+      <fileEntry mountPoint="9030" file="../build/classes/BUILDVERSION.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <fileEntry mountPoint="9031" file="../sampleData/README.md" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
+      <fileEntry mountPoint="9031" file="../sampleData/SIZE.txt" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" />
       <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
       <dirEntry mountPoint="9021" file="../build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
       <dirEntry mountPoint="9022" file="../build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
@@ -250,11 +253,15 @@
           <statusLine x="45" y="776" text="Press ESC to abort startup" />
         </text>
       </splashScreen>
-      <!-- add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+). Valid on 9+. -->
-      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -Xmx10g -XX:+UseCompactObjectHeaders -XX:ErrorFile=${installer:sys.tmpdir}/jaer/hs_err_pid%p.log -XX:ReplayDataFile=${installer:sys.tmpdir}/jaer/replay_pid%p.log --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED">
+      <!-- add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+). Valid on 9+.
+           install4j 13.1 AOT cache: first Java 25+ run trains, later runs load it.
+           aotCachePath is a filename prefix, not a directory: %TEMP%/jaer/aot-<key>.aot
+           (same folder as hs_err). Off: INSTALL4J_NO_AOT_CACHE.
+           Do not enable AOT in archive media (training stdout is visible there). -->
+      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -Xmx10g -XX:+UseCompactObjectHeaders -XX:ErrorFile=${installer:sys.tmpdir}/jaer/hs_err_pid%p.log -XX:ReplayDataFile=${installer:sys.tmpdir}/jaer/replay_pid%p.log --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED" aotCache="true" useAotCachePath="true" aotCachePath="${launcher:sys.tempDir}/jaer/aot">
         <classPath>
           <!-- First on classpath so Loader is 1.5.10 even if leftover javacpp-1.4.jar remains in lib/. -->
-          <jarFile location="lib/javacpp-1.5.10.jar" failOnError="false" />
+          <archive location="lib/javacpp-1.5.10.jar" failOnError="false" />
           <scanDirectory location="dist" failOnError="false" />
           <scanDirectory location="jars" failOnError="false" />
           <scanDirectory location="lib" failOnError="false" />
@@ -1982,38 +1989,38 @@ return true;</property>
     <!-- installerName is the Finder .app (default is the long application name + " Installer").
          volumeName is the mounted disk. Next Mini ant install4j re-signs and re-notarizes. -->
     <macosFolder name="macOS Folder" id="38" architecture="amd64" installerName="jAER ${compiler:sys.version} Installer" volumeName="jAER ${compiler:sys.version} Installer">
-      <jreBundle usePack200="false" />
       <exclude>
         <entry filesetId="9001" />
         <entry filesetId="9002" />
         <entry filesetId="9004" />
       </exclude>
+      <jreBundle usePack200="false" />
     </macosFolder>
     <!-- Apple Silicon: distinct mediaFileName so install4j does not collide with id 38's jAER_macos_${version}.dmg.
          Keep id 38 for Intel so existing installs still match updates.xml. -->
     <macosFolder name="macOS Folder Apple Silicon" id="39" architecture="aarch64" mediaFileName="${compiler:sys.shortName}_macos_aarch64_${compiler:sys.version}" installerName="jAER ${compiler:sys.version} Installer" volumeName="jAER ${compiler:sys.version} Installer">
-      <jreBundle usePack200="false" />
       <exclude>
         <entry filesetId="9001" />
         <entry filesetId="9002" />
         <entry filesetId="9003" />
       </exclude>
+      <jreBundle usePack200="false" />
     </macosFolder>
     <unixInstaller name="Unix Installer" id="37">
-      <jreBundle usePack200="false" />
       <exclude>
         <entry filesetId="9001" />
         <entry filesetId="9003" />
         <entry filesetId="9004" />
       </exclude>
+      <jreBundle usePack200="false" />
     </unixInstaller>
     <windows name="Windows" id="26" architecture="64">
-      <jreBundle usePack200="false" />
       <exclude>
         <entry filesetId="9002" />
         <entry filesetId="9003" />
         <entry filesetId="9004" />
       </exclude>
+      <jreBundle usePack200="false" />
     </windows>
   </mediaSets>
   <buildIds>
