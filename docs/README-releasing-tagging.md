@@ -75,6 +75,7 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
 
    Wait for assemble (Release is a **draft**).
 9. **Approve** Environment [`publish-release`](https://github.com/SensorsINI/jaer/settings/environments) on that run. That job commits `updates.xml` and sets GitHub **Latest**. Check [Releases](https://github.com/SensorsINI/jaer/releases), in-app **Help → Check for updates**, and [jaerproject.org](https://jaerproject.org).
+10. **Package managers** — only now, with Latest 3.5.2 hashes. Download the public-tag exe and both DMGs (not the rc, not Actions artifacts). `Get-FileHash` / `shasum -a 256` into [`packaging/winget/3.5.2/`](../packaging/winget/) and [`packaging/homebrew/Casks/jaer.rb`](../packaging/homebrew/Casks/jaer.rb). Then `wingetcreate submit` and `gh repo create SensorsINI/homebrew-jaer`. Do **not** hash `3.5.2-rc.0`: this public tag rebuilt the media. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md).
 
 ## Tags are immutable
 

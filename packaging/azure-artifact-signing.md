@@ -56,6 +56,8 @@ Job takes ~30–50 minutes (install4j media). Download artifact **jaer-windows-a
 
 ## After a good dry run
 
-Attach that exe to the next published GitHub Release (do not clobber it with local `ant upload-installers`). Update winget `Publisher` to **Tobias Delbruck** and SHA256 from that file. Then `wingetcreate submit` for that version.
+`workflow_dispatch` on this workflow only uploads the Actions artifact. Production attaches via [`release.yml`](../.github/workflows/release.yml) assemble. Do not clobber a Release exe with local `ant upload-installers`.
+
+Winget: YAML `Publisher` is **Tobias Delbruck**. Fill SHA256 from the **Latest** GitHub asset, not this dry-run artifact and not an `-rc` tag (the public tag rebuilds media). Then `wingetcreate submit`. See [winget/README.md](winget/README.md).
 
 Microsoft Learn: [Artifact Signing quickstart](https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart), [GitHub OIDC](https://github.com/Azure/artifact-signing-action/blob/main/docs/OIDC.md).

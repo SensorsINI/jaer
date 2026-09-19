@@ -1,12 +1,15 @@
 cask "jaer" do
-  version "3.2.0"
+  version "3.5.2"
 
+  # PLACEHOLDER SHA256 (64 zeros). Do not publish SensorsINI/homebrew-jaer until
+  # GitHub Latest is 3.5.2 and these hashes are shasum -a 256 of that tag's DMGs.
+  # See packaging/homebrew/README.md. Public tag rebuilds media; do not hash an -rc.
   on_arm do
-    sha256 "dab9ef4892b095ee7e2f74581609fcc3a2629a8db8beb95336d4b93de79d3b07"
+    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
     url "https://github.com/SensorsINI/jaer/releases/download/#{version}/jAER_macos_aarch64_#{version.tr(".", "_")}.dmg"
   end
   on_intel do
-    sha256 "c3493d50a2c2b25147c376e830a7293fb463f285559e6cb45e9cd89ead863277"
+    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
     url "https://github.com/SensorsINI/jaer/releases/download/#{version}/jAER_macos_#{version.tr(".", "_")}.dmg"
   end
 
@@ -22,14 +25,15 @@ cask "jaer" do
   depends_on formula: "libusb"
   depends_on macos: :catalina
 
-  installer_app = "jaer - Java Tools for Address Event Representation Sensors and Processing Installer.app"
+  # install4j media 38/39 installerName: "jAER ${compiler:sys.version} Installer".
+  # Confirm with hdiutil attach (an rc DMG is OK for the name, not for sha256).
+  installer_app = "jAER #{version} Installer.app"
 
-  # Unsigned install4j stub is SIGKILL'd under quarantine; strip before -q.
+  # Quarantine can SIGKILL the install4j stub before -q; strip xattr first.
   preflight do
     system_command "/usr/bin/xattr", args: ["-cr", "#{staged_path}/#{installer_app}"]
   end
 
-  # Confirmed 2026-08-17 on the 3.2.0 Apple Silicon DMG (`hdiutil attach`).
   installer script: {
     executable: "#{installer_app}/Contents/MacOS/JavaApplicationStub",
     args:       ["-q", "-dir", "#{appdir}/jAER"],
@@ -49,7 +53,7 @@ cask "jaer" do
   caveats <<~EOS
     Live USB cameras on Apple Silicon need Homebrew libusb (already a dependency).
 
-    The unsigned install4j installer is launched with -q after clearing quarantine.
+    The install4j installer is launched with -q after clearing quarantine.
     Installed tree: #{appdir}/jAER (launcher symlink #{appdir}/jAER.app).
 
     Updates: brew upgrade --cask jaer

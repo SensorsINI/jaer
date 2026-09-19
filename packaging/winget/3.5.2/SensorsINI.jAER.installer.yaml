@@ -1,0 +1,24 @@
+# InstallerSha256 is a placeholder (64 zeros). Do not wingetcreate submit until
+# GitHub Latest is 3.5.2 and this hash is Get-FileHash of that tag's exe.
+# See packaging/winget/README.md.
+PackageIdentifier: SensorsINI.jAER
+PackageVersion: 3.5.2
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: exe
+Scope: machine
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+InstallerSwitches:
+  Silent: -q
+  SilentWithProgress: '-splash "Installing jAER"'
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_windows-x64_3_5_2.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.6.0
