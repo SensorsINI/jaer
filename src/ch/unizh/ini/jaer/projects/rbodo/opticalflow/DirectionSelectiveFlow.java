@@ -6,8 +6,8 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
-import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.event.PolarityEvent;
@@ -59,20 +59,38 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         if (!super.extractEventInfo(ein)) {
             return false;
         }
-        if (!(ein instanceof OrientationEventInterface)) {
+        if (!(ein instanceof OrientationEventInterface oei) || !oei.isHasOrientation()) {
             return false;
         }
         polValue = e.getPolarity() == PolarityEvent.Polarity.On ? 0 : 4;
-        ori = ((OrientationEventInterface) ein).getOrientation();
-        // Type information here is mixture of input orientation and polarity, 
-        // in order to match both characteristics.
-        type = (byte) (ori + polValue);
-        return true;
+        ori = oei.getOrientation();
+        // Type is orientation + polarity. Independent FlyEye clocks are not
+        // comparable, so fold camera into the lastTimesMap plane (16 types).
+        int camOff = 0;
+        int nTypes = 8;
+        if (independentTimestampCameras()) {
+            int cam = flyEyeCameraIndex(e);
+            if (cam >= 0) {
+                nTypes = 16;
+                camOff = cam * 8;
+            }
+        }
+        type = ori + polValue + camOff;
+        if (lastTimesMap == null || lastTimesMap.length == 0
+                || lastTimesMap[0][0].length != nTypes) {
+            ensureLastTimesMapTypes(nTypes);
+        }
+        return !recordLastTimes();
+    }
+
+    @Override
+    protected boolean recordsLastTimesInExtractEventInfo() {
+        return false;
     }
 
     synchronized void writeOutputEvent(byte motionDir, Object ein) {
         super.processGoodEvent();
-        eout.copyFrom((ApsDvsOrientationEvent) ein);
+        eout.copyFrom((BasicEvent) ein);
         eout.direction = motionDir;
         eout.dir = ApsDvsMotionOrientationEvent.unitDirs[motionDir];
     }

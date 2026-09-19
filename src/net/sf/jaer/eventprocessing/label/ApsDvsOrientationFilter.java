@@ -68,12 +68,12 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
         if ( in.getSize() == 0 ) return in;
 
         Class inputClass = in.getEventClass();
-        if ( inputClass == ApsDvsEvent.class) {
-            isBinocular = false;
-            checkOutputPacketEventType(ApsDvsOrientationEvent.class);
-        } else if( inputClass == BinocularEvent.class ) {
+        if ( BinocularEvent.class.isAssignableFrom(inputClass) ) {
             isBinocular = true;
             checkOutputPacketEventType(BinocularOrientationEvent.class);
+        } else if ( ApsDvsEvent.class.isAssignableFrom(inputClass) ) {
+            isBinocular = false;
+            checkOutputPacketEventType(ApsDvsOrientationEvent.class);
         } else { //Neither Polarity nor Binocular Event --> Wrong class used!
             log.log(Level.WARNING, "wrong input event class {0} in the input packet {1}, disabling filter", new Object[]{inputClass, in});
             setFilterEnabled(false);
@@ -106,7 +106,7 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
             
             int    x = e.x >>> subSampleShift;
             int    y = e.y >>> subSampleShift;
-            int type = e.getType();
+            int type = lastTimesMapTypeIndex(e);
             
             //TODO: Is this check really necessary? Should those special events being marked 'special'? (They would have already being catched above)
 //            if (type >= NUM_TYPES || e.x < 0||e.y < 0) {
@@ -127,6 +127,9 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
             }
             if(x<0||y<0||type<0){
                 log.warning("negative coordinate for event "+e.toString());
+                continue;
+            }
+            if (type >= lastTimesMap[x][y].length) {
                 continue;
             }
             lastTimesMap[x][y][type] = e.timestamp;

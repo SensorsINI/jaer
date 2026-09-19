@@ -315,6 +315,8 @@ public class MotionFlowStatistics {
          */
         public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans, sdGlobalTrans,
                 sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed, covGlobalSpeed;
+        /** SEM of the global translation mean: σ/√N of local vectors in the window. */
+        public float semGlobalVx, semGlobalVy;
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion, globalSpeed;
         private Point2D.Float flowVelocityPps = new Point2D.Float();
         private int rx, ry;
@@ -351,7 +353,7 @@ public class MotionFlowStatistics {
 
         public void setWindowSize(int windowSize) {
             this.windowSize = windowSize;
-            globalVy.setWindowSize(windowSize);
+            globalVx.setWindowSize(windowSize);
             globalVy.setWindowSize(windowSize);
             globalRotation.setWindowSize(windowSize);
             globalExpansion.setWindowSize(windowSize);
@@ -371,12 +373,17 @@ public class MotionFlowStatistics {
         void reset(int sX, int sY) {
             subSizeX = sX;
             subSizeY = sY;
-            globalVy.clear();
+            globalVx.clear();
             globalVy.clear();
             globalRotation.clear();
             globalExpansion.clear();
             globalSpeed.clear();
             globalMotionAngleFrequency.clear();
+            meanGlobalVx = sdGlobalVx = meanGlobalVy = sdGlobalVy = 0;
+            semGlobalVx = semGlobalVy = 0;
+            meanGlobalRotation = meanGlobalTrans = sdGlobalTrans = 0;
+            sdGlobalRotation = meanGlobalExpansion = sdGlobalExpansion = 0;
+            meanGlobalSpeed = sdGlobalSpeed = covGlobalSpeed = 0;
         }
 
         /**
@@ -488,6 +495,8 @@ public class MotionFlowStatistics {
             sdGlobalVx = (float) globalVx.getStandardDeviation();
             meanGlobalVy = (float) globalVy.getMean();
             sdGlobalVy = (float) globalVy.getStandardDeviation();
+            semGlobalVx = semOf(globalVx);
+            semGlobalVy = semOf(globalVy);
             meanGlobalTrans = (float) Math.sqrt(meanGlobalVx * meanGlobalVx + meanGlobalVy * meanGlobalVy);
             sdGlobalTrans = (float) Math.sqrt(sdGlobalVx * sdGlobalVx + sdGlobalVy * sdGlobalVy);
             meanGlobalRotation = (float) globalRotation.getMean();
@@ -519,6 +528,16 @@ public class MotionFlowStatistics {
 //            globalRotation.clear();
 //            globalExpansion.clear();
 //            globalSpeed.clear();
+        }
+
+        /** Standard error of the mean: sample σ/√N, or 0 if N&lt;2. */
+        private static float semOf(Measurand m) {
+            long n = m.getN();
+            double sd = m.getStandardDeviation();
+            if (n < 2 || Double.isNaN(sd) || sd <= 0) {
+                return 0;
+            }
+            return (float) (sd / Math.sqrt(n));
         }
 
         @Override

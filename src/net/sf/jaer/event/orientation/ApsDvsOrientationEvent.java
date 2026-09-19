@@ -53,7 +53,12 @@ public class ApsDvsOrientationEvent extends ApsDvsEvent implements OrientationEv
     @Override public void copyFrom(BasicEvent src){
         PolarityEvent e=(PolarityEvent)src;
         super.copyFrom(e);
-        if(e instanceof ApsDvsOrientationEvent) this.orientation=((ApsDvsOrientationEvent)e).orientation;
+        if (e instanceof OrientationEventInterface ori) {
+            this.hasOrientation = ori.isHasOrientation();
+            if (this.hasOrientation) {
+                this.orientation = ori.getOrientation();
+            }
+        }
     }
     
     /** gets the Orientation of the event

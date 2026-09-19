@@ -10,11 +10,13 @@ import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Random;
 
+import ch.unizh.ini.jaer.chip.flyeye.FlyEye;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.DvsOrientationEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -36,8 +38,8 @@ import net.sf.jaer.util.VectorHistogram;
  * 2 is a vertical edge (rotated 90 deg),                       <br>
  * 3 is tilted up and to left (rotated 135 deg from horizontal edge).
  * <p>
- * The filter takes either PolarityEvents or BinocularEvents to create
- * DvsOrientationEvent or BinocularEvents.
+ * The filter takes PolarityEvent (including subclasses such as FlyEyeEvent)
+ * or BinocularEvents to create DvsOrientationEvent or BinocularEvents.
  *
  * @author tobi/phess
  */
@@ -217,11 +219,35 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         }
     }
 
+    /**
+     * Third dimension of {@code lastTimesMap}: 2 = On/Off for a single camera
+     * or electrically synced FlyEye; 4 = camera×polarity when FlyEye clocks
+     * are independent.
+     */
+    protected int lastTimesMapPolarityCount() {
+        if (chip instanceof FlyEye fly && !fly.isElectricallyTimestampSynced()) {
+            return 4;
+        }
+        return 2;
+    }
+
+    /**
+     * lastTimesMap type index. Single-camera and synced FlyEye use On/Off
+     * only; independent FlyEye clocks use {@link PolarityEvent#getType()}.
+     */
+    protected int lastTimesMapTypeIndex(PolarityEvent e) {
+        if (lastTimesMapPolarityCount() == 4) {
+            return e.getType();
+        }
+        return e.getPolarityType();
+    }
+
     protected void checkMaps(EventPacket packet) {
+        int nPol = lastTimesMapPolarityCount();
         if ((lastTimesMap == null)
                 || (lastTimesMap.length != chip.getSizeX())
                 || (lastTimesMap[0].length != chip.getSizeY())
-                || (lastTimesMap[0][0].length != 2)) { // changed to 2 for PolarityEvents
+                || (lastTimesMap[0][0].length != nPol)) {
             allocateMaps();
         }
     }
@@ -232,12 +258,13 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         }
 
         if (chip != null) {
-            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()][2]; // fixed to 2 for PolarityEvents
+            int nPol = lastTimesMapPolarityCount();
+            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()][nPol];
             oriHistoryMap = new float[chip.getSizeX()][chip.getSizeY()];
             for (float[] element : oriHistoryMap) {
                 Arrays.fill(element, -1f);
             }
-            log.info(String.format("allocated int[%d][%d][%d] array for last event times and float[%d][%d] array for orientation history", chip.getSizeX(), chip.getSizeY(), 2, chip.getSizeX(), chip.getSizeY()));
+            log.info(String.format("allocated int[%d][%d][%d] array for last event times and float[%d][%d] array for orientation history", chip.getSizeX(), chip.getSizeY(), nPol, chip.getSizeX(), chip.getSizeY()));
         }
         computeRFOffsets();
     }

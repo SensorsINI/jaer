@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
+import ch.unizh.ini.jaer.chip.flyeye.FlyEye;
 import ch.unizh.ini.jaer.projects.davis.calibration.SingleCameraCalibration;
 import ch.unizh.ini.jaer.projects.minliu.PatchMatchFlow;
 import com.jmatio.io.MatFileReader;
@@ -42,10 +43,12 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FlyEyeEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
+import net.sf.jaer.event.orientation.DvsOrientationEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
@@ -129,6 +132,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected boolean showFilterName = getBoolean("showFilterName", true);
     protected int timestampGapThresholdUs = getInt("timestampGapThresholdUs", 10000);
     protected int timestampGapToBeRemoved = 0;
+    /** Ignore lastTimesMap inversions smaller than this (USB / dual-camera jitter). */
+    protected int nonmonotonicSlackUs = getInt("nonmonotonicSlackUs", 1000);
+    private static final long NONMONOTONIC_WARN_INTERVAL_NS = 10_000_000_000L;
+    private long lastNonmonotonicWarnNs;
+    private int nonmonotonicSuppressed;
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -145,9 +153,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private boolean displayGlobalMotionAngleHistogram = getBoolean("displayGlobalMotionAngleHistogram", false);
     protected int statisticsWindowSize = getInt("statisticsWindowSize", 10000);
 
-    // global font size
+    // global font size (chip pixels). First use auto-fits to chip width like AbstractNoiseFilter.
     @Preferred
-    private int fontSize = getInt("fontSize", 6);
+    private float fontSize = getFloat("fontSize", defaultFontSize());
+    private boolean fontSizeChecked = false;
+    private boolean fontFitting = false;
+    private static final String PREF_FONT_AUTO = "fontSizeAuto";
+    private static final float FONT_CHAR_ADVANCE = 0.55f;
+    private static final int FONT_OVERLAY_CHARS = 42;
 
     protected EngineeringFormat engFmt = new EngineeringFormat();
 
@@ -226,9 +239,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected MotionField motionField = new MotionField();
 
     /**
-     * Relative scale of displayed global flow vector
+     * Display scale of the global translation arrow relative to local vectors
+     * ({@code ppsScale}). Local vectors at {@code ppsScale=0.1} stay readable;
+     * the global arrow is drawn this many times longer.
      */
-    protected static final float GLOBAL_MOTION_DRAWING_SCALE = 1;
+    protected static final float GLOBAL_MOTION_DRAWING_SCALE = 10;
+
+    /** Line width of the global translation arrow relative to local vectors. */
+    protected static final float GLOBAL_MOTION_LINE_WIDTH_SCALE = 5;
 
     /**
      * Used for logging motion vector events to a text log file
@@ -308,7 +326,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
 
-        setPropertyTooltip(dispTT, "fontSize", "font size for annotations");
+        setPropertyTooltip(dispTT, "fontSize", "Font size for annotations (chip pixels, fractional). On first use it is chosen to fit the chip width; change this to stop auto-sizing.");
         setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
@@ -360,7 +378,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(motionFieldTT, "motionFieldDiffusionEnabled", "Enables an event-driven diffusive averaging of motion field values");
         setPropertyTooltip(motionFieldTT, "decayTowardsZeroPeridiclly", "Decays motion field values periodically (with update interval of the time constant) towards zero velocity, i.e. enforce zero flow prior");
 
-        setPropertyTooltip(miscTT, "warnNonmonotonicTimestamps", "Warn about nonmonotonic or other suspicious event timestamps");
+        setPropertyTooltip(miscTT, "warnNonmonotonicTimestamps", "Warn about nonmonotonic timestamps at most once per 10 s (0.1 Hz); inversions within nonmonotonicSlackUs still skip updating lastTimesMap");
+        setPropertyTooltip(miscTT, "nonmonotonicSlackUs", "Ignore lastTimesMap inversions smaller than this (us). USB jitter is typically a few us.");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -1069,6 +1088,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
+        lastNonmonotonicWarnNs = 0;
+        nonmonotonicSuppressed = 0;
         setXMax(chip.getSizeX());
         setYMax(chip.getSizeY());
         timestampGapToBeRemoved = 0;
@@ -1085,8 +1106,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             chip.getAeViewer().getSupport().addPropertyChangeListener(this); // AEViewer refires these events for convenience
         }
 
+        if (!isPreferenceStored("fontSize")) {
+            fontSize = defaultFontSize();
+            fontSizeChecked = false;
+        } else {
+            fontSize = getFloat("fontSize", defaultFontSize());
+            fontSizeChecked = false;
+        }
+
         allocateMaps();
-        setMeasureAccuracy(getBoolean("measureAccuracy", true));
+        setMeasureAccuracy(getBoolean("measureAccuracy", false));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
         setDisplayGlobalMotion(getBoolean("displayGlobalMotion", true));// these setters set other flags, so call them to set these flags to default values
         resetFilter();
@@ -1101,13 +1130,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 break;
             case AEInputStream.EVENT_REWOUND:
-//            case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
             case AEInputStream.EVENT_REPOSITIONED:
                 if (isFilterEnabled()) {
-                    log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
+                    log.info(evt.getPropertyName() + ": resetting optical flow state");
                     doToggleOffLogGlobalMotionFlows();
                     doToggleOffLogMotionVectorEvents();
                     doToggleOffLogAccuracyStatistics();
+                    resetFilter();
                 }
                 break;
             case AEViewer.EVENT_FILEOPEN:
@@ -1240,6 +1269,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             return;
         }
 
+        maybeFitFontToChipWidth();
+
         // Draw individual motion vectors
         if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
             gl.glEnable(GL.GL_BLEND);
@@ -1292,31 +1323,32 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
 
         if (displayGlobalMotion) {
-            gl.glLineWidth(motionVectorLineWidthPixels);
-            gl.glColor3f(1, 1, 1);
-
-            // Draw global translation vector
+            float gScale = ppsScale * GLOBAL_MOTION_DRAWING_SCALE;
+            float gVx = motionFlowStatistics.getGlobalMotion().meanGlobalVx;
+            float gVy = motionFlowStatistics.getGlobalMotion().meanGlobalVy;
+            gl.glLineWidth(motionVectorLineWidthPixels * GLOBAL_MOTION_LINE_WIDTH_SCALE);
+            // One-pixel drop shadow, then the arrow (local vectors are unchanged).
             gl.glPushMatrix();
-            DrawGL.drawVector(gl, sizex / 2, sizey / 2,
-                    motionFlowStatistics.getGlobalMotion().meanGlobalVx,
-                    motionFlowStatistics.getGlobalMotion().meanGlobalVy,
-                    4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
+            gl.glColor3f(0, 0, 0);
+            DrawGL.drawVector(gl, sizex / 2 + 1, sizey / 2 - 1, gVx, gVy, 4, gScale);
+            gl.glPopMatrix();
+            gl.glPushMatrix();
+            gl.glColor3f(1, 1, 1);
+            DrawGL.drawVector(gl, sizex / 2, sizey / 2, gVx, gVy, 4, gScale);
+            gl.glPopMatrix();
             String flowMagPps = engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
             String globMotionString = String.format("mean=%s px/s (%s N=%,d)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs.", getStatisticsWindowSize());
-//            gl.glRasterPos2i(2, 10);
-//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
-            gl.glPopMatrix();
             DrawGL.drawString(fontSize, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2 - 1, .5f, Color.black, globMotionString);
-            DrawGL.drawString(fontSize, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
-//            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
+            DrawGL.drawString(fontSize, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString);
 
-            // draw quartiles statistics ellipse
+            // SEM ellipse of the global mean (σ/√N), same scale as the arrow
+            gl.glLineWidth(motionVectorLineWidthPixels);
+            gl.glColor3f(1, 1, 1);
             gl.glPushMatrix();
-            gl.glTranslatef(sizex / 2 + motionFlowStatistics.getGlobalMotion().meanGlobalVx * ppsScale,
-                    sizey / 2 + motionFlowStatistics.getGlobalMotion().meanGlobalVy * ppsScale,
-                    0);
-            DrawGL.drawEllipse(gl, 0, 0, (float) motionFlowStatistics.getGlobalMotion().sdGlobalVx * ppsScale,
-                    (float) motionFlowStatistics.getGlobalMotion().sdGlobalVy * ppsScale,
+            gl.glTranslatef(sizex / 2 + gVx * gScale, sizey / 2 + gVy * gScale, 0);
+            DrawGL.drawEllipse(gl, 0, 0,
+                    motionFlowStatistics.getGlobalMotion().semGlobalVx * gScale,
+                    motionFlowStatistics.getGlobalMotion().semGlobalVy * gScale,
                     0, 16);
             gl.glPopMatrix();
 
@@ -1389,9 +1421,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
         if (measureAccuracy) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(-20);
-//            MultilineAnnotationTextRenderer.setDefaultScale();
-            MultilineAnnotationTextRenderer.setFontSize(6);
-//            MultilineAnnotationTextRenderer.setFontSize(24);
+            MultilineAnnotationTextRenderer.setFontSize(fontSize);
             String s = String.format("Accuracy statistics:%n%s%n%s%n%s%n%s",
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE:", "px/s"),
                     motionFlowStatistics.endpointErrorRel.graphicsString("AREE:", "%"),
@@ -1490,7 +1520,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * |refractoryPeriodUs). Does NOT check for events that are too old relative
      * to the current event.
      * <p>
-     * If the event is nonmonotonic, triggers a resetFilter()
+     * Pixel lastTimesMap is updated by {@link #recordLastTimes()} after
+     * {@code x}, {@code y}, and {@code type} are set for this event.
      *
      * @return true if invalid timestamp, older than refractoryPeriodUs ago
      */
@@ -1501,7 +1532,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
         int ts = e.getTimestamp();
         final int dt = ts - prevTs;
-        if (timestampGapThresholdUs > 0 && (dt > timestampGapThresholdUs)) {
+        // Dual independent clocks are not a "recording gap"; subtracting it
+        // pulls the other camera's ticks into the first camera's timebase.
+        if (timestampGapThresholdUs > 0 && dt > timestampGapThresholdUs && !independentTimestampCameras()) {
             timestampGapToBeRemoved += dt;
             log.warning(String.format("For event %s,%ndeteceted timestamp gap of %,dus which is greater than timestampGapThresholdUs (%,dus). timestampGapToBeRemoved=%,dus now",
                     e.toString(), dt, timestampGapThresholdUs, timestampGapToBeRemoved));
@@ -1509,15 +1542,52 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             return false;
         }
         prevTs = ts;
-        lastTs = lastTimesMap[e.x][e.y][e.type];
-        if (ts < lastTs) {
+        return false;
+    }
+
+    /**
+     * Record this event in {@code lastTimesMap[x][y][type]}. Call after
+     * {@code type} is final (polarity, or orientation+polarity).
+     *
+     * @return true if the event should be skipped (within refractoryPeriodUs of
+     * the previous event of this type at this pixel)
+     */
+    protected boolean recordLastTimes() {
+        if (lastTimesMap == null || x < 0 || y < 0
+                || x >= lastTimesMap.length || y >= lastTimesMap[0].length
+                || type < 0 || type >= lastTimesMap[0][0].length) {
+            return false;
+        }
+        lastTs = lastTimesMap[x][y][type];
+        if (lastTs != Integer.MIN_VALUE && ts < lastTs) {
             int dtMap = ts - lastTs;
-            log.warning(String.format("Nonmonotonic timestamp in pixel lastTimesMap:%n  For event %s,%n   nonmontoic timestamp ts=%,d < lastTs=%,d (dt=%,dus)", e.toString(), ts, lastTs, dtMap));
+            nonmonotonicSuppressed++;
+            long now = System.nanoTime();
+            if (warnNonmonotonicTimestamps && now - lastNonmonotonicWarnNs >= NONMONOTONIC_WARN_INTERVAL_NS) {
+                double sec = lastNonmonotonicWarnNs == 0L ? 1.0
+                        : (now - lastNonmonotonicWarnNs) * 1e-9;
+                if (sec < 0.001) {
+                    sec = 0.001;
+                }
+                log.warning(String.format(
+                        "Nonmonotonic lastTimesMap: %,d inversions in the last %.2fs (%.0f/s). Example:%n  %s%n   type=%d ts=%,d < lastTs=%,d (dt=%,dus)",
+                        nonmonotonicSuppressed, sec, nonmonotonicSuppressed / sec,
+                        e.toString(), type, ts, lastTs, dtMap));
+                lastNonmonotonicWarnNs = now;
+                nonmonotonicSuppressed = 0;
+            }
             return false;
         }
         lastTimesMap[x][y][type] = ts;
-
         return ts < lastTs + refractoryPeriodUs;
+    }
+
+    /**
+     * Subclasses that change {@link #type} after {@code super.extractEventInfo}
+     * should return false and call {@link #recordLastTimes()} themselves.
+     */
+    protected boolean recordsLastTimesInExtractEventInfo() {
+        return true;
     }
 
     /**
@@ -1532,13 +1602,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
 
-        if (warnNonmonotonicTimestamps && isInvalidTimestamp(e)) {
-            return false;
-        }
         ts = e.timestamp - timestampGapToBeRemoved;
         x = e.x >> subSampleShift;
         y = e.y >> subSampleShift;
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
+        // Independent FlyEye clocks must not share a lastTimesMap plane.
+        // DirectionSelectiveFlow records after it builds ori+pol+camera (16 types).
+        if (recordsLastTimesInExtractEventInfo() && independentTimestampCameras()) {
+            int cam = flyEyeCameraIndex(e);
+            if (cam >= 0) {
+                ensureLastTimesMapTypes(4);
+                type += cam * 2;
+            }
+        }
+
+        if (warnNonmonotonicTimestamps && isInvalidTimestamp(e)) {
+            return false;
+        }
+        if (recordsLastTimesInExtractEventInfo() && recordLastTimes()) {
+            return false;
+        }
         return true;
     }
 
@@ -2943,6 +3026,55 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         putInt("timestampGapThresholdUs", timestampGapThresholdUs);
     }
 
+    public int getNonmonotonicSlackUs() {
+        return nonmonotonicSlackUs;
+    }
+
+    public void setNonmonotonicSlackUs(int nonmonotonicSlackUs) {
+        if (nonmonotonicSlackUs < 0) {
+            nonmonotonicSlackUs = 0;
+        }
+        this.nonmonotonicSlackUs = nonmonotonicSlackUs;
+        putInt("nonmonotonicSlackUs", nonmonotonicSlackUs);
+    }
+
+    /** FlyEye with no sync cable: left/right ticks are not comparable. */
+    protected boolean independentTimestampCameras() {
+        return chip instanceof FlyEye fly && !fly.isElectricallyTimestampSynced();
+    }
+
+    /**
+     * 0=left, 1=right, or {@code -1} if the event is not camera-tagged.
+     */
+    protected int flyEyeCameraIndex(PolarityEvent e) {
+        if (!independentTimestampCameras()) {
+            return -1;
+        }
+        if (e instanceof FlyEyeEvent fe) {
+            return fe.camera == FlyEyeEvent.Camera.RIGHT ? 1 : 0;
+        }
+        if (e instanceof DvsOrientationEvent de && de.camera >= 0) {
+            return de.camera;
+        }
+        return -1;
+    }
+
+    /**
+     * Reallocate lastTimesMap if the type-plane count changed (e.g. FlyEye
+     * independent clocks use 16 = 4 ori × 2 pol × 2 cameras).
+     */
+    protected void ensureLastTimesMapTypes(int n) {
+        if (n < 1 || subSizeX <= 0 || subSizeY <= 0) {
+            return;
+        }
+        numInputTypes = n;
+        if (lastTimesMap == null || lastTimesMap.length != subSizeX
+                || lastTimesMap[0].length != subSizeY
+                || lastTimesMap[0][0].length != n) {
+            allocateMaps();
+        }
+    }
+
     /**
      * @return the displayGlobalMotionAngleHistogram
      */
@@ -2974,18 +3106,72 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     /**
-     * @return the fontSize
+     * Heuristic font so a typical overlay line fills the chip width. First
+     * annotate then measures with {@link DrawGL#fontSizeToFitWidth}.
      */
-    public int getFontSize() {
-        return fontSize;
+    protected float defaultFontSize() {
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0) {
+            return 6f;
+        }
+        float fs = (sizeX * 0.96f) / (FONT_OVERLAY_CHARS * FONT_CHAR_ADVANCE);
+        return Math.max(DrawGL.MIN_FONT_SIZE, Math.min(fs, 48f));
     }
 
     /**
-     * @param fontSize the fontSize to set
+     * Pick a font that fills the chip width. Runs while the auto flag is set
+     * (first use, or after Defaults). A user change of {@code fontSize} clears
+     * the auto flag.
      */
-    public void setFontSize(int fontSize) {
+    private void maybeFitFontToChipWidth() {
+        if (fontSizeChecked) {
+            return;
+        }
+        if (!getBoolean(PREF_FONT_AUTO, true)) {
+            fontSizeChecked = true;
+            return;
+        }
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0) {
+            return;
+        }
+        String[] lines = {
+            "mean=+999.9 px/s (abs. N=10,000)",
+            "999.9 px/s avg. speed and OF vector scale",
+            "AEE: mean: 999.99 median: 999.99 quartiles:[999.9, 999.9]"
+        };
+        try {
+            float start = Math.max(Math.max(24f, sizeX / 4f), fontSize);
+            float fitted = DrawGL.fontSizeToFitWidth(start, lines, sizeX * 0.99f);
+            fontFitting = true;
+            try {
+                setFontSize(fitted);
+                putBoolean(PREF_FONT_AUTO, true);
+            } finally {
+                fontFitting = false;
+            }
+            fontSizeChecked = true;
+        } catch (RuntimeException e) {
+            // TextRenderer needs a current GL context; retry next frame
+        }
+    }
+
+    public float getFontSize() {
+        return fontSize;
+    }
+
+    public void setFontSize(float fontSize) {
+        float old = this.fontSize;
+        if (fontSize < DrawGL.MIN_FONT_SIZE) {
+            fontSize = DrawGL.MIN_FONT_SIZE;
+        }
         this.fontSize = fontSize;
-        putInt("fontSize", fontSize);
+        putFloat("fontSize", fontSize);
+        if (!fontFitting) {
+            putBoolean(PREF_FONT_AUTO, false);
+            fontSizeChecked = true;
+        }
+        getSupport().firePropertyChange("fontSize", old, this.fontSize);
     }
 
 }

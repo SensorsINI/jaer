@@ -31,8 +31,11 @@ import net.sf.jaer.event.orientation.DvsOrientationEvent;
  * 2 is a vertical edge (rotated 90 deg),                       <br>
  * 3 is tilted up and to left (rotated 135 deg from horizontal edge).
  * <p>
- * The filter takes either PolarityEvents or BinocularEvents to create 
- * DvsOrientationEvent or BinocularEvents.
+ * The filter takes PolarityEvent (including subclasses such as FlyEyeEvent)
+ * or BinocularEvents to create DvsOrientationEvent or BinocularEvents.
+ * Coincidence uses On/Off ({@link PolarityEvent#getPolarityType()}) for a
+ * single camera or electrically synced FlyEye. Independent FlyEye clocks use
+ * camera×polarity so left/right ticks are not compared.
  * @author tobi/phess */
 @Description("Detects local orientation by spatio-temporal correlation for DVS sensors")
 @Help("""
@@ -96,18 +99,20 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
         if ( in.getSize() == 0 ) return in;
 
         Class inputClass = in.getEventClass();
-        if ( inputClass == PolarityEvent.class) {
-            isBinocular = false;
-            isApsDvs = false;
-            checkOutputPacketEventType(DvsOrientationEvent.class);
-        } else if ( inputClass == ApsDvsEvent.class) {
-            isBinocular = false;
-            isApsDvs = true;
-            checkOutputPacketEventType(ApsDvsOrientationEvent.class);
-        } else if( inputClass == BinocularEvent.class ) {
+        // Most-specific first: BinocularEvent extends ApsDvsEvent extends PolarityEvent.
+        // FlyEyeEvent and other PolarityEvent subclasses take the DVS path.
+        if ( BinocularEvent.class.isAssignableFrom(inputClass) ) {
             isBinocular = true;
             isApsDvs = false;
             checkOutputPacketEventType(BinocularOrientationEvent.class);
+        } else if ( ApsDvsEvent.class.isAssignableFrom(inputClass) ) {
+            isBinocular = false;
+            isApsDvs = true;
+            checkOutputPacketEventType(ApsDvsOrientationEvent.class);
+        } else if ( PolarityEvent.class.isAssignableFrom(inputClass) ) {
+            isBinocular = false;
+            isApsDvs = false;
+            checkOutputPacketEventType(DvsOrientationEvent.class);
         } else { //Neither Polarity nor Binocular Event --> Wrong class used!
             log.log(Level.WARNING, "wrong input event class {0} in the input packet {1}, disabling filter", new Object[]{inputClass, in});
             setFilterEnabled(false);
@@ -135,7 +140,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
             
             int    x = e.x >>> subSampleShift;
             int    y = e.y >>> subSampleShift;
-            int type = e.getType();
+            int type = lastTimesMapTypeIndex(e);
             
             //TODO: Is this check really necessary? Should those special events being marked 'special'? (They would have already being catched above)
 //            if (type >= NUM_TYPES || e.x < 0||e.y < 0) {
@@ -156,6 +161,9 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
             }
             if(x<0||y<0||type<0||x>sizex||y>sizey){ // sizex and sizey are one less than number of cols and rows
                 log.warning("coordinate for event "+e.toString()+" is out of bounds");
+                continue;
+            }
+            if (type >= lastTimesMap[x][y].length) {
                 continue;
             }
             lastTimesMap[x][y][type] = e.timestamp;

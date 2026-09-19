@@ -62,7 +62,7 @@ public class OrientationFreme extends FremeExtractor{
         }
 
         Class inputClass = in.getEventClass();
-        if ( !( inputClass == PolarityEvent.class) ){
+        if ( !PolarityEvent.class.isAssignableFrom(inputClass) ){
             log.warning("wrong input event class "+in.getEventClass()+" in the input packet" + in + ", disabling filter");
             setFilterEnabled(false);
             return in;

@@ -7,6 +7,7 @@
 package net.sf.jaer.event.orientation;
 
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.FlyEyeEvent;
 import net.sf.jaer.event.PolarityEvent;
 
 /** Represents an event with an orientation that can take 4 values.
@@ -26,6 +27,12 @@ public class DvsOrientationEvent extends PolarityEvent implements OrientationEve
     
     /** Defaults to true; set to false to indicate unknown orientation. */
     public boolean hasOrientation=true;
+
+    /**
+     * FlyEye camera, or {@code -1} if unknown. Preserved so flow lastTimesMap
+     * can keep independent clocks from colliding.
+     */
+    public byte camera = -1;
     
     /** Creates a new instance of OrientationEvent */
     public DvsOrientationEvent() { }
@@ -54,10 +61,20 @@ public class DvsOrientationEvent extends PolarityEvent implements OrientationEve
     @Override public void copyFrom(BasicEvent src){
         PolarityEvent e = (PolarityEvent)src;
         super.copyFrom(e);
+        camera = -1;
         if(e instanceof DvsOrientationEvent) {
             this.orientation = ((DvsOrientationEvent)e).orientation;
             this.hasOrientation = ((DvsOrientationEvent)e).hasOrientation;
+            this.camera = ((DvsOrientationEvent)e).camera;
+        } else if (e instanceof FlyEyeEvent fe) {
+            camera = (byte) (fe.camera == FlyEyeEvent.Camera.RIGHT ? 1 : 0);
         }
+    }
+
+    @Override
+    public void reset() {
+        super.reset();
+        camera = -1;
     }
 
     /** gets the Orientation of the event

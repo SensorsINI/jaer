@@ -197,8 +197,7 @@ public class OrientationCluster extends EventFilter2D implements FrameAnnotater 
         }
 
         //Check if the input for the filter is the right one
-        Class inputClass = in.getEventClass();
-        if (inputClass != PolarityEvent.class) {
+        if (!PolarityEvent.class.isAssignableFrom(in.getEventClass())) {
             log.warning("Wrong input event type " + in.getEventClass() + ", disabling filter");
             setFilterEnabled(false);
             return in;
