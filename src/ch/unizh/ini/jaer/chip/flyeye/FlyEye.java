@@ -286,6 +286,14 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         return timestampMaster;
     }
 
+    /**
+     * True when a sync cable makes left/right timestamps comparable. Independent
+     * clocks drift; they must not be merge-sorted (that would need unbounded FIFOs).
+     */
+    public boolean isElectricallyTimestampSynced() {
+        return timestampMaster != TimestampMaster.NONE;
+    }
+
     public void setTimestampMaster(TimestampMaster timestampMaster) {
         if (timestampMaster == null) {
             timestampMaster = TimestampMaster.NONE;
@@ -343,8 +351,9 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         return "<html>FlyEye does not use the DVS128 “Timestamp master / Enable sync event input” checkbox.<br><br>"
                 + "<b>How to set timestamp master</b><br>"
                 + "Menu bar: <b>FlyEye → Timestamp master</b><br>"
-                + "• <b>None (independent clocks)</b> — default, no sync cable. Then <b>Control → Zero timestamps</b> (keyboard 0) so both cameras reset.<br>"
-                + "• <b>Left camera</b> or <b>Right camera</b> — that camera is hardware master. Connect its OUT pin to the other camera’s IN pin and connect GND.<br>"
+                + "• <b>None (independent clocks)</b> — default, no sync cable. Packets are concatenated; timestamps are not sorted (clocks drift).<br>"
+                + "Then <b>Control → Zero timestamps</b> (keyboard 0) so both cameras reset.<br>"
+                + "• <b>Left camera</b> or <b>Right camera</b> — sync cable; streams are merge-sorted by timestamp. Connect master OUT to the other IN and GND.<br>"
                 + "You can also use <b>FlyEye → Reset timestamps…</b> to confirm both clocks.";
     }
 

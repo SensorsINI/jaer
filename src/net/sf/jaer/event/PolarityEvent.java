@@ -80,6 +80,17 @@ public class PolarityEvent extends TypedEvent implements PolarityEventInterface 
      */
     @Override
     public int getType() {
+        return getPolarityType();
+    }
+
+    /**
+     * Off=0, On=1. Use this for last-times maps that only distinguish polarity.
+     * Subclasses may fold camera or eye into {@link #getType()}; this method
+     * always ignores origin.
+     *
+     * @return 0 for Off and 1 for On
+     */
+    public int getPolarityType() {
         return polarity == Polarity.Off ? 0 : 1;
     }
 

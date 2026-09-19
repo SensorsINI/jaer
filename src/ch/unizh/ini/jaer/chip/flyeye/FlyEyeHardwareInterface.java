@@ -475,6 +475,13 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             }
         }
         OutputEventIterator<FlyEyeEvent> out = dest.outputIterator();
+        // Independent clocks drift; merge-by-time would need unbounded hold-back.
+        // Only timestamp-merge when a sync cable makes the ticks comparable.
+        if (flyEye == null || !flyEye.isElectricallyTimestampSynced()) {
+            appendRemap(out, leftPkt, nL, false);
+            appendRemap(out, rightPkt, nR, true);
+            return;
+        }
         int iL = 0;
         int iR = 0;
         while (iL < nL || iR < nR) {
@@ -491,6 +498,12 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             } else {
                 copyRemap(out.nextOutput(), (PolarityEvent) rightPkt.getEvent(iR++), true);
             }
+        }
+    }
+
+    private void appendRemap(OutputEventIterator<FlyEyeEvent> out, EventPacket<?> pkt, int n, boolean right) {
+        for (int i = 0; i < n; i++) {
+            copyRemap(out.nextOutput(), (PolarityEvent) pkt.getEvent(i), right);
         }
     }
 

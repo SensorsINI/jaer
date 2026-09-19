@@ -45,10 +45,12 @@ public class FlyEyeEvent extends PolarityEvent {
 
     /**
      * LEFT Off=0, LEFT On=1, RIGHT Off=2, RIGHT On=3.
+     * Orientation and motion filters that only need On/Off should use
+     * {@link #getPolarityType()} (camera is ignored).
      */
     @Override
     public int getType() {
-        int pol = polarity == Polarity.Off ? 0 : 1;
+        int pol = getPolarityType();
         return camera == Camera.RIGHT ? pol + 2 : pol;
     }
 }
