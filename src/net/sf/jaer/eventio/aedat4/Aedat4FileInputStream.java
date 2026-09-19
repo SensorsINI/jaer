@@ -97,6 +97,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * cutoffs (e.g. 16k) fire on normal Prophesee packets (~250k events / tens of ms).
      */
     private static final long TIMESLICE_SCAN_MIN_PACKET_SPAN_US = 500_000L;
+    /**
+     * Concatenated independent cameras (FlyEye, no sync cable) put a seconds-scale
+     * timestamp drop in file order. USB jitter is ≪ this; a 20 ms timeslice must
+     * not swallow the other camera until the 1 Mi event cap.
+     */
+    private static final long INDEPENDENT_CLOCK_SPLIT_US = 100_000L;
     /** Decompressed EVTS payloads kept for start/mid/end of a timeslice. */
     private static final int EVENT_PACKET_CACHE_SLOTS = 8;
 
@@ -2769,13 +2775,21 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return false;
     }
 
+    /** Stop a timeslice when file order jumps to another camera's clock. */
+    private static long timesliceClockSplitUs(long dtAbs) {
+        return Math.max(Math.max(1L, dtAbs), INDEPENDENT_CLOCK_SPLIT_US);
+    }
+
     /**
      * Walk actual event timestamps from {@code start} until {@code origin+dt}.
      * Uses the first event's own clock so packet-table Unix vs FlatBuffer Unix
-     * mismatches cannot collapse the slice to one event.
+     * mismatches cannot collapse the slice to one event. A large backward jump
+     * (independent FlyEye clocks concatenated in one EVTS packet) ends the
+     * slice instead of packing the other camera until {@link #MAX_EVENTS_PER_READ}.
      */
     private long scanEndIndexByActualTime(long start, long dt, long limit) throws IOException {
         long goalDelta = Math.max(1L, dt);
+        long split = timesliceClockSplitUs(goalDelta);
         long i = start;
         long origin = Long.MIN_VALUE;
         long wrap = 0;
@@ -2808,13 +2822,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             lastTs = ts;
             if (origin == Long.MIN_VALUE) {
                 origin = ts;
-            }
-            if (ts - origin > goalDelta) {
+            } else if (ts - origin > goalDelta) {
+                return Math.max(start + 1, i);
+            } else if (origin - ts > split) {
+                logTimesliceClockSplit(false, origin, ts, start, i);
                 return Math.max(start + 1, i);
             }
             i++;
         }
         return Math.max(start + 1, Math.min(limit, i));
+    }
+
+    private void logTimesliceClockSplit(boolean backward, long origin, long ts, long start, long i) {
+        if (!shouldLogPlaybackFine()) {
+            return;
+        }
+        log.fine(String.format(
+                "AEDAT-4 timeslice scan stopped on clock split (%s): origin=%d ts=%d dt=%dus index %d->%d",
+                backward ? "back" : "fwd", origin, ts, origin - ts, start, i));
     }
 
     /**
@@ -2941,9 +2966,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             lastTs = ts;
             if (origin == Long.MIN_VALUE) {
                 origin = ts;
-            }
-            if (origin - ts > Math.max(1L, -dt)) {
-                return Math.max(limitIn, Math.min(end - 1, i + 1));
+            } else {
+                long goalDelta = Math.max(1L, -dt);
+                long split = timesliceClockSplitUs(goalDelta);
+                if (origin - ts > goalDelta) {
+                    return Math.max(limitIn, Math.min(end - 1, i + 1));
+                }
+                if (ts - origin > split) {
+                    logTimesliceClockSplit(true, origin, ts, i + 1, end);
+                    return Math.max(limitIn, Math.min(end - 1, i + 1));
+                }
             }
             i--;
         }
@@ -3493,6 +3525,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         imuCursor = 0;
         haveEmittedTimestamp = false;
         syncTypedPlayheadFromPosition();
+        long firstTs = hasPolarity() && eventRefs.length > 0 ? eventRefs[0].unixStart : 0;
+        long approx = playableSize() == 0 ? 0
+                : timestampApproxLong(Math.min(Math.max(0, position), playableSize() - 1));
+        log.fine(String.format(
+                "AEDAT-4 rewind pos %d -> %d markIn=%d packetTableFirstTs=%d playheadApprox=%d durationUs=%d events=%d",
+                old, position, markIn, firstTs, approx, getDurationUsLong(), playableSize()));
+        firePosition();
         support.firePropertyChange(AEInputStream.EVENT_REWOUND, old, position);
     }
 
