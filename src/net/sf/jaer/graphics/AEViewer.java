@@ -29,6 +29,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
@@ -485,7 +486,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
 
     private DropTarget myDraggedFileDropTarget = null; // added back after losing somehow
-    private File draggedFile;
+    /** Finder/macOS often offers files as {@code text/uri-list} rather than {@link DataFlavor#javaFileListFlavor}. */
+    private static final DataFlavor URI_LIST_FLAVOR = createUriListFlavor();
     private boolean recordingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     /**
      * When true, opening a recording whose chip differs from the viewer
@@ -14344,50 +14346,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Drag and drop data file onto frame to play it. Called while a drag
-     * operation is ongoing, when the mouse pointer enters the operable part of
-     * the drop site for the DropTarget registered with this listener.
-     *
-     * @param dtde the event.
-     *
+     * Drag and drop a data file onto the image panel to play it.
+     * <p>
+     * On macOS, {@link Transferable#getTransferData} is not available during
+     * {@code dragEnter}/{@code dragOver} (Finder advertises
+     * {@link DataFlavor#javaFileListFlavor} but the list is null until drop).
+     * Accept the drag here; read files only in {@link #drop} after
+     * {@link DropTargetDropEvent#acceptDrop}.
      */
     @Override
     synchronized public void dragEnter(DropTargetDragEvent dtde) {
         log.info(dtde.toString());
-        Transferable transferable = dtde.getTransferable();
-        try {
-            if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                java.util.List<File> files = (java.util.List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
-                for (File f : files) {
-                    if (f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)
-                            || f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
-                            || f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)
-                            || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
-                            || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
-                            || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
-                            || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
-                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_CSV)
-                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
-                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)
-                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_H5)
-                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_HDF5)
-                            || RecordingChipDetector.isExternalVideoFile(f)) {
-                        draggedFile = f;
-                        log.info("User dragged file " + draggedFile);
-                    } else {
-                        String s = String.format("Cannot play this file extension for file '%s'", f.getAbsoluteFile());
-                        log.warning(s);
-                        JOptionPane.showMessageDialog(this, s, "Cannot play", JOptionPane.WARNING_MESSAGE);
-                        draggedFile = null;
-                    }
-                }
-            }
-        } catch (UnsupportedFlavorException e) {
-            log.warning(String.format("Format not supported: %s", e.toString()));
-        } catch (IOException e) {
-            log.severe(String.format("IOException: %s", e.toString()));
-        }
-
+        acceptFileDragIfSupported(dtde);
     }
 
     /**
@@ -14400,13 +14370,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     @Override
     synchronized public void dragExit(DropTargetEvent dte) {
         log.info(dte.toString());
-        draggedFile = null;
     }
-    //          Called when a drag operation is ongoing, while the mouse pointer is still over the operable part of the drop site for the DropTarget registered with this listener.
 
     @Override
     synchronized public void dragOver(DropTargetDragEvent dtde) {
-//        log.info(dtde.toString());
+        acceptFileDragIfSupported(dtde);
     }
 
     /**
@@ -14418,26 +14386,171 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     @Override
     synchronized public void drop(DropTargetDropEvent dtde) {
         log.info(dtde.toString());
-        if (draggedFile != null) {
-            //            log.info("AEViewer.drop(): opening file "+draggedFile);
-            try {
-                recentFiles.addFile(draggedFile);
-                synchronized (getAePlayer()) {
-                    getAePlayer().startPlayback(draggedFile); // TODO fix with progress monitor
-                }
-            } catch (IOException e) {
-                log.warning(e.toString());
-            } catch (InterruptedException ex) {
-                log.warning("opening dropped file " + draggedFile + " interrupted");
+        if (!isFileDropFlavorSupported(dtde.getCurrentDataFlavors())) {
+            dtde.rejectDrop();
+            return;
+        }
+        dtde.acceptDrop(DnDConstants.ACTION_COPY);
+        boolean success = false;
+        try {
+            List<File> files = filesFromTransferable(dtde.getTransferable());
+            if (files.isEmpty()) {
+                log.warning("drop: no files in transferable; flavors="
+                        + Arrays.toString(dtde.getCurrentDataFlavors()));
             }
-        } else {
-//            log.warning("null dragged file in DropTargetDropEvent="+dtde);
+            File chosen = null;
+            for (File f : files) {
+                if (isDroppablePlaybackFile(f)) {
+                    chosen = f;
+                }
+            }
+            if (chosen == null && !files.isEmpty()) {
+                File f = files.get(files.size() - 1);
+                String s = String.format("Cannot play this file extension for file '%s'", f.getAbsoluteFile());
+                log.warning(s);
+                JOptionPane.showMessageDialog(this, s, "Cannot play", JOptionPane.WARNING_MESSAGE);
+            } else if (chosen != null) {
+                log.info("User dropped file " + chosen);
+                openAedatInputFile(chosen);
+                success = true;
+            }
+        } catch (IOException e) {
+            log.warning(e.toString());
+        } catch (InterruptedException ex) {
+            log.warning("opening dropped file interrupted");
+        } finally {
+            dtde.dropComplete(success);
         }
     }
 
-    //          Called if the user has modified the current drop gesture.
     @Override
     public void dropActionChanged(DropTargetDragEvent dtde) {
+        acceptFileDragIfSupported(dtde);
+    }
+
+    private static DataFlavor createUriListFlavor() {
+        try {
+            return new DataFlavor("text/uri-list;class=java.lang.String");
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+    }
+
+    private static void acceptFileDragIfSupported(DropTargetDragEvent dtde) {
+        if (isFileDropFlavorSupported(dtde.getCurrentDataFlavors())) {
+            dtde.acceptDrag(DnDConstants.ACTION_COPY);
+        } else {
+            dtde.rejectDrag();
+        }
+    }
+
+    private static boolean isFileDropFlavorSupported(DataFlavor[] flavors) {
+        if (flavors == null) {
+            return false;
+        }
+        for (DataFlavor flavor : flavors) {
+            if (flavor == null) {
+                continue;
+            }
+            if (DataFlavor.javaFileListFlavor.equals(flavor) || flavor.isMimeTypeEqual("text/uri-list")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<File> filesFromTransferable(Transferable transferable) {
+        List<File> files = new ArrayList<>();
+        if (transferable == null) {
+            return files;
+        }
+        try {
+            if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                Object data = transferable.getTransferData(DataFlavor.javaFileListFlavor);
+                if (data instanceof List<?> list) {
+                    for (Object o : list) {
+                        if (o instanceof File f) {
+                            files.add(f);
+                        }
+                    }
+                }
+            }
+        } catch (UnsupportedFlavorException | IOException e) {
+            log.warning("javaFileListFlavor: " + e);
+        }
+        if (!files.isEmpty()) {
+            return files;
+        }
+        try {
+            if (URI_LIST_FLAVOR != null && transferable.isDataFlavorSupported(URI_LIST_FLAVOR)) {
+                Object data = transferable.getTransferData(URI_LIST_FLAVOR);
+                if (data instanceof String s) {
+                    files.addAll(filesFromUriList(s));
+                }
+            }
+        } catch (UnsupportedFlavorException | IOException e) {
+            log.warning("uri-list flavor: " + e);
+        }
+        if (!files.isEmpty()) {
+            return files;
+        }
+        try {
+            if (transferable.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                Object data = transferable.getTransferData(DataFlavor.stringFlavor);
+                if (data instanceof String s) {
+                    files.addAll(filesFromUriList(s));
+                }
+            }
+        } catch (UnsupportedFlavorException | IOException e) {
+            log.warning("stringFlavor: " + e);
+        }
+        return files;
+    }
+
+    private static List<File> filesFromUriList(String raw) {
+        List<File> files = new ArrayList<>();
+        if (raw == null || raw.isBlank()) {
+            return files;
+        }
+        for (String line : raw.split("\\r\\n|\\n|\\r")) {
+            String s = line.trim();
+            if (s.isEmpty() || s.startsWith("#")) {
+                continue;
+            }
+            try {
+                if (s.startsWith("file:")) {
+                    files.add(new File(URI.create(s)));
+                } else if (s.startsWith("/")) {
+                    files.add(new File(s));
+                }
+            } catch (IllegalArgumentException e) {
+                log.warning("could not parse dropped URI '" + s + "': " + e);
+            }
+        }
+        return files;
+    }
+
+    private static boolean isDroppablePlaybackFile(File f) {
+        if (f == null) {
+            return false;
+        }
+        String name = f.getName();
+        String lower = name.toLowerCase(Locale.ROOT);
+        return name.endsWith(AEDataFile.DATA_FILE_EXTENSION)
+                || name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
+                || name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)
+                || name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ)
+                || name.endsWith(AEDataFile.INDEX_FILE_EXTENSION)
+                || name.endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
+                || name.endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
+                || name.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
+                || name.endsWith(TextFileInputStream.FILE_EXTENSION_CSV)
+                || name.endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
+                || lower.endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)
+                || lower.endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_H5)
+                || lower.endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_HDF5)
+                || RecordingChipDetector.isExternalVideoFile(f);
     }
 
     public boolean isRecordingPlaybackImmediatelyEnabled() {
