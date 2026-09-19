@@ -84,6 +84,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private RecentFoldersJumpCombo recentFolderCombo;
     private final JCheckBox writeTimecodeCb = new JCheckBox("Write timecode file", false);
     private final JCheckBox useMarkersCb = new JCheckBox("Use IN and OUT markers", true);
+    private final JCheckBox rewindBeforeRecordingCb = new JCheckBox("Rewind before recording", true);
+    private final JCheckBox closeOnRewindCb = new JCheckBox("Close on rewind", true);
     private final JCheckBox convertMp4Cb = new JCheckBox("Convert to MP4 with ffmpeg after close", true);
     private final JCheckBox deleteAviCb = new JCheckBox("Delete intermediate AVI after successful MP4", false);
     private final JTextField ffmpegPathField = new JTextField(24);
@@ -243,7 +245,18 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
                 + "(unset IN = file start, unset OUT = EOF; one play-through).<br>"
                 + "Unchecked: record the entire file, ignoring markers.<br>"
                 + "Live capture ignores this option; click Stop to finish.</html>");
-        form.add(useMarkersCb, c);
+        rewindBeforeRecordingCb.setToolTipText("<html>Rewind to IN (or file start) before the first frame is captured.<br>"
+                + "Live capture ignores this option.</html>");
+        closeOnRewindCb.setToolTipText("<html>Checked: finish recording on rewind or EOF (OUT marker or end of file)<br>"
+                + "for unattended one-shot export.<br>"
+                + "Unchecked: recording continues until you click <b>Stop</b> (File → Stop video export also works).<br>"
+                + "Live capture always requires Stop.</html>");
+        JPanel markerRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        markerRow.setOpaque(false);
+        markerRow.add(useMarkersCb);
+        markerRow.add(rewindBeforeRecordingCb);
+        markerRow.add(closeOnRewindCb);
+        form.add(markerRow, c);
 
         row++;
         c.gridy = row;
@@ -318,6 +331,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         }
         writeTimecodeCb.setSelected(prefs.getBoolean("writeTimecode", false));
         useMarkersCb.setSelected(prefs.getBoolean("useMarkers", true));
+        rewindBeforeRecordingCb.setSelected(prefs.getBoolean("rewindBeforeRecording", true));
+        closeOnRewindCb.setSelected(prefs.getBoolean("closeOnRewind", true));
         convertMp4Cb.setSelected(prefs.getBoolean("convertMp4", true));
         deleteAviCb.setSelected(prefs.getBoolean("deleteAvi", false));
         ffmpegPathField.setText(FfmpegMp4Converter.getConfiguredFfmpegPath());
@@ -369,6 +384,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         prefs.putBoolean("matchViewerFrameRate", matchViewerRateCb.isSelected());
         prefs.putBoolean("writeTimecode", writeTimecodeCb.isSelected());
         prefs.putBoolean("useMarkers", useMarkersCb.isSelected());
+        prefs.putBoolean("rewindBeforeRecording", rewindBeforeRecordingCb.isSelected());
+        prefs.putBoolean("closeOnRewind", closeOnRewindCb.isSelected());
         prefs.putBoolean("convertMp4", convertMp4Cb.isSelected());
         prefs.putBoolean("deleteAvi", deleteAviCb.isSelected());
         FfmpegMp4Converter.setConfiguredFfmpegPath(ffmpegPathField.getText().trim());
@@ -382,6 +399,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private void applyAedatDefaults() {
         boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
         useMarkersCb.setEnabled(playback);
+        rewindBeforeRecordingCb.setEnabled(playback);
+        closeOnRewindCb.setEnabled(playback);
         if (!startButton.isEnabled()) {
             if (recentFolderCombo != null) {
                 recentFolderCombo.refresh();
@@ -742,8 +761,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         }
         writer.setWriteTimecodeFile(writeTimecodeCb.isSelected());
         boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
-        writer.setRewindBeforeRecording(playback);
-        writer.setCloseOnRewind(playback);
+        writer.setRewindBeforeRecording(playback && rewindBeforeRecordingCb.isSelected());
+        writer.setCloseOnRewind(playback && closeOnRewindCb.isSelected());
         writer.setShowCloseOnRewindDialog(false);
         if (playback) {
             preparePlaybackForExport(useMarkersCb.isSelected());
@@ -771,8 +790,11 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             }
         }
         updateRecordingUi(true);
-        statusLabel.setText(String.format("Recording %s at %d fps (synchronized)…",
-                aviFile.getName(), writer.getFrameRate()));
+        String stopHint = (playback && closeOnRewindCb.isSelected())
+                ? "stops at rewind/EOF"
+                : "click Stop to finish";
+        statusLabel.setText(String.format("Recording %s at %d fps (synchronized); %s",
+                aviFile.getName(), writer.getFrameRate(), stopHint));
     }
 
     private void rememberWriterState(AbstractAviWriter w) {
@@ -942,6 +964,8 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         deleteAviCb.setEnabled(!recording);
         boolean playback = viewer != null && viewer.getPlayMode() == PlayMode.PLAYBACK;
         useMarkersCb.setEnabled(!recording && playback);
+        rewindBeforeRecordingCb.setEnabled(!recording && playback);
+        closeOnRewindCb.setEnabled(!recording && playback);
         if (recentFolderCombo != null) {
             recentFolderCombo.setEnabled(!recording && recentFolderCombo.getItemCount() > 0);
         }

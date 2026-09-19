@@ -248,6 +248,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.JaerWindowGroupRaiser;
 import net.sf.jaer.util.WindowSaver;
 import net.sf.jaer.util.avioutput.ExportVideoDialog;
+import net.sf.jaer.util.avioutput.FfmpegMp4Converter;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.eventio.export.SaveAsExportDialog;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -9866,6 +9867,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         /** Quit the JVM after stopping this viewer's loop and USB. */
         private void doExitAllViewers() {
+            if (!FfmpegMp4Converter.confirmQuitIfConverting(this)) {
+                log.info("Exit cancelled; MP4 conversion still running");
+                return;
+            }
             armExitWatchdog();
             try {
                 stopViewLoopForExit();

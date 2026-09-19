@@ -35,11 +35,27 @@ public final class FfmpegMp4Converter {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Preferences prefs = Preferences.userNodeForPackage(FfmpegMp4Converter.class);
+    private static final Object JOBS_LOCK = new Object();
+    private static final List<ConvertJob> jobs = new ArrayList<>();
+    /** True after the user chose to quit while ffmpeg was still running. */
+    private static volatile boolean abortingForQuit;
 
     public static final String FFMPEG_DOWNLOAD_URL = "https://ffmpeg.org/download.html";
     public static final String PREF_FFMPEG_PATH = "ffmpegPath";
 
     private FfmpegMp4Converter() {
+    }
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                if (isConvertInProgress()) {
+                    abortAllConverts();
+                }
+            } catch (Throwable t) {
+                System.err.println("ffmpeg abort on shutdown: " + t);
+            }
+        }, "ffmpeg-mp4-abort"));
     }
 
     /**
@@ -346,6 +362,95 @@ public final class FfmpegMp4Converter {
         void done(boolean success, File mp4File, String message);
     }
 
+    private static final class ConvertJob {
+        final File avi;
+        final File mp4;
+        volatile Process process;
+
+        ConvertJob(File avi, File mp4) {
+            this.avi = avi;
+            this.mp4 = mp4;
+        }
+    }
+
+    /** True while at least one ffmpeg AVI→MP4 job is running. */
+    public static boolean isConvertInProgress() {
+        synchronized (JOBS_LOCK) {
+            return !jobs.isEmpty();
+        }
+    }
+
+    /**
+     * If ffmpeg is still converting, ask whether to quit. Must run on the EDT.
+     *
+     * @return true to proceed with quit (converts aborted); false to stay
+     */
+    public static boolean confirmQuitIfConverting(Component parent) {
+        if (!isConvertInProgress()) {
+            return true;
+        }
+        String files = inProgressSummaryHtml();
+        String msg = "<html>AVI → MP4 conversion is still running"
+                + (files.isEmpty() ? "." : ":<p><code>" + files + "</code>")
+                + "<p>The AVI is already saved. Quit anyway?<br>"
+                + "The incomplete MP4 will be discarded.";
+        Object[] options = {"Stay", "Quit anyway"};
+        int r = JOptionPane.showOptionDialog(parent, msg, "MP4 conversion in progress",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        if (r == 1) {
+            abortAllConverts();
+            return true;
+        }
+        return false;
+    }
+
+    /** Stops running ffmpeg processes and deletes truncated MP4 outputs. */
+    public static void abortAllConverts() {
+        List<ConvertJob> copy;
+        synchronized (JOBS_LOCK) {
+            abortingForQuit = true;
+            copy = new ArrayList<>(jobs);
+            jobs.clear();
+        }
+        for (ConvertJob j : copy) {
+            Process p = j.process;
+            if (p != null && p.isAlive()) {
+                log.info("Aborting ffmpeg convert of " + (j.mp4 != null ? j.mp4 : j.avi));
+                p.destroyForcibly();
+                try {
+                    p.waitFor(2, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            deleteIncompleteMp4(j.mp4);
+        }
+    }
+
+    private static String inProgressSummaryHtml() {
+        synchronized (JOBS_LOCK) {
+            StringBuilder sb = new StringBuilder();
+            for (ConvertJob j : jobs) {
+                File f = j.mp4 != null ? j.mp4 : j.avi;
+                if (f == null) {
+                    continue;
+                }
+                if (sb.length() > 0) {
+                    sb.append("<br>");
+                }
+                sb.append(escapeHtml(f.getName()));
+            }
+            return sb.toString();
+        }
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
     /**
      * Runs ffmpeg asynchronously; invokes callback on the EDT.
      */
@@ -370,6 +475,10 @@ public final class FfmpegMp4Converter {
                     int dot = base.lastIndexOf('.');
                     out = new File((dot > 0 ? base.substring(0, dot) : base) + ".mp4");
                 }
+                ConvertJob job = new ConvertJob(aviFile, out);
+                synchronized (JOBS_LOCK) {
+                    jobs.add(job);
+                }
                 try {
                     List<String> cmd = new ArrayList<>();
                     cmd.add(ffmpeg);
@@ -390,6 +499,15 @@ public final class FfmpegMp4Converter {
                     ProcessBuilder pb = new ProcessBuilder(cmd);
                     pb.redirectErrorStream(true);
                     Process p = pb.start();
+                    synchronized (JOBS_LOCK) {
+                        if (abortingForQuit) {
+                            p.destroyForcibly();
+                            deleteIncompleteMp4(out);
+                            message = "aborted";
+                            return false;
+                        }
+                        job.process = p;
+                    }
                     StringBuilder sb = new StringBuilder();
                     try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
                         String line;
@@ -401,6 +519,11 @@ public final class FfmpegMp4Converter {
                         }
                     }
                     int code = p.waitFor();
+                    if (abortingForQuit) {
+                        message = "aborted";
+                        deleteIncompleteMp4(out);
+                        return false;
+                    }
                     if (code != 0) {
                         deleteIncompleteMp4(out);
                         message = summarizeFfmpegError(code, sb.toString());
@@ -414,15 +537,26 @@ public final class FfmpegMp4Converter {
                     log.info(message);
                     return true;
                 } catch (Exception e) {
-                    deleteIncompleteMp4(out);
-                    message = e.toString();
-                    log.warning(message);
+                    if (!abortingForQuit) {
+                        deleteIncompleteMp4(out);
+                    }
+                    message = abortingForQuit ? "aborted" : e.toString();
+                    if (!abortingForQuit) {
+                        log.warning(message);
+                    }
                     return false;
+                } finally {
+                    synchronized (JOBS_LOCK) {
+                        jobs.remove(job);
+                    }
                 }
             }
 
             @Override
             protected void done() {
+                if (abortingForQuit) {
+                    return;
+                }
                 boolean ok = false;
                 try {
                     ok = get();
