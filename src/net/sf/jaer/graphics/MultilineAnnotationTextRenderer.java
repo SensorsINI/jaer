@@ -33,7 +33,7 @@ public class MultilineAnnotationTextRenderer {
     private static float lineShiftMultiplier = DrawGL.DEFAULT_LINE_SPACING;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static Color color = Color.WHITE;
-    private static int fontSize = 5; // OK for Davis346
+    private static float fontSize = 5; // OK for Davis346
     private static boolean rebuildRenderer = true;
 
     /**
@@ -115,22 +115,30 @@ public class MultilineAnnotationTextRenderer {
     }
 
     /**
-     * Returns overall text font size (24 by default)
+     * Returns overall text font size in chip pixels
      *
      * @return the font size
      */
-    public static int getFontSize() {
+    public static float getFontSize() {
         return fontSize;
     }
 
     /**
-     * Sets overall text Font size (24 by default)
+     * Sets overall text font size in chip pixels
      *
      * @param FontSize the font size to set
      */
-    public static void setFontSize(int aFontSize) {
+    public static void setFontSize(float aFontSize) {
         fontSize = aFontSize;
         rebuildRenderer = true;
+    }
+
+    /**
+     * @deprecated use {@link #setFontSize(float)}
+     */
+    @Deprecated
+    public static void setFontSize(int aFontSize) {
+        setFontSize((float) aFontSize);
     }
 
     public static void setDefaultScale() {

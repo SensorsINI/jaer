@@ -623,6 +623,15 @@ public final class DrawGL {
     }
 
     /**
+     * {@code int} fontSize overload so callers compiled against an older
+     * {@code drawString(int,...)} binary still link after the font size became
+     * {@code float}.
+     */
+    public static Rectangle2D drawString(int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        return drawString((float) fontSize, x, y, alignmentX, color, s);
+    }
+
+    /**
      * Cached chip-pixel line height for {@code fontSize}, using the same
      * atlas/scale as {@link #drawString}. Measures a probe string once per atlas
      * size. Call from the GL thread (same as {@code drawString}).
@@ -648,6 +657,11 @@ public final class DrawGL {
         }
     }
 
+    /** @see #lineHeight(float) */
+    public static float lineHeight(int fontSize) {
+        return lineHeight((float) fontSize);
+    }
+
     /**
      * Chip-pixel width of {@code s} at {@code fontSize}, using the same
      * atlas/scale as {@link #drawString}.
@@ -658,6 +672,11 @@ public final class DrawGL {
         }
         Rectangle2D r = textRendererFor(fontSize).getBounds(s);
         return (float) (r.getWidth() * drawScale(fontSize));
+    }
+
+    /** @see #measureStringWidth(float, String) */
+    public static float measureStringWidth(int fontSize, String s) {
+        return measureStringWidth((float) fontSize, s);
     }
 
     private static float longestStringWidth(float fontSize, String[] lines) {
@@ -773,6 +792,11 @@ public final class DrawGL {
         return drawString(fontSize, x, y, alignmentX, color, s);
     }
 
+    /** @see #drawStringDropShadow(float, float, float, float, Color, String) */
+    public static Rectangle2D drawStringDropShadow(int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        return drawStringDropShadow((float) fontSize, x, y, alignmentX, color, s);
+    }
+
 
     /**
      * Standard leading for stacked overlay lines (CSS-style 1.5).
@@ -789,12 +813,22 @@ public final class DrawGL {
         return lineAdvance(fontSize, DEFAULT_LINE_SPACING);
     }
 
+    /** @see #lineAdvance(float) */
+    public static float lineAdvance(int fontSize) {
+        return lineAdvance((float) fontSize);
+    }
+
     /**
      * Chip-pixel Y step between baselines: {@link #lineHeight(float)} times
      * {@code spacing} (1.5 is conventional).
      */
     public static float lineAdvance(float fontSize, float spacing) {
         return lineHeight(fontSize) * spacing;
+    }
+
+    /** @see #lineAdvance(float, float) */
+    public static float lineAdvance(int fontSize, float spacing) {
+        return lineAdvance((float) fontSize, spacing);
     }
 
     /**
@@ -825,6 +859,18 @@ public final class DrawGL {
     public static Rectangle2D drawLinesDropShadow(float fontSize, float x, float yTop, float alignmentX,
             Color color, String[] lines) {
         return drawLinesDropShadow(fontSize, x, yTop, alignmentX, color, lines, DEFAULT_LINE_SPACING);
+    }
+
+    /** @see #drawLinesDropShadow(float, float, float, float, Color, String[]) */
+    public static Rectangle2D drawLinesDropShadow(int fontSize, float x, float yTop, float alignmentX,
+            Color color, String[] lines) {
+        return drawLinesDropShadow((float) fontSize, x, yTop, alignmentX, color, lines);
+    }
+
+    /** @see #drawLinesDropShadow(float, float, float, float, Color, String[], float) */
+    public static Rectangle2D drawLinesDropShadow(int fontSize, float x, float yTop, float alignmentX,
+            Color color, String[] lines, float spacing) {
+        return drawLinesDropShadow((float) fontSize, x, yTop, alignmentX, color, lines, spacing);
     }
 
     /**
