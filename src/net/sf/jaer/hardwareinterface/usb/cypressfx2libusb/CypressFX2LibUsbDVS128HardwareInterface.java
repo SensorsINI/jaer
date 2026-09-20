@@ -166,7 +166,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
 
     @Override
     public void setSyncEventEnabled(final boolean yes) {
-            CypressFX2.log.info("setting " + yes);
+            CypressFX2.log.info(this + " setSyncEventEnabled=" + yes);
 
         try {
             this.sendVendorRequest(VENDOR_REQUEST_SET_SYNC_ENABLED, yes ? (byte) 1 : (byte) 0, (byte) 0);

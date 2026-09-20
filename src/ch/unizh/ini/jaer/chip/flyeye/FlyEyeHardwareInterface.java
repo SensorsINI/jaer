@@ -6,11 +6,15 @@
  */
 package ch.unizh.ini.jaer.chip.flyeye;
 
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -46,6 +50,18 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private final PacketBundle bundle1 = new PacketBundle();
     private boolean useSlot0 = true;
     private long lastEmptyMergeLogMs;
+    private long lastDesyncLogMs;
+    private int lastDesyncLeftTs = Integer.MIN_VALUE;
+    private int lastDesyncRightTs = Integer.MIN_VALUE;
+    private boolean loggedSlaveStopped;
+    private JDialog desyncDialog;
+    private JOptionPane desyncPane;
+    private boolean hidingDesyncBecauseRecovered;
+    private long desyncDialogSuppressedUntilMs;
+    private static final long DESYNC_DIALOG_SUPPRESS_MS = 10_000L;
+    private boolean eyesAssigned;
+    private String lastLoggedSyncSettings;
+    private static final int DESYNC_WARN_US = 100_000;
 
     public FlyEyeHardwareInterface(FlyEye flyEye, AEMonitorInterface left, AEMonitorInterface right) {
         super(left, right);
@@ -161,8 +177,9 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private static final int TIMESTAMP_ALIGN_US = 10_000;
     /** Wait between polarity samples when checking a sync cable. */
     private static final long CABLING_TEST_WAIT_MS = 300L;
-    /** Electrically synced cameras should stay well inside this after reset. */
-    private static final int CABLING_SYNC_US = 2_000;
+    /** Electrically synced cameras should stay well inside this after reset.
+     * USB last-event times in two packets can still differ by a slice (~10 ms). */
+    private static final int CABLING_SYNC_US = 20_000;
     private static final int CABLING_MIN_ADVANCE_US = 1;
 
     @Override
@@ -172,6 +189,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         configureSyncMaster();
         logAssignment();
         showTimestampResetDialog(confirmTimestampResetBothCameras());
+        // Vendor timestamp reset can restore firmware default (both masters).
+        applySyncMaster(false);
     }
 
     /**
@@ -188,6 +207,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         if (flyEye != null && flyEye.isEyesSwapped()) {
             swapAemonsOnly();
         }
+        eyesAssigned = true;
     }
 
     /** Swap USB sides without reconfiguring sync (caller does that after open). */
@@ -200,23 +220,68 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     }
 
     void configureSyncMaster() {
+        applySyncMaster(true);
+    }
+
+    /**
+     * RIGHT → left slave / right master; LEFT → opposite; NONE → both masters.
+     * Always sends the vendor request (firmware can revert on timestamp reset).
+     */
+    private void applySyncMaster(boolean logInfo) {
         AEMonitorInterface left = getAemonLeft();
         AEMonitorInterface right = getAemonRight();
         FlyEye.TimestampMaster master = flyEye == null ? FlyEye.TimestampMaster.NONE
                 : flyEye.getTimestampMaster();
-        boolean leftMaster = master != FlyEye.TimestampMaster.RIGHT;
-        boolean rightMaster = master != FlyEye.TimestampMaster.LEFT;
-        if (left instanceof HasSyncEventOutput syncLeft) {
-            syncLeft.setSyncEventEnabled(leftMaster);
+        boolean wantLeftMaster = master != FlyEye.TimestampMaster.RIGHT;
+        boolean wantRightMaster = master != FlyEye.TimestampMaster.LEFT;
+        setSyncEnabled(left, wantLeftMaster, "left");
+        setSyncEnabled(right, wantRightMaster, "right");
+        boolean leftOn = syncEnabledOf(left);
+        boolean rightOn = syncEnabledOf(right);
+        String mode = switch (master) {
+            case LEFT -> "left master, right slave";
+            case RIGHT -> "right master, left slave";
+            default -> "both DVS128s are timestamp masters (no sync cable)";
+        };
+        String summary = "FlyEye timestamp-master settings: " + mode
+                + "; left=" + describe(left) + " syncEventEnabled=" + leftOn
+                + " (" + (leftOn ? "master" : "slave") + ")"
+                + "; right=" + describe(right) + " syncEventEnabled=" + rightOn
+                + " (" + (rightOn ? "master" : "slave") + ")";
+        if (leftOn != wantLeftMaster || rightOn != wantRightMaster) {
+            log.warning(summary + " — mismatch wanted leftMaster=" + wantLeftMaster
+                    + " rightMaster=" + wantRightMaster);
+            lastLoggedSyncSettings = null;
+        } else if (logInfo && !summary.equals(lastLoggedSyncSettings)) {
+            lastLoggedSyncSettings = summary;
+            log.info(summary);
         }
-        if (right instanceof HasSyncEventOutput syncRight) {
-            syncRight.setSyncEventEnabled(rightMaster);
+    }
+
+    private static void setSyncEnabled(AEMonitorInterface aemon, boolean master, String side) {
+        if (aemon instanceof HasSyncEventOutput sync) {
+            sync.setSyncEventEnabled(master);
+        } else if (aemon != null) {
+            log.warning("FlyEye cannot set timestamp master on " + side + " ("
+                    + aemon.getClass().getSimpleName() + ")");
         }
-        if (master == FlyEye.TimestampMaster.NONE) {
-            log.info("FlyEye both DVS128s are timestamp masters (no sync cable)");
-        } else {
-            log.info("FlyEye " + (master == FlyEye.TimestampMaster.LEFT ? "left" : "right")
-                    + " DVS128 is timestamp master (sync cable)");
+    }
+
+    private static boolean syncEnabledOf(AEMonitorInterface aemon) {
+        return aemon instanceof HasSyncEventOutput sync && sync.isSyncEventEnabled();
+    }
+
+    @Override
+    public void close() {
+        hideDesyncDialog(true);
+        super.close();
+    }
+
+    @Override
+    public synchronized void resetTimestamps() {
+        super.resetTimestamps();
+        if (eyesAssigned) {
+            applySyncMaster(false);
         }
     }
 
@@ -273,6 +338,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             long t0R = lastHardwareResetNanos(right);
             left.resetTimestamps();
             right.resetTimestamps();
+            applySyncMaster(false);
             drainChildBundles(left, right);
             long deadline = System.currentTimeMillis() + TIMESTAMP_RESET_WAIT_MS;
             boolean bothEvents = false;
@@ -282,8 +348,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                         && lastHardwareResetNanos(right) > t0R;
                 deltaUs = packetTimestampDeltaUs(left, right);
                 if (deltaUs != null && Math.abs(deltaUs) <= TIMESTAMP_ALIGN_US) {
-                    log.info("FlyEye timestamp reset confirmed: Δt=" + deltaUs
-                            + " µs (attempt " + attempt + "/" + TIMESTAMP_RESET_TRIES
+                    log.info("FlyEye timestamp reset confirmed: dt=" + deltaUs
+                            + " us (attempt " + attempt + "/" + TIMESTAMP_RESET_TRIES
                             + ", bothResetEvents=" + bothEvents + ")");
                     return TimestampResetResult.aligned(deltaUs, bothEvents);
                 }
@@ -303,7 +369,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                 // arrives only after sendConfiguration (FlyEye pots started at 0).
                 log.info("FlyEye timestamp reset: both cameras sent reset events (attempt "
                         + attempt + "/" + TIMESTAMP_RESET_TRIES
-                        + "); no polarity packets yet to measure Δt");
+                        + "); no polarity packets yet to measure dt");
                 return TimestampResetResult.resetEventsOnly();
             }
             last = deltaUs != null
@@ -366,7 +432,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
 
     /**
      * After a vendor reset, sample polarity twice. A slave without a cable does
-     * not advance; a reversed or missing cable also shows a large Δt.
+     * not advance; a reversed or missing cable also shows a large dt.
      */
     CablingCheck probeCabling() {
         AEMonitorInterface left = getAemonLeft();
@@ -374,6 +440,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         if (left == null || right == null) {
             return CablingCheck.inconclusive("missing camera");
         }
+        applySyncMaster(false);
+        drainChildBundles(left, right);
         TimestampSample first = waitForPolaritySample(left, right, TIMESTAMP_RESET_WAIT_MS);
         try {
             Thread.sleep(CABLING_TEST_WAIT_MS);
@@ -404,6 +472,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         boolean masterEnabled = master != FlyEye.TimestampMaster.NONE;
         CablingCheck cabling = null;
         if (masterEnabled && !SwingUtilities.isEventDispatchThread()) {
+            applySyncMaster(false);
             cabling = probeCabling();
             if (cabling.status == CablingCheck.Status.OK) {
                 log.info("FlyEye cabling check OK: " + cabling.detail);
@@ -435,10 +504,10 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         sb.append("<br>");
         if (result.aligned && result.deltaUs != null) {
             sb.append(String.format(
-                    "Both cameras were timestamp-reset. Last packet times then differed by <b>%,d µs</b> (limit 10 ms).<br>",
+                    "Both cameras were timestamp-reset. Last packet times then differed by <b>%,d us</b> (limit 10 ms).<br>",
                     Math.abs(result.deltaUs)));
         } else if (result.aligned) {
-            sb.append("Both cameras sent timestamp-reset events (no polarity yet to measure Δt).<br>");
+            sb.append("Both cameras sent timestamp-reset events (no polarity yet to measure dt).<br>");
         } else {
             sb.append("Could not confirm a timestamp reset on both cameras");
             if (result.detail != null) {
@@ -461,7 +530,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             sb.append(String.format("Cabling sample: left last=%s, right last=%s",
                     formatUs(cabling.lastLeftUs), formatUs(cabling.lastRightUs)));
             if (cabling.deltaUs != null) {
-                sb.append(String.format(", Δt=%,d µs (limit %,d µs)", Math.abs(cabling.deltaUs), CABLING_SYNC_US));
+                sb.append(String.format(", dt=%,d us (limit %,d us)", Math.abs(cabling.deltaUs), CABLING_SYNC_US));
             }
             sb.append(".<br>");
         }
@@ -493,7 +562,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     }
 
     private static String formatUs(Long us) {
-        return us == null ? "no events" : String.format("%,d µs", us);
+        return us == null ? "no events" : String.format("%,d us", us);
     }
 
     static final class TimestampSample {
@@ -572,12 +641,12 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                 return new CablingCheck(Status.FAIL, leftAdv, rightAdv, delta, lastL, lastR, which);
             }
             if (delta == null || Math.abs(delta) > CABLING_SYNC_US) {
-                String d = delta == null ? "could not measure Δt"
-                        : String.format("last times differ by %,d µs (limit %,d µs)", Math.abs(delta), CABLING_SYNC_US);
+                String d = delta == null ? "could not measure dt"
+                        : String.format("last times differ by %,d us (limit %,d us)", Math.abs(delta), CABLING_SYNC_US);
                 return new CablingCheck(Status.FAIL, leftAdv, rightAdv, delta, lastL, lastR, d);
             }
             return new CablingCheck(Status.OK, true, true, delta, lastL, lastR,
-                    String.format("Δt=%d µs, both advancing", delta));
+                    String.format("dt=%d us, both advancing", delta));
         }
     }
 
@@ -595,12 +664,12 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         }
 
         static TimestampResetResult aligned(long deltaUs, boolean bothResetEvents) {
-            return new TimestampResetResult(true, bothResetEvents, deltaUs, "Δt=" + deltaUs + " µs");
+            return new TimestampResetResult(true, bothResetEvents, deltaUs, "dt=" + deltaUs + " us");
         }
 
         static TimestampResetResult misaligned(long deltaUs, boolean bothResetEvents) {
             return new TimestampResetResult(false, bothResetEvents, deltaUs,
-                    "Δt=" + deltaUs + " µs (limit " + TIMESTAMP_ALIGN_US + " µs)");
+                    "dt=" + deltaUs + " us (limit " + TIMESTAMP_ALIGN_US + " us)");
         }
 
         static TimestampResetResult failed(String detail) {
@@ -609,7 +678,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
 
         static TimestampResetResult resetEventsOnly() {
             return new TimestampResetResult(true, true, null,
-                    "both reset events, no polarity Δt");
+                    "both reset events, no polarity dt");
         }
     }
 
@@ -654,6 +723,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         }
         EventPacket<?> lp = leftBundle.getFirstPolarityPacket();
         EventPacket<?> rp = rightBundle.getFirstPolarityPacket();
+        warnIfDesynced(lp, rp);
         EventPacket<FlyEyeEvent> dest = useSlot0 ? merged0 : merged1;
         PacketBundle out = useSlot0 ? bundle0 : bundle1;
         useSlot0 = !useSlot0;
@@ -661,6 +731,167 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         out.clear();
         out.add(dest);
         return out;
+    }
+
+    private void warnIfDesynced(EventPacket<?> lp, EventPacket<?> rp) {
+        if (flyEye == null || !flyEye.isElectricallyTimestampSynced()) {
+            hideDesyncDialog(false);
+            return;
+        }
+        if (lp == null || rp == null) {
+            return;
+        }
+        boolean leftEmpty = lp.isEmpty();
+        boolean rightEmpty = rp.isEmpty();
+        if (leftEmpty && rightEmpty) {
+            return;
+        }
+        if (leftEmpty || rightEmpty) {
+            String side = leftEmpty ? "left" : "right";
+            if (!loggedSlaveStopped) {
+                loggedSlaveStopped = true;
+                log.warning("FlyEye no polarity from " + side
+                        + " camera (slave clock may have stopped; check sync cable). timestamp master="
+                        + flyEye.timestampMasterLabel());
+            }
+            showDesyncDialog("<html>FlyEye slave may have stopped.<br>No polarity from the <b>"
+                    + side + "</b> camera. Timestamp master: <b>" + flyEye.timestampMasterLabel()
+                    + "</b>.<br>Reconnect master OUT to slave IN and GND.");
+            return;
+        }
+        int lts = lp.getLastTimestamp();
+        int rts = rp.getLastTimestamp();
+        long dt = Math.abs((long) lts - rts);
+        if (dt <= DESYNC_WARN_US) {
+            lastDesyncLeftTs = lts;
+            lastDesyncRightTs = rts;
+            loggedSlaveStopped = false;
+            hideDesyncDialog(false);
+            return;
+        }
+        boolean leftFrozen = lastDesyncLeftTs != Integer.MIN_VALUE && lts == lastDesyncLeftTs;
+        boolean rightFrozen = lastDesyncRightTs != Integer.MIN_VALUE && rts == lastDesyncRightTs;
+        lastDesyncLeftTs = lts;
+        lastDesyncRightTs = rts;
+        if (leftFrozen || rightFrozen) {
+            String side = leftFrozen && rightFrozen ? "left and right"
+                    : leftFrozen ? "left" : "right";
+            if (!loggedSlaveStopped) {
+                loggedSlaveStopped = true;
+                log.warning("FlyEye " + side + " timestamps stopped after unplugging the sync cable"
+                        + " (not crystal drift). timestamp master=" + flyEye.timestampMasterLabel()
+                        + " leftLast=" + lts + " rightLast=" + rts + " dt=" + String.format("%,d", dt) + " us"
+                        + " left=" + describe(getAemonLeft()) + " right=" + describe(getAemonRight()));
+            }
+            showDesyncDialog("<html>FlyEye <b>" + side + "</b> timestamps stopped (sync cable unplugged).<br>"
+                    + "This is the slave clock stopping, not crystal drift.<br>"
+                    + "Timestamp master: <b>" + flyEye.timestampMasterLabel() + "</b>.<br>"
+                    + "Reconnect master OUT to slave IN and GND.");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastDesyncLogMs >= 10_000) {
+            lastDesyncLogMs = now;
+            log.warning("FlyEye cameras desynced by " + String.format("%,d", dt)
+                    + " us (limit 100 ms); both still advancing. timestamp master="
+                    + flyEye.timestampMasterLabel()
+                    + " leftLast=" + lts + " rightLast=" + rts
+                    + " left=" + describe(getAemonLeft()) + " right=" + describe(getAemonRight()));
+        }
+        showDesyncDialog("<html>FlyEye cameras are more than 100 ms apart (dt="
+                + String.format("%,d", dt) + " us) but both timestamps are advancing.<br>"
+                + "Timestamp master: <b>" + flyEye.timestampMasterLabel() + "</b>.<br>"
+                + "Check the sync cable (master OUT to slave IN and GND).");
+    }
+
+    private void showDesyncDialog(String html) {
+        Runnable show = () -> {
+            if (desyncDialog != null && desyncDialog.isVisible()) {
+                desyncPane.setMessage(html);
+                return;
+            }
+            if (System.currentTimeMillis() < desyncDialogSuppressedUntilMs) {
+                return;
+            }
+            ensureDesyncDialog();
+            desyncPane.setMessage(html);
+            desyncPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+            desyncDialog.pack();
+            AEViewer viewer = flyEye == null ? null : flyEye.getAeViewer();
+            desyncDialog.setLocationRelativeTo(viewer);
+            desyncDialog.setVisible(true);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            SwingUtilities.invokeLater(show);
+        }
+    }
+
+    /** @param disposeIfCreated true when closing hardware; otherwise only hide. */
+    private void hideDesyncDialog(boolean disposeIfCreated) {
+        Runnable hide = () -> {
+            if (desyncDialog == null) {
+                return;
+            }
+            hidingDesyncBecauseRecovered = true;
+            try {
+                desyncDialog.setVisible(false);
+                if (disposeIfCreated) {
+                    desyncDialog.dispose();
+                    desyncDialog = null;
+                    desyncPane = null;
+                }
+            } finally {
+                hidingDesyncBecauseRecovered = false;
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            hide.run();
+        } else {
+            SwingUtilities.invokeLater(hide);
+        }
+    }
+
+    private void userDismissedDesyncDialog() {
+        desyncDialogSuppressedUntilMs = System.currentTimeMillis() + DESYNC_DIALOG_SUPPRESS_MS;
+        if (desyncDialog != null) {
+            desyncDialog.setVisible(false);
+        }
+    }
+
+    private void ensureDesyncDialog() {
+        if (desyncDialog != null) {
+            return;
+        }
+        AEViewer viewer = flyEye == null ? null : flyEye.getAeViewer();
+        desyncPane = new JOptionPane("", JOptionPane.WARNING_MESSAGE, JOptionPane.DEFAULT_OPTION);
+        desyncDialog = desyncPane.createDialog(viewer, "FlyEye timestamps");
+        desyncDialog.setModal(false);
+        desyncDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+        desyncDialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (!hidingDesyncBecauseRecovered) {
+                    desyncDialogSuppressedUntilMs = System.currentTimeMillis() + DESYNC_DIALOG_SUPPRESS_MS;
+                }
+            }
+        });
+        desyncPane.addPropertyChangeListener((PropertyChangeEvent evt) -> {
+            if (!desyncDialog.isVisible()) {
+                return;
+            }
+            if (!JOptionPane.VALUE_PROPERTY.equals(evt.getPropertyName())) {
+                return;
+            }
+            Object v = evt.getNewValue();
+            if (v == null || v == JOptionPane.UNINITIALIZED_VALUE) {
+                return;
+            }
+            if (!hidingDesyncBecauseRecovered) {
+                userDismissedDesyncDialog();
+            }
+        });
     }
 
     private void mergePolarity(EventPacket<FlyEyeEvent> dest, EventPacket<?> leftPkt, EventPacket<?> rightPkt) {

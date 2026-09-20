@@ -126,8 +126,8 @@ public final class UsbEnumerationSafetyDemo {
                 "FlyEye must copy DVS128 pots when FlyEye prefs are all-zero");
         require(flyChip.contains("imported factory biases from"),
                 "FlyEye imports deviceSettings/DVS128/FlyEye.xml when pots are zero");
-        require(flyChip.contains("timestampMaster == TimestampMaster.NONE"),
-                "FlyEye must not warn about timestamp master when both cameras are masters");
+        require(flyChip.contains("timestampMaster != TimestampMaster.NONE"),
+                "FlyEye must not warn about timestamp master when Left/Right is already set");
         require(flyChip.contains("adopted DVS128 bias values"),
                 "FlyEye logs when it adopts DVS128 bias values");
         String flyXml = Files.readString(Paths.get("deviceSettings", "DVS128", "FlyEye.xml"),
@@ -138,6 +138,8 @@ public final class UsbEnumerationSafetyDemo {
                 "factory FlyEye.xml must include DVS128 IPot values");
         require(!flyXml.contains("/home/"),
                 "factory FlyEye.xml must not include machine paths");
+        require(flyHw.contains("timestamp-master settings"),
+                "FlyEye INFO-logs left/right syncEventEnabled after applying timestamp master");
         require(flyHw.contains("both DVS128s are timestamp masters"),
                 "without Timestamp master, both cameras emit reset events (right must not stay slave)");
         String flyRen = Files.readString(Paths.get("src", "net", "sf", "jaer", "graphics",
