@@ -158,3 +158,5 @@ release-notes/3.5.2/jaer-startup-AOT.webp
 
 # Baked by website/bake-latest.py at Pages deploy.
 /website/latest.json
+website/__pycache__/**
+website/__pycache__/**/*.pyc
