@@ -287,6 +287,15 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         return timestampMaster;
     }
 
+    /** Short label for dialogs and logs. */
+    public String timestampMasterLabel() {
+        return switch (timestampMaster) {
+            case LEFT -> "Left camera (sync cable)";
+            case RIGHT -> "Right camera (sync cable)";
+            default -> "None (independent clocks)";
+        };
+    }
+
     /**
      * True when a sync cable makes left/right timestamps comparable. Independent
      * clocks drift; they must not be merge-sorted (that would need unbounded FIFOs).
@@ -304,6 +313,10 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         syncTimestampMasterMenu();
         if (hardwareInterface instanceof FlyEyeHardwareInterface flyHw && flyHw.isOpen()) {
             flyHw.configureSyncMaster();
+            if (timestampMaster != TimestampMaster.NONE) {
+                new Thread(() -> flyHw.showTimestampResetDialog(
+                        flyHw.confirmTimestampResetBothCameras()), "FlyEye-cabling").start();
+            }
         }
     }
 
@@ -339,23 +352,29 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
 
     @Override
     protected void maybeWarnWhenNotDirectSyncInterface() {
-        // Composite FlyEye HI is never HasSyncEventOutput, so DVS128.update would
-        // warn on every setHardwareInterface. NONE = both cameras are masters.
-        if (timestampMaster == TimestampMaster.NONE) {
+        // Composite HI is never HasSyncEventOutput. Skip when Left/Right is already
+        // chosen — that is the FlyEye setting; the DVS128 checkbox is not used.
+        if (timestampMaster != TimestampMaster.NONE) {
             return;
         }
         showTimestampMasterWarning();
     }
 
     @Override
+    protected int timestampMasterWarningMessageType() {
+        return JOptionPane.INFORMATION_MESSAGE;
+    }
+
+    @Override
+    protected boolean timestampMasterWarningDefaultDontShowAgain() {
+        return true;
+    }
+
+    @Override
     protected String timestampsDisabledWarningHtml() {
-        return "<html>FlyEye does not use the DVS128 “Timestamp master / Enable sync event input” checkbox.<br><br>"
-                + "<b>How to set timestamp master</b><br>"
-                + "Menu bar: <b>FlyEye → Timestamp master</b><br>"
-                + "• <b>None (independent clocks)</b> — default, no sync cable. Packets are concatenated; timestamps are not sorted (clocks drift).<br>"
-                + "Then <b>Control → Zero timestamps</b> (keyboard 0) so both cameras reset.<br>"
-                + "• <b>Left camera</b> or <b>Right camera</b> — sync cable; streams are merge-sorted by timestamp. Connect master OUT to the other IN and GND.<br>"
-                + "You can also use <b>FlyEye → Reset timestamps…</b> to confirm both clocks.";
+        return "<html>Use <b>FlyEye → Timestamp master</b> (not a DVS128 checkbox).<br>"
+                + "<b>None</b> (current): no sync cable; then <b>Control → Zero timestamps</b> (0).<br>"
+                + "<b>Left</b> or <b>Right</b>: cable from that camera's OUT to the other IN and GND.";
     }
 
     @Override
@@ -423,7 +442,7 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
             syncTimestampMasterMenu();
 
             JMenuItem resetTsItem = new JMenuItem("Reset timestamps…");
-            resetTsItem.setToolTipText("Vendor-reset both DVS128s and confirm PacketBundle times within 10 ms");
+            resetTsItem.setToolTipText("Vendor-reset both DVS128s; if a timestamp master is set, also check sync cabling");
             resetTsItem.addActionListener(evt -> {
                 if (!(hardwareInterface instanceof FlyEyeHardwareInterface flyHw) || !flyHw.isOpen()) {
                     log.warning("FlyEye hardware is not open");

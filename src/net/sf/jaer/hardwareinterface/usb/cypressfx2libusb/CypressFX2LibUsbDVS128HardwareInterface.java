@@ -181,7 +181,8 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
         return syncEventEnabled;
     }
 
-    int lastTimestampTmp = 0; // TODO debug remove
+    /** Per this USB device only (not across FlyEye left/right). */
+    int lastTimestampTmp = 0;
 
     /**
      * Returns 1
@@ -344,10 +345,13 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                         // and convert to 1us tick
 
                         if (timestamps[eventCounter] < lastTimestampTmp) {
-                            CypressFX2.log.info(String.format("nonmonotonic timestamp: lastTimestamp=%,d, timestamp=%,d, dt=%,d",
+                            // dt = this − last: negative means this USB stream went backwards.
+                            CypressFX2.log.info(String.format(
+                                    "%s nonmonotonic timestamp: lastTimestamp=%,d, timestamp=%,d, dt=%,d",
+                                    CypressFX2LibUsbDVS128HardwareInterface.this,
                                     lastTimestampTmp,
                                     timestamps[eventCounter],
-                                    (lastTimestampTmp - timestamps[eventCounter])));
+                                    timestamps[eventCounter] - lastTimestampTmp));
                         }
                         lastTimestampTmp = timestamps[eventCounter];
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick

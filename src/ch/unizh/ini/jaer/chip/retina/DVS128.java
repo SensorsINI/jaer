@@ -22,6 +22,7 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JTabbedPane;
@@ -241,7 +242,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         timestampMasterWarningShown = true;
         Runnable show = () -> {
             WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
-                    v, false, timestampMasterWarningTitle(), timestampsDisabledWarningHtml());
+                    v, false, timestampMasterWarningTitle(), timestampsDisabledWarningHtml(),
+                    timestampMasterWarningMessageType(), timestampMasterWarningDefaultDontShowAgain());
             d.setVisible(true);
         };
         if (SwingUtilities.isEventDispatchThread()) {
@@ -253,6 +255,15 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
     protected String timestampMasterWarningTitle() {
         return getClass().getSimpleName() + " timestamp master";
+    }
+
+    protected int timestampMasterWarningMessageType() {
+        return JOptionPane.WARNING_MESSAGE;
+    }
+
+    /** If true, Don't show again is checked so OK stores the preference and this dialog is shown once. */
+    protected boolean timestampMasterWarningDefaultDontShowAgain() {
+        return false;
     }
 
     /**

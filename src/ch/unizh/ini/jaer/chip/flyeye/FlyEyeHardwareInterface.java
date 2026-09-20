@@ -159,6 +159,11 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private static final int TIMESTAMP_RESET_TRIES = 3;
     private static final long TIMESTAMP_RESET_WAIT_MS = 400L;
     private static final int TIMESTAMP_ALIGN_US = 10_000;
+    /** Wait between polarity samples when checking a sync cable. */
+    private static final long CABLING_TEST_WAIT_MS = 300L;
+    /** Electrically synced cameras should stay well inside this after reset. */
+    private static final int CABLING_SYNC_US = 2_000;
+    private static final int CABLING_MIN_ADVANCE_US = 1;
 
     @Override
     public void open() throws HardwareInterfaceException {
@@ -323,18 +328,61 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
 
     /** Last-timestamp delta (left − right) when both polarity packets are non-empty. */
     private static Long packetTimestampDeltaUs(AEMonitorInterface left, AEMonitorInterface right) {
+        TimestampSample s = snapshotPolarityTimestamps(left, right);
+        return s.deltaUs();
+    }
+
+    private static TimestampSample snapshotPolarityTimestamps(AEMonitorInterface left, AEMonitorInterface right) {
         try {
             PacketBundle lb = left.acquireAvailablePacketBundle();
             PacketBundle rb = right.acquireAvailablePacketBundle();
             EventPacket<?> lp = lb == null ? null : lb.getFirstPolarityPacket();
             EventPacket<?> rp = rb == null ? null : rb.getFirstPolarityPacket();
-            if (lp == null || rp == null || lp.isEmpty() || rp.isEmpty()) {
-                return null;
-            }
-            return (long) lp.getLastTimestamp() - rp.getLastTimestamp();
+            Long lastL = (lp == null || lp.isEmpty()) ? null : (long) lp.getLastTimestamp();
+            Long lastR = (rp == null || rp.isEmpty()) ? null : (long) rp.getLastTimestamp();
+            return new TimestampSample(lastL, lastR);
         } catch (HardwareInterfaceException e) {
-            return null;
+            return TimestampSample.empty();
         }
+    }
+
+    private TimestampSample waitForPolaritySample(AEMonitorInterface left, AEMonitorInterface right, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        TimestampSample last = TimestampSample.empty();
+        while (System.currentTimeMillis() < deadline) {
+            last = snapshotPolarityTimestamps(left, right);
+            if (last.hasBoth()) {
+                return last;
+            }
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return last;
+            }
+        }
+        return last;
+    }
+
+    /**
+     * After a vendor reset, sample polarity twice. A slave without a cable does
+     * not advance; a reversed or missing cable also shows a large Δt.
+     */
+    CablingCheck probeCabling() {
+        AEMonitorInterface left = getAemonLeft();
+        AEMonitorInterface right = getAemonRight();
+        if (left == null || right == null) {
+            return CablingCheck.inconclusive("missing camera");
+        }
+        TimestampSample first = waitForPolaritySample(left, right, TIMESTAMP_RESET_WAIT_MS);
+        try {
+            Thread.sleep(CABLING_TEST_WAIT_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return CablingCheck.inconclusive("interrupted");
+        }
+        TimestampSample second = waitForPolaritySample(left, right, TIMESTAMP_RESET_WAIT_MS);
+        return CablingCheck.fromSamples(first, second);
     }
 
     static long lastHardwareResetNanos(AEMonitorInterface aemon) {
@@ -352,33 +400,184 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             return;
         }
         AEViewer viewer = flyEye.getAeViewer();
-        boolean masterEnabled = flyEye.getTimestampMaster() != FlyEye.TimestampMaster.NONE;
-        Runnable show;
-        if (result.aligned && result.deltaUs == null) {
-            return;
-        } else if (result.aligned) {
-            String msg = String.format(
-                    "<html>FlyEye timestamps aligned.<br>Left and right PacketBundle last timestamps differ by %,d µs (limit 10 ms).",
-                    Math.abs(result.deltaUs));
-            show = () -> JOptionPane.showMessageDialog(viewer, msg,
-                    "FlyEye timestamps", JOptionPane.INFORMATION_MESSAGE);
-        } else if (masterEnabled) {
-            log.warning("FlyEye timestamp reset not confirmed (" + result.detail
-                    + "); timestamp-master option is on, skipping dialog");
-            return;
-        } else {
-            String msg = "<html>FlyEye could not confirm a timestamp reset on both DVS128 cameras.<br>"
-                    + (result.detail != null ? result.detail + "<br>" : "")
-                    + "Clocks that differ by minutes make playback time slices look empty.<br><br>"
-                    + "Use <b>Control → Zero timestamps</b> (keyboard 0) and check the log for a reset event from <b>both</b> serials.<br>"
-                    + "If a sync cable is connected (master OUT → slave IN and GND), set <b>FlyEye → Timestamp master → Left camera</b> or <b>Right camera</b>.";
-            show = () -> JOptionPane.showMessageDialog(viewer, msg,
-                    "FlyEye timestamp reset", JOptionPane.WARNING_MESSAGE);
+        FlyEye.TimestampMaster master = flyEye.getTimestampMaster();
+        boolean masterEnabled = master != FlyEye.TimestampMaster.NONE;
+        CablingCheck cabling = null;
+        if (masterEnabled && !SwingUtilities.isEventDispatchThread()) {
+            cabling = probeCabling();
+            if (cabling.status == CablingCheck.Status.OK) {
+                log.info("FlyEye cabling check OK: " + cabling.detail);
+            } else {
+                log.warning("FlyEye cabling check " + cabling.status + ": " + cabling.detail);
+            }
         }
+        String msg = timestampDialogHtml(result, cabling, master);
+        int type = timestampDialogType(result, cabling);
+        Runnable show = () -> JOptionPane.showMessageDialog(viewer, msg, "FlyEye timestamps", type);
         if (SwingUtilities.isEventDispatchThread()) {
             show.run();
         } else {
             SwingUtilities.invokeLater(show);
+        }
+    }
+
+    private String timestampDialogHtml(TimestampResetResult result, CablingCheck cabling,
+            FlyEye.TimestampMaster master) {
+        StringBuilder sb = new StringBuilder("<html>");
+        sb.append("Timestamp master: <b>").append(flyEye.timestampMasterLabel()).append("</b>");
+        if (master == FlyEye.TimestampMaster.LEFT) {
+            sb.append(" (right is slave).");
+        } else if (master == FlyEye.TimestampMaster.RIGHT) {
+            sb.append(" (left is slave).");
+        } else {
+            sb.append('.');
+        }
+        sb.append("<br>");
+        if (result.aligned && result.deltaUs != null) {
+            sb.append(String.format(
+                    "Both cameras were timestamp-reset. Last packet times then differed by <b>%,d µs</b> (limit 10 ms).<br>",
+                    Math.abs(result.deltaUs)));
+        } else if (result.aligned) {
+            sb.append("Both cameras sent timestamp-reset events (no polarity yet to measure Δt).<br>");
+        } else {
+            sb.append("Could not confirm a timestamp reset on both cameras");
+            if (result.detail != null) {
+                sb.append(" (").append(result.detail).append(')');
+            }
+            sb.append(".<br>");
+        }
+        if (master == FlyEye.TimestampMaster.NONE) {
+            sb.append("No sync cable: clocks will drift. Use <b>Control → Zero timestamps</b> (0) after reconnecting.");
+            return sb.toString();
+        }
+        String masterSide = master == FlyEye.TimestampMaster.LEFT ? "left" : "right";
+        String slaveSide = master == FlyEye.TimestampMaster.LEFT ? "right" : "left";
+        String cable = "Connect <b>" + masterSide + " OUT</b> to <b>" + slaveSide + " IN</b> and share GND.";
+        if (cabling == null) {
+            sb.append(cable);
+            return sb.toString();
+        }
+        if (cabling.lastLeftUs != null || cabling.lastRightUs != null) {
+            sb.append(String.format("Cabling sample: left last=%s, right last=%s",
+                    formatUs(cabling.lastLeftUs), formatUs(cabling.lastRightUs)));
+            if (cabling.deltaUs != null) {
+                sb.append(String.format(", Δt=%,d µs (limit %,d µs)", Math.abs(cabling.deltaUs), CABLING_SYNC_US));
+            }
+            sb.append(".<br>");
+        }
+        switch (cabling.status) {
+            case OK -> sb.append("Cabling check: both cameras advancing and closely synchronized.");
+            case FAIL -> {
+                sb.append("Cabling check failed: ").append(cabling.detail).append(".<br>");
+                sb.append(cable);
+            }
+            case INCONCLUSIVE -> {
+                sb.append("Cabling check inconclusive: ").append(cabling.detail).append(".<br>");
+                sb.append("Stimulate both cameras and use <b>FlyEye → Reset timestamps…</b>. ").append(cable);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static int timestampDialogType(TimestampResetResult result, CablingCheck cabling) {
+        if (cabling != null && cabling.status == CablingCheck.Status.FAIL) {
+            return JOptionPane.WARNING_MESSAGE;
+        }
+        if (cabling != null && cabling.status == CablingCheck.Status.OK) {
+            return JOptionPane.INFORMATION_MESSAGE;
+        }
+        if (!result.aligned) {
+            return JOptionPane.WARNING_MESSAGE;
+        }
+        return JOptionPane.INFORMATION_MESSAGE;
+    }
+
+    private static String formatUs(Long us) {
+        return us == null ? "no events" : String.format("%,d µs", us);
+    }
+
+    static final class TimestampSample {
+        final Long lastLeftUs;
+        final Long lastRightUs;
+
+        TimestampSample(Long lastLeftUs, Long lastRightUs) {
+            this.lastLeftUs = lastLeftUs;
+            this.lastRightUs = lastRightUs;
+        }
+
+        static TimestampSample empty() {
+            return new TimestampSample(null, null);
+        }
+
+        boolean hasBoth() {
+            return lastLeftUs != null && lastRightUs != null;
+        }
+
+        Long deltaUs() {
+            return hasBoth() ? lastLeftUs - lastRightUs : null;
+        }
+    }
+
+    static final class CablingCheck {
+        enum Status { OK, FAIL, INCONCLUSIVE }
+
+        final Status status;
+        final boolean leftAdvanced;
+        final boolean rightAdvanced;
+        final Long deltaUs;
+        final Long lastLeftUs;
+        final Long lastRightUs;
+        final String detail;
+
+        private CablingCheck(Status status, boolean leftAdvanced, boolean rightAdvanced,
+                Long deltaUs, Long lastLeftUs, Long lastRightUs, String detail) {
+            this.status = status;
+            this.leftAdvanced = leftAdvanced;
+            this.rightAdvanced = rightAdvanced;
+            this.deltaUs = deltaUs;
+            this.lastLeftUs = lastLeftUs;
+            this.lastRightUs = lastRightUs;
+            this.detail = detail;
+        }
+
+        static CablingCheck inconclusive(String detail) {
+            return new CablingCheck(Status.INCONCLUSIVE, false, false, null, null, null, detail);
+        }
+
+        static CablingCheck fromSamples(TimestampSample first, TimestampSample second) {
+            Long lastL = second.lastLeftUs != null ? second.lastLeftUs : first.lastLeftUs;
+            Long lastR = second.lastRightUs != null ? second.lastRightUs : first.lastRightUs;
+            Long delta = second.hasBoth() ? second.deltaUs() : first.deltaUs();
+            if (!second.hasBoth()) {
+                String missing;
+                if (!first.hasBoth()) {
+                    missing = lastL == null && lastR == null ? "no polarity events from either camera"
+                            : lastL == null ? "no polarity events from left camera"
+                            : "no polarity events from right camera";
+                } else {
+                    missing = "could not take a second polarity sample from both cameras";
+                }
+                return new CablingCheck(Status.INCONCLUSIVE, false, false, delta, lastL, lastR, missing);
+            }
+            boolean leftAdv = first.lastLeftUs != null
+                    ? (second.lastLeftUs - first.lastLeftUs) >= CABLING_MIN_ADVANCE_US
+                    : second.lastLeftUs >= CABLING_MIN_ADVANCE_US;
+            boolean rightAdv = first.lastRightUs != null
+                    ? (second.lastRightUs - first.lastRightUs) >= CABLING_MIN_ADVANCE_US
+                    : second.lastRightUs >= CABLING_MIN_ADVANCE_US;
+            if (!leftAdv || !rightAdv) {
+                String which = !leftAdv && !rightAdv ? "left and right timestamps are not advancing"
+                        : !leftAdv ? "left timestamps are not advancing"
+                        : "right timestamps are not advancing";
+                return new CablingCheck(Status.FAIL, leftAdv, rightAdv, delta, lastL, lastR, which);
+            }
+            if (delta == null || Math.abs(delta) > CABLING_SYNC_US) {
+                String d = delta == null ? "could not measure Δt"
+                        : String.format("last times differ by %,d µs (limit %,d µs)", Math.abs(delta), CABLING_SYNC_US);
+                return new CablingCheck(Status.FAIL, leftAdv, rightAdv, delta, lastL, lastR, d);
+            }
+            return new CablingCheck(Status.OK, true, true, delta, lastL, lastR,
+                    String.format("Δt=%d µs, both advancing", delta));
         }
     }
 

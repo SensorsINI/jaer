@@ -99,7 +99,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 	public boolean isSyncEventEnabled() {
         return syncEventEnabled;
     }
-    int lastTimestampTmp = 0; // TODO debug remove
+    /** Per this USB device only (not across FlyEye left/right). */
+    int lastTimestampTmp = 0;
 
     /** Returns 1
      *
@@ -239,7 +240,12 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         timestamps[eventCounter] = TICK_US * (shortts + wrapAdd); //*TICK_US; //add in the wrap offset and convert to 1us tick
 
                         if (timestamps[eventCounter] < lastTimestampTmp) {
-                            log.info("nonmonotonic timestamp: lastTimestamp=" + lastTimestampTmp + " timestamp=" + timestamps[eventCounter]);
+                            log.info(String.format(
+                                    "%s nonmonotonic timestamp: lastTimestamp=%,d, timestamp=%,d, dt=%,d",
+                                    CypressFX2DVS128HardwareInterface.this,
+                                    lastTimestampTmp,
+                                    timestamps[eventCounter],
+                                    timestamps[eventCounter] - lastTimestampTmp));
                         }
                         lastTimestampTmp = timestamps[eventCounter];
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
