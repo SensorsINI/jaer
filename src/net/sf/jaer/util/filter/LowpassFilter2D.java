@@ -18,8 +18,7 @@ public class LowpassFilter2D extends LowpassFilter{
      *
      */
     public LowpassFilter2D(){
-        x.setTauMs(getTauMs());
-        y.setTauMs(getTauMs());
+        setTauMs(getTauMs());
     }
 
     /** Construct a new instance using a supplied Point2D.Float to store the value
@@ -36,8 +35,7 @@ public class LowpassFilter2D extends LowpassFilter{
      *@param tauMs the time constant in ms.
      */
     public LowpassFilter2D(float tauMs){
-        x.setTauMs(getTauMs());
-        y.setTauMs(getTauMs());
+        setTauMs(tauMs);
     }
 
     /** Construct a new instance using a supplied Point2D.Float to store the value.
@@ -49,12 +47,42 @@ public class LowpassFilter2D extends LowpassFilter{
         this.point=point;
         x.setInternalValue(point.x);
         y.setInternalValue(point.y);
+        setTauMs(tauMs);
     }
 
+    @Override
     public void setTauMs(float tauMs){
         super.setTauMs(tauMs);
         x.setTauMs(tauMs);
         y.setTauMs(tauMs);
+    }
+
+    @Override
+    public void setTauUs(int tauUs){
+        super.setTauUs(tauUs);
+        x.setTauUs(tauUs);
+        y.setTauUs(tauUs);
+    }
+
+    /** Resets both internal scalar filters so the next sample initializes them. */
+    @Override
+    public void reset(){
+        super.reset();
+        x.reset();
+        y.reset();
+    }
+
+    /** True only when both internal scalar filters have had a value applied. */
+    @Override
+    public boolean isInitialized(){
+        return x.isInitialized() && y.isInitialized();
+    }
+
+    @Override
+    public void setInitialized(boolean initialized){
+        super.setInitialized(initialized);
+        x.setInitialized(initialized);
+        y.setInitialized(initialized);
     }
 
     /** Filter a 2D value with a specified timestamp in us
