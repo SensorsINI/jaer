@@ -12,7 +12,10 @@ public final class GnssFix {
     public double latDeg = Double.NaN;
     public double lonDeg = Double.NaN;
     public double altM = Double.NaN;
+    /** NMEA RMC/VTG SOG (knots). Overlay uses {@link #sogMps()}. */
     public double sogKnots = Double.NaN;
+    /** 1 kn = 1852 m / 3600 s. */
+    public static final double KNOTS_TO_MPS = 1852.0 / 3600.0;
     public double cogTrueDeg = Double.NaN;
     public int fixQuality = -1;
     public int numSats = -1;
@@ -55,6 +58,10 @@ public final class GnssFix {
         return hasPosition();
     }
 
+    public double sogMps() {
+        return sogKnots * KNOTS_TO_MPS;
+    }
+
     public String overlayText() {
         if (!hasPosition()) {
             return "GNSS: no fix";
@@ -65,7 +72,7 @@ public final class GnssFix {
             sb.append(String.format("  alt %.1fm", altM));
         }
         if (!Double.isNaN(sogKnots)) {
-            sb.append(String.format("  SOG %.2fkn", sogKnots));
+            sb.append(String.format("  SOG %.2f m/s", sogMps()));
         }
         if (!Double.isNaN(cogTrueDeg)) {
             sb.append(String.format("  COG %.1f°", cogTrueDeg));

@@ -122,10 +122,11 @@ public final class GnssSidecar {
     }
 
     /**
-     * Keyed by camera timestamp (µs).
+     * Keyed by host receive time ({@code unix_ms}). Duplicate milliseconds keep
+     * the later row.
      */
-    public static TreeMap<Integer, GnssFix> load(File sidecar) throws IOException {
-        TreeMap<Integer, GnssFix> map = new TreeMap<>();
+    public static TreeMap<Long, GnssFix> load(File sidecar) throws IOException {
+        TreeMap<Long, GnssFix> map = new TreeMap<>();
         if (sidecar == null || !sidecar.isFile()) {
             return map;
         }
@@ -136,8 +137,8 @@ public final class GnssSidecar {
                     continue;
                 }
                 GnssFix f = parseRow(line);
-                if (f != null) {
-                    map.put(f.cameraUs, f);
+                if (f != null && f.receivedUnixMs > 0) {
+                    map.put(f.receivedUnixMs, f);
                 }
             }
         }
