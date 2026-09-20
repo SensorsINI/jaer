@@ -413,8 +413,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(cornerTip, "cornerSize", "Dimension WxH of the drawn detector corners in chip pixels");
 
         String patchTT = "0a: Block matching";
-        // move ppsScale to main top GUI since we use it a lot
-        setPropertyTooltip(patchTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
+        // move displayVectorsPpsScale to main top GUI since we use it a lot
+        setPropertyTooltip(patchTT, "displayVectorsPpsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(patchTT, "blockDimension", "Linear dimenion of patches to match on coarse scale, in pixels. Median and fine scale block sizes are scaled up approx by powers of 2.");
         setPropertyTooltip(patchTT, "searchDistance", "Search distance for matching patches, in pixels");

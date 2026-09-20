@@ -63,39 +63,57 @@ public final class DrawGL {
         drawVector(gl, origX, origY, headX, headY, 1, 1);
     }
 
+    /** Arrowhead tip half-angle relative to the shaft, in radians (30°). */
+    private static final float ARROWHEAD_ANGLE_RAD = (float) Math.toRadians(30);
+    private static final float ARROWHEAD_COS = (float) Math.cos(ARROWHEAD_ANGLE_RAD);
+    private static final float ARROWHEAD_SIN = (float) Math.sin(ARROWHEAD_ANGLE_RAD);
+    /** Arrowhead tip segments are never longer than this fraction of the shaft. */
+    private static final float ARROWHEAD_MAX_FRACTION_OF_SHAFT = 1f / 3;
+
     /**
      * Draws an arrow vector using current open gl color. After the call, the
      * origin of the current coordinate has been translated to the origin of the
      * vector.
+     * <p>
+     * The arrowhead tip segments make ±30° with the shaft and are drawn with
+     * length {@code headlength} (in the same units as the scaled vector), but
+     * never longer than 1/3 of the shaft so short vectors are not dominated by
+     * their tips.
      *
      * @param gl the opengl context
      * @param origX the arrow origin location x
      * @param origY the arrow origin location x
      * @param headX The x length of arrow
      * @param headY the y length of arrow
-     * @param headlength the length of the arrow tip segments as fraction of
-     * entire arrow length, after scaling
+     * @param headlength the length of each arrow tip segment, after scaling;
+     * capped at 1/3 of the shaft length
      * @param scale the scaling used for drawing the arrow
      */
     public static void drawVector(GL2 gl, float origX, float origY, float headX, float headY, float headlength, float scale) {
-        float endx = headX * scale, endy = headY * scale;
-        float arx = -endx + endy, ary = -endx - endy;   // halfway between pointing back to origin
-        float l = (float) Math.sqrt((arx * arx) + (ary * ary)); // length
-        arx = (arx / l) * headlength;
-        ary = (ary / l) * headlength; // normalize to headlength
+        final float endx = headX * scale, endy = headY * scale;
+        final float len = (float) Math.sqrt((endx * endx) + (endy * endy));
 
         gl.glTranslatef(origX, origY, 0);
+        if (len <= 0) {
+            return; // nothing to draw; former code divided by zero here
+        }
+        // unit vector pointing from tip back towards origin
+        final float bx = -endx / len, by = -endy / len;
+        final float hl = Math.min(headlength, len * ARROWHEAD_MAX_FRACTION_OF_SHAFT);
+        // back-vector rotated by +-30 degrees, scaled to head length
+        final float a1x = ((bx * ARROWHEAD_COS) - (by * ARROWHEAD_SIN)) * hl;
+        final float a1y = ((bx * ARROWHEAD_SIN) + (by * ARROWHEAD_COS)) * hl;
+        final float a2x = ((bx * ARROWHEAD_COS) + (by * ARROWHEAD_SIN)) * hl;
+        final float a2y = (-(bx * ARROWHEAD_SIN) + (by * ARROWHEAD_COS)) * hl;
 
         gl.glBegin(GL2.GL_LINES);
         {
             gl.glVertex2f(0, 0);
             gl.glVertex2f(endx, endy);
-            // draw arrow (half)
             gl.glVertex2f(endx, endy);
-            gl.glVertex2f(endx + arx, endy + ary);
-            // other half, 90 degrees
+            gl.glVertex2f(endx + a1x, endy + a1y);
             gl.glVertex2f(endx, endy);
-            gl.glVertex2f(endx + ary, endy - arx);
+            gl.glVertex2f(endx + a2x, endy + a2y);
         }
         gl.glEnd();
     }

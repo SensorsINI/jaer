@@ -88,7 +88,13 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         return false;
     }
 
-    synchronized void writeOutputEvent(byte motionDir, Object ein) {
+    /**
+     * Writes one motion event for a passing input event. Protected so
+     * subclasses (e.g. FlyMotion) can hook per-event flow output; after the
+     * super call, {@code vx, vy, v} hold this event's flow and {@code ts} its
+     * (gap-adjusted) timestamp.
+     */
+    protected synchronized void writeOutputEvent(byte motionDir, Object ein) {
         super.processGoodEvent();
         eout.copyFrom((BasicEvent) ein);
         eout.direction = motionDir;

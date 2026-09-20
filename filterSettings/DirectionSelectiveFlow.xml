@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="FlyEye">
+          <map/>
+          <node name="DirectionSelectiveFlow">
+            <map>
+              <entry key="DirectionSelectiveFlow.measureAccuracy" value="false"/>
+              <entry key="DirectionSelectiveFlow.xMax" value="240"/>
+              <entry key="DirectionSelectiveFlow.yMax" value="128"/>
+              <entry key="DirectionSelectiveFlow.measureProcessingTime" value="false"/>
+              <entry key="DirectionSelectiveFlow.displayGlobalMotion" value="true"/>
+              <entry key="DirectionSelectiveFlow.filterEnabled" value="false"/>
+              <entry key="DirectionSelectiveFlow.motionVectorLineWidthPixels" value="1.1892087"/>
+              <entry key="DirectionSelectiveFlow.fontSize" value="2.9283664"/>
+              <entry key="DirectionSelectiveFlow.fontSizeAuto" value="false"/>
+              <entry key="DirectionSelectiveFlow.displayColorWheelLegend" value="true"/>
+              <entry key="DirectionSelectiveFlow.displayGlobalMotionAngleHistogram" value="false"/>
+              <entry key="DirectionSelectiveFlow.displayVectorsEnabled" value="true"/>
+              <entry key="DirectionSelectiveFlow.showFilterName" value="true"/>
+              <entry key="DirectionSelectiveFlow.ppsScale" value="0.07384132"/>
+              <entry key="DirectionSelectiveFlow.ppsScaleDisplayRelativeOFLength" value="false"/>
+              <entry key="DirectionSelectiveFlow.motionVectorTransparencyAlpha" value="0.7"/>
+              <entry key="DirectionSelectiveFlow.statisticsWindowSize" value="2885"/>
+              <entry key="DirectionSelectiveFlow.displayVectorsAsColorDots" value="false"/>
+              <entry key="DirectionSelectiveFlow.displayRawInput" value="true"/>
+              <entry key="DirectionSelectiveFlow.displayVectorsAsUnitVectors" value="false"/>
+            </map>
+            <node name="SimpleOrientationFilter">
+              <map>
+                <entry key="SimpleOrientationFilter.showRawInputEnabled" value="false"/>
+                <entry key="SimpleOrientationFilter.helpDialogShown" value="true"/>
+                <entry key="SimpleOrientationFilter.length" value="1"/>
+              </map>
+            </node>
+            <node name="SingleCameraCalibration">
+              <map>
+                <entry key="SingleCameraCalibration.realtimePatternDetectionEnabled" value="false"/>
+                <entry key="SingleCameraCalibration.filterEnabled" value="false"/>
+              </map>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

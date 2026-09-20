@@ -86,6 +86,7 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         setSizeX(FlyEyeGeometry.panoramicWidth(overlapPixels));
         setSizeY(FlyEyeGeometry.NATIVE_H);
         setEventExtractor(new Extractor(this));
+        addDefaultEventFilter(FlyMotion.class);
         FlyEyeRenderer renderer = new FlyEyeRenderer(this);
         setRenderer(renderer);
         if (getCanvas() != null && getCanvas().getDisplayMethod() != null) {

@@ -284,7 +284,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSliceBitMap", "enables displaying the slices' bitmap");
-        setPropertyTooltip(patchDispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
+        setPropertyTooltip(patchDispTT, "displayVectorsPpsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
 
@@ -478,7 +478,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
         setDisplayVectorsEnabled(true);
         setPpsScaleDisplayRelativeOFLength(true);
         setDisplayGlobalMotion(true);
-        setPpsScale(.1f);
+        setDisplayVectorsPpsScale(.1f);
         setSliceMaxValue(7);
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
         setValidPixOccupancy(.01f); // at least this fraction of pixels from each block must both have nonzero values

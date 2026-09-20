@@ -120,6 +120,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     // Display
     private boolean displayVectorsEnabled = getBoolean("displayVectorsEnabled", true);
+    /** Fraction of local motion vectors rendered (stride subsampling of the display loop). */
+    private float displayVectorsFraction = getFloat("displayVectorsFraction", 0.05f);
     private boolean displayVectorsAsUnitVectors = getBoolean("displayVectorsAsUnitVectors", false);
     private boolean displayVectorsAsColorDots = getBoolean("displayVectorsAsColorDots", false);
     private boolean displayZeroLengthVectorsEnabled = getBoolean("displayZeroLengthVectorsEnabled", true);
@@ -128,7 +130,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private boolean randomScatterOnFlowVectorOrigins = getBoolean("randomScatterOnFlowVectorOrigins", true);
     private static final float RANDOM_SCATTER_PIXELS = 1;
     private Random random = new Random();
-    protected float motionVectorTransparencyAlpha = getFloat("motionVectorTransparencyAlpha", .7f);
+    /**
+     * Fading of local flow vector rendering: rendered as alpha so vectors
+     * blend into the background without losing their direction color.
+     * 1=opaque, 0=invisible. Replaces the former motionVectorTransparencyAlpha
+     * whose alpha never rendered because the blend function was broken
+     * (GL_SRC_ALPHA, GL_DST_COLOR); scaling HSB brightness instead just made
+     * the vectors black. Global/eye vectors are always drawn opaque.
+     */
+    protected float localFlowVectorBrightness = getFloat("localFlowVectorBrightness", 1f);
     protected boolean showFilterName = getBoolean("showFilterName", true);
     protected int timestampGapThresholdUs = getInt("timestampGapThresholdUs", 10000);
     protected int timestampGapToBeRemoved = 0;
@@ -138,7 +148,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private long lastNonmonotonicWarnNs;
     private int nonmonotonicSuppressed;
 
-    private float ppsScale = getFloat("ppsScale", 0.1f);
+    /** Renamed from ppsScale so it sorts next to the displayVectors* properties. */
+    private float displayVectorsPpsScale = getFloat("displayVectorsPpsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
 
     /**
@@ -249,6 +260,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected static final float GLOBAL_MOTION_LINE_WIDTH_SCALE = 5;
 
     /**
+     * Arrowhead tip length in chip pixels for all drawn flow vectors (local
+     * and global); DrawGL caps tips at 1/3 of the shaft. Local vectors used
+     * to draw tips of motionVectorLineWidthPixels*2, which dwarfed the shafts.
+     */
+    protected static final float VECTOR_HEAD_LENGTH_PIXELS = 3;
+
+    /**
      * Used for logging motion vector events to a text log file
      */
     protected TobiLogger motionVectorEventLogger = null;
@@ -327,10 +345,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
 
         setPropertyTooltip(dispTT, "fontSize", "Font size for annotations (chip pixels, fractional). On first use it is chosen to fit the chip width; change this to stop auto-sizing.");
-        setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
+        setPropertyTooltip(dispTT, "displayVectorsPpsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
+        setPropertyTooltip(dispTT, "displayVectorsFraction", "fraction of local motion vectors that are rendered (1=all); reduce to unclutter the display and cut rendering cost");
         setPropertyTooltip(dispTT, "displayVectorsAsColorDots", "shows local motion vector events as color dots, rather than arrows");
         setPropertyTooltip(dispTT, "displayVectorsAsUnitVectors", "shows local motion vector events with unit vector length");
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
@@ -347,7 +366,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "yMax", "events with y-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "motionVectorLineWidthPixels", "line width to draw motion vectors");
-        setPropertyTooltip(dispTT, "motionVectorTransparencyAlpha", "transparency alpha setting for motion vector rendering");
+        setPropertyTooltip(dispTT, "localFlowVectorBrightness", "fading (opacity) of local flow vectors; 1=opaque, lower fades them into the background while keeping their direction color. Global/eye vectors always draw opaque.");
         setPropertyTooltip(dispTT, "useColorForMotionVectors", "display the output motion vectors in color");
         setPropertyTooltip(smoothingTT, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
         setPropertyTooltip(smoothingTT, "timestampGapThresholdUs", "<html>threshold in us for removing big gaps in timestamps;<br> to deal with recordings of fast motion with pauses for disk IO.<p>To disable, set to 0");
@@ -745,7 +764,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPpsScaleDisplayRelativeOFLength(false);
         setMotionVectorLineWidthPixels(2);
         setDisplayGlobalMotion(true);
-        setPpsScale(0.1F);
+        setDisplayVectorsPpsScale(0.1F);
         setDisplayGlobalMotion(true);
         setRefractoryPeriodUs(DEFAULT_REFRACTORY_PERIOD_US);
 
@@ -1085,7 +1104,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         exportedFlowToMatlab = false;
         motionField.reset();
         motionFlowStatistics.reset(subSizeX, subSizeY, statisticsWindowSize);
-        if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
+        if (this instanceof DirectionSelectiveFlow && getEnclosedFilter() != null) {
+            // covers subclasses too (FlyMotion); the former simple-name string
+            // compare skipped the enclosed orientation filter reset for them
             getEnclosedFilter().resetFilter();
         }
         lastNonmonotonicWarnNs = 0;
@@ -1095,6 +1116,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         timestampGapToBeRemoved = 0;
     }
 
+    /**
+     * Subclasses that compute their own global motion (e.g. FlyMotion's
+     * per-eye wide-field vectors) can return false to fully suppress the
+     * combined chip-wide GlobalMotion computation and its annotation.
+     */
+    protected boolean isCombinedGlobalMotionEnabled() {
+        return true;
+    }
+
     @Override
     public void initFilter() {
         sizex = chip.getSizeX();
@@ -1102,6 +1132,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         subSizeX = sizex >> subSampleShift;
         subSizeY = sizey >> subSampleShift;
         motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY, statisticsWindowSize);
+        motionFlowStatistics.setMeasureGlobalMotion(isCombinedGlobalMotionEnabled());
         if (chip.getAeViewer() != null) {
             chip.getAeViewer().getSupport().addPropertyChangeListener(this); // AEViewer refires these events for convenience
         }
@@ -1170,7 +1201,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (useColorForMotionVectors) {
             rgba = motionColor(vx, vy, 1, 1);
         } else {
-            rgba = new float[]{0, 0, 1, motionVectorTransparencyAlpha};
+            rgba = new float[]{0, 0, 1, localFlowVectorBrightness};
         }
 
         return drawMotionVector(gl, x, y, vx, vy, rgba, getMotionVectorLineWidthPixels());
@@ -1178,9 +1209,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     protected float[] drawMotionVector(GL2 gl, int x, int y, float vx, float vy, float[] rgba, float lineWidthPixels) {
         gl.glColor4fv(rgba, 0);
-        float scale = ppsScale;
-        if (ppsScaleDisplayRelativeOFLength && displayGlobalMotion) {
-            scale = 100 * ppsScale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+        float scale = displayVectorsPpsScale;
+        if (ppsScaleDisplayRelativeOFLength && displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
+            scale = 100 * displayVectorsPpsScale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
         }
         if (displayVectorsEnabled) {
             gl.glPushMatrix();
@@ -1203,14 +1234,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 rx = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
                 ry = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
             }
-            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels * 2, 1);
+            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, VECTOR_HEAD_LENGTH_PIXELS, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
+            // direction-colored dot at the event location (color set above from
+            // motionColor). Formerly drew at field e (last event the filter
+            // thread processed), piling all dots onto one stale location.
             gl.glPointSize(motionVectorLineWidthPixels * 5);
             gl.glEnable(GL2.GL_POINT_SMOOTH);
             gl.glBegin(GL.GL_POINTS);
-            gl.glVertex2f(e.getX(), e.getY());
+            gl.glVertex2f(x, y);
             gl.glEnd();
         }
         return rgba;
@@ -1255,7 +1289,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         int rgbValue = Color.HSBtoRGB(angle01, saturation, brightness);
         Color color = new Color(rgbValue);
         float[] c = color.getRGBComponents(null);
-        return new float[]{c[0], c[1], c[2], motionVectorTransparencyAlpha};
+        // alpha fades local vectors into the background under standard
+        // blending, preserving hue; callers drawing global/eye vectors pass
+        // their own alpha=1
+        return new float[]{c[0], c[1], c[2], localFlowVectorBrightness};
     }
 
     @Override
@@ -1274,10 +1311,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         // Draw individual motion vectors
         if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
             gl.glEnable(GL.GL_BLEND);
-            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_DST_COLOR);
+            // standard transparency blend; the former (GL_SRC_ALPHA, GL_DST_COLOR)
+            // multiplied dst by src color and never rendered as transparency
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
             gl.glBlendEquation(GL.GL_FUNC_ADD);
+            // render only every strideth vector when displayVectorsFraction<1
+            final int vectorStride = displayVectorsFraction >= 1 ? 1
+                    : Math.max(1, Math.round(1f / Math.max(0.01f, displayVectorsFraction)));
+            int vectorCount = 0;
             for (Object o : dirPacket) {
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
+                if ((vectorCount++ % vectorStride) != 0) {
+                    continue;
+                }
                 // If we passAllEvents then the check is needed to not annotate 
                 // the events without a real direction.
                 if (ei.isHasDirection()) {
@@ -1298,32 +1344,38 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             // draw scale bar vector at bottom
             gl.glPushMatrix();
             float speed = (chip.getSizeX() / 2);
-            if (displayGlobalMotion) {
+            if (displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
                 speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
             }
             final int px = 10, py = -13;
 
             float[] rgba = drawMotionVector(gl, px, py, speed, 0);
-            gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
+            gl.glRasterPos2f(px + 100 * displayVectorsPpsScale, py); // use same scaling
             String s = null;
-            if (displayGlobalMotion) {
+            if (displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
                 s = String.format("%.1f px/s avg. speed and OF vector scale", speed);
             } else {
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(fontSize, px + 4 + speed * ppsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(fontSize, px + 4 + speed * displayVectorsPpsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
                 DrawGL.drawString(fontSize, 10, 10, 0, Color.white, getShortName());
             }
+            if (displayVectorsFraction < 1) {
+                final float smallFont = Math.max(DrawGL.MIN_FONT_SIZE, fontSize * .75f);
+                final float yPos = showFilterName ? 10 - DrawGL.lineAdvance(smallFont) : 10;
+                DrawGL.drawString(smallFont, 10, yPos, 0, Color.white,
+                        String.format("%.0f%% of local vectors displayed", displayVectorsFraction * 100));
+            }
             gl.glPopMatrix();
 
         }
 
-        if (displayGlobalMotion) {
-            float gScale = ppsScale * GLOBAL_MOTION_DRAWING_SCALE;
+        if (displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
+            float gScale = displayVectorsPpsScale * GLOBAL_MOTION_DRAWING_SCALE;
             float gVx = motionFlowStatistics.getGlobalMotion().meanGlobalVx;
             float gVy = motionFlowStatistics.getGlobalMotion().meanGlobalVy;
             gl.glLineWidth(motionVectorLineWidthPixels * GLOBAL_MOTION_LINE_WIDTH_SCALE);
@@ -1358,13 +1410,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     sizex / 2,
                     sizey * 3 / 4,
                     (float) (-motionFlowStatistics.getGlobalMotion().getGlobalRotation().getMean()),
-                    0, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
+                    0, displayVectorsPpsScale * GLOBAL_MOTION_DRAWING_SCALE);
             gl.glPopMatrix();
 
             // Draw global expansion as circle with radius proportional to 
             // expansion metric, smaller for contraction, larger for expansion
             gl.glPushMatrix();
-            DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * GLOBAL_MOTION_DRAWING_SCALE
+            DrawGL.drawCircle(gl, sizex / 2, sizey / 2, displayVectorsPpsScale * GLOBAL_MOTION_DRAWING_SCALE
                     * (1 + motionFlowStatistics.getGlobalMotion().meanGlobalExpansion), 15);
             gl.glPopMatrix();
 
@@ -1649,7 +1701,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 
-        if (displayGlobalMotion || ppsScaleDisplayRelativeOFLength) {
+        if ((displayGlobalMotion || ppsScaleDisplayRelativeOFLength) && isCombinedGlobalMotionEnabled()) {
             motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
         }
 
@@ -2043,21 +2095,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ppsScale--">
-    public float getPpsScale() {
-        return ppsScale;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --displayVectorsPpsScale--">
+    public float getDisplayVectorsPpsScale() {
+        return displayVectorsPpsScale;
     }
 
     /**
      * scale for drawn motion vectors, pixels per second per pixel
      *
-     * @param ppsScale
+     * @param displayVectorsPpsScale
      */
-    public void setPpsScale(float ppsScale) {
-        float old = this.ppsScale;
-        this.ppsScale = ppsScale;
-        putFloat("ppsScale", ppsScale);
-        getSupport().firePropertyChange("ppsScale", old, this.ppsScale);
+    public void setDisplayVectorsPpsScale(float displayVectorsPpsScale) {
+        float old = this.displayVectorsPpsScale;
+        this.displayVectorsPpsScale = displayVectorsPpsScale;
+        putFloat("displayVectorsPpsScale", displayVectorsPpsScale);
+        getSupport().firePropertyChange("displayVectorsPpsScale", old, this.displayVectorsPpsScale);
     }
     // </editor-fold>
 
@@ -2417,7 +2469,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 e.printStackTrace();
             }
             float shift = ((1 << motionFieldSubsamplingShift) * .5f);
-            final float saturationSpeedScaleInversePixels = ppsScale * 0.1f; // this length of vector in pixels makes full brightness
+            final float saturationSpeedScaleInversePixels = displayVectorsPpsScale * 0.1f; // this length of vector in pixels makes full brightness
             for (int ix = 0; ix < sx; ix++) {
                 float x = (ix << motionFieldSubsamplingShift) + shift;
                 for (int iy = 0; iy < sy; iy++) {
@@ -2452,7 +2504,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //                    gl.glColor4f(angle, 1 - angle, 1 / (1 + 10 * angle), .5f);
                     if (!displayMotionFieldColorBlobs) {
                         gl.glPushMatrix();
-                        DrawGL.drawVector(gl, x, y, vx * ppsScale, vy * ppsScale, motionVectorLineWidthPixels, 1);
+                        DrawGL.drawVector(gl, x, y, vx * displayVectorsPpsScale, vy * displayVectorsPpsScale, VECTOR_HEAD_LENGTH_PIXELS, 1);
                         gl.glPopMatrix();
                     } else if (displayMotionFieldColorBlobs) {
                         gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
@@ -2820,6 +2872,27 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //        this.outlierMotionFilteringEnabled = outlierMotionFilteringEnabled;
 //    }
     /**
+     * @return the displayVectorsFraction
+     */
+    public float getDisplayVectorsFraction() {
+        return displayVectorsFraction;
+    }
+
+    /**
+     * @param displayVectorsFraction fraction (0.01 to 1) of local motion
+     * vectors that are rendered; stride subsampling of the display loop
+     */
+    public void setDisplayVectorsFraction(float displayVectorsFraction) {
+        if (displayVectorsFraction < 0.01f) {
+            displayVectorsFraction = 0.01f;
+        } else if (displayVectorsFraction > 1) {
+            displayVectorsFraction = 1;
+        }
+        this.displayVectorsFraction = displayVectorsFraction;
+        putFloat("displayVectorsFraction", displayVectorsFraction);
+    }
+
+    /**
      * @return the displayVectorsAsColorDots
      */
     public boolean isDisplayVectorsAsColorDots() {
@@ -2940,24 +3013,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     /**
-     * @return the motionVectorTransparencyAlpha
+     * @return the localFlowVectorBrightness
      */
-    public float getMotionVectorTransparencyAlpha() {
-        return motionVectorTransparencyAlpha;
+    public float getLocalFlowVectorBrightness() {
+        return localFlowVectorBrightness;
     }
 
     /**
-     * @param motionVectorTransparencyAlpha the motionVectorTransparencyAlpha to
-     * set
+     * @param localFlowVectorBrightness dimming of local flow vector display;
+     * 1=full brightness, 0=black
      */
-    public void setMotionVectorTransparencyAlpha(float motionVectorTransparencyAlpha) {
-        if (motionVectorTransparencyAlpha < 0) {
-            motionVectorTransparencyAlpha = 0;
-        } else if (motionVectorTransparencyAlpha > 1) {
-            motionVectorTransparencyAlpha = 1;
+    public void setLocalFlowVectorBrightness(float localFlowVectorBrightness) {
+        if (localFlowVectorBrightness < 0) {
+            localFlowVectorBrightness = 0;
+        } else if (localFlowVectorBrightness > 1) {
+            localFlowVectorBrightness = 1;
         }
-        this.motionVectorTransparencyAlpha = motionVectorTransparencyAlpha;
-        putFloat("motionVectorTransparencyAlpha", motionVectorTransparencyAlpha);
+        this.localFlowVectorBrightness = localFlowVectorBrightness;
+        putFloat("localFlowVectorBrightness", localFlowVectorBrightness);
     }
 
     @Override

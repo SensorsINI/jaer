@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="FlyEye">
+          <map/>
+          <node name="FlyMotion">
+            <map>
+              <entry key="FlyMotion.filterEnabled" value="true"/>
+              <entry key="FlyMotion.xMax" value="240"/>
+              <entry key="FlyMotion.yMax" value="128"/>
+              <entry key="FlyMotion.measureAccuracy" value="false"/>
+              <entry key="FlyMotion.measureProcessingTime" value="false"/>
+              <entry key="FlyMotion.displayGlobalMotion" value="false"/>
+              <entry key="FlyMotion.displayGlobalMotionAngleHistogram" value="false"/>
+              <entry key="FlyMotion.displayVectorsEnabled" value="true"/>
+              <entry key="FlyMotion.displayVectorsFraction" value="0.1"/>
+              <entry key="FlyMotion.displayZeroLengthVectorsEnabled" value="false"/>
+              <entry key="FlyMotion.displayVectorsAsColorDots" value="false"/>
+              <entry key="FlyMotion.displayVectorsAsUnitVectors" value="false"/>
+              <entry key="FlyMotion.displayRawInput" value="true"/>
+              <entry key="FlyMotion.displayColorWheelLegend" value="true"/>
+              <entry key="FlyMotion.showFilterName" value="true"/>
+              <entry key="FlyMotion.fontSize" value="4.0"/>
+              <entry key="FlyMotion.fontSizeAuto" value="false"/>
+              <entry key="FlyMotion.motionVectorLineWidthPixels" value="3.8"/>
+              <entry key="FlyMotion.localFlowVectorBrightness" value="0.4"/>
+              <entry key="FlyMotion.displayVectorsPpsScale" value="0.05"/>
+              <entry key="FlyMotion.ppsScaleDisplayRelativeOFLength" value="false"/>
+              <entry key="FlyMotion.statisticsWindowSize" value="2885"/>
+              <entry key="FlyMotion.eyeFlowTauMs" value="100.0"/>
+              <entry key="FlyMotion.showEyeFlowVectors" value="true"/>
+            </map>
+            <node name="DirectionSelectiveFlow">
+              <map/>
+              <node name="SimpleOrientationFilter">
+                <map>
+                  <entry key="SimpleOrientationFilter.showRawInputEnabled" value="false"/>
+                  <entry key="SimpleOrientationFilter.helpDialogShown" value="true"/>
+                  <entry key="SimpleOrientationFilter.length" value="1"/>
+                </map>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
