@@ -244,6 +244,27 @@ public class Aedat4FileOutputStream implements Closeable {
         return baseUs;
     }
 
+    /**
+     * Same Unix µs written on EVTS packets for this chip timestamp. Uses the
+     * track's current wrap offset and does not advance unwrap state.
+     */
+    public long cameraTimestampToUnixUs(int cameraTimestampUs) {
+        return cameraTimestampToUnixUs(cameraTimestampUs, 0);
+    }
+
+    public long cameraTimestampToUnixUs(int cameraTimestampUs, int trackIndex) {
+        synchronized (this) {
+            if (tracks == null || tracks.isEmpty()) {
+                return baseUs + (cameraTimestampUs & 0xffffffffL);
+            }
+            if (trackIndex < 0 || trackIndex >= tracks.size()) {
+                trackIndex = 0;
+            }
+            Aedat4CameraTrack t = tracks.get(trackIndex);
+            return baseUs + (cameraTimestampUs & 0xffffffffL) + t.unwrapper.wrapOffset();
+        }
+    }
+
     public long getEventsWritten() {
         long n = 0;
         for (Aedat4CameraTrack t : tracks) {

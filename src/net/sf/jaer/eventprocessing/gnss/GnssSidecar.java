@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,7 +68,7 @@ public final class GnssSidecar {
             w.newLine();
             w.write("# recording=" + (recording == null ? "" : recording.getAbsolutePath()));
             w.newLine();
-            w.write("unix_ms,camera_us,utc,lat_deg,lon_deg,alt_m,sog_kn,cog_true_deg,fix_quality,num_sats,hdop,rmc_status,talker,raw");
+            w.write("unix_ms,camera_us,aedat4_unix_us,utc,lat_deg,lon_deg,alt_m,sog_kn,cog_true_deg,fix_quality,num_sats,hdop,rmc_status,talker,raw");
             w.newLine();
             w.flush();
             return w;
@@ -93,6 +94,8 @@ public final class GnssSidecar {
         w.write(Long.toString(fix.receivedUnixMs));
         w.write(',');
         w.write(Integer.toString(fix.cameraUs));
+        w.write(',');
+        w.write(Long.toString(fix.aedat4UnixUs));
         w.write(',');
         w.write(csv(fix.utc));
         w.write(',');
@@ -122,8 +125,8 @@ public final class GnssSidecar {
     }
 
     /**
-     * Keyed by host receive time ({@code unix_ms}). Duplicate milliseconds keep
-     * the later row.
+     * Keyed by AEDAT-4 packet Unix µs when that column is present and nonzero,
+     * otherwise by host {@code unix_ms}. Duplicate keys keep the later row.
      */
     public static TreeMap<Long, GnssFix> load(File sidecar) throws IOException {
         TreeMap<Long, GnssFix> map = new TreeMap<>();
@@ -137,8 +140,12 @@ public final class GnssSidecar {
                     continue;
                 }
                 GnssFix f = parseRow(line);
-                if (f != null && f.receivedUnixMs > 0) {
-                    map.put(f.receivedUnixMs, f);
+                if (f == null) {
+                    continue;
+                }
+                long key = f.aedat4UnixUs > 0 ? f.aedat4UnixUs : f.receivedUnixMs;
+                if (key > 0) {
+                    map.put(key, f);
                 }
             }
         }
@@ -146,47 +153,54 @@ public final class GnssSidecar {
     }
 
     static GnssFix parseRow(String line) {
-        String[] p = splitCsv(line, 14);
-        if (p == null) {
+        String[] p = splitCsv(line);
+        if (p == null || p.length < 14) {
             return null;
         }
         try {
+            boolean v2 = p.length >= 15;
+            int i = 0;
             GnssFix f = new GnssFix();
-            f.receivedUnixMs = Long.parseLong(p[0]);
-            f.cameraUs = Integer.parseInt(p[1]);
-            f.utc = p[2];
-            f.latDeg = parseD(p[3]);
-            f.lonDeg = parseD(p[4]);
-            f.altM = parseD(p[5]);
-            f.sogKnots = parseD(p[6]);
-            f.cogTrueDeg = parseD(p[7]);
-            f.fixQuality = Integer.parseInt(p[8]);
-            f.numSats = Integer.parseInt(p[9]);
-            f.hdop = parseD(p[10]);
-            f.rmcStatus = p[11].isEmpty() ? 0 : p[11].charAt(0);
-            f.talker = p[12];
-            f.raw = p[13];
+            f.receivedUnixMs = Long.parseLong(p[i++]);
+            f.cameraUs = Integer.parseInt(p[i++]);
+            if (v2) {
+                f.aedat4UnixUs = p[i].isEmpty() ? 0L : Long.parseLong(p[i]);
+                i++;
+            }
+            f.utc = p[i++];
+            f.latDeg = parseD(p[i++]);
+            f.lonDeg = parseD(p[i++]);
+            f.altM = parseD(p[i++]);
+            f.sogKnots = parseD(p[i++]);
+            f.cogTrueDeg = parseD(p[i++]);
+            f.fixQuality = Integer.parseInt(p[i++]);
+            f.numSats = Integer.parseInt(p[i++]);
+            f.hdop = parseD(p[i++]);
+            f.rmcStatus = p[i].isEmpty() ? 0 : p[i].charAt(0);
+            i++;
+            f.talker = p[i++];
+            f.raw = p[i];
             return f;
         } catch (NumberFormatException e) {
             return null;
         }
     }
 
-    private static String[] splitCsv(String line, int n) {
-        String[] out = new String[n];
+    /** Split into fields; last field is the remainder (NMEA). */
+    private static String[] splitCsv(String line) {
+        if (line == null) {
+            return null;
+        }
+        ArrayList<String> out = new ArrayList<>(16);
         int start = 0;
-        int idx = 0;
-        for (int i = 0; i < line.length() && idx < n - 1; i++) {
+        for (int i = 0; i < line.length(); i++) {
             if (line.charAt(i) == ',') {
-                out[idx++] = uncsv(line.substring(start, i));
+                out.add(uncsv(line.substring(start, i)));
                 start = i + 1;
             }
         }
-        if (idx != n - 1) {
-            return null;
-        }
-        out[n - 1] = uncsv(line.substring(start));
-        return out;
+        out.add(uncsv(line.substring(start)));
+        return out.toArray(new String[0]);
     }
 
     private static String csv(String s) {

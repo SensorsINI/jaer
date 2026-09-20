@@ -21,6 +21,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
@@ -112,9 +114,11 @@ change host/port after enabling.</li>
 section). The track is north-up, centered on the chip, scaled so the longer of
 NS/EW range fits in the pixel array. The current sample draws COG/SOG as a
 vector whose max-SOG length is <code>sogVectorLengthPx</code>. The arrow
-origin is the current sidecar sample. Playback indexes the CSV by mapping the
-file playhead fraction (slider/jog) onto sidecar <code>unix_ms</code>, not
-camera µs or PC-clock start+elapsed. Scale bars show map metres and
+origin is the current sidecar sample. New sidecars store
+<code>aedat4_unix_us</code> (<code>toUnixUs(camera_us)</code>), the same Unix µs as
+AEDAT-4 packets. Playback looks up that column with the file playhead Unix time.
+Older CSVs without that column map the slider fraction onto <code>unix_ms</code>.
+Scale bars show map metres and
 SOG in m/s.</p>
 <hr>
 <h3>Fallbacks</h3>
@@ -148,6 +152,8 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     private BufferedWriter sidecarWriter;
     private File sidecarFile;
     private TreeMap<Long, GnssFix> playback;
+    /** True when sidecar keys are AEDAT-4 packet Unix µs, not host receive ms. */
+    private boolean playbackByAedat4Unix;
     private boolean playbackMode;
     private volatile boolean loggedFirstFix;
 
@@ -377,6 +383,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
             loadPlaybackSidecar();
         } else {
             playback = null;
+            playbackByAedat4Unix = false;
             mapReady = false;
             if (source == null || !source.isAlive()) {
                 startSource();
@@ -411,6 +418,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
             return;
         }
         next.cameraUs = lastCameraUs;
+        next.aedat4UnixUs = aedat4UnixUsForCamera(lastCameraUs);
         live = next;
         if (!loggedFirstFix && next.isValidFix()) {
             loggedFirstFix = true;
@@ -476,6 +484,11 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         try {
             TreeMap<Long, GnssFix> map = GnssSidecar.load(side);
             playback = map;
+            playbackByAedat4Unix = false;
+            if (!map.isEmpty()) {
+                GnssFix first = map.firstEntry().getValue();
+                playbackByAedat4Unix = first.aedat4UnixUs > 0;
+            }
             if (map.isEmpty()) {
                 if (playbackMode) {
                     netStatus = "GNSS: no " + (side == null ? "sidecar" : side.getName());
@@ -491,9 +504,9 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * Sidecar samples are keyed by host {@code unix_ms}. Index by the file
-     * playhead fraction (slider/jog/time), not PC-clock abs start + elapsed,
-     * so a mid-ride slice cannot snap to the parked tail of the CSV.
+     * New sidecars are keyed by AEDAT-4 packet Unix µs; look up the playhead
+     * the same way. Older CSVs (receive {@code unix_ms} only) keep slider-fraction
+     * mapping onto that span.
      */
     private void updatePlaybackFix() {
         if (!playbackMode || playback == null || playback.isEmpty()) {
@@ -501,18 +514,23 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         }
         long t0 = playback.firstKey();
         long t1 = playback.lastKey();
-        float f = 0f;
-        AEViewer v = chip.getAeViewer();
-        AEFileInputStreamInterface in = v != null ? v.getAeFileInputStream() : null;
-        if (in != null) {
-            f = in.getPlaybackSliderFraction();
+        long unix;
+        if (playbackByAedat4Unix) {
+            unix = playheadUnixUs();
+        } else {
+            float f = 0f;
+            AEViewer v = chip.getAeViewer();
+            AEFileInputStreamInterface in = v != null ? v.getAeFileInputStream() : null;
+            if (in != null) {
+                f = in.getPlaybackSliderFraction();
+            }
+            if (f < 0f) {
+                f = 0f;
+            } else if (f > 1f) {
+                f = 1f;
+            }
+            unix = t0 + (long) (f * (t1 - t0));
         }
-        if (f < 0f) {
-            f = 0f;
-        } else if (f > 1f) {
-            f = 1f;
-        }
-        long unix = t0 + (long) (f * (t1 - t0));
         Map.Entry<Long, GnssFix> e = playback.floorEntry(unix);
         if (e == null) {
             e = playback.ceilingEntry(unix);
@@ -520,6 +538,33 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         if (e != null) {
             live = e.getValue();
         }
+    }
+
+    private long playheadUnixUs() {
+        AEViewer v = chip.getAeViewer();
+        if (v == null) {
+            return 0;
+        }
+        AEFileInputStreamInterface in = v.getAeFileInputStream();
+        if (in instanceof Aedat4FileInputStream a4) {
+            return a4.getBaseUnixUs() + a4.getPositionTimestampUs();
+        }
+        if (in == null) {
+            return 0;
+        }
+        return in.getAbsoluteStartingTimeMs() * 1000L + in.getPositionTimestampUs();
+    }
+
+    private long aedat4UnixUsForCamera(int cameraTimestampUs) {
+        AEViewer v = chip.getAeViewer();
+        if (v == null) {
+            return 0;
+        }
+        Aedat4FileOutputStream out = v.getAedat4RecordingOutputStream();
+        if (out == null) {
+            return 0;
+        }
+        return out.cameraTimestampToUnixUs(cameraTimestampUs, v.getAedat4RecordingTrackIndex());
     }
 
     public Transport getTransport() {

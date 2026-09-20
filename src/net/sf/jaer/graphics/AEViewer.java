@@ -15060,6 +15060,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return recordingFile;
     }
 
+    /** Live AEDAT-4 writer, or {@code null} if not recording AEDAT-4. */
+    public Aedat4FileOutputStream getAedat4RecordingOutputStream() {
+        return aedat4RecordingOutputStream;
+    }
+
+    /** Muxed track index for {@link #getAedat4RecordingOutputStream()}. */
+    public int getAedat4RecordingTrackIndex() {
+        return aedat4RecordingTrackIndex;
+    }
+
     public JCheckBoxMenuItem getSyncEnabledCheckBoxMenuItem() {
         return syncEnabledCheckBoxMenuItem;
     }

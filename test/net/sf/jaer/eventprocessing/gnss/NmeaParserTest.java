@@ -50,14 +50,16 @@ public class NmeaParserTest {
         NmeaParser.apply(nmea("GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"), f);
         f.cameraUs = 42;
         f.receivedUnixMs = 1_725_000_000_000L;
+        f.aedat4UnixUs = 1_725_000_000_000_042L;
         BufferedWriter w = GnssSidecar.tryOpen(side, rec);
         GnssSidecar.writeRow(w, f);
         GnssSidecar.close(side, w);
         TreeMap<Long, GnssFix> map = GnssSidecar.load(side);
         assertEquals(1, map.size());
-        GnssFix back = map.get(f.receivedUnixMs);
+        GnssFix back = map.get(f.aedat4UnixUs);
         assertEquals(f.latDeg, back.latDeg, 1e-6);
         assertEquals(f.lonDeg, back.lonDeg, 1e-6);
+        assertEquals(f.aedat4UnixUs, back.aedat4UnixUs);
         Files.deleteIfExists(side.toPath());
         rec.delete();
     }

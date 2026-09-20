@@ -8,6 +8,8 @@ public final class GnssFix {
 
     public long receivedUnixMs;
     public int cameraUs;
+    /** AEDAT-4 packet Unix µs ({@code baseUs + unwrap(cameraUs)}); 0 if unknown. */
+    public long aedat4UnixUs;
     public String utc = "";
     public double latDeg = Double.NaN;
     public double lonDeg = Double.NaN;
@@ -29,6 +31,7 @@ public final class GnssFix {
         GnssFix c = new GnssFix();
         c.receivedUnixMs = receivedUnixMs;
         c.cameraUs = cameraUs;
+        c.aedat4UnixUs = aedat4UnixUs;
         c.utc = utc;
         c.latDeg = latDeg;
         c.lonDeg = lonDeg;
