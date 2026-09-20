@@ -1169,6 +1169,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     "EvDownsampling Multi-camera (AEDAT-4)",
                     "DAVIS346 (346×260) + DVXplorer (640×480) muxed in one AEDAT-4 for comparing resolutions (Ghosh et al.); recordings on Figshare, linked from the README"));
             addHelpItem(sampleDataMenu);
+            JMenuItem fovCalcItem = new JMenuItem("FOV calculator");
+            fovCalcItem.setToolTipText(
+                    "Estimate field of view from pixel pitch, array size, and lens focal length. Opens local ../lensFOV if present, else GitHub Pages.");
+            fovCalcItem.addActionListener(e -> openFovCalculator());
+            addHelpItem(fovCalcItem);
             addHelpItem(new JSeparator());
             int aboutIdx = helpMenu.getPopupMenu().getComponentIndex(aboutMenuItem);
             helpMenu.insert(makeHelpURLMenuItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home",
@@ -12291,6 +12296,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } catch (Exception ex) {
             log.log(Level.WARNING, "Couldn't show " + url + "; caught " + ex, ex);
         }
+    }
+
+    /**
+     * Help → FOV calculator: sibling {@code ../lensFOV/index.html} if checked
+     * out, otherwise {@link JaerConstants#HELP_URL_LENS_FOV}.
+     */
+    private void openFovCalculator() {
+        File local = new File(System.getProperty("user.dir"), "../lensFOV/index.html");
+        if (local.isFile()) {
+            try {
+                URI uri = local.getCanonicalFile().toURI();
+                log.info("Help > FOV calculator: opening local " + uri);
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().browse(uri);
+                    return;
+                }
+            } catch (Exception ex) {
+                log.log(Level.WARNING, "Couldn't open local lensFOV; falling back to GitHub Pages", ex);
+            }
+        }
+        log.info("Help > FOV calculator: opening " + JaerConstants.HELP_URL_LENS_FOV);
+        showInBrowser(JaerConstants.HELP_URL_LENS_FOV);
     }
 
     /** Update Help > Sample data primary item after a download or on demand. */
