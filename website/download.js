@@ -1,5 +1,6 @@
 (function () {
   const FALLBACK = "https://github.com/SensorsINI/jaer/releases/latest";
+  const PRE_FALLBACK = "https://github.com/SensorsINI/jaer/releases";
   const LABELS = {
     windows: "Windows",
     macos_aarch64: "macOS (Apple Silicon)",
@@ -53,10 +54,47 @@
     return Promise.resolve({ key: null, linuxArm: false });
   }
 
+  function fillButton(btn, meta, release, detected, label) {
+    if (!btn) {
+      return;
+    }
+    const asset = detected.key && release && release[detected.key] ? release[detected.key] : null;
+    const tag = release && release.tag_name ? release.tag_name : "";
+
+    if (asset && asset.url) {
+      btn.href = asset.url;
+    } else if (release && release.html_url) {
+      btn.href = release.html_url;
+    }
+
+    btn.textContent = label;
+
+    const bits = [];
+    if (tag) {
+      bits.push(tag);
+    }
+    if (detected.key && LABELS[detected.key]) {
+      bits.push(LABELS[detected.key]);
+    }
+    if (asset) {
+      const size = formatSize(asset.size);
+      if (size) {
+        bits.push(size);
+      }
+    }
+    if (meta && bits.length) {
+      meta.hidden = false;
+      meta.textContent = bits.join(" · ");
+    }
+  }
+
   function apply(latest, detected) {
     const btn = document.getElementById("download-btn");
     const meta = document.getElementById("download-meta");
     const note = document.getElementById("download-note");
+    const preSlot = document.getElementById("prerelease-slot");
+    const preBtn = document.getElementById("prerelease-btn");
+    const preMeta = document.getElementById("prerelease-meta");
     const keys = ["windows", "macos_aarch64", "macos_intel", "linux"];
 
     keys.forEach(function (key) {
@@ -73,28 +111,14 @@
       }
     });
 
-    const asset = detected.key && latest && latest[detected.key] ? latest[detected.key] : null;
-    const tag = latest && latest.tag_name ? latest.tag_name : "";
+    fillButton(btn, meta, latest, detected, "Download Stable");
 
-    if (asset && asset.url) {
-      btn.href = asset.url;
-      btn.textContent = "Download jAER for " + LABELS[detected.key];
-      const bits = [];
-      if (tag) {
-        bits.push("Version " + tag);
-      }
-      const size = formatSize(asset.size);
-      if (size) {
-        bits.push(size);
-      }
-      if (bits.length) {
-        meta.hidden = false;
-        meta.textContent = bits.join(" · ");
-      }
-    } else if (tag) {
-      btn.href = latest.html_url || FALLBACK;
-      meta.hidden = false;
-      meta.textContent = "Version " + tag;
+    const pre = latest && latest.prerelease;
+    if (pre && preSlot && preBtn) {
+      preSlot.hidden = false;
+      fillButton(preBtn, preMeta, pre, detected, "Download Prerelease");
+    } else if (preSlot) {
+      preSlot.hidden = true;
     }
 
     if (detected.linuxArm) {
@@ -119,8 +143,13 @@
       detectKey().then(function (detected) {
         apply(null, detected);
         const btn = document.getElementById("download-btn");
-        if (detected.key && LABELS[detected.key]) {
-          btn.textContent = "Download jAER for " + LABELS[detected.key];
+        if (btn) {
+          btn.href = FALLBACK;
+          btn.textContent = "Download Stable";
+        }
+        const preBtn = document.getElementById("prerelease-btn");
+        if (preBtn) {
+          preBtn.href = PRE_FALLBACK;
         }
       });
     });

@@ -1,8 +1,9 @@
 # Deploy website/ to GitHub Pages. Source in repo Settings must be GitHub Actions.
 # Does not publish docs/. Installer binaries stay on GitHub Releases.
-# Environment github-pages allows master only. release:published still fires for
-# prereleases (sample-data-current, N.N.N-rc.N); skip those. Checkout master even
-# on a product tag so the deploy is not rejected.
+# Environment github-pages allows master only. Checkout master even on a product
+# tag so the deploy is not rejected. Rebake latest.json on public and rc
+# releases so the landing page can offer Download Prerelease. Skip
+# sample-data-current (zip-only prerelease).
 
 name: Deploy landing page
 
@@ -30,10 +31,8 @@ jobs:
     if: >
       github.event_name != 'release' ||
       (
-        github.event.release.prerelease == false &&
         github.event.release.draft == false &&
-        github.event.release.tag_name != 'sample-data-current' &&
-        !contains(github.event.release.tag_name, '-')
+        github.event.release.tag_name != 'sample-data-current'
       )
     runs-on: ubuntu-latest
     environment:

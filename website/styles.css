@@ -69,6 +69,21 @@ h1 {
   margin-bottom: 0.75rem;
 }
 
+.cta.downloads {
+  align-items: flex-start;
+}
+
+.download-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 12rem;
+}
+
+.download-slot .meta {
+  margin: 0;
+}
+
 .btn {
   display: inline-block;
   padding: 0.7rem 1.15rem;
@@ -95,6 +110,16 @@ h1 {
 
 .btn.secondary:hover {
   border-color: var(--muted);
+}
+
+.btn.prerelease {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--accent);
+}
+
+.btn.prerelease:hover {
+  background: #1c2a3d;
 }
 
 .meta,

@@ -19,7 +19,7 @@ python -m http.server 8080 --directory website
 
 Then open http://127.0.0.1:8080/
 
-`latest.json` is baked at deploy (and by that script). It is gitignored. The in-app updater still uses repo-root `updates.xml`, which can be ahead of the published Latest tag.
+`latest.json` is baked at deploy (and by that script). It is gitignored. Stable assets come from GitHub Latest. A nested `prerelease` object is included only when a published rc (not `sample-data-current`) is newer than Latest. The in-app updater still uses repo-root `updates.xml`, which can be ahead of the published Latest tag.
 
 ## GitHub Pages (once)
 
@@ -33,9 +33,10 @@ Then open http://127.0.0.1:8080/
 3. **Actions → Deploy landing page → Run workflow** (or any later push under `website/`).
    The Pages screen stays empty (“Use a suggested workflow…”) until the first deploy
    finishes; that is normal.
-   A published product Release (`N.N.N`, no `-rc.N`, not `sample-data-current`) also
-   runs this workflow and rebakes `latest.json` from GitHub Latest. Prereleases are
-   skipped. The job always checks out `master` (Pages environment protection).
+   A published product or rc Release (not `sample-data-current`) also
+   runs this workflow and rebakes `latest.json` from GitHub Latest plus a newer
+   prerelease when one exists. The job always checks out `master` (Pages
+   environment protection).
 4. After a green run, the project URL is https://sensorsini.github.io/jaer/
 5. Still on **Settings → Pages**, **Custom domain** = `jaerproject.org` → **Save**, then
    wait for the DNS check and **Enforce HTTPS**. Do this **before** (or right as) you

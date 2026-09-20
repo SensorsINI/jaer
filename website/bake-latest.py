@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write website/latest.json from the GitHub Latest release (not updates.xml)."""
+"""Write website/latest.json from GitHub Latest plus a newer prerelease, if any."""
 
 from __future__ import annotations
 
@@ -10,8 +10,10 @@ import ssl
 import sys
 import urllib.request
 
-API = "https://api.github.com/repos/SensorsINI/jaer/releases/latest"
+LATEST_API = "https://api.github.com/repos/SensorsINI/jaer/releases/latest"
+LIST_API = "https://api.github.com/repos/SensorsINI/jaer/releases?per_page=30"
 OUT_NAME = "latest.json"
+SKIP_TAGS = {"sample-data-current"}
 
 WINDOWS = re.compile(r"^jAER_windows-x64_.*\.exe$")
 MAC_ARM = re.compile(r"^jAER_macos_aarch64_.*\.dmg$")
@@ -19,7 +21,7 @@ MAC_INTEL = re.compile(r"^jAER_macos_[0-9].*\.dmg$")
 LINUX = re.compile(r"^jAER_unix_.*\.sh$")
 
 
-def fetch_latest():
+def github_get(url):
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
@@ -28,7 +30,7 @@ def fetch_latest():
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
         headers["Authorization"] = "Bearer " + token
-    req = urllib.request.Request(API, headers=headers)
+    req = urllib.request.Request(url, headers=headers)
     context = ssl.create_default_context()
     with urllib.request.urlopen(req, context=context, timeout=60) as resp:
         return json.load(resp)
@@ -54,29 +56,60 @@ def pick_assets(release):
     return picked
 
 
-def main():
-    here = os.path.dirname(os.path.abspath(__file__))
-    out_path = os.path.join(here, OUT_NAME)
-    try:
-        release = fetch_latest()
-    except Exception as exc:
-        print("warning: GitHub Latest fetch failed: " + str(exc), file=sys.stderr)
-        payload = {"error": str(exc)}
-        with open(out_path, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2)
-            fh.write("\n")
-        return 0
-
+def payload_from_release(release):
     payload = {
         "tag_name": release.get("tag_name"),
         "html_url": release.get("html_url"),
         "published_at": release.get("published_at"),
     }
     payload.update(pick_assets(release))
+    return payload
+
+
+def pick_newer_prerelease(releases, stable):
+    stable_tag = (stable or {}).get("tag_name") or ""
+    stable_published = (stable or {}).get("published_at") or ""
+    for rel in releases or []:
+        if rel.get("draft"):
+            continue
+        tag = rel.get("tag_name") or ""
+        if tag in SKIP_TAGS or tag == stable_tag:
+            continue
+        if not rel.get("prerelease"):
+            continue
+        published = rel.get("published_at") or ""
+        if stable_published and published and published <= stable_published:
+            continue
+        if not pick_assets(rel):
+            continue
+        return payload_from_release(rel)
+    return None
+
+
+def write_payload(out_path, payload):
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2)
         fh.write("\n")
-    print("wrote " + out_path + " tag=" + str(payload.get("tag_name")))
+
+
+def main():
+    here = os.path.dirname(os.path.abspath(__file__))
+    out_path = os.path.join(here, OUT_NAME)
+    try:
+        latest = github_get(LATEST_API)
+        listing = github_get(LIST_API)
+    except Exception as exc:
+        print("warning: GitHub release fetch failed: " + str(exc), file=sys.stderr)
+        write_payload(out_path, {"error": str(exc)})
+        return 0
+
+    payload = payload_from_release(latest)
+    pre = pick_newer_prerelease(listing, payload)
+    if pre:
+        payload["prerelease"] = pre
+    write_payload(out_path, payload)
+    extra = " prerelease=" + str(pre.get("tag_name")) if pre else " prerelease=none"
+    print("wrote " + out_path + " tag=" + str(payload.get("tag_name")) + extra)
     return 0
 
 
