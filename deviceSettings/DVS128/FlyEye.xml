@@ -9,23 +9,40 @@
         <map/>
         <node name="FlyEye">
           <map>
+            <entry key="colorScale" value="8"/>
+            <entry key="borderSpacePixels" value="20"/>
+            <entry key="ChipCanvas.origin3dx" value="0"/>
+            <entry key="ChipCanvas.origin3dy" value="0"/>
             <entry key="ChipRenderer.colorMode" value="GrayLevel"/>
             <entry key="IPot.Pr" value="917"/>
             <entry key="IPot.cas" value="556"/>
             <entry key="IPot.diff" value="8903"/>
-            <entry key="IPot.diffOff" value="357"/>
-            <entry key="IPot.diffOn" value="177813"/>
-            <entry key="IPot.foll" value="2"/>
+            <entry key="IPot.diffOff" value="139"/>
+            <entry key="IPot.diffOn" value="456419"/>
+            <entry key="IPot.foll" value="3"/>
             <entry key="IPot.injGnd" value="1108364"/>
             <entry key="IPot.puX" value="8159221"/>
             <entry key="IPot.puY" value="16777215"/>
-            <entry key="IPot.refr" value="256"/>
+            <entry key="IPot.refr" value="257"/>
             <entry key="IPot.req" value="159147"/>
             <entry key="IPot.reqPd" value="16777215"/>
             <entry key="Masterbias.internalResistorUsed" value="false"/>
             <entry key="Masterbias.rint" value="46000.0"/>
             <entry key="Masterbias.rx" value="8200.0"/>
-            <entry key="colorScale" value="4"/>
+            <entry key="AbstractAEPlayer.packetSizeEvents" value="512"/>
+            <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.chip.flyeye.FlyMotion"/>
+            <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
+            <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAPdwQAAAAPdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ADluZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcubGFiZWwuU2ltcGxlT3JpZW50YXRpb25GaWx0ZXJ0AENjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5yYm9kby5vcHRpY2FsZmxvdy5EaXJlY3Rpb25TZWxlY3RpdmVGbG93dAAnY2gudW5pemguaW5pLmphZXIuY2hpcC5mbHlleWUuRmx5TW90aW9udAAnbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5JbmZvdAAybmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5DZWxsU3RhdHNQcm9iZXJ0AChuZXQuc2YuamFlci51dGlsLmF2aW91dHB1dC5KYWVyQXZpV3JpdGVydAAzbmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuRE5OT3V0cHV0VmlhU2hhcmVkTWVtb3J5dAAibmV0LnNmLmphZXIuZXZlbnRpby5yb3MyLlJPU091dHB1dHQAJ25ldC5zZi5qYWVyLmV2ZW50aW8ub3BlbmN2Lk9wZW5DVk91dHB1dHQAL2NoLnVuaXpoLmluaS5qYWVyLmNoaXAucmV0aW5hLkRWU0JpYXNDb250cm9sbGVyeA=="/>
+            <entry key="FlyMotion.GroupPanel.Measure.collapsed" value="true"/>
+            <entry key="FlyMotion.GroupPanel.Misc..collapsed" value="true"/>
+            <entry key="FlyMotion.GroupPanel.Motion field.collapsed" value="false"/>
+            <entry key="FlyMotion.GroupPanel.Smoothing.collapsed" value="false"/>
+            <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
+            <entry key="eyesSwapped" value="true"/>
+            <entry key="timestampMaster" value="RIGHT"/>
+            <entry key="DVS128.selectedBiasgenControlTab" value="0"/>
+            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\DVS128\FlyEye.xml"/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAEdwQAAAAEc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABDQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXERWUzEyOHcCAFx4c3EAfgACdABOQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXERWUzEyOFxGbHlFeWUueG1sdwIAXHhzcQB+AAJ0ACtDOlxQcm9ncmFtIEZpbGVzXGpBRVJcZGV2aWNlU2V0dGluZ3NcRFZTMTI4dwIAXHhzcQB+AAJ0ADZDOlxQcm9ncmFtIEZpbGVzXGpBRVJcZGV2aWNlU2V0dGluZ3NcRFZTMTI4XEZseUV5ZS54bWx3AgBceHg="/>
           </map>
         </node>
       </node>
