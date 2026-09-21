@@ -104,7 +104,9 @@ jAER connects.</p>
 <li><code>port</code> = gpsdRelay TCP port. Use <code>doConnect</code> if you
 change host/port after enabling.</li>
 <li>When lat/lon appear, record as usual. Muxed cameras: enable this filter on
-<b>one</b> viewer only.</li>
+<b>one</b> viewer only. The NMEA socket runs only while the filter is enabled
+and the viewer is <b>LIVE</b> or <b>WAITING</b> (not playback), so you can bind
+gpsdRelay before plugging in the camera.</li>
 </ol>
 <p>Use <code>TCP_SERVER</code> only if the phone is the TCP client.
 <code>UDP</code> only if you later set gpsdRelay to send UDP to the laptop.</p>
@@ -187,7 +189,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
                 "TCP_CLIENT: connect to phone (gpsdRelay TCP server). TCP_SERVER: phone connects here. UDP: bind port.");
         setPropertyTooltip(net, "host", "Phone IP for TCP_CLIENT (empty waits). Same Wi‑Fi or phone hotspot.");
         setPropertyTooltip(net, "port", "TCP/UDP port the phone app listens on (default 2947, same as gpsd / gpsdRelay).");
-        setPropertyTooltip(net, "doConnect", "Start or restart the NMEA socket.");
+        setPropertyTooltip(net, "doConnect", "Start or restart the NMEA socket (LIVE or WAITING, not playback).");
         setPropertyTooltip(net, "doDisconnect", "Close the NMEA socket.");
         setPropertyTooltip(disp, "fontSize", "Overlay text size in chip pixels; first use auto-fits to chip width.");
         setPropertyTooltip(map, "showMap", "Playback: north-up path of the GNSS sidecar, fitted to the chip.");
@@ -340,6 +342,12 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     public void doConnect() {
+        if (!isLiveOrWaiting()) {
+            log.info("GNSS Connect skipped: need LIVE or WAITING (playMode="
+                    + (chip.getAeViewer() == null ? "none" : chip.getAeViewer().getPlayMode()) + ")");
+            netStatus = "GNSS: connect only in LIVE or WAITING";
+            return;
+        }
         log.info("GNSS Connect " + transport + " " + host + ":" + port);
         stopSource();
         startSource();
@@ -375,25 +383,45 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         AEViewer v = chip.getAeViewer();
         playbackMode = v != null && v.getPlayMode() == AEViewer.PlayMode.PLAYBACK;
         if (!isFilterEnabled()) {
+            stopSource();
             return;
         }
         if (playbackMode) {
             stopSource();
             netStatus = "GNSS: playback sidecar";
             loadPlaybackSidecar();
-        } else {
-            playback = null;
-            playbackByAedat4Unix = false;
-            mapReady = false;
+            return;
+        }
+        playback = null;
+        playbackByAedat4Unix = false;
+        mapReady = false;
+        if (isLiveOrWaiting()) {
             if (source == null || !source.isAlive()) {
                 startSource();
             }
+        } else {
+            stopSource();
+            netStatus = "GNSS: idle (LIVE/WAITING to connect)";
         }
     }
 
+    private boolean isLiveOrWaiting() {
+        AEViewer v = chip.getAeViewer();
+        if (v == null) {
+            return false;
+        }
+        AEViewer.PlayMode m = v.getPlayMode();
+        return m == AEViewer.PlayMode.LIVE || m == AEViewer.PlayMode.WAITING;
+    }
+
     private synchronized void startSource() {
-        if (playbackMode) {
-            log.info("GNSS not connecting: playback mode (sidecar overlay)");
+        if (!isFilterEnabled()) {
+            return;
+        }
+        if (!isLiveOrWaiting()) {
+            log.info("GNSS not connecting: playMode="
+                    + (chip.getAeViewer() == null ? "none" : chip.getAeViewer().getPlayMode())
+                    + " (NMEA only while LIVE or WAITING)");
             return;
         }
         stopSource();
@@ -576,7 +604,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         this.transport = transport;
         putString("transport", transport.name());
         getSupport().firePropertyChange("transport", old, transport);
-        if (isFilterEnabled() && !playbackMode) {
+        if (isFilterEnabled() && isLiveOrWaiting()) {
             startSource();
         }
     }
@@ -590,7 +618,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         this.host = host == null ? "" : host.trim();
         putString("host", this.host);
         getSupport().firePropertyChange("host", old, this.host);
-        if (isFilterEnabled() && !playbackMode) {
+        if (isFilterEnabled() && isLiveOrWaiting()) {
             startSource();
         }
     }
@@ -605,7 +633,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         this.port = p;
         putInt("port", p);
         getSupport().firePropertyChange("port", old, p);
-        if (isFilterEnabled() && !playbackMode) {
+        if (isFilterEnabled() && isLiveOrWaiting()) {
             startSource();
         }
     }
