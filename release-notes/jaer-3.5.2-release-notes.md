@@ -10,7 +10,7 @@
   There is no public 3.5.1. These notes cover master since tag 3.5.0.
 
   This file is also the --notes-file for 3.5.2-rc.N. On public 3.5.2: drop the
-  prerelease banner, change download URLs and changelog from 3.5.2-rc.1 to 3.5.2.
+  prerelease banner, change download URLs and changelog from 3.5.2-rc.2 to 3.5.2.
 
   Screenshots still to capture into release-notes/3.5.2/:
     usb-in-statistics.png (USB → USB tuning… IN table at 1 Hz)
@@ -20,20 +20,20 @@
     flymotion.png (FlyMotion L/R global flow vectors)
 -->
 
-**This is prerelease [3.5.2-rc.1](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.1)** (not GitHub Latest). It supersedes [3.5.2-rc.0](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.0). In-app **Help → Check for updates** stays on **3.5.0**. Testers: use the table below, **Assets** at the bottom of this page, or [jaerproject.org](https://jaerproject.org/) **Download Prerelease**.
+**This is prerelease [3.5.2-rc.2](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.2)** (not GitHub Latest). It supersedes [3.5.2-rc.1](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.1) and [3.5.2-rc.0](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.0). In-app **Help → Check for updates** stays on **3.5.0**. Testers: use the table below, **Assets** at the bottom of this page, or [jaerproject.org](https://jaerproject.org/) **Download Prerelease**.
 
 **jAER 3.5.2** is a point release after **[3.5.0](https://github.com/SensorsINI/jaer/releases/tag/3.5.0)** (there is no public 3.5.1). After the first start trains an **ahead-of-time (AOT) cache**, later **runtime** launches are about **2× quicker** (click to live camera). Click the **statistics bar** for a field legend, noise-filter overlays **fill the chip width**, **USB IN** numbers live in USB tuning, and **EVK4 / Prophesee** live-drop handling is first-class. **NmeaGnssFilter** records a phone GNSS sidecar; Help → **FOV calculator** opens the lens FOV page; **FlyEye** gets **FlyMotion** and better timestamp-master / rewind behavior. Hardware Configuration opens on the **user-friendly** tab. See [Highlights](#highlights) below.
 
 ## Download
 
-Installer filenames stay `*_3_5_2.*` (public version). This candidate’s assets are on tag **3.5.2-rc.1**.
+Installer filenames stay `*_3_5_2.*` (public version). This candidate’s assets are on tag **3.5.2-rc.2**.
 
 | You have | CPU | Download |
 |---|---|---|
-| Windows 10 / 11 | x64 | [jAER_windows-x64_3_5_2.exe](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.1/jAER_windows-x64_3_5_2.exe) |
-| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.1/jAER_macos_aarch64_3_5_2.dmg) |
-| macOS | Intel | [jAER_macos_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.1/jAER_macos_3_5_2.dmg) |
-| Linux | x64 | [jAER_unix_3_5_2.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.1/jAER_unix_3_5_2.sh) |
+| Windows 10 / 11 | x64 | [jAER_windows-x64_3_5_2.exe](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.2/jAER_windows-x64_3_5_2.exe) |
+| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.2/jAER_macos_aarch64_3_5_2.dmg) |
+| macOS | Intel | [jAER_macos_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.2/jAER_macos_3_5_2.dmg) |
+| Linux | x64 | [jAER_unix_3_5_2.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.2/jAER_unix_3_5_2.sh) |
 
 Each installer includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.5.0) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page.
 
@@ -73,6 +73,8 @@ Apple menu → About This Mac: **Chip** Apple M1–M4 → `aarch64` DMG; **Proce
 **Apple Silicon USB cameras** need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. If the dylib is missing, jAER shows a how-to and quits so the next launch can load it.
 
 Dropping an `.aedat` / `.aedat4` from Finder onto the chip view now opens the file (this was broken in 3.5.0 / 3.5.2-rc.0).
+
+**3.5.2-rc.2 startup fix:** a restored session can no longer save or reload an empty AEViewer list that starts Java, shows the splash, and then exits cleanly with `USB session: running — 0 viewers, 0 autobind`. If you are debugging startup, the log to attach is `$TMPDIR/jaer/jAER-0.log`; absence of `hs_err_pid*.log` or macOS DiagnosticReports usually means a normal Java exit, not a native crash.
 
 ---
 
@@ -133,6 +135,8 @@ Live keep-cap drops are a first-class **DroppedDataInfo** kind. Prophesee report
 
 Typical field setup: install **[gpsdRelay](https://f-droid.org/packages/io.github.project_kaat.gpsdrelay/)** on the phone (F-Droid; not on the Play Store), start a TCP server on port **2947**, turn on the phone **Wi-Fi hotspot**, join it from the laptop, set `host` to the hotspot gateway, `transport` = **TCP_CLIENT**, enable the filter in **LIVE** or **WAITING**. Muxed cameras: enable this filter on **one** viewer only. Filter **?** (or F1 on the panel) has the full how-to.
 
+If you use **File → Save As** after recording, the GNSS sidecar follows the recording: `<old>.gnss.csv` is renamed to match the saved AEDAT file (or deleted if the take is discarded).
+
 Playback **showMap** draws a north-up track fitted to the chip, with COG/SOG and metre / m/s scale bars. New CSVs store `aedat4_unix_us` (same Unix µs as AEDAT-4 packets). Older sidecars without that column map the slider fraction onto `unix_ms`.
 
 <!-- gnss-overlay.png -->
@@ -166,6 +170,9 @@ Packed dialogs and HW config keep a usable size and stay on the work area. First
 ### Bug fixes and minor improvements
 
 * **macOS**: Finder drop of AEDAT onto the chip view opens the file (`acceptDrop` + transferable; 3.5.2-rc.0 was broken).
+* **macOS startup**: a saved empty viewer list no longer starts with 0 windows and exits code 0; attach `$TMPDIR/jaer/jAER-0.log` when reporting startup issues.
+* **OpenCV webcams**: jAER no longer probes or opens webcams during splash, and webcams are never autobound. Use **Interface → Refresh**, then select the OpenCV camera explicitly.
+* **Startup input**: mouse-wheel events over the image panel are ignored until chip/renderer/canvas startup is complete, avoiding an uncaught `chip instance is null` dialog during restore.
 * **Customize / class chooser**: drag between Available and Selected to add, reorder, or remove filters and chips.
 * **File → Export video**: **Rewind before recording** and **Close on rewind** sit next to IN/OUT. Quitting while ffmpeg is converting asks Stay or Quit anyway (truncated MP4 discarded).
 * **ConstantCount / AreaEventCount** no longer behave like CountDuration after switching away from RealTime (a leftover ~25 ms min exposure).
@@ -175,4 +182,4 @@ Packed dialogs and HW config keep a usable size and stay on the work area. First
 * **EngineeringFormat** prints NaN (not 0); FilterPanel missing-setter noise is FINE.
 * F1 Quick help: click the top bar for the statistics legend; screenshots live in `images/help` inside the jar.
 
-**Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.5.0...3.5.2-rc.1
+**Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.5.0...3.5.2-rc.2
