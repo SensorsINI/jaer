@@ -13,9 +13,11 @@ import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**
- * A quantized version of STCF
+ * Quantizes timestamps only when comparing, but still stores a full 32-bit
+ * {@code int[][]} timestamp image. Prefer {@link FastDenoiser} for megapixel
+ * cameras (8-bit packed maps, optional 2x2 cells).
  */
-@Description("Quantized SpatioTemporalCorrelation denoising noise filter")
+@Description("Quantized STCF (still 32-bit maps). Prefer FastDenoiser for cache-friendly 8-bit maps.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
 

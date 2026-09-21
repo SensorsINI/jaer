@@ -153,6 +153,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         HotPixelFilter.class,
         BackgroundActivityFilter.class,
         SpatioTemporalCorrelationFilter.class,
+        FastDenoiser.class,
         //        QuantizedSTCF.class,
         AgePolarityDenoiser.class,
         //        MultiEventAgePolarityDenoiser.class,
