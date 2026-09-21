@@ -173,6 +173,8 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     private float sogVectorLengthPx = getFloat("sogVectorLengthPx", 40f);
     private float mapFitMargin = getFloat("mapFitMargin", 0.88f);
 
+    private float lineWidth = getFloat("lineWidth", 2.5f);
+
     private double mapMidLat;
     private double mapMidLon;
     private double mapCenterE;
@@ -194,6 +196,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(disp, "fontSize", "Overlay text size in chip pixels; first use auto-fits to chip width.");
         setPropertyTooltip(map, "showMap", "Playback: north-up path of the GNSS sidecar, fitted to the chip.");
         setPropertyTooltip(map, "sogVectorLengthPx", "Chip-pixel length of the COG/SOG arrow at the recording's max SOG.");
+        setPropertyTooltip(map, "lineWidth", "Chip-pixel width of the playback map's lines.");
         setPropertyTooltip(map, "mapFitMargin", "Fraction of chip width/height used when fitting NS or EW range.");
     }
 
@@ -710,6 +713,17 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         getSupport().firePropertyChange("sogVectorLengthPx", old, this.sogVectorLengthPx);
     }
 
+    public float getLineWidth() {
+        return lineWidth;
+    }
+
+    public void setLineWidth(float lineWidth) {
+        float old = this.lineWidth;
+        this.lineWidth = Math.max(1f, lineWidth);
+        putFloat("lineWidth", this.lineWidth);
+        getSupport().firePropertyChange("lineWidth", old, this.lineWidth);
+    }
+
     public float getMapFitMargin() {
         return mapFitMargin;
     }
@@ -810,7 +824,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_CURRENT_BIT | GL2.GL_LINE_BIT | GL2.GL_POINT_BIT);
         gl.glDisable(GL.GL_DEPTH_TEST);
-        gl.glLineWidth(1.5f);
+        gl.glLineWidth(lineWidth);
         gl.glColor4f(0.35f, 0.85f, 1f, 0.9f);
         gl.glBegin(GL.GL_LINE_STRIP);
         for (GnssFix f : playback.values()) {
@@ -850,7 +864,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
                 float dx = (float) (Math.sin(rad) * len);
                 float dy = (float) (Math.cos(rad) * len);
                 gl.glColor3f(1f, 0.35f, 0.15f);
-                gl.glLineWidth(2.5f);
+                gl.glLineWidth(lineWidth);
                 gl.glPushMatrix();
                 DrawGL.drawVector(gl, x, y, dx, dy, Math.max(3f, len * 0.25f), 1f);
                 gl.glPopMatrix();
