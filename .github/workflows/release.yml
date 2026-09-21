@@ -210,6 +210,30 @@ jobs:
             echo '- Did **not** set GitHub Latest. testers use the prerelease (rc) or the draft (public) until publish-release is approved.'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # GITHUB_TOKEN release create/edit does not fire pages.yml's `release: published`.
+  # Dispatch on master so Environment github-pages accepts the run and bake-latest.py
+  # sees the Release we just published (rc) or Latest we just flipped (public).
+  landing-page:
+    name: Refresh jaerproject.org
+    needs: [preflight, assemble, publish-release]
+    if: >
+      always() &&
+      needs.preflight.result == 'success' &&
+      needs.assemble.result == 'success' &&
+      (needs.preflight.outputs.is_rc == 'true' || needs.publish-release.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch Deploy landing page on master
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run pages.yml --repo '${{ github.repository }}' --ref master
+          echo 'Queued [Deploy landing page](https://github.com/${{ github.repository }}/actions/workflows/pages.yml) so jaerproject.org rebakes latest.json.' >> "$GITHUB_STEP_SUMMARY"
+
   publish-release:
     if: needs.preflight.outputs.is_rc != 'true'
     needs: [preflight, assemble]

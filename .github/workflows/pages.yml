@@ -4,6 +4,8 @@
 # tag so the deploy is not rejected. Rebake latest.json on public and rc
 # releases so the landing page can offer Download Prerelease. Skip
 # sample-data-current (zip-only prerelease).
+# `release: published` does not run when release.yml uses GITHUB_TOKEN; that
+# workflow dispatches this file on master after assemble (rc) or Approve (public).
 
 name: Deploy landing page
 

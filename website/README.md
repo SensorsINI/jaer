@@ -36,7 +36,9 @@ Then open http://127.0.0.1:8080/
    A published product or rc Release (not `sample-data-current`) also
    runs this workflow and rebakes `latest.json` from GitHub Latest plus a newer
    prerelease when one exists. The job always checks out `master` (Pages
-   environment protection).
+   environment protection). `release.yml` **dispatches** this workflow on
+   `master` after assemble (rc) or Approve (public), because a `GITHUB_TOKEN`
+   `gh release create` does not fire `on: release`.
 4. After a green run, the project URL is https://sensorsini.github.io/jaer/
 5. Still on **Settings → Pages**, **Custom domain** = `jaerproject.org` → **Save**, then
    wait for the DNS check and **Enforce HTTPS**. Do this **before** (or right as) you

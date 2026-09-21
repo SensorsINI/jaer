@@ -24,6 +24,8 @@ flowchart TB
   windows --> assemble
   macos --> assemble
   assemble --> pub["publish-release"]
+  assemble --> site["landing-page<br/>(rc immediately)"]
+  pub --> sitePub["landing-page<br/>(after Approve)"]
 ```
 
 ![GitHub Actions graph for a 3.5.2-rc run](../release-notes/3.5.2/jaer-release-flow.png)
@@ -38,6 +40,7 @@ flowchart TB
 | macos | macos-latest | notarized Intel + Apple Silicon `.dmg` | [build-macos-notarize.yml](../.github/workflows/build-macos-notarize.yml), [macOS notarization](../packaging/macos-notarization.md) |
 | assemble | ubuntu | attaches four installers + copies `jaer-sample-data.zip`; **rc** → published **prerelease** (not Latest); **public** → **draft** | needs [sample-data-current](https://github.com/SensorsINI/jaer/releases/tag/sample-data-current) |
 | publish-release | ubuntu | writes `updates.xml` to `master`, then `--latest` | skipped on `-rc`; [Environment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) `publish-release` |
+| landing-page | ubuntu | queues [Deploy landing page](https://github.com/SensorsINI/jaer/actions/workflows/pages.yml) on `master` (rebakes `latest.json` for [jaerproject.org](https://jaerproject.org)) | after assemble on **rc**; after Approve on **public**. Needed because `GITHUB_TOKEN` does not fire Pages’ `release: published` |
 
 install4j project: [`install4j/README.md`](../install4j/README.md) / [`jaer.install4j`](../install4j/jaer.install4j). JDK **25**.
 
@@ -62,8 +65,8 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
    git push origin 3.5.2-rc.0
    ```
 
-5. **Watch** [Release](https://github.com/SensorsINI/jaer/actions/workflows/release.yml) until assemble is green (~10 min). Assets land on [the prerelease](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.0): `jAER_windows-x64_3_5_2.exe`, `jAER_macos_3_5_2.dmg`, `jAER_macos_aarch64_3_5_2.dmg`, `jAER_unix_3_5_2.sh`, `jaer-sample-data.zip`.
-6. **Test** those installers. Latest and in-app update stay on the previous public release until step 9.
+5. **Watch** [Release](https://github.com/SensorsINI/jaer/actions/workflows/release.yml) until assemble is green (~10 min). Assets land on [the prerelease](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.0): `jAER_windows-x64_3_5_2.exe`, `jAER_macos_3_5_2.dmg`, `jAER_macos_aarch64_3_5_2.dmg`, `jAER_unix_3_5_2.sh`, `jaer-sample-data.zip`. **Refresh jaerproject.org** then queues [Deploy landing page](https://github.com/SensorsINI/jaer/actions/workflows/pages.yml); **Download Prerelease** should show this rc.
+6. **Test** those installers (GitHub prerelease or jaerproject.org). Latest and in-app update stay on the previous public release until step 9.
 7. **Bugs** — fix on `master`, then a **new** tag `3.5.2-rc.1` (never move `3.5.2-rc.0`). Repeat 4–6.
 8. **Promote** the winning SHA (same commit as the rc you keep):
 
