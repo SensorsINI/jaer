@@ -7,6 +7,9 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Desktop;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -16,6 +19,7 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -28,7 +32,9 @@ import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.DefaultListModel;
+import javax.swing.DropMode;
 import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -36,6 +42,7 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
+import javax.swing.TransferHandler;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.event.ListDataEvent;
@@ -219,6 +226,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         chosenClassesListModel = new FilterableListModel(classNames);
         classJList.setModel(chosenClassesListModel);
         classJList.setCellRenderer(new MyCellRenderer());
+        installClassListDragAndDrop();
         descPane.addHyperlinkListener(new HyperlinkListener() {
             @Override
             public void hyperlinkUpdate(HyperlinkEvent event) {
@@ -278,6 +286,68 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         });
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         worker.execute();
+    }
+
+    /**
+     * Drag from Available onto Selected to add; drag within Selected to reorder;
+     * drag from Selected onto Available to remove.
+     */
+    private void installClassListDragAndDrop() {
+        ClassListTransferHandler handler = new ClassListTransferHandler();
+        availClassJList.setDragEnabled(true);
+        availClassJList.setDropMode(DropMode.ON);
+        availClassJList.setTransferHandler(handler);
+        availClassPanel.setTransferHandler(handler);
+        String availTip = availClassJList.getToolTipText();
+        availClassJList.setToolTipText((availTip == null ? "" : availTip + " ")
+                + "Drag classes onto Selected to add them.");
+        classJList.setDragEnabled(true);
+        classJList.setDropMode(DropMode.INSERT);
+        classJList.setTransferHandler(handler);
+        chosenClassPanel.setTransferHandler(handler);
+        classJList.setToolTipText("These classes will be available to choose. Drag to reorder; drag back to Available to remove.");
+        chosenClassPanel.setToolTipText(classJList.getToolTipText());
+    }
+
+    private boolean addClassToChosen(Object o, int insertIndex) {
+        if (o == null) {
+            return false;
+        }
+        if (containsClass(chosenClassesListModel, o) && !checkIfAddDuplicate(o)) {
+            return false;
+        }
+        int size = chosenClassesListModel.getSize();
+        if (insertIndex < 0 || insertIndex > size) {
+            insertIndex = size;
+        }
+        chosenClassesListModel.add(insertIndex, o);
+        classJList.setSelectedIndex(insertIndex);
+        setLastSelectedClassName(o.toString());
+        removeClassButton.setEnabled(true);
+        return true;
+    }
+
+    private void removeChosenIndices(int[] indices) {
+        if (indices == null || indices.length == 0) {
+            return;
+        }
+        int[] sorted = indices.clone();
+        Arrays.sort(sorted);
+        for (int i = sorted.length - 1; i >= 0; i--) {
+            int index = sorted[i];
+            if (index >= 0 && index < chosenClassesListModel.getSize()) {
+                chosenClassesListModel.removeElementAt(index);
+            }
+        }
+        int size = chosenClassesListModel.getSize();
+        if (size == 0) {
+            removeClassButton.setEnabled(false);
+        } else {
+            removeClassButton.setEnabled(true);
+            int select = Math.min(sorted[0], size - 1);
+            classJList.setSelectedIndex(select);
+            classJList.ensureIndexIsVisible(select);
+        }
     }
 
     private boolean containsClass(FilterableListModel model, Object obj) {
@@ -1103,6 +1173,151 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     action.actionPerformed(event);
                 }
             }
+        }
+    }
+
+    private static class ClassChooserPayload {
+        final JList<?> sourceList;
+        final int[] indices;
+        final ArrayList<Object> items;
+
+        ClassChooserPayload(JList<?> sourceList, int[] indices, ArrayList<Object> items) {
+            this.sourceList = sourceList;
+            this.indices = indices;
+            this.items = items;
+        }
+    }
+
+    private static class ClassChooserTransferable implements Transferable {
+        static final DataFlavor FLAVOR = new DataFlavor(ClassChooserPayload.class, "jAER class chooser items");
+        private static final DataFlavor[] FLAVORS = {FLAVOR};
+        private final ClassChooserPayload payload;
+
+        ClassChooserTransferable(ClassChooserPayload payload) {
+            this.payload = payload;
+        }
+
+        @Override
+        public DataFlavor[] getTransferDataFlavors() {
+            return FLAVORS;
+        }
+
+        @Override
+        public boolean isDataFlavorSupported(DataFlavor flavor) {
+            return FLAVOR.equals(flavor);
+        }
+
+        @Override
+        public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
+            if (!isDataFlavorSupported(flavor)) {
+                throw new UnsupportedFlavorException(flavor);
+            }
+            return payload;
+        }
+    }
+
+    private class ClassListTransferHandler extends TransferHandler {
+        private JList<?> dragSourceList;
+
+        @Override
+        public int getSourceActions(JComponent c) {
+            if (c == availClassJList) {
+                return COPY;
+            }
+            if (c == classJList) {
+                return MOVE;
+            }
+            return NONE;
+        }
+
+        @Override
+        protected Transferable createTransferable(JComponent c) {
+            if (!(c instanceof JList)) {
+                return null;
+            }
+            JList<?> list = (JList<?>) c;
+            int[] indices = list.getSelectedIndices();
+            if (indices.length == 0) {
+                return null;
+            }
+            ArrayList<Object> items = new ArrayList<>(indices.length);
+            for (int index : indices) {
+                items.add(list.getModel().getElementAt(index));
+            }
+            dragSourceList = list;
+            return new ClassChooserTransferable(new ClassChooserPayload(list, indices, items));
+        }
+
+        @Override
+        protected void exportDone(JComponent source, Transferable data, int action) {
+            dragSourceList = null;
+        }
+
+        @Override
+        public boolean canImport(TransferSupport support) {
+            if (!support.isDrop() || !support.isDataFlavorSupported(ClassChooserTransferable.FLAVOR)) {
+                return false;
+            }
+            Component target = support.getComponent();
+            if (target == classJList || target == chosenClassPanel) {
+                return true;
+            }
+            return (target == availClassJList || target == availClassPanel) && dragSourceList == classJList;
+        }
+
+        @Override
+        public boolean importData(TransferSupport support) {
+            if (!canImport(support)) {
+                return false;
+            }
+            ClassChooserPayload payload;
+            try {
+                payload = (ClassChooserPayload) support.getTransferable().getTransferData(ClassChooserTransferable.FLAVOR);
+            } catch (Exception ex) {
+                log.log(Level.WARNING, "class chooser drop failed", ex);
+                return false;
+            }
+            Component target = support.getComponent();
+            if (target == classJList || target == chosenClassPanel) {
+                return importOntoChosen(support, payload);
+            }
+            if ((target == availClassJList || target == availClassPanel) && payload.sourceList == classJList) {
+                removeChosenIndices(payload.indices);
+                return true;
+            }
+            return false;
+        }
+
+        private boolean importOntoChosen(TransferSupport support, ClassChooserPayload payload) {
+            int dropIndex = chosenClassesListModel.getSize();
+            if (support.getDropLocation() instanceof JList.DropLocation) {
+                int loc = ((JList.DropLocation) support.getDropLocation()).getIndex();
+                if (loc >= 0) {
+                    dropIndex = loc;
+                }
+            }
+            if (payload.sourceList == classJList) {
+                int from = payload.indices[0];
+                if (from == dropIndex || from + 1 == dropIndex) {
+                    return false;
+                }
+                Object item = payload.items.get(0);
+                chosenClassesListModel.removeElementAt(from);
+                if (from < dropIndex) {
+                    dropIndex--;
+                }
+                chosenClassesListModel.insertElementAt(item, dropIndex);
+                classJList.setSelectedIndex(dropIndex);
+                return true;
+            }
+            boolean added = false;
+            for (Object item : payload.items) {
+                if (addClassToChosen(item, dropIndex)) {
+                    dropIndex++;
+                    added = true;
+                }
+            }
+            return added;
         }
     }
 
