@@ -160,3 +160,4 @@ release-notes/3.5.2/jaer-startup-AOT.webp
 /website/latest.json
 website/__pycache__/**
 website/__pycache__/**/*.pyc
+deviceSettings/DVS128/FlyEye-outside.xml
