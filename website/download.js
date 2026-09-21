@@ -23,7 +23,7 @@
     const hintPlatform = uaData && uaData.platform ? uaData.platform : "";
 
     if (/Win/i.test(ua) || /Windows/i.test(hintPlatform) || /Win32|Win64/i.test(platform)) {
-      return Promise.resolve({ key: "windows", linuxArm: false });
+      return Promise.resolve({ key: "windows", linuxArm: false, macFallbackIntel: false });
     }
 
     const isMac =
@@ -35,23 +35,30 @@
           .then(function (hints) {
             const arch = hints.architecture || "";
             if (/x86/i.test(arch)) {
-              return { key: "macos_intel", linuxArm: false };
+              return { key: "macos_intel", linuxArm: false, macFallbackIntel: false };
             }
-            return { key: "macos_aarch64", linuxArm: false };
+            if (/arm|aarch64/i.test(arch)) {
+              return { key: "macos_aarch64", linuxArm: false, macFallbackIntel: false };
+            }
+            return { key: "macos_intel", linuxArm: false, macFallbackIntel: true };
           })
           .catch(function () {
-            return { key: "macos_aarch64", linuxArm: false };
+            return { key: "macos_intel", linuxArm: false, macFallbackIntel: true };
           });
       }
-      return Promise.resolve({ key: "macos_aarch64", linuxArm: false });
+      // Safari on macOS does not expose User-Agent Client Hints. Intel Macs
+      // cannot run the Apple Silicon DMG, while Apple Silicon users can still
+      // pick the explicit link below (or run Intel under Rosetta), so the safe
+      // ambiguous-Mac default is Intel.
+      return Promise.resolve({ key: "macos_intel", linuxArm: false, macFallbackIntel: true });
     }
 
     if ((/Linux/i.test(ua) || /Linux/i.test(hintPlatform)) && !/Android/i.test(ua)) {
       const linuxArm = /aarch64|arm64/i.test(ua) || /arm/i.test(hintPlatform);
-      return Promise.resolve({ key: "linux", linuxArm: linuxArm });
+      return Promise.resolve({ key: "linux", linuxArm: linuxArm, macFallbackIntel: false });
     }
 
-    return Promise.resolve({ key: null, linuxArm: false });
+    return Promise.resolve({ key: null, linuxArm: false, macFallbackIntel: false });
   }
 
   function fillButton(btn, meta, release, detected, label) {
@@ -124,6 +131,10 @@
     if (detected.linuxArm) {
       note.hidden = false;
       note.textContent = "Linux installers are x64 only.";
+    } else if (detected.macFallbackIntel) {
+      note.hidden = false;
+      note.textContent =
+        "macOS browser architecture is ambiguous; using the Intel DMG. If About This Mac shows an Apple chip, choose macOS Apple Silicon below.";
     }
   }
 
