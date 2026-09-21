@@ -29,8 +29,14 @@ public final class OpenCvCameraFactory implements HardwareInterfaceFactoryInterf
     private volatile List<DeviceInfo> snapshot = List.of();
     private final AtomicBoolean probeQueued = new AtomicBoolean(false);
     private volatile boolean probeStarted;
+    /**
+     * {@code -Djaer.opencv.enumerate=false} skips {@code VideoCapture.open} at
+     * startup (macOS Camera / TCC A/B). Interface → Refresh still honors this
+     * flag via {@link #probeNow()}.
+     */
+    public static final String ENUMERATE_PROP = "jaer.opencv.enumerate";
     /** Tests set false so {@link #probeNow()} does not call {@code VideoCapture.open}. */
-    private volatile boolean enumerationEnabled = true;
+    private volatile boolean enumerationEnabled = enumeratePropertyDefault();
 
     public static final class DeviceInfo {
         public final int index;
@@ -61,8 +67,13 @@ public final class OpenCvCameraFactory implements HardwareInterfaceFactoryInterf
         }
     }
 
+    static boolean enumeratePropertyDefault() {
+        return !"false".equalsIgnoreCase(System.getProperty(ENUMERATE_PROP, "true"));
+    }
+
     private OpenCvCameraFactory() {
-        requestProbe();
+        log.info("OpenCV camera list starts empty; Interface → Refresh probes webcams"
+                + " (no autobind / no VideoCapture.open at startup)");
     }
 
     public static HardwareInterfaceFactoryInterface instance() {
@@ -122,6 +133,10 @@ public final class OpenCvCameraFactory implements HardwareInterfaceFactoryInterf
             return;
         }
         int api = preferredApi();
+        if (api == Videoio.CAP_AVFOUNDATION) {
+            log.info("OpenCV AVFoundation probe: VideoCapture.open on camera indices "
+                    + "(macOS Camera permission / TCC; splash may hide the dialog)");
+        }
         List<DeviceInfo> found = new ArrayList<>();
         int consecutiveMisses = 0;
         for (int i = 0; i < MAX_INDEX; i++) {

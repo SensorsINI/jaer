@@ -323,7 +323,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
             EVENT_ACCUMULATE_ENABLED = "accumulateEnabled",
             EVENT_RECORDING_STARTED = "recordingStarted",
+            /**
+             * Fired when recording stops. {@code oldValue} is the file written
+             * during the take; {@code newValue} is the Save As destination (or
+             * the same file if not renamed). Sidecars should close, then follow
+             * the new name or delete if the take was discarded.
+             */
             EVENT_RECORDING_STOPPED = "recordingStopped",
+            /** {@code oldValue}/{@code newValue} are the old and new recording {@link File}s. */
+            EVENT_RECORDING_RENAMED = "recordingRenamed",
             EVENT_REMEMBER_LAST_INTERFACE = "rememberLastInterface",
             EVENT_RAISE_ALL_WINDOWS_ON_FOCUS = "raiseAllWindowsOnFocus",
             EVENT_SYNC_ENABLED = "syncEnabled",
@@ -1705,7 +1713,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 : null;
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
-            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)
+                    || hw instanceof OpenCvCameraHardwareInterface) {
                 continue;
             }
             if (remembered != null && remembered.matches(hw)) {
@@ -1770,7 +1779,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
-            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)
+                    || hw instanceof OpenCvCameraHardwareInterface) {
                 continue;
             }
             if (hardwareReservedForOtherViewer(hw)) {
@@ -1794,7 +1804,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         HardwareInterfaceFactory factory = HardwareInterfaceFactory.instance();
         for (int i = 0; i < ninterfaces; i++) {
             HardwareInterface hw = factory.getInterface(i);
-            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)) {
+            if (hw == null || hardwareTakenByOtherViewer(hw) || UDPInterface.class.isInstance(hw)
+                    || hw instanceof OpenCvCameraHardwareInterface) {
                 continue;
             }
             if (hardwareReservedForOtherViewer(hw)) {
@@ -1995,20 +2006,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return false;
             }
             if (hw instanceof OpenCvCameraHardwareInterface) {
-                if (!isRememberLastInterface()
-                        && ViewerInterfaceBindingMap.isNone(viewerInstanceIndex)) {
-                    if (!loggedSkipOpenCvAutobind) {
-                        log.info("not auto-opening OpenCV camera (Remember last off and Interface None)");
-                        loggedSkipOpenCvAutobind = true;
-                    }
-                    return false;
+                if (!loggedSkipOpenCvAutobind) {
+                    log.info("not auto-opening OpenCV camera (select it from Interface)");
+                    loggedSkipOpenCvAutobind = true;
                 }
-                loggedSkipOpenCvAutobind = false;
-                ensureChipCompatibleWithLiveDevice(hw);
-                if (chip.getHardwareInterface() == null) {
-                    bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous OpenCV camera to ");
-                }
-                return chip.getHardwareInterface() != null;
+                return false;
             }
             if (NetworkChip.class.isInstance(chip)) {
                 return false;
@@ -9946,6 +9948,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_biasesToggleButtonActionPerformed
 
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
+            AEChip currentChip = getChip();
+            AEChipRenderer currentRenderer = currentChip == null ? null : currentChip.getRenderer();
+            if (currentChip == null || currentRenderer == null) {
+                // The image panel can receive queued wheel events while startup is still
+                // constructing the chip/canvas; ignore them rather than surfacing an
+                // uncaught exception dialog during splash restore.
+                return;
+            }
             boolean control = ((evt.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK);
             boolean alt = ((evt.getModifiersEx() & InputEvent.ALT_DOWN_MASK) == InputEvent.ALT_DOWN_MASK);;
             boolean shift = ((evt.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == InputEvent.SHIFT_DOWN_MASK);;
@@ -9954,14 +9964,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             if (!(control || alt || shift)) {
                 if (rotation > 0) {
-                    getRenderer().decreaseContrastAction.actionPerformed(ae);
+                    currentRenderer.decreaseContrastAction.actionPerformed(ae);
                 } else if (rotation < 0) {
-                    getRenderer().increaseContrastAction.actionPerformed(ae);
+                    currentRenderer.increaseContrastAction.actionPerformed(ae);
                 }
                 if (isPaused()) {
                     interruptViewloop();
                 }
             } else if (control && !(shift || alt)) {
+                if (chipCanvas == null) {
+                    return;
+                }
                 if (rotation > 0) {
                     chipCanvas.zoomOutAround(evt.getPoint()); // wheel down
                 } else if (rotation < 0) {
@@ -11255,6 +11268,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int retValue = JFileChooser.CANCEL_OPTION;
         String fileInfo = "";
         if (isRecordingEnabled()) {
+            final File recordedAs = recordingFile;
             if (aedat4RecordingOutputStream != null && !aedat4RecordingOwnsClose) {
                 log.info("Detaching from shared AEDAT-4 mux without closing (track "
                         + aedat4RecordingTrackIndex + ")");
@@ -11462,7 +11476,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             }
             setRecordingEnabled(false);
-            getSupport().firePropertyChange(EVENT_RECORDING_STOPPED, null, recordingFile);
+            getSupport().firePropertyChange(EVENT_RECORDING_STOPPED, recordedAs, recordingFile);
+            if (recordedAs != null && recordingFile != null
+                    && !recordedAs.getAbsoluteFile().equals(recordingFile.getAbsoluteFile())) {
+                getSupport().firePropertyChange(EVENT_RECORDING_RENAMED, recordedAs, recordingFile);
+            }
         }
 
         fixRecordingControls();

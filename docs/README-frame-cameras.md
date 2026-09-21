@@ -9,8 +9,7 @@ Related: [README-jaer3.md](README-jaer3.md) (ViewLoop / PacketBundle), [README-u
 [`OpenCvCameraFactory`](../src/net/sf/jaer/hardwareinterface/opencv/OpenCvCameraFactory.java) is registered next to the libusb factories. It keeps a **cached** device list:
 
 - Never open `VideoCapture` on the Swing EDT.
-- Do **not** probe indices on every USB WAITING poll. `getNumInterfacesAvailable()` returns the last snapshot only.
-- Probe off-EDT at factory construction (background) and on **Interface → Refresh**.
+- Probe off-EDT on **Interface → Refresh** only (not at splash). Snapshot stays empty until then. Webcams are never autobound; pick them from Interface.
 - Indices `0..7`, backend `CAP_DSHOW` (Windows), `CAP_AVFOUNDATION` (macOS), `CAP_V4L2` (Linux). Stop after two consecutive failed opens so missing indices do not spam native OpenCV logs.
 - If OpenCV natives fail to load (`OpenCVNativeLoader`), the list is empty.
 

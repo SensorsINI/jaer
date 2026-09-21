@@ -127,6 +127,20 @@ public class JAERViewer {
     static public long globalTime1, globalTime2, globalTime3;
     private SyncPlayer syncPlayer = null; // add a sync player once we have a viewer to assign it to
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
+
+    /** Non-blank class names from the last-session prefs blob; empty means open one default window. */
+    static ArrayList<String> usableSavedChipClassNames(java.util.List<String> classNames) {
+        ArrayList<String> out = new ArrayList<>();
+        if (classNames == null) {
+            return out;
+        }
+        for (String s : classNames) {
+            if (s != null && !s.isBlank()) {
+                out.add(s);
+            }
+        }
+        return out;
+    }
     /**
      * Semaphore file name under {@link net.sf.jaer.util.JaerTmpdir} (and leftover
      * names in the working directory / system temp root). Also used by
@@ -203,15 +217,16 @@ public class JAERViewer {
                                     viewerChipClassNames.add(v.getChip().getClass().getName());
                                 }
                             }
-                            // Serialize to a byte array
-                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                            ObjectOutput out = new ObjectOutputStream(bos);
-                            out.writeObject(viewerChipClassNames);
-                            out.close();
-
-                            // Get the bytes of the serialized object
-                            byte[] buf = bos.toByteArray();
-                            prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
+                            if (usableSavedChipClassNames(viewerChipClassNames).isEmpty()) {
+                                // Empty list is poison: next start creates 0 windows and the JVM exits 0.
+                                prefs.remove(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY);
+                            } else {
+                                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                                ObjectOutput out = new ObjectOutputStream(bos);
+                                out.writeObject(viewerChipClassNames);
+                                out.close();
+                                prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, bos.toByteArray());
+                            }
                             prefs.flush();
                         } catch (IOException e) {
                             System.err.println(String.format("could not store class names: %s", e.toString()));
@@ -514,19 +529,20 @@ public class JAERViewer {
             SessionCameraOpenCoordinator.beginUiRestore(JAERViewer.this);
             restoringSessionViewers = true;
             try {
-                if (classNames == null) {
+                ArrayList<String> restore = usableSavedChipClassNames(classNames);
+                if (restore.isEmpty()) {
+                    if (classNames != null) {
+                        log.warning("Saved AEViewer chip-class list is empty; opening one default window");
+                    }
                     AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
                     StartupProfiler.mark("after new AEViewer");
-//                player=new SyncPlayer(v); // associate with the initial viewer
-//                v.pack();
                     v.setVisible(true);
                     StartupProfiler.mark("AEViewer.setVisible(true)");
                     StartupProfiler.scheduleExitAfterVisible();
                     firstViewer = v;
-                    //                splashThread.interrupt();
                 } else {
-                    for (String s : classNames) {
-                        // check to make sure cla
+                    log.info("Restoring " + restore.size() + " AEViewer(s) " + restore);
+                    for (String s : restore) {
                         AEViewer v;
                         v = new AEViewer(JAERViewer.this, s);
                         StartupProfiler.mark("after new AEViewer " + s);
@@ -537,6 +553,13 @@ public class JAERViewer {
                             StartupProfiler.scheduleExitAfterVisible();
                         }
                     }
+                }
+                if (getNumViewers() == 0) {
+                    log.warning("Session restore produced 0 windows; opening a default AEViewer");
+                    AEViewer v = new AEViewer(JAERViewer.this);
+                    v.setVisible(true);
+                    StartupProfiler.scheduleExitAfterVisible();
+                    firstViewer = v;
                 }
             } catch (java.lang.UnsatisfiedLinkError err) {
 

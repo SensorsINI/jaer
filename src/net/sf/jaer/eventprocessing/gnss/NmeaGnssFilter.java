@@ -333,7 +333,15 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         if (AEViewer.EVENT_RECORDING_STARTED.equals(n) && evt.getNewValue() instanceof File) {
             openSidecar((File) evt.getNewValue());
         } else if (AEViewer.EVENT_RECORDING_STOPPED.equals(n)) {
-            closeSidecar();
+            File dest = evt.getNewValue() instanceof File ? (File) evt.getNewValue() : null;
+            closeSidecarFollowing(dest);
+        } else if (AEViewer.EVENT_RECORDING_RENAMED.equals(n)
+                && evt.getNewValue() instanceof File destRec) {
+            File destSide = GnssSidecar.fileForRecording(destRec);
+            if (sidecarFile != null && destSide != null && sidecarFile.isFile()
+                    && !sidecarFile.getAbsoluteFile().equals(destSide.getAbsoluteFile())) {
+                closeSidecarFollowing(destRec);
+            }
         } else if (AEViewer.EVENT_FILEOPEN.equals(n) || AbstractAEPlayer.EVENT_FILEOPEN.equals(n)) {
             loadPlaybackSidecar();
         } else if (AEViewer.EVENT_PLAYMODE.equals(n)) {
@@ -369,6 +377,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         }
         v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_STARTED, this);
         v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_STOPPED, this);
+        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_RENAMED, this);
         v.getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
         v.getSupport().addPropertyChangeListener(AEViewer.EVENT_PLAYMODE, this);
         if (v.getAePlayer() != null) {
@@ -484,6 +493,14 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     private synchronized void closeSidecar() {
+        closeSidecarFollowing(null);
+    }
+
+    /**
+     * Close the sidecar writer, then rename/move it beside {@code destRecording}
+     * (Save As), or delete it if that take was discarded.
+     */
+    private synchronized void closeSidecarFollowing(File destRecording) {
         File side = sidecarFile;
         boolean wasOpen = sidecarWriter != null;
         try {
@@ -493,7 +510,40 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         }
         sidecarWriter = null;
         sidecarFile = null;
-        if (wasOpen && side != null) {
+        if (side == null) {
+            return;
+        }
+        if (destRecording == null) {
+            if (wasOpen) {
+                log.info("GNSS sidecar closed " + side.getAbsolutePath());
+            }
+            return;
+        }
+        if (destRecording.isFile()) {
+            try {
+                File moved = GnssSidecar.relocate(side, destRecording);
+                if (moved != null && moved.isFile()
+                        && !moved.getAbsoluteFile().equals(side.getAbsoluteFile())) {
+                    log.info("GNSS sidecar renamed " + side.getAbsolutePath()
+                            + " -> " + moved.getAbsolutePath());
+                } else if (wasOpen) {
+                    log.info("GNSS sidecar closed " + side.getAbsolutePath());
+                }
+            } catch (IOException e) {
+                log.warning("GNSS sidecar rename failed " + side + " -> "
+                        + GnssSidecar.fileForRecording(destRecording) + ": " + e);
+            }
+            return;
+        }
+        if (side.isFile()) {
+            boolean deleted = side.delete();
+            if (deleted) {
+                log.info("GNSS sidecar deleted (recording discarded) " + side.getAbsolutePath());
+            } else {
+                log.warning("GNSS sidecar close " + side.getAbsolutePath()
+                        + " (could not delete leftover sidecar)");
+            }
+        } else if (wasOpen) {
             log.info("GNSS sidecar closed " + side.getAbsolutePath());
         }
     }

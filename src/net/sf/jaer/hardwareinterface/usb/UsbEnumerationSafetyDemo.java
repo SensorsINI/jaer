@@ -1099,8 +1099,8 @@ public final class UsbEnumerationSafetyDemo {
                 "Interface → None with Remember last off persists none for the next start");
         require(src.contains("ViewerInterfaceBindingMap.putNone(viewerInstanceIndex)"),
                 "None with Remember last off writes viewer.N.none");
-        require(src.contains("not auto-opening OpenCV camera (Remember last off and Interface None)"),
-                "sole OpenCV webcam is not auto-opened after Remember last off and None");
+        require(src.contains("not auto-opening OpenCV camera (select it from Interface)"),
+                "sole OpenCV webcam is not auto-opened; user picks it from Interface");
         require(src.contains("loggedSkipOpenCvAutobind"),
                 "OpenCV skip is logged once, not on every WAITING poll");
     }

@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.TreeMap;
@@ -85,6 +86,31 @@ public final class GnssSidecar {
         if (sidecar != null) {
             OPEN.remove(sidecar.getAbsolutePath());
         }
+    }
+
+    /**
+     * Move a sidecar to sit beside {@code newRecording}. No-op if paths match
+     * or {@code sidecar} is missing.
+     *
+     * @return destination sidecar, or {@code sidecar} if not moved
+     */
+    public static File relocate(File sidecar, File newRecording) throws IOException {
+        if (sidecar == null || !sidecar.isFile() || newRecording == null) {
+            return sidecar;
+        }
+        File dest = fileForRecording(newRecording);
+        if (dest == null) {
+            return sidecar;
+        }
+        if (sidecar.getAbsoluteFile().equals(dest.getAbsoluteFile())) {
+            return sidecar;
+        }
+        File parent = dest.getParentFile();
+        if (parent != null) {
+            parent.mkdirs();
+        }
+        Files.move(sidecar.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        return dest;
     }
 
     public static void writeRow(BufferedWriter w, GnssFix fix) throws IOException {
