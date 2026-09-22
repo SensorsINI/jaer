@@ -733,7 +733,47 @@ public final class RecordingChipDetector {
                 cameras.add(frme);
             }
         }
-        return cameras;
+        return collapseFlyEyePlaybackCameras(cameras);
+    }
+
+    /**
+     * {@code FlyEye-left} / {@code FlyEye-right} are one virtual chip, not two
+     * DVS128 viewers.
+     */
+    public static boolean isFlyEyeStreamSource(String source) {
+        if (source == null || source.isEmpty()) {
+            return false;
+        }
+        return "flyeye".equals(normalize(stripJaerMuxSerial(source)));
+    }
+
+    static List<StreamHint> collapseFlyEyePlaybackCameras(List<StreamHint> cameras) {
+        if (cameras == null || cameras.size() < 2) {
+            return cameras;
+        }
+        List<StreamHint> fly = new ArrayList<>();
+        List<StreamHint> other = new ArrayList<>();
+        for (StreamHint s : cameras) {
+            if (isFlyEyeStreamSource(s.source)) {
+                fly.add(s);
+            } else {
+                other.add(s);
+            }
+        }
+        if (fly.size() < 2) {
+            return cameras;
+        }
+        StreamHint primary = fly.get(0);
+        for (StreamHint s : fly) {
+            if (s.source != null && s.source.toLowerCase(Locale.ROOT).contains("left")) {
+                primary = s;
+                break;
+            }
+        }
+        List<StreamHint> out = new ArrayList<>(1 + other.size());
+        out.add(primary);
+        out.addAll(other);
+        return out;
     }
 
     public static String peekAedat4InfoNodeXml(File file) {

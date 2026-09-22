@@ -2,7 +2,8 @@
  * FlyEyeRenderer.java
  *
  * Panoramic DVS128 pair. GrayLevel / RedGreen / RedBlue use the same ON/OFF
- * coloring as a single DVS on both eyes. Overlap is not disambiguated.
+ * coloring as a single DVS on both eyes. LeftRight paints left=green,
+ * right=red, polarity ignored, for overlap/alignment.
  */
 package net.sf.jaer.graphics;
 
@@ -38,7 +39,7 @@ public class FlyEyeRenderer extends DavisRenderer implements FrameAnnotater {
             return;
         }
         // FlyEyeEvent.getNumCellTypes() is 4 (camera×polarity). DavisRenderer
-        // would then paint type-color RGB instead of GrayLevel/RedGreen/RedBlue.
+        // would then paint type-color RGB instead of GrayLevel/RedGreen/RedBlue/LeftRight.
         float[] map = dvsEventsMap.array();
         final int index = getIndex(e);
         if ((index < 0) || (index >= map.length)) {

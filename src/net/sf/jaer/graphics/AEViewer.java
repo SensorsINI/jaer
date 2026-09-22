@@ -7427,7 +7427,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // File → "Enable filtering of recorded events" still applies to AEDAT-2.
                         boolean skipFilteredOut = isRecordFilteredEventsEnabled()
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
-                        aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut, aedat4RecordingTrackIndex);
+                        if (chip instanceof FlyEye fly && aedat4RecordingOutputStream.getTrackCount() == 2) {
+                            fly.recordNativeAedat4(aedat4RecordingOutputStream, bundle, skipFilteredOut);
+                        } else {
+                            aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut, aedat4RecordingTrackIndex);
+                        }
                     } else if (aedzRecordingOutputStream != null) {
                         aedzRecordingOutputStream.writePacket(isRecordFilteredEventsEnabled()
                                 ? extractor.reconstructRawPacket(cookedPacket)
@@ -10798,7 +10802,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aedzRecordingOutputStream = null;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 constructRecordingWriter(chip, opened, (stream, snapshot) -> {
-            aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+                    if (chip instanceof FlyEye fly) {
+                        aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream,
+                                fly.aedat4RecordingTracks(snapshot), getAedat4Compression(),
+                                System.currentTimeMillis() * 1000L);
+                    } else {
+                        aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+                    }
                     aedat4RecordingTrackIndex = 0;
                     aedat4RecordingOwnsClose = true;
                 });

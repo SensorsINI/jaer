@@ -10,11 +10,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -86,6 +88,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     public enum ColorMode {
 
         GrayLevel("Each event causes linear change in brightness", .5f),
+        LeftRight("FlyEye: left events green; right events red; polarity ignored; black background (overlap/alignment)", 0),
         //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
         RedGreen("ON events are green; OFF events are red, black background", 0),
         RedBlue("ON events are light blue; OFF events are red, black background", 0),
@@ -111,6 +114,16 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         public float getBackgroundGrayLevel() {
             return backgroundGrayLevel;
+        }
+
+        /**
+         * {@link #LeftRight} is only offered for {@link ch.unizh.ini.jaer.chip.flyeye.FlyEye}.
+         */
+        public boolean isAvailableFor(AEChip chip) {
+            if (this == LeftRight) {
+                return chip instanceof ch.unizh.ini.jaer.chip.flyeye.FlyEye;
+            }
+            return true;
         }
     };
 
@@ -217,6 +230,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             throw new Error("tried to build ChipRenderer with null chip");
         }
         setChip(chip);
+        colorModes = colorModesForChip();
+        if (colorMode == null || !colorMode.isAvailableFor(chip)) {
+            colorMode = ColorMode.GrayLevel;
+        }
         timeColors = new float[NUM_TIME_COLORS][3];
         for (int i = 0; i < NUM_TIME_COLORS; i++) {
             int rgb = Color.HSBtoRGB((0.66f * (NUM_TIME_COLORS - i)) / NUM_TIME_COLORS, 1f, 1f);
@@ -611,6 +628,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                 }
                             }
                             break;
+                        case LeftRight:
+                            // DavisRenderer / FlyEyeRenderer paints this mode.
+                            break;
                         default:
                             // rendering method unknown, reset to default value
                             log.warning("colorMode " + colorMode + " unknown, reset to default value 0");
@@ -808,7 +828,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param forwards true for forwards, false for backwards
      */
     public synchronized void cycleColorMode(boolean forwards) {
-        int m = colorMode.ordinal();
+        int m = indexOfColorMode(colorMode);
+        if (m < 0) {
+            m = 0;
+        }
         if (forwards) {
             if (++m >= colorModes.length) {
                 m = 0;
@@ -819,9 +842,29 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             }
         }
         setColorMode(colorModes[m]);
-        // method++;
-        // if (method > NUM_METHODS-1) method = 0;
-        // setColorMode(method); // store preferences
+    }
+
+    private int indexOfColorMode(ColorMode mode) {
+        for (int i = 0; i < colorModes.length; i++) {
+            if (colorModes[i] == mode) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Color modes shown in the menu and cycled with the keyboard. FlyEye-only
+     * modes are omitted for other chips.
+     */
+    protected ColorMode[] colorModesForChip() {
+        List<ColorMode> list = new ArrayList<>();
+        for (ColorMode m : ColorMode.values()) {
+            if (m.isAvailableFor(chip)) {
+                list.add(m);
+            }
+        }
+        return list.toArray(new ColorMode[0]);
     }
 
     /**
@@ -946,9 +989,15 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * encoded.
      */
     public synchronized void setColorMode(ColorMode colorMode) {
+        if (colorMode == null || !colorMode.isAvailableFor(chip)) {
+            colorMode = ColorMode.GrayLevel;
+        }
         ColorMode old = this.colorMode;
         this.colorMode = colorMode;
-        colorModeButtonMap.get(colorMode).setSelected(true);
+        JMenuItem item = colorModeButtonMap.get(colorMode);
+        if (item != null) {
+            item.setSelected(true);
+        }
         prefs.put("ChipRenderer.colorMode", colorMode.name());
         log.info(this.getClass().getSimpleName() + ": colorMode=" + colorMode);
         getSupport().firePropertyChange(EVENT_COLOR_MODE_CHANGE, old, colorMode);

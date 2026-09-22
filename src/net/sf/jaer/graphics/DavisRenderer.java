@@ -32,6 +32,7 @@ import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.FlyEyeEvent;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2D;
@@ -866,6 +867,17 @@ public class DavisRenderer extends AEChipRenderer {
                         map[index] -= colorContrastAdditiveStep;
                         map[index + 1] -= colorContrastAdditiveStep;
                         map[index + 2] -= colorContrastAdditiveStep;
+                    }
+                }
+                break;
+                case LeftRight: {
+                    // Polarity ignored. Overlap pixels become yellow (red+green).
+                    map[index + 3] = 1;
+                    boolean right = (e instanceof FlyEyeEvent fe) && fe.camera == FlyEyeEvent.Camera.RIGHT;
+                    if (right) {
+                        map[index] += colorContrastAdditiveStep; // red
+                    } else {
+                        map[index + 1] += colorContrastAdditiveStep; // green
                     }
                 }
                 break;

@@ -5,11 +5,15 @@
  */
 package ch.unizh.ini.jaer.chip.flyeye;
 
+import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
@@ -28,8 +32,12 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FlyEyeEvent;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
+import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
+import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FlyEyeRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -45,6 +53,9 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 @UsbDevices({})
 public class FlyEye extends DVS128 implements StereoChipInterface {
+
+    public static final String AEDAT4_SOURCE_LEFT = "FlyEye-left";
+    public static final String AEDAT4_SOURCE_RIGHT = "FlyEye-right";
 
     private AEChip left;
     private AEChip right;
@@ -67,6 +78,9 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
     /** True while {@link #bindDvs128PairIfAvailable()} is on the stack so
      * {@link DVS128#update} → {@link #getHardwareInterface()} cannot re-enter. */
     private boolean bindingPair;
+    private FlyEyeOverlapDialog overlapDialog;
+    private final EventPacket<PolarityEvent> recLeftNative = new EventPacket<>(PolarityEvent.class);
+    private final EventPacket<PolarityEvent> recRightNative = new EventPacket<>(PolarityEvent.class);
 
     public FlyEye() {
         super();
@@ -265,6 +279,82 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         }
     }
 
+    /**
+     * Two 128×128 EVTS tracks. Overlap is a playback remap, not baked into {@code x}.
+     */
+    public List<Aedat4CameraTrack> aedat4RecordingTracks(RecordingConfigurationSnapshot snapshot) {
+        List<Aedat4CameraTrack> tracks = new ArrayList<>(2);
+        tracks.add(new Aedat4CameraTrack(left, AEDAT4_SOURCE_LEFT, snapshot, 0));
+        tracks.add(new Aedat4CameraTrack(right, AEDAT4_SOURCE_RIGHT, snapshot, 1));
+        return tracks;
+    }
+
+    /**
+     * Write native left/right polarity (DVS128 {@code x}) onto the two AEDAT-4
+     * tracks. Right Unix times in this slice are shifted so both eyes share the
+     * same file-time window.
+     */
+    public void recordNativeAedat4(Aedat4FileOutputStream out, PacketBundle bundle, boolean skipFilteredOut)
+            throws IOException {
+        if (out == null || bundle == null) {
+            return;
+        }
+        recLeftNative.clear();
+        recRightNative.clear();
+        EventPacket<?> pol = bundle.getFirstPolarityPacket();
+        if (pol != null && pol.getEventClass() != null
+                && FlyEyeEvent.class.isAssignableFrom(pol.getEventClass())) {
+            int n = pol.getSize();
+            int leftMin = Integer.MAX_VALUE;
+            int rightMin = Integer.MAX_VALUE;
+            for (int i = 0; i < n; i++) {
+                FlyEyeEvent fe = (FlyEyeEvent) pol.getEvent(i);
+                if (skipFilteredOut && fe.isFilteredOut()) {
+                    continue;
+                }
+                if (fe.camera == FlyEyeEvent.Camera.RIGHT) {
+                    rightMin = Math.min(rightMin, fe.timestamp);
+                } else {
+                    leftMin = Math.min(leftMin, fe.timestamp);
+                }
+            }
+            int rightShift = (leftMin != Integer.MAX_VALUE && rightMin != Integer.MAX_VALUE)
+                    ? leftMin - rightMin : 0;
+            OutputEventIterator<PolarityEvent> ol = recLeftNative.outputIterator();
+            OutputEventIterator<PolarityEvent> or = recRightNative.outputIterator();
+            for (int i = 0; i < n; i++) {
+                FlyEyeEvent fe = (FlyEyeEvent) pol.getEvent(i);
+                if (skipFilteredOut && fe.isFilteredOut()) {
+                    continue;
+                }
+                boolean right = fe.camera == FlyEyeEvent.Camera.RIGHT;
+                PolarityEvent dest = (right ? or : ol).nextOutput();
+                dest.copyFrom(fe);
+                if (!fe.isSpecial()) {
+                    boolean flip = right ? flipRightX : flipLeftX;
+                    dest.x = (short) FlyEyeGeometry.toNativeX(fe.x, right, flip, overlapPixels);
+                }
+                if (right && rightShift != 0) {
+                    dest.timestamp = fe.timestamp + rightShift;
+                }
+            }
+        }
+        PacketBundle leftBundle = new PacketBundle();
+        PacketBundle rightBundle = new PacketBundle();
+        if (!recLeftNative.isEmpty()) {
+            leftBundle.add(recLeftNative);
+        }
+        if (!recRightNative.isEmpty()) {
+            rightBundle.add(recRightNative);
+        }
+        if (!leftBundle.isEmpty()) {
+            out.writeBundle(leftBundle, false, 0);
+        }
+        if (!rightBundle.isEmpty()) {
+            out.writeBundle(rightBundle, false, 1);
+        }
+    }
+
     public boolean isFlipLeftX() {
         return flipLeftX;
     }
@@ -405,21 +495,8 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
             dvs128Menu.add(flipRightMenuItem);
 
             JMenuItem overlapItem = new JMenuItem("Overlap pixels…");
-            overlapItem.setToolTipText("Live stitch columns (default 16). Recorded AEDAT-4 x already uses the overlap at record time.");
-            overlapItem.addActionListener(evt -> {
-                AEViewer v = getAeViewer();
-                String s = JOptionPane.showInputDialog(v,
-                        "Overlap columns (0–128).\nLive capture remaps native x with this value.\nPlayback already stored panoramic x; changing overlap here skips out-of-range file x.",
-                        Integer.toString(overlapPixels));
-                if (s == null) {
-                    return;
-                }
-                try {
-                    setOverlapPixels(Integer.parseInt(s.trim()));
-                } catch (NumberFormatException ex) {
-                    log.warning("bad overlapPixels: " + s);
-                }
-            });
+            overlapItem.setToolTipText("Virtual canvas width = 256 − overlap. Wheel or arrows in the dialog.");
+            overlapItem.addActionListener(evt -> showOverlapDialog());
             dvs128Menu.add(overlapItem);
 
             JMenu masterMenu = new JMenu("Timestamp master");
@@ -455,11 +532,23 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         }
     }
 
+    private void showOverlapDialog() {
+        if (overlapDialog != null && overlapDialog.isDisplayable()) {
+            overlapDialog.toFront();
+            overlapDialog.requestFocus();
+            return;
+        }
+        AEViewer v = getAeViewer();
+        Frame owner = v != null ? v : null;
+        overlapDialog = new FlyEyeOverlapDialog(owner, this);
+        overlapDialog.setVisible(true);
+    }
+
     /**
      * Raw / playback path: DVS128 decode at 128-wide, camera from stereo bit,
-     * panoramic remap. AEDAT-4 stores panoramic {@code x}; {@link #getAddressFromCell}
-     * must inverse-map that (dummy 128-wide {@code flipx} made right-eye
-     * addresses negative so playback skipped them).
+     * panoramic remap with the current {@link #overlapPixels}. Dual-stream
+     * AEDAT-4 stores native {@code x} per eye; {@link #getAddressFromCell} is
+     * the legacy single-stream inverse (unique right {@code panoX >= 128}).
      */
     public class Extractor extends DVS128.Extractor {
 
@@ -470,7 +559,7 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         /**
          * Pack panoramic display {@code x} into a DVS128 raw address plus stereo
          * bit. {@code right} is required in the overlap band; AEDAT-4 pack
-         * infers unique-right as {@code panoX >= 128}.
+         * infers unique-right as {@code panoX >= 128} (legacy single-stream files).
          *
          * @return raw address, or -1 if out of range (AEDAT-4 skips those)
          */

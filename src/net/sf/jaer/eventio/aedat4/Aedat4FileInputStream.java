@@ -41,6 +41,9 @@ import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.graphics.AEViewer;
+import ch.unizh.ini.jaer.chip.flyeye.FlyEye;
+import ch.unizh.ini.jaer.chip.flyeye.FlyEyeGeometry;
+import net.sf.jaer.stereopsis.Stereopsis;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.Event;
 import net.sf.jaer.eventio.aedat4.dv.EventPacket;
@@ -67,10 +70,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     /**
-     * v10: packet-level sparse index per selected EVTS stream (multi-camera AEDAT-4).
-     * Chip class is not part of the cache — AEChip affects decode/render only.
+     * v12: FlyEye dual EVTS index stores per-packet streamId.
      */
-    private static final int INDEX_CACHE_VERSION = 11;
+    private static final int INDEX_CACHE_VERSION = 12;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
@@ -125,6 +127,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private int eventStreamId = Aedat4FileOutputStream.STREAM_EVENTS;
     private int frameStreamId = Aedat4FileOutputStream.STREAM_FRAMES;
     private int imuStreamId = Aedat4FileOutputStream.STREAM_IMU;
+    /** Second EVTS stream for native FlyEye-right; {@code -1} if unused. */
+    private int flyEyeRightEventStreamId = -1;
+    private boolean flyEyeNativePair;
     /** Requested EVTS stream before header parse; null = first EVTS in infoNode. */
     private final Integer requestedEventStreamId;
     private String selectedSource;
@@ -973,6 +978,52 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     "AEDAT-4 multi-camera file: playing EVTS stream %d (%s); %d EVTS streams available",
                     eventStreamId, selectedSource, evts.size()));
         }
+        resolveFlyEyeNativePair(evts);
+    }
+
+    /**
+     * FlyEye recordings store two 128×128 EVTS streams. Index both and pack
+     * native {@code x} plus the stereo bit so extract can remap with live overlap.
+     */
+    private void resolveFlyEyeNativePair(List<RecordingChipDetector.StreamHint> evts) {
+        flyEyeRightEventStreamId = -1;
+        flyEyeNativePair = false;
+        if (!(chip instanceof FlyEye) || evts == null || evts.size() < 2) {
+            return;
+        }
+        List<RecordingChipDetector.StreamHint> eyes = new ArrayList<>();
+        for (RecordingChipDetector.StreamHint s : evts) {
+            if (RecordingChipDetector.isFlyEyeStreamSource(s.source)) {
+                eyes.add(s);
+            }
+        }
+        if (eyes.size() < 2) {
+            return;
+        }
+        RecordingChipDetector.StreamHint left = eyes.get(0);
+        RecordingChipDetector.StreamHint right = eyes.get(1);
+        for (RecordingChipDetector.StreamHint s : eyes) {
+            String src = s.source == null ? "" : s.source.toLowerCase();
+            if (src.contains("left")) {
+                left = s;
+            } else if (src.contains("right")) {
+                right = s;
+            }
+        }
+        if (left.streamId == right.streamId) {
+            return;
+        }
+        eventStreamId = left.streamId;
+        flyEyeRightEventStreamId = right.streamId;
+        flyEyeNativePair = true;
+        selectedSource = left.source + "+" + right.source;
+        log.info("AEDAT-4 FlyEye native pair EVTS " + eventStreamId + " (left) + "
+                + flyEyeRightEventStreamId + " (right)");
+    }
+
+    private boolean isIndexedEventStream(int streamId) {
+        return streamId == eventStreamId
+                || (flyEyeNativePair && streamId == flyEyeRightEventStreamId);
     }
 
     /** One INFO line per stream so DV source / size / colorFilter are visible on open. */
@@ -1133,16 +1184,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                         i, byteOffset, payloadOffset, payloadSize, dataEnd));
                 return false;
             }
-            boolean known = streamId == eventStreamId
+            boolean known = isIndexedEventStream(streamId)
                     || streamId == frameStreamId
                     || streamId == imuStreamId;
             if (!known) {
                 skipped++;
                 continue;
             }
-            if (streamId == eventStreamId) {
+            if (isIndexedEventStream(streamId)) {
                 int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, numElements));
-                events.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, cumEvents));
+                events.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, cumEvents, 0L, streamId));
                 cumEvents += count;
                 used++;
             } else if (streamId == frameStreamId) {
@@ -1243,7 +1294,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (payloadSize < 0 || payloadSize > remaining) {
                 break;
             }
-            boolean known = streamId == eventStreamId
+            boolean known = isIndexedEventStream(streamId)
                     || streamId == frameStreamId
                     || streamId == imuStreamId;
             // tablePos may be unset (-1) or pending (-2); stop before FTAB.
@@ -1272,7 +1323,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
                 throw ex;
             }
-            if (streamId == eventStreamId) {
+            if (isIndexedEventStream(streamId)) {
                 EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(flat);
                 int num = packet.elementsLength();
                 long start = 0;
@@ -1281,7 +1332,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     start = packet.elements(0).timestamp();
                     end = packet.elements(num - 1).timestamp();
                 }
-                events.add(new PacketRef(payloadOffset, payloadSize, start, end, num, cumEvents));
+                events.add(new PacketRef(payloadOffset, payloadSize, start, end, num, cumEvents, 0L, streamId));
                 cumEvents += num;
                 if (maxEventPackets < Integer.MAX_VALUE && events.size() >= maxEventPackets) {
                     log.info("AEDAT-4 preview index stopping after " + events.size() + " EVTS packets");
@@ -1560,7 +1611,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         for (int i = 0; i < src.size(); i++) {
             PacketRef s = src.get(i);
             out[i] = new PacketRef(s.payloadOffset, s.payloadSize,
-                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex, 0L);
+                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex, 0L, s.streamId);
         }
         return out;
     }
@@ -1594,7 +1645,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 wraps++;
             }
             out[i] = new PacketRef(s.payloadOffset, s.payloadSize, start, end,
-                    s.numElements, s.firstEventIndex, wrap);
+                    s.numElements, s.firstEventIndex, wrap, s.streamId);
             lastEnd = end;
         }
         if (wraps > 0) {
@@ -1814,7 +1865,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     skipped++;
                     continue;
                 }
-                int address = packAddress(event);
+                int address = packAddress(event, ref);
                 if (address < 0) {
                     skipped++;
                     continue; // Davis out-of-range
@@ -1864,10 +1915,23 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return ts32;
     }
 
-    private int packAddress(Event event) {
+    private int packAddress(Event event, PacketRef ref) {
         int x = event.x() & 0xffff;
         int y = event.y() & 0xffff;
         int type = event.polarity() ? 1 : 0; // On=1 / Off=0
+        if (flyEyeNativePair) {
+            boolean right = ref != null && ref.streamId == flyEyeRightEventStreamId;
+            if (x >= FlyEyeGeometry.NATIVE_W || y >= FlyEyeGeometry.NATIVE_H) {
+                return -1;
+            }
+            int polBit = type == 1 ? 0 : 1;
+            int addrX = FlyEyeGeometry.NATIVE_W - 1 - x;
+            int addr = (addrX << 1) | (y << 8) | polBit;
+            if (right) {
+                addr |= Stereopsis.MASK_RIGHT_ADDR;
+            }
+            return addr;
+        }
         EventExtractor2D extractor = chip != null ? chip.getEventExtractor() : null;
         final boolean useDavisPacking = chip instanceof DavisChip;
         int sx1 = chip == null ? 0 : chip.getSizeX() - 1;
@@ -2292,8 +2356,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private String indexCacheFileName() {
-        return String.format("%s.%d.%d.s%d.aedat4idx",
-                file.getName(), file.length(), file.lastModified(), eventStreamId);
+        return String.format("%s.%d.%d.s%d-%d.aedat4idx",
+                file.getName(), file.length(), file.lastModified(), eventStreamId, flyEyeRightEventStreamId);
     }
 
     private File indexCacheFile() {
@@ -2411,7 +2475,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         PacketRef[] refs = new PacketRef[n];
         for (int i = 0; i < n; i++) {
             refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(),
-                    in.readInt() & 0xffffffffL, in.readLong(), in.readLong());
+                    in.readInt() & 0xffffffffL, in.readLong(), in.readLong(), in.readInt());
         }
         return refs;
     }
@@ -2426,6 +2490,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeInt((int) Math.min(Integer.MAX_VALUE, r.numElements));
             out.writeLong(r.firstEventIndex);
             out.writeLong(r.wrapOffset);
+            out.writeInt(r.streamId);
         }
     }
 
@@ -3627,14 +3692,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         final long firstEventIndex;
         /** Add to {@code event.timestamp() - baseUnixUs} (0 unless the file wrapped). */
         final long wrapOffset;
+        final int streamId;
 
         PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd,
                 long numElements, long firstEventIndex) {
-            this(payloadOffset, payloadSize, unixStart, unixEnd, numElements, firstEventIndex, 0L);
+            this(payloadOffset, payloadSize, unixStart, unixEnd, numElements, firstEventIndex, 0L, 0);
         }
 
         PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd,
                 long numElements, long firstEventIndex, long wrapOffset) {
+            this(payloadOffset, payloadSize, unixStart, unixEnd, numElements, firstEventIndex, wrapOffset, 0);
+        }
+
+        PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd,
+                long numElements, long firstEventIndex, long wrapOffset, int streamId) {
             this.payloadOffset = payloadOffset;
             this.payloadSize = payloadSize;
             this.unixStart = unixStart;
@@ -3642,6 +3713,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             this.numElements = numElements;
             this.firstEventIndex = firstEventIndex;
             this.wrapOffset = wrapOffset;
+            this.streamId = streamId;
         }
     }
 }

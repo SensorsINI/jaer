@@ -60,12 +60,23 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private JOptionPane desyncPane;
     private boolean hidingDesyncBecauseRecovered;
     private long desyncDialogSuppressedUntilMs;
+    private long oneSidedEmptySinceMs;
+    private long lastDesyncMessageMs;
+    private String lastDesyncHtml;
     private static final long DESYNC_DIALOG_SUPPRESS_MS = 10_000L;
     private PropertyChangeListener playModeListener;
     private AEViewer playModeViewer;
     private boolean eyesAssigned;
     private String lastLoggedSyncSettings;
+    /** Log / advertised limit. Live USB dt chatters around this (~100.2–103 ms in jAER-0.log). */
     private static final int DESYNC_WARN_US = 100_000;
+    /** Show only after crossing this (hysteresis above the 100 ms chatter). */
+    private static final int DESYNC_SHOW_US = 150_000;
+    /** Hide only after recovering below this. */
+    private static final int DESYNC_CLEAR_US = 50_000;
+    /** One USB slice with no polarity from one eye is normal; wait this long. */
+    private static final long ONE_SIDED_EMPTY_MS = 750L;
+    private static final long DESYNC_MESSAGE_UPDATE_MS = 1000L;
 
     public FlyEyeHardwareInterface(FlyEye flyEye, AEMonitorInterface left, AEMonitorInterface right) {
         super(left, right);
@@ -814,7 +825,17 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         if (leftEmpty && rightEmpty) {
             return;
         }
+        long now = System.currentTimeMillis();
         if (leftEmpty || rightEmpty) {
+            if (oneSidedEmptySinceMs == 0L) {
+                oneSidedEmptySinceMs = now;
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine("FlyEye one-sided empty start side=" + (leftEmpty ? "left" : "right"));
+                }
+            }
+            if (now - oneSidedEmptySinceMs < ONE_SIDED_EMPTY_MS) {
+                return;
+            }
             String side = leftEmpty ? "left" : "right";
             if (!loggedSlaveStopped) {
                 loggedSlaveStopped = true;
@@ -828,10 +849,11 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                     + "<b>OK</b> zeros both cameras' timestamps.");
             return;
         }
+        oneSidedEmptySinceMs = 0L;
         int lts = lp.getLastTimestamp();
         int rts = rp.getLastTimestamp();
         long dt = Math.abs((long) lts - rts);
-        if (dt <= DESYNC_WARN_US) {
+        if (dt <= DESYNC_CLEAR_US) {
             lastDesyncLeftTs = lts;
             lastDesyncRightTs = rts;
             loggedSlaveStopped = false;
@@ -859,17 +881,21 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                     + "<b>OK</b> zeros both cameras' timestamps.");
             return;
         }
-        long now = System.currentTimeMillis();
+        if (dt < DESYNC_SHOW_US) {
+            // Between clear and show: USB jitter around 100 ms must not toggle the dialog.
+            return;
+        }
         if (now - lastDesyncLogMs >= 10_000) {
             lastDesyncLogMs = now;
             log.warning("FlyEye cameras desynced by " + String.format("%,d", dt)
-                    + " us (limit 100 ms); both still advancing. timestamp master="
+                    + " us (show>" + (DESYNC_SHOW_US / 1000) + " ms, hide<" + (DESYNC_CLEAR_US / 1000)
+                    + " ms); both still advancing. timestamp master="
                     + flyEye.timestampMasterLabel()
                     + " leftLast=" + lts + " rightLast=" + rts
                     + " left=" + describe(getAemonLeft()) + " right=" + describe(getAemonRight()));
         }
-        showDesyncDialog("<html>FlyEye cameras are more than 100 ms apart (dt="
-                + String.format("%,d", dt) + " us) but both timestamps are advancing.<br>"
+        showDesyncDialog("<html>FlyEye cameras are more than " + (DESYNC_WARN_US / 1000)
+                + " ms apart (dt=" + String.format("%,d", dt) + " us) but both timestamps are advancing.<br>"
                 + "Timestamp master: <b>" + flyEye.timestampMasterLabel() + "</b>.<br>"
                 + "Check the sync cable (master OUT to slave IN and GND).<br>"
                 + "<b>OK</b> zeros both cameras' timestamps.");
@@ -878,6 +904,12 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private void showDesyncDialog(String html) {
         Runnable show = () -> {
             if (desyncDialog != null && desyncDialog.isVisible()) {
+                long t = System.currentTimeMillis();
+                if (html.equals(lastDesyncHtml) || t - lastDesyncMessageMs < DESYNC_MESSAGE_UPDATE_MS) {
+                    return;
+                }
+                lastDesyncHtml = html;
+                lastDesyncMessageMs = t;
                 desyncPane.setMessage(html);
                 return;
             }
@@ -885,11 +917,16 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                 return;
             }
             ensureDesyncDialog();
+            lastDesyncHtml = html;
+            lastDesyncMessageMs = System.currentTimeMillis();
             desyncPane.setMessage(html);
             desyncPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
             desyncDialog.pack();
             AEViewer viewer = flyEye == null ? null : flyEye.getAeViewer();
             desyncDialog.setLocationRelativeTo(viewer);
+            if (log.isLoggable(Level.FINE)) {
+                log.fine("FlyEye desync dialog show");
+            }
             desyncDialog.setVisible(true);
         };
         if (SwingUtilities.isEventDispatchThread()) {
@@ -905,9 +942,19 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             if (desyncDialog == null) {
                 return;
             }
+            boolean wasVisible = desyncDialog.isVisible();
+            if (!wasVisible && !disposeIfCreated) {
+                return;
+            }
             hidingDesyncBecauseRecovered = true;
             try {
-                desyncDialog.setVisible(false);
+                if (wasVisible) {
+                    desyncDialog.setVisible(false);
+                    if (log.isLoggable(Level.FINE)) {
+                        log.fine("FlyEye desync dialog hide");
+                    }
+                }
+                lastDesyncHtml = null;
                 if (disposeIfCreated) {
                     desyncDialog.dispose();
                     desyncDialog = null;
@@ -949,6 +996,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         loggedSlaveStopped = false;
         lastDesyncLeftTs = Integer.MIN_VALUE;
         lastDesyncRightTs = Integer.MIN_VALUE;
+        oneSidedEmptySinceMs = 0L;
         resetTimestamps();
         AEMonitorInterface left = getAemonLeft();
         AEMonitorInterface right = getAemonRight();
