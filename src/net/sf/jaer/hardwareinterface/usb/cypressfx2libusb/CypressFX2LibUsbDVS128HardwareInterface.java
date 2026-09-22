@@ -116,6 +116,16 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
         HardwareInterfaceException.clearException();
     }
 
+    /**
+     * After a host timestamp reset, in-flight USB URBs still contain wrap codes
+     * from the previous wrapAdd. Applying those after wrapAdd is zeroed makes
+     * timestamps jump by 16 ms forever. Drop wrap and polarity until this
+     * deadline (or the firmware reset event, whichever is later).
+     */
+    private static final long DROP_USB_AFTER_TIMESTAMP_RESET_NS = 100_000_000L;
+    private volatile long dropUsbEventsUntilNanos;
+    private volatile boolean awaitHardwareResetEvent;
+
     @Override
     synchronized public void resetTimestamps() {
         CypressFX2.log
@@ -127,12 +137,29 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
         } catch (final HardwareInterfaceException e) {
             CypressFX2.log.warning(e.toString());
         }
+        lastTimestampTmp = 0;
+        awaitHardwareResetEvent = true;
+        dropUsbEventsUntilNanos = System.nanoTime() + DROP_USB_AFTER_TIMESTAMP_RESET_NS;
         flushPoolsOnTimestampReset();
+    }
+
+    private boolean droppingUsbEventsAfterTimestampReset() {
+        long now = System.nanoTime();
+        if (awaitHardwareResetEvent && now > dropUsbEventsUntilNanos + DROP_USB_AFTER_TIMESTAMP_RESET_NS) {
+            // Firmware reset event never arrived; do not drop forever.
+            awaitHardwareResetEvent = false;
+        }
+        return awaitHardwareResetEvent || now < dropUsbEventsUntilNanos;
     }
 
     @Override
     protected void flushPoolsOnTimestampReset() {
         synchronized (aePacketRawPool) {
+            final AEReader reader = getAeReader();
+            if (reader != null) {
+                reader.wrapAdd = 0;
+            }
+            lastTimestampTmp = 0;
             final int dropped = eventCounter
                     + aePacketRawPool.readBuffer().getNumEvents()
                     + aePacketRawPool.writeBuffer().getNumEvents();
@@ -305,16 +332,16 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                     // }
 
                     if ((b.get(i + 3) & 0x80) == 0x80) { // timestamp bit 15 is one -> wrap
-                        // now we need to increment the wrapAdd
-
+                        if (droppingUsbEventsAfterTimestampReset()) {
+                            continue;
+                        }
                         wrapAdd += 0x4000L; // uses only 14 bit timestamps
-
-                        // System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
-                        // NumberOfWrapEvents++;
                     } else if ((b.get(i + 3) & 0x40) == 0x40) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         resetTimestamps();
                         lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
+                        awaitHardwareResetEvent = false;
+                        dropUsbEventsUntilNanos = System.nanoTime() + DROP_USB_AFTER_TIMESTAMP_RESET_NS;
                         noteHardwareResetEvent();
                         discardPreResetCapturedEvents();
                         if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT)
@@ -332,6 +359,8 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                     } else if ((eventCounter > (aeBufferSize - 1)) || (buffer.overrunOccuredFlag)) { // just do nothing,
                         // throw away events
                         buffer.overrunOccuredFlag = true;
+                    } else if (droppingUsbEventsAfterTimestampReset()) {
+                        continue;
                     } else {
                         // address is LSB MSB
                         addresses[eventCounter] = (b.get(i) & 0xFF) | ((b.get(i + 1) & 0xFF) << 8);

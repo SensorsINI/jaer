@@ -9,6 +9,7 @@ package ch.unizh.ini.jaer.chip.flyeye;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.logging.Level;
@@ -19,6 +20,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FlyEyeEvent;
@@ -59,6 +61,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private boolean hidingDesyncBecauseRecovered;
     private long desyncDialogSuppressedUntilMs;
     private static final long DESYNC_DIALOG_SUPPRESS_MS = 10_000L;
+    private PropertyChangeListener playModeListener;
+    private AEViewer playModeViewer;
     private boolean eyesAssigned;
     private String lastLoggedSyncSettings;
     private static final int DESYNC_WARN_US = 100_000;
@@ -188,6 +192,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         assignEyesBySerialAndPref();
         configureSyncMaster();
         logAssignment();
+        attachPlayModeListener();
         showTimestampResetDialog(confirmTimestampResetBothCameras());
         // Vendor timestamp reset can restore firmware default (both masters).
         applySyncMaster(false);
@@ -272,17 +277,60 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     }
 
     @Override
+    public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+        super.setEventAcquisitionEnabled(enable);
+        // stopPlayback enables USB while playMode is still PLAYBACK, then LIVE.
+        // Reset after IN is up so the firmware reset event is in the stream;
+        // DVS128 drops leftover wrap URBs for 100 ms after that.
+        if (enable && flyEye != null) {
+            AEViewer v = flyEye.getAeViewer();
+            if (v != null && v.getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                zeroTimestampsForResync("enabling LIVE after playback");
+            }
+        }
+    }
+
+    @Override
     public void close() {
+        detachPlayModeListener();
         hideDesyncDialog(true);
         super.close();
     }
 
     @Override
     public synchronized void resetTimestamps() {
-        super.resetTimestamps();
+        // Do not call StereoPair.resetTimestamps(): it sets requestTimestampReset
+        // so the next acquireAvailableEventsFromDriver re-enables USB IN and sleeps
+        // 200 ms. ViewLoop uses PacketBundle; that flag stayed true after the first
+        // LIVE resync and restarted the cameras during the second file playback.
+        AEMonitorInterface left = getAemonLeft();
+        AEMonitorInterface right = getAemonRight();
+        if (left != null) {
+            left.resetTimestamps();
+        }
+        if (right != null) {
+            right.resetTimestamps();
+        }
         if (eyesAssigned) {
             applySyncMaster(false);
         }
+    }
+
+    /**
+     * StereoPair's raw acquire always turns IN on. During PLAYBACK that refills
+     * the FX2 FIFOs and the next LIVE reset cannot drain them.
+     */
+    @Override
+    public synchronized AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+        if (!liveAcquisitionWanted()) {
+            return new AEPacketRaw(0);
+        }
+        PacketBundle b = acquireAvailablePacketBundle();
+        if (b == null) {
+            return new AEPacketRaw(0);
+        }
+        AEPacketRaw raw = b.getRawPacket();
+        return raw != null ? raw : new AEPacketRaw(0);
     }
 
     private void logAssignment() {
@@ -707,6 +755,9 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
 
     @Override
     public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        if (!liveAcquisitionWanted()) {
+            return null;
+        }
         AEMonitorInterface left = getAemonLeft();
         AEMonitorInterface right = getAemonRight();
         if (left == null || right == null) {
@@ -733,8 +784,25 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         return out;
     }
 
+    /** False during file playback so child DVS128 acquires cannot auto-start USB IN. */
+    private boolean liveAcquisitionWanted() {
+        AEViewer v = flyEye == null ? null : flyEye.getAeViewer();
+        if (v != null) {
+            AEViewer.PlayMode mode = v.getPlayMode();
+            if (mode == AEViewer.PlayMode.PLAYBACK || mode == AEViewer.PlayMode.FILTER_INPUT) {
+                return false;
+            }
+        }
+        return isEventAcquisitionEnabled();
+    }
+
     private void warnIfDesynced(EventPacket<?> lp, EventPacket<?> rp) {
         if (flyEye == null || !flyEye.isElectricallyTimestampSynced()) {
+            hideDesyncDialog(false);
+            return;
+        }
+        AEViewer viewer = flyEye.getAeViewer();
+        if (viewer != null && viewer.getPlayMode() != AEViewer.PlayMode.LIVE) {
             hideDesyncDialog(false);
             return;
         }
@@ -756,7 +824,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             }
             showDesyncDialog("<html>FlyEye slave may have stopped.<br>No polarity from the <b>"
                     + side + "</b> camera. Timestamp master: <b>" + flyEye.timestampMasterLabel()
-                    + "</b>.<br>Reconnect master OUT to slave IN and GND.");
+                    + "</b>.<br>Reconnect master OUT to slave IN and GND.<br>"
+                    + "<b>OK</b> zeros both cameras' timestamps.");
             return;
         }
         int lts = lp.getLastTimestamp();
@@ -786,7 +855,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             showDesyncDialog("<html>FlyEye <b>" + side + "</b> timestamps stopped (sync cable unplugged).<br>"
                     + "This is the slave clock stopping, not crystal drift.<br>"
                     + "Timestamp master: <b>" + flyEye.timestampMasterLabel() + "</b>.<br>"
-                    + "Reconnect master OUT to slave IN and GND.");
+                    + "Reconnect master OUT to slave IN and GND.<br>"
+                    + "<b>OK</b> zeros both cameras' timestamps.");
             return;
         }
         long now = System.currentTimeMillis();
@@ -801,7 +871,8 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         showDesyncDialog("<html>FlyEye cameras are more than 100 ms apart (dt="
                 + String.format("%,d", dt) + " us) but both timestamps are advancing.<br>"
                 + "Timestamp master: <b>" + flyEye.timestampMasterLabel() + "</b>.<br>"
-                + "Check the sync cable (master OUT to slave IN and GND).");
+                + "Check the sync cable (master OUT to slave IN and GND).<br>"
+                + "<b>OK</b> zeros both cameras' timestamps.");
     }
 
     private void showDesyncDialog(String html) {
@@ -860,6 +931,62 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
         }
     }
 
+    private long lastResyncMs;
+
+    /**
+     * Vendor-reset both DVS128s and drop leftover packets so the next LIVE
+     * packets share t=0. Suppresses the desync dialog while USB drains.
+     */
+    private void zeroTimestampsForResync(String reason) {
+        long now = System.currentTimeMillis();
+        if (now - lastResyncMs < 500L) {
+            return;
+        }
+        lastResyncMs = now;
+        log.info("FlyEye zeroing timestamps (" + reason + ")");
+        hideDesyncDialog(false);
+        desyncDialogSuppressedUntilMs = System.currentTimeMillis() + DESYNC_DIALOG_SUPPRESS_MS;
+        loggedSlaveStopped = false;
+        lastDesyncLeftTs = Integer.MIN_VALUE;
+        lastDesyncRightTs = Integer.MIN_VALUE;
+        resetTimestamps();
+        AEMonitorInterface left = getAemonLeft();
+        AEMonitorInterface right = getAemonRight();
+        if (left != null && right != null) {
+            drainChildBundles(left, right);
+        }
+    }
+
+    private void attachPlayModeListener() {
+        AEViewer viewer = flyEye == null ? null : flyEye.getAeViewer();
+        if (viewer == null) {
+            return;
+        }
+        if (playModeListener != null && playModeViewer == viewer) {
+            return;
+        }
+        detachPlayModeListener();
+        playModeListener = evt -> {
+            if (!AEViewer.PlayMode.LIVE.toString().equals(String.valueOf(evt.getNewValue()))) {
+                return;
+            }
+            if (!AEViewer.PlayMode.PLAYBACK.toString().equals(String.valueOf(evt.getOldValue()))) {
+                return;
+            }
+            zeroTimestampsForResync("playback closed, returning LIVE");
+        };
+        playModeViewer = viewer;
+        viewer.getSupport().addPropertyChangeListener(AEViewer.EVENT_PLAYMODE, playModeListener);
+    }
+
+    private void detachPlayModeListener() {
+        if (playModeListener != null && playModeViewer != null) {
+            playModeViewer.getSupport().removePropertyChangeListener(AEViewer.EVENT_PLAYMODE, playModeListener);
+        }
+        playModeListener = null;
+        playModeViewer = null;
+    }
+
     private void ensureDesyncDialog() {
         if (desyncDialog != null) {
             return;
@@ -873,14 +1000,11 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             @Override
             public void windowClosing(WindowEvent e) {
                 if (!hidingDesyncBecauseRecovered) {
-                    desyncDialogSuppressedUntilMs = System.currentTimeMillis() + DESYNC_DIALOG_SUPPRESS_MS;
+                    userDismissedDesyncDialog();
                 }
             }
         });
         desyncPane.addPropertyChangeListener((PropertyChangeEvent evt) -> {
-            if (!desyncDialog.isVisible()) {
-                return;
-            }
             if (!JOptionPane.VALUE_PROPERTY.equals(evt.getPropertyName())) {
                 return;
             }
@@ -888,9 +1012,10 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
             if (v == null || v == JOptionPane.UNINITIALIZED_VALUE) {
                 return;
             }
-            if (!hidingDesyncBecauseRecovered) {
-                userDismissedDesyncDialog();
+            if (hidingDesyncBecauseRecovered) {
+                return;
             }
+            zeroTimestampsForResync("desync dialog OK");
         });
     }
 

@@ -7210,6 +7210,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             log.warning("AEViewer.ViewLoop.run(): AEMonitorInterface became null during acquisition");
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
+                        if (getPlayMode() != PlayMode.LIVE && getPlayMode() != PlayMode.SEQUENCING) {
+                            return emptyRawPacket;
+                        }
                         AEPacketRaw liveRaw = aemon.acquireAvailableEventsFromDriver();
                         noteDroppedData(aemon.getDroppedDataInfo());
                         SessionCameraOpenCoordinator.noteAcquiring(AEViewer.this);
