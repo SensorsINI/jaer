@@ -1,6 +1,7 @@
 package net.sf.jaer.eventio.export;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
@@ -63,6 +65,7 @@ import net.sf.jaer.util.textio.DavisTextEventFormatter;
  */
 public final class SaveAsExportDialog extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Preferences prefs = Preferences.userNodeForPackage(SaveAsExportDialog.class);
     /** Packed width cap so the path field and HTML help do not stretch the window. */
     private static final int DIALOG_MAX_WIDTH = 600;
@@ -171,10 +174,112 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     public static void disposeForViewer(AEViewer viewer) {
         for (SaveAsExportDialog d : dialogsForViewer(viewer)) {
             if (d.exporter != null && !d.exporter.isDone()) {
+                log.info("Cancelling Save As of " + exportName(d) + " for closing AEViewer");
                 d.exporter.cancel(false);
             }
             d.dispose();
         }
+    }
+
+    /**
+     * If Save As is still running, unhide those windows and ask whether to abort.
+     * {@code true} proceeds with quit (exports cancelled); {@code false} stays.
+     */
+    public static boolean confirmQuitIfExporting(Component parent) {
+        List<SaveAsExportDialog> active = allActiveExports();
+        if (active.isEmpty()) {
+            return true;
+        }
+        revealExports(active);
+        String msg = "<html>Save As is still running"
+                + exportSummaryHtml(active)
+                + "<p>Quit anyway and abort the export?<br>"
+                + "The incomplete output file will be left on disk.</html>";
+        Object[] options = {"Stay", "Quit and abort Save As"};
+        int r = JOptionPane.showOptionDialog(parent, msg, "Save As in progress",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        if (r == 1) {
+            abortExports(active, "AEViewer quit");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * If this viewer still has a background Save As, unhide it and ask before closing.
+     */
+    public static boolean confirmCloseViewerIfExporting(AEViewer viewer, Component parent) {
+        if (viewer == null || !isExportActive(viewer)) {
+            return true;
+        }
+        List<SaveAsExportDialog> active = new ArrayList<>();
+        for (SaveAsExportDialog d : dialogsForViewer(viewer)) {
+            if (d.exporter != null && !d.exporter.isDone()) {
+                active.add(d);
+            }
+        }
+        revealExports(active);
+        String msg = "<html>Save As is still running for this AEViewer"
+                + exportSummaryHtml(active)
+                + "<p>Close this window anyway and abort the export?<br>"
+                + "The incomplete output file will be left on disk.</html>";
+        Object[] options = {"Stay", "Close and abort Save As"};
+        int r = JOptionPane.showOptionDialog(parent, msg, "Save As in progress",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+        if (r == 1) {
+            abortExports(active, "AEViewer close");
+            return true;
+        }
+        return false;
+    }
+
+    private static List<SaveAsExportDialog> allActiveExports() {
+        List<SaveAsExportDialog> list = new ArrayList<>();
+        for (Window w : Window.getWindows()) {
+            if (w instanceof SaveAsExportDialog d && d.isDisplayable()
+                    && d.exporter != null && !d.exporter.isDone()) {
+                list.add(d);
+            }
+        }
+        return list;
+    }
+
+    private static void revealExports(List<SaveAsExportDialog> active) {
+        for (SaveAsExportDialog d : active) {
+            d.setVisible(true);
+            d.toFront();
+        }
+    }
+
+    private static void abortExports(List<SaveAsExportDialog> active, String reason) {
+        for (SaveAsExportDialog d : active) {
+            if (d.exporter != null && !d.exporter.isDone()) {
+                log.info("Aborting Save As of " + exportName(d) + " (" + reason + ")");
+                d.exporter.cancel(false);
+            }
+        }
+    }
+
+    private static String exportName(SaveAsExportDialog d) {
+        File out = d.exporter != null ? d.exporter.getOutputFile() : null;
+        return out != null ? out.getName() : "(unknown)";
+    }
+
+    private static String exportSummaryHtml(List<SaveAsExportDialog> active) {
+        if (active == null || active.isEmpty()) {
+            return ".";
+        }
+        StringBuilder sb = new StringBuilder(":<p>");
+        for (int i = 0; i < active.size(); i++) {
+            SaveAsExportDialog d = active.get(i);
+            if (i > 0) {
+                sb.append("<br>");
+            }
+            int pct = d.exporter != null ? d.exporter.getProgress() : 0;
+            sb.append("<code>").append(ShowFolderSaveConfirmation.escapeHtml(exportName(d))).append("</code>");
+            sb.append(" (").append(pct).append("%)");
+        }
+        return sb.toString();
     }
 
     /** Idle (not exporting) Save As window for this viewer, if any. */
@@ -411,7 +516,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         startButton.addActionListener(this::startExport);
         cancelButton.addActionListener(this::cancelExport);
-        closeButton.setToolTipText("Hide this window. An export in progress keeps running; Cancel stops it.");
+        closeButton.setToolTipText("Close this window.");
         closeButton.addActionListener(e -> hideOrDispose());
         buttons.add(startButton);
         buttons.add(cancelButton);
@@ -939,6 +1044,10 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
     private void updateRecordingUi(boolean running) {
         startButton.setEnabled(!running);
         cancelButton.setEnabled(running);
+        closeButton.setText(running ? "Hide" : "Close");
+        closeButton.setToolTipText(running
+                ? "Hide this window. Save As keeps running in the background; Cancel stops it."
+                : "Close this window.");
         formatCombo.setEnabled(!running);
         pathField.setEnabled(!running);
         if (recentFolderCombo != null) {

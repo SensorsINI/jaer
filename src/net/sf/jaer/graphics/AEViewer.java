@@ -9887,6 +9887,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * (JAERViewer removes this viewer); true for File → Exit / {@code x}
          */
         private void closeThisViewerOnly(boolean removeFromViewerList) {
+            if (!SaveAsExportDialog.confirmCloseViewerIfExporting(this, this)) {
+                log.info("AEViewer close cancelled; Save As still running");
+                return;
+            }
             log.info("closing this AEViewer; other windows remain");
             try {
                 SessionCameraOpenCoordinator.viewerClosed(AEViewer.this);
@@ -9912,6 +9916,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         /** Quit the JVM after stopping this viewer's loop and USB. */
         private void doExitAllViewers() {
+            if (!SaveAsExportDialog.confirmQuitIfExporting(this)) {
+                log.info("Exit cancelled; Save As still running");
+                return;
+            }
             if (!FfmpegMp4Converter.confirmQuitIfConverting(this)) {
                 log.info("Exit cancelled; MP4 conversion still running");
                 return;

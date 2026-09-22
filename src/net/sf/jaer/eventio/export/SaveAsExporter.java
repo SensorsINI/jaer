@@ -326,8 +326,13 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             frames = null;
             result.outputFileInfo = appendFileSizeSummary(result.outputFileInfo,
                     options.sourceFileBytes, options.outputFile);
+            log.info("Save As finished " + options.outputFile.getName()
+                    + String.format(": %,d events, %,d frames, %,d IMU",
+                            result.events, result.frames, result.imuSamples));
             return result;
         } catch (CancellationException cancel) {
+            log.info("Save As cancelled: " + (options != null && options.outputFile != null
+                    ? options.outputFile.getName() : ""));
             if (h5 != null) {
                 h5.abort();
             }
