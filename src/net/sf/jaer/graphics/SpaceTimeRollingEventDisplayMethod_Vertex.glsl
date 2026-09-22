@@ -15,7 +15,9 @@ void main() {
     f=z/dt; // fraction of total time in window, 0 at now, 1 at most distant past
     f1=1-f; 
     vec4 vh = vec4(v, 1);// transform vertex to homogeneous coordinate
-    gl_PointSize = pointSize*f1+1;
+    // Older events stay a large fraction of pointSize. Collapsing to 1px made
+    // the cloud invisible once the cube was fit to the window.
+    gl_PointSize = pointSize * (0.7 + 0.3 * f1);
     gl_Position = proj * mv * vh; // must be this order
 }
 

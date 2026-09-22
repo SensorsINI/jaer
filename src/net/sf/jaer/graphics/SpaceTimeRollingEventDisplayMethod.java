@@ -119,7 +119,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private boolean viewerDependentUiInstalled = false;
 
     private boolean additiveColorEnabled;
-    private boolean largePointSizeEnabled;
+    /** Written on the EDT, read on the OpenGL thread. */
+    private volatile boolean largePointSizeEnabled;
+    /** Driver clamp for smooth points. Normal size stays at most half of this. */
+    private float maxSmoothPointSize = 64f;
+    private boolean readPointSizeLimit = false;
 
     private boolean displayDvsEvents = true;
     private boolean displayApsFrames = true;
@@ -620,7 +624,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             log.log(Level.WARNING, "Space-time rolling skipped a frame: {0}", e.toString());
         }
         if (eventVertexBuffer != null) {
-            renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
+            // limit() is bytes; glDrawArrays counts vertices (3 floats each).
+            final int nEvents = eventVertexBuffer.limit() / EVENT_SIZE_BYTES;
+            renderEventsAndFrames(gl, drawable, eventVertexBuffer, nEvents, 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
         }
         displayStatusChangeText(drawable);
     }
@@ -682,6 +688,39 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         // clamped to z=0 when drawn.
         apsFramesInTimeWindow.removeFramesOlderThan(t0);
         dvsFramesInTimeWindow.removeFramesOlderThan(t0);
+    }
+
+    /**
+     * Shader point size is ignored unless this is enabled on the draw, and the
+     * driver clamps it to {@code GL_SMOOTH_POINT_SIZE_RANGE}.
+     */
+    private void ensureProgramPointSize(GL2 gl) {
+        gl.glEnable(GL3.GL_PROGRAM_POINT_SIZE);
+        gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
+        if (readPointSizeLimit) {
+            return;
+        }
+        readPointSizeLimit = true;
+        final float[] range = new float[2];
+        gl.glGetFloatv(GL2.GL_SMOOTH_POINT_SIZE_RANGE, range, 0);
+        if (range[1] >= 4f) {
+            maxSmoothPointSize = range[1];
+        }
+    }
+
+    /**
+     * Event diameter in screen pixels. The fitted cube fills the window, so a
+     * fixed 4px point is a speck. Size tracks chip pixels on screen, with a
+     * floor so a small window still shows the cloud.
+     */
+    private float eventPointSizePixels(GLAutoDrawable drawable) {
+        final int viewMin = Math.max(1, Math.min(drawable.getSurfaceWidth(), drawable.getSurfaceHeight()));
+        final int chipSpan = Math.max(1, Math.max(sx, sy));
+        final float pxPerChip = (viewMin / VOLUME_FIT_MARGIN) / chipSpan;
+        final float base = Math.max(pxPerChip, 2f) * 8f;
+        final float large = Math.min(base * 2f, maxSmoothPointSize);
+        final float normal = Math.min(base, large * 0.5f);
+        return isLargePointSizeEnabled() ? large : Math.max(2f, normal);
     }
 
     /**
@@ -874,11 +913,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
             gl.glUniform1f(idt0, -zmax);
             gl.glUniform1f(idt1, 0);
-            if (isLargePointSizeEnabled()) {
-                pointSize = 12;
-            } else {
-                pointSize = 4;
-            }
+            ensureProgramPointSize(gl);
+            pointSize = eventPointSizePixels(drawable);
             gl.glUniform1f(idPointSize, pointSize);
             checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
 
@@ -1598,24 +1634,20 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     final public class ToggleLargePointsAction extends MyAction {
 
         public ToggleLargePointsAction() {
-            super("Large points enabled", "<html>\"make the event points larger (12 points),<br> rather than the default (4 points) for better visibility with sparse event stream");
+            super("Large points enabled", "<html>Draw event points about twice as large,<br>for sparse streams and presentations");
             putValue(Action.SELECTED_KEY, isLargePointSizeEnabled());
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            setLargePointSizeEnabled(!isLargePointSizeEnabled());
-            putValue(Action.SELECTED_KEY, isLargePointSizeEnabled());
-            showAction();
-        }
-
-        @Override
-        protected void showAction() {
-            if (isLargePointSizeEnabled()) {
-                showAction("Small points enabled");
-            } else {
-                showAction("Large points enabled");
-            }
+            // The checkbox flips before this runs. Follow that checkmark;
+            // inverting here leaves the box opposite the points.
+            final boolean on = e.getSource() instanceof javax.swing.AbstractButton button
+                    ? button.isSelected()
+                    : !isLargePointSizeEnabled();
+            setLargePointSizeEnabled(on);
+            putValue(Action.SELECTED_KEY, on);
+            showAction(on ? "Large points enabled" : "Small points enabled");
         }
     }
 
