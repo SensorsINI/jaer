@@ -192,6 +192,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     private long typedPlayheadUs;
     private boolean typedPlayheadSet;
+    /**
+     * CountDuration playhead for FlyEye native dual EVTS. File-order event index
+     * is L-packet then R-packet with the same Unix window, so a contiguous
+     * {@code [start,end)} slice misses one eye until that packet is exhausted.
+     */
+    private long flyEyeCdPlayheadUs;
+    private boolean flyEyeCdPlayheadSet;
+    private long flyEyeUnixMin;
+    private long flyEyeUnixMax;
+    /** Last event Unix packed by {@link #extractPolarityByUnixWindow} (relative). */
+    private long lastFlyEyePackedUnixUs;
     /** Last 32-bit relative timestamp emitted (for EVENT_WRAPPED_TIME). */
     private int mostRecentEmittedTimestamp;
     private boolean haveEmittedTimestamp;
@@ -1400,7 +1411,29 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         markOut = playableSize();
         clearEventPacketCache();
+        refreshFlyEyeUnixBounds();
+        flyEyeCdPlayheadSet = false;
         syncTypedPlayheadFromPosition();
+    }
+
+    private void refreshFlyEyeUnixBounds() {
+        flyEyeUnixMin = 0;
+        flyEyeUnixMax = 0;
+        if (!flyEyeNativePair || eventRefs.length == 0) {
+            return;
+        }
+        long lo = eventRefs[0].unixStart;
+        long hi = eventRefs[0].unixEnd;
+        for (PacketRef r : eventRefs) {
+            if (r.unixStart < lo) {
+                lo = r.unixStart;
+            }
+            if (r.unixEnd > hi) {
+                hi = r.unixEnd;
+            }
+        }
+        flyEyeUnixMin = lo;
+        flyEyeUnixMax = hi;
     }
 
     /**
@@ -1894,6 +1927,213 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
     }
+
+    /**
+     * Pack polarity events whose relative Unix time lies in {@code [t0, t1)} from
+     * every indexed EVTS packet (both FlyEye eyes). File-order index is not time order.
+     */
+    private AEPacketRaw extractPolarityByUnixWindow(long t0, long t1, int maxPacked) throws IOException {
+        lastFlyEyePackedUnixUs = t0;
+        if (!hasPolarity() || t1 <= t0 || maxPacked <= 0) {
+            return new AEPacketRaw(0);
+        }
+        final int stride = effectivePolarityEventSkip() + 1;
+        lastPolarityEventSkip = stride - 1;
+        IntGrow addresses = new IntGrow(Math.min(maxPacked, 4096));
+        IntGrow timestamps = new IntGrow(Math.min(maxPacked, 4096));
+        Event scratch = extractEventScratch;
+        int packed = 0;
+        int kept = 0;
+        int skipped = 0;
+        for (int pi = 0; pi < eventRefs.length && packed < maxPacked; pi++) {
+            PacketRef ref = eventRefs[pi];
+            if (ref.numElements <= 0) {
+                continue;
+            }
+            if (ref.unixEnd < t0 || ref.unixStart >= t1) {
+                continue;
+            }
+            EventPacket packet = eventPacketAt(pi);
+            int nEl = packet.elementsLength();
+            for (int j = 0; j < nEl && packed < maxPacked; j++) {
+                Event event = packet.elements(scratch, j);
+                if (event == null) {
+                    skipped++;
+                    continue;
+                }
+                long ts = event.timestamp() - baseUnixUs + ref.wrapOffset;
+                if (ts < t0 || ts >= t1) {
+                    continue;
+                }
+                if ((kept++ % stride) != 0) {
+                    continue;
+                }
+                int address = packAddress(event, ref);
+                if (address < 0) {
+                    skipped++;
+                    continue;
+                }
+                addresses.add(address);
+                timestamps.add(emitRelativeTimestamp(event.timestamp(), ref));
+                lastFlyEyePackedUnixUs = ts;
+                packed++;
+            }
+        }
+        if (skipped > 0) {
+            skippedEventsSinceWarning += skipped;
+            long now = System.currentTimeMillis();
+            if (now - lastSkippedEventWarningMs >= SKIPPED_EVENT_WARNING_INTERVAL_MS) {
+                log.warning(String.format(
+                        "AEDAT-4 extractPolarityByUnixWindow [%d,%d) skipped %d events this slice, %,d since last notice",
+                        t0, t1, skipped, skippedEventsSinceWarning));
+                lastSkippedEventWarningMs = now;
+                skippedEventsSinceWarning = 0;
+            }
+        }
+        return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
+    }
+
+    /** Packet-table estimate of how many events have relative Unix {@code < t}. */
+    private long eventCountBeforeTime(long t) {
+        if (!hasPolarity() || eventRefs.length == 0) {
+            return 0;
+        }
+        long n = 0;
+        for (PacketRef r : eventRefs) {
+            if (r.numElements <= 0) {
+                continue;
+            }
+            if (r.unixEnd < t) {
+                n += r.numElements;
+                continue;
+            }
+            if (r.unixStart >= t || r.unixEnd <= r.unixStart) {
+                continue;
+            }
+            double frac = (t - (double) r.unixStart) / (double) (r.unixEnd - r.unixStart);
+            if (frac < 0) {
+                frac = 0;
+            } else if (frac > 1) {
+                frac = 1;
+            }
+            n += Math.round(frac * r.numElements);
+        }
+        if (n < 0) {
+            return 0;
+        }
+        return Math.min(eventCount, n);
+    }
+
+    private void syncFlyEyeCdPlayheadFromPositionIfNeeded() {
+        if (flyEyeCdPlayheadSet) {
+            return;
+        }
+        if (!hasPolarity() || eventRefs.length == 0) {
+            flyEyeCdPlayheadUs = 0;
+            flyEyeCdPlayheadSet = true;
+            return;
+        }
+        if (position >= eventCount) {
+            flyEyeCdPlayheadUs = flyEyeUnixMax + 1;
+        } else {
+            flyEyeCdPlayheadUs = timestampApproxLong(position);
+        }
+        flyEyeCdPlayheadSet = true;
+    }
+
+    private void applyFlyEyeCdPlayheadToPosition(long t) {
+        long n = playableSize();
+        if (n <= 0) {
+            position = 0;
+            return;
+        }
+        long idx = eventCountBeforeTime(t);
+        if (idx < 0) {
+            idx = 0;
+        } else if (idx > n) {
+            idx = n;
+        }
+        position = idx;
+    }
+
+    private AEPacketRaw readFlyEyeNativePairByTime(int dt, long pos0, long tRead, long limitOut)
+            throws IOException {
+        syncFlyEyeCdPlayheadFromPositionIfNeeded();
+        boolean forwards = dt > 0;
+        long tFirst = flyEyeUnixMin;
+        long tLast = flyEyeUnixMax;
+        if (outLoopArmed && isMarkOutSet() && limitOut < playableSize() && limitOut > 0) {
+            tLast = Math.min(tLast, timestampApproxLong(limitOut - 1));
+        }
+        if (forwards) {
+            if (flyEyeCdPlayheadUs > tLast) {
+                throw new EOFException();
+            }
+            long t0 = flyEyeCdPlayheadUs;
+            long t1 = t0 + dt;
+            if (t1 <= t0) {
+                t1 = t0 + 1;
+            }
+            if (t1 > tLast + 1) {
+                t1 = tLast + 1;
+            }
+            int maxPacked = MAX_EVENTS_PER_READ;
+            long tEx = System.nanoTime();
+            AEPacketRaw pkt = extractPolarityByUnixWindow(t0, t1, maxPacked);
+            profNsExtract += System.nanoTime() - tEx;
+            boolean capped = pkt.getNumEvents() >= maxPacked;
+            if (capped) {
+                flyEyeCdPlayheadUs = lastFlyEyePackedUnixUs + 1;
+                profCappedSlices++;
+            } else {
+                flyEyeCdPlayheadUs = t1;
+            }
+            currentStartTimestamp = (int) t0;
+            applyFlyEyeCdPlayheadToPosition(flyEyeCdPlayheadUs);
+            collectTypedForWindow(t0, Math.max(t0, flyEyeCdPlayheadUs - 1));
+            firePosition();
+            notePositionAfterRead();
+            profSlices++;
+            profEvents += pkt.getNumEvents();
+            profNsRead += System.nanoTime() - tRead;
+            logPlaybackRead("readPacketByTime FlyEye-pair dt=%d pos %d->%d packed=%d t=%d..%d%s",
+                    dt, pos0, position, pkt.getNumEvents(), t0, flyEyeCdPlayheadUs,
+                    capped ? " capped" : "");
+            return pkt;
+        }
+        if (flyEyeCdPlayheadUs <= tFirst) {
+            throw new EOFException("reached start of file");
+        }
+        long t1 = flyEyeCdPlayheadUs;
+        long t0 = t1 + dt;
+        if (t0 < tFirst) {
+            t0 = tFirst;
+        }
+        int maxPacked = MAX_EVENTS_PER_READ;
+        long tEx = System.nanoTime();
+        AEPacketRaw pkt = extractPolarityByUnixWindow(t0, t1, maxPacked);
+        profNsExtract += System.nanoTime() - tEx;
+        boolean capped = pkt.getNumEvents() >= maxPacked;
+        if (capped) {
+            flyEyeCdPlayheadUs = lastFlyEyePackedUnixUs;
+            if (flyEyeCdPlayheadUs >= t1) {
+                flyEyeCdPlayheadUs = t1 - 1;
+            }
+            profCappedSlices++;
+        } else {
+            flyEyeCdPlayheadUs = t0;
+        }
+        currentStartTimestamp = (int) flyEyeCdPlayheadUs;
+        applyFlyEyeCdPlayheadToPosition(flyEyeCdPlayheadUs);
+        collectTypedForWindow(flyEyeCdPlayheadUs, t1);
+        firePosition();
+        notePositionAfterRead();
+        logPlaybackRead("readPacketByTime FlyEye-pair dt=%d (back) pos %d->%d packed=%d t=%d..%d%s",
+                dt, pos0, position, pkt.getNumEvents(), flyEyeCdPlayheadUs, t1,
+                capped ? " capped" : "");
+        return pkt;
+    }
+
 
     /**
      * File Unix µs → 32-bit relative timestamp, applying packet wrapOffset and
@@ -2410,6 +2650,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             imuRefs = readRefs(in);
             markOut = playableSize();
             clearEventPacketCache();
+            refreshFlyEyeUnixBounds();
+            flyEyeCdPlayheadSet = false;
             syncTypedPlayheadFromPosition();
             log.info(String.format(
                     "Loaded sparse AEDAT-4 index from %s in %d ms (stream %d: %,d events in %d packets, %,d frames, %,d IMU, %.1f KB)",
@@ -2522,6 +2764,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public synchronized AEPacketRaw readPacketByNumber(int n) throws IOException {
         ensureChannelOpen();
+        flyEyeCdPlayheadSet = false;
         if (n == 0) {
             n = 1;
         }
@@ -2591,6 +2834,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         lastPolarityEventSkip = effectivePolarityEventSkip();
         if (!hasPolarity()) {
             return readTypedSliceByTime(dt, pos0, tRead);
+        }
+        if (flyEyeNativePair) {
+            return readFlyEyeNativePairByTime(dt, pos0, tRead, limitOut);
         }
         if (forwards) {
             long start = position;
@@ -3071,6 +3317,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (position > 0) {
             return;
         }
+        if (flyEyeNativePair && flyEyeCdPlayheadSet && flyEyeCdPlayheadUs > flyEyeUnixMin) {
+            return;
+        }
         if (!hasPolarity() && typedPlayheadSet && typedPlayheadUs > typedFirstTs()) {
             return;
         }
@@ -3095,6 +3344,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * file, or OUT reached by playback (not by slider seek).
      */
     private boolean atOutMarkerOrFileEnd() {
+        if (flyEyeNativePair && flyEyeCdPlayheadSet) {
+            long tLast = flyEyeUnixMax;
+            if (outLoopArmed && isMarkOutSet()) {
+                long outIdx = Math.max(0, effectiveMarkOut() - 1);
+                tLast = Math.min(tLast, timestampApproxLong(outIdx));
+            }
+            return flyEyeCdPlayheadUs > tLast;
+        }
         if (!hasPolarity() && typedPlayheadSet && typedPlayheadUs >= typedLimitTs()) {
             return true;
         }
@@ -3168,6 +3425,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     /** Unwrapped duration in µs (12 h recordings exceed 32-bit). */
     public long getDurationUsLong() {
+        if (flyEyeNativePair && eventRefs.length > 0) {
+            return Math.max(0L, flyEyeUnixMax - flyEyeUnixMin);
+        }
         if (hasPolarity() && eventRefs.length > 0) {
             return Math.max(0L, eventRefs[eventRefs.length - 1].unixEnd - eventRefs[0].unixStart);
         }
@@ -3561,6 +3821,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 : timestampApproxLong(Math.min(Math.max(0, position), playableSize() - 1));
         currentStartTimestamp = (int) t;
         haveEmittedTimestamp = false;
+        flyEyeCdPlayheadSet = false;
         if (!hasPolarity()) {
             typedPlayheadUs = t;
             typedPlayheadSet = true;
@@ -3589,6 +3850,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         frameCursor = 0;
         imuCursor = 0;
         haveEmittedTimestamp = false;
+        flyEyeCdPlayheadSet = false;
         syncTypedPlayheadFromPosition();
         long firstTs = hasPolarity() && eventRefs.length > 0 ? eventRefs[0].unixStart : 0;
         long approx = playableSize() == 0 ? 0
