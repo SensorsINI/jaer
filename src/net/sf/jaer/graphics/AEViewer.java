@@ -594,7 +594,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
-            + "<b>N/M evts</b> — events this slice before/after filters (N evts if no filter). t: cycle accumulation method<br>"
+            + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime<br>"
             + "<b>(DROP)</b> / <b>(overrun)</b> — live events discarded (keep cap or host buffer); bar turns red. Lower DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
             + "<b>eps</b> — event rate (events per second)<br>"
             + "<b>nX</b> — playback speedup vs real time (1X = realtime); Live/Seq or Paused otherwise<br>"
@@ -7637,6 +7637,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
 
+        /** CD / CC / AEC / RT after the event count (ConstantDuration, ConstantCount, AreaEventCount, RealTime). */
+        private void appendAccumulationModeAbbrev(StringBuilder buf) {
+            AbstractAEPlayer player = getAePlayer();
+            if (player == null) {
+                buf.append(" CD ");
+                return;
+            }
+            switch (player.getPlaybackMode()) {
+                case FixedPacketSize:
+                    buf.append(" CC ");
+                    break;
+                case AreaEventCount:
+                    buf.append(" AEC ");
+                    break;
+                case RealTime:
+                    buf.append(" RT ");
+                    break;
+                case FixedTimeSlice:
+                default:
+                    buf.append(" CD ");
+                    break;
+            }
+        }
+
         /** {@code %.3f} without {@link String#format}. */
         private static void appendFixed3(StringBuilder buf, float v) {
             if (Float.isNaN(v)) {
@@ -7732,9 +7756,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     field = sb.length();
                     sb.append(numEvents);
                     padLeft(sb, field, 5);
-                    sb.append("evts ");
+                    sb.append("evts");
                 }
-
+                appendAccumulationModeAbbrev(sb);
                 sb.append(droppedDataInfo.getStatsLineToken());
 
                 field = sb.length();
