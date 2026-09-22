@@ -88,6 +88,7 @@ Dropping an `.aedat` / `.aedat4` from Finder onto the chip view now opens the fi
 * [GNSS sidecar](#gnss) — phone NMEA over Wi-Fi; `.gnss.csv` next to the recording
 * [FOV calculator](#fov) — Help → FOV calculator (pixel pitch, array, focal length)
 * [FlyEye / FlyMotion](#flyeye) — timestamp master, rewind, per-eye global flow
+* [Event Planar HDF5](#event-planar) — play TU Delft DAVIS240C `.h5` (cooked `xs,ys,ts,ps`)
 * [Hardware Configuration](#hw-config) — user-friendly tab; windows stay on screen
 * [Bug fixes](#bug-fixes-and-minor-improvements)
 
@@ -159,6 +160,15 @@ AEDAT-4 rewind no longer swallows the second camera when independent timestamps 
 
 <!-- flymotion.png -->
 
+<h4 id="event-planar">Event Planar HDF5 (DAVIS240C)</h4>
+
+File → Open now plays cooked event HDF5 from the TU Delft **event_planar** dataset (DAVIS240C 240×180). Layout is `/events/{xs,ys,ts,ps}` with Unix-second timestamps — not DSEC `/events/{x,y,t,p}` and not DDD17/DDD20 `/dvs`. Chip auto-detect selects **DAVIS240C**. Optional IMU / OptiTrack groups in the same file are not played.
+
+* Dataset (4TU.ResearchData): [doi:10.34894/QTFHQX](https://doi.org/10.34894/QTFHQX)
+* Training code: [tudelft/event_planar](https://github.com/tudelft/event_planar)
+* Project page: [Fully neuromorphic vision and control for autonomous drone flight](https://mavlab.tudelft.nl/fully_neuromorphic_drone/)
+* Paper: Paredes-Vallés et al., *Science Robotics* 9(90), eadi0591 (2024) — [doi:10.1126/scirobotics.adi0591](https://www.science.org/doi/full/10.1126/scirobotics.adi0591)
+
 <h4 id="hw-config">Hardware Configuration and window restore</h4>
 
 Hardware Configuration opens on the **user-friendly** tab. Saved tab indices from prefs (and `Davis346blue.xml`) had restored Chip Config after extra tabs were added.
@@ -169,6 +179,7 @@ Packed dialogs and HW config keep a usable size and stay on the work area. First
 
 ### Bug fixes and minor improvements
 
+* **Event Planar HDF5**: File → Open plays TU Delft DAVIS240C `.h5` (`/events/{xs,ys,ts,ps}`); [dataset](https://doi.org/10.34894/QTFHQX), [project](https://mavlab.tudelft.nl/fully_neuromorphic_drone/), [paper](https://www.science.org/doi/full/10.1126/scirobotics.adi0591).
 * **macOS**: Finder drop of AEDAT onto the chip view opens the file (`acceptDrop` + transferable; 3.5.2-rc.0 was broken).
 * **macOS startup**: a saved empty viewer list no longer starts with 0 windows and exits code 0; attach `$TMPDIR/jaer/jAER-0.log` when reporting startup issues.
 * **OpenCV webcams**: jAER no longer probes or opens webcams during splash, and webcams are never autobound. Use **Interface → Refresh**, then select the OpenCV camera explicitly.

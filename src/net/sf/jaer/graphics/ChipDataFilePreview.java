@@ -485,7 +485,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                         : "DDD17/DDD20 HDF5 (open to convert to AEDAT-4)");
                 return;
             } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
-                    && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
+                    && DsecHdf5AEInputStream.isCookedEventsFile(file)) {
                 stream = new DsecHdf5AEInputStream(file, chip, null);
                 overlay = compactSummary(file, stream, false);
                 play = false;

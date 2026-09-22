@@ -577,8 +577,10 @@ public class AEChip extends Chip2D {
             return new MetavisionRawFileInputStream(file, this, progressMonitor);
         }
         if (DsecHdf5AEInputStream.isHdf5Extension(file)
-                && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
-            log.info(String.format("Opening file %s as DSEC HDF5 events", file));
+                && DsecHdf5AEInputStream.isCookedEventsFile(file)) {
+            String kind = DsecHdf5AEInputStream.isEventPlanarEventsFile(file)
+                    ? "Event Planar HDF5 events" : "DSEC HDF5 events";
+            log.info(String.format("Opening file %s as %s", file, kind));
             return new DsecHdf5AEInputStream(file, this, progressMonitor);
         }
         if (DddHdf5.isHdf5Extension(file) && DddHdf5.isDddRecording(file)) {
@@ -595,7 +597,7 @@ public class AEChip extends Chip2D {
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
             return new AEFileInputStream(file, this);
         }
-        throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5/.hdf5 (DSEC or DDD17/DDD20), or .bag files are currently supported");
+        throw new FileNotFoundException("file " + file + " file type is not known; .dat (legacy jAER or Metavision), .aedat, .aedat2, .aedat4, .aedz, .raw, .h5/.hdf5 (DSEC, Event Planar, or DDD17/DDD20), or .bag files are currently supported");
     }
 
     /**

@@ -19,6 +19,7 @@ import javax.swing.ProgressMonitor;
 import io.jhdf.HdfFile;
 import io.jhdf.api.Attribute;
 import io.jhdf.api.Dataset;
+import io.jhdf.api.Group;
 import io.jhdf.api.Node;
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -31,16 +32,14 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
- * Plays a single-camera
- * <a href="https://dsec.ifi.uzh.ch/data-format/">DSEC</a>-layout event recording
+ * Plays a single-camera cooked polarity HDF5 recording
  * ({@code events.h5} / {@code .h5} / {@code .hdf5}).
  * <p>
- * DSEC stores <em>cooked</em> polarity streams (column, row, polarity, time) —
- * not a vendor raw address encoding. Events are packed into
- * {@link AEPacketRaw} via the selected chip's
+ * Two column layouts are accepted (not vendor raw addresses). Events are packed
+ * into {@link AEPacketRaw} via the selected chip's
  * {@link TypedEventExtractor#getAddressFromCell(int, int, int)}.
  * <p>
- * Expected layout:
+ * <b>DSEC</b> (<a href="https://dsec.ifi.uzh.ch/data-format/">data format</a>):
  * <pre>
  * /events/p  polarity
  * /events/t  timestamps (µs)
@@ -49,6 +48,17 @@ import net.sf.jaer.util.EngineeringFormat;
  * /ms_to_idx millisecond → event index
  * /t_offset  add to {@code t} for image-aligned clock
  * </pre>
+ * <b>Event Planar</b> (TU Delft
+ * <a href="https://github.com/tudelft/event_planar">event_planar</a>
+ * {@code H5Loader.get_events}):
+ * <pre>
+ * /events/ps  polarity (0/1)
+ * /events/ts  timestamps (Unix seconds, float64)
+ * /events/xs  column
+ * /events/ys  row
+ * root attrs t0, duration, sensor_resolution=[W,H]
+ * </pre>
+ * Not DDD17/DDD20 ({@code /dvs/data}) and not MVSEC (ROS bags).
  * Left and right cameras are separate files; open one at a time. Blosc+ZSTD
  * compression is handled by {@link BloscHdf5Filter}.
  * <p>
@@ -125,6 +135,29 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
     private int[] windowTRel = new int[0]; // t[i] relative to first event (for seek by time)
 
     private TypedEventExtractor typedExtractor;
+    private CookedLayout layout = CookedLayout.DSEC;
+    /** Event Planar {@code ts} is Unix seconds; DSEC {@code t} is integer µs. */
+    private boolean timestampSeconds;
+    private double firstRawTSeconds;
+    private double t0Seconds;
+
+    /** Cooked column names in an events HDF5 file. */
+    public enum CookedLayout {
+        DSEC("/events/x", "/events/y", "/events/t", "/events/p"),
+        EVENT_PLANAR("/events/xs", "/events/ys", "/events/ts", "/events/ps");
+
+        public final String x;
+        public final String y;
+        public final String t;
+        public final String p;
+
+        CookedLayout(String x, String y, String t, String p) {
+            this.x = x;
+            this.y = y;
+            this.t = t;
+            this.p = p;
+        }
+    }
 
     public DsecHdf5AEInputStream(File file, AEChip chip, ProgressMonitor progressMonitor)
             throws IOException {
@@ -150,6 +183,12 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
                 progressMonitor.setProgress(1);
             }
             hdf = new HdfFile(file.toPath());
+            layout = detectLayout(hdf);
+            if (layout == null) {
+                throw new IOException("HDF5 is not DSEC /events/{x,y,t,p} or Event Planar /events/{xs,ys,ts,ps}: "
+                        + file.getName());
+            }
+            timestampSeconds = layout == CookedLayout.EVENT_PLANAR;
             openDatasets();
             resolveSensorSizeFromOpenFile();
             loadIndexAndBounds(progressMonitor);
@@ -158,7 +197,8 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             EngineeringFormat eng = new EngineeringFormat();
             eng.setPrecision(3);
             log.info(String.format(
-                    "Opened DSEC HDF5 %s: %,d events, %dx%d, duration=%ss, t_offset=%d, chip=%s",
+                    "Opened %s HDF5 %s: %,d events, %dx%d, duration=%ss, t_offset=%d, chip=%s",
+                    layout == CookedLayout.EVENT_PLANAR ? "Event Planar" : "DSEC",
                     file.getName(),
                     eventCount,
                     sensorWidth,
@@ -172,7 +212,8 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             throw e;
         } catch (RuntimeException e) {
             closeQuietly();
-            throw new IOException("Failed to open DSEC HDF5 " + file + ": " + e.getMessage(), e);
+            String kind = layout == CookedLayout.EVENT_PLANAR ? "Event Planar" : "DSEC";
+            throw new IOException("Failed to open " + kind + " HDF5 " + file.getName() + ": " + e.getMessage(), e);
         }
     }
 
@@ -193,15 +234,71 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         try {
             BloscHdf5Filter.ensureRegistered();
             try (HdfFile h = new HdfFile(file.toPath())) {
-                return h.getByPath("/events/x") instanceof Dataset
-                        && h.getByPath("/events/y") instanceof Dataset
-                        && h.getByPath("/events/t") instanceof Dataset
-                        && h.getByPath("/events/p") instanceof Dataset;
+                return detectLayout(h) == CookedLayout.DSEC;
             }
         } catch (Exception e) {
             log.fine("Not a DSEC events HDF5 (" + file.getName() + "): " + e);
             return false;
         }
+    }
+
+    /**
+     * True if {@code file} is TU Delft event_planar cooked events
+     * ({@code /events/{xs,ys,ts,ps}}), not DSEC {@code x,y,t,p}.
+     */
+    public static boolean isEventPlanarEventsFile(File file) {
+        if (file == null || !file.isFile() || !isHdf5Extension(file)) {
+            return false;
+        }
+        try {
+            BloscHdf5Filter.ensureRegistered();
+            try (HdfFile h = new HdfFile(file.toPath())) {
+                return detectLayout(h) == CookedLayout.EVENT_PLANAR;
+            }
+        } catch (Exception e) {
+            log.fine("Not an Event Planar HDF5 (" + file.getName() + "): " + e);
+            return false;
+        }
+    }
+
+    public static boolean isCookedEventsFile(File file) {
+        return isDsecEventsFile(file) || isEventPlanarEventsFile(file);
+    }
+
+    static CookedLayout detectLayout(HdfFile h) {
+        if (h == null) {
+            return null;
+        }
+        Node eventsNode = nodeOrNull(h, "/events");
+        if (!(eventsNode instanceof Group)) {
+            eventsNode = nodeOrNull(h, "events");
+        }
+        if (eventsNode instanceof Group) {
+            Map<String, Node> kids = ((Group) eventsNode).getChildren();
+            if (dataset(kids, "x") && dataset(kids, "y") && dataset(kids, "t") && dataset(kids, "p")) {
+                return CookedLayout.DSEC;
+            }
+            if (dataset(kids, "xs") && dataset(kids, "ys") && dataset(kids, "ts") && dataset(kids, "ps")) {
+                return CookedLayout.EVENT_PLANAR;
+            }
+        }
+        if (nodeOrNull(h, CookedLayout.DSEC.x) instanceof Dataset
+                && nodeOrNull(h, CookedLayout.DSEC.y) instanceof Dataset
+                && nodeOrNull(h, CookedLayout.DSEC.t) instanceof Dataset
+                && nodeOrNull(h, CookedLayout.DSEC.p) instanceof Dataset) {
+            return CookedLayout.DSEC;
+        }
+        if (nodeOrNull(h, CookedLayout.EVENT_PLANAR.x) instanceof Dataset
+                && nodeOrNull(h, CookedLayout.EVENT_PLANAR.y) instanceof Dataset
+                && nodeOrNull(h, CookedLayout.EVENT_PLANAR.t) instanceof Dataset
+                && nodeOrNull(h, CookedLayout.EVENT_PLANAR.p) instanceof Dataset) {
+            return CookedLayout.EVENT_PLANAR;
+        }
+        return null;
+    }
+
+    private static boolean dataset(Map<String, Node> kids, String name) {
+        return kids != null && kids.get(name) instanceof Dataset;
     }
 
     public static boolean isHdf5Extension(File file) {
@@ -246,17 +343,17 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         }
         BloscHdf5Filter.ensureRegistered();
         try (HdfFile h = new HdfFile(file.toPath())) {
-            if (!(h.getByPath("/events/x") instanceof Dataset)
-                    || !(h.getByPath("/events/y") instanceof Dataset)) {
+            CookedLayout lay = detectLayout(h);
+            if (lay == null) {
                 return null;
             }
             SensorSize fromAttr = sensorSizeFromAttributes(h);
             if (fromAttr != null) {
                 return fromAttr;
             }
-            return sensorSizeFromXySample(h);
+            return sensorSizeFromXySample(h, lay);
         } catch (Exception e) {
-            log.fine("Could not peek DSEC sensor size from " + file.getName() + ": " + e);
+            log.fine("Could not peek cooked HDF5 sensor size from " + file.getName() + ": " + e);
             return null;
         }
     }
@@ -270,7 +367,7 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             return;
         }
         try {
-            SensorSize sampled = sensorSizeFromXySample(hdf);
+            SensorSize sampled = sensorSizeFromXySample(hdf, layout);
             if (sampled != null) {
                 sensorWidth = sampled.width;
                 sensorHeight = sampled.height;
@@ -280,16 +377,16 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         } catch (Exception e) {
             log.warning("Could not sample DSEC x/y for sensor size: " + e);
         }
-        sensorWidth = DEFAULT_WIDTH;
-        sensorHeight = DEFAULT_HEIGHT;
-        log.warning("Assuming default DSEC size " + sensorWidth + "x" + sensorHeight
+        sensorWidth = layout == CookedLayout.EVENT_PLANAR ? 240 : DEFAULT_WIDTH;
+        sensorHeight = layout == CookedLayout.EVENT_PLANAR ? 180 : DEFAULT_HEIGHT;
+        log.warning("Assuming default cooked HDF5 size " + sensorWidth + "x" + sensorHeight
                 + " (could not peek geometry)");
     }
 
     private static SensorSize sensorSizeFromAttributes(HdfFile h) {
         Integer w = firstIntAttr(h, "width", "sizeX", "sensor_width", "WIDTH", "geometry_width");
         Integer ht = firstIntAttr(h, "height", "sizeY", "sensor_height", "HEIGHT", "geometry_height");
-        Node events = h.getByPath("/events");
+        Node events = nodeOrNull(h, "/events");
         if (events != null) {
             if (w == null) {
                 w = firstIntAttr(events, "width", "sizeX", "sensor_width", "WIDTH");
@@ -300,7 +397,7 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         }
         // Single "geometry" / "sensor_size" array attribute [w,h] or [h,w]
         if (w == null || ht == null) {
-            int[] pair = firstIntPairAttr(h, "geometry", "sensor_size", "size");
+            int[] pair = firstIntPairAttr(h, "geometry", "sensor_size", "sensor_resolution", "size");
             if (pair == null && events != null) {
                 pair = firstIntPairAttr(events, "geometry", "sensor_size", "size");
             }
@@ -321,9 +418,15 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         return null;
     }
 
-    private static SensorSize sensorSizeFromXySample(HdfFile h) {
-        Dataset dsX = (Dataset) h.getByPath("/events/x");
-        Dataset dsY = (Dataset) h.getByPath("/events/y");
+    private static SensorSize sensorSizeFromXySample(HdfFile h, CookedLayout lay) {
+        if (lay == null) {
+            lay = detectLayout(h);
+        }
+        if (lay == null) {
+            return null;
+        }
+        Dataset dsX = (Dataset) nodeOrNull(h, lay.x);
+        Dataset dsY = (Dataset) nodeOrNull(h, lay.y);
         if (dsX == null || dsY == null) {
             return null;
         }
@@ -464,30 +567,42 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
     }
 
     private void openDatasets() throws IOException {
-        dsX = requireDataset("/events/x");
-        dsY = requireDataset("/events/y");
-        dsT = requireDataset("/events/t");
-        dsP = requireDataset("/events/p");
+        dsX = requireDataset(layout.x);
+        dsY = requireDataset(layout.y);
+        dsT = requireDataset(layout.t);
+        dsP = requireDataset(layout.p);
         long nx = firstDim(dsX);
         long ny = firstDim(dsY);
         long nt = firstDim(dsT);
         long np = firstDim(dsP);
         if (nx != ny || nx != nt || nx != np) {
             throw new IOException(String.format(
-                    "DSEC dataset length mismatch x=%d y=%d t=%d p=%d", nx, ny, nt, np));
+                    "%s dataset length mismatch x=%d y=%d t=%d p=%d", layout, nx, ny, nt, np));
         }
         eventCount = nx;
         if (eventCount == 0) {
-            throw new IOException("DSEC file has zero events: " + file);
+            throw new IOException("HDF5 file has zero events: " + file);
         }
     }
 
     private Dataset requireDataset(String path) throws IOException {
-        Node n = hdf.getByPath(path);
+        Node n = nodeOrNull(hdf, path);
         if (!(n instanceof Dataset)) {
-            throw new IOException("Missing DSEC dataset " + path + " in " + file.getName());
+            throw new IOException("Missing dataset " + path + " in " + file.getName());
         }
         return (Dataset) n;
+    }
+
+    /** jHDF throws {@code HdfInvalidPathException} for missing paths instead of returning null. */
+    private static Node nodeOrNull(HdfFile h, String path) {
+        if (h == null || path == null) {
+            return null;
+        }
+        try {
+            return h.getByPath(path);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static long firstDim(Dataset ds) {
@@ -497,35 +612,56 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
 
     private void loadIndexAndBounds(ProgressMonitor progressMonitor) throws IOException {
         if (progressMonitor != null) {
-            progressMonitor.setNote("Reading DSEC index / bounds");
+            progressMonitor.setNote("Reading HDF5 event index / bounds");
             progressMonitor.setProgress(10);
         }
-        Node offNode = hdf.getByPath("/t_offset");
+        Node offNode = nodeOrNull(hdf, "/t_offset");
         if (offNode instanceof Dataset) {
             tOffset = toLongScalar(((Dataset) offNode).getData());
         } else {
             tOffset = 0;
         }
-        Node msNode = hdf.getByPath("/ms_to_idx");
+        t0Seconds = firstDoubleAttr(hdf, "t0");
+        Node msNode = nodeOrNull(hdf, "/ms_to_idx");
         if (msNode instanceof Dataset) {
             msToIdx = toLongArray(((Dataset) msNode).getDataFlat());
         } else {
             msToIdx = new long[0];
-            log.warning("DSEC file missing /ms_to_idx; time seek will scan");
+            if (layout == CookedLayout.DSEC) {
+                log.warning("DSEC file missing /ms_to_idx; time seek will scan");
+            }
         }
 
-        // First / last relative timestamps (int32 domain for player)
-        int[] t0 = readIntSlice(dsT, 0, 1);
-        int[] t1 = readIntSlice(dsT, eventCount - 1, 1);
-        firstRawT = t0[0];
         firstTimestamp = 0;
-        lastTimestamp = (int) ((t1[0] & 0xffffffffL) - (firstRawT & 0xffffffffL));
-        // Absolute start for UI: treat t_offset+t0 as µs epoch if plausible
-        long absUs = tOffset + (firstRawT & 0xffffffffL);
-        if (absUs > 1_000_000_000_000L) { // > ~2001 in µs
-            absoluteStartingTimeMs = absUs / 1000L;
+        if (timestampSeconds) {
+            double[] tFirst = readDoubleSlice(dsT, 0, 1);
+            double[] tLast = readDoubleSlice(dsT, eventCount - 1, 1);
+            firstRawTSeconds = tFirst[0];
+            firstRawT = (int) Math.round((firstRawTSeconds
+                    - (t0Seconds != 0 ? t0Seconds : firstRawTSeconds)) * 1e6);
+            double durS = tLast[0] - firstRawTSeconds;
+            lastTimestamp = (int) Math.max(0, Math.min(Integer.MAX_VALUE, Math.round(durS * 1e6)));
+            if (t0Seconds > 1e9) {
+                absoluteStartingTimeMs = (long) (t0Seconds * 1000.0);
+            } else if (firstRawTSeconds > 1e9) {
+                absoluteStartingTimeMs = (long) (firstRawTSeconds * 1000.0);
+            } else {
+                absoluteStartingTimeMs = file.lastModified();
+            }
+            if (tOffset == 0 && t0Seconds > 0) {
+                tOffset = Math.round(t0Seconds * 1e6);
+            }
         } else {
-            absoluteStartingTimeMs = file.lastModified();
+            int[] t0 = readIntSlice(dsT, 0, 1);
+            int[] t1 = readIntSlice(dsT, eventCount - 1, 1);
+            firstRawT = t0[0];
+            lastTimestamp = (int) ((t1[0] & 0xffffffffL) - (firstRawT & 0xffffffffL));
+            long absUs = tOffset + (firstRawT & 0xffffffffL);
+            if (absUs > 1_000_000_000_000L) {
+                absoluteStartingTimeMs = absUs / 1000L;
+            } else {
+                absoluteStartingTimeMs = file.lastModified();
+            }
         }
         if (progressMonitor != null) {
             progressMonitor.setProgress(40);
@@ -554,7 +690,9 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         }
         int[] x = readIntSlice(dsX, start, len);
         int[] y = readIntSlice(dsY, start, len);
-        int[] t = readIntSlice(dsT, start, len);
+        int[] tRelUs = timestampSeconds
+                ? relativeUsFromSeconds(readDoubleSlice(dsT, start, len))
+                : readIntSlice(dsT, start, len);
         int[] p = readIntSlice(dsP, start, len);
         if (windowAddresses.length < len) {
             windowAddresses = new int[len];
@@ -566,11 +704,16 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         for (int i = 0; i < len; i++) {
             int xi = x[i] & 0xffff;
             int yi = y[i] & 0xffff;
-            // DSEC row 0 is top (image coords); jAER y=0 is bottom
+            // DSEC / Event Planar row 0 is top (image coords); jAER y=0 is bottom
             yi = (sizeY - 1) - yi;
-            int pol = p[i] != 0 ? 1 : 0;
+            int pol = p[i] > 0 ? 1 : 0;
             windowAddresses[i] = packCookedAddress(xi, yi, pol);
-            int rel = (int) ((t[i] & 0xffffffffL) - (firstRawT & 0xffffffffL));
+            int rel;
+            if (timestampSeconds) {
+                rel = tRelUs[i];
+            } else {
+                rel = (int) ((tRelUs[i] & 0xffffffffL) - (firstRawT & 0xffffffffL));
+            }
             windowTRel[i] = rel;
             windowTimestamps[i] = rel;
         }
@@ -593,6 +736,56 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
                     | ((pol01 & 1) << DavisChip.POLSHIFT);
         }
         return typedExtractor.getAddressFromCell(x, y, pol01);
+    }
+
+    private int[] relativeUsFromSeconds(double[] tSec) {
+        int[] out = new int[tSec.length];
+        for (int i = 0; i < tSec.length; i++) {
+            long rel = Math.round((tSec[i] - firstRawTSeconds) * 1e6);
+            if (rel < 0) {
+                rel = 0;
+            }
+            if (rel > Integer.MAX_VALUE) {
+                rel = Integer.MAX_VALUE;
+            }
+            out[i] = (int) rel;
+        }
+        return out;
+    }
+
+    private double[] readDoubleSlice(Dataset ds, long offset, int len) throws IOException {
+        try {
+            return toDoubleArray(ds.getData(new long[]{offset}, new int[]{len}));
+        } catch (RuntimeException e) {
+            throw new IOException("Failed reading " + ds.getName() + " @ " + offset + " len=" + len + ": " + e.getMessage(), e);
+        }
+    }
+
+    private static double firstDoubleAttr(Node node, String key) {
+        if (node == null || key == null) {
+            return 0;
+        }
+        Map<String, Attribute> attrs;
+        try {
+            attrs = node.getAttributes();
+        } catch (Exception e) {
+            return 0;
+        }
+        if (attrs == null) {
+            return 0;
+        }
+        for (Map.Entry<String, Attribute> e : attrs.entrySet()) {
+            if (key.equalsIgnoreCase(e.getKey())) {
+                Object d = e.getValue().getData();
+                if (d instanceof Number) {
+                    return ((Number) d).doubleValue();
+                }
+                if (d instanceof double[] && ((double[]) d).length > 0) {
+                    return ((double[]) d)[0];
+                }
+            }
+        }
+        return 0;
     }
 
     private int[] readIntSlice(Dataset ds, long offset, int len) throws IOException {
@@ -635,6 +828,38 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             }
             return out;
         }
+        if (data instanceof float[]) {
+            float[] f = (float[]) data;
+            int[] out = new int[f.length];
+            for (int i = 0; i < f.length; i++) {
+                out[i] = Math.round(f[i]);
+            }
+            return out;
+        }
+        if (data instanceof double[]) {
+            double[] d = (double[]) data;
+            int[] out = new int[d.length];
+            for (int i = 0; i < d.length; i++) {
+                out[i] = (int) Math.round(d[i]);
+            }
+            return out;
+        }
+        if (data instanceof boolean[]) {
+            boolean[] b = (boolean[]) data;
+            int[] out = new int[b.length];
+            for (int i = 0; i < b.length; i++) {
+                out[i] = b[i] ? 1 : 0;
+            }
+            return out;
+        }
+        if (data instanceof String[]) {
+            String[] s = (String[]) data;
+            int[] out = new int[s.length];
+            for (int i = 0; i < s.length; i++) {
+                out[i] = parsePolarityToken(s[i]);
+            }
+            return out;
+        }
         // nested array from getData (not flat)
         if (data.getClass().isArray()) {
             int n = Array.getLength(data);
@@ -648,6 +873,10 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
                 Object el = Array.get(data, i);
                 if (el instanceof Number) {
                     out[i] = ((Number) el).intValue();
+                } else if (el instanceof Boolean) {
+                    out[i] = ((Boolean) el) ? 1 : 0;
+                } else if (el instanceof String) {
+                    out[i] = parsePolarityToken((String) el);
                 } else {
                     out[i] = 0;
                 }
@@ -655,6 +884,65 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             return out;
         }
         throw new IllegalArgumentException("Unsupported dataset Java type: " + data.getClass());
+    }
+
+    private static int parsePolarityToken(String s) {
+        if (s == null || s.isEmpty()) {
+            return 0;
+        }
+        String t = s.trim();
+        if ("1".equals(t) || "+".equals(t) || "on".equalsIgnoreCase(t)
+                || "true".equalsIgnoreCase(t)) {
+            return 1;
+        }
+        try {
+            return Double.parseDouble(t) > 0 ? 1 : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static double[] toDoubleArray(Object data) {
+        if (data == null) {
+            return new double[0];
+        }
+        if (data instanceof double[]) {
+            return (double[]) data;
+        }
+        if (data instanceof float[]) {
+            float[] f = (float[]) data;
+            double[] out = new double[f.length];
+            for (int i = 0; i < f.length; i++) {
+                out[i] = f[i];
+            }
+            return out;
+        }
+        if (data instanceof int[]) {
+            int[] a = (int[]) data;
+            double[] out = new double[a.length];
+            for (int i = 0; i < a.length; i++) {
+                out[i] = a[i] & 0xffffffffL;
+            }
+            return out;
+        }
+        if (data instanceof long[]) {
+            long[] a = (long[]) data;
+            double[] out = new double[a.length];
+            for (int i = 0; i < a.length; i++) {
+                out[i] = a[i];
+            }
+            return out;
+        }
+        if (data.getClass().isArray()) {
+            int n = Array.getLength(data);
+            double[] out = new double[n];
+            for (int i = 0; i < n; i++) {
+                Object el = Array.get(data, i);
+                out[i] = el instanceof Number ? ((Number) el).doubleValue() : 0;
+            }
+            return out;
+        }
+        throw new IllegalArgumentException("Unsupported timestamp dataset type: " + data.getClass());
     }
 
     private static Object flatten(Object data) {
@@ -975,7 +1263,8 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
 
     @Override
     public String getFileInfo() {
-        return String.format("DSEC HDF5 %s: %,d events, %dx%d, duration=%s",
+        return String.format("%s HDF5 %s: %,d events, %dx%d, duration=%s",
+                layout == CookedLayout.EVENT_PLANAR ? "Event Planar" : "DSEC",
                 file.getName(),
                 eventCount,
                 sensorWidth,
@@ -1216,5 +1505,9 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
 
     public long getTOffset() {
         return tOffset;
+    }
+
+    public CookedLayout getLayout() {
+        return layout;
     }
 }

@@ -60,8 +60,10 @@ public final class BloscHdf5Filter implements Filter {
             }
             quietJhdfLogging();
             FilterManager.addFilter(new BloscHdf5Filter());
+            FilterManager.addFilter(new ZstdHdf5Filter());
             registered = true;
-            log.info("Registered HDF5 Blosc filter (id=" + FILTER_ID + ") for DSEC HDF5 playback");
+            log.info("Registered HDF5 Blosc (id=" + FILTER_ID
+                    + ") and ZSTD (id=" + ZstdHdf5Filter.FILTER_ID + ") filters for HDF5 playback");
         }
     }
 

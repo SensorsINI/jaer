@@ -39,6 +39,7 @@ import ch.unizh.ini.jaer.chip.retina.DVS640;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import net.sf.jaer.eventio.ddd.DddHdf5;
 import eu.seebetter.ini.chips.davis.Davis346red;
+import eu.seebetter.ini.chips.davis.DAVIS240C;
 import prophesee.chip.PropheseeIMX636HD;
 import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
@@ -403,6 +404,10 @@ public final class RecordingChipDetector {
             if (dsec != null) {
                 return dsec;
             }
+            Hint planar = fromEventPlanarHdf5(file);
+            if (planar != null) {
+                return planar;
+            }
             return fromDddHdf5(file);
         }
         if (isRosbagFilename(file.getName())) {
@@ -523,6 +528,24 @@ public final class RecordingChipDetector {
         String chipName = preferredDsecChipName(w, h);
         String origin = size != null ? "dsec-hdf5/" + size.origin : "dsec-hdf5/default";
         return new Hint(chipName, w, h, origin);
+    }
+
+    /**
+     * TU Delft event_planar cooked HDF5 (DAVIS240C 240×180 when
+     * {@code sensor_resolution} or max x/y match).
+     */
+    static Hint fromEventPlanarHdf5(File file) {
+        if (!DsecHdf5AEInputStream.isEventPlanarEventsFile(file)) {
+            return null;
+        }
+        DsecHdf5AEInputStream.SensorSize size = DsecHdf5AEInputStream.peekSensorSize(file);
+        int w = size != null ? size.width : 240;
+        int h = size != null ? size.height : 180;
+        String origin = size != null ? "event-planar-hdf5/" + size.origin : "event-planar-hdf5/default";
+        if (w <= 240 && h <= 180) {
+            return new Hint(DAVIS240C.class.getSimpleName(), w, h, origin);
+        }
+        return new Hint(preferredDsecChipName(w, h), w, h, origin);
     }
 
     /** DDD17/DDD20 cAER HDF5 is DAVIS346 346×260. */

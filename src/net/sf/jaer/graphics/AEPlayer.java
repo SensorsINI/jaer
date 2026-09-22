@@ -19,6 +19,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 
+import org.apache.commons.text.WordUtils;
+
 import com.jogamp.opengl.GLException;
 import java.time.ZoneId;
 import java.util.logging.Level;
@@ -343,7 +345,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             rememberInRecentFiles(file);
             if (!ShowFolderSaveConfirmation.openWithDesktop(file)) {
                 JOptionPane.showMessageDialog(viewer,
-                        "Could not open " + file.getName() + " with the system video player.",
+                        WordUtils.wrap("Could not open " + file.getName() + " with the system video player.", 80),
                         "Open video", JOptionPane.WARNING_MESSAGE);
             }
             return;
@@ -571,7 +573,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     if (exception != null) {
                         JOptionPane.showMessageDialog(
                                 viewer != null ? viewer : null,
-                                "in AEPlayer.startPlayback(), caught " + exception,
+                                WordUtils.wrap("in AEPlayer.startPlayback(), caught " + exception, 80),
                                 "AEPlayer Exception",
                                 JOptionPane.ERROR_MESSAGE);
                     }

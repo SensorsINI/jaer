@@ -20,6 +20,7 @@ Official format specs (where available) are linked from the **Format** column an
 | **[Metavision DAT](https://docs.prophesee.ai/stable/data/file_formats/dat.html)** | `.dat` | Decoded CD / Event2d: ASCII `% ` header, then type/size byte pair, then 8-byte LE events | [Prophesee](https://www.prophesee.ai/) Metavision | yes | no⁴ | no | None (decoded `t` + packed `x`/`y`/`p`; larger than RAW) | Size from `% Width` / `% Height` — chip `PropheseeIMX636HD` (1280×720) or `DVS640` (640×480); other sizes use the DSEC size fit. Disambiguated from legacy jAER `.dat` by the `% ` header |
 | **[Metavision RAW EVT3](https://docs.prophesee.ai/stable/data/file_formats/raw.html)** | `.raw` | Prophesee native RAW, `% evt 3.0` / `% format EVT3…` ([EVT3](https://docs.prophesee.ai/stable/data/encoding_formats/evt3.html)) | [Prophesee](https://www.prophesee.ai/) Metavision | yes | no⁴ | no | None (native EVT3 bitstream after ASCII `%` header) | **EVK4 / IMX636 HD**; Gen4.1 HD sample recordings (e.g. `laser.raw`) — chip `PropheseeIMX636HD` |
 | **[DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/)** | `.h5` / `.hdf5` (`events.h5`) | cooked `/events/{p,t,x,y}`, `/ms_to_idx`, `/t_offset` | [DSEC](https://dsec.ifi.uzh.ch/) (UZH); also some EVK4 exports | yes | Save As⁷ | no | Play: Blosc + ZSTD; Save As: uncompressed | Size from HDF5 attrs or max x/y — chip `DVS640` (640×480) or `DVS1280x720SD` (1280×720); left/right are separate files |
+| **Event Planar HDF5** | `.h5` | cooked `/events/{xs,ys,ts,ps}`, attrs `t0` / `sensor_resolution` | [TU Delft event_planar](https://github.com/tudelft/event_planar) (DAVIS240C) | yes | no | no | Play: HDF5 ZSTD (id 32015) and/or Blosc | 240×180 → chip `DAVIS240C`; same cooked packer as DSEC |
 | **[ROS bag](http://wiki.ros.org/Bags)** | `.bag` | ROS1 bag (rpg_dvs_ros / MVSEC / EV-IMO topics) | ROS / UZH RPG / dataset authors | yes | no | no⁵ | Bag-internal (ROS serialization); not jAER-selectable | DAVIS-class topics in RPG/MVSEC/EV-IMO bags |
 | **Text events** | `.csv`, `.txt` | One DVS event per line (`t,x,y,p` variants) | Various exports / tools | yes | Save As⁷ | no | None (ASCII text) | Any polarity chip after address reconstruct (often DAVIS-oriented CSV) |
 | **Index playlist** | `.aeidx` (also `.index`) | List of paths to AE data files | jAER | yes | AEDAT-2/AEDZ sync only⁶ | `.index` is legacy | N/A (text index) | N/A — points at other recordings |
@@ -49,6 +50,7 @@ Official format specs (where available) are linked from the **Format** column an
 | EVT 2.0 encoding | [Prophesee — EVT 2.0](https://docs.prophesee.ai/stable/data/encoding_formats/evt2.html) (not yet played by jAER) |
 | Prophesee HDF5 | [Prophesee — HDF5 event files](https://docs.prophesee.ai/stable/data/file_formats/hdf5.html) (not yet played by jAER; DSEC-layout `.h5` is a different path) |
 | DSEC HDF5 events | [DSEC — Data Format](https://dsec.ifi.uzh.ch/data-format/) |
+| Event Planar HDF5 | [tudelft/event_planar `H5Loader.get_events`](https://github.com/tudelft/event_planar/blob/main/dataloader/h5.py) — not DSEC and not DDD17/DDD20 |
 | ROS bag | [ROS wiki — Bags](http://wiki.ros.org/Bags) |
 | Text CSV/TXT | No formal standard; see [`TextFileInputStream`](../src/net/sf/jaer/eventio/TextFileInputStream.java) options |
 | `.aeidx` index | jAER-specific playlist (paths to AE files); no external spec |
@@ -92,11 +94,12 @@ Playback IN, OUT, and other markers are stored as CSV under `${java.io.tmpdir}/j
 | [Metavision DAT](https://docs.prophesee.ai/stable/data/file_formats/dat.html) | [`MetavisionDatFileInputStream`](../src/prophesee/eventio/MetavisionDatFileInputStream.java) | Peek: lines starting with `% ` (vs jAER `#` / raw AEDAT-1). CD / Event2d types `0` and `12` only (8-byte LE `t` + packed `x`/`y`/`p`). External-trigger DAT (`type 14`) is not played. Random-access seek; no index cache. |
 | [Metavision RAW EVT3](https://docs.prophesee.ai/stable/data/file_formats/raw.html) | [`MetavisionRawFileInputStream`](../src/prophesee/eventio/MetavisionRawFileInputStream.java) | Same `Evt3Parser` as live USB ([EVT3](https://docs.prophesee.ai/stable/data/encoding_formats/evt3.html)). Seek index cached as `*.metavisionrawidx` in `${java.io.tmpdir}/jaer/aeidx/`. **EVT2 / Prophesee HDF5 not supported yet.** |
 | [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEInputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEInputStream.java) | Single-camera cooked `events.h5` (left or right): pack via chip `getAddressFromCell`. Uses [jHDF](https://jhdf.io/) + [`BloscHdf5Filter`](../src/net/sf/jaer/eventio/dsec/BloscHdf5Filter.java) for Blosc/ZSTD. Chip from peeked size: `DVS640` (640×480) or `DVS1280x720SD` (1280×720). Stereo dual-stream later. **Save As** writes the same layout uncompressed via [`DsecHdf5AEOutputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEOutputStream.java). |
+| Event Planar HDF5 | [`DsecHdf5AEInputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEInputStream.java) (`CookedLayout.EVENT_PLANAR`) | Same stream as DSEC, different columns: `/events/{xs,ys,ts,ps}` as in [`get_events`](https://github.com/tudelft/event_planar/blob/main/dataloader/h5.py). `ts` is Unix seconds (float64); player remaps to relative µs. `sensor_resolution=[240,180]` → `DAVIS240C`. Optional IMU/OptiTrack groups are not played. Needs [`ZstdHdf5Filter`](../src/net/sf/jaer/eventio/dsec/ZstdHdf5Filter.java) (HDF5 filter 32015). |
 | [ROS bag](http://wiki.ros.org/Bags) | [`RosbagFileInputStream`](../src/net/sf/jaer/eventio/ros/RosbagFileInputStream.java) | Topics under `/dvs/`, `/davis/left/`, or `/samsung/camera/` headers. |
 | Text | [`TextFileInputStream`](../src/net/sf/jaer/eventio/TextFileInputStream.java) | CSV/space-separated DVS lines; options for timestamp units and polarity. |
 | Index | AEPlayer / SyncPlayer | `.aeidx` playlists still open. Multi-stream AEDAT-4: EVTS chooser can open one viewer or several (same file, different stream IDs). |
 
-Chip auto-detect for recordings: [`RecordingChipDetector`](../src/net/sf/jaer/eventio/RecordingChipDetector.java) (filename token, AEDAT-4 `infoNode`, Metavision RAW / DAT header, AEDAT-2 header). `.dat` with a `% ` header is Metavision DAT; other `.dat` still falls back to `DVS128`.
+Chip auto-detect for recordings: [`RecordingChipDetector`](../src/net/sf/jaer/eventio/RecordingChipDetector.java) (filename token, AEDAT-4 `infoNode`, Metavision RAW / DAT header, cooked HDF5 layout, AEDAT-2 header). `.dat` with a `% ` header is Metavision DAT; other `.dat` still falls back to `DVS128`.
 
 ---
 
@@ -124,6 +127,7 @@ Help → **Sample data** in AEViewer:
 | AEDAT-4 / DV samples | [MISTLab/event_based_data](https://github.com/MISTLab/event_based_data) |
 | EvDownsampling multi-camera AEDAT-4 | [anindyaghosh/EvDownsampling](https://github.com/anindyaghosh/EvDownsampling#readme) (DAVIS346 + DVXplorer in one file; Figshare data) |
 | Prophesee / Metavision samples | [Prophesee datasets](https://docs.prophesee.ai/stable/datasets.html#chapter-datasets) |
+| Event Planar (DAVIS240C HDF5) | [tudelft/event_planar](https://github.com/tudelft/event_planar); dataset [10.34894/QTFHQX](https://doi.org/10.34894/QTFHQX); [project](https://mavlab.tudelft.nl/fully_neuromorphic_drone/); [Science Robotics paper](https://www.science.org/doi/full/10.1126/scirobotics.adi0591) |
 
 Constants: [`JaerConstants`](../src/net/sf/jaer/JaerConstants.java).
 
