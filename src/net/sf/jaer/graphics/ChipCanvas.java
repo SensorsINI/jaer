@@ -2437,6 +2437,9 @@ public class ChipCanvas implements GLEventListener, Observer {
                         // Do not re-apply panPx here: while zoomed, pan is applied directly in mouseDragged.
                         // Clearing pan bookkeeping avoids double-applying if we later return to unzoomed.
                         computeAdditionalZoom();
+                        // Uniform zoom can still leave clip AR ≠ canvas AR (legacy inset mix, window
+                        // reshape). Square chip pixels require clipW/clipH == canvasW/canvasH.
+                        matchClipAspectToCanvas();
                         if (panPx.isNonZero()) {
                             panPx.clear();
                         }
@@ -2469,13 +2472,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                     log.warning("clip area has zera area, cannot zoom");
                     return;
                 }
-                // recompute width and height after unzoom above
+                // Clip size is already in chip pixels and already includes the unzoomed
+                // letterbox. Do not add screen-pixel insets here: they are a different unit,
+                // and top inset is larger than left/right (DAVIS stats bar), so each zoom
+                // step would shrink height more than width (tall rectangles at high zoom).
+                final float clipw = getWidth();
+                final float cliph = getHeight();
 
-                // compute the actual (unzoomed) clip width and height including insets.
-                float clipw = getWidth() + insets.left + insets.right;
-                float cliph = getHeight() + insets.bottom + insets.top;
-
-//                float zfac1 = (zoomFactor - 1) / zoomFactor; // zfac=2 gives .5, zfac=.5 gives -1
                 float zfac1 = (zoomChangedFactor - 1) / zoomChangedFactor; // zfac=2 gives .5, zfac=.5 gives -1
 
                 // Now tricky part, change the boundaries so that 
@@ -2488,6 +2491,32 @@ public class ChipCanvas implements GLEventListener, Observer {
                 previousZoomFactor = zoomFactor;
                 log.fine(String.format("zoomed around frac pos [%.2f, %.2f]", fx, fy));
 //                    panFromCurrentBy(panPx.add(dragPx));
+            }
+
+            /**
+             * Force orthographic clip aspect ratio to match the GL canvas so
+             * chip pixels stay square. Keeps the clip center; uses the average
+             * of current X/Y scales so neither axis jumps.
+             */
+            private void matchClipAspectToCanvas() {
+                final int canw = glCanvas.getWidth();
+                final int canh = glCanvas.getHeight();
+                final float clipW = getWidth();
+                final float clipH = getHeight();
+                if (canw <= 0 || canh <= 0 || clipW <= 0 || clipH <= 0) {
+                    return;
+                }
+                final float canvasAR = (float) canw / (float) canh;
+                final float clipAR = clipW / clipH;
+                if (Math.abs(clipAR - canvasAR) / canvasAR < 1e-4f) {
+                    return;
+                }
+                final float scale = 0.5f * (canw / clipW + canh / clipH);
+                final float newW = canw / scale;
+                final float newH = canh / scale;
+                final float cx = (left + right) * 0.5f;
+                final float cy = (bot + top) * 0.5f;
+                set(cx - newW * 0.5f, cx + newW * 0.5f, cy - newH * 0.5f, cy + newH * 0.5f);
             }
 
             private void computeUnzoomedBounds() {
