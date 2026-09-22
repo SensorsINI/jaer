@@ -126,7 +126,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private boolean updatingUi;
 
     private JCheckBox recordingPlaybackImmediatelyCB;
-    private JCheckBox autoSwitchAeChipForPlaybackCB;
+    private JRadioButton autoswitchRecordingSensorAskRB;
+    private JRadioButton autoswitchRecordingSensorAlwaysRB;
+    private JRadioButton autoswitchRecordingSensorNoRB;
     private JCheckBox recordFilteredEventsCB;
     private JCheckBox showRecordingOverlayCB;
     private JCheckBox showRosOutputOverlayCB;
@@ -869,20 +871,45 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(recordingPlaybackImmediatelyCB, gbc(y++));
 
-        autoSwitchAeChipForPlaybackCB = new JCheckBox("Auto-switch AEChip to match recording");
-        autoSwitchAeChipForPlaybackCB.setToolTipText(
-                "When opening a file whose chip differs from this viewer, switch AEChip without asking. "
-                + "Also set by Always on the AEChip mismatch dialog.");
-        autoSwitchAeChipForPlaybackCB.addActionListener(new ActionListener() {
+        p.add(new JLabel("Autoswitch Recording Sensor"), gbc(y++));
+        autoswitchRecordingSensorAskRB = new JRadioButton("Ask");
+        autoswitchRecordingSensorAlwaysRB = new JRadioButton("Always");
+        autoswitchRecordingSensorNoRB = new JRadioButton("No");
+        String autoswitchTip = "<html>When a recording's detected sensor differs from this viewer:<br>"
+                + "<b>Ask</b> — Yes / No / Always / Cancel<br>"
+                + "<b>Always</b> — switch AEChip without asking<br>"
+                + "<b>No</b> — keep the current sensor and open anyway</html>";
+        autoswitchRecordingSensorAskRB.setToolTipText(autoswitchTip);
+        autoswitchRecordingSensorAlwaysRB.setToolTipText(autoswitchTip);
+        autoswitchRecordingSensorNoRB.setToolTipText(autoswitchTip);
+        ButtonGroup autoswitchGroup = new ButtonGroup();
+        autoswitchGroup.add(autoswitchRecordingSensorAskRB);
+        autoswitchGroup.add(autoswitchRecordingSensorAlwaysRB);
+        autoswitchGroup.add(autoswitchRecordingSensorNoRB);
+        ActionListener autoswitchListener = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (updatingUi) {
                     return;
                 }
-                viewer.setAutoSwitchAeChipForPlayback(autoSwitchAeChipForPlaybackCB.isSelected());
+                AEViewer.AutoswitchRecordingSensor mode = AEViewer.AutoswitchRecordingSensor.ASK;
+                if (autoswitchRecordingSensorAlwaysRB.isSelected()) {
+                    mode = AEViewer.AutoswitchRecordingSensor.ALWAYS;
+                } else if (autoswitchRecordingSensorNoRB.isSelected()) {
+                    mode = AEViewer.AutoswitchRecordingSensor.NO;
+                }
+                viewer.setAutoswitchRecordingSensor(mode);
             }
-        });
-        p.add(autoSwitchAeChipForPlaybackCB, gbc(y++));
+        };
+        autoswitchRecordingSensorAskRB.addActionListener(autoswitchListener);
+        autoswitchRecordingSensorAlwaysRB.addActionListener(autoswitchListener);
+        autoswitchRecordingSensorNoRB.addActionListener(autoswitchListener);
+        JPanel autoswitchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        autoswitchRow.setOpaque(false);
+        autoswitchRow.add(autoswitchRecordingSensorAskRB);
+        autoswitchRow.add(autoswitchRecordingSensorAlwaysRB);
+        autoswitchRow.add(autoswitchRecordingSensorNoRB);
+        p.add(autoswitchRow, gbc(y++));
 
         recordFilteredEventsCB = new JCheckBox("Enable filtering of recorded or network output events");
         recordFilteredEventsCB.setToolTipText("Recording or network writes apply active filters first");
@@ -1681,7 +1708,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         updatingUi = true;
         try {
             recordingPlaybackImmediatelyCB.setSelected(viewer.isRecordingPlaybackImmediatelyEnabled());
-            autoSwitchAeChipForPlaybackCB.setSelected(viewer.isAutoSwitchAeChipForPlayback());
+            AEViewer.AutoswitchRecordingSensor autoswitch = viewer.getAutoswitchRecordingSensor();
+            autoswitchRecordingSensorAskRB.setSelected(autoswitch == AEViewer.AutoswitchRecordingSensor.ASK);
+            autoswitchRecordingSensorAlwaysRB.setSelected(autoswitch == AEViewer.AutoswitchRecordingSensor.ALWAYS);
+            autoswitchRecordingSensorNoRB.setSelected(autoswitch == AEViewer.AutoswitchRecordingSensor.NO);
             recordFilteredEventsCB.setSelected(viewer.isRecordFilteredEventsEnabled());
             showRecordingOverlayCB.setSelected(viewer.isShowRecordingOverlay());
             showRosOutputOverlayCB.setSelected(viewer.isShowRosOutputOverlay());

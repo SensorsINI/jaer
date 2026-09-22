@@ -411,6 +411,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE, FILTER_INPUT
     }
+
+    /**
+     * File → Preferences: whether to change {@link AEChip} to the sensor
+     * detected from a recording (filename / header).
+     */
+    public enum AutoswitchRecordingSensor {
+        ASK, ALWAYS, NO
+    }
+
+    private static final String PREF_AUTOSWITCH_RECORDING_SENSOR = "AEViewer.autoswitchRecordingSensor";
+    private static final String PREF_AUTOSWITCH_RECORDING_SENSOR_LEGACY = "AEViewer.autoSwitchAeChipForPlayback";
+
+    static AutoswitchRecordingSensor loadAutoswitchRecordingSensor(Preferences p) {
+        if (p == null) {
+            return AutoswitchRecordingSensor.ASK;
+        }
+        String raw = p.get(PREF_AUTOSWITCH_RECORDING_SENSOR, null);
+        if (raw != null && !raw.isEmpty()) {
+            try {
+                return AutoswitchRecordingSensor.valueOf(raw);
+            } catch (IllegalArgumentException ignore) {
+                // fall through to legacy boolean
+            }
+        }
+        return p.getBoolean(PREF_AUTOSWITCH_RECORDING_SENSOR_LEGACY, false)
+                ? AutoswitchRecordingSensor.ALWAYS : AutoswitchRecordingSensor.ASK;
+    }
     volatile private PlayMode playMode = PlayMode.WAITING;
     /**
      * The Preferences node for the AEViewer, which has it's own node in the
@@ -501,8 +528,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * When true, opening a recording whose chip differs from the viewer
      * switches {@link AEChip} without asking. Default false.
+     * @deprecated use {@link #getAutoswitchRecordingSensor()}
      */
     private boolean autoSwitchAeChipForPlayback = prefs.getBoolean("AEViewer.autoSwitchAeChipForPlayback", false);
+    /** Ask / Always / No when a recording's detected sensor differs from this viewer. */
+    private AutoswitchRecordingSensor autoswitchRecordingSensor = loadAutoswitchRecordingSensor(prefs);
     private boolean showRecordingOverlay = prefs.getBoolean("AEViewer.showRecordingOverlay", true);
     /** False: slider overlay is elapsed from recording start; true: wall-clock date/time. */
     private boolean sliderTimeOverlayAbsolute = prefs.getBoolean("AEViewer.sliderTimeOverlayAbsolute", false);
@@ -2791,11 +2821,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * If the recording's chip (from filename, then header) differs from the
-     * current {@link AEChip}, ask to switch before opening (Yes / No / Always /
-     * Cancel). Always and {@link #isAutoSwitchAeChipForPlayback()} skip later
-     * prompts. A chip that is not on the AEChip/Sensor menu is appended and
-     * selected without a prompt. For multi-camera
-     * AEDAT-4 files, show an EVTS list; each selected stream is bound to the
+     * current {@link AEChip}, follow {@link #getAutoswitchRecordingSensor()}:
+     * Always switches, No keeps the viewer chip, Ask shows Yes / No / Always /
+     * Cancel. Always and the old checkbox persist as Always. A chip that is not
+     * on the AEChip/Sensor menu is appended and selected without a prompt. For
+     * multi-camera AEDAT-4 files, show an EVTS list; each selected stream is bound to the
      * first matching AEViewer (USB identity only when two streams share a chip).
      * Unmatched open viewers are reused; new windows only if needed (soft cap 8).
      * Returns false if the user cancels open.
@@ -2898,7 +2928,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return true;
         }
         String currentName = current == null ? "(none)" : current.getSimpleName();
-        if (addedMissingChip || isAutoSwitchAeChipForPlayback()) {
+        if (addedMissingChip || getAutoswitchRecordingSensor() == AutoswitchRecordingSensor.ALWAYS) {
             log.info((addedMissingChip ? "Using newly added AEChip " : "Auto-switching AEChip from ")
                     + (addedMissingChip ? suggested.getSimpleName() : currentName + " to " + suggested.getSimpleName())
                     + " for recording " + file.getName());
@@ -2906,11 +2936,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             maybeWarnRosbagInferredChip(file, fileDetection);
             return true;
         }
+        if (getAutoswitchRecordingSensor() == AutoswitchRecordingSensor.NO) {
+            log.info("Keeping AEChip " + currentName + " (Autoswitch Recording Sensor = No); recording hint "
+                    + suggested.getSimpleName() + " for " + file.getName());
+            maybeWarnRosbagInferredChip(file, fileDetection);
+            return true;
+        }
         String msg = String.format(
                 "<html>This recording appears to use chip <b>%s</b>,<br>"
                 + "but the viewer is set to <b>%s</b>.<br><br>"
                 + "Switch to <b>%s</b> before opening?<br>"
-                + "<b>Always</b> also remembers this in File → Preferences.</html>",
+                + "<b>Always</b> remembers File → Preferences → Autoswitch Recording Sensor.</html>",
                 suggested.getSimpleName(), currentName, suggested.getSimpleName());
         Object[] options = {"Yes", "No", "Always", "Cancel"};
         int choice = JOptionPane.showOptionDialog(
@@ -2929,8 +2965,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if (choice == 0 || choice == 2) {
             if (choice == 2) {
-                setAutoSwitchAeChipForPlayback(true);
-                log.info("Enabled autoSwitchAeChipForPlayback; switching AEChip from "
+                setAutoswitchRecordingSensor(AutoswitchRecordingSensor.ALWAYS);
+                log.info("Autoswitch Recording Sensor = Always; switching AEChip from "
                         + currentName + " to " + suggested.getSimpleName()
                         + " for recording " + file.getName());
             } else {
@@ -14610,18 +14646,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * When true, a recording whose chip differs from the viewer switches
      * {@link AEChip} without the mismatch dialog.
+     *
+     * @deprecated use {@link #getAutoswitchRecordingSensor()} {@code == ALWAYS}
      */
     public boolean isAutoSwitchAeChipForPlayback() {
-        return autoSwitchAeChipForPlayback;
+        return getAutoswitchRecordingSensor() == AutoswitchRecordingSensor.ALWAYS;
     }
 
     /**
      * Enable or disable automatic AEChip switch when opening a recording.
-     * Stored as {@code AEViewer.autoSwitchAeChipForPlayback} (default false).
+     * {@code true} stores Always; {@code false} stores Ask (legacy checkbox).
+     *
+     * @deprecated use {@link #setAutoswitchRecordingSensor(AutoswitchRecordingSensor)}
      */
     public void setAutoSwitchAeChipForPlayback(boolean autoSwitchAeChipForPlayback) {
-        this.autoSwitchAeChipForPlayback = autoSwitchAeChipForPlayback;
-        prefs.putBoolean("AEViewer.autoSwitchAeChipForPlayback", autoSwitchAeChipForPlayback);
+        setAutoswitchRecordingSensor(autoSwitchAeChipForPlayback
+                ? AutoswitchRecordingSensor.ALWAYS : AutoswitchRecordingSensor.ASK);
+    }
+
+    public AutoswitchRecordingSensor getAutoswitchRecordingSensor() {
+        return autoswitchRecordingSensor == null ? AutoswitchRecordingSensor.ASK : autoswitchRecordingSensor;
+    }
+
+    /**
+     * Ask / Always / No when opening a recording whose detected sensor differs.
+     * Stored as {@code AEViewer.autoswitchRecordingSensor}.
+     */
+    public void setAutoswitchRecordingSensor(AutoswitchRecordingSensor mode) {
+        if (mode == null) {
+            mode = AutoswitchRecordingSensor.ASK;
+        }
+        this.autoswitchRecordingSensor = mode;
+        this.autoSwitchAeChipForPlayback = mode == AutoswitchRecordingSensor.ALWAYS;
+        prefs.put(PREF_AUTOSWITCH_RECORDING_SENSOR, mode.name());
+        prefs.putBoolean(PREF_AUTOSWITCH_RECORDING_SENSOR_LEGACY, this.autoSwitchAeChipForPlayback);
     }
 
     public void setRecordingPlaybackImmediatelyEnabled(boolean recordingPlaybackImmediatelyEnabled) {

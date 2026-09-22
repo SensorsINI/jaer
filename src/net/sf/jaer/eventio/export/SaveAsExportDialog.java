@@ -40,6 +40,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -482,6 +483,10 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             return "jAER-export." + ext;
         }
         String base = stripExt(src.getName());
+        AEChip chip = viewer.getChip();
+        if (chip != null) {
+            base = RecordingChipDetector.ensureChipFilenamePrefix(base, chip.getClass().getSimpleName());
+        }
         File parent = src.getParentFile();
         File out = parent != null ? new File(parent, base + "-export." + ext) : new File(base + "-export." + ext);
         return out.getAbsolutePath();

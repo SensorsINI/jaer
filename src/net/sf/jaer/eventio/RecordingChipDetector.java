@@ -361,7 +361,10 @@ public final class RecordingChipDetector {
     }
 
     /**
-     * Leading token before first {@code '-'} in the filename (jAER convention).
+     * Leading token before first {@code '-'} in the filename (jAER convention
+     * {@code ChipSimpleName-datetime…}). Tokens that are not a plausible chip
+     * class name (digits-only, shorter than 4, no letter) are ignored so
+     * {@code 3-export.aedat4} falls through to the AEDAT-4 infoNode.
      */
     public static Hint fromFilename(String filename) {
         if (filename == null || filename.isEmpty()) {
@@ -377,10 +380,56 @@ public final class RecordingChipDetector {
             return null;
         }
         String token = base.substring(0, dash).trim();
-        if (token.isEmpty() || token.equalsIgnoreCase("events") || token.equalsIgnoreCase("recording")) {
+        if (token.isEmpty() || token.equalsIgnoreCase("events") || token.equalsIgnoreCase("recording")
+                || token.equalsIgnoreCase("export")) {
+            return null;
+        }
+        if (!isPlausibleChipFilenameToken(token)) {
             return null;
         }
         return new Hint(token, null, null, "filename");
+    }
+
+    /**
+     * Filename chips follow {@code ChipSimpleName-…}. Reject digits-only tokens
+     * such as {@code 3-export.aedat4} (Save As from {@code 3.h5}) so they cannot
+     * substring-match {@code PropheseeIMX636HD} / {@code DAVIS240C}.
+     */
+    static boolean isPlausibleChipFilenameToken(String token) {
+        if (token == null || token.length() < 4) {
+            return false;
+        }
+        boolean letter = false;
+        int alnum = 0;
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (Character.isLetter(c)) {
+                letter = true;
+                alnum++;
+            } else if (Character.isDigit(c)) {
+                alnum++;
+            }
+        }
+        return letter && alnum >= 4;
+    }
+
+    /**
+     * Prefix {@code ChipSimpleName-} when {@code base} does not already start
+     * with that chip token (Save As from {@code 3.h5} → {@code DAVIS240C-3}).
+     */
+    public static String ensureChipFilenamePrefix(String base, String chipSimpleName) {
+        if (base == null || base.isEmpty()) {
+            return chipSimpleName == null ? base : chipSimpleName;
+        }
+        if (chipSimpleName == null || chipSimpleName.isEmpty()) {
+            return base;
+        }
+        int dash = base.indexOf('-');
+        String lead = dash > 0 ? base.substring(0, dash) : base;
+        if (normalize(lead).equals(normalize(chipSimpleName))) {
+            return base;
+        }
+        return chipSimpleName + "-" + base;
     }
 
     /** Peek AEDAT-4 infoNode, Metavision RAW/DAT, or AEDAT-2 ASCII header without full open. */
@@ -926,6 +975,10 @@ public final class RecordingChipDetector {
                     || (muxStripped && (simple.equalsIgnoreCase(muxChip) || normSimple.equals(normMuxChip)))) {
                 exact = c;
                 break;
+            }
+            // Short tokens ("3", "C") substring-match many chips (IMX636, DAVIS240C).
+            if (normHint.length() < 5) {
+                continue;
             }
             if (normSimple.contains(normHint) || normHint.contains(normSimple)) {
                 soft.add(c);
