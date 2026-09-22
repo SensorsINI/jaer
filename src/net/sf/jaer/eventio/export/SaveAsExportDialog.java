@@ -10,6 +10,8 @@ import java.awt.Insets;
 import java.awt.Taskbar;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -541,6 +543,21 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             @Override
             public void windowClosed(WindowEvent e) {
                 unbindFilterEnabledListeners();
+            }
+        });
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentHidden(ComponentEvent e) {
+                if (exporter != null && !exporter.isDone()) {
+                    exporter.setProgressLogEnabled(true);
+                }
+            }
+
+            @Override
+            public void componentShown(ComponentEvent e) {
+                if (exporter != null) {
+                    exporter.setProgressLogEnabled(false);
+                }
             }
         });
     }

@@ -56,6 +56,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private static final int SLICE_EVENTS = 8_192;
     /** Dialog / taskbar PropertyChange cadence (SwingWorker {@code progress} + status). */
     private static final long UI_INTERVAL_NS = 500_000_000L;
+    /** Console / jAER-0.log cadence for ETA while Save As is hidden. */
+    private static final long LOG_INTERVAL_NS = 10_000_000_000L;
     /** Smooth coverage/sec so a fast FRAME/IMU burst does not make ETA jump to 0s. */
     private static final float ETA_RATE_TAU_MS = 4_000f;
     private static final long ETA_MIN_ELAPSED_NS = 2_000_000_000L;
@@ -71,6 +73,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private long eventsIn;
     private long exportStartNs;
     private long lastUiNs;
+    private volatile long lastLogNs;
+    /** INFO ETA lines only while the Save As window is hidden. */
+    private volatile boolean progressLogEnabled;
     private final LowpassFilter etaRateLp = new LowpassFilter(ETA_RATE_TAU_MS);
     private long lastRateCovered;
     private long lastRateNs;
@@ -81,6 +86,17 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
 
     File getOutputFile() {
         return options != null ? options.outputFile : null;
+    }
+
+    /**
+     * When true, {@link #reportUi} writes ETA to the jAER log at most every 10 s.
+     * Used while the Save As window is hidden.
+     */
+    void setProgressLogEnabled(boolean enabled) {
+        progressLogEnabled = enabled;
+        if (enabled) {
+            lastLogNs = 0L;
+        }
     }
 
     /** True when output would truncate the source recording (same path). */
@@ -693,6 +709,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         eventsIn = 0;
         exportStartNs = System.nanoTime();
         lastUiNs = 0;
+        lastLogNs = exportStartNs;
         lastRateCovered = 0;
         lastRateNs = exportStartNs;
         etaRateLp.reset();
@@ -811,6 +828,11 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             sb.append(", ").append(eta);
         }
         publish(sb.toString());
+        if (progressLogEnabled && eta != null && now - lastLogNs >= LOG_INTERVAL_NS) {
+            lastLogNs = now;
+            String name = options.outputFile != null ? options.outputFile.getName() : "Save As";
+            log.info("Save As " + name + ": " + sb);
+        }
     }
 
     /**
