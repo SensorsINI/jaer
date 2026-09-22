@@ -103,6 +103,8 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
+        // Keep the DVS/APS packet for displayRawInput; oriFilter returns orientation events.
+        final EventPacket dvsIn = in;
         in = oriFilter.filterPacket(in);  // compute orientation events.
         DvsMotionOrientationEvent.Dir d1, d2;
         int dt1, dt2, n1, n2, s;
@@ -266,7 +268,7 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             }
         }
         getMotionFlowStatistics().updatePacket(countIn, countOut, ts);
-        return isDisplayRawInput() ? in : dirPacket;
+        return isDisplayRawInput() ? dvsIn : dirPacket;
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --MinDtThreshold--">

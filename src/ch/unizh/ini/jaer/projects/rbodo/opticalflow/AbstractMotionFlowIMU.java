@@ -358,7 +358,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayGlobalMotionAngleHistogram", "shows global motion histogram. These values are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " px/s per chip pixel");
 
-        setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
+        setPropertyTooltip(dispTT, "displayRawInput", "<html>If selected, render original DVS polarity events with motion vectors overlaid.<br>If not selected, color pixels by motion event type; vectors still overlaid (see color wheel).");
         setPropertyTooltip(dispTT, "showFilterName", "shows the class simple name on display, useful for generating videos");
         setPropertyTooltip(dispTT, "randomScatterOnFlowVectorOrigins", "scatters flow vectors a bit to show density better");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
