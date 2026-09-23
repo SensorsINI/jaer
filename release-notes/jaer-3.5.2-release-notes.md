@@ -9,8 +9,7 @@
 
   There is no public 3.5.1. These notes cover master since tag 3.5.0.
 
-  This file is also the --notes-file for 3.5.2-rc.N. On public 3.5.2: drop the
-  prerelease banner, change download URLs and changelog from 3.5.2-rc.3 to 3.5.2.
+  Public 3.5.2 notes. Download URLs and changelog point at tag 3.5.2.
 
   Screenshots still to capture into release-notes/3.5.2/:
     usb-in-statistics.png (USB → USB tuning… IN table at 1 Hz)
@@ -20,30 +19,26 @@
     flymotion.png (FlyMotion L/R global flow vectors)
 -->
 
-**This is prerelease [3.5.2-rc.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.3)** (not GitHub Latest). It supersedes [3.5.2-rc.2](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.2), [3.5.2-rc.1](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.1), and [3.5.2-rc.0](https://github.com/SensorsINI/jaer/releases/tag/3.5.2-rc.0). In-app **Help → Check for updates** stays on **3.5.0**. Testers: use the table below, **Assets** at the bottom of this page, or [jaerproject.org](https://jaerproject.org/) **Download Prerelease**.
-
 **jAER 3.5.2** is a point release after **[3.5.0](https://github.com/SensorsINI/jaer/releases/tag/3.5.0)** (there is no public 3.5.1). After the first start trains an **ahead-of-time (AOT) cache**, later **runtime** launches are about **2× quicker** (click to live camera). The statistics bar shows **CD / CC / AEC / RT**; zoom keeps **square chip pixels**. File → **Save As** logs background ETA, warns on exit, and names exports from the current chip. File → Open plays **TU Delft event_planar** DAVIS240C `.h5`. Click the **statistics bar** for a field legend, noise-filter overlays **fill the chip width**, **USB IN** numbers live in USB tuning, and **EVK4 / Prophesee** live-drop handling is first-class. **NmeaGnssFilter** records a phone GNSS sidecar; Help → **FOV calculator** opens the lens FOV page; **FlyEye** gets **FlyMotion** and better timestamp-master / rewind behavior. Hardware Configuration opens on the **user-friendly** tab. See [Highlights](#highlights) below.
 
 ## Download
 
-Installer filenames stay `*_3_5_2.*` (public version). This candidate’s assets are on tag **3.5.2-rc.3**.
-
 | You have | CPU | Download |
 |---|---|---|
-| Windows 10 / 11 | x64 | [jAER_windows-x64_3_5_2.exe](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.3/jAER_windows-x64_3_5_2.exe) |
-| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.3/jAER_macos_aarch64_3_5_2.dmg) |
-| macOS | Intel | [jAER_macos_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.3/jAER_macos_3_5_2.dmg) |
-| Linux | x64 | [jAER_unix_3_5_2.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.2-rc.3/jAER_unix_3_5_2.sh) |
+| Windows 10 / 11 | x64 | [jAER_windows-x64_3_5_2.exe](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_windows-x64_3_5_2.exe) |
+| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_macos_aarch64_3_5_2.dmg) |
+| macOS | Intel | [jAER_macos_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_macos_3_5_2.dmg) |
+| Linux | x64 | [jAER_unix_3_5_2.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_unix_3_5_2.sh) |
 
 Each installer includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.5.0) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page.
 
-The public landing page is **[jaerproject.org](https://jaerproject.org/)** (also [sensorsini.github.io/jaer](https://sensorsini.github.io/jaer/)). **Download Stable** is still Latest (**3.5.0**). When a newer rc exists, **Download Prerelease** appears next to it. **[Install Guide](https://jaerproject.org/install/)** has the Windows / macOS / Linux steps (SmartScreen, which DMG, libusb, `.sh`, USB).
+The public landing page is **[jaerproject.org](https://jaerproject.org/)** (also [sensorsini.github.io/jaer](https://sensorsini.github.io/jaer/)). **[Install Guide](https://jaerproject.org/install/)** has the Windows / macOS / Linux steps (SmartScreen, which DMG, libusb, `.sh`, USB).
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.2/jaerproject-homepage.png" alt="jaerproject.org homepage with OS-specific download" width="80%" />
 
 Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY) (also covers *git clone* and rebuild from master).
 
-jAER can self-update (Help → Check for release updates… → **Download and install**) once this version is Latest. Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0).
+jAER can self-update (Help → Check for release updates… → **Download and install**). Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0).
 
 Installers offer a **sample recordings** download (off by default, ~995 MB). You can also fetch them later from Help → **Sample data**. Skipping or cancelling that download does not roll back the install.
 
@@ -181,4 +176,4 @@ Packed dialogs and HW config keep a usable size and stay on the work area. First
 * **EngineeringFormat** prints NaN (not 0); FilterPanel missing-setter noise is FINE.
 * F1 Quick help: click the top bar for the statistics legend; screenshots live in `images/help` inside the jar.
 
-**Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.5.0...3.5.2-rc.3
+**Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.5.0...3.5.2
