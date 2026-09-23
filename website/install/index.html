@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jAER Install Guide — Windows, macOS, Linux</title>
-  <meta name="description" content="Install jAER on Windows, macOS (Apple Silicon and Intel), and Linux. Signed installers, USB cameras, and libusb.">
+  <meta name="description" content="Install and uninstall jAER on Windows, macOS (Apple Silicon and Intel), and Linux. Signed installers, USB cameras, and libusb.">
   <link rel="canonical" href="https://jaerproject.org/install/">
   <link rel="icon" href="../favicon.ico" sizes="48x48">
   <link rel="icon" type="image/png" href="../favicon.png" sizes="32x32">
@@ -33,6 +33,7 @@
       <li><a href="#macos">macOS</a></li>
       <li><a href="#linux">Linux</a></li>
       <li><a href="#after">After install</a></li>
+      <li><a href="#uninstall">Uninstall</a></li>
     </ul>
 
     <section id="windows">
@@ -99,6 +100,20 @@ sh jAER_unix_*.sh</code></pre>
         <li>After this version is GitHub Latest, Help → <strong>Check for release updates…</strong> → <strong>Download and install</strong> can self-update.</li>
         <li>Video: <a href="https://youtu.be/qQVt8_gwYVY">installing and updating jAER</a> (also covers <code>git clone</code> and rebuild from master).</li>
       </ul>
+    </section>
+
+    <section id="uninstall">
+      <h2>Uninstall</h2>
+      <p>Quit jAER first. Use the install4j uninstaller — do not only delete the folder. It removes the program, Start menu / desktop entries, file associations, and <code>jaer/sampleData</code> in the install folder (including extra files you copied there). It does <strong>not</strong> delete <code>jaerSampleData</code> in your home folder, Java preferences, USB driver changes, or udev rules you added by hand. If files remain in the install folder, that folder may open so you can inspect them.</p>
+      <h3>Windows</h3>
+      <p>Settings → Apps → Installed apps → search <strong>jAER</strong> → Uninstall. Or run <code>uninstall.exe</code> in the install folder (often <code>C:\Program Files\jAER</code>). A Zadig WinUSB binding is left as-is.</p>
+      <h3>macOS</h3>
+      <p>In the folder you chose at install (<code>~/Applications/jAER</code>, <code>~/jaer</code>, or <code>/Applications/jAER</code>), double-click the <strong>Uninstall jAER</strong> app. Homebrew <code>libusb</code> is not removed.</p>
+      <h3>Linux</h3>
+      <p>From the install directory:</p>
+      <pre><code>./uninstall</code></pre>
+      <p>Or use the Uninstall desktop / GNOME entry if the installer created one. <code>sudo</code> is needed only if you installed under <code>/opt</code> (or another root-owned path).</p>
+      <p>A <code>git clone</code> has no uninstaller: delete that clone.</p>
     </section>
   </main>
   <script src="install.js"></script>

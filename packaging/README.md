@@ -5,11 +5,11 @@ Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_
 | Channel | Status | Details |
 |---------|--------|---------|
 | GitHub Releases + in-app updater | Primary | install4j standalone update downloader (`updater`) |
-| [winget](winget/) | Templates for 3.5.2; SHA256 TBD | First `microsoft/winget-pkgs` PR only after GitHub **Latest** 3.5.2 (Azure-signed exe). Publisher **Tobias Delbruck**. Identifier `SensorsINI.jAER`. |
-| [Homebrew cask](homebrew/) | Cask template for 3.5.2; SHA256 TBD | First public tap `SensorsINI/homebrew-jaer` only after Latest 3.5.2 (notarized DMGs). Confirm `.app` path on a Mac. Later: `homebrew/cask`. |
-| Linux apt / `.deb` | Optional later | [deb/](deb/) — USB cameras need a normal OS process, not snap/flatpak |
+| [winget](winget/) | Templates only (3.5.2 YAML, SHA256 TBD) | First `microsoft/winget-pkgs` PR after GitHub **Latest 3.6** (Azure-signed exe). Not for 3.5. Publisher **Tobias Delbruck**. Identifier `SensorsINI.jAER`. |
+| [Homebrew cask](homebrew/) | Cask template only | First public tap `SensorsINI/homebrew-jaer` after Latest **3.6** (notarized DMGs). Not for 3.5. Confirm `.app` path on a Mac. Later: `homebrew/cask`. |
+| Linux apt / `.deb` | After 3.5; not in 3.6 first ship | [deb/](deb/) — keep the Unix `.sh` through 3.5. USB cameras need a normal OS process, not snap/flatpak |
 | macOS notarization | GitHub Actions (`macos-latest`) | [macos-notarization.md](macos-notarization.md) — Environment `macos-notarize`; Mini is fallback |
 
-Do **not** submit winget YAML or create `SensorsINI/homebrew-jaer` against a `-rc` tag. The public tag rebuilds media, so SHA256 changes.
+Do **not** submit winget YAML or create `SensorsINI/homebrew-jaer` for 3.5 or against any `-rc` tag. 3.5 stays GitHub Releases + jaerproject.org + OS installers. The public tag rebuilds media, so SHA256 from an rc would break the day Latest is published.
 
-Package-manager installs should drop a marker file named `.jaer-packaged-install` in the jAER installation directory so the in-app **Download and install** button is hidden. Homebrew `postflight` already writes it. Winget has no post-install script yet (follow-up: install4j switch). Those users run `winget upgrade SensorsINI.jAER` or `brew upgrade --cask jaer`.
+Package-manager installs should drop a marker file named `.jaer-packaged-install` in the jAER installation directory so the in-app **Download and install** button is hidden. Homebrew `postflight` already writes it. Winget has no post-install script yet (3.6 install4j switch). Those users run `winget upgrade SensorsINI.jAER` or `brew upgrade --cask jaer`.

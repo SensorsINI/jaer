@@ -1,8 +1,10 @@
 # Optional Linux .deb (not Ubuntu/Debian official)
 
+Not for **3.5**. Not in the **3.6** winget/Homebrew first ship. Revisit after those catalogs work. Keep the Unix `.sh`.
+
 Do **not** start with Debian ftp-master or Ubuntu archive. Bundled Temurin and USB cameras fight Debian Java policy and snap/flatpak sandboxes (`raw-usb` / `--device=all`).
 
-Linux channel remains the install4j `.sh` installer plus in-app update.
+Linux channel remains the install4j `.sh` installer plus in-app update. install4j Deb is an **archive**: no wizard, default path (typically `/opt`), and `sudo apt install` must not launch a GUI. `dpkg -i` does not pull Depends; `sudo apt install ./file.deb` does. A real `apt install jaer` needs a signed repo.
 
 A later `.deb` can wrap that payload into `/opt/jaer` with **no sandbox**:
 
