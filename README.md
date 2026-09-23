@@ -14,15 +14,9 @@ jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop appl
 
 ## Installation
 
-You can find the latest releases and binary [install4j](https://www.ej-technologies.com/products/install4j/overview.html) installers at <https://github.com/SensorsINI/jaer/releases>. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
+Download platform installers from [jaerproject.org](https://jaerproject.org) or [GitHub Releases](https://github.com/SensorsINI/jaer/releases). Step-by-step Windows, macOS (Apple Silicon and Intel), and Linux instructions: **[Install Guide](https://jaerproject.org/install/)**. Video: [installing and updating jAER](https://youtu.be/qQVt8_gwYVY).
 
 **Installers are GitHub Release assets** (~250 MB each for release 3.3+, with bundled [Eclipse Temurin](https://adoptium.net/) JRE). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
-
- * **Linux:** Run the installer with `sh <installer>.sh`. Then you can run *jaer* from the installation directory or GNOME menu. Official apt is not provided (USB cameras need an unsandboxed install).
-
- * **Windows:** 3.5.0+ installers are Authenticode-signed (publisher Tobias Delbruck). Use *More info* → *Run anyway* until SmartScreen has seen this signature enough times. `winget` can install the signed build even while that warning still appears. If *Smart App Control* blocks the launcher, allow the app or turn that feature off. USB cameras: bind **WinUSB** with [Zadig](https://zadig.akeo.ie/) if jAER reports `LIBUSB_ERROR_NOT_SUPPORTED`.
-
- * **macOS:** Pick the **Apple Silicon** DMG (`jAER_macos_aarch64_*.dmg`) on M1–M4, or the Intel DMG (`jAER_macos_*.dmg`, no `aarch64` in the name). Double-click the `.dmg` (it mounts a disk; it does not start Setup). In the Finder window, double-click the installer app (**`jAER <version> Installer`** on notarized builds, for example `jAER 3.5.0 Installer`; older DMGs use a longer name ending in Installer). 3.5.0+ DMGs are Apple Developer ID signed and **notarized by Apple**; Gatekeeper shows identified developer **Tobias Delbruck**. If you still have an unsigned DMG, use [Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac) (right-click Open). Prefer a **user folder**, not `/Applications`, unless you are on a notarized build. **Apple Silicon:** USB cameras need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present.
 
 Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates… 
 

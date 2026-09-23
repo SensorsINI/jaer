@@ -2,6 +2,8 @@
 
 Static files in this folder are published to **GitHub Pages** by [`.github/workflows/pages.yml`](../.github/workflows/pages.yml). Installer binaries stay on GitHub Releases; the page only links to them.
 
+`index.html` is the homepage. `install/index.html` is the platform **[Install Guide](https://jaerproject.org/install/)** (Windows, macOS, Linux). Release notes should link there instead of repeating installer steps.
+
 Local preview (from repo root):
 
 ```powershell

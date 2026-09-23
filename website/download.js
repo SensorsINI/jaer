@@ -134,7 +134,7 @@
     } else if (detected.macAmbiguous) {
       note.hidden = false;
       note.textContent =
-        "macOS browser architecture is ambiguous. Use the macOS Apple Silicon or macOS Intel link below based on About This Mac.";
+        "macOS browser architecture is ambiguous. Use the macOS Apple Silicon or macOS Intel link below, or see the Install Guide.";
     }
   }
 

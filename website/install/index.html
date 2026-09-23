@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jAER Install Guide — Windows, macOS, Linux</title>
+  <meta name="description" content="Install jAER on Windows, macOS (Apple Silicon and Intel), and Linux. Signed installers, USB cameras, and libusb.">
+  <link rel="canonical" href="https://jaerproject.org/install/">
+  <link rel="icon" href="../favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" href="../favicon.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="../splash-thumb.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <main class="page guide">
+    <p class="crumb"><a href="../">jAER</a> / Install Guide</p>
+    <div class="brand">
+      <img class="brand-mark" src="../splash-thumb.png" width="72" height="72" alt="">
+      <h1>Install Guide</h1>
+    </div>
+    <p class="blurb">
+      Production installers bundle
+      <a href="https://adoptium.net/">Eclipse Temurin JDK 25</a>.
+      You do not install Java yourself.
+      Download from
+      <a href="../">jaerproject.org</a>
+      or
+      <a href="https://github.com/SensorsINI/jaer/releases">GitHub Releases</a>.
+    </p>
+
+    <ul class="toc">
+      <li><a href="#windows">Windows</a></li>
+      <li><a href="#macos">macOS</a></li>
+      <li><a href="#linux">Linux</a></li>
+      <li><a href="#after">After install</a></li>
+    </ul>
+
+    <section id="windows">
+      <h2>Windows</h2>
+      <p>Download <code>jAER_windows-x64_*.exe</code> and run it. Current builds are Authenticode-signed (publisher <strong>Tobias Delbruck</strong>).</p>
+      <ul>
+        <li><strong>SmartScreen</strong> may still say <em>Windows protected your PC</em> until the signature has enough downloads. Use <strong>More info</strong> → <strong>Run anyway</strong>.</li>
+        <li>If <strong>Smart App Control</strong> blocks the launcher, allow the app or turn that feature off.</li>
+        <li><code>winget</code> can install the signed build even while SmartScreen still warns.</li>
+      </ul>
+      <h3>USB cameras</h3>
+      <ul>
+        <li>If jAER reports <code>LIBUSB_ERROR_NOT_SUPPORTED</code>, bind <strong>WinUSB</strong> with <a href="https://zadig.akeo.ie/">Zadig</a> (not libusb-win32).</li>
+        <li>Prophesee EVK4 can use Prophesee <strong>wdi-simple</strong>.</li>
+      </ul>
+    </section>
+
+    <section id="macos">
+      <h2>macOS</h2>
+      <p>Pick the DMG that matches the Mac, not the browser. Safari often cannot report Apple Silicon vs Intel.</p>
+      <ul>
+        <li>Apple menu → About This Mac: <strong>Chip</strong> Apple M1–M4 → <code>jAER_macos_aarch64_*.dmg</code>.</li>
+        <li><strong>Processor</strong> Intel → <code>jAER_macos_*.dmg</code> (no <code>aarch64</code> in the name).</li>
+        <li>Terminal: <code>uname -m</code> is <code>arm64</code> or <code>x86_64</code>.</li>
+      </ul>
+      <p class="callout">
+        An Apple Silicon DMG on an Intel Mac fails with
+        <em>You can’t open the application “jAER … Installer” because this application is not supported on this Mac</em>.
+        Download the Intel DMG instead.
+      </p>
+      <h3>Install</h3>
+      <ol>
+        <li>Double-click the <code>.dmg</code> (it mounts a disk).</li>
+        <li>In the Finder window, double-click <strong>jAER … Installer</strong>.</li>
+        <li>Prefer a user folder (<code>~/Applications</code> or <code>~/jaer</code>) unless you want an admin install into <code>/Applications</code>.</li>
+      </ol>
+      <p>Current DMGs are signed with Apple Developer ID and notarized (identified developer <strong>Tobias Delbruck</strong>). A notarized GitHub DMG should open normally. An older unsigned DMG needs
+        <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac">right-click → Open</a>
+        or Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
+      <h3>USB cameras (Apple Silicon)</h3>
+      <p>Live USB cameras need Homebrew
+        <a href="https://formulae.brew.sh/formula/libusb">libusb</a>:</p>
+      <pre><code>brew install libusb</code></pre>
+      <p>If the dylib is missing, jAER shows a how-to and quits so the next launch can load it. File playback does not need libusb.</p>
+      <h3>Startup logs</h3>
+      <p>If the splash closes with no window, attach <code>$TMPDIR/jaer/jAER-0.log</code>.
+        <code>$TMPDIR</code> is not <code>/tmp</code>; it looks like <code>/var/folders/…/T/</code>.
+        Absence of <code>hs_err_pid*.log</code> or Console crash reports usually means a normal Java exit, not a native crash.</p>
+    </section>
+
+    <section id="linux">
+      <h2>Linux</h2>
+      <p>Download <code>jAER_unix_*.sh</code>. Installers are <strong>x64</strong> only.</p>
+      <pre><code>chmod +x jAER_unix_*.sh
+sh jAER_unix_*.sh</code></pre>
+      <p>Start jAER from the install directory or the desktop / GNOME entry the installer created. There is no official apt / <code>.deb</code> (USB cameras need an unsandboxed install).</p>
+      <p>If USB udev rules are missing for a plugged-in jAER device, jAER shows the exact shell command to add the rule(s).</p>
+    </section>
+
+    <section id="after">
+      <h2>After install</h2>
+      <ul>
+        <li>Installers can download <strong>sample recordings</strong> (off by default, about 1 GB). You can fetch them later from Help → <strong>Sample data</strong>. Skipping that download does not roll back the install.</li>
+        <li>After this version is GitHub Latest, Help → <strong>Check for release updates…</strong> → <strong>Download and install</strong> can self-update.</li>
+        <li>Video: <a href="https://youtu.be/qQVt8_gwYVY">installing and updating jAER</a> (also covers <code>git clone</code> and rebuild from master).</li>
+      </ul>
+    </section>
+  </main>
+  <script src="install.js"></script>
+</body>
+</html>

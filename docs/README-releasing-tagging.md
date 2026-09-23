@@ -6,7 +6,7 @@ Production installers are built on **GitHub-hosted runners** when you **push a g
 |----------------|-------|----------------|
 | Installers + sample zip | [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (`/releases/latest/download/…` after Latest) | `release.yml` assemble (and copy of the zip from [`sample-data-current`](https://github.com/SensorsINI/jaer/releases/tag/sample-data-current)) |
 | In-app updater descriptor | [`updates.xml`](../updates.xml) on `master` | `publish-release` job (public tags only) |
-| Download page | [jaerproject.org](https://jaerproject.org) | [GitHub Pages](../.github/workflows/pages.yml) from [`website/`](../website/) — [DNS](../website/README.md) |
+| Download page | [jaerproject.org](https://jaerproject.org) | [GitHub Pages](../.github/workflows/pages.yml) from [`website/`](../website/) — [DNS](../website/README.md). Install steps: [jaerproject.org/install/](https://jaerproject.org/install/) |
 
 `updates.xml` `baseUrl` is always `https://github.com/SensorsINI/jaer/releases/latest/download/`. The in-app checker reads that file on `master`, then downloads `baseUrl` + `fileName`. **Latest** and `updates.xml` must move together (the Approve step below).
 
@@ -48,7 +48,7 @@ install4j project: [`install4j/README.md`](../install4j/README.md) / [`jaer.inst
 
 Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2-rc.0`.
 
-1. **Notes** — add [`release-notes/jaer-3.5.2-release-notes.md`](../release-notes/jaer-3.5.2-release-notes.md) (name must be `jaer-<public>-release-notes.md`). Commit and push `master`.
+1. **Notes** — add [`release-notes/jaer-3.5.2-release-notes.md`](../release-notes/jaer-3.5.2-release-notes.md) (name must be `jaer-<public>-release-notes.md`). Link install steps to [jaerproject.org/install/](https://jaerproject.org/install/); do not paste the OS how-to again. Commit and push `master`.
 2. **Version** — set [`VERSION.txt`](../VERSION.txt) to `3.5.2`. Commit and push `master`.
 3. **Sample zip** — only if recordings changed, or the durable Release is missing. On a box that has `sampleData/*.aedat4`:
 
