@@ -49,7 +49,8 @@ AEDAT-4 packets and the GNSS sidecar. Playback looks up that column with the
 file playhead.</p>
 <p>Enable this filter on <b>one</b> viewer when several cameras are muxed.
 The port is opened only while the filter is enabled and the viewer is
-<b>LIVE</b> or <b>WAITING</b>.</p>
+<b>LIVE</b> or <b>WAITING</b>. <b>updateRate</b> is written to the sensor on
+open and whenever you change it (1–200 Hz).</p>
 <p><b>showHud</b> draws a transparent attitude indicator (horizon, roll arc,
 pitch ladder) with a north-up compass above it. N stays at the top and the
 arrow is the heading. Positive pitch moves the horizon down. Use it to check
@@ -60,10 +61,32 @@ axis signs and calibration. Turn it off when you only want the text readout.</p>
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample> implements FrameAnnotater {
 
+    /** HWT906 output rates from 1 Hz through 200 Hz. */
+    public enum UpdateRate {
+        HZ_1(1), HZ_2(2), HZ_5(5), HZ_10(10), HZ_20(20), HZ_50(50), HZ_100(100), HZ_125(125), HZ_200(200);
+
+        private final double hz;
+
+        UpdateRate(double hz) {
+            this.hz = hz;
+        }
+
+        public double hz() {
+            return hz;
+        }
+
+        @Override
+        public String toString() {
+            return (int) hz + " Hz";
+        }
+    }
+
     @Preferred
     private String port = getString("port", "");
     @Preferred
     private int baudRate = getInt("baudRate", WitMotionIMU.DEFAULT_BAUD_RATE);
+    @Preferred
+    private UpdateRate updateRate = storedUpdateRate();
     /** Overlay font in chip pixels. First use auto-fits to chip width, same rule as NmeaGnssFilter. */
     @Preferred
     private float fontSize = getFloat("fontSize", defaultFontSize());
@@ -83,8 +106,11 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
     private volatile WitMotionIMU imu;
     private int connectGeneration;
 
-    /** Output cycle being assembled on the IMU thread. */
-    private WitMotionSample cycle;
+    /**
+     * Last output-message code. A code that does not increase starts a new
+     * cycle. Above 20 Hz the HWT906 omits some message types from a cycle, so
+     * {@link #live} keeps the previous value of any field that did not arrive.
+     */
     private int cycleLastCode = -1;
     private boolean loggedFirstSample;
 
@@ -93,6 +119,8 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         String serial = "Serial", disp = "Display";
         setPropertyTooltip(serial, "port", "COM port. Empty discovers the USB serial IMU at connect time.");
         setPropertyTooltip(serial, "baudRate", "Serial baud rate. HWT906 factory default is 921600.");
+        setPropertyTooltip(serial, "updateRate",
+                "IMU output rate written on open and when changed. 1, 2, 5, 10, 20, 50, 100, 125, or 200 Hz.");
         setPropertyTooltip(serial, "doConnect", "Open the IMU (LIVE or WAITING, not playback).");
         setPropertyTooltip(serial, "doDisconnect", "Close the IMU serial port.");
         setPropertyTooltip(disp, "fontSize", "Overlay text size in chip pixels; first use auto-fits to chip width.");
@@ -533,6 +561,43 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         getSupport().firePropertyChange("baudRate", old, this.baudRate);
     }
 
+    public UpdateRate getUpdateRate() {
+        return updateRate;
+    }
+
+    public void setUpdateRate(UpdateRate updateRate) {
+        if (updateRate == null) {
+            return;
+        }
+        UpdateRate old = this.updateRate;
+        this.updateRate = updateRate;
+        putString("updateRate", updateRate.name());
+        getSupport().firePropertyChange("updateRate", old, updateRate);
+        applyUpdateRate();
+    }
+
+    private UpdateRate storedUpdateRate() {
+        try {
+            return UpdateRate.valueOf(getString("updateRate", UpdateRate.HZ_10.name()));
+        } catch (IllegalArgumentException e) {
+            return UpdateRate.HZ_10;
+        }
+    }
+
+    private void applyUpdateRate() {
+        WitMotionIMU port = imu;
+        if (port == null) {
+            return;
+        }
+        try {
+            port.setUpdateRate(updateRate.hz());
+            log.info("WitMotion update rate " + (int) updateRate.hz() + " Hz");
+        } catch (Exception e) {
+            log.log(Level.WARNING, "WitMotion set update rate failed", e);
+            status = "WitMotion: rate " + e.getMessage();
+        }
+    }
+
     public float getFontSize() {
         return fontSize;
     }
@@ -580,7 +645,6 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
                     return;
                 }
                 imu = opened;
-                cycle = null;
                 cycleLastCode = -1;
                 loggedFirstSample = false;
                 opened.subscribe(this::onMessage);
@@ -589,6 +653,7 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
             WitMotionIMU livePort = imu;
             status = "WitMotion: " + (livePort == null ? "?" : livePort.getPortName() + " @ " + livePort.getBaudRate());
             log.info(status);
+            applyUpdateRate();
         } catch (Exception e) {
             status = "WitMotion: " + e.getMessage();
             log.log(Level.WARNING, "WitMotion open failed", e);
@@ -603,7 +668,6 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         connectGeneration++;
         WitMotionIMU current = imu;
         imu = null;
-        cycle = null;
         cycleLastCode = -1;
         if (current != null) {
             current.close();
@@ -617,16 +681,11 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         int code = WitMotionSample.wireCode(msg);
         WitMotionSample completed = null;
         synchronized (this) {
-            if (cycle != null && code <= cycleLastCode) {
-                completed = cycle;
-                cycle = null;
+            if (cycleLastCode >= 0 && code <= cycleLastCode && live.hasMeasurement()) {
+                completed = live.copy();
             }
-            if (cycle == null) {
-                cycle = new WitMotionSample();
-            }
-            cycle.apply(msg);
             cycleLastCode = code;
-            live = cycle.copy();
+            live.apply(msg);
         }
         if (completed != null && completed.hasMeasurement()) {
             stampAndWrite(completed);
