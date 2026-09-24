@@ -66,6 +66,7 @@ The first Java 25 jAER start after install trains a HotSpot **ahead-of-time (AOT
 Production media also **jlink** a JRE module set and strip unused install4j runtime classes (`shrinkRuntime`). Linux and macOS media no longer pack a leftover install4j setup download (~176 MB).
 
 <!-- webp: 3.5.2/jaer-startup-AOT.webp -->
+<img src="https://github.com/user-attachments/assets/1707daf3-4a15-4e2b-b210-13db8b29b57b" alt="jaer-startup-AOT" width="80%" />
 
 <h4 id="statistics-bar">Click the statistics bar for a legend</h4>
 
