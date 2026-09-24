@@ -252,6 +252,7 @@ Ant uses the same JVM as java. Restart the terminal (and IDE) after changing JAV
         <j2seproject1:java>
             <customize>
                 <arg line="${application.args}"/>
+                <jvmarg value="--enable-native-access=ALL-UNNAMED"/>
                 <jvmarg value="-XX:ErrorFile=${java.io.tmpdir}/jaer/hs_err_pid%p.log"/>
                 <jvmarg value="-XX:ReplayDataFile=${java.io.tmpdir}/jaer/replay_pid%p.log"/>
             </customize>
