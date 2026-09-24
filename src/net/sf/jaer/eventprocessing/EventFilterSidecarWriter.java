@@ -130,7 +130,7 @@ public abstract class EventFilterSidecarWriter<T> extends EventFilter2D {
 
     protected final void writeSidecarRow(T row) {
         BufferedWriter w = sidecarWriter;
-        if (w == null || row == null) {
+        if (w == null || row == null || rowAedat4UnixUs(row) <= 0) {
             return;
         }
         try {
@@ -344,9 +344,32 @@ public abstract class EventFilterSidecarWriter<T> extends EventFilter2D {
         File rec = in.getFile();
         File side = sidecarFileFor(rec);
         try {
-            TreeMap<Long, T> map = loadSidecarFile(side);
-            playback = map;
-            playbackByAedat4Unix = !map.isEmpty() && rowAedat4UnixUs(map.firstEntry().getValue()) > 0;
+            TreeMap<Long, T> loaded = loadSidecarFile(side);
+            TreeMap<Long, T> byPacketUnix = new TreeMap<>();
+            for (T row : loaded.values()) {
+                long unix = rowAedat4UnixUs(row);
+                if (unix > 0) {
+                    byPacketUnix.put(unix, row);
+                }
+            }
+            // Host unix_ms keys are ~1e12; packet Unix µs are ~1e15. Mixing them
+            // makes firstKey() a millisecond and slider lookup stick on one row.
+            if (!byPacketUnix.isEmpty()) {
+                playback = byPacketUnix;
+                playbackByAedat4Unix = true;
+            } else {
+                playback = loaded;
+                playbackByAedat4Unix = false;
+            }
+            TreeMap<Long, T> map = playback;
+            if (map.isEmpty()) {
+                log.info(sidecarLogTag() + " sidecar empty " + side);
+            } else {
+                log.info(sidecarLogTag() + " sidecar loaded " + map.size()
+                        + (playbackByAedat4Unix ? " aedat4-unix" : " host-ms")
+                        + " keys " + map.firstKey() + ".." + map.lastKey()
+                        + " " + side);
+            }
             onSidecarLoaded(map, side);
         } catch (IOException e) {
             log.log(Level.WARNING, sidecarLogTag() + " sidecar load: " + e, e);
