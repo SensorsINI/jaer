@@ -6,12 +6,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventprocessing.SidecarFiles;
 
 /**
  * CSV sidecar next to an AEDAT recording ({@code name.witmotion.csv}).
@@ -29,67 +28,23 @@ public final class WitMotionSidecar {
     }
 
     public static File fileForRecording(File recording) {
-        if (recording == null) {
-            return null;
-        }
-        String base = stripKnownExtension(recording.getName());
-        File parent = recording.getParentFile();
-        return new File(parent == null ? new File(".") : parent, base + EXTENSION);
-    }
-
-    static String stripKnownExtension(String name) {
-        String[] ext = {
-            AEDataFile.DATA_FILE_EXTENSION_AEDAT4,
-            AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
-            AEDataFile.DATA_FILE_EXTENSION_AEDZ,
-            AEDataFile.DATA_FILE_EXTENSION,
-            AEDataFile.OLD_DATA_FILE_EXTENSION
-        };
-        for (String e : ext) {
-            if (name.toLowerCase(Locale.ROOT).endsWith(e)) {
-                return name.substring(0, name.length() - e.length());
-            }
-        }
-        int dot = name.lastIndexOf('.');
-        return dot > 0 ? name.substring(0, dot) : name;
+        return SidecarFiles.fileBeside(recording, EXTENSION);
     }
 
     /**
      * @return writer, or {@code null} if another filter already owns this path
      */
     public static BufferedWriter tryOpen(File sidecar, File recording) throws IOException {
-        if (sidecar == null) {
-            return null;
-        }
-        String key = sidecar.getAbsolutePath();
-        if (OPEN.putIfAbsent(key, Boolean.TRUE) != null) {
-            return null;
-        }
-        try {
-            BufferedWriter w = Files.newBufferedWriter(sidecar.toPath(), StandardCharsets.UTF_8);
-            w.write("# jAER WitMotion HWT906 sidecar");
-            w.newLine();
-            w.write("# aedat4_unix_us = cameraTimestampToUnixUs(camera_us), same clock as AEDAT-4 packets and .gnss.csv");
-            w.newLine();
-            w.write("# recording=" + (recording == null ? "" : recording.getAbsolutePath()));
-            w.newLine();
-            w.write(HEADER);
-            w.newLine();
-            w.flush();
-            return w;
-        } catch (IOException e) {
-            OPEN.remove(key);
-            throw e;
-        }
+        String rec = recording == null ? "" : recording.getAbsolutePath();
+        return SidecarFiles.tryOpen(OPEN, sidecar,
+                "# jAER WitMotion HWT906 sidecar",
+                "# aedat4_unix_us = cameraTimestampToUnixUs(camera_us), same clock as AEDAT-4 packets and .gnss.csv",
+                "# recording=" + rec,
+                HEADER);
     }
 
     public static void close(File sidecar, BufferedWriter w) throws IOException {
-        if (w != null) {
-            w.close();
-        }
-        if (sidecar != null) {
-            OPEN.remove(sidecar.getAbsolutePath());
-        }
+        SidecarFiles.close(OPEN, sidecar, w);
     }
 
     /**
@@ -98,22 +53,7 @@ public final class WitMotionSidecar {
      * @return destination sidecar, or {@code sidecar} if not moved
      */
     public static File relocate(File sidecar, File newRecording) throws IOException {
-        if (sidecar == null || !sidecar.isFile() || newRecording == null) {
-            return sidecar;
-        }
-        File dest = fileForRecording(newRecording);
-        if (dest == null) {
-            return sidecar;
-        }
-        if (sidecar.getAbsoluteFile().equals(dest.getAbsoluteFile())) {
-            return sidecar;
-        }
-        File parent = dest.getParentFile();
-        if (parent != null) {
-            parent.mkdirs();
-        }
-        Files.move(sidecar.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        return dest;
+        return SidecarFiles.moveTo(sidecar, fileForRecording(newRecording));
     }
 
     public static void writeRow(BufferedWriter w, WitMotionSample s) throws IOException {

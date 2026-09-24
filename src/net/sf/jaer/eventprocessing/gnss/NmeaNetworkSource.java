@@ -10,6 +10,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
@@ -33,6 +34,8 @@ final class NmeaNetworkSource implements Runnable {
     private final int port;
     private final Consumer<String> lines;
     private final Consumer<String> status;
+    /** False once {@link NmeaGnssFilter} is disabled, even if {@link #stop} has not joined yet. */
+    private final BooleanSupplier filterEnabled;
 
     private volatile boolean run = true;
     private Thread thread;
@@ -41,12 +44,13 @@ final class NmeaNetworkSource implements Runnable {
     private DatagramSocket udp;
 
     NmeaNetworkSource(Transport transport, String host, int port,
-            Consumer<String> lines, Consumer<String> status) {
+            Consumer<String> lines, Consumer<String> status, BooleanSupplier filterEnabled) {
         this.transport = transport;
         this.host = host == null ? "" : host.trim();
         this.port = port;
         this.lines = lines;
         this.status = status;
+        this.filterEnabled = filterEnabled == null ? () -> false : filterEnabled;
     }
 
     void start() {
@@ -85,7 +89,7 @@ final class NmeaNetworkSource implements Runnable {
 
     @Override
     public void run() {
-        while (run) {
+        while (run && filterEnabled.getAsBoolean()) {
             try {
                 switch (transport) {
                     case TCP_CLIENT:
@@ -104,7 +108,7 @@ final class NmeaNetworkSource implements Runnable {
                 Thread.currentThread().interrupt();
                 return;
             } catch (Exception e) {
-                if (run) {
+                if (run && filterEnabled.getAsBoolean()) {
                     status.accept("GNSS net: " + e.getMessage());
                     log.warning("GNSS " + transport + " " + host + ":" + port + " failed: " + e);
                     try {
@@ -119,6 +123,9 @@ final class NmeaNetworkSource implements Runnable {
     }
 
     private void runTcpClient() throws IOException, InterruptedException {
+        if (!filterEnabled.getAsBoolean()) {
+            return;
+        }
         if (host.isEmpty()) {
             status.accept("GNSS: set host (phone IP)");
             log.warning("GNSS TCP_CLIENT: host is empty");

@@ -1,10 +1,8 @@
 package net.sf.jaer.eventprocessing.witmotion;
 
-import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
@@ -17,23 +15,18 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStreamInterface;
-import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
-import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.eventprocessing.EventFilterSidecarWriter;
+import net.sf.jaer.eventprocessing.gnss.NmeaGnssFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.hardwareinterface.serial.witmotion.WitMotionIMU;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * HWT906 overlay and sidecar recording. Timestamping matches
- * {@link net.sf.jaer.eventprocessing.gnss.NmeaGnssFilter}: each completed IMU
- * cycle stores {@code camera_us} from the latest camera packet and
- * {@code aedat4_unix_us} from
- * {@link Aedat4FileOutputStream#cameraTimestampToUnixUs(int, int)}. Playback
- * seeks the sidecar with the AEDAT-4 playhead Unix time.
+ * {@link EventFilterSidecarWriter}. Playback seeks the sidecar with the
+ * AEDAT-4 playhead Unix time.
  */
 @Description("WitMotion HWT906 IMU over USB serial; records a .witmotion.csv sidecar with the camera file")
 @Help("""
@@ -58,27 +51,25 @@ The port is opened only while the filter is enabled and the viewer is
 </html>
 """)
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class WitMotionImuFilter extends EventFilter2D implements FrameAnnotater {
+public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample> implements FrameAnnotater {
 
     @Preferred
     private String port = getString("port", "");
     @Preferred
     private int baudRate = getInt("baudRate", WitMotionIMU.DEFAULT_BAUD_RATE);
+    /** Overlay font in chip pixels. First use auto-fits to chip width, same rule as NmeaGnssFilter. */
     @Preferred
-    private float fontSize = getFloat("fontSize", 8f);
+    private float fontSize = getFloat("fontSize", defaultFontSize());
+    private boolean fontSizeChecked = false;
+    private boolean fontFitting = false;
+    private static final String PREF_FONT_AUTO = "fontSizeAuto";
+    private static final float FONT_CHAR_ADVANCE = 0.55f;
+    private static final int FONT_OVERLAY_CHARS = 72;
 
     private volatile WitMotionSample live = new WitMotionSample();
     private volatile String status = "WitMotion: idle";
-    private volatile int lastCameraUs;
     private volatile WitMotionIMU imu;
     private int connectGeneration;
-    private boolean listenersAdded;
-    private BufferedWriter sidecarWriter;
-    private File sidecarFile;
-    private TreeMap<Long, WitMotionSample> playback;
-    /** True when sidecar keys are AEDAT-4 packet Unix µs, not host receive ms. */
-    private boolean playbackByAedat4Unix;
-    private boolean playbackMode;
 
     /** Output cycle being assembled on the IMU thread. */
     private WitMotionSample cycle;
@@ -92,16 +83,14 @@ public class WitMotionImuFilter extends EventFilter2D implements FrameAnnotater 
         setPropertyTooltip(serial, "baudRate", "Serial baud rate. HWT906 factory default is 921600.");
         setPropertyTooltip(serial, "doConnect", "Open the IMU (LIVE or WAITING, not playback).");
         setPropertyTooltip(serial, "doDisconnect", "Close the IMU serial port.");
-        setPropertyTooltip(disp, "fontSize", "Overlay text size in chip pixels.");
+        setPropertyTooltip(disp, "fontSize", "Overlay text size in chip pixels; first use auto-fits to chip width.");
     }
 
     @Override
     public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        ensureListeners();
-        if (in != null && !in.isEmpty()) {
-            lastCameraUs = in.getLastTimestamp();
-        }
-        updatePlaybackSample();
+        ensureSidecarListeners();
+        noteCameraTimestamp(in);
+        updateSidecarPlayback();
         return in;
     }
 
@@ -111,25 +100,20 @@ public class WitMotionImuFilter extends EventFilter2D implements FrameAnnotater 
 
     @Override
     public void initFilter() {
-        ensureListeners();
-    }
-
-    @Override
-    public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes);
-        if (yes) {
-            ensureListeners();
-            syncToPlayMode();
+        ensureSidecarListeners();
+        if (!isPreferenceStored("fontSize")) {
+            fontSize = defaultFontSize();
+            fontSizeChecked = false;
         } else {
-            stopImu();
-            closeSidecar();
+            fontSize = getFloat("fontSize", defaultFontSize());
+            fontSizeChecked = false;
         }
     }
 
     @Override
     public synchronized void cleanup() {
         log.info("WitMotion cleanup");
-        stopImu();
+        stopSidecarSource();
         closeSidecar();
         super.cleanup();
     }
@@ -139,39 +123,92 @@ public class WitMotionImuFilter extends EventFilter2D implements FrameAnnotater 
         if (!isFilterEnabled() || !isAnnotationEnabled()) {
             return;
         }
-        updatePlaybackSample();
-        WitMotionSample shown = live;
-        String text = status + "\n" + (shown == null ? "" : shown.overlayText());
-        float y = Math.max(fontSize * 2.4f, chip.getSizeY() * 0.08f);
+        updateSidecarPlayback();
+        String text = overlayText();
+        maybeFitFontToChipWidth(text.split("\n", -1));
+        float y = textOverlayAnchorY();
+        NmeaGnssFilter gnss = activeGnssOverlay();
+        if (gnss != null) {
+            // Both renderers draw downward from the first baseline. Lift this block
+            // by its own height so its last line sits one line above the GNSS baseline.
+            float gap = DrawGL.lineAdvance(Math.max(fontSize, gnss.getFontSize()));
+            y += NmeaGnssFilter.textBlockHeightPx(text, fontSize) + gap;
+        }
         MultilineAnnotationTextRenderer.resetToYPositionPixels(y);
         MultilineAnnotationTextRenderer.setFontSize(fontSize);
         MultilineAnnotationTextRenderer.renderMultilineString(text);
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt);
-        String n = evt.getPropertyName();
-        if (AEViewer.EVENT_RECORDING_STARTED.equals(n) && evt.getNewValue() instanceof File) {
-            openSidecar((File) evt.getNewValue());
-        } else if (AEViewer.EVENT_RECORDING_STOPPED.equals(n)) {
-            File dest = evt.getNewValue() instanceof File ? (File) evt.getNewValue() : null;
-            closeSidecarFollowing(dest);
-        } else if (AEViewer.EVENT_RECORDING_RENAMED.equals(n)
-                && evt.getNewValue() instanceof File destRec) {
-            File destSide = WitMotionSidecar.fileForRecording(destRec);
-            if (sidecarFile != null && destSide != null && sidecarFile.isFile()
-                    && !sidecarFile.getAbsoluteFile().equals(destSide.getAbsoluteFile())) {
-                closeSidecarFollowing(destRec);
+    private String overlayText() {
+        WitMotionSample shown = live;
+        return status + "\n" + (shown == null ? "" : shown.overlayText());
+    }
+
+    /** Same bottom anchor as {@link NmeaGnssFilter#textOverlayAnchorY()}. */
+    private float textOverlayAnchorY() {
+        int sizeY = (chip != null) ? chip.getSizeY() : 0;
+        return Math.max(fontSize * 2.4f, sizeY * 0.08f);
+    }
+
+    private NmeaGnssFilter activeGnssOverlay() {
+        if (chip == null || chip.getFilterChain() == null) {
+            return null;
+        }
+        EventFilter2D found = chip.getFilterChain().findFilter(NmeaGnssFilter.class);
+        if (found instanceof NmeaGnssFilter gnss && gnss.isTextOverlayActive()) {
+            return gnss;
+        }
+        return null;
+    }
+
+    private float defaultFontSize() {
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0) {
+            return 6f;
+        }
+        float fs = (sizeX * 0.96f) / (FONT_OVERLAY_CHARS * FONT_CHAR_ADVANCE);
+        return Math.max(DrawGL.MIN_FONT_SIZE, Math.min(fs, 48f));
+    }
+
+    /**
+     * Pick a font that fills the chip width. Runs while the auto flag is set
+     * (first use, or after Defaults). A user change of {@code fontSize} clears
+     * the auto flag.
+     */
+    private void maybeFitFontToChipWidth(String[] lines) {
+        if (fontSizeChecked) {
+            return;
+        }
+        if (!getBoolean(PREF_FONT_AUTO, true)) {
+            fontSizeChecked = true;
+            return;
+        }
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0 || lines == null || lines.length == 0) {
+            return;
+        }
+        try {
+            float start = Math.max(Math.max(24f, sizeX / 4f), fontSize);
+            float fitted = DrawGL.fontSizeToFitWidth(start, lines, sizeX * 0.99f);
+            fontFitting = true;
+            try {
+                setFontSize(fitted);
+                putBoolean(PREF_FONT_AUTO, true);
+            } finally {
+                fontFitting = false;
             }
-        } else if (AEViewer.EVENT_FILEOPEN.equals(n) || AbstractAEPlayer.EVENT_FILEOPEN.equals(n)) {
-            loadPlaybackSidecar();
-        } else if (AEViewer.EVENT_PLAYMODE.equals(n)) {
-            syncToPlayMode();
+            fontSizeChecked = true;
+        } catch (RuntimeException e) {
+            // TextRenderer needs a current GL context; retry next frame
         }
     }
 
     public void doConnect() {
+        if (!isFilterEnabled()) {
+            log.info("WitMotion Connect skipped: filter is not enabled");
+            status = "WitMotion: enable the filter to connect";
+            return;
+        }
         if (!isLiveOrWaiting()) {
             log.info("WitMotion Connect skipped: need LIVE or WAITING");
             status = "WitMotion: connect only in LIVE or WAITING";
@@ -219,67 +256,16 @@ public class WitMotionImuFilter extends EventFilter2D implements FrameAnnotater 
 
     public void setFontSize(float fontSize) {
         float old = this.fontSize;
-        if (fontSize < 2f) {
-            fontSize = 2f;
+        if (fontSize < DrawGL.MIN_FONT_SIZE) {
+            fontSize = DrawGL.MIN_FONT_SIZE;
         }
         this.fontSize = fontSize;
         putFloat("fontSize", fontSize);
+        if (!fontFitting) {
+            putBoolean(PREF_FONT_AUTO, false);
+            fontSizeChecked = true;
+        }
         getSupport().firePropertyChange("fontSize", old, this.fontSize);
-    }
-
-    private void ensureListeners() {
-        if (listenersAdded) {
-            return;
-        }
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return;
-        }
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_STARTED, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_STOPPED, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_RENAMED, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_PLAYMODE, this);
-        if (v.getAePlayer() != null) {
-            v.getAePlayer().getSupport().addPropertyChangeListener(AbstractAEPlayer.EVENT_FILEOPEN, this);
-        }
-        listenersAdded = true;
-        syncToPlayMode();
-        loadPlaybackSidecar();
-    }
-
-    private void syncToPlayMode() {
-        AEViewer v = chip.getAeViewer();
-        playbackMode = v != null && v.getPlayMode() == AEViewer.PlayMode.PLAYBACK;
-        if (!isFilterEnabled()) {
-            stopImu();
-            return;
-        }
-        if (playbackMode) {
-            stopImu();
-            status = "WitMotion: playback sidecar";
-            loadPlaybackSidecar();
-            return;
-        }
-        playback = null;
-        playbackByAedat4Unix = false;
-        if (isLiveOrWaiting()) {
-            if (imu == null) {
-                startImuAsync();
-            }
-        } else {
-            stopImu();
-            status = "WitMotion: idle (LIVE/WAITING to connect)";
-        }
-    }
-
-    private boolean isLiveOrWaiting() {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return false;
-        }
-        AEViewer.PlayMode m = v.getPlayMode();
-        return m == AEViewer.PlayMode.LIVE || m == AEViewer.PlayMode.WAITING;
     }
 
     private synchronized void startImuAsync() {
@@ -370,192 +356,95 @@ public class WitMotionImuFilter extends EventFilter2D implements FrameAnnotater 
      */
     private void stampAndWrite(WitMotionSample sample) {
         sample.receivedUnixMs = System.currentTimeMillis();
-        sample.cameraUs = lastCameraUs;
+        sample.cameraUs = lastCameraTimestampUs();
         sample.aedat4UnixUs = aedat4UnixUsForCamera(sample.cameraUs);
         if (!loggedFirstSample) {
             loggedFirstSample = true;
             log.info("WitMotion sample " + sample.overlayText().replace('\n', ' ')
                     + " camera_us=" + sample.cameraUs + " aedat4_unix_us=" + sample.aedat4UnixUs);
         }
-        BufferedWriter w = sidecarWriter;
-        if (w == null) {
-            return;
-        }
-        try {
-            synchronized (this) {
-                if (sidecarWriter != null) {
-                    WitMotionSidecar.writeRow(sidecarWriter, sample);
-                }
-            }
-        } catch (IOException e) {
-            log.log(Level.WARNING, "WitMotion sidecar write: " + e, e);
-        }
+        writeSidecarRow(sample);
     }
 
-    private synchronized void openSidecar(File recording) {
-        closeSidecar();
-        File side = WitMotionSidecar.fileForRecording(recording);
-        try {
-            BufferedWriter w = WitMotionSidecar.tryOpen(side, recording);
-            if (w == null) {
-                log.info("WitMotion sidecar already open for " + side);
-                return;
-            }
-            sidecarFile = side;
-            sidecarWriter = w;
-            log.info("WitMotion sidecar opened " + side.getAbsolutePath());
-        } catch (IOException e) {
-            log.warning("WitMotion sidecar open failed: " + e);
-        }
+    @Override
+    protected String sidecarLogTag() {
+        return "WitMotion";
     }
 
-    private synchronized void closeSidecar() {
-        closeSidecarFollowing(null);
+    @Override
+    protected File sidecarFileFor(File recording) {
+        return WitMotionSidecar.fileForRecording(recording);
     }
 
-    /**
-     * Close the sidecar writer, then rename it beside {@code destRecording}
-     * (Save As), or delete it if that take was discarded.
-     */
-    private synchronized void closeSidecarFollowing(File destRecording) {
-        File side = sidecarFile;
-        boolean wasOpen = sidecarWriter != null;
-        try {
-            WitMotionSidecar.close(sidecarFile, sidecarWriter);
-        } catch (IOException e) {
-            log.warning("WitMotion sidecar close failed: " + e);
-        }
-        sidecarWriter = null;
-        sidecarFile = null;
-        if (side == null) {
-            return;
-        }
-        if (destRecording == null) {
-            if (wasOpen) {
-                log.info("WitMotion sidecar closed " + side.getAbsolutePath());
-            }
-            return;
-        }
-        if (destRecording.isFile()) {
-            try {
-                File moved = WitMotionSidecar.relocate(side, destRecording);
-                if (moved != null && moved.isFile()
-                        && !moved.getAbsoluteFile().equals(side.getAbsoluteFile())) {
-                    log.info("WitMotion sidecar renamed " + side.getAbsolutePath()
-                            + " -> " + moved.getAbsolutePath());
-                } else if (wasOpen) {
-                    log.info("WitMotion sidecar closed " + side.getAbsolutePath());
-                }
-            } catch (IOException e) {
-                log.warning("WitMotion sidecar rename failed " + side + " -> "
-                        + WitMotionSidecar.fileForRecording(destRecording) + ": " + e);
-            }
-            return;
-        }
-        if (side.isFile()) {
-            boolean deleted = side.delete();
-            if (deleted) {
-                log.info("WitMotion sidecar deleted (recording discarded) " + side.getAbsolutePath());
-            } else {
-                log.warning("WitMotion sidecar close " + side.getAbsolutePath()
-                        + " (could not delete leftover sidecar)");
-            }
-        } else if (wasOpen) {
-            log.info("WitMotion sidecar closed " + side.getAbsolutePath());
-        }
+    @Override
+    protected BufferedWriter tryOpenSidecar(File sidecar, File recording) throws IOException {
+        return WitMotionSidecar.tryOpen(sidecar, recording);
     }
 
-    private void loadPlaybackSidecar() {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return;
-        }
-        AEFileInputStreamInterface in = v.getAeFileInputStream();
-        if (in == null) {
-            return;
-        }
-        File rec = in.getFile();
-        File side = WitMotionSidecar.fileForRecording(rec);
-        try {
-            TreeMap<Long, WitMotionSample> map = WitMotionSidecar.load(side);
-            playback = map;
-            playbackByAedat4Unix = false;
-            if (!map.isEmpty()) {
-                playbackByAedat4Unix = map.firstEntry().getValue().aedat4UnixUs > 0;
-            }
-            if (map.isEmpty()) {
-                if (playbackMode) {
-                    status = "WitMotion: no " + (side == null ? "sidecar" : side.getName());
-                }
-            } else {
-                status = "WitMotion: " + map.size() + " sidecar samples";
-                live = map.firstEntry().getValue();
-            }
-        } catch (IOException e) {
-            log.log(Level.WARNING, "WitMotion sidecar load: " + e, e);
-        }
+    @Override
+    protected void closeSidecarStore(File sidecar, BufferedWriter writer) throws IOException {
+        WitMotionSidecar.close(sidecar, writer);
     }
 
-    /**
-     * New sidecars are keyed by AEDAT-4 packet Unix µs. Older files that only
-     * have host {@code unix_ms} keep slider-fraction mapping onto that span.
-     */
-    private void updatePlaybackSample() {
-        if (!playbackMode || playback == null || playback.isEmpty()) {
-            return;
-        }
-        long t0 = playback.firstKey();
-        long t1 = playback.lastKey();
-        long unix;
-        if (playbackByAedat4Unix) {
-            unix = playheadUnixUs();
+    @Override
+    protected File relocateSidecarFile(File sidecar, File recording) throws IOException {
+        return WitMotionSidecar.relocate(sidecar, recording);
+    }
+
+    @Override
+    protected void appendSidecarRow(BufferedWriter writer, WitMotionSample row) throws IOException {
+        WitMotionSidecar.writeRow(writer, row);
+    }
+
+    @Override
+    protected TreeMap<Long, WitMotionSample> loadSidecarFile(File sidecar) throws IOException {
+        return WitMotionSidecar.load(sidecar);
+    }
+
+    @Override
+    protected long rowAedat4UnixUs(WitMotionSample row) {
+        return row.aedat4UnixUs;
+    }
+
+    @Override
+    protected void stopSidecarSource() {
+        stopImu();
+    }
+
+    @Override
+    protected boolean isSidecarSourceRunning() {
+        return imu != null;
+    }
+
+    @Override
+    protected void startSidecarSource() {
+        startImuAsync();
+    }
+
+    @Override
+    protected void onSidecarPlaybackEntered() {
+        status = "WitMotion: playback sidecar";
+    }
+
+    @Override
+    protected void onSidecarIdle() {
+        status = "WitMotion: idle (LIVE/WAITING to connect)";
+    }
+
+    @Override
+    protected void onSidecarLoaded(TreeMap<Long, WitMotionSample> map, File sidecar) {
+        if (map.isEmpty()) {
+            if (isSidecarPlayback()) {
+                status = "WitMotion: no " + (sidecar == null ? "sidecar" : sidecar.getName());
+            }
         } else {
-            float f = 0f;
-            AEViewer v = chip.getAeViewer();
-            AEFileInputStreamInterface in = v != null ? v.getAeFileInputStream() : null;
-            if (in != null) {
-                f = in.getPlaybackSliderFraction();
-            }
-            if (f < 0f) {
-                f = 0f;
-            } else if (f > 1f) {
-                f = 1f;
-            }
-            unix = t0 + (long) (f * (t1 - t0));
-        }
-        Map.Entry<Long, WitMotionSample> e = playback.floorEntry(unix);
-        if (e == null) {
-            e = playback.ceilingEntry(unix);
-        }
-        if (e != null) {
-            live = e.getValue();
+            status = "WitMotion: " + map.size() + " sidecar samples";
+            live = map.firstEntry().getValue();
         }
     }
 
-    private long playheadUnixUs() {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return 0;
-        }
-        AEFileInputStreamInterface in = v.getAeFileInputStream();
-        if (in instanceof Aedat4FileInputStream a4) {
-            return a4.getBaseUnixUs() + a4.getPositionTimestampUs();
-        }
-        if (in == null) {
-            return 0;
-        }
-        return in.getAbsoluteStartingTimeMs() * 1000L + in.getPositionTimestampUs();
-    }
-
-    private long aedat4UnixUsForCamera(int cameraTimestampUs) {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return 0;
-        }
-        Aedat4FileOutputStream out = v.getAedat4RecordingOutputStream();
-        if (out == null) {
-            return 0;
-        }
-        return out.cameraTimestampToUnixUs(cameraTimestampUs, v.getAedat4RecordingTrackIndex());
+    @Override
+    protected void onPlaybackRow(WitMotionSample row) {
+        live = row;
     }
 }

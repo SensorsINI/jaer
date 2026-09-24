@@ -1,13 +1,10 @@
 package net.sf.jaer.eventprocessing.gnss;
 
 import java.awt.Color;
-import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 import java.util.TreeMap;
-import java.util.logging.Level;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -20,12 +17,8 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStreamInterface;
-import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
-import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilterSidecarWriter;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.DrawGL;
@@ -133,7 +126,7 @@ on the Play Store if you do not want to sideload.</li>
 </html>
 """)
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
+public class NmeaGnssFilter extends EventFilterSidecarWriter<GnssFix> implements FrameAnnotater {
 
     public enum Transport {
         TCP_CLIENT, TCP_SERVER, UDP
@@ -148,15 +141,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
 
     private volatile GnssFix live = new GnssFix();
     private volatile String netStatus = "GNSS: idle";
-    private volatile int lastCameraUs;
     private NmeaNetworkSource source;
-    private boolean listenersAdded;
-    private BufferedWriter sidecarWriter;
-    private File sidecarFile;
-    private TreeMap<Long, GnssFix> playback;
-    /** True when sidecar keys are AEDAT-4 packet Unix µs, not host receive ms. */
-    private boolean playbackByAedat4Unix;
-    private boolean playbackMode;
     private volatile boolean loggedFirstFix;
 
     /** Overlay font in chip pixels. First use auto-fits to chip width. */
@@ -202,11 +187,9 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        ensureListeners();
-        if (in != null && !in.isEmpty()) {
-            lastCameraUs = in.getLastTimestamp();
-        }
-        updatePlaybackFix();
+        ensureSidecarListeners();
+        noteCameraTimestamp(in);
+        updateSidecarPlayback();
         return in;
     }
 
@@ -217,7 +200,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void initFilter() {
-        ensureListeners();
+        ensureSidecarListeners();
         if (!isPreferenceStored("fontSize")) {
             fontSize = defaultFontSize();
             fontSizeChecked = false;
@@ -228,21 +211,9 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes);
-        if (yes) {
-            ensureListeners();
-            syncTransportToPlayMode();
-        } else {
-            stopSource();
-            closeSidecar();
-        }
-    }
-
-    @Override
     public synchronized void cleanup() {
         log.info("GNSS cleanup: closing " + transport + " " + host + ":" + port);
-        stopSource();
+        stopSidecarSource();
         closeSidecar();
         super.cleanup();
     }
@@ -252,11 +223,12 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         if (!isFilterEnabled() || !isAnnotationEnabled()) {
             return;
         }
-        updatePlaybackFix();
+        updateSidecarPlayback();
         String status = netStatus;
         String fix = live.overlayText();
         maybeFitFontToChipWidth(new String[]{status, fix});
-        float y = Math.max(fontSize * 2.4f, chip.getSizeY() * 0.08f);
+        // Bottom text band. WitMotionImuFilter stacks above textOverlayHeightPx().
+        float y = textOverlayAnchorY();
         MultilineAnnotationTextRenderer.resetToYPositionPixels(y);
         MultilineAnnotationTextRenderer.setFontSize(fontSize);
         MultilineAnnotationTextRenderer.renderMultilineString(status + "\n" + fix);
@@ -329,30 +301,48 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         getSupport().firePropertyChange("fontSize", old, this.fontSize);
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt);
-        String n = evt.getPropertyName();
-        if (AEViewer.EVENT_RECORDING_STARTED.equals(n) && evt.getNewValue() instanceof File) {
-            openSidecar((File) evt.getNewValue());
-        } else if (AEViewer.EVENT_RECORDING_STOPPED.equals(n)) {
-            File dest = evt.getNewValue() instanceof File ? (File) evt.getNewValue() : null;
-            closeSidecarFollowing(dest);
-        } else if (AEViewer.EVENT_RECORDING_RENAMED.equals(n)
-                && evt.getNewValue() instanceof File destRec) {
-            File destSide = GnssSidecar.fileForRecording(destRec);
-            if (sidecarFile != null && destSide != null && sidecarFile.isFile()
-                    && !sidecarFile.getAbsoluteFile().equals(destSide.getAbsoluteFile())) {
-                closeSidecarFollowing(destRec);
-            }
-        } else if (AEViewer.EVENT_FILEOPEN.equals(n) || AbstractAEPlayer.EVENT_FILEOPEN.equals(n)) {
-            loadPlaybackSidecar();
-        } else if (AEViewer.EVENT_PLAYMODE.equals(n)) {
-            syncTransportToPlayMode();
+    /** Chip Y of the first GNSS overlay line, measured from the bottom. */
+    public float textOverlayAnchorY() {
+        int sizeY = (chip != null) ? chip.getSizeY() : 0;
+        return Math.max(fontSize * 2.4f, sizeY * 0.08f);
+    }
+
+    /** True when annotate will draw the GNSS status text. */
+    public boolean isTextOverlayActive() {
+        return isFilterEnabled() && isAnnotationEnabled();
+    }
+
+    /**
+     * Chip-pixel height of the GNSS text block, drawn downward from {@link #textOverlayAnchorY()}.
+     * {@link net.sf.jaer.eventprocessing.witmotion.WitMotionImuFilter} reads {@link #isTextOverlayActive()}
+     * and lifts its own block above this anchor.
+     */
+    public float textOverlayHeightPx() {
+        if (!isTextOverlayActive()) {
+            return 0f;
         }
+        return textBlockHeightPx(netStatus + "\n" + live.overlayText(), fontSize);
+    }
+
+    public static float textBlockHeightPx(String text, float fontSize) {
+        if (text == null || text.isEmpty()) {
+            return 0f;
+        }
+        int lines = 1;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                lines++;
+            }
+        }
+        return lines * DrawGL.lineAdvance(fontSize);
     }
 
     public void doConnect() {
+        if (!isFilterEnabled()) {
+            log.info("GNSS Connect skipped: filter is not enabled");
+            netStatus = "GNSS: enable the filter to connect";
+            return;
+        }
         if (!isLiveOrWaiting()) {
             log.info("GNSS Connect skipped: need LIVE or WAITING (playMode="
                     + (chip.getAeViewer() == null ? "none" : chip.getAeViewer().getPlayMode()) + ")");
@@ -370,62 +360,6 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         netStatus = "GNSS: disconnected";
     }
 
-    private void ensureListeners() {
-        if (listenersAdded) {
-            return;
-        }
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return;
-        }
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_STARTED, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_STOPPED, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_RECORDING_RENAMED, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
-        v.getSupport().addPropertyChangeListener(AEViewer.EVENT_PLAYMODE, this);
-        if (v.getAePlayer() != null) {
-            v.getAePlayer().getSupport().addPropertyChangeListener(AbstractAEPlayer.EVENT_FILEOPEN, this);
-        }
-        listenersAdded = true;
-        syncTransportToPlayMode();
-        loadPlaybackSidecar();
-    }
-
-    private void syncTransportToPlayMode() {
-        AEViewer v = chip.getAeViewer();
-        playbackMode = v != null && v.getPlayMode() == AEViewer.PlayMode.PLAYBACK;
-        if (!isFilterEnabled()) {
-            stopSource();
-            return;
-        }
-        if (playbackMode) {
-            stopSource();
-            netStatus = "GNSS: playback sidecar";
-            loadPlaybackSidecar();
-            return;
-        }
-        playback = null;
-        playbackByAedat4Unix = false;
-        mapReady = false;
-        if (isLiveOrWaiting()) {
-            if (source == null || !source.isAlive()) {
-                startSource();
-            }
-        } else {
-            stopSource();
-            netStatus = "GNSS: idle (LIVE/WAITING to connect)";
-        }
-    }
-
-    private boolean isLiveOrWaiting() {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return false;
-        }
-        AEViewer.PlayMode m = v.getPlayMode();
-        return m == AEViewer.PlayMode.LIVE || m == AEViewer.PlayMode.WAITING;
-    }
-
     private synchronized void startSource() {
         if (!isFilterEnabled()) {
             return;
@@ -439,7 +373,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         stopSource();
         loggedFirstFix = false;
         NmeaNetworkSource.Transport t = NmeaNetworkSource.Transport.valueOf(transport.name());
-        source = new NmeaNetworkSource(t, host, port, this::onNmeaLine, s -> netStatus = s);
+        source = new NmeaNetworkSource(t, host, port, this::onNmeaLine, s -> netStatus = s, this::isFilterEnabled);
         source.start();
         netStatus = "GNSS: starting " + transport;
         log.info("GNSS starting " + transport + " " + host + ":" + port);
@@ -457,195 +391,102 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         if (!NmeaParser.apply(line, next)) {
             return;
         }
-        next.cameraUs = lastCameraUs;
-        next.aedat4UnixUs = aedat4UnixUsForCamera(lastCameraUs);
+        next.cameraUs = lastCameraTimestampUs();
+        next.aedat4UnixUs = aedat4UnixUsForCamera(next.cameraUs);
         live = next;
         if (!loggedFirstFix && next.isValidFix()) {
             loggedFirstFix = true;
             log.info("GNSS fix " + next.overlayText());
         }
-        BufferedWriter w = sidecarWriter;
-        if (w != null) {
-            try {
-                synchronized (this) {
-                    if (sidecarWriter != null) {
-                        GnssSidecar.writeRow(sidecarWriter, next);
-                    }
-                }
-            } catch (IOException e) {
-                log.log(Level.WARNING, "GNSS sidecar write: " + e, e);
-            }
-        }
+        writeSidecarRow(next);
     }
 
-    private synchronized void openSidecar(File recording) {
-        closeSidecar();
-        File side = GnssSidecar.fileForRecording(recording);
-        try {
-            BufferedWriter w = GnssSidecar.tryOpen(side, recording);
-            if (w == null) {
-                log.info("GNSS sidecar already open for " + side);
-                return;
-            }
-            sidecarFile = side;
-            sidecarWriter = w;
-            log.info("GNSS sidecar opened " + side.getAbsolutePath());
-        } catch (IOException e) {
-            log.warning("GNSS sidecar open failed: " + e);
-        }
+    @Override
+    protected String sidecarLogTag() {
+        return "GNSS";
     }
 
-    private synchronized void closeSidecar() {
-        closeSidecarFollowing(null);
+    @Override
+    protected File sidecarFileFor(File recording) {
+        return GnssSidecar.fileForRecording(recording);
     }
 
-    /**
-     * Close the sidecar writer, then rename/move it beside {@code destRecording}
-     * (Save As), or delete it if that take was discarded.
-     */
-    private synchronized void closeSidecarFollowing(File destRecording) {
-        File side = sidecarFile;
-        boolean wasOpen = sidecarWriter != null;
-        try {
-            GnssSidecar.close(sidecarFile, sidecarWriter);
-        } catch (IOException e) {
-            log.warning("GNSS sidecar close failed: " + e);
-        }
-        sidecarWriter = null;
-        sidecarFile = null;
-        if (side == null) {
-            return;
-        }
-        if (destRecording == null) {
-            if (wasOpen) {
-                log.info("GNSS sidecar closed " + side.getAbsolutePath());
-            }
-            return;
-        }
-        if (destRecording.isFile()) {
-            try {
-                File moved = GnssSidecar.relocate(side, destRecording);
-                if (moved != null && moved.isFile()
-                        && !moved.getAbsoluteFile().equals(side.getAbsoluteFile())) {
-                    log.info("GNSS sidecar renamed " + side.getAbsolutePath()
-                            + " -> " + moved.getAbsolutePath());
-                } else if (wasOpen) {
-                    log.info("GNSS sidecar closed " + side.getAbsolutePath());
-                }
-            } catch (IOException e) {
-                log.warning("GNSS sidecar rename failed " + side + " -> "
-                        + GnssSidecar.fileForRecording(destRecording) + ": " + e);
-            }
-            return;
-        }
-        if (side.isFile()) {
-            boolean deleted = side.delete();
-            if (deleted) {
-                log.info("GNSS sidecar deleted (recording discarded) " + side.getAbsolutePath());
-            } else {
-                log.warning("GNSS sidecar close " + side.getAbsolutePath()
-                        + " (could not delete leftover sidecar)");
-            }
-        } else if (wasOpen) {
-            log.info("GNSS sidecar closed " + side.getAbsolutePath());
-        }
+    @Override
+    protected BufferedWriter tryOpenSidecar(File sidecar, File recording) throws IOException {
+        return GnssSidecar.tryOpen(sidecar, recording);
     }
 
-    private void loadPlaybackSidecar() {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return;
-        }
-        AEFileInputStreamInterface in = v.getAeFileInputStream();
-        if (in == null) {
-            return;
-        }
-        File rec = in.getFile();
-        File side = GnssSidecar.fileForRecording(rec);
-        try {
-            TreeMap<Long, GnssFix> map = GnssSidecar.load(side);
-            playback = map;
-            playbackByAedat4Unix = false;
-            if (!map.isEmpty()) {
-                GnssFix first = map.firstEntry().getValue();
-                playbackByAedat4Unix = first.aedat4UnixUs > 0;
-            }
-            if (map.isEmpty()) {
-                if (playbackMode) {
-                    netStatus = "GNSS: no " + (side == null ? "sidecar" : side.getName());
-                }
-            } else {
-                netStatus = "GNSS: " + map.size() + " sidecar fixes";
-                live = map.firstEntry().getValue();
-            }
-            rebuildMap();
-        } catch (IOException e) {
-            log.log(Level.WARNING, "GNSS sidecar load: " + e, e);
-        }
+    @Override
+    protected void closeSidecarStore(File sidecar, BufferedWriter writer) throws IOException {
+        GnssSidecar.close(sidecar, writer);
     }
 
-    /**
-     * New sidecars are keyed by AEDAT-4 packet Unix µs; look up the playhead
-     * the same way. Older CSVs (receive {@code unix_ms} only) keep slider-fraction
-     * mapping onto that span.
-     */
-    private void updatePlaybackFix() {
-        if (!playbackMode || playback == null || playback.isEmpty()) {
-            return;
-        }
-        long t0 = playback.firstKey();
-        long t1 = playback.lastKey();
-        long unix;
-        if (playbackByAedat4Unix) {
-            unix = playheadUnixUs();
+    @Override
+    protected File relocateSidecarFile(File sidecar, File recording) throws IOException {
+        return GnssSidecar.relocate(sidecar, recording);
+    }
+
+    @Override
+    protected void appendSidecarRow(BufferedWriter writer, GnssFix row) throws IOException {
+        GnssSidecar.writeRow(writer, row);
+    }
+
+    @Override
+    protected TreeMap<Long, GnssFix> loadSidecarFile(File sidecar) throws IOException {
+        return GnssSidecar.load(sidecar);
+    }
+
+    @Override
+    protected long rowAedat4UnixUs(GnssFix row) {
+        return row.aedat4UnixUs;
+    }
+
+    @Override
+    protected void stopSidecarSource() {
+        stopSource();
+    }
+
+    @Override
+    protected boolean isSidecarSourceRunning() {
+        return source != null && source.isAlive();
+    }
+
+    @Override
+    protected void startSidecarSource() {
+        startSource();
+    }
+
+    @Override
+    protected void onSidecarPlaybackEntered() {
+        netStatus = "GNSS: playback sidecar";
+    }
+
+    @Override
+    protected void onSidecarPlaybackLeft() {
+        mapReady = false;
+    }
+
+    @Override
+    protected void onSidecarIdle() {
+        netStatus = "GNSS: idle (LIVE/WAITING to connect)";
+    }
+
+    @Override
+    protected void onSidecarLoaded(TreeMap<Long, GnssFix> map, File sidecar) {
+        if (map.isEmpty()) {
+            if (isSidecarPlayback()) {
+                netStatus = "GNSS: no " + (sidecar == null ? "sidecar" : sidecar.getName());
+            }
         } else {
-            float f = 0f;
-            AEViewer v = chip.getAeViewer();
-            AEFileInputStreamInterface in = v != null ? v.getAeFileInputStream() : null;
-            if (in != null) {
-                f = in.getPlaybackSliderFraction();
-            }
-            if (f < 0f) {
-                f = 0f;
-            } else if (f > 1f) {
-                f = 1f;
-            }
-            unix = t0 + (long) (f * (t1 - t0));
+            netStatus = "GNSS: " + map.size() + " sidecar fixes";
+            live = map.firstEntry().getValue();
         }
-        Map.Entry<Long, GnssFix> e = playback.floorEntry(unix);
-        if (e == null) {
-            e = playback.ceilingEntry(unix);
-        }
-        if (e != null) {
-            live = e.getValue();
-        }
+        rebuildMap();
     }
 
-    private long playheadUnixUs() {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return 0;
-        }
-        AEFileInputStreamInterface in = v.getAeFileInputStream();
-        if (in instanceof Aedat4FileInputStream a4) {
-            return a4.getBaseUnixUs() + a4.getPositionTimestampUs();
-        }
-        if (in == null) {
-            return 0;
-        }
-        return in.getAbsoluteStartingTimeMs() * 1000L + in.getPositionTimestampUs();
-    }
-
-    private long aedat4UnixUsForCamera(int cameraTimestampUs) {
-        AEViewer v = chip.getAeViewer();
-        if (v == null) {
-            return 0;
-        }
-        Aedat4FileOutputStream out = v.getAedat4RecordingOutputStream();
-        if (out == null) {
-            return 0;
-        }
-        return out.cameraTimestampToUnixUs(cameraTimestampUs, v.getAedat4RecordingTrackIndex());
+    @Override
+    protected void onPlaybackRow(GnssFix row) {
+        live = row;
     }
 
     public Transport getTransport() {
@@ -740,7 +581,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         mapReady = false;
         mapPointCount = 0;
         mapMaxSogKn = 0;
-        TreeMap<Long, GnssFix> map = playback;
+        TreeMap<Long, GnssFix> map = sidecarPlayback();
         if (map == null || map.isEmpty() || chip == null) {
             return;
         }
@@ -812,7 +653,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     private void drawMap(GLAutoDrawable drawable) {
-        if (playback == null || playback.isEmpty()) {
+        if (sidecarPlayback() == null || sidecarPlayback().isEmpty()) {
             return;
         }
         if (!mapReady) {
@@ -827,7 +668,7 @@ public class NmeaGnssFilter extends EventFilter2D implements FrameAnnotater {
         gl.glLineWidth(lineWidth);
         gl.glColor4f(0.35f, 0.85f, 1f, 0.9f);
         gl.glBegin(GL.GL_LINE_STRIP);
-        for (GnssFix f : playback.values()) {
+        for (GnssFix f : sidecarPlayback().values()) {
             if (!f.hasPosition()) {
                 continue;
             }
