@@ -138,7 +138,7 @@ File → Open now plays cooked event HDF5 from the TU Delft **event_planar** dat
 * Dataset (4TU.ResearchData): [doi:10.34894/QTFHQX](https://doi.org/10.34894/QTFHQX)
 * Training code: [tudelft/event_planar](https://github.com/tudelft/event_planar)
 * Project page: [Fully neuromorphic vision and control for autonomous drone flight](https://mavlab.tudelft.nl/fully_neuromorphic_drone/)
-* Paper: Paredes-Vallés et al., *Science Robotics* 9(90), eadi0591 (2024) — [doi:10.1126/scirobotics.adi0591](https://www.science.org/doi/full/10.1126/scirobotics.adi0591)
+* Paper: Paredes-Vallés et al., *Science Robotics* 9(90), eadi0591 (2024) — [doi:10.1126/scirobotics.adi0591](https://doi.org/10.1126/scirobotics.adi0591)
 
 <h4 id="save-as">File → Save As</h4>
 
@@ -159,7 +159,7 @@ Packed dialogs and HW config keep a usable size and stay on the work area. First
 * **Statistics bar**: shows **CD / CC / AEC / RT** after the event count (**t** cycles CD / CC / AEC).
 * **Zoom**: chip pixels stay square (Ctrl+wheel no longer stretches the vertical axis).
 * **File → Save As**: chip-prefixed names; numeric tokens such as `3-export` are not treated as an AEChip; background ETA in the log every 10 s while the window is hidden; warn before quit or close; **Hide** instead of Close during export. File → Preferences → **Autoswitch Recording Sensor** is Ask / Always / No.
-* **Event Planar HDF5**: File → Open plays TU Delft DAVIS240C `.h5` (`/events/{xs,ys,ts,ps}`); [dataset](https://doi.org/10.34894/QTFHQX), [project](https://mavlab.tudelft.nl/fully_neuromorphic_drone/), [paper](https://www.science.org/doi/full/10.1126/scirobotics.adi0591).
+* **Event Planar HDF5**: File → Open plays TU Delft DAVIS240C `.h5` (`/events/{xs,ys,ts,ps}`); [dataset](https://doi.org/10.34894/QTFHQX), [project](https://mavlab.tudelft.nl/fully_neuromorphic_drone/), [paper](https://doi.org/10.1126/scirobotics.adi0591).
 * **Space-time 3-D**: event points stay visible in the fitted cube.
 * **DirectionSelectiveFlow**: **displayRawInput** shows DVS polarity again.
 * **macOS**: Finder drop of AEDAT onto the chip view opens the file (`acceptDrop` + transferable; 3.5.2-rc.0 was broken).
