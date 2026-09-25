@@ -8,9 +8,12 @@
     // Do not set java.jdt.ls.java.home here. The Java extension uses JAVA_HOME
     // (then PATH) on each machine. ${env:JAVA_HOME} is not expanded in this setting.
     "java.project.sourcePaths": [
-        "src"
+        "src",
+        "test"
     ],
-    "java.project.outputPath": "build/classes",
+    // Language-server classes only. Ant still writes build/classes. Sharing that
+    // folder lets the IDE drop "Unresolved compilation problem" stubs into the Ant tree.
+    "java.project.outputPath": ".jdt-output",
     "java.project.referencedLibraries": [
         "lib/**/*.jar",
         "jars/**/*.jar",
@@ -18,16 +21,19 @@
     ],
     "java.import.gradle.enabled": false,
     "java.import.maven.enabled": false,
+    "java.import.generatesMetadataFilesAtProjectRoot": false,
     "java.configuration.updateBuildConfiguration": "automatic",
-    "java.autobuild.enabled": false,
+    "java.autobuild.enabled": true,
     "java.debug.settings.forceBuildBeforeLaunch": false,
     "files.exclude": {
+        ".jdt-output": true,
         "install4j/license.txt": true,
         "install4j/license*.txt": true,
         "signpath/**": true,
         "signpath/README.txt": false
     },
     "search.exclude": {
+        ".jdt-output": true,
         "install4j/license.txt": true,
         "signpath/**": true,
         "signpath/README.txt": false
