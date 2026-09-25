@@ -2,10 +2,11 @@
 # Does not publish docs/. Installer binaries stay on GitHub Releases.
 # Environment github-pages allows master only. Checkout master even on a product
 # tag so the deploy is not rejected. Rebake latest.json on public and rc
-# releases so the landing page can offer Download Prerelease. Skip
-# sample-data-current (zip-only prerelease).
-# `release: published` does not run when release.yml uses GITHUB_TOKEN; that
-# workflow dispatches this file on master after assemble (rc) or Approve (public).
+# releases so the landing page can offer Download Prerelease and Download Snapshot.
+# Skip sample-data-current (zip-only prerelease).
+# `release: published` does not run when release.yml / snapshot.yml use GITHUB_TOKEN;
+# those workflows dispatch this file on master after assemble (rc / snapshot) or
+# Approve (public).
 
 name: Deploy landing page
 

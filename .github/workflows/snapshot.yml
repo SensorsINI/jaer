@@ -1,0 +1,215 @@
+# Moving tester installers from master. Never GitHub Latest. Never writes updates.xml.
+# Tag `snapshot` is allowed to move. Do not use N.N.N or N.N.N-rc.N here.
+# GITHUB_TOKEN release create does not fire pages.yml `release: published`; assemble
+# dispatches Deploy landing page on master.
+
+name: Snapshot
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "website/**"
+      - "docs/**"
+      - "release-notes/**"
+      - ".cursor/**"
+      - "updates.xml"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: true
+
+jobs:
+  debounce:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+      sha: ${{ steps.decide.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Wait for a quiet period
+        if: github.event_name != 'workflow_dispatch'
+        run: sleep 1200
+
+      - name: Decide whether to build
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch origin master --tags
+          head=$(git rev-parse origin/master)
+          echo "origin/master=$head github.sha=${{ github.sha }}"
+          if [[ "$head" != '${{ github.sha }}' ]]; then
+            echo "master moved during the quiet period; a later run will build."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "sha=$head" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          current=""
+          if git rev-parse -q --verify refs/tags/snapshot >/dev/null; then
+            current=$(git rev-parse 'snapshot^{commit}')
+          elif gh release view snapshot --json targetCommitish >/dev/null 2>&1; then
+            current=$(gh release view snapshot --json targetCommitish --jq .targetCommitish)
+          fi
+          echo "snapshot-tag=$current"
+          if [[ -n "$current" && "$current" == "$head" ]]; then
+            echo "snapshot already points at $head"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "sha=$head" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "build=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$head" >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: debounce
+    if: needs.debounce.outputs.build == 'true'
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    permissions:
+      contents: read
+
+  macos:
+    needs: debounce
+    if: needs.debounce.outputs.build == 'true'
+    uses: ./.github/workflows/build-macos-notarize.yml
+    secrets: inherit
+    permissions:
+      contents: read
+
+  windows:
+    needs: debounce
+    if: needs.debounce.outputs.build == 'true'
+    uses: ./.github/workflows/build-win-sign.yml
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+
+  assemble:
+    needs: [debounce, linux, macos, windows]
+    if: needs.debounce.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          pattern: jaer-*
+          merge-multiple: true
+
+      - name: Require the four installers
+        id: files
+        run: |
+          set -euo pipefail
+          v=$(tr -d '[:space:]' < VERSION.txt)
+          us="${v//./_}"
+          dir=dist
+          find "$dir" -type f -printf '%p %s\n' || true
+          exe="jAER_windows-x64_${us}.exe"
+          intel="jAER_macos_${us}.dmg"
+          arm="jAER_macos_aarch64_${us}.dmg"
+          unix="jAER_unix_${us}.sh"
+          missing=0
+          for f in "$exe" "$intel" "$arm" "$unix"; do
+            if [[ ! -f "$dir/$f" ]]; then
+              echo "missing $dir/$f" >&2
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+          echo "exe=$exe" >> "$GITHUB_OUTPUT"
+          echo "intel=$intel" >> "$GITHUB_OUTPUT"
+          echo "arm=$arm" >> "$GITHUB_OUTPUT"
+          echo "unix=$unix" >> "$GITHUB_OUTPUT"
+          echo "public=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Publish moving snapshot prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha='${{ needs.debounce.outputs.sha }}'
+          short=${sha:0:7}
+          built=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          latest=$(gh release view --json tagName --jq .tagName)
+          {
+            echo "Moving tester build from \`master\`. Not GitHub Latest."
+            echo
+            echo "- Commit: \`${sha}\`"
+            echo "- Built: ${built}"
+            echo "- Compare to Latest: https://github.com/${{ github.repository }}/compare/${latest}...${sha}"
+            echo
+            echo "Help → Check for updates stays on Stable. Filenames follow VERSION.txt (\`${{ steps.files.outputs.public }}\`)."
+          } > /tmp/snapshot-notes.md
+          assets=(
+            "dist/${{ steps.files.outputs.exe }}"
+            "dist/${{ steps.files.outputs.intel }}"
+            "dist/${{ steps.files.outputs.arm }}"
+            "dist/${{ steps.files.outputs.unix }}"
+          )
+          if gh release view snapshot >/dev/null 2>&1; then
+            gh release upload snapshot "${assets[@]}" --clobber
+            gh release edit snapshot \
+              --title "jAER Snapshot (${short})" \
+              --notes-file /tmp/snapshot-notes.md \
+              --prerelease \
+              --latest=false \
+              --draft=false
+          else
+            gh release create snapshot "${assets[@]}" \
+              --title "jAER Snapshot (${short})" \
+              --notes-file /tmp/snapshot-notes.md \
+              --target "$sha" \
+              --prerelease \
+              --latest=false
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -f snapshot "$sha"
+          git push origin refs/tags/snapshot --force
+
+      - name: Summary
+        run: |
+          {
+            echo '## Snapshot'
+            echo "- SHA: \`${{ needs.debounce.outputs.sha }}\`"
+            echo "- Did **not** set GitHub Latest or write updates.xml."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  landing-page:
+    name: Refresh jaerproject.org
+    needs: [debounce, assemble]
+    if: needs.debounce.outputs.build == 'true' && needs.assemble.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch Deploy landing page on master
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run pages.yml --repo '${{ github.repository }}' --ref master
+          echo 'Queued [Deploy landing page](https://github.com/${{ github.repository }}/actions/workflows/pages.yml) so jaerproject.org rebakes latest.json (snapshot).' >> "$GITHUB_STEP_SUMMARY"

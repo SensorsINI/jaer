@@ -61,6 +61,17 @@
     return Promise.resolve({ key: null, linuxArm: false, macAmbiguous: false });
   }
 
+  function formatDay(iso) {
+    if (!iso) {
+      return "";
+    }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      return "";
+    }
+    return d.toISOString().slice(0, 10);
+  }
+
   function fillButton(btn, meta, release, detected, label) {
     if (!btn) {
       return;
@@ -102,6 +113,9 @@
     const preSlot = document.getElementById("prerelease-slot");
     const preBtn = document.getElementById("prerelease-btn");
     const preMeta = document.getElementById("prerelease-meta");
+    const snapSlot = document.getElementById("snapshot-slot");
+    const snapBtn = document.getElementById("snapshot-btn");
+    const snapMeta = document.getElementById("snapshot-meta");
     const keys = ["windows", "macos_aarch64", "macos_intel", "linux"];
 
     keys.forEach(function (key) {
@@ -131,6 +145,41 @@
       fillButton(preBtn, preMeta, pre, detected, "Download Prerelease");
     } else if (preSlot) {
       preSlot.hidden = true;
+    }
+
+    const snap = latest && latest.snapshot;
+    const snapReady = !!(
+      snap &&
+      (snap.windows || snap.macos_aarch64 || snap.macos_intel || snap.linux)
+    );
+    if (snapReady && snapSlot && snapBtn) {
+      snapSlot.hidden = false;
+      fillButton(snapBtn, snapMeta, snap, detected, "Download Snapshot");
+      const bits = [];
+      if (snap.short_sha) {
+        bits.push(snap.short_sha);
+      }
+      const day = formatDay(snap.published_at);
+      if (day) {
+        bits.push(day);
+      }
+      if (detected.key && LABELS[detected.key]) {
+        bits.push(LABELS[detected.key]);
+      }
+      const snapAsset = detected.key && snap[detected.key] ? snap[detected.key] : null;
+      if (snapAsset) {
+        const size = formatSize(snapAsset.size);
+        if (size) {
+          bits.push(size);
+        }
+      }
+      if (!bits.length) {
+        bits.push("Latest master · testers");
+      }
+      snapMeta.hidden = false;
+      snapMeta.textContent = bits.join(" · ");
+    } else if (snapSlot) {
+      snapSlot.hidden = true;
     }
 
     if (detected.linuxArm) {
@@ -166,6 +215,10 @@
         const preBtn = document.getElementById("prerelease-btn");
         if (preBtn) {
           preBtn.href = PRE_FALLBACK;
+        }
+        const snapBtn = document.getElementById("snapshot-btn");
+        if (snapBtn) {
+          snapBtn.href = "https://github.com/SensorsINI/jaer/releases/tag/snapshot";
         }
       });
     });

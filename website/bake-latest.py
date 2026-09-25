@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write website/latest.json from GitHub Latest plus a newer prerelease, if any."""
+"""Write website/latest.json from GitHub Latest plus rc and snapshot channels."""
 
 from __future__ import annotations
 
@@ -10,10 +10,14 @@ import ssl
 import sys
 import urllib.request
 
-LATEST_API = "https://api.github.com/repos/SensorsINI/jaer/releases/latest"
-LIST_API = "https://api.github.com/repos/SensorsINI/jaer/releases?per_page=30"
+REPO = "SensorsINI/jaer"
+LATEST_API = "https://api.github.com/repos/%s/releases/latest" % REPO
+LIST_API = "https://api.github.com/repos/%s/releases?per_page=30" % REPO
+SNAPSHOT_API = "https://api.github.com/repos/%s/releases/tags/snapshot" % REPO
+GIT_REF_API = "https://api.github.com/repos/%s/git/ref/tags/" % REPO
 OUT_NAME = "latest.json"
-SKIP_TAGS = {"sample-data-current"}
+SKIP_TAGS = {"sample-data-current", "snapshot"}
+RC_TAG = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$")
 
 WINDOWS = re.compile(r"^jAER_windows-x64_.*\.exe$")
 MAC_ARM = re.compile(r"^jAER_macos_aarch64_.*\.dmg$")
@@ -61,9 +65,28 @@ def payload_from_release(release):
         "tag_name": release.get("tag_name"),
         "html_url": release.get("html_url"),
         "published_at": release.get("published_at"),
+        "target_commitish": release.get("target_commitish"),
     }
     payload.update(pick_assets(release))
     return payload
+
+
+def resolve_tag_sha(tag):
+    if not tag:
+        return ""
+    try:
+        ref = github_get(GIT_REF_API + tag)
+    except Exception:
+        return ""
+    obj = ref.get("object") or {}
+    sha = obj.get("sha") or ""
+    if obj.get("type") == "tag" and obj.get("url"):
+        try:
+            annotated = github_get(obj["url"])
+            sha = (annotated.get("object") or {}).get("sha") or sha
+        except Exception:
+            pass
+    return sha
 
 
 def pick_newer_prerelease(releases, stable):
@@ -77,6 +100,8 @@ def pick_newer_prerelease(releases, stable):
             continue
         if not rel.get("prerelease"):
             continue
+        if not RC_TAG.fullmatch(tag):
+            continue
         published = rel.get("published_at") or ""
         if stable_published and published and published <= stable_published:
             continue
@@ -84,6 +109,21 @@ def pick_newer_prerelease(releases, stable):
             continue
         return payload_from_release(rel)
     return None
+
+
+def pick_snapshot(rel, stable):
+    if not rel or rel.get("draft") or rel.get("tag_name") != "snapshot":
+        return None
+    if not pick_assets(rel):
+        return None
+    payload = payload_from_release(rel)
+    sha = resolve_tag_sha("snapshot")
+    stable_sha = resolve_tag_sha((stable or {}).get("tag_name") or "")
+    if sha and stable_sha and sha == stable_sha:
+        return None
+    payload["sha"] = sha
+    payload["short_sha"] = sha[:7] if sha else ""
+    return payload
 
 
 def write_payload(out_path, payload):
@@ -103,12 +143,21 @@ def main():
         write_payload(out_path, {"error": str(exc)})
         return 0
 
+    try:
+        snapshot_rel = github_get(SNAPSHOT_API)
+    except Exception:
+        snapshot_rel = None
+
     payload = payload_from_release(latest)
     pre = pick_newer_prerelease(listing, payload)
     if pre:
         payload["prerelease"] = pre
+    snap = pick_snapshot(snapshot_rel, payload)
+    if snap:
+        payload["snapshot"] = snap
     write_payload(out_path, payload)
-    extra = " prerelease=" + str(pre.get("tag_name")) if pre else " prerelease=none"
+    extra = " prerelease=" + (str(pre.get("tag_name")) if pre else "none")
+    extra += " snapshot=" + (str(snap.get("short_sha")) if snap else "none")
     print("wrote " + out_path + " tag=" + str(payload.get("tag_name")) + extra)
     return 0
 

@@ -6,7 +6,7 @@ Production installers are built on **GitHub-hosted runners** when you **push a g
 |----------------|-------|----------------|
 | Installers + sample zip | [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (`/releases/latest/download/…` after Latest) | `release.yml` assemble (and copy of the zip from [`sample-data-current`](https://github.com/SensorsINI/jaer/releases/tag/sample-data-current)) |
 | In-app updater descriptor | [`updates.xml`](../updates.xml) on `master` | `publish-release` job (public tags only) |
-| Download page | [jaerproject.org](https://jaerproject.org) | [GitHub Pages](../.github/workflows/pages.yml) from [`website/`](../website/) — [DNS](../website/README.md). Install steps: [jaerproject.org/install/](https://jaerproject.org/install/) |
+| Download page | [jaerproject.org](https://jaerproject.org) | [GitHub Pages](../.github/workflows/pages.yml) from [`website/`](../website/) — [DNS](../website/README.md). Install steps: [jaerproject.org/install/](https://jaerproject.org/install/). Testers: **Download Snapshot** from the moving [`snapshot`](https://github.com/SensorsINI/jaer/releases/tag/snapshot) prerelease |
 
 `updates.xml` `baseUrl` is always `https://github.com/SensorsINI/jaer/releases/latest/download/`. The in-app checker reads that file on `master`, then downloads `baseUrl` + `fileName`. **Latest** and `updates.xml` must move together (the Approve step below).
 
@@ -80,9 +80,16 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
 9. **Approve** Environment [`publish-release`](https://github.com/SensorsINI/jaer/settings/environments) on that run. That job commits `updates.xml` and sets GitHub **Latest**. Check [Releases](https://github.com/SensorsINI/jaer/releases), in-app **Help → Check for updates**, and [jaerproject.org](https://jaerproject.org).
 10. **Do not submit winget or Homebrew for 3.5.** This line stays GitHub Releases + [jaerproject.org](https://jaerproject.org/) + OS installers. First public `wingetcreate submit` / `SensorsINI/homebrew-jaer` is **3.6**, after that tag is Latest (hashes from the public-tag exe and DMGs, not an rc). Linux `.deb` waits until after 3.5 and is not in the 3.6 winget/Homebrew ship. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md).
 
+## Snapshot (moving tester build)
+
+Pushing code to `master` queues [Snapshot](https://github.com/SensorsINI/jaer/actions/workflows/snapshot.yml). After a 20 minute quiet period it rebuilds the four signed installers if `master` moved since the last snapshot. The GitHub Release / lightweight tag **`snapshot`** is replaced (`--clobber` assets, force-moved tag). It is never Latest and does not write `updates.xml`. Help → Check for updates stays on Stable.
+
+Doc-only and `website/` pushes do not start a snapshot. Manual run: **Actions → Snapshot → Run workflow**. jaerproject.org shows **Download Snapshot** (short SHA + date) when that Release is ahead of Latest.
+
 ## Tags are immutable
 
 - **Never** delete, move, or retag `N.N.N` or `N.N.N-rc.N`. A bad candidate is a new `-rc.N`. A bad public release is `N.N.(N+1)` from a new SHA.
+- The **`snapshot`** tag is the exception: it is meant to move.
 - Do not tag an old public version that already exists (for example do not tag `3.5.0` again).
 - Do not use `ant create-draft-release` for this pipeline (it tags `VERSION.txt` as a public number).
 
