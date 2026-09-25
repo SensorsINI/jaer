@@ -14234,7 +14234,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void loggingLevelMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_loggingLevelMenuMenuSelected
         if (loggingLevelRadioButtons == null) {
-            Level currentLevel = log.getLevel();
+            Level currentLevel = loggingHandler != null
+                    ? loggingHandler.getLevel()
+                    : AEViewerLoggingHandler.configuredConsoleLevel();
             loggingLevelMenu.getPopupMenu().setLightWeightPopupEnabled(false);
             loggingLevelRadioButtons = new ArrayList();
             for (Level l : loggingLevels) {

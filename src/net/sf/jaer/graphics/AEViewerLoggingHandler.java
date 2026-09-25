@@ -36,7 +36,16 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
         consoleWindow.getSupport().addPropertyChangeListener(this);
         // Handler default is ALL. Read conf/Logging.properties; fall back to INFO.
         // LogManager.getLevelProperty is package-private; use the public getProperty API.
-        setLevel(readConfiguredLevel(getClass().getName() + ".level", Level.INFO));
+        setLevel(configuredConsoleLevel());
+    }
+
+    /**
+     * In-app console filter from {@code Logging.properties}
+     * ({@code net.sf.jaer.graphics.AEViewerLoggingHandler.level}). This is not the
+     * {@code net.sf.jaer} logger level, which can be finer for the file log.
+     */
+    static Level configuredConsoleLevel() {
+        return readConfiguredLevel(AEViewerLoggingHandler.class.getName() + ".level", Level.INFO);
     }
 
     /** Reads a JUL level from LogManager properties ({@code getLevelProperty} is package-private). */

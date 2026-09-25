@@ -179,7 +179,9 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
         });
 
-        Level currentLevel = log.getLevel();
+        // net.sf.jaer.level is the logger (file log can be FINE). The console window
+        // is filtered by AEViewerLoggingHandler, usually INFO.
+        Level currentLevel = AEViewerLoggingHandler.configuredConsoleLevel();
         loggingLevelMenu = new JPopupMenu("Level");
         Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO, Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
         ButtonGroup loggingLevelButtonGroup = new ButtonGroup();
