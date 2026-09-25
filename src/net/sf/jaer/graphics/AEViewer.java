@@ -1134,10 +1134,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
             addHelpItem(new JSeparator());
-            addHelpURLItem(JaerConstants.HELP_URL_INIVATION_CAMERAS, "Inivation Cameras", "iniVation hardware product guides (DVXplorer, DAVIS, sync, connectors)");
-            addHelpURLItem(JaerConstants.HELP_URL_PROPHESEE_CAMERAS, "Prophesee cameras", "Prophesee / Sony event sensor technical docs (IMX636, GenX320)");
-            addHelpURLItem(JaerConstants.HELP_URL_NRV_CAMERAS, "NRV cameras", "NRV DELTA / RC1S technical documentation (SDK, event format, products)");
-            addHelpURLItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
+            JMenu manufacturersMenu = new JMenu("Manufacturers");
+            manufacturersMenu.setToolTipText("Hardware documentation from camera manufacturers");
+            manufacturersMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_INIVATION_CAMERAS, "Inivation Cameras",
+                    "iniVation hardware product guides (DVXplorer, DAVIS, sync, connectors)"));
+            manufacturersMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_PROPHESEE_CAMERAS, "Prophesee cameras",
+                    "Prophesee / Sony event sensor technical docs (IMX636, GenX320)"));
+            manufacturersMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_NRV_CAMERAS, "NRV cameras",
+                    "NRV DELTA / RC1S technical documentation (SDK, event format, products)"));
+            manufacturersMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Inivation Flashy reflashing guide",
+                    "Guide for reflashing iniVation firmware with Flashy"));
+            addHelpItem(manufacturersMenu);
             addHelpItem(new JSeparator());
             addHelpURLItem(JaerConstants.HELP_URL_EVENT_BASED_VISION_RESOURCES, "Event-Based Vision Resources",
                     "Community list of papers, workshops, datasets, code, and videos for event-based vision");
