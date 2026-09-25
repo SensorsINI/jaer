@@ -80,6 +80,10 @@ h1 {
   min-width: 12rem;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .download-slot .meta {
   margin: 0;
 }

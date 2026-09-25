@@ -121,7 +121,12 @@
     fillButton(btn, meta, latest, detected, "Download Stable");
 
     const pre = latest && latest.prerelease;
-    if (pre && preSlot && preBtn) {
+    const preReady = !!(
+      pre &&
+      pre.tag_name &&
+      (pre.windows || pre.macos_aarch64 || pre.macos_intel || pre.linux)
+    );
+    if (preReady && preSlot && preBtn) {
       preSlot.hidden = false;
       fillButton(preBtn, preMeta, pre, detected, "Download Prerelease");
     } else if (preSlot) {
