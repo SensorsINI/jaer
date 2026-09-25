@@ -203,6 +203,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private long flyEyeUnixMax;
     /** Last event Unix packed by {@link #extractPolarityByUnixWindow} (relative). */
     private long lastFlyEyePackedUnixUs;
+    /** True when the last FlyEye slice was timestamp-merged (synced cameras). */
+    private boolean flyEyeSliceMerged;
+    private int flyEyeMergeLeftN;
+    private int flyEyeMergeRightN;
+    /** Reused per-eye accumulators for synced playback merge. */
+    private final EyeAccum flyEyeLeftAccum = new EyeAccum();
+    private final EyeAccum flyEyeRightAccum = new EyeAccum();
+    private PacketRef[] flyEyeMergeRefs = new PacketRef[16];
+    private int flyEyeMergeRefCount;
     /** Last 32-bit relative timestamp emitted (for EVENT_WRAPPED_TIME). */
     private int mostRecentEmittedTimestamp;
     private boolean haveEmittedTimestamp;
@@ -1931,11 +1940,19 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /**
      * Pack polarity events whose relative Unix time lies in {@code [t0, t1)} from
      * every indexed EVTS packet (both FlyEye eyes). File-order index is not time order.
+     * <p>
+     * Synced cameras ({@link FlyEye#isElectricallyTimestampSynced()}) are merged by
+     * timestamp, matching live {@code FlyEyeHardwareInterface.mergePolarity}.
+     * Independent clocks stay in file order: merge-by-time would need unbounded hold-back.
      */
     private AEPacketRaw extractPolarityByUnixWindow(long t0, long t1, int maxPacked) throws IOException {
         lastFlyEyePackedUnixUs = t0;
+        flyEyeSliceMerged = false;
         if (!hasPolarity() || t1 <= t0 || maxPacked <= 0) {
             return new AEPacketRaw(0);
+        }
+        if (flyEyePlaybackMergeByTime()) {
+            return extractPolarityByUnixWindowMerged(t0, t1, maxPacked);
         }
         final int stride = effectivePolarityEventSkip() + 1;
         lastPolarityEventSkip = stride - 1;
@@ -1991,6 +2008,146 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
+    }
+
+    /** Synced FlyEye: left and right timestamps in this slice are comparable. */
+    private boolean flyEyePlaybackMergeByTime() {
+        return flyEyeNativePair && chip instanceof FlyEye fly && fly.isElectricallyTimestampSynced();
+    }
+
+    /**
+     * Same window as {@link #extractPolarityByUnixWindow}, but each eye is collected
+     * in file order and the two sequences are merged by relative timestamp.
+     * Each eye is capped at {@code maxPacked} earliest kept events; the earliest
+     * {@code maxPacked} of the union lie inside those two prefixes.
+     */
+    private AEPacketRaw extractPolarityByUnixWindowMerged(long t0, long t1, int maxPacked) throws IOException {
+        flyEyeSliceMerged = true;
+        final int stride = effectivePolarityEventSkip() + 1;
+        lastPolarityEventSkip = stride - 1;
+        EyeAccum left = flyEyeLeftAccum;
+        EyeAccum right = flyEyeRightAccum;
+        left.clear();
+        right.clear();
+        flyEyeMergeRefCount = 0;
+        Event scratch = extractEventScratch;
+        int kept = 0;
+        int skipped = 0;
+        for (int pi = 0; pi < eventRefs.length; pi++) {
+            if (left.n >= maxPacked && right.n >= maxPacked) {
+                break;
+            }
+            PacketRef ref = eventRefs[pi];
+            if (ref.numElements <= 0 || ref.unixEnd < t0 || ref.unixStart >= t1) {
+                continue;
+            }
+            boolean rightEye = ref.streamId == flyEyeRightEventStreamId;
+            EyeAccum dest = rightEye ? right : left;
+            int refIndex = rememberMergeRef(ref);
+            EventPacket packet = eventPacketAt(pi);
+            int nEl = packet.elementsLength();
+            for (int j = 0; j < nEl; j++) {
+                if (dest.n >= maxPacked) {
+                    break;
+                }
+                Event event = packet.elements(scratch, j);
+                if (event == null) {
+                    skipped++;
+                    continue;
+                }
+                long relTs = event.timestamp() - baseUnixUs + ref.wrapOffset;
+                if (relTs < t0 || relTs >= t1) {
+                    continue;
+                }
+                if ((kept++ % stride) != 0) {
+                    continue;
+                }
+                int address = packAddress(event, ref);
+                if (address < 0) {
+                    skipped++;
+                    continue;
+                }
+                dest.add(address, relTs, event.timestamp(), refIndex);
+            }
+        }
+        ensureEyeTimeOrdered(left);
+        ensureEyeTimeOrdered(right);
+        IntGrow addresses = new IntGrow(Math.min(maxPacked, left.n + right.n));
+        IntGrow timestamps = new IntGrow(Math.min(maxPacked, left.n + right.n));
+        int iL = 0;
+        int iR = 0;
+        int packed = 0;
+        while (packed < maxPacked && (iL < left.n || iR < right.n)) {
+            boolean takeLeft;
+            if (iL >= left.n) {
+                takeLeft = false;
+            } else if (iR >= right.n) {
+                takeLeft = true;
+            } else {
+                takeLeft = left.relTs[iL] <= right.relTs[iR];
+            }
+            EyeAccum src = takeLeft ? left : right;
+            int i = takeLeft ? iL++ : iR++;
+            addresses.add(src.address[i]);
+            timestamps.add(emitRelativeTimestamp(src.fileUnixUs[i], flyEyeMergeRefs[src.refIndex[i]]));
+            lastFlyEyePackedUnixUs = src.relTs[i];
+            packed++;
+        }
+        if (skipped > 0) {
+            notePolaritySkipped(t0, t1, skipped, "extractPolarityByUnixWindow");
+        }
+        flyEyeMergeLeftN = left.n;
+        flyEyeMergeRightN = right.n;
+        return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
+    }
+
+    private int rememberMergeRef(PacketRef ref) {
+        if (flyEyeMergeRefCount == flyEyeMergeRefs.length) {
+            flyEyeMergeRefs = Arrays.copyOf(flyEyeMergeRefs, flyEyeMergeRefs.length * 2);
+        }
+        flyEyeMergeRefs[flyEyeMergeRefCount] = ref;
+        return flyEyeMergeRefCount++;
+    }
+
+    /** File order per eye is normally time order. Sort only if a packet boundary rewinds that eye. */
+    private static void ensureEyeTimeOrdered(EyeAccum eye) {
+        for (int i = 1; i < eye.n; i++) {
+            if (eye.relTs[i] < eye.relTs[i - 1]) {
+                sortEyeByTime(eye);
+                return;
+            }
+        }
+    }
+
+    private static void sortEyeByTime(EyeAccum eye) {
+        Integer[] idx = new Integer[eye.n];
+        for (int i = 0; i < eye.n; i++) {
+            idx[i] = i;
+        }
+        Arrays.sort(idx, (a, b) -> Long.compare(eye.relTs[a], eye.relTs[b]));
+        int[] address = Arrays.copyOf(eye.address, eye.n);
+        long[] relTs = Arrays.copyOf(eye.relTs, eye.n);
+        long[] fileUnixUs = Arrays.copyOf(eye.fileUnixUs, eye.n);
+        int[] refIndex = Arrays.copyOf(eye.refIndex, eye.n);
+        for (int i = 0; i < eye.n; i++) {
+            int s = idx[i];
+            eye.address[i] = address[s];
+            eye.relTs[i] = relTs[s];
+            eye.fileUnixUs[i] = fileUnixUs[s];
+            eye.refIndex[i] = refIndex[s];
+        }
+    }
+
+    private void notePolaritySkipped(long t0, long t1, int skipped, String where) {
+        skippedEventsSinceWarning += skipped;
+        long now = System.currentTimeMillis();
+        if (now - lastSkippedEventWarningMs >= SKIPPED_EVENT_WARNING_INTERVAL_MS) {
+            log.warning(String.format(
+                    "AEDAT-4 %s [%d,%d) skipped %d events this slice, %,d since last notice",
+                    where, t0, t1, skipped, skippedEventsSinceWarning));
+            lastSkippedEventWarningMs = now;
+            skippedEventsSinceWarning = 0;
+        }
     }
 
     /** Packet-table estimate of how many events have relative Unix {@code < t}. */
@@ -2096,9 +2253,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             profSlices++;
             profEvents += pkt.getNumEvents();
             profNsRead += System.nanoTime() - tRead;
-            logPlaybackRead("readPacketByTime FlyEye-pair dt=%d pos %d->%d packed=%d t=%d..%d%s",
+            logPlaybackRead("readPacketByTime FlyEye-pair dt=%d pos %d->%d packed=%d t=%d..%d%s%s",
                     dt, pos0, position, pkt.getNumEvents(), t0, flyEyeCdPlayheadUs,
-                    capped ? " capped" : "");
+                    capped ? " capped" : "",
+                    flyEyeSliceMerged ? " merged L=" + flyEyeMergeLeftN + " R=" + flyEyeMergeRightN : "");
             return pkt;
         }
         if (flyEyeCdPlayheadUs <= tFirst) {
@@ -2128,9 +2286,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         collectTypedForWindow(flyEyeCdPlayheadUs, t1);
         firePosition();
         notePositionAfterRead();
-        logPlaybackRead("readPacketByTime FlyEye-pair dt=%d (back) pos %d->%d packed=%d t=%d..%d%s",
+        logPlaybackRead("readPacketByTime FlyEye-pair dt=%d (back) pos %d->%d packed=%d t=%d..%d%s%s",
                 dt, pos0, position, pkt.getNumEvents(), flyEyeCdPlayheadUs, t1,
-                capped ? " capped" : "");
+                capped ? " capped" : "",
+                flyEyeSliceMerged ? " merged L=" + flyEyeMergeLeftN + " R=" + flyEyeMergeRightN : "");
         return pkt;
     }
 
@@ -3917,6 +4076,37 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public boolean isRepeat() { return repeat; }
+
+    /**
+     * One eye's events inside a playback window. Parallel arrays stay in file
+     * order until {@link Aedat4FileInputStream#ensureEyeTimeOrdered}.
+     */
+    private static final class EyeAccum {
+        int[] address = new int[256];
+        long[] relTs = new long[256];
+        long[] fileUnixUs = new long[256];
+        int[] refIndex = new int[256];
+        int n;
+
+        void clear() {
+            n = 0;
+        }
+
+        void add(int addr, long rel, long fileUs, int refIdx) {
+            if (n == address.length) {
+                int c = address.length * 2;
+                address = Arrays.copyOf(address, c);
+                relTs = Arrays.copyOf(relTs, c);
+                fileUnixUs = Arrays.copyOf(fileUnixUs, c);
+                refIndex = Arrays.copyOf(refIndex, c);
+            }
+            address[n] = addr;
+            relTs[n] = rel;
+            fileUnixUs[n] = fileUs;
+            refIndex[n] = refIdx;
+            n++;
+        }
+    }
 
     /** Growable int buffer used while extracting a playback slice. */
     private static final class IntGrow {

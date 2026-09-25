@@ -147,6 +147,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private static final long NONMONOTONIC_WARN_INTERVAL_NS = 10_000_000_000L;
     private long lastNonmonotonicWarnNs;
     private int nonmonotonicSuppressed;
+    /** Camera tag of the event that set {@link #prevTs} ({@code 0} left, {@code 1} right, {@code -1} unknown). */
+    private int prevEventCamera = -1;
+    /** Timestamp immediately before the latest backward step, or {@link Integer#MIN_VALUE} if none. */
+    private int tsBeforeRewind = Integer.MIN_VALUE;
+    /** True after a backward step until timestamps catch up to {@link #tsBeforeRewind}. */
+    private boolean inRewindClimb;
+    private int backwardJumps;
+    private int backwardJumpsCrossEye;
+    private long lastBackwardJumpLogNs;
 
     /** Renamed from ppsScale so it sorts next to the displayVectors* properties. */
     private float displayVectorsPpsScale = getFloat("displayVectorsPpsScale", 0.1f);
@@ -1111,6 +1120,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
         lastNonmonotonicWarnNs = 0;
         nonmonotonicSuppressed = 0;
+        prevEventCamera = -1;
+        tsBeforeRewind = Integer.MIN_VALUE;
+        inRewindClimb = false;
+        backwardJumps = 0;
+        backwardJumpsCrossEye = 0;
+        lastBackwardJumpLogNs = 0;
         setXMax(chip.getSizeX());
         setYMax(chip.getSizeY());
         timestampGapToBeRemoved = 0;
@@ -1567,34 +1582,127 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     /**
-     * returns true if timestamp is invalid, e.g. if the timestamp is LATER
-     * (nonmonotonic) or is too soon after the last event from the same pixel
-     * |refractoryPeriodUs). Does NOT check for events that are too old relative
-     * to the current event.
-     * <p>
-     * Pixel lastTimesMap is updated by {@link #recordLastTimes()} after
-     * {@code x}, {@code y}, and {@code type} are set for this event.
+     * Tracks the previous event timestamp in processing order. A forward step
+     * larger than {@link #timestampGapThresholdUs} is treated as a recording
+     * gap (single shared clock only). A backward step is a rewind in packet
+     * order, logged separately; it does not update {@link #timestampGapToBeRemoved}.
      *
-     * @return true if invalid timestamp, older than refractoryPeriodUs ago
+     * @return false always; callers still run {@link #recordLastTimes()}
      */
     private synchronized boolean isInvalidTimestamp(PolarityEvent e) {
+        int ts = e.getTimestamp();
+        int cam = eventCamera(e);
         if (prevTs == Integer.MIN_VALUE) {
-            prevTs = e.timestamp;
+            prevTs = ts;
+            prevEventCamera = cam;
             return false;
         }
-        int ts = e.getTimestamp();
         final int dt = ts - prevTs;
+        final int fromTs = prevTs;
+        final int prevCam = prevEventCamera;
+        final boolean crossEye = prevCam >= 0 && cam >= 0 && prevCam != cam;
+        // File-order FlyEye playback appends one eye then the other inside a
+        // timeslice, so timestamps rewind by about one slice at each eye boundary.
+        if (dt < 0) {
+            noteBackwardTimestampStep(e, fromTs, ts, dt, prevCam, cam, crossEye);
+            prevTs = ts;
+            prevEventCamera = cam;
+            return false;
+        }
         // Dual independent clocks are not a "recording gap"; subtracting it
         // pulls the other camera's ticks into the first camera's timebase.
         if (timestampGapThresholdUs > 0 && dt > timestampGapThresholdUs && !independentTimestampCameras()) {
             timestampGapToBeRemoved += dt;
-            log.warning(String.format("For event %s,%ndeteceted timestamp gap of %,dus which is greater than timestampGapThresholdUs (%,dus). timestampGapToBeRemoved=%,dus now",
-                    e.toString(), dt, timestampGapThresholdUs, timestampGapToBeRemoved));
-            prevTs = ts;
-            return false;
+            String climb = rewindClimbLabel(ts);
+            log.warning(String.format(
+                    "Forward timestamp gap %,dus > timestampGapThresholdUs (%,dus). "
+                            + "prev cam=%s ts=%,d -> cam=%s ts=%,d (%s, %s). "
+                            + "timestampGapToBeRemoved=%,dus. event %s",
+                    dt, timestampGapThresholdUs,
+                    cameraLabel(prevCam), fromTs, cameraLabel(cam), ts,
+                    crossEye ? "crossed eyes" : "same eye", climb,
+                    timestampGapToBeRemoved, e));
+            if (log.isLoggable(Level.FINE)) {
+                log.fine(String.format(
+                        "Forward gap detail: inRewindClimb=%s tsBeforeRewind=%,d dtFromPreRewind=%,d",
+                        inRewindClimb, tsBeforeRewind,
+                        tsBeforeRewind == Integer.MIN_VALUE ? 0 : ts - tsBeforeRewind));
+            }
+        }
+        if (inRewindClimb && tsBeforeRewind != Integer.MIN_VALUE && ts >= tsBeforeRewind) {
+            inRewindClimb = false;
         }
         prevTs = ts;
+        prevEventCamera = cam;
         return false;
+    }
+
+    /**
+     * Backward step in processing order. Logged at FINE per step, and as a
+     * rate-limited warning so playback shows it without a FINE logger.
+     */
+    private void noteBackwardTimestampStep(PolarityEvent e, int fromTs, int ts, int dt,
+            int prevCam, int cam, boolean crossEye) {
+        if (!inRewindClimb || tsBeforeRewind == Integer.MIN_VALUE || fromTs > tsBeforeRewind) {
+            tsBeforeRewind = fromTs;
+        }
+        inRewindClimb = true;
+        backwardJumps++;
+        if (crossEye) {
+            backwardJumpsCrossEye++;
+        }
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format(
+                    "Backward timestamp step %,dus: prev cam=%s ts=%,d -> cam=%s ts=%,d (%s). event %s",
+                    dt, cameraLabel(prevCam), fromTs, cameraLabel(cam), ts,
+                    crossEye ? "crossed eyes" : "same eye", e));
+        }
+        long now = System.nanoTime();
+        if (warnNonmonotonicTimestamps && now - lastBackwardJumpLogNs >= NONMONOTONIC_WARN_INTERVAL_NS) {
+            double sec = lastBackwardJumpLogNs == 0L ? 1.0
+                    : (now - lastBackwardJumpLogNs) * 1e-9;
+            if (sec < 0.001) {
+                sec = 0.001;
+            }
+            log.warning(String.format(
+                    "Backward timestamp steps: %,d in the last %.2fs (%.0f/s), %,d crossed eyes. "
+                            + "Example: cam %s ts=%,d -> cam %s ts=%,d (dt=%,dus)",
+                    backwardJumps, sec, backwardJumps / sec, backwardJumpsCrossEye,
+                    cameraLabel(prevCam), fromTs, cameraLabel(cam), ts, dt));
+            lastBackwardJumpLogNs = now;
+            backwardJumps = 0;
+            backwardJumpsCrossEye = 0;
+        }
+    }
+
+    /** Where this forward step sits relative to the timestamp before the last rewind. */
+    private String rewindClimbLabel(int ts) {
+        if (!inRewindClimb || tsBeforeRewind == Integer.MIN_VALUE) {
+            return "no recent rewind";
+        }
+        if (ts < tsBeforeRewind) {
+            return String.format("still %,dus below pre-rewind ts %,d", tsBeforeRewind - ts, tsBeforeRewind);
+        }
+        return String.format("%,dus past pre-rewind ts %,d", ts - tsBeforeRewind, tsBeforeRewind);
+    }
+
+    /** {@code 0} left, {@code 1} right, {@code -1} if the event is not camera-tagged. */
+    private static int eventCamera(PolarityEvent e) {
+        if (e instanceof FlyEyeEvent fe) {
+            return fe.camera == FlyEyeEvent.Camera.RIGHT ? 1 : 0;
+        }
+        if (e instanceof DvsOrientationEvent de) {
+            return de.camera;
+        }
+        return -1;
+    }
+
+    private static String cameraLabel(int cam) {
+        return switch (cam) {
+            case 0 -> "L";
+            case 1 -> "R";
+            default -> "?";
+        };
     }
 
     /**
