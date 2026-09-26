@@ -2,7 +2,7 @@
 
 **Welcome to jAER**
 
-**Download:** [jaerproject.org](https://jaerproject.org) (platform installers). [Source on GitHub](https://github.com/SensorsINI/jaer). **Permanent link:** https://jaerproject.org
+**Download and Permanent link:** [jaerproject.org](https://jaerproject.org) (platform installers). [Source on GitHub](https://github.com/SensorsINI/jaer). [jAER user group](https://groups.google.com/g/jaer-users).
 
 **Why use proprietary vendor camera software?** 
 jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop application for neuromorphic event cameras and silicon cochleas from all major manufacturers ([inilabs](https://inilabs.com), [iniVation](https://inivation.com/), [Prophesee](https://www.prophesee.ai/), and [NRV](https://www.nrv.kr/)). jAER is the grandparent of all event camera software, developed by the lab that [invented the **DVS** and **HVS** events+frames cameras](https://sensors.ini.ch/research/areas/event-sensors-eyes-and-ears).  <b>jAER accumulates 20 years of hands-on experience with event sensors</b>, with daily work with event cameras as silicon developers (see [actual Davis346 layout](https://drive.google.com/drive/folders/0BzvXOhBHjRhed2Z4S0RDbHFTSFU)) and [application demonstrators](#jaer-applications). 
