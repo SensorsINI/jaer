@@ -1091,7 +1091,7 @@ java.vendor=${java.vendor}
 
     <!-- Same local media path as install4j, one OS. Unset jaer.install4j.media.types = all media. -->
     <target name="-install4j-media-linux">
-        <property name="jaer.install4j.media.types" value="unixInstaller"/>
+        <property name="jaer.install4j.media.types" value="unixInstaller,linuxDeb"/>
     </target>
     <target name="-install4j-media-mac">
         <property name="jaer.install4j.media.types" value="macosFolder"/>
@@ -1102,9 +1102,9 @@ java.vendor=${java.vendor}
 
     <target name="install4j-linux"
             depends="-install4j-media-linux,-install4j-local-media-options,-require-dist-jar,-require-opencv-slim,generate-splash,-load-version,-sync-install4j-version,-maybe-pack-sample-data,-maybe-pack-sample-data-skip,-load-sample-data-size,-run-install4jc-with-license,-run-install4jc-without-license"
-            description="Like install4j, Unix .sh only (existing dist/jAER.jar; local compression 5).">
+            description="Like install4j, Unix .sh and Linux .deb (existing dist/jAER.jar; local compression 5).">
         <echo message="${line.separator}install4j Unix media finished for ${jaer.version} (existing jar)."/>
-        <echo message="Output: currentInstallers/${jaer.version}/jAER_unix_*.sh"/>
+        <echo message="Output: currentInstallers/${jaer.version}/jAER_unix_*.sh and jAER_linux-amd64_*.deb"/>
         <echo message="Did not clean or rebuild the jar. Production Unix: ant release-linux"/>
     </target>
 
@@ -1237,7 +1237,7 @@ Then re-run:        ant install
         <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
             <arg file="${basedir}/scripts/run-install4jc.sh"/>
             <arg value="--release=${jaer.version}"/>
-            <arg value="--media-types=unixInstaller"/>
+            <arg value="--media-types=unixInstaller,linuxDeb"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
@@ -1250,7 +1250,7 @@ Then re-run:        ant install
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--license=${jaer.install4j.license}"/>
             <arg value="--release=${jaer.version}"/>
-            <arg value="--media-types=unixInstaller"/>
+            <arg value="--media-types=unixInstaller,linuxDeb"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
@@ -1270,7 +1270,7 @@ Then re-run:        ant install
         <exec executable="bash" osfamily="unix" failonerror="true" searchpath="true" dir="${basedir}">
             <arg file="${basedir}/scripts/run-install4jc.sh"/>
             <arg value="--release=${jaer.version}"/>
-            <arg value="--media-types=unixInstaller"/>
+            <arg value="--media-types=unixInstaller,linuxDeb"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="-D"/>
             <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
@@ -1282,7 +1282,7 @@ Then re-run:        ant install
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
-            <arg value="--media-types=unixInstaller"/>
+            <arg value="--media-types=unixInstaller,linuxDeb"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
@@ -1616,9 +1616,9 @@ See docs/README-releasing-tagging.md
 
     <target name="release-linux"
             depends="-load-version,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc-linux"
-            description="clean/jar + Unix .sh installer (production compression). No git tag.">
+            description="clean/jar + Unix .sh and Linux .deb (production compression). No git tag.">
         <echo message="${line.separator}Linux install4j media finished for ${jaer.version}."/>
-        <echo message="Output: currentInstallers/${jaer.version}/jAER_unix_*.sh"/>
+        <echo message="Output: currentInstallers/${jaer.version}/jAER_unix_*.sh and jAER_linux-amd64_*.deb"/>
         <echo message="Did not git tag. GitHub assets need a tag: ant create-draft-release, then ant upload-installers"/>
         <echo message="See docs/README-releasing-tagging.md"/>
     </target>

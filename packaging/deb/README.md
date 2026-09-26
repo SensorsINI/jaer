@@ -1,23 +1,17 @@
-# Optional Linux .deb (not Ubuntu/Debian official)
+# Linux .deb (GitHub Release asset, not an apt repo)
 
-Not for **3.5**. Not in the **3.6** winget/Homebrew first ship. Revisit after those catalogs work. Keep the Unix `.sh`.
+First release that includes the file is **3.6.0**. Do not upload it onto the 3.5.2 release. Snapshot may carry it after the media is on `master`. Keep the Unix `.sh` as the homepage download.
 
-Do **not** start with Debian ftp-master or Ubuntu archive. Bundled Temurin and USB cameras fight Debian Java policy and snap/flatpak sandboxes (`raw-usb` / `--device=all`).
+install4j media id **45** (`linuxDeb`, `setupType="none"`) builds `jAER_linux-amd64_<version_underscores>.deb` next to `jAER_unix_*.sh`. It is an archive into `/opt/jAER` (launcher `jaer`). `apt` must not open a GUI. `Depends: libusb-1.0-0`. `dpkg -i` does not install Depends; `sudo apt install ./file.deb` does.
 
-Linux channel remains the install4j `.sh` installer plus in-app update. install4j Deb is an **archive**: no wizard, default path (typically `/opt`), and `sudo apt install` must not launch a GUI. `dpkg -i` does not pull Depends; `sudo apt install ./file.deb` does. A real `apt install jaer` needs a signed repo.
-
-A later `.deb` can wrap that payload into `/opt/jaer` with **no sandbox**:
-
-```
-Package: jaer
-Section: science
-Priority: optional
-Maintainer: SensorsINI <https://github.com/SensorsINI/jaer>
-Depends: libusb-1.0-0
-Architecture: amd64
-Description: Desktop Java application for event cameras
+```text
+wget -O jAER_linux-amd64_3_6_0.deb \
+  https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_linux-amd64_3_6_0.deb
+sudo apt install ./jAER_linux-amd64_3_6_0.deb
 ```
 
-Host the `.deb` on GitHub Releases next to the `.sh`. An apt repo (GPG key, `Packages.gz`) is only worth it if you want `apt install jaer`; that is extra signing and hosting.
+There is no `apt install jaer` by name. That needs a signed apt repo (GPG key and `Packages` index), which this ship does not add.
 
-Write `.jaer-packaged-install` into `/opt/jaer` so the in-app updater tells people to use the distro package instead of Download and install.
+Do not start with Debian ftp-master or Ubuntu archive. Bundled Temurin and USB cameras fight Debian Java policy and snap/flatpak sandboxes.
+
+`postinst` writes `/opt/jAER/.jaer-packaged-install` so the in-app updater hides **Download and install**. Upgrades are a newer `.deb` from the release, not Help → Download and install. In-app updates for `.sh` installs stay on media id 37 (`scripts/generate-updates-xml.py`).

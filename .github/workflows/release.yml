@@ -104,7 +104,7 @@ jobs:
           pattern: jaer-*
           merge-multiple: true
 
-      - name: Require the four installers
+      - name: Require the installers
         id: files
         run: |
           set -euo pipefail
@@ -116,8 +116,9 @@ jobs:
           intel="jAER_macos_${us}.dmg"
           arm="jAER_macos_aarch64_${us}.dmg"
           unix="jAER_unix_${us}.sh"
+          deb="jAER_linux-amd64_${us}.deb"
           missing=0
-          for f in "$exe" "$intel" "$arm" "$unix"; do
+          for f in "$exe" "$intel" "$arm" "$unix" "$deb"; do
             if [[ ! -f "$dir/$f" ]]; then
               echo "missing $dir/$f" >&2
               missing=1
@@ -130,6 +131,7 @@ jobs:
           echo "intel=$intel" >> "$GITHUB_OUTPUT"
           echo "arm=$arm" >> "$GITHUB_OUTPUT"
           echo "unix=$unix" >> "$GITHUB_OUTPUT"
+          echo "deb=$deb" >> "$GITHUB_OUTPUT"
 
       - name: Copy sample zip from sample-data-current
         run: |
@@ -156,6 +158,7 @@ jobs:
             "dist/${{ steps.files.outputs.intel }}"
             "dist/${{ steps.files.outputs.arm }}"
             "dist/${{ steps.files.outputs.unix }}"
+            "dist/${{ steps.files.outputs.deb }}"
             dist/jaer-sample-data.zip
           )
           if gh release view "$tag" >/dev/null 2>&1; then

@@ -78,11 +78,11 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
 
    Wait for assemble (Release is a **draft**).
 9. **Approve** Environment [`publish-release`](https://github.com/SensorsINI/jaer/settings/environments) on that run. That job commits `updates.xml` and sets GitHub **Latest**. Check [Releases](https://github.com/SensorsINI/jaer/releases), in-app **Help → Check for updates**, and [jaerproject.org](https://jaerproject.org).
-10. **Do not submit winget or Homebrew for 3.5.** This line stays GitHub Releases + [jaerproject.org](https://jaerproject.org/) + OS installers. First public `wingetcreate submit` / `SensorsINI/homebrew-jaer` is **3.6**, after that tag is Latest (hashes from the public-tag exe and DMGs, not an rc). Linux `.deb` waits until after 3.5 and is not in the 3.6 winget/Homebrew ship. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md).
+10. **Package managers start at 3.6.0.** Do not `wingetcreate submit` or create `SensorsINI/homebrew-jaer` for 3.5.2. When Latest is public **3.6.0**, hash that tag’s exe and DMGs (not an rc) into `packaging/winget/3.6.0/` and the cask. The Linux `.deb` (`jAER_linux-amd64_*.deb`) is attached beside the `.sh` from 3.6.0 on; it is not on the 3.5.2 release. No `apt install jaer` by name. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md), [`packaging/deb/README.md`](../packaging/deb/README.md).
 
 ## Snapshot (moving tester build)
 
-Pushing code to `master` queues [Snapshot](https://github.com/SensorsINI/jaer/actions/workflows/snapshot.yml). After a 20 minute quiet period it rebuilds the four signed installers if `master` moved since the last snapshot. The GitHub Release / lightweight tag **`snapshot`** is replaced (`--clobber` assets, force-moved tag). It is never Latest and does not write `updates.xml`. Help → Check for updates stays on Stable.
+Pushing code to `master` queues [Snapshot](https://github.com/SensorsINI/jaer/actions/workflows/snapshot.yml). After a 20 minute quiet period it rebuilds the signed installers, including `jAER_linux-amd64_*.deb`, if `master` moved since the last snapshot. The GitHub Release / lightweight tag **`snapshot`** is replaced (`--clobber` assets, force-moved tag). It is never Latest and does not write `updates.xml`. Help → Check for updates stays on Stable.
 
 Doc-only and `website/` pushes do not start a snapshot. Manual run: **Actions → Snapshot → Run workflow**. jaerproject.org shows **Download Snapshot** (short SHA + date) when that Release is ahead of Latest.
 

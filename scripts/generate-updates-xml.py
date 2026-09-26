@@ -14,6 +14,7 @@ from pathlib import Path
 BASE_URL = "https://github.com/SensorsINI/jaer/releases/latest/download/"
 
 # (filename glob suffix after version underscores, media id, bundled JRE name)
+# Linux .deb is media id 45. It is not listed here: .sh installs stay on id 37.
 MEDIA = (
     ("jAER_macos_{v}.dmg", 38, "macos-amd64-25.0.4.tar.gz"),
     ("jAER_macos_aarch64_{v}.dmg", 39, "macos-aarch64-25.0.4.tar.gz"),

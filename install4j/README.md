@@ -100,14 +100,14 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | `generate-splash` | Overlay `VERSION.txt` → `images/800w`, `1024w`, `256h` |
 | `release` | **Removed.** Fails. Use `macos-build-notarize` / `azure-sign-ci` / `release-linux` / `create-draft-release` |
 | `macos-build-notarize` | GitHub Actions or Mini: `clean` + `jar` + notarized Intel+Apple Silicon DMGs. Production compression + `shrinkRuntime`. **No git tag** |
-| `release-linux` | `clean` + `jar` + Unix `.sh`. **No git tag**. GitHub Actions: `.github/workflows/build-linux.yml` (`gh workflow run build-linux.yml`) |
+| `release-linux` | `clean` + `jar` + Unix `.sh` and Linux `.deb`. **No git tag**. GitHub Actions: `.github/workflows/build-linux.yml` (`gh workflow run build-linux.yml`) |
 | `install4j-macos` | Mini: splash then macOS DMGs only (existing `dist/jAER.jar`; faster compression) |
 | `azure-sign-ci` | `gh workflow run build-win-sign.yml` (Windows Authenticode) |
 | `pack-sample-data` | Zip `sampleData/` recordings → `currentInstallers/<version>/jaer-sample-data.zip`, write `SIZE.txt` |
 | `make-sample-data-previews` | Encode `preview-src` MP4/AVI → `sampleData/previews/*.webp` (ffmpeg) |
 | `upload-sample-data` | WebP + pack + `gh release upload` of `jaer-sample-data.zip` |
 | `install4j` | `generate-splash` then all-OS `install4jc` (needs existing `dist/jAER.jar` + `build/opencv-slim`) |
-| `install4j-linux` | Same as `install4j`, Unix `.sh` only |
+| `install4j-linux` | Same as `install4j`, Unix `.sh` and Linux `.deb` |
 | `install4j-mac` | Same as `install4j`, macOS DMGs only (Intel + Apple Silicon) |
 | `install4j-win` | Same as `install4j`, Windows `.exe` only |
 | `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |

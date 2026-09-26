@@ -1,4 +1,4 @@
-# Unix .sh installer (production compression + shrinkRuntime). Artifacts only on workflow_dispatch — does not attach to a GitHub Release.
+# Unix .sh and Linux .deb (production compression + shrinkRuntime). Artifacts only on workflow_dispatch — does not attach to a GitHub Release.
 # Tag attach is assemble in release.yml (`workflow_call`).
 # install4j 13.1 matches the Mini. 13.0.2 jlink on ubuntu produced a ~378 MB .sh vs Mini ~220 MB.
 # Repo secret INSTALL4J_LICENSE (Actions → Secrets). Environment-only copies on macos-notarize /
@@ -119,18 +119,25 @@ jobs:
           dir="currentInstallers/${v}"
           shopt -s nullglob
           shs=("$dir"/jAER_unix_*.sh)
-          if [[ ${#shs[@]} -ne 1 ]]; then
-            echo "Expected one jAER_unix_*.sh under $dir" >&2
+          debs=("$dir"/jAER_linux-amd64_*.deb)
+          if [[ ${#shs[@]} -ne 1 || ${#debs[@]} -ne 1 ]]; then
+            echo "Expected one jAER_unix_*.sh and one jAER_linux-amd64_*.deb under $dir" >&2
             ls -la "$dir" >&2 || true
             exit 1
           fi
           f="${shs[0]}"
           bytes=$(stat -c%s "$f")
           mib=$((bytes / 1024 / 1024))
+          d="${debs[0]}"
+          dbytes=$(stat -c%s "$d")
+          dmib=$((dbytes / 1024 / 1024))
           echo "Unix installer: $f (${mib} MiB)"
+          echo "Linux deb: $d (${dmib} MiB)"
           echo "installer_name=$(basename "$f")" >> "$GITHUB_OUTPUT"
           echo "installer_mib=${mib}" >> "$GITHUB_OUTPUT"
           echo "installer_path=$f" >> "$GITHUB_OUTPUT"
+          echo "deb_name=$(basename "$d")" >> "$GITHUB_OUTPUT"
+          echo "deb_mib=${dmib}" >> "$GITHUB_OUTPUT"
 
       - name: List payload inside the .sh
         if: always() && steps.locate.outcome == 'success'
@@ -177,16 +184,21 @@ jobs:
         run: |
           set -euo pipefail
           mib='${{ steps.locate.outputs.installer_mib }}'
-          echo "Installer ${mib} MiB (Mini unix .sh ~220 MiB)"
-          if [[ "$mib" -lt 50 ]]; then
-            echo 'Installer too small; expected a bundled-JRE .sh' >&2
-            exit 1
-          fi
-          if [[ "$mib" -gt 280 ]]; then
-            echo "Installer is ${mib} MiB; expected ~220 MiB." >&2
-            echo 'See Inventory and List payload steps for fat opencv / libusb / JRE natives.' >&2
-            exit 1
-          fi
+          dmib='${{ steps.locate.outputs.deb_mib }}'
+          echo "Installer ${mib} MiB, deb ${dmib} MiB (Mini unix .sh ~220 MiB)"
+          for label in "sh:$mib" "deb:$dmib"; do
+            name="${label%%:*}"
+            size="${label##*:}"
+            if [[ "$size" -lt 50 ]]; then
+              echo "$name is ${size} MiB; expected a bundled-JRE installer" >&2
+              exit 1
+            fi
+            if [[ "$size" -gt 280 ]]; then
+              echo "$name is ${size} MiB; expected ~220 MiB." >&2
+              echo 'See Inventory and List payload steps for fat opencv / libusb / JRE natives.' >&2
+              exit 1
+            fi
+          done
 
       - name: Report jlink JRE cache
         if: always()
@@ -212,7 +224,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: jaer-linux
-          path: currentInstallers/${{ steps.version.outputs.version }}/jAER_unix_*.sh
+          path: |
+            currentInstallers/${{ steps.version.outputs.version }}/jAER_unix_*.sh
+            currentInstallers/${{ steps.version.outputs.version }}/jAER_linux-amd64_*.deb
           if-no-files-found: error
           retention-days: 7
 
@@ -230,6 +244,7 @@ jobs:
             echo "- Version: \`${{ steps.version.outputs.version }}\`"
             echo "- Runner: \`ubuntu-latest\` / install4j 13.1"
             echo "- Installer: \`${{ steps.locate.outputs.installer_name }}\` (${{ steps.locate.outputs.installer_mib }} MiB)"
+            echo "- Deb: \`${{ steps.locate.outputs.deb_name }}\` (${{ steps.locate.outputs.deb_mib }} MiB)"
             echo '- Did **not** attach to a GitHub Release. Download artifact `jaer-linux`.'
             echo '- Filenames may still say `3_5_0`. Do not upload them onto Latest `3.5.0`.'
           } >> "$GITHUB_STEP_SUMMARY"

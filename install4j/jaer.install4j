@@ -3,7 +3,7 @@
   <directoryPresets config="../images/800w" />
   <!-- Production: shrinkRuntime=true and JRE module set. defaultModules all packed the
        whole JDK (~185 MB extra per media on GHA). Local ant install4j sets shrinkRuntime=false. -->
-  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.5.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
+  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.5.2" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
@@ -722,6 +722,22 @@ return true;
                 <serializedBean>
                   <property name="itemName" type="string">${compiler:sys.fullName} ${compiler:sys.version}</property>
                 </serializedBean>
+              </action>
+              <!-- Silent installs (winget -q, Homebrew -q) hide in-app Download and install.
+                   Interactive .exe / .sh installs leave the marker unwritten. -->
+              <action name="Package manager marker" id="9400" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
+                <serializedBean>
+                  <property name="script">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">java.nio.file.Files.write(
+    new File(context.getInstallationDirectory(), ".jaer-packaged-install").toPath(),
+    "unattended\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+return true;
+</property>
+                    </object>
+                  </property>
+                </serializedBean>
+                <condition>context.isUnattended()</condition>
               </action>
               <action name="AEDAT files" id="9310" beanClass="com.install4j.runtime.beans.actions.desktop.CreateFileAssociationAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
                 <serializedBean>
@@ -2014,6 +2030,18 @@ return true;</property>
       </exclude>
       <jreBundle usePack200="false" />
     </unixInstaller>
+    <!-- setupType none: apt must not launch the installer GUI. postinst writes the updater marker. -->
+    <linuxDeb name="Linux Deb" id="45" installDir="/opt/jAER" mediaFileName="${compiler:sys.shortName}_linux-amd64_${compiler:sys.version}" dependencies="libusb-1.0-0" architectureSet="true" architecture="amd64" setupType="none" description="Desktop Java application for event cameras and silicon cochleas" maintainerEmail="SensorsINI &lt;https://github.com/SensorsINI/jaer&gt;">
+      <exclude>
+        <entry filesetId="9001" />
+        <entry filesetId="9003" />
+        <entry filesetId="9004" />
+      </exclude>
+      <jreBundle usePack200="false" />
+      <postInstallScript>mkdir -p /opt/jAER
+printf '%s\n' deb &gt; /opt/jAER/.jaer-packaged-install
+</postInstallScript>
+    </linuxDeb>
     <windows name="Windows" id="26" architecture="64">
       <exclude>
         <entry filesetId="9002" />
@@ -2027,6 +2055,7 @@ return true;</property>
     <mediaSet refId="38" />
     <mediaSet refId="39" />
     <mediaSet refId="37" />
+    <mediaSet refId="45" />
     <mediaSet refId="26" />
   </buildIds>
 </install4j>

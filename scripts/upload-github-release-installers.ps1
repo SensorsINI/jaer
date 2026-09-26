@@ -30,9 +30,9 @@ if (-not (Test-Path $dir)) { throw "Missing $dir -- build media first (ant macos
 $onMac = Test-Path -LiteralPath "/System/Library/CoreServices/SystemVersion.plist"
 
 $installers = @(Get-ChildItem -Path $dir -File | Where-Object {
-    $_.Name -match '^jAER_(windows-x64|macos|unix)_.*\.(exe|dmg|sh)$'
+    $_.Name -match '^jAER_(windows-x64_.+\.exe|macos_.+\.dmg|unix_.+\.sh|linux-amd64_.+\.deb)$'
 })
-if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jAER_unix_*.sh under $dir" }
+if (-not $installers) { throw "No jAER_windows-x64_*.exe / jAER_macos_*.dmg / jAER_unix_*.sh / jAER_linux-amd64_*.deb under $dir" }
 
 $files = New-Object System.Collections.Generic.List[object]
 foreach ($f in $installers) {

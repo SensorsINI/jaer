@@ -79,7 +79,7 @@ if [ "$(uname -s 2>/dev/null || true)" = Darwin ]; then
 fi
 
 shopt -s nullglob
-candidates=("$DIR"/jAER_windows-x64_*.exe "$DIR"/jAER_macos_*.dmg "$DIR"/jAER_unix_*.sh)
+candidates=("$DIR"/jAER_windows-x64_*.exe "$DIR"/jAER_macos_*.dmg "$DIR"/jAER_unix_*.sh "$DIR"/jAER_linux-amd64_*.deb)
 if [ ${#candidates[@]} -eq 0 ]; then
   echo "No installer media under $DIR" >&2
   exit 1
