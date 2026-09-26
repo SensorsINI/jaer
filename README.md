@@ -27,8 +27,8 @@ The *install4j* installers bundle [Eclipse Temurin](https://adoptium.net/) 25 fr
 
 ## Features
 
-jAER [efficiently](docs/README-jaer3.md)
- * **captures** USB event camera output from [most devices](#device-hardware-support), 
+jAER
+ * **captures** USB event camera output with an [efficient pipeline](docs/README-jaer3.md) from [most devices](#device-hardware-support), 
  * **denoises** -- with [fast and accurate algorithms](https://ieeexplore.ieee.org/document/9720086)
  * **displays** -- with a variety of color, 2D/3D, and powerful fading and sliding window event accumulation options
  * **records** -- in a high-speed compressed format (AEDAT-4), including **timed and rotating extended VCR recordings** that can span days or weeks.
