@@ -45,7 +45,3 @@ Previews are 5-second loops of the rendered recording (240 px wide).
 | <img src="previews/PropheseeIMX636HD%20Metavision%20driving_sample%20street.webp" width="240" alt="IMX636 driving"> | `PropheseeIMX636HD Metavision driving_sample street.aedat4` | 370.8 MB | PropheseeIMX636HD | Prophesee / Metavision street driving sample. Largest file (~371 MB); HD traffic. |
 
 More public datasets (not in this zip) are linked under **Help > Sample data**.
-
-## Notes
-
-PyPI [`aedat`](https://pypi.org/project/aedat/) **2.2.0** opens these files (events and IMU) but **cannot decode DAVIS APS frames**. The recordings use the valid DV tag `OPENCV_16U_C1` (10-bit ADC in 16-bit samples). That library only maps 8-bit Gray/BGR/BGRA and raises `RuntimeError: unknown frame format` on the first APS packet, which also stops further events. Color DV frames (8-bit RGB, e.g. the RoboCup file) work. This note will be updated when `aedat` reads 16-bit gray. Until then, use jAER, **File â†’ Save As** HDF5/CSV, or [dv-processing](https://dv-processing.inivation.com/). Python dataloaders and File â†’ Remote (OpenCV, DNN mmap, ROS2): [`docs/README-DNN-OpenCV-ROS.md`](../docs/README-DNN-OpenCV-ROS.md).
