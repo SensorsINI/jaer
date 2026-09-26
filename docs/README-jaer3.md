@@ -1,14 +1,12 @@
 # jAER 3 — Event processing pipeline
 
-This document summarizes how live sensor data and recorded files move through
-**jAER 3** (`jaer3` / `master` after the PacketBundle refactor): from USB
-capture, through typed packets and `EventFilter`s, to OpenGL display and optional
-AEDAT-4 recording.
+This document summarizes how live sensor data and recorded files move through **jAER 3** (`jaer3` / `master` after the PacketBundle refactor): from USB capture, through typed packets and `EventFilter`s, to OpenGL display and optional AEDAT-4 recording.
 
-The central idea in jAER 3 is that one **timeslice** is a
-[`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java): an ordered list of
-homogeneous typed packets (polarity, APS frames, IMU, …) rather than one mixed
-`ApsDvsEventPacket`.
+The central idea in jAER 3 is that one **timeslice** is a [`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java): an ordered list of homogeneous [`TypedDataPacket`](../src/net/sf/jaer/event/TypedDataPacket.java)s ([`EventPacket`](../src/net/sf/jaer/event/EventPacket.java) for polarity, [`FramePacket`](../src/net/sf/jaer/event/FramePacket.java) for APS frames, [`ImuPacket`](../src/net/sf/jaer/event/ImuPacket.java) for IMU) rather than one mixed [`ApsDvsEventPacket`](../src/net/sf/jaer/event/ApsDvsEventPacket.java), where every event also carried APS and IMU fields.
+
+Capture writes fields into reused [`BasicEvent`](../src/net/sf/jaer/event/BasicEvent.java) objects. On that path, memory is copied only when a reused packet must grow ([`EventPacket.allocate`](../src/net/sf/jaer/event/EventPacket.java) / `enlargeCapacity`): that copies the reference array and fills the new slots in order with new events, so those objects tend to land in contiguous heap memory. Filters drop events by setting `filteredOut`. The same packets are used for filtering, rendering, and recording. jAER uses compact object headers, so each event is an 8-byte header plus its fields.
+
+Event filtering is also simplified: [`EventFilter2D.processTyped`](../src/net/sf/jaer/eventprocessing/EventFilter2D.java) dispatches to [`processPolarity`](../src/net/sf/jaer/eventprocessing/EventFilter2D.java), [`processFrame`](../src/net/sf/jaer/eventprocessing/EventFilter2D.java), or [`processImu`](../src/net/sf/jaer/eventprocessing/EventFilter2D.java) when [`accepts`](../src/net/sf/jaer/eventprocessing/EventFilter2D.java) includes that packet type. Frames arrive cooked as a [`FramePacket`](../src/net/sf/jaer/event/FramePacket.java) (a pixel buffer, not per-pixel address-events). IMU samples arrive cooked as [`IMUSample`](../src/eu/seebetter/ini/chips/davis/imu/IMUSample.java) objects in an [`ImuPacket`](../src/net/sf/jaer/event/ImuPacket.java).
 
 ---
 
