@@ -29,6 +29,7 @@
 | macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_macos_aarch64_3_5_2.dmg) |
 | macOS | Intel | [jAER_macos_3_5_2.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_macos_3_5_2.dmg) |
 | Linux | x64 | [jAER_unix_3_5_2.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jAER_unix_3_5_2.sh) |
+| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.5.2/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md)) |
 
 Each installer includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.5.0) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page.
 
