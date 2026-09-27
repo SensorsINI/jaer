@@ -77,8 +77,11 @@ public class Chip extends Observable {
     public static final String PREFERENCES_LOADED_ONCE_KEY = "defaultPreferencesWereLoaded";
 
     /**
-     * Preferences key: first live hardware open for this chip already ran
+     * Preferences key: first live hardware open for this chip already finished
      * first-use UX (default prefs import + Hardware Configuration panel).
+     * Set only after that import runs. A prefs node that exists for filters
+     * alone, or this flag set before the import, must not skip shipped biases
+     * when every pot is still zero.
      */
     public static final String FIRST_HARDWARE_USE_HANDLED_KEY = "firstHardwareUseHandled";
 

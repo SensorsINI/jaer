@@ -5653,20 +5653,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     if (aemon instanceof BiasgenHardwareInterface) {
                         Biasgen bg = chip.getBiasgen();
-                        if (bg != null && !chip.isFirstHardwareUseHandled()) {
-                            // Do not import here — that used to block before LIVE and flood SPI (DavisConfig).
-                            // Mark handled, then import + UI after PlayMode.LIVE (see below).
-                            final String defaultPath = chip.resolveDefaultPreferencesFile();
-                            final boolean wantDefaults = !chip.isDefaultPreferencesLoadedOnce() && defaultPath != null;
-                            chip.setFirstHardwareUseHandled(true);
+                        // Do not import here — that used to block before LIVE and flood SPI (DavisConfig).
+                        // Queue import until PlayMode.LIVE (or run it immediately if already LIVE).
+                        // Do not set firstHardwareUseHandled until the import actually runs: a chip
+                        // switch while already LIVE used to mark Davis346blue handled, then a later
+                        // WAITING transition dropped the pending import and left biases at zero.
+                        final String defaultPath = (chip != null) ? chip.resolveDefaultPreferencesFile() : null;
+                        final boolean defaultsNeverLoaded = chip != null && defaultPath != null
+                                && !chip.isDefaultPreferencesLoadedOnce();
+                        final boolean biasesMissing = bg != null && !bg.isInitialized();
+                        final boolean firstUse = bg != null && chip != null && !chip.isFirstHardwareUseHandled();
+                        if (bg != null && (firstUse || (defaultsNeverLoaded && biasesMissing))) {
+                            final boolean wantDefaults = defaultsNeverLoaded && (firstUse || biasesMissing);
                             final AEChip chipForUi = chip;
                             pendingFirstHardwareUseImport = wantDefaults;
                             pendingFirstHardwareUseUi = () -> {
                                 try {
+                                    final boolean loaded = chipForUi.isDefaultPreferencesLoadedOnce();
                                     log.info("running first-hardware-use UI for "
                                             + chipForUi.getClass().getSimpleName()
-                                            + " (notifyDefaults=" + wantDefaults + ")");
-                                    if (wantDefaults) {
+                                            + " (notifyDefaults=" + (wantDefaults && loaded) + ")");
+                                    if (wantDefaults && loaded) {
                                         chipForUi.showDefaultPreferencesLoadedDialog(AEViewer.this, defaultPath);
                                     }
                                     showBiasgenOnEdt(true);
@@ -5789,6 +5796,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         if (wantWaiting) {
+            if (pendingFirstHardwareUseImport || pendingFirstHardwareUseUi != null) {
+                log.info("open did not reach LIVE; default biases will be loaded on the next successful open");
+            }
             pendingFirstHardwareUseUi = null;
             pendingFirstHardwareUseImport = false;
             disarmEdtLivenessWatchdog();
@@ -5814,6 +5824,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.LIVE);
             liveOpenMisses = 0;
             SessionCameraOpenCoordinator.noteAcquiring(this);
+            runPendingFirstHardwareUseAfterLive();
+        } else if ((pendingFirstHardwareUseImport || pendingFirstHardwareUseUi != null)
+                && getPlayMode() == PlayMode.LIVE && !suppressHardwareOpen) {
+            // Sensor menu switch while this viewer is already streaming (Davis346red → Davis346blue).
+            log.info("AEChip selected while already LIVE; loading first-use default biases now");
             runPendingFirstHardwareUseAfterLive();
         }
     }
@@ -5853,7 +5868,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (doImport && chip != null) {
                 log.info("importing first-hardware-use preferences after LIVE for "
                         + chip.getClass().getSimpleName());
-                chip.maybeLoadDefaultPreferences();
+                final boolean loaded = chip.maybeLoadDefaultPreferences();
+                if (loaded || chip.isDefaultPreferencesLoadedOnce()) {
+                    chip.setFirstHardwareUseHandled(true);
+                } else {
+                    log.warning("default biases were not imported for " + chip.getClass().getSimpleName()
+                            + "; will retry on the next open");
+                }
+            } else if (chip != null && !chip.isFirstHardwareUseHandled()) {
+                chip.setFirstHardwareUseHandled(true);
             }
         } catch (Throwable t) {
             log.log(Level.WARNING, "First-hardware-use preference import failed", t);
