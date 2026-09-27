@@ -69,4 +69,4 @@ Do not replace GitHub 3.5.3 assets after submit without a new SHA256 and a new P
 wingetcreate update SensorsINI.jAER --urls https://github.com/SensorsINI/jaer/releases/download/<ver>/jAER_windows-x64_<ver_underscores>.exe --version <ver> --submit
 ```
 
-Silent switches are install4j `-q` / splash. An unattended install (`context.isUnattended()`, including winget `--silent`) writes `.jaer-packaged-install` in the install directory. Homebrew `postflight` writes the same marker. Path heuristics will not match `C:\Program Files\jAER`.
+Silent and silent-with-progress both pass install4j `-q`. `-splash` is only valid together with `-q`; a splash title alone leaves the GUI waiting, which fails the winget unattended check. An unattended install (`context.isUnattended()`, including winget `--silent`) writes `.jaer-packaged-install` in the install directory. Homebrew `postflight` writes the same marker. Path heuristics will not match `C:\Program Files\jAER`.

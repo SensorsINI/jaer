@@ -12,7 +12,7 @@ InstallModes:
   - silentWithProgress
 InstallerSwitches:
   Silent: -q
-  SilentWithProgress: '-splash "Installing jAER"'
+  SilentWithProgress: '-q -splash "Installing jAER"'
 UpgradeBehavior: install
 ReleaseDate: 2026-09-27
 Installers:
