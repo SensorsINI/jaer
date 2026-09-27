@@ -11,12 +11,15 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.WindowAdapter;
@@ -68,6 +71,7 @@ import net.sf.jaer.util.HtmlHelpFrame;
 import net.sf.jaer.util.HtmlHelpStyle;
 import net.sf.jaer.util.JaerInstall4jRestart;
 import net.sf.jaer.util.JaerPreferencesStore;
+import net.sf.jaer.util.OutputFilename;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecordingDiskSpace;
 import net.sf.jaer.util.RemoteControl;
@@ -143,7 +147,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JButton aedat4CompressionHelpButton;
     private HtmlHelpFrame aedat4CompressionHelpDialog;
     private HtmlHelpFrame aedat4CompressionBenchDialog;
+    private JLabel recordingFolderPathLabel;
     private JLabel recordingFolderStatusLabel;
+    /** Absolute recording folder; the label shows a middle-ellipsized fit of this. */
+    private String recordingFolderFullPath;
 
     private JCheckBox activeRenderingCB;
     private JCheckBox renderBlankFramesCB;
@@ -828,11 +835,6 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         actionGbc.weightx = 0;
         p.add(compressionActions, actionGbc);
 
-        p.add(new JLabel("Recording folder:"), gbcLabel(y));
-        recordingFolderStatusLabel = new JLabel();
-        recordingFolderStatusLabel.setToolTipText("Current next-recording folder and free space on that volume");
-        p.add(recordingFolderStatusLabel, gbcField(y++));
-
         JButton chooseRecordingFolderBtn = new JButton("Choose...");
         chooseRecordingFolderBtn.setToolTipText("Folder for the next Start recording (L). Temporary files are written here until you save.");
         chooseRecordingFolderBtn.addActionListener(new ActionListener() {
@@ -852,11 +854,18 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 }
             }
         });
-        GridBagConstraints chooseGbc = gbcField(y++);
-        chooseGbc.fill = GridBagConstraints.NONE;
-        chooseGbc.weightx = 0;
-        chooseGbc.anchor = GridBagConstraints.WEST;
-        p.add(chooseRecordingFolderBtn, chooseGbc);
+        JPanel folderHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        folderHeader.setOpaque(false);
+        folderHeader.add(new JLabel("Recording folder:"));
+        folderHeader.add(chooseRecordingFolderBtn);
+        p.add(folderHeader, gbc(y++));
+
+        recordingFolderPathLabel = newRecordingFolderPathLabel();
+        p.add(recordingFolderPathLabel, gbc(y++));
+
+        recordingFolderStatusLabel = new JLabel(" ");
+        recordingFolderStatusLabel.setHorizontalAlignment(JLabel.LEFT);
+        p.add(recordingFolderStatusLabel, gbc(y++));
 
         recordingPlaybackImmediatelyCB = new JCheckBox("Playback recorded data immediately after recording");
         recordingPlaybackImmediatelyCB.setToolTipText("If enabled, recorded data plays back immediately");
@@ -1618,23 +1627,80 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         return chip == null ? null : chip.getCanvas();
     }
 
+    /**
+     * Path label fills the row but does not set the dialog width. The displayed
+     * text is shortened to the width it actually gets.
+     */
+    private JLabel newRecordingFolderPathLabel() {
+        JLabel label = new JLabel(" ") {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.width = 1;
+                return d;
+            }
+
+            @Override
+            public Dimension getMinimumSize() {
+                return getPreferredSize();
+            }
+        };
+        label.setHorizontalAlignment(JLabel.LEFT);
+        label.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                applyRecordingFolderPathText();
+            }
+        });
+        return label;
+    }
+
     private void refreshRecordingFolderStatus() {
-        if (recordingFolderStatusLabel == null) {
+        if (recordingFolderPathLabel == null || recordingFolderStatusLabel == null) {
             return;
         }
         File folder = viewer.getLastRecordingFolder();
         if (folder == null) {
-            recordingFolderStatusLabel.setText("<html>No recording folder set</html>");
+            recordingFolderFullPath = null;
+            recordingFolderPathLabel.setToolTipText(null);
+            recordingFolderPathLabel.setForeground(Color.DARK_GRAY);
+            applyRecordingFolderPathText();
+            recordingFolderStatusLabel.setText(" ");
             recordingFolderStatusLabel.setForeground(Color.DARK_GRAY);
             return;
         }
+        recordingFolderFullPath = folder.getAbsolutePath();
+        recordingFolderPathLabel.setToolTipText(recordingFolderFullPath);
+        recordingFolderPathLabel.setForeground(Color.DARK_GRAY);
+        applyRecordingFolderPathText();
         long free = RecordingDiskSpace.usableBytes(folder);
         boolean enough = free >= RecordingDiskSpace.MIN_FREE_BYTES;
-        String path = folder.getAbsolutePath();
-        recordingFolderStatusLabel.setText("<html>" + escapeHtml(path)
-                + "<br><b>" + RecordingDiskSpace.formatBytes(free) + " free</b>"
-                + " (need " + RecordingDiskSpace.minFreeSpaceLabel() + " to start recording)</html>");
+        recordingFolderStatusLabel.setText("<html><b>" + escapeHtml(RecordingDiskSpace.formatBytes(free))
+                + " free</b> (need " + escapeHtml(RecordingDiskSpace.minFreeSpaceLabel())
+                + " to start recording)</html>");
         recordingFolderStatusLabel.setForeground(enough ? new Color(0x1B5E20) : new Color(0xB71C1C));
+    }
+
+    private void applyRecordingFolderPathText() {
+        if (recordingFolderPathLabel == null) {
+            return;
+        }
+        String shown;
+        if (recordingFolderFullPath == null || recordingFolderFullPath.isEmpty()) {
+            shown = "No recording folder set";
+        } else {
+            Insets insets = recordingFolderPathLabel.getInsets();
+            int inner = recordingFolderPathLabel.getWidth() - insets.left - insets.right;
+            if (inner < 24) {
+                shown = recordingFolderFullPath;
+            } else {
+                shown = OutputFilename.ellipsizeMiddle(recordingFolderFullPath,
+                        recordingFolderPathLabel.getFontMetrics(recordingFolderPathLabel.getFont()), inner);
+            }
+        }
+        if (!shown.equals(recordingFolderPathLabel.getText())) {
+            recordingFolderPathLabel.setText(shown);
+        }
     }
 
     private void toggleAedat4CompressionHelp() {
@@ -2037,6 +2103,13 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     }
 
     private static String componentSearchText(Component c) {
+        if (c instanceof JPanel) {
+            StringBuilder sb = new StringBuilder();
+            for (Component child : ((JPanel) c).getComponents()) {
+                sb.append(componentSearchText(child)).append(' ');
+            }
+            return sb.toString();
+        }
         if (c instanceof AbstractButton) {
             return nvl(((AbstractButton) c).getText()) + " " + nvl(((AbstractButton) c).getToolTipText());
         }
