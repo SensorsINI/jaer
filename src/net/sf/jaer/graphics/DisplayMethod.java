@@ -273,6 +273,23 @@ public abstract class DisplayMethod implements PropertyChangeListener {
     }
 
     /**
+     * How long {@link #showActionText(String, int)} keeps {@code text} on screen.
+     * {@code durationMs} &gt; 0 is used as-is; otherwise the default short time
+     * scaled by text length (same formula as {@link #isActionTextShowing()}).
+     */
+    public int actionTextVisibleMs(String text, int durationMs) {
+        if (durationMs > 0) {
+            return durationMs;
+        }
+        int base = getStatusChangeDisplayTimeMillis();
+        if (base <= 0) {
+            return 0;
+        }
+        int len = text == null ? 0 : text.length();
+        return base * (1 + (len / 40));
+    }
+
+    /**
      * Shows the status change text momentarily centered in middle of display,
      * for DisplayMethod that implement it.
      *

@@ -480,24 +480,83 @@ public class AreaEventCountExposer extends EventFilter2D implements FrameAnnotat
      * Briefly draw the area grid (same idea as PatchMatchFlow AreaEventNumber).
      */
     public void showAreasTemporarily() {
-        if (stopShowingAreasTask != null) {
-            stopShowingAreasTask.cancel();
+        showAreasTemporarily(SHOW_AREAS_DURATION_MS);
+    }
+
+    /**
+     * Draw the area grid for {@code durationMs}, matching a mode-overlay that is
+     * on screen for the same interval. A non-positive duration uses
+     * {@link #SHOW_AREAS_DURATION_MS}.
+     */
+    public void showAreasTemporarily(int durationMs) {
+        if (durationMs < 1) {
+            durationMs = SHOW_AREAS_DURATION_MS;
         }
-        if (showAreasTimer == null) {
-            showAreasTimer = new Timer("AreaEventCountExposer-areas", true);
-        }
-        stopShowingAreasTask = new TimerTask() {
-            @Override
-            public void run() {
-                showAreasTemporarily = false;
-                if (!AreaEventCountExposer.this.showAreas) {
-                    registerDisplayAnnotator(false);
-                }
+        synchronized (this) {
+            if (stopShowingAreasTask != null) {
+                stopShowingAreasTask.cancel();
             }
-        };
-        showAreasTemporarily = true;
-        registerDisplayAnnotator(true);
-        showAreasTimer.schedule(stopShowingAreasTask, SHOW_AREAS_DURATION_MS);
+            if (showAreasTimer == null) {
+                showAreasTimer = new Timer("AreaEventCountExposer-areas", true);
+            }
+            stopShowingAreasTask = new TimerTask() {
+                @Override
+                public void run() {
+                    expireTemporaryAreas(this);
+                }
+            };
+            showAreasTemporarily = true;
+            registerDisplayAnnotator(true);
+            showAreasTimer.schedule(stopShowingAreasTask, durationMs);
+        }
+    }
+
+    /**
+     * Drop a temporary area grid. A permanent {@link #isShowAreas()} grid stays.
+     */
+    public void hideAreasTemporarily() {
+        boolean repaint = false;
+        synchronized (this) {
+            if (stopShowingAreasTask != null) {
+                stopShowingAreasTask.cancel();
+                stopShowingAreasTask = null;
+            }
+            if (!showAreasTemporarily) {
+                return;
+            }
+            showAreasTemporarily = false;
+            if (!showAreas) {
+                registerDisplayAnnotator(false);
+                repaint = true;
+            }
+        }
+        if (repaint) {
+            repaintCanvas();
+        }
+    }
+
+    private void expireTemporaryAreas(TimerTask task) {
+        boolean repaint = false;
+        synchronized (this) {
+            if (stopShowingAreasTask != task) {
+                return;
+            }
+            stopShowingAreasTask = null;
+            showAreasTemporarily = false;
+            if (!showAreas) {
+                registerDisplayAnnotator(false);
+                repaint = true;
+            }
+        }
+        if (repaint) {
+            repaintCanvas();
+        }
+    }
+
+    private void repaintCanvas() {
+        if (chip != null && chip.getCanvas() != null) {
+            chip.getCanvas().repaint();
+        }
     }
 
     /**

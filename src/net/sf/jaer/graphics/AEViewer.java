@@ -14286,11 +14286,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (durationMs <= 0 && tabOverlayVisible && dm.isActionTextShowing()) {
             dm.clearActionText();
             tabOverlayVisible = false;
+            if (aePlayer != null) {
+                aePlayer.hideTemporaryAreaGrid();
+            }
             chip.getCanvas().repaint();
             return;
         }
         String s = formatViewAndPlaybackStatus();
         log.info(s.replace('\n', ' '));
+        if (aePlayer != null) {
+            aePlayer.syncAreaGridWithModeOverlay(dm.actionTextVisibleMs(s, durationMs));
+        }
         dm.showActionText(s, durationMs);
         chip.getCanvas().repaint();
         tabOverlayVisible = true;

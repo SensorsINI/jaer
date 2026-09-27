@@ -951,7 +951,57 @@ public abstract class AbstractAEPlayer {
             s = String.format("CountDuration: %ss/frame", engFmt.format(getTimesliceUs() * 1e-6f));
         }
         if (viewer != null) {
+            syncAreaGridWithModeOverlay(modeOverlayDurationMs(s));
             viewer.showActionText(s);
+        }
+    }
+
+    /** How long the centered mode overlay stays up for {@code text}. */
+    private int modeOverlayDurationMs(String text) {
+        if (viewer == null || viewer.getChip() == null || viewer.getChip().getCanvas() == null
+                || viewer.getChip().getCanvas().getDisplayMethod() == null) {
+            return 0;
+        }
+        return viewer.getChip().getCanvas().getDisplayMethod().actionTextVisibleMs(text, 0);
+    }
+
+    /**
+     * Centered accumulation overlay. In AreaEventCount, also flash the area grid
+     * for the same interval (f/s count changes).
+     */
+    private void showAccumulationAction(String text) {
+        if (viewer == null || text == null) {
+            return;
+        }
+        if (isAreaEventCountEnabled()) {
+            syncAreaGridWithModeOverlay(modeOverlayDurationMs(text));
+        }
+        viewer.showActionText(text);
+    }
+
+    /**
+     * While an AreaEventCount mode overlay is up, draw the area grid for the
+     * same interval. Other modes drop a temporary grid; a permanent
+     * {@code showAreas} grid is left alone.
+     */
+    void syncAreaGridWithModeOverlay(int durationMs) {
+        if (!isAreaEventCountEnabled()) {
+            hideTemporaryAreaGrid();
+            return;
+        }
+        if (durationMs <= 0) {
+            return;
+        }
+        AreaEventCountExposer exposer = getAreaEventCountExposer();
+        if (exposer != null) {
+            exposer.showAreasTemporarily(durationMs);
+        }
+    }
+
+    /** Hide a grid that was flashed with a mode overlay. */
+    void hideTemporaryAreaGrid() {
+        if (areaEventCountExposer != null) {
+            areaEventCountExposer.hideAreasTemporarily();
         }
     }
 
@@ -1456,7 +1506,7 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             speedUp();
-            showAction(speedText(true));
+            showAccumulationAction(speedText(true));
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -1470,7 +1520,7 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             slowDown();
-            showAction(speedText(false));
+            showAccumulationAction(speedText(false));
             putValue(Action.SELECTED_KEY, true);
         }
     }
