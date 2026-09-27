@@ -42,7 +42,7 @@
       <ul>
         <li><strong>SmartScreen</strong> may still say <em>Windows protected your PC</em> until the signature has enough downloads. Use <strong>More info</strong> → <strong>Run anyway</strong>.</li>
         <li>If <strong>Smart App Control</strong> blocks the launcher, allow the app or turn that feature off.</li>
-        <li><code>winget</code> can install the signed build even while SmartScreen still warns.</li>
+        <li>Unattended install, after the winget catalog entry is published: <code>winget install --silent SensorsINI.jAER</code>. That can install the signed build even while SmartScreen still warns. Until the catalog PR is merged, use the <code>.exe</code> above.</li>
       </ul>
       <h3>USB cameras</h3>
       <ul>
@@ -73,6 +73,11 @@
       <p>Current DMGs are signed with Apple Developer ID and notarized (identified developer <strong>Tobias Delbruck</strong>). A notarized GitHub DMG should open normally. An older unsigned DMG needs
         <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac">right-click → Open</a>
         or Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
+      <h3>Unattended (Homebrew)</h3>
+      <p>After the <code>sensorsini/jaer</code> tap exists (it does not until that repository is published):</p>
+      <pre><code>brew tap sensorsini/jaer
+brew install --cask --yes jaer</code></pre>
+      <p>Until then, use the DMG. Upgrade a Homebrew install with <code>brew upgrade --cask jaer</code>, not Help → Download and install.</p>
       <h3>USB cameras (Apple Silicon)</h3>
       <p>Live USB cameras need Homebrew
         <a href="https://formulae.brew.sh/formula/libusb">libusb</a>:</p>
@@ -89,7 +94,13 @@
       <p>Download <code>jAER_unix_*.sh</code>. Installers are <strong>x64</strong> only.</p>
       <pre><code>chmod +x jAER_unix_*.sh
 sh jAER_unix_*.sh</code></pre>
-      <p>Start jAER from the install directory or the desktop / GNOME entry the installer created. There is no official apt / <code>.deb</code> (USB cameras need an unsandboxed install).</p>
+      <p>The <code>.sh</code> installer adds a desktop / GNOME entry. Start jAER from that entry or from the install directory.</p>
+      <h3>Unattended (<code>.deb</code>)</h3>
+      <p>From 3.5.3 the release also has a <code>.deb</code>. It is a GitHub file, not an apt repository, so <code>apt install jaer</code> by name does not work. The homepage Download button stays the <code>.sh</code>.</p>
+      <pre><code>wget -O jAER_linux-amd64_3_5_3.deb \
+  https://github.com/SensorsINI/jaer/releases/download/3.5.3/jAER_linux-amd64_3_5_3.deb
+sudo apt install ./jAER_linux-amd64_3_5_3.deb</code></pre>
+      <p>The package installs into <code>/opt/jAER</code> and adds an application-menu entry named <strong>jAER</strong>. Start it from that menu or with <code>/opt/jAER/jaer</code>.</p>
       <p>If USB udev rules are missing for a plugged-in jAER device, jAER shows the exact shell command to add the rule(s).</p>
     </section>
 
@@ -111,9 +122,10 @@ sh jAER_unix_*.sh</code></pre>
       <h3>macOS</h3>
       <p>In the folder you chose at install (<code>~/Applications/jAER</code>, <code>~/jaer</code>, or <code>/Applications/jAER</code>), double-click the <strong>Uninstall jAER</strong> app. Homebrew <code>libusb</code> is not removed.</p>
       <h3>Linux</h3>
-      <p>From the install directory:</p>
+      <p>From the install directory of a <code>.sh</code> install:</p>
       <pre><code>./uninstall</code></pre>
       <p>Or use the Uninstall desktop / GNOME entry if the installer created one. <code>sudo</code> is needed only if you installed under <code>/opt</code> (or another root-owned path).</p>
+      <p>A <code>.deb</code> install: <code>sudo apt remove jaer</code>.</p>
       <p>A <code>git clone</code> has no uninstaller: delete that clone.</p>
     </section>
   </main>
