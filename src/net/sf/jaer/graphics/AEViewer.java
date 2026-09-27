@@ -3602,6 +3602,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip, not continuing");
                 return;
             }
+            // No camera required: a first Sensor-menu selection still has zero pots
+            // until shipped deviceSettings XML is imported (DVS128 with nothing plugged in).
+            chip.loadMissingDefaultBiases();
             chip.setAeInputStream(oldAeInputStream);
             aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);

@@ -289,6 +289,7 @@ public class Chip extends Observable {
      * @return true if a default preferences file was imported
      * @see #getDefaultPreferencesFile()
      * @see #resolveDefaultPreferencesFile()
+     * @see #loadMissingDefaultBiases()
      */
     public boolean maybeLoadDefaultPreferences() {
         String path = resolveDefaultPreferencesFile();
@@ -316,6 +317,25 @@ public class Chip extends Observable {
             log.log(Level.SEVERE, "failed to import default preferences from " + path, ex);
             return false;
         }
+    }
+
+    /**
+     * Import shipped {@code deviceSettings} biases when this chip has never
+     * loaded them and every pot is still zero. Used when the sensor is chosen
+     * with no camera open; a later live open still sends the loaded values.
+     *
+     * @return true if a default preferences file was imported
+     */
+    public boolean loadMissingDefaultBiases() {
+        if (biasgen == null || biasgen.isInitialized() || isDefaultPreferencesLoadedOnce()) {
+            return false;
+        }
+        if (resolveDefaultPreferencesFile() == null) {
+            return false;
+        }
+        log.info("loading shipped default biases for " + getClass().getSimpleName()
+                + " (no saved bias values)");
+        return maybeLoadDefaultPreferences();
     }
 
     /**

@@ -189,10 +189,11 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         pack();
         SwingUtilities.invokeLater(() -> DVSUserControlPanel.selectUserFriendlyTabIn(getContentPane()));
 
-        // check and warn users about uninitialized biases (skip on first-hardware-use UX from AEViewer)
+        // check and warn users about uninitialized biases (skip when shipped defaults just loaded)
         if (chip.getBiasgen() != null) {
+            chip.loadMissingDefaultBiases();
             if (chip.getBiasgen().isInitialized()) {
-                log.info("biasgen reports it it initialized");
+                log.info("biasgen reports it is initialized");
                 return;
             }
             Biasgen bg = chip.getBiasgen();
