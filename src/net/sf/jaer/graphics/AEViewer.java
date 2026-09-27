@@ -957,6 +957,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
+        // Page Up/Down and Home/End are unbound. Function-key mode on some
+        // keyboards sends these instead of the arrow keys (contrast and
+        // render rate). Menu accelerators miss keys when the GL canvas has focus.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getModifiersEx() != 0) {
+                    return false;
+                }
+                String notice = unmappedNavigationKeyNotice(e.getKeyCode());
+                if (notice == null) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                if (MenuSelectionManager.defaultManager().getSelectedPath().length > 0) {
+                    return false;
+                }
+                Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focusedControlUsesNavigationKeys(focus)) {
+                    return false;
+                }
+                showActionText(notice);
+                e.consume();
+                return true;
+            }
+        });
         // Windows has no libusb hotplug: clicking the viewer while WAITING
         // restarts 1 s USB scans so a camera plugged in while jAER was in the
         // background is found. PLAYBACK does not scan.
@@ -7882,6 +7911,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             chip.getCanvas().getDisplayMethod().showActionText(s);
             chip.getCanvas().repaint();
         }
+    }
+
+    /**
+     * Overlay for Page Up/Down and Home/End, which jAER does not bind. Those
+     * are what some keyboards send for the arrow keys when function-key mode is on.
+     *
+     * @return notice text, or null when {@code keyCode} is not one of those keys
+     */
+    static String unmappedNavigationKeyNotice(int keyCode) {
+        String name;
+        switch (keyCode) {
+            case KeyEvent.VK_PAGE_UP:
+                name = "Page Up";
+                break;
+            case KeyEvent.VK_PAGE_DOWN:
+                name = "Page Down";
+                break;
+            case KeyEvent.VK_HOME:
+                name = "Home";
+                break;
+            case KeyEvent.VK_END:
+                name = "End";
+                break;
+            default:
+                return null;
+        }
+        return name + " is not a jAER shortcut.\n"
+                + "If you meant the arrow keys, turn off function-key mode.";
+    }
+
+    /** Text fields, sliders, and lists already use these keys. */
+    private static boolean focusedControlUsesNavigationKeys(Component focus) {
+        for (Component c = focus; c != null; c = c.getParent()) {
+            if (c instanceof JTextField || c instanceof JTextArea
+                    || c instanceof JComboBox || c instanceof JScrollPane
+                    || c instanceof javax.swing.JSlider
+                    || c instanceof javax.swing.JSpinner
+                    || c instanceof javax.swing.JList
+                    || c instanceof javax.swing.JTable) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private final EvictingQueue<String> statusTextFieldMessages = EvictingQueue.create(4);
