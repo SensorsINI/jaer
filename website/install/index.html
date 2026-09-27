@@ -42,8 +42,11 @@
       <ul>
         <li><strong>SmartScreen</strong> may still say <em>Windows protected your PC</em> until the signature has enough downloads. Use <strong>More info</strong> → <strong>Run anyway</strong>.</li>
         <li>If <strong>Smart App Control</strong> blocks the launcher, allow the app or turn that feature off.</li>
-        <li>Unattended install, after the winget catalog entry is published: <code>winget install --silent SensorsINI.jAER</code>. That can install the signed build even while SmartScreen still warns. Until the catalog PR is merged, use the <code>.exe</code> above.</li>
       </ul>
+      <h3>Unattended (winget)</h3>
+      <p>After the winget catalog entry is published (it is not, until Microsoft merges it):</p>
+      <pre><code>winget install --silent SensorsINI.jAER</code></pre>
+      <p>That can install the signed build even while SmartScreen still warns. Until the catalog entry is merged, use the <code>.exe</code> above.</p>
       <h3>USB cameras</h3>
       <ul>
         <li>If jAER reports <code>LIBUSB_ERROR_NOT_SUPPORTED</code>, bind <strong>WinUSB</strong> with <a href="https://zadig.akeo.ie/">Zadig</a> (not libusb-win32).</li>
