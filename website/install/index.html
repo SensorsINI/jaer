@@ -42,10 +42,8 @@
       <ul>
         <li><strong>SmartScreen</strong> may still say <em>Windows protected your PC</em> until the signature has enough downloads. Use <strong>More info</strong> → <strong>Run anyway</strong>.</li>
         <li>If <strong>Smart App Control</strong> blocks the launcher, allow the app or turn that feature off.</li>
+        <li><code>winget</code> can install the signed build even while SmartScreen still warns.</li>
       </ul>
-      <h3>Unattended install (winget, from 3.6.0)</h3>
-      <p><code>--silent</code> uses the installer switch <code>-q</code>. The package is listed when 3.6.0 is in the winget catalog. 3.5.2 is still the <code>.exe</code> above.</p>
-      <pre><code>winget install --silent SensorsINI.jAER</code></pre>
       <h3>USB cameras</h3>
       <ul>
         <li>If jAER reports <code>LIBUSB_ERROR_NOT_SUPPORTED</code>, bind <strong>WinUSB</strong> with <a href="https://zadig.akeo.ie/">Zadig</a> (not libusb-win32).</li>
@@ -75,10 +73,6 @@
       <p>Current DMGs are signed with Apple Developer ID and notarized (identified developer <strong>Tobias Delbruck</strong>). A notarized GitHub DMG should open normally. An older unsigned DMG needs
         <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac">right-click → Open</a>
         or Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
-      <h3>Unattended install (Homebrew, from 3.6.0)</h3>
-      <p>Needs the <code>sensorsini/jaer</code> tap. The cask runs the installer with <code>-q</code> and depends on Homebrew <code>libusb</code>. 3.5.2 is still the DMG steps above.</p>
-      <pre><code>brew tap sensorsini/jaer
-brew install --cask --yes jaer</code></pre>
       <h3>USB cameras (Apple Silicon)</h3>
       <p>Live USB cameras need Homebrew
         <a href="https://formulae.brew.sh/formula/libusb">libusb</a>:</p>
@@ -95,12 +89,7 @@ brew install --cask --yes jaer</code></pre>
       <p>Download <code>jAER_unix_*.sh</code>. Installers are <strong>x64</strong> only.</p>
       <pre><code>chmod +x jAER_unix_*.sh
 sh jAER_unix_*.sh</code></pre>
-      <p>Start jAER from the install directory or the desktop / GNOME entry the <code>.sh</code> installer created.</p>
-      <h3>Unattended install (.deb, from 3.6.0)</h3>
-      <p><code>sudo apt install ./file.deb</code> installs <code>Depends</code> such as <code>libusb-1.0-0</code>. <code>dpkg -i</code> does not. There is no <code>apt install jaer</code> by package name. 3.5.2 has no <code>.deb</code>; use the <code>.sh</code>. x64 only. Files go to <code>/opt/jAER</code> (launcher <code>jaer</code>). <code>sudo</code> is required. The install does not open a window.</p>
-      <pre><code>wget -O jAER_linux-amd64_3_6_0.deb \
-  https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_linux-amd64_3_6_0.deb
-sudo apt install ./jAER_linux-amd64_3_6_0.deb</code></pre>
+      <p>Start jAER from the install directory or the desktop / GNOME entry the installer created. There is no official apt / <code>.deb</code> (USB cameras need an unsandboxed install).</p>
       <p>If USB udev rules are missing for a plugged-in jAER device, jAER shows the exact shell command to add the rule(s).</p>
     </section>
 
