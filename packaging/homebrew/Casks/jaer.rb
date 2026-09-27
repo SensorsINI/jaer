@@ -23,7 +23,8 @@ cask "jaer" do
   end
 
   depends_on formula: "libusb"
-  depends_on macos: :catalina
+  # Homebrew 7 disables `depends_on macos: :catalina` (no replacement).
+  # Its oldest supported release is Big Sur, so a Catalina floor cannot be expressed.
 
   # install4j media 38/39 installerName: "jAER ${compiler:sys.version} Installer".
   # Confirm with hdiutil attach (an rc DMG is OK for the name, not for sha256).

@@ -77,10 +77,12 @@
         <a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac">right-click → Open</a>
         or Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
       <h3>Unattended (Homebrew)</h3>
-      <p>After the <code>sensorsini/jaer</code> tap exists (it does not until that repository is published):</p>
+      <p>Homebrew 6 and later refuse to load this third-party tap until you trust the cask. That prompt is about the tap’s Ruby install script, not the notarized DMG. Trust this cask only, then install:</p>
       <pre><code>brew tap sensorsini/jaer
+brew trust --cask sensorsini/jaer/jaer
 brew install --cask --yes jaer</code></pre>
-      <p>Until then, use the DMG. Upgrade a Homebrew install with <code>brew upgrade --cask jaer</code>, not Help → Download and install.</p>
+      <p>One command does the same trust for this cask only: <code>brew install --cask --yes sensorsini/jaer/jaer</code>. <code>brew trust sensorsini/jaer</code> would also allow every future cask from the tap.</p>
+      <p>The cask installs Homebrew <code>libusb</code>, puts jAER in <code>/Applications/jAER</code>, and adds a <code>/Applications/jAER.app</code> symlink. Upgrade with <code>brew upgrade --cask jaer</code>, not Help → Download and install. A DMG install can skip the commands above.</p>
       <h3>USB cameras (Apple Silicon)</h3>
       <p>Live USB cameras need Homebrew
         <a href="https://formulae.brew.sh/formula/libusb">libusb</a>:</p>
@@ -123,7 +125,7 @@ sudo apt install ./jAER_linux-amd64_3_5_3.deb</code></pre>
       <h3>Windows</h3>
       <p>Settings → Apps → Installed apps → search <strong>jAER</strong> → Uninstall. Or run <code>uninstall.exe</code> in the install folder (often <code>C:\Program Files\jAER</code>). A Zadig WinUSB binding is left as-is.</p>
       <h3>macOS</h3>
-      <p>In the folder you chose at install (<code>~/Applications/jAER</code>, <code>~/jaer</code>, or <code>/Applications/jAER</code>), double-click the <strong>Uninstall jAER</strong> app. Homebrew <code>libusb</code> is not removed.</p>
+      <p>A DMG install: in the folder you chose (<code>~/Applications/jAER</code>, <code>~/jaer</code>, or <code>/Applications/jAER</code>), double-click the <strong>Uninstall jAER</strong> app. A Homebrew install: <code>brew uninstall --cask jaer</code> (removes <code>/Applications/jAER</code> and the <code>jAER.app</code> symlink). Homebrew <code>libusb</code> is not removed.</p>
       <h3>Linux</h3>
       <p>From the install directory of a <code>.sh</code> install:</p>
       <pre><code>./uninstall</code></pre>

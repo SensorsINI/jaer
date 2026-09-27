@@ -72,13 +72,16 @@ git push -u origin HEAD
 
 Users:
 
+Homebrew 6 and later refuse the short name until the cask is trusted. The notarized DMG does not satisfy that check.
+
 ```bash
 brew tap sensorsini/jaer
-brew install --cask jaer
+brew trust --cask sensorsini/jaer/jaer
+brew install --cask --yes jaer
 brew upgrade --cask jaer
 ```
 
-Fully qualified: `brew install --cask sensorsini/jaer/jaer`.
+Fully qualified install trusts only this cask: `brew install --cask --yes sensorsini/jaer/jaer`.
 
 ## Graduate to homebrew/cask
 
