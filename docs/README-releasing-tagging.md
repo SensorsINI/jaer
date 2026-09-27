@@ -78,7 +78,7 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
 
    Wait for assemble (Release is a **draft**).
 9. **Approve** Environment [`publish-release`](https://github.com/SensorsINI/jaer/settings/environments) on that run. That job commits `updates.xml` and sets GitHub **Latest**. Check [Releases](https://github.com/SensorsINI/jaer/releases), in-app **Help → Check for updates**, and [jaerproject.org](https://jaerproject.org).
-10. **Package managers start at 3.6.0.** Do not `wingetcreate submit` or create `SensorsINI/homebrew-jaer` for 3.5.2. When Latest is public **3.6.0**, hash that tag’s exe and DMGs (not an rc) into `packaging/winget/3.6.0/` and the cask. The Linux `.deb` (`jAER_linux-amd64_*.deb`) is attached beside the `.sh` from 3.6.0 on; it is not on the 3.5.2 release. No `apt install jaer` by name. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md), [`packaging/deb/README.md`](../packaging/deb/README.md).
+10. **Package managers start at 3.5.3.** Do not `wingetcreate submit` or create `SensorsINI/homebrew-jaer` for 3.5.2 or any `-rc` tag. When Latest is public **3.5.3**, hash that tag’s exe and DMGs (not an rc) into `packaging/winget/3.5.3/` and the cask. The Linux `.deb` (`jAER_linux-amd64_*.deb`) is attached beside the `.sh` from 3.5.3 on; it is not on the 3.5.2 release. No `apt install jaer` by name. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md), [`packaging/deb/README.md`](../packaging/deb/README.md).
 
 ## Snapshot (moving tester build)
 

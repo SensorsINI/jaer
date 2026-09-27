@@ -9,13 +9,13 @@ winget upgrade SensorsINI.jAER
 
 Package identifier: `SensorsINI.jAER` (x64 only, install4j media id 26). Folder in winget-pkgs: `manifests/s/SensorsINI/jAER/<version>/`.
 
-## Do not submit until Latest 3.6.0
+## Do not submit until Latest 3.5.3
 
-YAML under `3.5.2/` is a **schema template**. First public `wingetcreate submit` is **3.6.0** (copy that folder, retarget version/URL/hash). 3.5 stays GitHub Releases + jaerproject.org + the `.exe`. `InstallerSha256` is 64 zeros until Latest 3.6.0.
+YAML under `3.5.2/` is a **schema template**. First public `wingetcreate submit` is **3.5.3** (copy that folder, retarget version/URL/hash). 3.5.2 stays GitHub Releases + jaerproject.org + the `.exe`. `InstallerSha256` is 64 zeros until Latest 3.5.3.
 
 The public tag **rebuilds** the exe ([`docs/README-releasing-tagging.md`](../../docs/README-releasing-tagging.md)). A PR that hashes an rc will fail the day Latest is published.
 
-Gate: [GitHub Latest](https://github.com/SensorsINI/jaer/releases/latest) is the public **3.6.0** tag, and the exe Properties → Digital Signatures → **Tobias Delbruck** ([Azure Artifact Signing](../azure-artifact-signing.md)).
+Gate: [GitHub Latest](https://github.com/SensorsINI/jaer/releases/latest) is the public **3.5.3** tag, and the exe Properties → Digital Signatures → **Tobias Delbruck** ([Azure Artifact Signing](../azure-artifact-signing.md)).
 
 ## Publisher
 
@@ -23,14 +23,14 @@ YAML `Publisher` is **Tobias Delbruck**, matching Azure Public Trust on the sign
 
 That string may differ from install4j’s company field (`Sensors Group - Inst. of Neuroinformatics…` in `install4j/jaer.install4j`), which is what Apps & Features often shows. After one real install of the Latest exe, if ARP Publisher or DisplayName disagree with the YAML, add `AppsAndFeaturesEntries` so `winget upgrade` still matches. Do not invent a publisher that disagrees with the signed exe.
 
-## Fill SHA256 (after Latest 3.6.0)
+## Fill SHA256 (after Latest 3.5.3)
 
 ```text
-gh release download <3.6.0-tag> -p "jAER_windows-x64_<underscores>.exe"
+gh release download <3.5.3-tag> -p "jAER_windows-x64_<underscores>.exe"
 Get-FileHash -Algorithm SHA256 .\jAER_windows-x64_<underscores>.exe
 ```
 
-Copy `3.5.2/` to a `<3.6.0>/` folder, paste the hash into `SensorsINI.jAER.installer.yaml`. Commit in this repo first. Pin the URL at `/releases/download/<3.6.0-tag>/…`, not `/releases/latest/download/` and not Dropbox.
+Copy `3.5.2/` to a `<3.5.3>/` folder, paste the hash into `SensorsINI.jAER.installer.yaml`. Commit in this repo first. Pin the URL at `/releases/download/<3.5.3-tag>/…`, not `/releases/latest/download/` and not Dropbox.
 
 Optional `ReleaseDate` (`YYYY-MM-DD`) can be added then.
 
@@ -40,7 +40,7 @@ Optional `ReleaseDate` (`YYYY-MM-DD`) can be added then.
 winget validate packaging\winget\3.5.2
 ```
 
-That only checks YAML schema. It does **not** download the exe. Placeholder SHA256 is schema-valid; do not `wingetcreate submit` until the hash is from Latest **3.6.0**.
+That only checks YAML schema. It does **not** download the exe. Placeholder SHA256 is schema-valid; do not `wingetcreate submit` until the hash is from Latest **3.5.3**.
 
 `winget install --manifest packaging\winget\3.5.2` is a local schema/path check only. It will fail while SHA256 is zeros.
 
@@ -52,16 +52,16 @@ Optional rc smoke test: copy the folder aside, point `InstallerUrl` at `…/down
 
 ```text
 winget install Microsoft.WingetCreate
-wingetcreate submit packaging\winget\<3.6.0>
+wingetcreate submit packaging\winget\<3.5.3>
 ```
 
 Or a manual PR:
 
 1. Fork https://github.com/microsoft/winget-pkgs
-2. Copy the three YAML files to `manifests/s/SensorsINI/jAER/<3.6.0>/`
+2. Copy the three YAML files to `manifests/s/SensorsINI/jAER/<3.5.3>/`
 3. Open a PR against `microsoft/winget-pkgs` (`master`)
 
-Do not replace GitHub 3.6.0 assets after submit without a new SHA256 and a new PR.
+Do not replace GitHub 3.5.3 assets after submit without a new SHA256 and a new PR.
 
 ## Later public versions
 

@@ -2038,9 +2038,27 @@ return true;</property>
         <entry filesetId="9004" />
       </exclude>
       <jreBundle usePack200="false" />
-      <postInstallScript>mkdir -p /opt/jAER
+      <!-- setupType none skips the .sh wizard, including its desktop entry. -->
+      <postInstallScript>mkdir -p /opt/jAER /usr/share/applications
 printf '%s\n' deb &gt; /opt/jAER/.jaer-packaged-install
+cat &gt; /usr/share/applications/jaer.desktop &lt;&lt;'EOF'
+[Desktop Entry]
+Type=Application
+Name=jAER
+Comment=Desktop application for neuromorphic event cameras
+Exec=/opt/jAER/jaer %U
+Icon=/opt/jAER/SplashScreen.png
+Terminal=false
+Categories=Science;
+EOF
+chmod 644 /usr/share/applications/jaer.desktop
+echo
+echo 'jAER is installed.'
+echo '  Application menu: jAER'
+echo '  Command:          /opt/jAER/jaer'
 </postInstallScript>
+      <postUninstallScript>rm -f /usr/share/applications/jaer.desktop
+</postUninstallScript>
     </linuxDeb>
     <windows name="Windows" id="26" architecture="64">
       <exclude>

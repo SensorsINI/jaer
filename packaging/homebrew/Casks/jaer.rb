@@ -2,7 +2,8 @@ cask "jaer" do
   version "3.5.2"
 
   # PLACEHOLDER SHA256 (64 zeros). Do not publish SensorsINI/homebrew-jaer until
-  # GitHub Latest is 3.5.2 and these hashes are shasum -a 256 of that tag's DMGs.
+  # GitHub Latest is 3.5.3 and these hashes are shasum -a 256 of that tag's DMGs.
+  # version below stays 3.5.2 until that hash fill.
   # See packaging/homebrew/README.md. Public tag rebuilds media; do not hash an -rc.
   on_arm do
     sha256 "0000000000000000000000000000000000000000000000000000000000000000"
