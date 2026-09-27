@@ -1,16 +1,15 @@
 cask "jaer" do
-  version "3.5.2"
+  version "3.5.3"
 
-  # PLACEHOLDER SHA256 (64 zeros). Do not publish SensorsINI/homebrew-jaer until
-  # GitHub Latest is 3.5.3 and these hashes are shasum -a 256 of that tag's DMGs.
-  # version below stays 3.5.2 until that hash fill.
-  # See packaging/homebrew/README.md. Public tag rebuilds media; do not hash an -rc.
+  # SHA256 of the public 3.5.3 DMGs (not an rc). Confirm the installer .app name
+  # on a Mac before creating SensorsINI/homebrew-jaer.
+  # See packaging/homebrew/README.md.
   on_arm do
-    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+    sha256 "80b45af56a21aabd2ed1effb44fb3cd38d337a599644c9ac516bc3cfd2f5e917"
     url "https://github.com/SensorsINI/jaer/releases/download/#{version}/jAER_macos_aarch64_#{version.tr(".", "_")}.dmg"
   end
   on_intel do
-    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+    sha256 "4844d5fc2086485eb1255e4e3cf4dad90c255141cd6123431d47c4b4ba7ef25e"
     url "https://github.com/SensorsINI/jaer/releases/download/#{version}/jAER_macos_#{version.tr(".", "_")}.dmg"
   end
 

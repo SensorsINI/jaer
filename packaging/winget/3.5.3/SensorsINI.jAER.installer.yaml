@@ -1,0 +1,23 @@
+# SHA256 is Get-FileHash of the public 3.5.3 GitHub asset (not an rc).
+PackageIdentifier: SensorsINI.jAER
+PackageVersion: 3.5.3
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: exe
+Scope: machine
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+InstallerSwitches:
+  Silent: -q
+  SilentWithProgress: '-splash "Installing jAER"'
+UpgradeBehavior: install
+ReleaseDate: 2026-09-27
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/SensorsINI/jaer/releases/download/3.5.3/jAER_windows-x64_3_5_3.exe
+    InstallerSha256: 002429f22ee2a292b18bbe36c29c17e94a92a6628dc3f42db95fdaab523a8e68
+ManifestType: installer
+ManifestVersion: 1.6.0
