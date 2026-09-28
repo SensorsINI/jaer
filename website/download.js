@@ -72,6 +72,21 @@
     return d.toISOString().slice(0, 10);
   }
 
+  function formatBuiltTip(iso) {
+    if (!iso) {
+      return "";
+    }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) {
+      return "";
+    }
+    return d.toISOString().slice(0, 10) + " " + d.toISOString().slice(11, 16) + " UTC";
+  }
+
+  function appendSep(parent) {
+    parent.appendChild(document.createTextNode(" · "));
+  }
+
   function fillButton(btn, meta, release, detected, label) {
     if (!btn) {
       return;
@@ -116,8 +131,6 @@
     const snapSlot = document.getElementById("snapshot-slot");
     const snapBtn = document.getElementById("snapshot-btn");
     const snapMeta = document.getElementById("snapshot-meta");
-    const snapCommits = document.getElementById("snapshot-commits");
-    const snapCommitsWrap = document.getElementById("snapshot-commits-wrap");
     const keys = ["windows", "macos_aarch64", "macos_intel", "linux"];
 
     keys.forEach(function (key) {
@@ -156,44 +169,62 @@
     );
     if (snapReady && snapSlot && snapBtn) {
       snapSlot.hidden = false;
-      fillButton(snapBtn, snapMeta, snap, detected, "Download Snapshot");
-      const bits = [];
-      if (snap.short_sha) {
-        bits.push(snap.short_sha);
-      }
-      const day = formatDay(snap.built_at || snap.published_at);
-      if (day) {
-        bits.push(day);
-      }
-      if (detected.key && LABELS[detected.key]) {
-        bits.push(LABELS[detected.key]);
-      }
-      const snapAsset = detected.key && snap[detected.key] ? snap[detected.key] : null;
-      if (snapAsset) {
-        const size = formatSize(snapAsset.size);
-        if (size) {
-          bits.push(size);
+      fillButton(snapBtn, null, snap, detected, "Download Snapshot");
+      if (snapMeta) {
+        snapMeta.hidden = false;
+        snapMeta.textContent = "";
+        const parts = [];
+        const stableTag = latest && latest.tag_name;
+        const snapSha = snap.sha || snap.short_sha;
+        const short = snap.short_sha || (snapSha ? String(snapSha).slice(0, 7) : "");
+        if (short) {
+          if (stableTag && snapSha) {
+            const a = document.createElement("a");
+            a.href =
+              "https://github.com/SensorsINI/jaer/compare/" + stableTag + "..." + snapSha;
+            a.title = "Commits on master since Stable.";
+            a.textContent = short;
+            parts.push(a);
+          } else {
+            parts.push(document.createTextNode(short));
+          }
         }
-      }
-      if (!bits.length) {
-        bits.push("Latest master · testers");
-      }
-      snapMeta.hidden = false;
-      snapMeta.textContent = bits.join(" · ");
-      const stableTag = latest && latest.tag_name;
-      const snapSha = snap.sha || snap.short_sha;
-      if (snapCommits && snapCommitsWrap && stableTag && snapSha) {
-        snapCommits.href =
-          "https://github.com/SensorsINI/jaer/compare/" + stableTag + "..." + snapSha;
-        snapCommitsWrap.hidden = false;
-      } else if (snapCommitsWrap) {
-        snapCommitsWrap.hidden = true;
+        const builtIso = snap.built_at || snap.published_at;
+        const day = formatDay(builtIso);
+        if (day) {
+          const tip = formatBuiltTip(builtIso);
+          if (tip) {
+            const t = document.createElement("span");
+            t.textContent = day;
+            t.title = tip;
+            parts.push(t);
+          } else {
+            parts.push(document.createTextNode(day));
+          }
+        }
+        if (detected.key && LABELS[detected.key]) {
+          parts.push(document.createTextNode(LABELS[detected.key]));
+        }
+        const snapAsset = detected.key && snap[detected.key] ? snap[detected.key] : null;
+        if (snapAsset) {
+          const size = formatSize(snapAsset.size);
+          if (size) {
+            parts.push(document.createTextNode(size));
+          }
+        }
+        if (!parts.length) {
+          snapMeta.textContent = "Latest master · testers";
+        } else {
+          parts.forEach(function (node, i) {
+            if (i) {
+              appendSep(snapMeta);
+            }
+            snapMeta.appendChild(node);
+          });
+        }
       }
     } else if (snapSlot) {
       snapSlot.hidden = true;
-      if (snapCommitsWrap) {
-        snapCommitsWrap.hidden = true;
-      }
     }
 
     if (detected.linuxArm) {
