@@ -176,6 +176,7 @@ jobs:
             gh release edit snapshot \
               --title "jAER Snapshot (${short})" \
               --notes-file /tmp/snapshot-notes.md \
+              --target "$sha" \
               --prerelease \
               --latest=false \
               --draft=false

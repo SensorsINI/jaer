@@ -116,6 +116,8 @@
     const snapSlot = document.getElementById("snapshot-slot");
     const snapBtn = document.getElementById("snapshot-btn");
     const snapMeta = document.getElementById("snapshot-meta");
+    const snapCommits = document.getElementById("snapshot-commits");
+    const snapCommitsWrap = document.getElementById("snapshot-commits-wrap");
     const keys = ["windows", "macos_aarch64", "macos_intel", "linux"];
 
     keys.forEach(function (key) {
@@ -159,7 +161,7 @@
       if (snap.short_sha) {
         bits.push(snap.short_sha);
       }
-      const day = formatDay(snap.published_at);
+      const day = formatDay(snap.built_at || snap.published_at);
       if (day) {
         bits.push(day);
       }
@@ -178,8 +180,20 @@
       }
       snapMeta.hidden = false;
       snapMeta.textContent = bits.join(" · ");
+      const stableTag = latest && latest.tag_name;
+      const snapSha = snap.sha || snap.short_sha;
+      if (snapCommits && snapCommitsWrap && stableTag && snapSha) {
+        snapCommits.href =
+          "https://github.com/SensorsINI/jaer/compare/" + stableTag + "..." + snapSha;
+        snapCommitsWrap.hidden = false;
+      } else if (snapCommitsWrap) {
+        snapCommitsWrap.hidden = true;
+      }
     } else if (snapSlot) {
       snapSlot.hidden = true;
+      if (snapCommitsWrap) {
+        snapCommitsWrap.hidden = true;
+      }
     }
 
     if (detected.linuxArm) {

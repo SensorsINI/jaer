@@ -18,6 +18,7 @@ GIT_REF_API = "https://api.github.com/repos/%s/git/ref/tags/" % REPO
 OUT_NAME = "latest.json"
 SKIP_TAGS = {"sample-data-current", "snapshot"}
 RC_TAG = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$")
+BUILT_LINE = re.compile(r"^-\s*Built:\s*(\S+)", re.M)
 
 WINDOWS = re.compile(r"^jAER_windows-x64_.*\.exe$")
 MAC_ARM = re.compile(r"^jAER_macos_aarch64_.*\.dmg$")
@@ -111,6 +112,14 @@ def pick_newer_prerelease(releases, stable):
     return None
 
 
+def snapshot_built_at(rel):
+    body = rel.get("body") or ""
+    match = BUILT_LINE.search(body)
+    if match:
+        return match.group(1)
+    return rel.get("updated_at") or ""
+
+
 def pick_snapshot(rel, stable):
     if not rel or rel.get("draft") or rel.get("tag_name") != "snapshot":
         return None
@@ -123,6 +132,7 @@ def pick_snapshot(rel, stable):
         return None
     payload["sha"] = sha
     payload["short_sha"] = sha[:7] if sha else ""
+    payload["built_at"] = snapshot_built_at(rel)
     return payload
 
 

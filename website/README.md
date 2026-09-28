@@ -24,7 +24,7 @@ Then open http://127.0.0.1:8080/
 `latest.json` is baked at deploy (and by that script). It is gitignored. Stable assets come from GitHub Latest. Nested objects:
 
 - `prerelease` — a published `N.N.N-rc.N` newer than Latest (not `sample-data-current`, not `snapshot`)
-- `snapshot` — the moving tester Release, omitted when its commit is the same as Latest
+- `snapshot` — the moving tester Release, omitted when its commit is the same as Latest (`sha`, `short_sha`, `built_at` from the Release body `Built:` line)
 
 The in-app updater still uses repo-root `updates.xml` (GitHub Latest only).
 
