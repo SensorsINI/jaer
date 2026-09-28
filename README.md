@@ -27,7 +27,7 @@ jAER
  * **denoises** -- with [fast and accurate algorithms](https://ieeexplore.ieee.org/document/9720086)
  * **displays** -- with a variety of color, 2D/3D, and powerful fading and sliding window event accumulation options
  * **records** -- in a high-speed compressed format (AEDAT-4), including **timed and rotating extended VCR recordings** that can span days or weeks.
- * **plays back** -- a big variety of [formats](docs/README-file-formats.md), with flexible time/event rate, markers, and IN/OUT points
+ * **plays back** -- a big variety of [formats](docs/README-file-formats.md), with [flexible time/event frame slicing](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.f1u8vr8jewgb), markers, and IN/OUT points
  * allows complex **post camera algorithmic processing** of the device output stream (see [jAER Applications](#jaer-applications)), using [*EventFilter*](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#heading=h.emot1faun5jc) chains that automatically build **user-friendly UI property panels**.
 
 Use it to set up your sensors, record and inspect your datasets, and serve recorded or live event sensor output via **File → Remote**. How-to for new users: **[live camera server + Python dataloaders](docs/README-DNN-OpenCV-ROS.md)**.
