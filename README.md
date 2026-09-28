@@ -16,19 +16,14 @@ jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop appl
 
 Download platform installers from [jaerproject.org](https://jaerproject.org) or [GitHub Releases](https://github.com/SensorsINI/jaer/releases). Step-by-step Windows, macOS (Apple Silicon and Intel), and Linux instructions: **[Install Guide](https://jaerproject.org/install/)**. Video: [installing and updating jAER](https://youtu.be/qQVt8_gwYVY).
 
-**Installers are GitHub Release assets** (~250 MB each for release 3.3+, with bundled [Eclipse Temurin](https://adoptium.net/) JRE). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
-
-Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates… 
-
 Optional **[sample recordings]](sampleData/README.md)** are not in the basic installer. The Welcome screen offers a download
 (`jaer-sample-data.zip` from the GitHub Latest release), or you can File → Open and **Help → Sample data → Download jAER sample data**.
-
-The *install4j* installers bundle [Eclipse Temurin](https://adoptium.net/) 25 from Adoptium. 
 
 ## Features
 
 jAER
  * **captures** USB event camera output with an [efficient pipeline](docs/README-jaer3.md) from [most devices](#device-hardware-support), 
+ * **optimizes** event sensor settings (biases) with [unified user-friendly DVS pixel bias tweaks](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.17h9x8ez98f)
  * **denoises** -- with [fast and accurate algorithms](https://ieeexplore.ieee.org/document/9720086)
  * **displays** -- with a variety of color, 2D/3D, and powerful fading and sliding window event accumulation options
  * **records** -- in a high-speed compressed format (AEDAT-4), including **timed and rotating extended VCR recordings** that can span days or weeks.
