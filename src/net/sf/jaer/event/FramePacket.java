@@ -47,6 +47,20 @@ public class FramePacket implements TypedDataPacket {
         allocate(width, height, colorMode);
     }
 
+    /** Pixel buffer and timestamps copied. The source frame is unchanged. */
+    public FramePacket copy() {
+        FramePacket dst = new FramePacket(width, height, colorMode);
+        dst.timestampStartUs = timestampStartUs;
+        dst.timestampEndUs = timestampEndUs;
+        dst.exposureUs = exposureUs;
+        dst.streamId = streamId;
+        dst.source = source;
+        if (pixels != null) {
+            dst.pixels = java.util.Arrays.copyOf(pixels, pixels.length);
+        }
+        return dst;
+    }
+
     /**
      * Allocates or reallocates the pixel buffer for the given geometry.
      */

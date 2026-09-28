@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -112,6 +113,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     private Chip2D chip;
     protected final int colorScale = 255;
     protected GLCanvas glCanvas;
+    /** True while {@link #display} is inside OpenGL. Acquisition mode skips a new paint when this is set. */
+    private final AtomicBoolean glDisplayActive = new AtomicBoolean();
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = null;
     protected Logger log = Logger.getLogger("net.sf.jaer");
@@ -576,11 +579,19 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @see net.sf.jaer.graphics.DisplayMethod#setupGL which sets up GL context
      * for display methods
      */
+    public boolean isGlDisplayActive() {
+        return glDisplayActive.get();
+    }
+
     @Override
     public void display(final GLAutoDrawable drawable) {
         if (skipGlBecauseWindowGeometry()) {
             return;
         }
+        if (!glDisplayActive.compareAndSet(false, true)) {
+            return;
+        }
+        try {
         final GL2 gl = drawable.getGL().getGL2();
         gl.glViewport(0, 0, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         resetFixedFunctionState(gl);
@@ -626,21 +637,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                 throw e;
             }
             checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
-            if ((getChip() instanceof AEChip) && (((AEChip) chip).getFilterChain() != null)
-                    && (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
-                if (renderer == null) {
-                    renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-                    renderer.setUseVertexArrays(false);
-                }
-                renderer.begin3DRendering();
-                renderer.setColor(0, 0, 1, 0.8f);
-                final String s = "Real-time mode - raw data shown here";
-                final Rectangle2D r = renderer.getBounds(s);
-                renderer.draw3D(s, 1f, 1f, 0f, (float) (chip.getSizeX() / 2 / r.getWidth()));
-                renderer.end3DRendering();
-            }
         }
+        drawAcquisitionOverlayIfNeeded(drawable);
         drawRecordingOverlayIfNeeded(drawable);
+        drawFrozenTimestampOverlayIfNeeded(drawable);
         drawRemoteOutputOverlaysIfNeeded(drawable);
         drawSliderSeekTimeOverlayIfNeeded(drawable);
         drawSkipChipRenderingOverlayIfNeeded(drawable);
@@ -655,18 +655,55 @@ public class ChipCanvas implements GLEventListener, Observer {
             grabImage(drawable);
             grabNextImageEnabled = false;
         }
+        } finally {
+            glDisplayActive.set(false);
+        }
     }
 
     float[] rgbVec = new float[3];
 
     /** Semi-transparent red for the Recording overlay. */
     private static final Color RECORDING_OVERLAY_COLOR = new Color(1f, 0.12f, 0.12f, 0.55f);
+    /** Solid red for the frozen-timestamp warning. */
+    private static final Color FROZEN_TIMESTAMP_OVERLAY_COLOR = new Color(1f, 0.05f, 0.05f, 1f);
+    /** Blink period while timestamps stay frozen: on, then off. */
+    private static final int FROZEN_TIMESTAMP_OVERLAY_PERIOD_MS = 1600;
+    private static final int FROZEN_TIMESTAMP_OVERLAY_ON_MS = 1000;
 
     /**
      * Pale blue matching {@link PlaybackPositionSlider} rate fill
      * ({@code 30,110,200}), for the press-slide time overlay.
      */
     private static final Color SLIDER_SEEK_OVERLAY_COLOR = new Color(0.55f, 0.80f, 1f);
+
+    /**
+     * Acquisition mode label just under the chip, left aligned, white with a
+     * drop shadow. Hidden unless the filter preference is on; that same flag
+     * gates the rate samples.
+     */
+    private void drawAcquisitionOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        FilterChain chain = ((AEChip) chip).getFilterChain();
+        if (chain == null
+                || chain.getProcessingMode() != FilterChain.ProcessingMode.ACQUISITION
+                || !chain.isShowAcquisitionCycleOverlay()) {
+            return;
+        }
+        String line = chain.acquisitionOverlayText();
+        if (line == null || line.isEmpty()) {
+            return;
+        }
+        GL2 gl = drawable.getGL().getGL2();
+        float fontsize = overlayFontSize(6f);
+        fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{line}, Math.max(8f, chip.getSizeX() * 0.95f));
+        float x = 0f;
+        float y = -DrawGL.lineHeight(fontsize) * 1.15f;
+        beginHudChipScale(gl, x, 0f);
+        DrawGL.drawStringDropShadow(fontsize, x, y, 0f, Color.white, line);
+        endHudChipScale(gl);
+    }
 
     /**
      * Overlay while recording: transparent red {@code Recording}, Apply Filters
@@ -723,6 +760,36 @@ public class ChipCanvas implements GLEventListener, Observer {
             endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
+
+    /**
+     * Blinks a red {@code Timestamps frozen} caption while
+     * {@link AEViewer#isEventTimestampsFrozen()} is set. On for
+     * {@link #FROZEN_TIMESTAMP_OVERLAY_ON_MS} of each
+     * {@link #FROZEN_TIMESTAMP_OVERLAY_PERIOD_MS}.
+     */
+    private void drawFrozenTimestampOverlayIfNeeded(final GLAutoDrawable drawable) {
+        AEViewer viewer = resolveAeViewer();
+        if (viewer == null || !viewer.isEventTimestampsFrozen()) {
+            return;
+        }
+        if (System.currentTimeMillis() % FROZEN_TIMESTAMP_OVERLAY_PERIOD_MS >= FROZEN_TIMESTAMP_OVERLAY_ON_MS) {
+            return;
+        }
+        String line = "Timestamps frozen";
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            float maxW = Math.max(8f, chip.getSizeX() * 0.85f);
+            float fontsize = overlayFontSize(10f);
+            fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{line}, maxW);
+            float xpos = getViewportCenterX();
+            float y = getViewportYAtFraction(0.55f);
+            beginHudChipScale(gl, xpos, y);
+            DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, FROZEN_TIMESTAMP_OVERLAY_COLOR, line);
+            endHudChipScale(gl);
+        } catch (GLException e) {
+            log.log(Level.FINE, "frozen timestamp overlay: {0}", e.toString());
         }
     }
 

@@ -154,6 +154,7 @@ import net.sf.jaer.biasgen.BiasgenFrame;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
@@ -189,6 +190,8 @@ import net.sf.jaer.eventio.opencv.OpenCVOutputDialog;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemoryDialog;
 import prophesee.eventio.MetavisionRawFileInputStream;
+import net.sf.jaer.eventprocessing.AcquisitionCycle;
+import net.sf.jaer.eventprocessing.AcquisitionRecordQueue;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -463,6 +466,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
     private ViewLoop viewLoop = new ViewLoop();
+    /** Disk writer for {@link FilterChain.ProcessingMode#ACQUISITION}. Null until recording starts. */
+    private AcquisitionRecordQueue acquisitionRecordQueue;
     /**
      * Dedicated lock for ViewLoop pause wait/notify. Do not use {@link #viewLoop}
      * itself as a mutex for playMode — ViewLoop holds that monitor in
@@ -6735,6 +6740,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 }
                 // unless fastForward is set, in which case there is no delay
+                final boolean acquisitionOwns = chip.getFilterChain() != null
+                        && AcquisitionCycle.acquiresOnUsb(chip.getFilterChain().getProcessingMode(), getPlayMode());
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
                     // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
@@ -6857,7 +6864,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                         numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
-                        final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isRecordFilteredEventsEnabled();
+                        final boolean filtersNeeded = AcquisitionCycle.filtersBlockRenderSkip(
+                                chip.getFilterChain().getProcessingMode(), getPlayMode(),
+                                chip.getFilterChain().isAnyFilterEnabled(), isRecordFilteredEventsEnabled());
                         // Live only: skip pixmap packets. Playback thins events in extractPolarity.
                         final boolean aedat4HasFrames = getAeFileInputStream() instanceof Aedat4FileInputStream a4
                                 && a4.hasFramePackets();
@@ -6877,7 +6886,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             } else {
                                 chip.setLastData(cookedPacket);
                             }
-                            if (isRecordingEnabled() & !isRecordingPaused()) {
+                            if (!acquisitionOwns && (isRecordingEnabled() & !isRecordingPaused())) {
                                 recordPacket(rawPacket, null, cookedBundle);
                             }
                             boolean breakout = writeOutputStreams(rawPacket, null);
@@ -6933,8 +6942,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
                     chip.setLastBundle(cookedBundle);
 
-                    // if we are recording data to disk do it here
-                    if (isRecordingEnabled() & !isRecordingPaused()) {
+                    // if we are recording data to disk do it here.
+                    // Acquisition mode records on the USB thread's writer, not here.
+                    if (!acquisitionOwns && (isRecordingEnabled() & !isRecordingPaused())) {
                         // AEDAT-2 needs raw AE; when USB demux drops APS dual-write, reconstruct polarity
                         if (rawPacket == null && cookedPacket != null && aedat4RecordingOutputStream == null) {
                             rawPacket = extractor.reconstructRawPacket(cookedPacket);
@@ -6948,6 +6958,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         break;
                     }
 
+                    noteTimestampProgression(cookedPacket);
                     singleStepDone(); // if doing single colorContrastAdditiveStep, mark it done
 
                 } // if (!isPaused() || isSingleStep())
@@ -6962,13 +6973,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         boolean skipRequested = isSkipChipRenderingRequested() && !isJaerAviRecordingActive();
                         boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering()
                                 || isOpenCvOutputSkipChipRendering() || skipRequested;
-                        if (!skipChipGfx) {
+                        boolean glBusy = acquisitionOwns && chipCanvas != null && chipCanvas.isGlDisplayActive();
+                        if (glBusy) {
+                            skipChipGfx = true;
+                        }
+                        if (!glBusy && !skipChipGfx) {
                             renderBundle(cookedBundle, cookedPacket);
                             OpenCVOutput opencvOut = findOpenCvOutput();
                             if (opencvOut != null) {
                                 opencvOut.publishChipViewAfterRender();
                             }
-                        } else if (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested) {
+                        } else if (!glBusy && (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested)) {
                             // Skip pixmap render(); paint a blank canvas + overlay (no APS/IMU/markers).
                             chipCanvas.paintFrame();
                         }
@@ -6985,7 +7000,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         paceViewLoopFrame();
                         continue;
                     }
-                    numFilteredEvents = cookedPacket.getSizeNotFilteredOut();
+                    numFilteredEvents = countKeptEvents(cookedPacket);
                     makeStatisticsLabel(cookedPacket);
                 }
                 getFrameRater().takeAfter();
@@ -7166,7 +7181,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
                 return input;
             }
-            if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
+            if (AcquisitionCycle.viewLoopFilters(filterChain.getProcessingMode(), getPlayMode())) {
                 try {
                     return filterChain.filterBundle(input);
                 } catch (java.util.ConcurrentModificationException e) {
@@ -7434,7 +7449,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return inputPacket;
             }
             // filter events, do processing on them in rendering loop here
-            if ((chain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
+            if (AcquisitionCycle.viewLoopFilters(chain.getProcessingMode(), getPlayMode())) {
                 try {
                     EventPacket p = chain.filterPacket(inputPacket);
                     return p;
@@ -7495,12 +7510,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut, aedat4RecordingTrackIndex);
                         }
                     } else if (aedzRecordingOutputStream != null) {
-                        aedzRecordingOutputStream.writePacket(isRecordFilteredEventsEnabled()
-                                ? extractor.reconstructRawPacket(cookedPacket)
-                                : rawPacket);
+                        if (isRecordFilteredEventsEnabled()) {
+                            if (cookedPacket != null) {
+                                aedzRecordingOutputStream.writePacket(extractor.reconstructRawPacket(cookedPacket));
+                            }
+                        } else if (rawPacket != null) {
+                            aedzRecordingOutputStream.writePacket(rawPacket);
+                        }
                     } else if (!isRecordFilteredEventsEnabled()) {
-                        recordingOutputStream.writePacket(rawPacket); // record all events
-                    } else {
+                        if (rawPacket != null) {
+                            recordingOutputStream.writePacket(rawPacket); // record all events
+                        }
+                    } else if (cookedPacket != null) {
                         // log the reconstructed packet after filtering
                         AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
                         recordingOutputStream.writePacket(aeRawRecon);
@@ -7536,9 +7557,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (blockingQueueOutputEnabled && (blockingQueueOutput != null) && (rawPacket != null)) {
                 AEPacketRaw toSend = rawPacket;
                 if (isRecordFilteredEventsEnabled()) {
-                    toSend = extractor.reconstructRawPacket(cookedPacket);
+                    synchronized (extractor) {
+                        toSend = extractor.reconstructRawPacket(cookedPacket);
+                        offerBlockingQueuePacket(toSend);
+                    }
+                } else {
+                    offerBlockingQueuePacket(toSend);
                 }
-                offerBlockingQueuePacket(toSend);
             }
 
             if (unicastOutputEnabled && (unicastOutput != null)) {
@@ -7549,8 +7574,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // log the reconstructed packet after filtering.
                         // TODO handle reconstructed packet with filtering that transforms events. At present the original raw addresses are sent out, so e.g. rotation will not appear
                         // in the output.
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
-                        unicastOutput.writePacket(aeRawRecon);
+                        synchronized (extractor) {
+                            AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
+                            unicastOutput.writePacket(aeRawRecon);
+                        }
                     }
                 } catch (IOException e) {
                     log.log(Level.SEVERE, e.toString(), e);
@@ -7617,16 +7644,88 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             paceViewLoopFrame();
         }
         private int lastPacketLastTs = 0; // last timestamp of previous packet, used by getDtMs
+        private boolean haveLastPacketTs = false;
         private float lastDtMs = 0;
+        /** Wall time an event timestamp may stay unchanged before we warn. */
+        private static final int FROZEN_TIMESTAMP_WARN_MS = 1000;
+        private int lastProgressTimestamp = 0;
+        private boolean haveProgressTimestamp = false;
+        private long timestampUnchangedSinceMs = 0;
+        private boolean timestampsFrozen = false;
+        private boolean frozenTimestampLogged = false;
 
-        // returns delta time in ms of the current packet, or 0 if there is less than two events
+        /**
+         * New packets only (not a paused redraw). After the event timestamp has
+         * not advanced for {@link #FROZEN_TIMESTAMP_WARN_MS}, the status line
+         * and a repeating red canvas overlay stay on until a new timestamp arrives.
+         */
+        private void noteTimestampProgression(EventPacket packet) {
+            if (packet == null || packet.getSize() < 1) {
+                return;
+            }
+            final int ts = packet.getLastTimestamp();
+            final long now = System.currentTimeMillis();
+            if (!haveProgressTimestamp || ts != lastProgressTimestamp) {
+                lastProgressTimestamp = ts;
+                haveProgressTimestamp = true;
+                timestampUnchangedSinceMs = now;
+                timestampsFrozen = false;
+                eventTimestampsFrozen = false;
+                frozenTimestampLogged = false;
+                return;
+            }
+            if (now - timestampUnchangedSinceMs < FROZEN_TIMESTAMP_WARN_MS) {
+                return;
+            }
+            timestampsFrozen = true;
+            eventTimestampsFrozen = true;
+            if (!frozenTimestampLogged) {
+                frozenTimestampLogged = true;
+                log.warning("Event timestamps have not advanced for " + FROZEN_TIMESTAMP_WARN_MS
+                        + " ms (stuck at " + ts + "). The sensor clock may be frozen.");
+            }
+        }
+
+        /**
+         * Packet duration in ms. Uses first-to-last timestamp. When that span is
+         * zero (every event in the slice shares one hardware time bucket), uses
+         * the gap since the previous slice so the status rate is not stuck at 0.
+         */
         private float getDtMs(EventPacket packet) {
-            if ((packet == null) || ((numEvents = packet.getSize()) < 2)) {
+            if (packet == null || (numEvents = packet.getSize()) < 1) {
+                return lastDtMs;
+            }
+            final int t1 = packet.getLastTimestamp();
+            int dtUs = 0;
+            if (numEvents >= 2) {
+                dtUs = t1 - packet.getFirstTimestamp();
+            }
+            if (dtUs <= 0 && haveLastPacketTs) {
+                dtUs = t1 - lastPacketLastTs;
+            }
+            lastPacketLastTs = t1;
+            haveLastPacketTs = true;
+            if (dtUs < 0) {
+                dtUs = 0;
+            }
+            lastDtMs = (float) (dtUs / (tickUs * 1e3));
+            return lastDtMs;
+        }
+
+        /** Events whose {@code filteredOut} flag is clear. Does not use the iterator side counter. */
+        private static int countKeptEvents(EventPacket packet) {
+            if (packet == null) {
                 return 0;
             }
-
-            float dtMs = (float) ((packet.getLastTimestamp() - packet.getFirstTimestamp()) / (tickUs * 1e3));
-            return dtMs;
+            final int n = packet.getSize();
+            int kept = 0;
+            for (int i = 0; i < n; i++) {
+                BasicEvent e = packet.getEvent(i);
+                if (e != null && !e.isFilteredOut()) {
+                    kept++;
+                }
+            }
+            return kept;
         }
 
         //        private int lastPacketLastTs = 0; // last timestamp of previous packet, used by getDtMs
@@ -7772,12 +7871,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         private void appendStatisticsLabelForPacket(EventPacket packet) {
+                float dtMs = getDtMs(packet);
                 long nowMs = System.currentTimeMillis();
                 if (nowMs - lastStatisticsLabelMs < STATISTICS_LABEL_MIN_INTERVAL_MS) {
                     return;
                 }
                 lastStatisticsLabelMs = nowMs;
-                float dtMs = getDtMs(packet);
 
                 switch (getPlayMode()) {
                     case SEQUENCING:
@@ -7831,7 +7930,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 sb.append(droppedDataInfo.getStatsLineToken());
 
                 field = sb.length();
-                engFmt.append(sb, packet.getEventRateHz());
+                float rateHz = 0f;
+                int kept = chip.getFilterChain().isAnyFilterEnabled() ? numFilteredEvents : numEvents;
+                if (dtMs > 0f && kept > 0) {
+                    rateHz = kept / (dtMs * 1e-3f);
+                }
+                engFmt.append(sb, rateHz);
                 padLeft(sb, field, 9);
                 sb.append("eps ");
 
@@ -7878,6 +7982,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
                 sb.append(renderer.isAutoscaleEnabled() ? " AS=" : " FS=").append(renderer.getColorScale());
+                if (acquisitionRecordQueue != null) {
+                    int recordDrops = acquisitionRecordQueue.getDrops();
+                    if (recordDrops > 0) {
+                        sb.append(" recDrop=").append(recordDrops);
+                    }
+                }
+                if (timestampsFrozen) {
+                    sb.append(" TS frozen");
+                }
 
                 setStatisticsLabel(sb.toString());
                 if (droppedDataInfo.any()) {
@@ -10962,6 +11075,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 });
             }
             setRecordingEnabled(true);
+            resumeAcquisitionRecording();
 
             fixRecordingControls();
 
@@ -11013,6 +11127,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             chip.setRecordingConfigurationSnapshot(snapshot);
         }
         setRecordingEnabled(true);
+        resumeAcquisitionRecording();
         fixRecordingControls();
         recordingStartTime = System.currentTimeMillis();
         recordingLastActivityWallMs = recordingStartTime;
@@ -11454,6 +11569,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int retValue = JFileChooser.CANCEL_OPTION;
         String fileInfo = "";
         if (isRecordingEnabled()) {
+            if (acquisitionRecordQueue != null) {
+                acquisitionRecordQueue.drain();
+            }
             final File recordedAs = recordingFile;
             if (aedat4RecordingOutputStream != null && !aedat4RecordingOwnsClose) {
                 log.info("Detaching from shared AEDAT-4 mux without closing (track "
@@ -13690,10 +13808,66 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * USB acquisition thread offers a filtered slice. Drops the slice when the
+     * record queue is full.
+     */
+    public void offerAcquisitionRecording(PacketBundle bundle) {
+        AcquisitionRecordQueue q = acquisitionRecordQueue;
+        if (q != null) {
+            q.offer(bundle);
+        }
+    }
+
+    private void resumeAcquisitionRecording() {
+        if (acquisitionRecordQueue == null) {
+            acquisitionRecordQueue = new AcquisitionRecordQueue(
+                    AcquisitionRecordQueue.depthFrom(chip), this::writeAcquisitionSlice);
+        }
+        acquisitionRecordQueue.resume();
+    }
+
+    private void writeAcquisitionSlice(PacketBundle bundle) throws Exception {
+        if (viewLoop == null || bundle == null || bundle.isEmpty()) {
+            return;
+        }
+        EventPacket cooked = bundle.getFirstPolarityPacket();
+        AEPacketRaw raw = bundle.getRawPacket();
+        if (raw == null && cooked != null && aedat4RecordingOutputStream == null) {
+            raw = copyReconstructedRaw(cooked);
+        }
+        viewLoop.recordPacket(raw, cooked, bundle);
+    }
+
+    /** Copy out of the extractor's reused raw packet before another thread reconstructs. */
+    private AEPacketRaw copyReconstructedRaw(EventPacket cooked) {
+        if (extractor == null || cooked == null) {
+            return null;
+        }
+        synchronized (extractor) {
+            AEPacketRaw shared = extractor.reconstructRawPacket(cooked);
+            if (shared == null) {
+                return null;
+            }
+            int n = shared.getNumEvents();
+            AEPacketRaw copy = new AEPacketRaw(Math.max(1, n));
+            if (n > 0) {
+                System.arraycopy(shared.getAddresses(), 0, copy.getAddresses(), 0, n);
+                System.arraycopy(shared.getTimestamps(), 0, copy.getTimestamps(), 0, n);
+            }
+            copy.setNumEvents(n);
+            return copy;
+        }
+    }
+
+    /**
      * Stops recording from the view loop (or EDT) and shows the save dialog.
      */
     private void stopRecordingFromViewLoop(String reason) {
         if (!isRecordingEnabled()) {
+            return;
+        }
+        if (acquisitionRecordQueue != null && acquisitionRecordQueue.isWriterThread()) {
+            SwingUtilities.invokeLater(() -> stopRecordingFromViewLoop(reason));
             return;
         }
         Runnable stop = () -> {
@@ -14846,6 +15020,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (recordingPlaybackImmediatelyCheckBoxMenuItem != null) {
             recordingPlaybackImmediatelyCheckBoxMenuItem.setSelected(recordingPlaybackImmediatelyEnabled);
         }
+    }
+
+    /** ViewLoop sets this while newly arrived packets keep the same event timestamp. */
+    private volatile boolean eventTimestampsFrozen;
+
+    /**
+     * True after event timestamps have stayed unchanged for about a second.
+     * The chip canvas blinks a red overlay while this is set.
+     */
+    public boolean isEventTimestampsFrozen() {
+        return eventTimestampsFrozen;
     }
 
     /**

@@ -110,10 +110,10 @@ public class ROSOutput extends EventFilter2D {
     private int grayScale = getInt("grayScale", 16);
     private int voxelBins = getInt("voxelBins", 5);
     private boolean flipY = getBoolean("flipY", true);
-    private TimeSliceMethod timeSliceMethod = TimeSliceMethod.valueOf(
+    private volatile TimeSliceMethod timeSliceMethod = TimeSliceMethod.valueOf(
             getString("timeSliceMethod", TimeSliceMethod.EventCount.name()));
-    private int eventsPerFrame = getInt("eventsPerFrame", 2000);
-    private int timeDurationUs = getInt("timeDurationUs", 10000);
+    private volatile int eventsPerFrame = getInt("eventsPerFrame", 2000);
+    private volatile int timeDurationUs = getInt("timeDurationUs", 10000);
     private boolean skipChipRendering = getBoolean("skipChipRendering", false);
 
     private volatile double publishHz;
@@ -701,6 +701,9 @@ public class ROSOutput extends EventFilter2D {
         this.timeSliceMethod = timeSliceMethod;
         putString("timeSliceMethod", timeSliceMethod.name());
         assembler.setTimeSliceMethod(timeSliceMethod);
+        if (old != timeSliceMethod) {
+            assembler.clear();
+        }
         getSupport().firePropertyChange("timeSliceMethod", old, timeSliceMethod);
     }
 

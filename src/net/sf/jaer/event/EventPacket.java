@@ -176,10 +176,78 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      * @see net.sf.jaer.event.BasicEvent
      */
     public EventPacket(final Class<? extends BasicEvent> eventClass) {
+        this(eventClass, true);
+    }
+
+    /**
+     * @param allocateEvents false skips the default 64k fill ({@link #bare})
+     */
+    private EventPacket(final Class<? extends BasicEvent> eventClass, final boolean allocateEvents) {
         if (!BasicEvent.class.isAssignableFrom(eventClass)) { // Check if evenClass is a subclass of BasicEvent
             throw new Error("making EventPacket that holds " + eventClass + " but these are not assignable from BasicEvent");
         }
-        setEventClass(eventClass);
+        this.eventClass = (Class<E>) eventClass;
+        try {
+            eventConstructor = (Constructor<E>) eventClass.getConstructor();
+        } catch (final NoSuchMethodException e) {
+            EventPacket.log.warning("cannot get constructor for constructing Events for building EventPacket: exception=" + e.toString()
+                    + ", cause=" + e.getCause());
+        }
+        if (allocateEvents) {
+            initializeEvents();
+        } else {
+            elementData = (E[]) Array.newInstance(this.eventClass, 0);
+            capacity = 0;
+            size = 0;
+        }
+    }
+
+    /**
+     * Empty packet with no prefilled events. Used for suffix views and record copies.
+     */
+    public static <T extends BasicEvent> EventPacket<T> bare(final Class<T> eventClass) {
+        return new EventPacket<>(eventClass, false);
+    }
+
+    /**
+     * A packet whose {@code elementData} are the same event objects as
+     * {@code [fromIndex, size)}. Filtering {@code filteredOut} on the view
+     * changes the pooled events.
+     */
+    public EventPacket<E> viewFrom(final int fromIndex) {
+        if (fromIndex < 0 || fromIndex > size) {
+            throw new IndexOutOfBoundsException("fromIndex " + fromIndex + " size " + size);
+        }
+        final int n = size - fromIndex;
+        final EventPacket<E> view = EventPacket.bare(eventClass);
+        if (n == 0) {
+            return view;
+        }
+        view.elementData = Arrays.copyOfRange(elementData, fromIndex, size);
+        view.size = n;
+        view.capacity = n;
+        return view;
+    }
+
+    /**
+     * Deep copy that keeps {@code filteredOut} on both the source and the copy.
+     * {@link #appendCopyOfEvent} clears the source flag and must not be used for this.
+     */
+    public EventPacket<E> deepCopy() {
+        final EventPacket<E> dst = EventPacket.bare(eventClass);
+        if (size <= 0) {
+            return dst;
+        }
+        dst.allocate(size);
+        for (int i = 0; i < size; i++) {
+            final E src = elementData[i];
+            final E slot = dst.elementData[i];
+            if (src != null && slot != null) {
+                slot.copyFrom(src);
+            }
+        }
+        dst.size = size;
+        return dst;
     }
 
     /**

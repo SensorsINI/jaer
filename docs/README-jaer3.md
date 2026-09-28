@@ -209,6 +209,36 @@ flowchart LR
 Legacy path: `filterPacket(EventPacket)` still exists for older call sites and
 `FILTER_INPUT` mode; live ViewLoop prefers `filterBundle`.
 
+### Acquisition cycle
+
+`FilterChain.ProcessingMode.ACQUISITION` (Filter menu / preferences: “Process on
+acquisition cycle”) is the low-latency path. It is not the diagram above.
+
+On each USB callback, while the raw-pool lock is held:
+
+1. Mark the write-buffer size, then append this URB.
+2. `PacketSuffix` builds a view of only the new events (same `BasicEvent`
+   objects, so `filteredOut` stays on the pool the display renders).
+3. `filterBundle` / `processTyped` runs on that suffix. Playback, network, and
+   `FILTER_INPUT` still filter on ViewLoop.
+4. If recording, a deep copy is offered to `AcquisitionRecordQueue`. The USB
+   thread does not wait on disk. A full queue increments `recDrop` on the
+   status line and drops that slice. The writer drains before the file is closed.
+5. ViewLoop does not filter or record again. Adaptive render skip stays allowed
+   while filters are enabled. If a GL paint is already in progress, that frame
+   is skipped. When “Show acquisition cycle overlay” is on, a white label under
+   the chip reads “Low-latency mode”. With a filter enabled it adds the mean ± std
+   gap between filter-chain runs over the last 100 packets, in seconds, and the
+   rate {@code 1/mean}; otherwise it asks you to enable filters. That preference also
+   gates the timing samples. The same line is logged at INFO, 0.1 Hz, for one
+   minute after the mode is enabled and for one minute after the first sample.
+
+Rendering mode only checks the flag and returns; it does not snapshot packets.
+Demux-off (Davis RGB, FX2 USBIO, the typed-demux kill switch) copies the new
+raw suffix, labels a stereo eye bit on that copy, then `extractBundle` under
+the extractor lock. When both a typed suffix and a raw suffix exist, only the
+typed suffix is filtered.
+
 ---
 
 ## Rendering / OpenGL

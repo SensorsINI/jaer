@@ -120,19 +120,27 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 
     /**
      * Filters can either be processed in the rendering or the data acquisition
-     * cycle. Procesing in the rendering cycle is certainly more efficient
-     * because events are processed in larger packets, but latency is increased
-     * to the rendering frame rate delay. Processing in the data acquisition
-     * thread has the shortest possible latency and if the filter annotates
-     * graphics this processing can cause threading problems, e.g. if the
-     * annotation modifies the graphics buffer while the image is being
-     * rendered.
+     * cycle. Processing in the rendering cycle batches events to the frame
+     * rate. {@link ProcessingMode#ACQUISITION} runs the chain on the USB thread
+     * for each new suffix only ({@link #filterSince}); the display may skip and
+     * the log is queued. Do not touch OpenGL from a filter in that mode.
      */
     public enum ProcessingMode {
 
         RENDERING, ACQUISITION
     };
+    /** Chip pref. When false, the acquisition overlay is hidden and rate samples are not taken. */
+    public static final String PREF_SHOW_ACQUISITION_OVERLAY = "FilterChain.showAcquisitionCycleOverlay";
     private ProcessingMode processingMode = ProcessingMode.RENDERING;
+    private volatile boolean showAcquisitionCycleOverlay = true;
+    private final AcquisitionProcessingStats acquisitionStats = new AcquisitionProcessingStats();
+    /** 0.1 Hz. */
+    private static final long ACQUISITION_LOG_PERIOD_NS = 10_000_000_000L;
+    /** Stop this long after low-latency mode is enabled, and again after the first rate sample. */
+    private static final long ACQUISITION_LOG_WINDOW_NS = 60_000_000_000L;
+    private volatile long acquisitionLogModeNs;
+    private volatile long acquisitionStatsStartedNs;
+    private volatile long acquisitionLastLogNs;
 
     /**
      * Creates a new instance of FilterChain. Use
@@ -155,6 +163,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     chip.getPrefs().get("FilterChain.processingMode", FilterChain.ProcessingMode.RENDERING.toString())); // ProcessingMode.RENDERING;
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        showAcquisitionCycleOverlay = chip.getPrefs().getBoolean(PREF_SHOW_ACQUISITION_OVERLAY, true);
+        if (processingMode == ProcessingMode.ACQUISITION) {
+            beginAcquisitionStatLogWindow();
         }
     }
 
@@ -299,6 +311,20 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return out;
     }
 
+    /**
+     * Filters only the events appended to {@code in} since {@code mark}.
+     * Each event is processed once per capture. The returned suffix shares the
+     * pooled events, so {@code filteredOut} remains visible to the display.
+     */
+    public PacketBundle filterSince(PacketBundle in, net.sf.jaer.event.PacketSuffix.Mark mark) {
+        PacketBundle slice = net.sf.jaer.event.PacketSuffix.slice(in, mark);
+        if (slice.isEmpty()) {
+            return slice;
+        }
+        PacketBundle filtered = filterBundle(slice);
+        return filtered == null ? slice : filtered;
+    }
+
     /** Reset per-filter performance meters when requested from the FilterFrame menu. */
     private void maybeResetPerformanceStatistics() {
         if (!resetPerformanceMeasurementStatistics) {
@@ -405,9 +431,94 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @see #processingMode
      */
     synchronized public void setProcessingMode(ProcessingMode processingMode) {
-        getSupport().firePropertyChange("processingmode", this.processingMode, processingMode);
+        ProcessingMode previous = this.processingMode;
+        getSupport().firePropertyChange("processingmode", previous, processingMode);
         this.processingMode = processingMode;
         chip.getPrefs().put("FilterChain.processingMode", processingMode.toString());
+        if (processingMode == ProcessingMode.ACQUISITION && previous != ProcessingMode.ACQUISITION) {
+            beginAcquisitionStatLogWindow();
+        }
+    }
+
+    /**
+     * White label under the chip in acquisition mode, including mean ± std
+     * processing rate. Off skips both the label and the timing samples.
+     */
+    public boolean isShowAcquisitionCycleOverlay() {
+        return showAcquisitionCycleOverlay;
+    }
+
+    public void setShowAcquisitionCycleOverlay(boolean show) {
+        if (showAcquisitionCycleOverlay == show) {
+            return;
+        }
+        showAcquisitionCycleOverlay = show;
+        if (!show) {
+            acquisitionStats.reset();
+        }
+        if (chip != null && chip.getPrefs() != null) {
+            chip.getPrefs().putBoolean(PREF_SHOW_ACQUISITION_OVERLAY, show);
+        }
+        getSupport().firePropertyChange("showAcquisitionCycleOverlay", !show, show);
+    }
+
+    /**
+     * One USB-thread filter-chain run. No-op unless {@link #isShowAcquisitionCycleOverlay()}
+     * is set. The first call only starts the gap; later calls record the interval.
+     */
+    public void noteAcquisitionCycle(long nowNs) {
+        if (!showAcquisitionCycleOverlay) {
+            return;
+        }
+        if (acquisitionStats.noteCycle(nowNs) && acquisitionStatsStartedNs == 0) {
+            acquisitionStatsStartedNs = nowNs;
+        }
+    }
+
+    /**
+     * Overlay text. Asks for an enabled filter until the chain is running;
+     * then mean ± std inter-packet interval, and the rate {@code 1/mean}.
+     */
+    public String acquisitionOverlayText() {
+        String text = (!isFilteringEnabled() || !isAnyFilterEnabled())
+                ? AcquisitionProcessingStats.ENABLE_FILTERS
+                : acquisitionStats.line();
+        maybeLogAcquisitionOverlay(text);
+        return text;
+    }
+
+    private void beginAcquisitionStatLogWindow() {
+        acquisitionLogModeNs = System.nanoTime();
+        acquisitionStatsStartedNs = 0;
+        acquisitionLastLogNs = 0;
+    }
+
+    /**
+     * INFO at 0.1 Hz while the overlay is shown. Stops one minute after
+     * low-latency mode is enabled. The first rate sample opens another minute.
+     */
+    private void maybeLogAcquisitionOverlay(String text) {
+        if (!showAcquisitionCycleOverlay || processingMode != ProcessingMode.ACQUISITION || text == null) {
+            return;
+        }
+        long start = acquisitionLogModeNs;
+        if (start == 0) {
+            return;
+        }
+        long statsStarted = acquisitionStatsStartedNs;
+        if (statsStarted != 0) {
+            start = Math.max(start, statsStarted);
+        }
+        long now = System.nanoTime();
+        if (now - start > ACQUISITION_LOG_WINDOW_NS) {
+            return;
+        }
+        long last = acquisitionLastLogNs;
+        if (last != 0 && now - last < ACQUISITION_LOG_PERIOD_NS) {
+            return;
+        }
+        acquisitionLastLogNs = now;
+        log.info(text);
     }
 
     /**

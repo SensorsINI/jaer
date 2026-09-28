@@ -10,6 +10,7 @@ package net.sf.jaer.eventio.opencv;
 
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -71,8 +72,10 @@ Start/Stop is the green/red button; closing the dialog does not stop publishing.
 <h3>frameSource</h3>
 <ul>
 <li><b>Auto</b> / <b>RenderedPixmap</b> — AEViewer pixmap (Davis frames + events in the
-current color scheme; DVS-only chips show events). Updates from event slices
-even if APS frames are off.</li>
+current color scheme; DVS-only chips show events). View packets are integrated
+until <code>timeDurationUs</code> or <code>eventsPerFrame</code>
+(<b>timeSliceMethod</b>), then one JPEG is published. A view packet already
+longer than the slice is published as one frame. APS still updates inside the window.</li>
 <li><b>ApsFrames</b> — Davis intensity only (no events; freezes if APS is off).</li>
 <li><b>DvsEventCount</b> — assembled event histogram (mid-gray = zero), ignore APS.</li>
 </ul>
@@ -209,17 +212,26 @@ public class OpenCVOutput extends EventFilter2D {
     private Thread publishThread;
     private volatile boolean publishThreadStop;
 
-    private FrameSource frameSource = FrameSource.valueOf(getString("frameSource", FrameSource.RenderedPixmap.name()));
+    private volatile FrameSource frameSource = FrameSource.valueOf(getString("frameSource", FrameSource.RenderedPixmap.name()));
     private OutputSize outputSize = loadOutputSize();
     private String bindAddress = getString("bindAddress", "127.0.0.1");
     private int httpPort = getInt("httpPort", 8090);
     private float jpegQuality = getFloat("jpegQuality", 0.8f);
     private int grayScale = getInt("grayScale", 2);
     private boolean flipY = getBoolean("flipY", true);
-    private TimeSliceMethod timeSliceMethod = TimeSliceMethod.valueOf(
+    private volatile TimeSliceMethod timeSliceMethod = TimeSliceMethod.valueOf(
             getString("timeSliceMethod", TimeSliceMethod.TimeIntervalUs.name()));
-    private int eventsPerFrame = getInt("eventsPerFrame", 10000);
-    private int timeDurationUs = getInt("timeDurationUs", 10000);
+    private volatile int eventsPerFrame = getInt("eventsPerFrame", 10000);
+    private volatile int timeDurationUs = getInt("timeDurationUs", 10000);
+    /** Chip-view integration for Auto/RenderedPixmap. Event pixels stick until the slice closes. */
+    private byte[] sliceBgr;
+    private byte[] sliceEvent;
+    private int sliceW;
+    private int sliceH;
+    private boolean sliceOpen;
+    private int sliceFirstTs;
+    private int sliceLastTs;
+    private int sliceEvents;
     private boolean skipChipRendering = getBoolean("skipChipRendering", false);
     private boolean nonExclusive = getBoolean("nonExclusive", false);
     private boolean publishV4l2 = getBoolean("publishV4l2", false);
@@ -249,9 +261,12 @@ public class OpenCVOutput extends EventFilter2D {
         setPropertyTooltip(GROUP_FRAME, "outputImageHeight", "Output height; 0 = chip / frame size");
         setPropertyTooltip(GROUP_FRAME, "grayScale", "Full-scale signed DVS event count (mid-gray = 0)");
         setPropertyTooltip(GROUP_FRAME, "flipY", "Row 0 is sensor top (OpenCV +y down)");
-        setPropertyTooltip(GROUP_SLICE, "timeSliceMethod", "Close a DVS frame after N events or after a time interval");
-        setPropertyTooltip(GROUP_SLICE, "eventsPerFrame", "Events per frame when timeSliceMethod is EventCount");
-        setPropertyTooltip(GROUP_SLICE, "timeDurationUs", "Slice duration in microseconds when TimeIntervalUs");
+        setPropertyTooltip(GROUP_SLICE, "timeSliceMethod",
+                "Close a published frame after N events or after a time interval. Applied on the next view packet.");
+        setPropertyTooltip(GROUP_SLICE, "eventsPerFrame",
+                "Events per published frame when timeSliceMethod is EventCount");
+        setPropertyTooltip(GROUP_SLICE, "timeDurationUs",
+                "Slice duration in microseconds when TimeIntervalUs. RenderedPixmap holds the chip view until event time reaches this, then publishes once.");
         setPropertyTooltip(GROUP_V4L2, "publishV4l2",
                 "Linux: write frames to /dev/video10 so Cheese/Zoom/Meet see camera jAER (needs a standard outputSize)");
         setPropertyTooltip(GROUP_V4L2, "v4l2Mjpeg",
@@ -367,6 +382,7 @@ public class OpenCVOutput extends EventFilter2D {
     @Override
     public void resetFilter() {
         assembler.clear();
+        clearRenderedSlice();
         publishedFrameCount = 0;
         hzCount = 0;
         hzWindowStartNs = 0;
@@ -455,8 +471,8 @@ public class OpenCVOutput extends EventFilter2D {
     }
 
     /**
-     * Copy APS+events (current color scheme) after {@code renderBundle}.
-     * No-op for ApsFrames / DvsEventCount.
+     * Integrate the chip view until the Slice settings close a frame, then publish.
+     * No-op for ApsFrames / DvsEventCount (those publish from the packet path).
      */
     public void publishChipViewAfterRender() {
         if (!isFilterEnabled()) {
@@ -465,10 +481,12 @@ public class OpenCVOutput extends EventFilter2D {
         if (frameSource == FrameSource.ApsFrames || frameSource == FrameSource.DvsEventCount) {
             return;
         }
-        OpenCvRawFrame raw = copyRenderedPixmap();
-        if (raw != null) {
-            enqueue(raw);
+        if (!integrateRenderedSlice() || sliceBgr == null) {
+            return;
         }
+        byte[] copy = Arrays.copyOf(sliceBgr, sliceBgr.length);
+        enqueue(applyOutputSize(new OpenCvRawFrame(sliceW, sliceH, 3, copy)));
+        clearRenderedSlice();
     }
 
     private OpenCvRawFrame encodeDvsMono8() {
@@ -521,40 +539,94 @@ public class OpenCVOutput extends EventFilter2D {
         return applyOutputSize(raw);
     }
 
+    /** @return true when the open chip-view slice has reached the Slice settings */
+    private boolean integrateRenderedSlice() {
+        if (!mergeChipViewIntoSlice() || !sliceOpen) {
+            return false;
+        }
+        if (timeSliceMethod == TimeSliceMethod.EventCount) {
+            return sliceEvents >= eventsPerFrame;
+        }
+        int dt = sliceLastTs - sliceFirstTs;
+        if (dt < 0) {
+            dt += Integer.MAX_VALUE;
+        }
+        return dt >= timeDurationUs;
+    }
+
+    private void advanceSliceClock() {
+        Object data = chip.getLastData();
+        if (!(data instanceof EventPacket<?> packet) || packet.getSize() <= 0) {
+            return;
+        }
+        int t0 = packet.getFirstTimestamp();
+        int t1 = packet.getLastTimestamp();
+        if (!sliceOpen) {
+            sliceOpen = true;
+            sliceFirstTs = t0;
+            sliceEvents = 0;
+        } else if (sliceFirstTs - t0 > 1_000_000) {
+            sliceFirstTs = t0;
+            sliceEvents = 0;
+            if (sliceEvent != null) {
+                Arrays.fill(sliceEvent, (byte) 0);
+            }
+        }
+        sliceLastTs = t1;
+        sliceEvents += packet.getSizeNotFilteredOut();
+    }
+
+    private void clearRenderedSlice() {
+        sliceOpen = false;
+        sliceEvents = 0;
+        sliceFirstTs = 0;
+        sliceLastTs = 0;
+        if (sliceEvent != null) {
+            Arrays.fill(sliceEvent, (byte) 0);
+        }
+    }
+
     /**
      * Chip view: APS pixmap plus DVS overlay (same alpha test as
-     * {@code ChipRendererDisplayMethodRGBA}), using the current color scheme.
-     * Pure DVS chips have events in the pixmap already.
+     * {@code ChipRendererDisplayMethodRGBA}). Event pixels accumulate until the
+     * slice is published. Later APS samples fill only pixels with no event yet.
+     *
+     * @return false when there is nothing to draw
      */
-    private OpenCvRawFrame copyRenderedPixmap() {
+    private boolean mergeChipViewIntoSlice() {
         Chip2DRenderer renderer = chip.getRenderer();
         if (renderer == null) {
-            return null;
+            return false;
         }
         int w = chip.getSizeX();
         int h = chip.getSizeY();
         if (w <= 0 || h <= 0) {
-            return null;
+            return false;
         }
-        byte[] bgr;
+        int nPix = w * h;
+        if (sliceBgr == null || sliceW != w || sliceH != h || sliceEvent == null || sliceEvent.length != nPix) {
+            sliceBgr = new byte[nPix * 3];
+            sliceEvent = new byte[nPix];
+            sliceW = w;
+            sliceH = h;
+            clearRenderedSlice();
+        }
         synchronized (renderer) {
             float[] pixmap = renderer.getPixmapArray();
             float[] dvs = null;
             boolean displayFrames = true;
             boolean displayEvents = true;
-            if (renderer instanceof DavisRenderer) {
-                DavisRenderer davis = (DavisRenderer) renderer;
+            if (renderer instanceof DavisRenderer davis) {
                 displayFrames = davis.isDisplayFrames();
                 displayEvents = davis.isDisplayEvents();
                 java.nio.FloatBuffer em = davis.getDvsEventsMap();
                 dvs = em != null ? em.array() : null;
             }
             if (pixmap == null && dvs == null) {
-                return null;
+                return false;
             }
             float bg = renderer.getGrayValue();
-            bgr = new byte[w * h * 3];
-            int p = 0;
+            float grayEps = 1f / 255f;
             for (int y = 0; y < h; y++) {
                 int srcY = flipY ? (h - 1 - y) : y;
                 for (int x = 0; x < w; x++) {
@@ -567,23 +639,37 @@ public class OpenCVOutput extends EventFilter2D {
                         g = pixmap[pi + 1];
                         b = pixmap[pi + 2];
                     }
-                    // GL_ALPHA_TEST GL_GREATER 0: event pixels replace the APS (or gray) background.
+                    boolean isEvent = false;
                     if (displayEvents && dvs != null && pi >= 0 && (pi + 3) < dvs.length && dvs[pi + 3] > 0f) {
                         r = dvs[pi];
                         g = dvs[pi + 1];
                         b = dvs[pi + 2];
+                        isEvent = true;
                     } else if (dvs == null && pixmap != null && pi >= 0 && (pi + 2) < pixmap.length) {
                         r = pixmap[pi];
                         g = pixmap[pi + 1];
                         b = pixmap[pi + 2];
+                        isEvent = Math.abs(r - bg) > grayEps || Math.abs(g - bg) > grayEps || Math.abs(b - bg) > grayEps;
                     }
-                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * b));
-                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * g));
-                    bgr[p++] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * r));
+                    int outPix = y * w + x;
+                    if (isEvent) {
+                        putBgr(sliceBgr, outPix, b, g, r);
+                        sliceEvent[outPix] = 1;
+                    } else if (sliceEvent[outPix] == 0) {
+                        putBgr(sliceBgr, outPix, b, g, r);
+                    }
                 }
             }
         }
-        return applyOutputSize(new OpenCvRawFrame(w, h, 3, bgr));
+        advanceSliceClock();
+        return true;
+    }
+
+    private static void putBgr(byte[] bgr, int pix, float b, float g, float r) {
+        int i = pix * 3;
+        bgr[i] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * b));
+        bgr[i + 1] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * g));
+        bgr[i + 2] = (byte) OpenCvRawFrame.clamp255(Math.round(255f * r));
     }
 
     private OpenCvRawFrame applyOutputSize(OpenCvRawFrame raw) {
@@ -796,6 +882,9 @@ public class OpenCVOutput extends EventFilter2D {
         FrameSource old = this.frameSource;
         this.frameSource = frameSource;
         putString("frameSource", frameSource.name());
+        if (old != frameSource) {
+            clearRenderedSlice();
+        }
         getSupport().firePropertyChange("frameSource", old, frameSource);
     }
 
@@ -949,6 +1038,10 @@ public class OpenCVOutput extends EventFilter2D {
         this.timeSliceMethod = timeSliceMethod;
         putString("timeSliceMethod", timeSliceMethod.name());
         assembler.setTimeSliceMethod(timeSliceMethod);
+        if (old != timeSliceMethod) {
+            clearRenderedSlice();
+            assembler.clear();
+        }
         getSupport().firePropertyChange("timeSliceMethod", old, timeSliceMethod);
     }
 

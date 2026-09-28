@@ -45,12 +45,12 @@ public class Ros2FrameAssembler {
     private int width = 0;
     private int height = 0;
     private int voxelBins = 5;
-    private int grayScale = 16;
-    private int eventsPerFrame = 2000;
-    private int timeDurationUs = 10000;
-    private FrameType frameType = FrameType.EventCountHistogram;
-    private TimeSliceMethod timeSliceMethod = TimeSliceMethod.EventCount;
-    private boolean flipY = true;
+    private volatile int grayScale = 16;
+    private volatile int eventsPerFrame = 2000;
+    private volatile int timeDurationUs = 10000;
+    private volatile FrameType frameType = FrameType.EventCountHistogram;
+    private volatile TimeSliceMethod timeSliceMethod = TimeSliceMethod.EventCount;
+    private volatile boolean flipY = true;
 
     private int[] eventCount;
     private int[] timeOnUs;

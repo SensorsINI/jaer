@@ -304,6 +304,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
                 if (usbTypedDemuxActive) {
+                    acquisitionCycle.markTyped(chip, packetBundlePool.writeBuffer(), true);
                     polarityBuilder.attach(packetBundlePool.writeBuffer());
                 }
                 int shortts;

@@ -18,6 +18,7 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.eventprocessing.AcquisitionCycle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
@@ -33,6 +34,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbTransferSubmit;
 public class NRVAEReader {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
+    private final AcquisitionCycle acquisitionCycle = new AcquisitionCycle();
     private static final byte ENDPOINT_IN = (byte) 0x81;
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
     private static final long STOP_JOIN_TIMEOUT_MS = 3000L;
@@ -366,6 +368,7 @@ public class NRVAEReader {
                 if (demux) {
                     // Typed path only: skip AEPacketRaw dual-write (halves USB-thread copies / GC).
                     final PacketBundle typedOut = monitor.getPacketBundlePool().writeBuffer();
+                    acquisitionCycle.markTyped(monitor.getChip(), typedOut, false);
                     polarityBuilder.attach(typedOut);
                     final AEChip chip = monitor.getChip();
                     final int sizeX = chip != null ? chip.getSizeX() : S5KRC1SParser.WIDTH;
@@ -379,6 +382,7 @@ public class NRVAEReader {
                     writeBuffer.setNumEvents(0);
                     writeBuffer.lastCaptureLength = toCopy;
                 } else {
+                    acquisitionCycle.markRaw(monitor.getChip(), writeBuffer);
                     ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, toCopy);
                     final long acStart = sample != null ? System.nanoTime() : 0;
                     System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
@@ -395,6 +399,7 @@ public class NRVAEReader {
                 writeBuffer.overrunOccuredFlag = true;
                 logOverrun(startEvent, maxEvents, toCopy);
             }
+            acquisitionCycle.finish(monitor.getChip(), null);
         }
         if (sample != null) {
             sample.commitLockNs = System.nanoTime() - commitStart;

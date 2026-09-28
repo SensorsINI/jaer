@@ -27,6 +27,7 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
+import net.sf.jaer.eventprocessing.AcquisitionCycle;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -283,6 +284,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     protected final static short CONFIG_INTERFACE = 0;
     protected final static short CONFIG_ALT_SETTING = 0;
     protected final static int CONFIG_TRAN_SIZE = 512;
+    /** USB-thread acquisition-cycle filter. Replaces {@code realTimeFilter}. */
+    protected final AcquisitionCycle acquisitionCycle = new AcquisitionCycle();
     // following are to support realtime filtering
     // the AEPacketRaw is used only within this class. Each packet is extracted
     // using the chip extractor object from the
@@ -1397,26 +1400,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
                     }
                     if ((transfer.status() == LibUsb.TRANSFER_COMPLETED)
                             || (transfer.status() == LibUsb.TRANSFER_CANCELLED)) {
+                        acquisitionCycle.markRaw(chip, aePacketRawPool.writeBuffer());
                         translateEvents(transfer.buffer());
-
-                        if ((chip != null) && (chip.getFilterChain() != null)
-                                && (chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
-                            // here we do the realTimeFiltering. We finished
-                            // capturing this buffer's worth of events,
-                            // now process them apply realtime filters and
-                            // realtime (packet level) mapping
-
-                            // synchronize here so that rendering thread doesn't
-                            // swap the buffer out from under us while
-                            // we process these events
-                            // aePacketRawPool.writeBuffer is also synchronized
-                            // so we getString
-                            // the same lock twice which is ok
-                            final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
-                            final int[] addresses = buffer.getAddresses();
-                            final int[] timestamps = buffer.getTimestamps();
-                            realTimeFilter(addresses, timestamps);
-                        }
+                        acquisitionCycle.finish(chip, CypressFX2.this::labelAcquisitionRaw);
                     } else {
                         CypressFX2.this.markUsbInLost();
                         final String err = LibUsb.errorName(transfer.status());
@@ -1500,119 +1486,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             return bufferLifecycle.isReconfigPending();
         }
 
-        /**
-         * Applies the filterChain processing on the most recently captured
-         * data. The processing is done by extracting the events just captured
-         * and then applying the filter chain.
-         * <strong>The filter outputs are discarded and will not be visble in
-         * the rendering of the chip output, but may be used for motor control
-         * or other purposes.
-         * </strong>
-         * <p>
-         * TODO: at present this processing is redundant in that the most
-         * recently captured events are copied to a different AEPacketRaw,
-         * extracted to an EventPacket, and then processed. This effort is
-         * duplicated later in rendering. This should be fixed somehow.
-         *
-         * @param addresses the raw input addresses; these are filtered in place
-         * @param timestamps the input timestamps
-         */
-        private void realTimeFilter(final int[] addresses, final int[] timestamps) {
-
-            if (!chip.getFilterChain().isAnyFilterEnabled()) {
-                return;
-            }
-            final int nevents = getNumRealTimeEvents();
-
-            // initialize packets
-            if (realTimeRawPacket == null) {
-                realTimeRawPacket = new AEPacketRaw(nevents); // TODO: expensive
-            } else {
-                realTimeRawPacket.ensureCapacity(nevents);// // copy data to
-                // real time raw
-                // packet
-                // if(addresses==null || timestamps==null){
-                // log.warning("realTimeFilter: addresses or timestamp array became null");
-                // }else{
-            }
-            try {
-                System.arraycopy(addresses, realTimeEventCounterStart, realTimeRawPacket.getAddresses(), 0, nevents);
-                System.arraycopy(timestamps, realTimeEventCounterStart, realTimeRawPacket.getTimestamps(), 0, nevents);
-            } catch (final IndexOutOfBoundsException e) {
-                e.printStackTrace();
-            }
-            realTimeEventCounterStart = eventCounter;
-            // System.out.println("RealTimeEventCounterStart: " +
-            // realTimeEventCounterStart + " nevents " + nevents +
-            // " eventCounter " + eventCounter);
-            realTimeRawPacket.setNumEvents(nevents);
-            // init extracted packet
-            // if(realTimePacket==null)
-            // realTimePacket=new EventPacket(chip.getEventClass());
-            // extract events for this filter. This duplicates later effort
-            // during rendering and should be fixed for
-            // later.
-            // at present this may mess up everything else because the output
-            // packet is reused.
-
-            // hack for stereo hardware interfaces - for real time processing we
-            // must label the eye bit here based on
-            // which eye our hardware
-            // interface is. note the events are labeled here and the real time
-            // processing method is called for each low
-            // level hardware interface.
-            // But each call will only getString events from one eye. it is
-            // important that the filterPacket method be
-            // sychronized (thread safe) because the
-            // filter object may getString called by both AEReader threads at
-            // the "same time"
-            if (chip.getHardwareInterface() instanceof StereoPairHardwareInterface) {
-                final StereoPairHardwareInterface stereoInterface = (StereoPairHardwareInterface) chip
-                        .getHardwareInterface();
-                if (stereoInterface.getAemonLeft() == CypressFX2.this) {
-                    stereoInterface.labelLeftEye(realTimeRawPacket);
-                } else {
-                    stereoInterface.labelRightEye(realTimeRawPacket);
-                }
-            }
-            // regardless, we now extract to typed events for example and
-            // process
-            realTimePacket = chip.getEventExtractor().extractPacket(realTimeRawPacket); // ,realTimePacket);
-            realTimePacket.setRawPacket(realTimeRawPacket);
-
-            try {
-                getChip().getFilterChain().filterPacket(realTimePacket);
-            } catch (final Exception e) {
-                CypressFX2.log.warning(e.toString() + ": disabling all filters");
-                e.printStackTrace();
-                for (final EventFilter f : getChip().getFilterChain()) {
-                    f.setFilterEnabled(false);
-                }
-            }
-            // we don't do following because the results are an AEPacketRaw that
-            // still needs to be written to
-            // addresses/timestamps
-            // and this is not done yet. at present results of realtime
-            // filtering are just not rendered at all.
-            // that means that user will see raw events, e.g. if
-            // BackgroundActivityFilter is used, then user will still
-            // see all
-            // events because the filters are not applied for normal rendering.
-            // (If they were applied, then the filters
-            // would
-            // be in a funny state becaues they would process the same data more
-            // than once and out of order, resulting
-            // in all kinds
-            // of problems.)
-            // However, the graphical annotations (like the boxes drawn around
-            // clusters in RectangularClusterTracker)
-            // done by the real time processing are still shown when the
-            // rendering thread calls the
-            // annotate methods.
-
-            // chip.getEventExtractor().reconstructRawPacket(realTimePacket);
-        }
-
         @Override
         public PropertyChangeSupport getReaderSupport() {
             return support;
@@ -1683,9 +1556,20 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
     }
 
-    private int getNumRealTimeEvents() {
-        return eventCounter - realTimeEventCounterStart;
+    /**
+     * Stereo eye bit on a copied raw suffix. Typed demux already cooked the address.
+     */
+    private void labelAcquisitionRaw(AEPacketRaw slice) {
+        if (slice == null || chip == null || !(chip.getHardwareInterface() instanceof StereoPairHardwareInterface stereo)) {
+            return;
+        }
+        if (stereo.getAemonLeft() == this) {
+            stereo.labelLeftEye(slice);
+        } else {
+            stereo.labelRightEye(slice);
+        }
     }
+
 
     /**
      * Allocates internal memory for transferring data from reader to consumer,

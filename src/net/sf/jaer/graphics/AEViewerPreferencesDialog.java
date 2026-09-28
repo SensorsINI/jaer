@@ -194,6 +194,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JCheckBox hideDisabledFiltersCB;
     private JRadioButton renderingModeRB;
     private JRadioButton acquisitionModeRB;
+    private JCheckBox showAcquisitionOverlayCB;
     private JSpinner updateIntervalSpinner;
     private JLabel filtersNoteLabel;
     private JSpinner maxRecentFilesSpinner;
@@ -632,7 +633,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         renderingModeRB = new JRadioButton("Process on rendering cycle");
         renderingModeRB.setToolTipText("Process events on rendering cycle");
         acquisitionModeRB = new JRadioButton("Process on acquisition cycle");
-        acquisitionModeRB.setToolTipText("Process events on hardware data acquisition cycle");
+        acquisitionModeRB.setToolTipText("Filters run on the USB thread. Display may skip. The log is buffered and can drop if the queue fills.");
         ButtonGroup modeGroup = new ButtonGroup();
         modeGroup.add(renderingModeRB);
         modeGroup.add(acquisitionModeRB);
@@ -651,6 +652,19 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         acquisitionModeRB.addActionListener(modeListener);
         p.add(renderingModeRB, gbc(y++));
         p.add(acquisitionModeRB, gbc(y++));
+
+        showAcquisitionOverlayCB = new JCheckBox("Show acquisition cycle overlay");
+        showAcquisitionOverlayCB.setToolTipText("White label under the chip with mean and std processing rate. Off skips measuring that rate.");
+        showAcquisitionOverlayCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                applyShowAcquisitionOverlay(showAcquisitionOverlayCB.isSelected());
+            }
+        });
+        p.add(showAcquisitionOverlayCB, gbc(y++));
 
         p.add(new JLabel("Global update interval (ms):"), gbcLabel(y));
         updateIntervalSpinner = new JSpinner(new SpinnerNumberModel(10.0, 0.001, 10000.0, 1.0));
@@ -711,6 +725,18 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         AEChip chip = viewer.getChip();
         if (chip != null && chip.getPrefs() != null) {
             chip.getPrefs().putBoolean("hideDisabled", hide);
+        }
+    }
+
+    private void applyShowAcquisitionOverlay(boolean show) {
+        FilterChain chain = getFilterChain();
+        if (chain != null) {
+            chain.setShowAcquisitionCycleOverlay(show);
+            return;
+        }
+        AEChip chip = viewer.getChip();
+        if (chip != null && chip.getPrefs() != null) {
+            chip.getPrefs().putBoolean(FilterChain.PREF_SHOW_ACQUISITION_OVERLAY, show);
         }
     }
 
@@ -1904,12 +1930,17 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
         FilterChain.ProcessingMode mode = FilterChain.ProcessingMode.RENDERING;
         float updateInterval = 10f;
+        boolean showAcquisitionOverlay = true;
         if (chain != null) {
             mode = chain.getProcessingMode();
             updateInterval = chain.getUpdateIntervalMs();
+            showAcquisitionOverlay = chain.isShowAcquisitionCycleOverlay();
+        } else if (chip != null && chip.getPrefs() != null) {
+            showAcquisitionOverlay = chip.getPrefs().getBoolean(FilterChain.PREF_SHOW_ACQUISITION_OVERLAY, true);
         }
         renderingModeRB.setSelected(mode == FilterChain.ProcessingMode.RENDERING);
         acquisitionModeRB.setSelected(mode == FilterChain.ProcessingMode.ACQUISITION);
+        showAcquisitionOverlayCB.setSelected(showAcquisitionOverlay);
         updateIntervalSpinner.setValue((double) Math.max(0.001f, updateInterval));
 
         boolean hasChipPrefs = chip != null && chip.getPrefs() != null;
@@ -1919,6 +1950,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         hideDisabledFiltersCB.setEnabled(hasChipPrefs || frame != null);
         renderingModeRB.setEnabled(hasChain);
         acquisitionModeRB.setEnabled(hasChain);
+        showAcquisitionOverlayCB.setEnabled(hasChain || hasChipPrefs);
         updateIntervalSpinner.setEnabled(hasChain || frame != null);
     }
 

@@ -42,6 +42,40 @@ public class ImuPacket implements TypedDataPacket {
         size = 0;
     }
 
+    /** Adopts {@code data} as the backing store. Used by suffix views. */
+    private ImuPacket(IMUSample[] data, int size, PacketType type, int streamId, byte source) {
+        this.elementData = data;
+        this.size = size;
+        this.capacity = data.length;
+        this.packetType = type == null ? PacketType.IMU6 : type;
+        this.streamId = streamId;
+        this.source = source;
+    }
+
+    /**
+     * Samples {@code [fromIndex, size)} by reference, so in-place updates are visible on the pool.
+     */
+    public ImuPacket viewFrom(int fromIndex) {
+        if (fromIndex < 0 || fromIndex > size) {
+            throw new IndexOutOfBoundsException("fromIndex " + fromIndex + " size " + size);
+        }
+        int n = size - fromIndex;
+        IMUSample[] slice = n == 0 ? new IMUSample[0] : Arrays.copyOfRange(elementData, fromIndex, size);
+        return new ImuPacket(slice, n, packetType, streamId, source);
+    }
+
+    /** Independent samples. Does not clear fields on the source. */
+    public ImuPacket deepCopy() {
+        ImuPacket dst = new ImuPacket(Math.max(1, size));
+        dst.setPacketType(packetType);
+        dst.setStreamId(streamId);
+        dst.setSource(source);
+        for (int i = 0; i < size; i++) {
+            dst.appendCopy(elementData[i]);
+        }
+        return dst;
+    }
+
     /**
      * IMUSample's protected ctor — use reflection-free factory via subclass
      * accessor. IMUSample has protected no-arg ctor in same module usage;

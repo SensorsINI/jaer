@@ -73,8 +73,8 @@ abstract public class DvsFramer extends EventFilter2D {
     public static final String EVENT_NEW_FRAME_AVAILABLE = "EVENT_NEW_FRAME_AVAILABLE";
     public final float GRAY_LEVEL = 0.5f;
     protected boolean rectifyPolarities = getBoolean("rectifyPolarities", true); // true by default to make RoShamBo CNN work properly out of the box
-    protected int dvsEventsPerFrame = getInt("dvsEventsPerFrame", 2000);
-    private int timeDurationUsPerFrame = getInt("timeDurationUsPerFrame", 10000);
+    protected volatile int dvsEventsPerFrame = getInt("dvsEventsPerFrame", 2000);
+    private volatile int timeDurationUsPerFrame = getInt("timeDurationUsPerFrame", 10000);
     protected int dvsGrayScale = getInt("dvsGrayScale", 100); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
     private boolean normalizeFrame = getBoolean("normalizeFrame", true);
     protected float dvsGrayScaleRecip;
@@ -84,7 +84,7 @@ abstract public class DvsFramer extends EventFilter2D {
         EventCount, TimeIntervalUs, AreaEvent
     }
 
-    private TimeSliceMethod timeSliceMethod = null; // init in construction with try catch
+    private volatile TimeSliceMethod timeSliceMethod = null; // init in construction with try catch
     protected AreaEventCountExposer areaEventCountExposer;
 
     /**

@@ -131,6 +131,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             default:
 
         }
+        showAcquisitionOverlayMenuItem.setSelected(filterChain.isShowAcquisitionCycleOverlay());
         if (filterChain != null) {
             filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
         }
@@ -681,14 +682,25 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         modeButtonGroup.add(acquisitionModeMenuItem);
         acquisitionModeMenuItem.setMnemonic('a');
-        acquisitionModeMenuItem.setText("Process on acqusition cycle");
-        acquisitionModeMenuItem.setToolTipText("Process events on hardware data acquisition cycle");
+        acquisitionModeMenuItem.setText("Process on acquisition cycle");
+        acquisitionModeMenuItem.setToolTipText("Filters run on the USB thread. Display may skip. The log is buffered and can drop if the queue fills.");
         acquisitionModeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 acquisitionModeMenuItemActionPerformed(evt);
             }
         });
         modeMenu.add(acquisitionModeMenuItem);
+
+        showAcquisitionOverlayMenuItem = new javax.swing.JCheckBoxMenuItem();
+        showAcquisitionOverlayMenuItem.setMnemonic('o');
+        showAcquisitionOverlayMenuItem.setText("Show acquisition cycle overlay");
+        showAcquisitionOverlayMenuItem.setToolTipText("White label under the chip with mean and std processing rate. Off skips measuring that rate.");
+        showAcquisitionOverlayMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showAcquisitionOverlayMenuItemActionPerformed(evt);
+            }
+        });
+        modeMenu.add(showAcquisitionOverlayMenuItem);
         modeMenu.add(jSeparator1);
 
         measurePerformanceCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
@@ -797,6 +809,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 	private void acquisitionModeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acquisitionModeMenuItemActionPerformed
             filterChain.setProcessingMode(FilterChain.ProcessingMode.ACQUISITION);
 	}//GEN-LAST:event_acquisitionModeMenuItemActionPerformed
+
+        private void showAcquisitionOverlayMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            if (filterChain != null) {
+                filterChain.setShowAcquisitionCycleOverlay(showAcquisitionOverlayMenuItem.isSelected());
+            }
+        }
 
 	private void renderingModeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_renderingModeMenuItemActionPerformed
             filterChain.setProcessingMode(FilterChain.ProcessingMode.RENDERING);
@@ -1172,6 +1190,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             } else if (evt.getNewValue() == FilterChain.ProcessingMode.RENDERING) {
                 renderingModeMenuItem.setSelected(true);
             }
+        } else if ("showAcquisitionCycleOverlay".equals(evt.getPropertyName()) && evt.getNewValue() instanceof Boolean show) {
+            if (showAcquisitionOverlayMenuItem.isSelected() != show) {
+                showAcquisitionOverlayMenuItem.setSelected(show);
+            }
         }
     }
 
@@ -1269,6 +1291,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
+    private javax.swing.JCheckBoxMenuItem showAcquisitionOverlayMenuItem;
     private javax.swing.JButton clearFilterJB;
     private javax.swing.JMenuItem customizeMenuItem;
     private javax.swing.JToggleButton disableFilteringToggleButton;

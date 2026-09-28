@@ -15,6 +15,7 @@ import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.eventprocessing.AcquisitionCycle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
@@ -35,6 +36,7 @@ import prophesee.usb.evk4.Evk4BoardCommand;
 public class PropheseeAEReader {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
+    private final AcquisitionCycle acquisitionCycle = new AcquisitionCycle();
     private static final byte ENDPOINT_IN = Evk4BoardCommand.EP_EVENTS_IN;
 
     private static final int XMASK = 0x7FF;
@@ -432,10 +434,12 @@ public class PropheseeAEReader {
             if (toCopy > 0) {
                 if (demux) {
                     final PacketBundle typedOut = monitor.getPacketBundlePool().writeBuffer();
+                    acquisitionCycle.markTyped(monitor.getChip(), typedOut, false);
                     polarityBuilder.installFill(typedOut, toCopy);
                     typedOut.setRawPacket(null);
                     writeBuffer.setNumEvents(0);
                 } else {
+                    acquisitionCycle.markRaw(monitor.getChip(), writeBuffer);
                     final long acStart = System.nanoTime();
                     System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
                     System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
@@ -449,6 +453,7 @@ public class PropheseeAEReader {
                 writeBuffer.overrunOccuredFlag = true;
                 logOverrun(startEvent, maxEvents, toCopy);
             }
+            acquisitionCycle.finish(monitor.getChip(), null);
         }
         if (sample != null) {
             sample.commitLockNs = System.nanoTime() - commitStart;
