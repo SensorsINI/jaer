@@ -95,6 +95,11 @@ h1 {
   text-decoration: none;
   font-weight: 600;
   font-size: 1rem;
+  text-align: center;
+}
+
+.download-slot .btn {
+  width: 100%;
 }
 
 .btn.primary {
@@ -131,6 +136,12 @@ h1 {
   margin: 0 0 0.5rem;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.download-slot .meta a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
 }
 
 .note code,

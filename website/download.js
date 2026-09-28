@@ -87,6 +87,50 @@
     parent.appendChild(document.createTextNode(" · "));
   }
 
+  function notesHref(tag) {
+    if (!tag || tag === "snapshot") {
+      return "";
+    }
+    const publicVer = String(tag).replace(/-rc\.[0-9]+$/, "");
+    return (
+      "https://github.com/SensorsINI/jaer/blob/master/release-notes/jaer-" +
+      publicVer +
+      "-release-notes.md"
+    );
+  }
+
+  function fillMetaLine(meta, parts) {
+    if (!meta) {
+      return;
+    }
+    meta.hidden = false;
+    meta.textContent = "";
+    if (!parts.length) {
+      return;
+    }
+    parts.forEach(function (node, i) {
+      if (i) {
+        appendSep(meta);
+      }
+      meta.appendChild(node);
+    });
+  }
+
+  function versionNode(tag, htmlUrl) {
+    const href = htmlUrl || notesHref(tag);
+    if (!tag) {
+      return null;
+    }
+    if (!href) {
+      return document.createTextNode(tag);
+    }
+    const a = document.createElement("a");
+    a.href = href;
+    a.title = "Release notes for " + tag;
+    a.textContent = tag;
+    return a;
+  }
+
   function fillButton(btn, meta, release, detected, label) {
     if (!btn) {
       return;
@@ -102,23 +146,24 @@
 
     btn.textContent = label;
 
-    const bits = [];
-    if (tag) {
-      bits.push(tag);
+    if (!meta) {
+      return;
+    }
+    const parts = [];
+    const ver = versionNode(tag, notesHref(tag));
+    if (ver) {
+      parts.push(ver);
     }
     if (detected.key && LABELS[detected.key]) {
-      bits.push(LABELS[detected.key]);
+      parts.push(document.createTextNode(LABELS[detected.key]));
     }
     if (asset) {
       const size = formatSize(asset.size);
       if (size) {
-        bits.push(size);
+        parts.push(document.createTextNode(size));
       }
     }
-    if (meta && bits.length) {
-      meta.hidden = false;
-      meta.textContent = bits.join(" · ");
-    }
+    fillMetaLine(meta, parts);
   }
 
   function apply(latest, detected) {
