@@ -1,7 +1,9 @@
-#version 130
+#version 120
+// macOS jAER contexts are GL 2.1 (GLSL 1.20). #version 130 does not compile there.
 // changes here must be saved to jar file by project build to be able to load this shader as resource
-in vec3 v; // the event x,y,t, where t is expressed in negative up to aspectRatio*(max array size)
-out float f, f1;
+attribute vec3 v; // the event x,y,t, where t is expressed in negative up to aspectRatio*(max array size)
+varying float f;
+varying float f1;
 
 uniform mat4 mv; // modelview
 uniform mat4 proj; // projection
@@ -10,14 +12,14 @@ uniform float t1; // end of time window
 uniform float pointSize; // base point size
 
 void main() {
-    float z=-v.z; // 0 at most recent time, dt at most distant past
-    float dt=(t1-t0);
-    f=z/dt; // fraction of total time in window, 0 at now, 1 at most distant past
-    f1=1-f; 
-    vec4 vh = vec4(v, 1);// transform vertex to homogeneous coordinate
+    float z = -v.z; // 0 at most recent time, dt at most distant past
+    float dt = t1 - t0;
+    // No events, or a zero-width window, leaves t0 == t1. Avoid NaN positions.
+    f = (dt != 0.0) ? (z / dt) : 0.0; // fraction of total time in window, 0 at now, 1 at most distant past
+    f1 = 1.0 - f;
+    vec4 vh = vec4(v, 1.0); // transform vertex to homogeneous coordinate
     // Older events stay a large fraction of pointSize. Collapsing to 1px made
     // the cloud invisible once the cube was fit to the window.
     gl_PointSize = pointSize * (0.7 + 0.3 * f1);
     gl_Position = proj * mv * vh; // must be this order
 }
-
