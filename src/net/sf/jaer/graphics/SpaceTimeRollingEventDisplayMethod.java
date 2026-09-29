@@ -83,10 +83,20 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private GLUT glut = null;
     private GLU glu = null;
     private boolean shadersInstalled = false;
+    /** Compile or link failed; do not retry or draw points every repaint. */
+    private boolean shaderInstallFailed = false;
+    /** True after the vertex buffer has been filled and flipped for drawing. */
+    private boolean eventVertexBufferReady = false;
+    private long lastGlErrorLogMs = 0L;
+    private String lastGlErrorMsg = "";
+    private int suppressedGlErrors = 0;
+    private static final long GL_ERROR_LOG_INTERVAL_MS = 2000L;
     private int shaderprogram;
     private int vertexShader;
     private int fragmentShader;
     private int vao;
+    /** False when this GL 2.1 context rejected vertex array objects. */
+    private boolean vaoInUse = false;
     private int vbo;
     final int v_vert = 0;
     private final int BUF_INITIAL_SIZE_EVENTS = 100000;
@@ -172,14 +182,19 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         zoom = chipCanvas.createZoom();
     }
 
-    private void installShaders(GL2 gl) throws IOException {
+    /**
+     * @return true when the point shader is linked and safe to draw with
+     */
+    private boolean installShaders(GL2 gl) throws IOException {
         if (shadersInstalled) {
-            return;
+            return true;
+        }
+        if (shaderInstallFailed) {
+            return false;
         }
         gl.glEnable(GL3.GL_PROGRAM_POINT_SIZE);
         checkEventVertexBufferAllocation(BUF_INITIAL_SIZE_EVENTS);
 
-        shadersInstalled = true;
         IntBuffer b = IntBuffer.allocate(8); // buffer to hold return values
         shaderprogram = gl.glCreateProgram();
         vertexShader = gl.glCreateShader(GL2ES2.GL_VERTEX_SHADER);
@@ -190,11 +205,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 .getResourceAsStream("SpaceTimeRollingEventDisplayMethod_Vertex.glsl"));
         gl.glShaderSource(vertexShader, 1, new String[]{vsrc}, (int[]) null, 0);
         gl.glCompileShader(vertexShader);
-        b.clear();
-        gl.glGetShaderiv(vertexShader, GL2ES2.GL_COMPILE_STATUS, b);
-        if (b.get(0) != GL.GL_TRUE) {
-            log.warning("error compiling vertex shader");
-            printShaderLog(gl);
+        if (!shaderCompiled(gl, vertexShader, "vertex")) {
+            shaderInstallFailed = true;
+            return false;
         }
         checkGLError(gl, "compiling vertex shader");
 
@@ -202,43 +215,59 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 .getResourceAsStream("SpaceTimeRollingEventDisplayMethod_Fragment.glsl"));
         gl.glShaderSource(fragmentShader, 1, new String[]{fsrc}, (int[]) null, 0);
         gl.glCompileShader(fragmentShader);
-        b.clear();
-        gl.glGetShaderiv(fragmentShader, GL2ES2.GL_COMPILE_STATUS, b);
-        if (b.get(0) != GL.GL_TRUE) {
-            log.warning("error compiling fragment shader");
-            printShaderLog(gl);
+        if (!shaderCompiled(gl, fragmentShader, "fragment")) {
+            shaderInstallFailed = true;
+            return false;
         }
         checkGLError(gl, "compiling fragment shader");
 
         gl.glAttachShader(shaderprogram, vertexShader);
         gl.glAttachShader(shaderprogram, fragmentShader);
-
+        // Must be set before link; a bind after link does not affect this program.
+        gl.glBindAttribLocation(shaderprogram, v_vert, "v");
         gl.glLinkProgram(shaderprogram);
         b.clear();
-//        gl.glGetShaderiv(shaderprogram, GL2ES2.GL_COMPILE_STATUS, b);
-//        if (b.get(0) != GL.GL_TRUE) {
-//            log.warning("error linking shader program");
-//            printShaderLog(gl);
-//        }
+        gl.glGetProgramiv(shaderprogram, GL2ES2.GL_LINK_STATUS, b);
+        if (b.get(0) != GL.GL_TRUE) {
+            log.warning("error linking space-time shader program: " + programInfoLog(gl));
+            shaderInstallFailed = true;
+            return false;
+        }
 
         checkGLError(gl, "linking shader program");
-        b.clear();
-        gl.glGenVertexArrays(1, b);
-        vao = b.get(0);
-        gl.glBindVertexArray(vao);
+        // GL 2.1 (this Mac: "2.1 Metal") has no core vertex-array object.
+        // glGenVertexArrays / glBindVertexArray return GL_INVALID_OPERATION there.
+        // Attribute state on the default array is valid in that compatibility profile.
+        vaoInUse = false;
+        vao = 0;
+        if (glMajorVersion(gl) >= 3) {
+            b.clear();
+            gl.glGenVertexArrays(1, b);
+            vao = b.get(0);
+            final int genVaoError = gl.glGetError();
+            if (vao != 0 && genVaoError == GL.GL_NO_ERROR) {
+                gl.glBindVertexArray(vao);
+                if (gl.glGetError() == GL.GL_NO_ERROR) {
+                    vaoInUse = true;
+                } else {
+                    vao = 0;
+                }
+            } else {
+                vao = 0;
+            }
+            if (!vaoInUse) {
+                log.log(Level.FINE, "vertex array object unavailable (GL error {0}); using the default array", genVaoError);
+            }
+        }
         b.clear();
         gl.glGenBuffers(1, b);
         vbo = b.get(0);
-        checkGLError(gl, "setting up vertex array and vertex buffer");
+        checkGLError(gl, "creating event vertex buffer");
 
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
-//        gl.glBindAttribLocation(shaderprogram, polarity_vert, "polarity"); // symbolic names in vertex and fragment shaders
-        gl.glBindAttribLocation(shaderprogram, v_vert, "v");
-//        gl.glBindAttribLocation(shaderprogram, polarity_frag, "frag_polarity");
         checkGLError(gl, "binding shader attributes");
 
         gl.glVertexAttribPointer(v_vert, 3, GL.GL_FLOAT, false, EVENT_SIZE_BYTES, 0);
-//        gl.glVertexAttribPointer(polarity_vert, 1, GL.GL_FLOAT, false, EVENT_SIZE_BYTES, 3);
         checkGLError(gl, "setting vertex attribute pointers");
         idMv = gl.glGetUniformLocation(shaderprogram, "mv");
         idProj = gl.glGetUniformLocation(shaderprogram, "proj");
@@ -246,9 +275,39 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         idt1 = gl.glGetUniformLocation(shaderprogram, "t1");
         idPointSize = gl.glGetUniformLocation(shaderprogram, "pointSize");
         if ((idMv < 0) || (idProj < 0) || (idt0 < 0) || (idt1 < 0) || (idPointSize < 0)) {
-            throw new RuntimeException("cannot locate uniform variable idMv, idProj, idt0, idt1, or idPointSize in shader program");
+            log.warning("cannot locate uniform variable idMv, idProj, idt0, idt1, or idPointSize in shader program");
+            shaderInstallFailed = true;
+            return false;
         }
         checkGLError(gl, "getting IDs for uniform modelview and projection matrices in shaders");
+        shadersInstalled = true;
+        return true;
+    }
+
+    /**
+     * {@code GL_VERSION} is {@code major.minor} or {@code major.minor.release}.
+     * This Mac reports {@code 2.1 Metal}.
+     */
+    private static int glMajorVersion(final GL2 gl) {
+        final String version = gl.glGetString(GL.GL_VERSION);
+        if (version == null || version.isEmpty() || !Character.isDigit(version.charAt(0))) {
+            return 2;
+        }
+        int major = 0;
+        for (int i = 0; i < version.length() && Character.isDigit(version.charAt(i)); i++) {
+            major = major * 10 + Character.digit(version.charAt(i), 10);
+        }
+        return major;
+    }
+
+    private boolean shaderCompiled(final GL2 gl, final int shader, final String which) {
+        final IntBuffer status = IntBuffer.allocate(1);
+        gl.glGetShaderiv(shader, GL2ES2.GL_COMPILE_STATUS, status);
+        if (status.get(0) == GL.GL_TRUE) {
+            return true;
+        }
+        log.warning("error compiling space-time " + which + " shader: " + shaderInfoLog(gl, shader));
+        return false;
     }
 
     private void checkEventVertexBufferAllocation(int sizeEvents) {
@@ -537,7 +596,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             installShaders(gl);
         } catch (IOException ex) {
             log.warning("could not load shaders: " + ex.toString());
-            return;
+            shaderInstallFailed = true;
         }
 
         // render events
@@ -547,9 +606,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
 
-        if (packet.isEmpty()) {
-            return;
-        }
+        // An open camera with no events still draws the cube. The point shader
+        // is skipped later when the vertex buffer has nothing to upload.
+        if (!packet.isEmpty()) {
         final Chip2DRenderer chipRenderer = getRenderer();
         if (!(chipRenderer instanceof AEChipRenderer)) {
             log.warning("SpaceTimeRollingEventDisplayMethod requires AEChipRenderer, got " + chipRenderer);
@@ -615,6 +674,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                     }
                 }
                 eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
+                eventVertexBufferReady = true;
                 checkGLError(gl, "set uniform t0 and t1");
                 }
             }
@@ -623,11 +683,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             // (GitHub issue 60: ArrayIndexOutOfBoundsException in EventPacket.InItr).
             log.log(Level.WARNING, "Space-time rolling skipped a frame: {0}", e.toString());
         }
-        if (eventVertexBuffer != null) {
-            // limit() is bytes; glDrawArrays counts vertices (3 floats each).
-            final int nEvents = eventVertexBuffer.limit() / EVENT_SIZE_BYTES;
-            renderEventsAndFrames(gl, drawable, eventVertexBuffer, nEvents, 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
-        }
+        } // !packet.isEmpty()
+        // limit() is bytes; glDrawArrays counts vertices (3 floats each).
+        // An allocated-but-never-flipped buffer still has limit==capacity; do not draw that.
+        final int nEvents = eventVertexBufferReady && eventVertexBuffer != null
+                ? eventVertexBuffer.limit() / EVENT_SIZE_BYTES : 0;
+        renderEventsAndFrames(gl, drawable, eventVertexBuffer, nEvents, 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
         displayStatusChangeText(drawable);
     }
 
@@ -761,6 +822,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     synchronized void renderEventsAndFrames(GL2 gl, GLAutoDrawable drawable, ByteBuffer buffer, int nEvents, float dtS, float zmax) {
+        if (sx <= 0 || sy <= 0 || smax <= 0) {
+            sx = Math.max(1, chip.getSizeX());
+            sy = Math.max(1, chip.getSizeY());
+            smax = Math.max(sx, Math.max(sy, chip.getMaxSize()));
+        }
+        // glFrustum rejects a non-positive near plane. An open sensor with no
+        // events still has a chip size, so the cube can be drawn empty.
+        if (zmax < 1f) {
+            zmax = Math.max(1f, smax * getTimeAspectRatio());
+        }
 
         final DavisRenderer frameRenderer = getDavisRenderer();
         if (frameRenderer != null) {
@@ -885,52 +956,46 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         if (displayDvsEvents) {
-//        getChipCanvas().applyProjection(gl, drawable);
-            // draw points using shaders
-            gl.glUseProgram(shaderprogram);
-            gl.glValidateProgram(shaderprogram);
-//        pmvMatrix.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-//        pmvMatrix.glLoadIdentity();
-//        pmvMatrix.glOrthof(-10, sx / zoom + 10, -10, sy / zoom + 10, 10, -10); // clip area has same aspect ratio as screen!
-//        pmvMatrix.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-//        pmvMatrix.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-//        pmvMatrix.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
-//        pmvMatrix.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
-//        pmvMatrix.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-//        pmvMatrix.glLoadIdentity();
-//        pmvMatrix.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
-//        checkGLError(gl, "using shader program");
-            proj.clear();
-            mv.clear();
-            gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
-            gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
-            proj.rewind();
-            mv.rewind();
-            gl.glUniformMatrix4fv(idMv, 1, false, mv);
-            gl.glUniformMatrix4fv(idProj, 1, false, proj);
+            // glBufferData(size 0) and glUseProgram on a failed link are
+            // GL_INVALID_OPERATION on the macOS GL 2.1 renderer. Draw the cube
+            // and labels either way; upload points only when there is one.
+            if (nEvents > 0 && shadersInstalled && buffer != null) {
+                ensureProgramPointSize(gl);
+                proj.clear();
+                mv.clear();
+                gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
+                gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
+                proj.rewind();
+                mv.rewind();
+                gl.glUseProgram(shaderprogram);
+                gl.glUniformMatrix4fv(idMv, 1, false, mv);
+                gl.glUniformMatrix4fv(idProj, 1, false, proj);
 
-            checkGLError(gl, "setting model/view matrix");
+                checkGLError(gl, "setting model/view matrix");
 
-            gl.glUniform1f(idt0, -zmax);
-            gl.glUniform1f(idt1, 0);
-            ensureProgramPointSize(gl);
-            pointSize = eventPointSizePixels(drawable);
-            gl.glUniform1f(idPointSize, pointSize);
-            checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
+                gl.glUniform1f(idt0, -zmax);
+                gl.glUniform1f(idt1, 0);
+                pointSize = eventPointSizePixels(drawable);
+                gl.glUniform1f(idPointSize, pointSize);
+                checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
 
-            gl.glBindVertexArray(vao);
-//        gl.glEnableVertexAttribArray(polarity_vert);
-            gl.glEnableVertexAttribArray(v_vert);
-            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
-            gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.limit(), buffer, GL2ES2.GL_STREAM_DRAW);
-            checkGLError(gl, "binding vertex buffers");
+                if (vaoInUse) {
+                    gl.glBindVertexArray(vao);
+                }
+                gl.glEnableVertexAttribArray(v_vert);
+                gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
+                gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.limit(), buffer, GL2ES2.GL_STREAM_DRAW);
+                checkGLError(gl, "binding vertex buffers");
 
-            // draw
-            gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
-            checkGLError(gl, "drawArrays");
-            gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
-            gl.glUseProgram(0);
-            checkGLError(gl, "disable program");
+                gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
+                checkGLError(gl, "drawArrays");
+                gl.glDisableVertexAttribArray(v_vert);
+                gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
+                // Apple GL 2.1 Metal returns GL_INVALID_OPERATION for glBindVertexArray(0).
+                // The attribute is already disabled, which is what TextRenderer needs.
+                gl.glUseProgram(0);
+                checkGLError(gl, "disable program");
+            }
 
             drawPlotLabel("Space", gl, .0f, .0f, -0.00f, zmax, 0);
             drawPlotLabel(formatTimeAxisLabel(dtS), gl, 1f, 0f, -0.00f, zmax, 90);
@@ -1209,32 +1274,79 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     boolean checkGLError(final GL2 gl, String msg) {
-        boolean r = false;
-        int error = gl.glGetError();
-        int nerrors = 10;
-        while ((error != GL.GL_NO_ERROR) && (nerrors-- != 0)) {
-            if (glu == null) {
-                glu = new GLU();
-            }
-            StackTraceElement[] st = Thread.currentThread().getStackTrace();
-            log.warning("GL error number " + error + " " + glu.gluErrorString(error) + "\n");
-            new RuntimeException("GL error number " + error + " " + glu.gluErrorString(error)).printStackTrace();
-            error = gl.glGetError();
-            r = true;
+        final int error = gl.glGetError();
+        if (error == GL.GL_NO_ERROR) {
+            return false;
         }
-        return r;
+        int extra = 0;
+        int next = gl.glGetError();
+        while ((next != GL.GL_NO_ERROR) && (extra < 8)) {
+            extra++;
+            next = gl.glGetError();
+        }
+        final long now = System.currentTimeMillis();
+        if (msg.equals(lastGlErrorMsg) && (now - lastGlErrorLogMs) < GL_ERROR_LOG_INTERVAL_MS) {
+            suppressedGlErrors++;
+            return true;
+        }
+        if (glu == null) {
+            glu = new GLU();
+        }
+        final String suppressed = suppressedGlErrors > 0
+                ? " (" + suppressedGlErrors + " repeats suppressed)" : "";
+        suppressedGlErrors = 0;
+        lastGlErrorLogMs = now;
+        lastGlErrorMsg = msg;
+        log.warning("GL error number " + error + " " + glu.gluErrorString(error)
+                + " : " + msg + " at " + glErrorCaller() + suppressed);
+        return true;
     }
 
-    private void printShaderLog(GL2 gl) {
-        IntBuffer b = IntBuffer.allocate(8);
-        gl.glGetProgramiv(shaderprogram, GL2ES2.GL_INFO_LOG_LENGTH, b);
+    private static String glErrorCaller() {
+        final StackTraceElement[] st = Thread.currentThread().getStackTrace();
+        for (int i = 1; i < st.length; i++) {
+            final String name = st[i].getMethodName();
+            if ("checkGLError".equals(name) || "glErrorCaller".equals(name) || "getStackTrace".equals(name)) {
+                continue;
+            }
+            if (st[i].getClassName().endsWith("SpaceTimeRollingEventDisplayMethod")) {
+                return name + ":" + st[i].getLineNumber();
+            }
+        }
+        return "unknown";
+    }
+
+    private String programInfoLog(GL2 gl) {
+        return shaderObjectInfoLog(gl, shaderprogram, true);
+    }
+
+    private String shaderInfoLog(GL2 gl, int shader) {
+        return shaderObjectInfoLog(gl, shader, false);
+    }
+
+    private String shaderObjectInfoLog(GL2 gl, int object, boolean program) {
+        IntBuffer b = IntBuffer.allocate(1);
+        if (program) {
+            gl.glGetProgramiv(object, GL2ES2.GL_INFO_LOG_LENGTH, b);
+        } else {
+            gl.glGetShaderiv(object, GL2ES2.GL_INFO_LOG_LENGTH, b);
+        }
         int logLength = b.get(0);
+        if (logLength <= 1) {
+            return "(no info log)";
+        }
         ByteBuffer bb = ByteBuffer.allocate(logLength);
         b.clear();
-        gl.glGetProgramInfoLog(shaderprogram, logLength, b, bb);
-        String v = new String(bb.array(), java.nio.charset.StandardCharsets.UTF_8);
-        log.info(v);
-
+        if (program) {
+            gl.glGetProgramInfoLog(object, logLength, b, bb);
+        } else {
+            gl.glGetShaderInfoLog(object, logLength, b, bb);
+        }
+        int n = 0;
+        while (n < logLength && bb.get(n) != 0) {
+            n++;
+        }
+        return new String(bb.array(), 0, n, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private String readFromStream(InputStream ins) throws IOException {
