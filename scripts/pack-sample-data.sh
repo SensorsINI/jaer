@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Zip curated sampleData recordings and write SIZE.txt (zip + unpacked bytes).
+# Zip curated jaerSampleData recordings and write SIZE.txt (zip + unpacked bytes).
 # Usage (repo root): bash scripts/pack-sample-data.sh [--force]
 # Skip zipping when jaer-sample-data.zip exists and a name+size stamp of recordings matches.
 set -euo pipefail
@@ -13,7 +13,7 @@ for arg in "$@"; do
   esac
 done
 
-SAMPLE="$ROOT/sampleData"
+SAMPLE="$ROOT/jaerSampleData"
 if [ ! -d "$SAMPLE" ]; then
   echo "Missing $SAMPLE — create it and add recordings" >&2
   exit 1
@@ -64,7 +64,7 @@ STAMP_NOW=$(contents_stamp)
 if [ "$FORCE" -eq 0 ] && [ -f "$ZIP" ] && [ -f "$STAMP" ]; then
   STAMP_PREV=$(tr -d '\r' < "$STAMP")
   if [ "$STAMP_PREV" = "$STAMP_NOW" ]; then
-    echo "sampleData unchanged (name+size); keeping $ZIP"
+    echo "jaerSampleData unchanged (name+size); keeping $ZIP"
     exit 0
   fi
 fi

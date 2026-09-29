@@ -50,7 +50,7 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
 
 1. **Notes** — add [`release-notes/jaer-3.5.2-release-notes.md`](../release-notes/jaer-3.5.2-release-notes.md) (name must be `jaer-<public>-release-notes.md`). Link install steps to [jaerproject.org/install/](https://jaerproject.org/install/); do not paste the OS how-to again. Commit and push `master`.
 2. **Version** — set [`VERSION.txt`](../VERSION.txt) to `3.5.2`. Commit and push `master`.
-3. **Sample zip** — only if recordings changed, or the durable Release is missing. On a box that has `sampleData/*.aedat4`:
+3. **Sample zip** — only if recordings changed, or the durable Release is missing. On a box that has `jaerSampleData/*.aedat4`:
 
    ```text
    ant upload-sample-data-current

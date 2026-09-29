@@ -1256,7 +1256,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             addHelpItem(new JSeparator());
             int aboutIdx = helpMenu.getPopupMenu().getComponentIndex(aboutMenuItem);
             helpMenu.insert(makeHelpURLMenuItem(JaerConstants.HELP_URL_JAER_HOME, "jAER project home",
-                    "jAER project home on Github"), aboutIdx < 0 ? helpMenu.getMenuComponentCount() : aboutIdx);
+                    "Opens https://jaerproject.org"), aboutIdx < 0 ? helpMenu.getMenuComponentCount() : aboutIdx);
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
         }
@@ -8690,7 +8690,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator7 = new javax.swing.JSeparator();
         releaseNotesMenuItem = new javax.swing.JMenuItem();
         checkForUpdatesMenuItem = new javax.swing.JMenuItem();
-        gitUpdateMenuItem = new javax.swing.JMenuItem();
+        gitUpdateMenuItem = new javax.swing.JMenuItem(); // not added; git rebuild is no longer in Help
         jSeparator6 = new javax.swing.JPopupMenu.Separator();
         loggingLevelMenu = new javax.swing.JMenu();
         jSeparator25 = new javax.swing.JPopupMenu.Separator();
@@ -9579,8 +9579,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         helpMenu.add(releaseNotesMenuItem);
 
-        checkForUpdatesMenuItem.setText("Check for New Releases....");
-        checkForUpdatesMenuItem.setToolTipText("Checks if there is a newer release of jAER installer on github");
+        checkForUpdatesMenuItem.setText("Check for updates...");
+        checkForUpdatesMenuItem.setToolTipText("Checks for a newer jAER release and sets how often to check");
         checkForUpdatesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 checkForUpdatesMenuItemActionPerformed(evt);
@@ -9588,14 +9588,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         helpMenu.add(checkForUpdatesMenuItem);
 
-        gitUpdateMenuItem.setText("Git update and build jAER (experimental)....");
-        gitUpdateMenuItem.setToolTipText("Experimental: pull this git tree and Ant-build. Not tested for several years. Prefer Help → Check for New Releases for install4j updates.");
-        gitUpdateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                gitUpdateMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(gitUpdateMenuItem);
+        // Git init/pull/build stays in JaerUpdaterFrame for developers, and is not shown.
         helpMenu.add(jSeparator6);
 
         loggingLevelMenu.setText("Set logging level...");
@@ -12558,7 +12551,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        return url.toString();
 //    }
     /**
-     * Adds item above Check for New Releases / About (dynamic Help links).
+     * Adds item above Check for updates / About (dynamic Help links).
      *
      * @param menuItem item to appendCopyOfEventReferences
      * @see #removeHelpItem(javax.swing.JMenuItem)

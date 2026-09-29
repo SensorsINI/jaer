@@ -1,13 +1,13 @@
 # Clip source MP4/AVI (or mov/mkv/webm) to looping 240px-wide WebP previews for
-# sampleData/README.md. Name each source like the .aedat4 (same stem).
+# jaerSampleData/README.md. Name each source like the .aedat4 (same stem).
 #
 # Usage (repo root):
 #   powershell -File scripts/make-sample-data-previews.ps1
 #   powershell -File scripts/make-sample-data-previews.ps1 -Src $env:USERPROFILE\exports
 #   powershell -File scripts/make-sample-data-previews.ps1 -Force
 #
-# Looks for sources in -Src, then sampleData/preview-src/, then sampleData/.
-# Optional start times: sampleData/previews/offsets.txt
+# Looks for sources in -Src, then jaerSampleData/preview-src/, then jaerSampleData/.
+# Optional start times: jaerSampleData/previews/offsets.txt
 #   <aedat4 stem> <seconds>
 # (stem may contain spaces; last token is the start time.)
 param(
@@ -31,13 +31,13 @@ if (-not $ffmpeg) {
 }
 if (-not $ffmpeg) {
     if ($AllowNoFfmpeg) {
-        Write-Host "ffmpeg not on PATH; skipping WebP encode (existing sampleData/previews/ kept)"
+        Write-Host "ffmpeg not on PATH; skipping WebP encode (existing jaerSampleData/previews/ kept)"
         return
     }
     throw "ffmpeg not found on PATH"
 }
 
-$sampleDir = Join-Path $root "sampleData"
+$sampleDir = Join-Path $root "jaerSampleData"
 if (-not (Test-Path -LiteralPath $sampleDir -PathType Container)) {
     throw "Missing $sampleDir"
 }
@@ -91,7 +91,7 @@ function Find-Source([string]$stem) {
 
 $recordings = @(Get-ChildItem -LiteralPath $sampleDir -File -Filter "*.aedat4" -ErrorAction SilentlyContinue)
 if (-not $recordings) {
-    throw "No .aedat4 files in $sampleDir. Name sources like the stems in sampleData/README.md and put them in preview-src."
+    throw "No .aedat4 files in $sampleDir. Name sources like the stems in jaerSampleData/README.md and put them in preview-src."
 }
 
 $ok = 0

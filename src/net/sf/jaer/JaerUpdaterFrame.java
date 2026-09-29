@@ -24,12 +24,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import net.sf.jaer.util.WindowSaver.DontRestore;
 
 /**
- * Frame to run update operations on jAER
+ * Legacy git init / pull / Ant-build frame. Help no longer shows this window.
+ * Release updates use {@link JaerUpdaterInstall4j}.
  *
  * @author Tobi
  */
@@ -53,17 +52,8 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             statusButton.addActionListener(JaerUpdaterGit.gitStatusActionListener(this));
             setGitButtonsEnabled(true);
         } catch (IOException e) {
-            log.warning(e.toString());
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    JOptionPane.showMessageDialog(JaerUpdaterFrame.this, "<html>.git folder not found or is corrupted; you must initialize git before any update operations."
-                            + "<p>It is expected if you are running jAER from a release, which does not include git information."
-                            + "<p>Click the jaerproject.org link in the Updater dialog to find out how to <br>"
-                            + "initialize your release to a working copy using command line git."
-                            + "<p> Or you can use the built in function in the updater to initialize git.", "git not set up", JOptionPane.WARNING_MESSAGE);
-                }
-            });
+            // Release installs have no .git. Do not warn; developers clone jAER themselves.
+            log.info("Git is not set up in this folder (" + e + ")");
 
             try {
                 if (!debug) {
@@ -141,7 +131,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jPanel1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         jaerProjectLinkLabel.setFont(new java.awt.Font("Arial Black", 1, 18)); // NOI18N
-        jaerProjectLinkLabel.setText("<html> <em><a href=\"http://jaerproject.org\">jaerproject.org</a> </em></html>");
+        jaerProjectLinkLabel.setText("<html> <em><a href=\"https://jaerproject.org\">jaerproject.org</a> </em></html>");
         jaerProjectLinkLabel.setToolTipText("Go to project home page");
         jaerProjectLinkLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -301,7 +291,8 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jLabel1.setFont(new java.awt.Font("Tahoma", 1, 18)); // NOI18N
         jLabel1.setText("jAER updater");
 
-        jTextPane4.setText("You will generally benefit from running from the most recent commits since bugs are fixed frequently but releases are infrequent");
+        jTextPane4.setText("");
+        jTextPane4.setVisible(false);
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);

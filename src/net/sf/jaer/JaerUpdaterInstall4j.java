@@ -131,7 +131,7 @@ public class JaerUpdaterInstall4j {
      * checks where dialog only shows if there is one available
      */
     public void checkForInstall4jReleaseUpdate(JFrame parent, boolean interactive) {
-        log.info(String.format("Check for New Releases (interactive=%s): install4j sys.version, then %s",
+        log.info(String.format("Check for updates (interactive=%s): install4j sys.version, then %s",
                 interactive, INSTALL4J_UPDATES_URL));
         // check if running from installed version of jaer (fails if running from git compiled jaer)
         String currentVersion = "unknown";

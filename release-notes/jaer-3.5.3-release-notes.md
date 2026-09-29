@@ -17,7 +17,7 @@
 | macOS | Intel | [jAER_macos_3_5_3.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.3/jAER_macos_3_5_3.dmg) |
 | Linux | x64 | [jAER_unix_3_5_3.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.3/jAER_unix_3_5_3.sh) |
 | Linux | x64 `.deb` | [jAER_linux-amd64_3_5_3.deb](https://github.com/SensorsINI/jaer/releases/download/3.5.3/jAER_linux-amd64_3_5_3.deb) |
-| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.5.3/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md)) |
+| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.5.3/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/jaerSampleData/README.md)) |
 
 Each installer includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK 25. You do not install Java yourself. GitHub lists the same files again under **Assets**.
 

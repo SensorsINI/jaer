@@ -21,7 +21,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 
 import net.sf.jaer.JaerConstants;
-import net.sf.jaer.JaerUpdaterFrame;
+import net.sf.jaer.JaerUpdaterInstall4j;
 
 /**
  * The About dialog. Version and git commit come from
@@ -128,7 +128,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         });
 
         jaerProjectLinkLabel.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
-        jaerProjectLinkLabel.setText("<html> <em><a href=\"http://jaerproject.org\">jaerproject.org</a> </em></html>");
+        jaerProjectLinkLabel.setText("<html> <em><a href=\"https://jaerproject.org\">jaerproject.org</a> </em></html>");
         jaerProjectLinkLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 jaerProjectLinkLabelMouseClicked(evt);
@@ -249,11 +249,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
     private void updatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updatesButtonActionPerformed
         dispose();
-        if(parent.getJaerUpdaterFrame()==null){
-            parent.setJaerUpdaterFrame(new JaerUpdaterFrame());
-        }
-        parent.getJaerUpdaterFrame().setVisible(true);
-        parent.getJaerUpdaterFrame().setLocationRelativeTo(parent);
+        new JaerUpdaterInstall4j().checkForInstall4jReleaseUpdate(parent, true);
     }//GEN-LAST:event_updatesButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

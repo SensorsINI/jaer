@@ -87,4 +87,4 @@ start=$(date +%s)
 gh release upload "$TAG" "$ZIP" --clobber
 echo "Uploaded $(basename "$ZIP") in $(( $(date +%s) - start ))s"
 echo "Sample data: https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip"
-echo "If WebP thumbs changed, commit sampleData/previews/*.webp (they are not in the zip)."
+echo "If WebP thumbs changed, commit jaerSampleData/previews/*.webp (they are not in the zip)."

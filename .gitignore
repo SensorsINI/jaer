@@ -142,6 +142,13 @@ release-notes/3.4.0/hotel-bar-activity-histogram.webp
 
 # Curated sample recordings (Dropbox / local). README stays in git; SIZE.txt is pack-sample-data output.
 # Looping WebP thumbs for the GitHub README are tracked; source MP4/AVI in preview-src/ are not.
+/jaerSampleData/**
+!/jaerSampleData/
+!/jaerSampleData/README.md
+!/jaerSampleData/previews/
+!/jaerSampleData/previews/*.webp
+!/jaerSampleData/previews/offsets.txt
+# Legacy name, if a checkout still has it.
 /sampleData/**
 !/sampleData/
 !/sampleData/README.md

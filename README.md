@@ -16,7 +16,7 @@ jAER is a full-featured 2026 cross-platform (Linux, Windows, macOS) desktop appl
 
 Download platform installers from [jaerproject.org](https://jaerproject.org) or [GitHub Releases](https://github.com/SensorsINI/jaer/releases). Step-by-step Windows, macOS (Apple Silicon and Intel), and Linux instructions: **[Install Guide](https://jaerproject.org/install/)**. Video: [installing and updating jAER](https://youtu.be/qQVt8_gwYVY).
 
-Optional **[sample recordings]](sampleData/README.md)** are not in the basic installer. The Welcome screen offers a download
+Optional **[sample recordings](jaerSampleData/README.md)** are not in the basic installer. The Welcome screen offers a download
 (`jaer-sample-data.zip` from the GitHub Latest release), or you can File → Open and **Help → Sample data → Download jAER sample data**.
 
 ## Features
@@ -75,7 +75,7 @@ USB enumeration, the Interface menu, EDT rules, and per-camera libusb quirks: [`
 
 ## Quick start sample data
 
-* The installer can download curated files into `sampleData/`. **Help → Sample data → Download jAER sample data** does the same. File list: [`sampleData/README.md`](sampleData/README.md). Packing: [`docs/README-sample-data.md`](docs/README-sample-data.md).
+* The installer can download curated files into `jaer/jaerSampleData`. **Help → Sample data → Download jAER sample data** does the same, always into a folder named `jaerSampleData`. File list: [`jaerSampleData/README.md`](jaerSampleData/README.md). Packing: [`docs/README-sample-data.md`](docs/README-sample-data.md).
 * Download [DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
 drop them onto the jAER window to play them with the *DVS128* *AEChip*.
 * Download [DAVIS346 sample data files from the DAVIS24 dataset](https://sites.google.com/view/davis24-davis-sample-data/home) and

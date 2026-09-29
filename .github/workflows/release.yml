@@ -138,7 +138,7 @@ jobs:
           set -euo pipefail
           if ! gh release download sample-data-current --pattern jaer-sample-data.zip --dir dist; then
             echo 'Missing GitHub Release tag sample-data-current with jaer-sample-data.zip.' >&2
-            echo 'On a box with sampleData recordings: ant upload-sample-data-current' >&2
+            echo 'On a box with jaerSampleData recordings: ant upload-sample-data-current' >&2
             echo 'Then push a new -rc.N. Do not retag. Do not mark sample-data-current Latest.' >&2
             exit 1
           fi

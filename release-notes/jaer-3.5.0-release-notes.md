@@ -28,7 +28,7 @@
 | macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_5_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.0/jAER_macos_aarch64_3_5_0.dmg) |
 | macOS | Intel | [jAER_macos_3_5_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.5.0/jAER_macos_3_5_0.dmg) |
 | Linux | x64 | [jAER_unix_3_5_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.5.0/jAER_unix_3_5_0.sh) |
-| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.5.0/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md)) |
+| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.5.0/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/jaerSampleData/README.md)) |
 
 Each installer is <250 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (same **25** LTS as 3.4.0) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page.
 
@@ -115,7 +115,7 @@ On stop, **Merge VCR deck** concatenates cassettes to one AEDAT-4 (stitches cass
 
 <h4 id="sample-data">Sample recordings: install, download, writable folder</h4>
 
-Help → **Sample data** downloads about **995 MB** of short AEDAT-4 clips (DVS128, DAVIS240/346, NRV DELTA01, Prophesee IMX636, DDD20 driving, Steadicam, RoboGoalie, [EssacSim](https://github.com/spikelab-jhu/isaac-sim-event-camera-plugin) warehouse quadruped, Telluride mountain biking, hummingbirds). Permanent zip: [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip). File list with 5 s WebP previews: [sampleData/README.md](https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md).
+Help → **Sample data** downloads about **995 MB** of short AEDAT-4 clips (DVS128, DAVIS240/346, NRV DELTA01, Prophesee IMX636, DDD20 driving, Steadicam, RoboGoalie, [EssacSim](https://github.com/spikelab-jhu/isaac-sim-event-camera-plugin) warehouse quadruped, Telluride mountain biking, hummingbirds). Permanent zip: [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip). File list with 5 s WebP previews: [sampleData/README.md](https://github.com/SensorsINI/jaer/blob/master/jaerSampleData/README.md).
 
 3.4.0 could not unpack under a default Windows **Program Files** install. Help → Sample data and File → Open now choose an unpack folder: install `sampleData` when it is writable, otherwise `jaerSampleData` in the home directory. The Welcome screen shows zip/unpacked size and a **minutes** ETA at 10 MB/s Wi-Fi. After files are copied, **Skip** or **Download**; cancelling does not roll back jAER. Uninstall deletes the default install `sampleData` (with a warning about extra files) and does **not** delete `~/jaerSampleData`.
 

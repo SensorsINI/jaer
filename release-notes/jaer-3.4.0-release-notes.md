@@ -93,7 +93,7 @@ If a leftover `JAERViewerRunning.txt` points at another jAER process, you can **
 
 <h4 id="sample-recordings">Sample recordings</h4>
 
-Help → **Sample data** downloads about **796 MB** of short AEDAT-4 clips (DVS128, DAVIS240/346, NRV DELTA01, Prophesee IMX636, a DDD20 driving clip, Steadicam) into `sampleData/` next to the install. If the folder is already there, the item becomes **Show jAER sample data folder and README**. The installer can offer the same zip (off by default). See [sampleData/README.md](https://github.com/SensorsINI/jaer/blob/master/sampleData/README.md). Opening a [DDD20](https://sites.google.com/view/davis-driving-dataset-2017/datasets) `.h5` / `.hdf5` in File → Open converts events and frames to AEDAT-4.
+Help → **Sample data** downloads about **796 MB** of short AEDAT-4 clips (DVS128, DAVIS240/346, NRV DELTA01, Prophesee IMX636, a DDD20 driving clip, Steadicam) into `sampleData/` next to the install. If the folder is already there, the item becomes **Show jAER sample data folder and README**. The installer can offer the same zip (off by default). See [sampleData/README.md](https://github.com/SensorsINI/jaer/blob/master/jaerSampleData/README.md). Opening a [DDD20](https://sites.google.com/view/davis-driving-dataset-2017/datasets) `.h5` / `.hdf5` in File → Open converts events and frames to AEDAT-4.
 
 <h4 id="aedat-4-playback">AEDAT-4 playback</h4>
 

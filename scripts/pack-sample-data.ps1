@@ -1,4 +1,4 @@
-# Zip curated sampleData recordings and write SIZE.txt (zip + unpacked bytes).
+# Zip curated jaerSampleData recordings and write SIZE.txt (zip + unpacked bytes).
 # Usage (repo root): powershell -File scripts/pack-sample-data.ps1 [-Force] [-WhatIf]
 # Skip zipping when jaer-sample-data.zip exists and a name+size stamp of recordings matches.
 param(
@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $root
 
-$sampleDir = Join-Path $root "sampleData"
+$sampleDir = Join-Path $root "jaerSampleData"
 if (-not (Test-Path -LiteralPath $sampleDir -PathType Container)) {
     throw "Missing $sampleDir - create it and add recordings"
 }
@@ -65,10 +65,10 @@ $stamp = Get-ContentsStamp
 $zipExists = Test-Path -LiteralPath $zipPath
 if (-not $Force -and $zipExists -and ((Read-ContentsStamp $stampPath) -eq $stamp)) {
     if ($WhatIf) {
-        Write-Host ("WhatIf: would skip zip; sampleData name+size unchanged -> {0}" -f $zipPath)
+        Write-Host ("WhatIf: would skip zip; jaerSampleData name+size unchanged -> {0}" -f $zipPath)
         return
     }
-    Write-Host ("sampleData unchanged (name+size); keeping {0}" -f $zipPath)
+    Write-Host ("jaerSampleData unchanged (name+size); keeping {0}" -f $zipPath)
     return
 }
 

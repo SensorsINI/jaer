@@ -13,14 +13,14 @@ import prophesee.chip.PropheseeIMX636HD;
  *
  * <pre>
  * java -cp "build/classes:lib/*:jars/*" net.sf.jaer.eventio.aedat4.Aedat4PlaybackBench \
- *   "sampleData/PropheseeIMX636HD Metavision driving_sample street.aedat4" 20000
+ *   "jaerSampleData/PropheseeIMX636HD Metavision driving_sample street.aedat4" 20000
  * </pre>
  */
 public final class Aedat4PlaybackBench {
 
     public static void main(String[] args) throws Exception {
         File file = new File(args.length > 0 ? args[0]
-                : "sampleData/PropheseeIMX636HD Metavision driving_sample street.aedat4");
+                : "jaerSampleData/PropheseeIMX636HD Metavision driving_sample street.aedat4");
         int dtUs = args.length > 1 ? Integer.parseInt(args[1]) : 20_000;
         if (!file.isFile()) {
             System.err.println("missing file: " + file.getAbsolutePath());

@@ -156,9 +156,9 @@ Optional IN/OUT markers clip the export. Optional **Apply EventFilters** writes 
 
 [`aedat`](https://pypi.org/project/aedat/) (Neuromorphic Systems) is a small AEDAT-4 decoder. Events are a structured numpy array. Field names are `t`, `x`, `y`, `p`; `on` is an alias for `p` (boolean ON=True).
 
-Tested on `sampleData/`:
+Tested on `jaerSampleData/`:
 
-* **Opens** after File → Save As AEDAT-4 (snapshot is a *sibling* of `outInfo`, not a child). Current `sampleData/` re-exports parse; old zip files with the snapshot *inside* `outInfo` still raise `RuntimeError: invalid digit found in string`.
+* **Opens** after File → Save As AEDAT-4 (snapshot is a *sibling* of `outInfo`, not a child). Current `jaerSampleData/` re-exports parse; old zip files with the snapshot *inside* `outInfo` still raise `RuntimeError: invalid digit found in string`.
 * **Events / IMU** decode on DVS-only and APS-empty files (DVS128, DVS640, NRV, Steadicam).
 * **Frames**: Color DV files work (8-bit RGB). Version 2.3.0 adds support for DAVIS APS frames (`OPENCV_16U_C1`).
 

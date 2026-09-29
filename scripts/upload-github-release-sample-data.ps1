@@ -58,4 +58,4 @@ if ($code -ne 0) {
 }
 Write-Host ("Uploaded {0} in {1:N0}s" -f $item.Name, $sw.Elapsed.TotalSeconds)
 Write-Host "Sample data: https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip"
-Write-Host "If WebP thumbs changed, commit sampleData/previews/*.webp (they are not in the zip)."
+Write-Host "If WebP thumbs changed, commit jaerSampleData/previews/*.webp (they are not in the zip)."

@@ -20,7 +20,7 @@ if (-not $version) { throw "VERSION.txt is empty" }
 $releaseTag = "sample-data-current"
 $zip = Join-Path $root "currentInstallers\$version\jaer-sample-data.zip"
 if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) {
-    throw ("Missing {0} - run ant pack-sample-data first (needs recordings in sampleData/)" -f $zip)
+    throw ("Missing {0} - run ant pack-sample-data first (needs recordings in jaerSampleData/)" -f $zip)
 }
 
 $item = Get-Item -LiteralPath $zip

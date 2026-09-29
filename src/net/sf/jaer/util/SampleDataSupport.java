@@ -50,8 +50,9 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.JaerConstants;
 
 /**
- * Optional download of curated recordings into {@code sampleData/}.
+ * Optional download of curated recordings into a folder named {@code jaerSampleData}.
  * The zip is a GitHub Release asset; sizes come from shipped {@code SIZE.txt}.
+ * The zip root is the files. Unpackers always place them in {@code jaerSampleData}.
  */
 public final class SampleDataSupport {
 
@@ -63,11 +64,19 @@ public final class SampleDataSupport {
 
     public static final String PREF_DECLINED = "AEViewer.sampleDataDownloadDeclined";
 
-    /** Last folder the user chose for sample recordings (absolute path). */
+    /** Last folder the user chose for sample recordings (absolute path of {@code jaerSampleData}). */
     public static final String PREF_FOLDER = "AEViewer.sampleDataFolder";
 
+    /** Directory name for curated recordings, next to jAER or under a folder the user picks. */
+    public static final String FOLDER_NAME = "jaerSampleData";
+
+    /** Previous directory name. Renamed to {@link #FOLDER_NAME} when that name is free. */
+    public static final String LEGACY_FOLDER_NAME = "sampleData";
+
     /** Suggested folder name under the user home when the install tree is not writable. */
-    public static final String HOME_FOLDER_NAME = "jaerSampleData";
+    public static final String HOME_FOLDER_NAME = FOLDER_NAME;
+
+    private static final AtomicBoolean layoutReady = new AtomicBoolean(false);
 
     public static final String HELP_MENU_DOWNLOAD = "Download jAER sample data";
 
@@ -98,9 +107,10 @@ public final class SampleDataSupport {
 
     /**
      * Folder used for Help → Show, File → Open fallback, and download unpack.
-     * Prefers the last chosen download folder, otherwise the install {@code sampleData/}.
+     * Prefers the last chosen {@code jaerSampleData} folder, otherwise the install copy.
      */
     public static File folder() {
+        ensureLayout();
         String pref = JaerConstants.PREFS_ROOT.get(PREF_FOLDER, "");
         if (pref != null && !pref.isBlank()) {
             return new File(pref);
@@ -109,26 +119,139 @@ public final class SampleDataSupport {
     }
 
     /**
-     * {@code sampleData} next to the running jAER (git checkout or installer
-     * destination). Does not consult {@link #PREF_FOLDER}.
+     * {@code jaerSampleData} next to the running jAER (git checkout or installer
+     * destination). Falls back to a legacy {@code sampleData} directory.
+     * Does not consult {@link #PREF_FOLDER}.
      */
     public static File installDefaultFolder() {
-        File cwd = new File(System.getProperty("user.dir", "."), "sampleData");
-        if (cwd.isDirectory() || new File(cwd, "README.md").isFile()) {
-            return cwd;
+        ensureLayout();
+        File withRecordings = null;
+        File any = null;
+        for (File candidate : installCandidates()) {
+            if (candidate == null || !candidate.isDirectory()) {
+                continue;
+            }
+            if (any == null) {
+                any = candidate;
+            }
+            if (withRecordings == null && directoryHasRecording(candidate)) {
+                withRecordings = candidate;
+            }
         }
-        File nested = new File(System.getProperty("user.dir", "."), "jaer" + File.separator + "sampleData");
-        if (nested.isDirectory()) {
-            return nested;
+        if (withRecordings != null) {
+            return withRecordings;
         }
-        return cwd;
+        if (any != null) {
+            return any;
+        }
+        return installCandidates()[0];
     }
 
     /**
-     * Chooser default: install {@code sampleData} when that location is writable,
+     * Directory the zip will unpack into. A selection named {@code jaerSampleData}
+     * is used as-is. {@code sampleData} is renamed to {@code jaerSampleData} when
+     * that name is free. Any other folder gets a {@code jaerSampleData} child.
+     */
+    public static File qualifiedUnpackFolder(File chosen) {
+        if (chosen == null) {
+            return null;
+        }
+        String name = chosen.getName();
+        if (FOLDER_NAME.equalsIgnoreCase(name)) {
+            return chosen;
+        }
+        File parent = chosen.getParentFile();
+        if (LEGACY_FOLDER_NAME.equalsIgnoreCase(name) && parent != null) {
+            File renamed = new File(parent, FOLDER_NAME);
+            if (renamed.equals(chosen)) {
+                return chosen;
+            }
+            if (!renamed.exists()) {
+                try {
+                    Files.move(chosen.toPath(), renamed.toPath());
+                    log.info("Renamed sample folder " + chosen.getAbsolutePath() + " to " + renamed.getAbsolutePath());
+                    return renamed;
+                } catch (Exception ex) {
+                    log.log(Level.INFO, "Could not rename " + chosen.getAbsolutePath() + " to " + FOLDER_NAME + ": " + ex);
+                    return chosen;
+                }
+            }
+            if (directoryHasRecording(chosen) && !directoryHasRecording(renamed)) {
+                log.info("Keeping " + chosen.getAbsolutePath() + " because it has recordings");
+                return chosen;
+            }
+            log.info("Using existing " + renamed.getAbsolutePath());
+            return renamed;
+        }
+        return new File(chosen, FOLDER_NAME);
+    }
+
+    /**
+     * If {@code dir} is a mixed folder a previous unpack wrote into, move
+     * {@code README.md}, {@code SIZE.txt}, and recording files into
+     * {@code jaerSampleData} inside it. Other files stay put.
+     *
+     * @return the {@code jaerSampleData} child, or null when nothing was moved
+     */
+    public static File relocateMisplacedRecordings(File dir) {
+        if (dir == null || !dir.isDirectory()) {
+            return null;
+        }
+        String name = dir.getName();
+        if (FOLDER_NAME.equalsIgnoreCase(name) || LEGACY_FOLDER_NAME.equalsIgnoreCase(name)) {
+            return null;
+        }
+        if (!new File(dir, "README.md").isFile()) {
+            return null;
+        }
+        File child = new File(dir, FOLDER_NAME);
+        if (child.exists() && !child.isDirectory()) {
+            log.warning("Cannot create sample folder; a file is in the way: " + child.getAbsolutePath());
+            return null;
+        }
+        File[] kids = dir.listFiles();
+        if (kids == null) {
+            return null;
+        }
+        try {
+            Files.createDirectories(child.toPath());
+        } catch (Exception ex) {
+            log.log(Level.WARNING, "Could not create " + child.getAbsolutePath() + ": " + ex);
+            return null;
+        }
+        int moved = 0;
+        for (File f : kids) {
+            if (f == null || !f.isFile() || f.equals(child)) {
+                continue;
+            }
+            String n = f.getName();
+            if (!isRecordingName(n) && !"README.md".equalsIgnoreCase(n) && !"SIZE.txt".equalsIgnoreCase(n)) {
+                continue;
+            }
+            Path target = child.toPath().resolve(n);
+            if (Files.exists(target)) {
+                continue;
+            }
+            try {
+                Files.move(f.toPath(), target);
+                moved++;
+            } catch (Exception ex) {
+                log.log(Level.WARNING, "Could not move " + f.getAbsolutePath() + " into " + child.getAbsolutePath() + ": " + ex);
+            }
+        }
+        if (moved == 0) {
+            return null;
+        }
+        log.info("Moved " + moved + " sample file(s) into " + child.getAbsolutePath());
+        return child;
+    }
+
+    /**
+     * Chooser default: install {@code jaerSampleData} when that location is writable,
      * otherwise {@code jaerSampleData} in the user home directory.
      */
     public static File suggestedDownloadFolder() {
+        ensureLayout();
         String pref = JaerConstants.PREFS_ROOT.get(PREF_FOLDER, "");
         if (pref != null && !pref.isBlank()) {
             File remembered = new File(pref);
@@ -170,6 +293,116 @@ public final class SampleDataSupport {
         return false;
     }
 
+    private static void ensureLayout() {
+        if (!layoutReady.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            promoteLegacyInstallFolders();
+            String pref = JaerConstants.PREFS_ROOT.get(PREF_FOLDER, "");
+            if (pref == null || pref.isBlank()) {
+                return;
+            }
+            File remembered = new File(pref);
+            if (LEGACY_FOLDER_NAME.equalsIgnoreCase(remembered.getName())) {
+                File renamed = qualifiedUnpackFolder(remembered);
+                if (renamed != null && !renamed.equals(remembered)) {
+                    persistFolder(renamed);
+                    remembered = renamed;
+                }
+            }
+            File moved = relocateMisplacedRecordings(remembered);
+            if (moved != null) {
+                persistFolder(moved);
+            }
+        } catch (Exception ex) {
+            log.log(Level.WARNING, "Sample data folder layout: " + ex, ex);
+        }
+    }
+
+    private static void promoteLegacyInstallFolders() {
+        String pref = JaerConstants.PREFS_ROOT.get(PREF_FOLDER, "");
+        for (File legacy : legacyInstallCandidates()) {
+            File canon = new File(legacy.getParentFile(), FOLDER_NAME);
+            if (!legacy.isDirectory()) {
+                continue;
+            }
+            try {
+                if (!canon.exists()) {
+                    Files.move(legacy.toPath(), canon.toPath());
+                    log.info("Renamed " + legacy.getAbsolutePath() + " to " + canon.getAbsolutePath());
+                } else if (directoryHasRecording(legacy) && !directoryHasRecording(canon)) {
+                    moveSampleFiles(legacy, canon);
+                    log.info("Moved recordings from " + legacy.getAbsolutePath() + " into " + canon.getAbsolutePath());
+                } else {
+                    continue;
+                }
+                if (pref != null && new File(pref).equals(legacy)) {
+                    persistFolder(canon);
+                    pref = canon.getAbsolutePath();
+                }
+            } catch (Exception ex) {
+                log.log(Level.INFO, "Could not rename " + legacy.getAbsolutePath() + ": " + ex);
+            }
+        }
+    }
+
+    private static File[] installCandidates() {
+        File cwd = new File(System.getProperty("user.dir", "."));
+        return new File[] {
+                new File(cwd, FOLDER_NAME),
+                new File(cwd, "jaer" + File.separator + FOLDER_NAME),
+                new File(cwd, LEGACY_FOLDER_NAME),
+                new File(cwd, "jaer" + File.separator + LEGACY_FOLDER_NAME)
+        };
+    }
+
+    private static File[] legacyInstallCandidates() {
+        File cwd = new File(System.getProperty("user.dir", "."));
+        return new File[] {
+                new File(cwd, LEGACY_FOLDER_NAME),
+                new File(cwd, "jaer" + File.separator + LEGACY_FOLDER_NAME)
+        };
+    }
+
+    private static void moveSampleFiles(File from, File to) throws Exception {
+        Files.createDirectories(to.toPath());
+        File[] kids = from.listFiles();
+        if (kids == null) {
+            return;
+        }
+        for (File f : kids) {
+            if (f == null || !f.isFile()) {
+                continue;
+            }
+            String n = f.getName();
+            if (!isRecordingName(n) && !"README.md".equalsIgnoreCase(n) && !"SIZE.txt".equalsIgnoreCase(n)) {
+                continue;
+            }
+            Path target = to.toPath().resolve(n);
+            if (Files.exists(target)) {
+                continue;
+            }
+            Files.move(f.toPath(), target);
+        }
+    }
+
+    private static boolean directoryHasRecording(File dir) {
+        if (dir == null || !dir.isDirectory()) {
+            return false;
+        }
+        File[] kids = dir.listFiles();
+        if (kids == null) {
+            return false;
+        }
+        for (File f : kids) {
+            if (f.isFile() && isRecordingName(f.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean probeWrite(Path dir) {
         try {
             Path probe = Files.createTempFile(dir, ".jaer-w", ".tmp");
@@ -201,7 +434,7 @@ public final class SampleDataSupport {
         if (useShowHelpItem()) {
             return "Opens the sample recordings folder and the GitHub README (in-app README if offline)";
         }
-        return "Choose a folder, download curated recordings (Cancel stops the download only), then open the folder and README";
+        return "Choose where to put jaerSampleData, download curated recordings (Cancel stops the download only), then open the folder and README";
     }
 
     public static File sizeFile() {
@@ -291,7 +524,7 @@ public final class SampleDataSupport {
 
     public static String sizeOfferText(Sizes s) {
         if (s == null || !s.known) {
-            return "Download and unpacked sizes are unknown (missing sampleData/SIZE.txt).";
+            return "Download and unpacked sizes are unknown (missing jaerSampleData/SIZE.txt).";
         }
         return s.zipMiB + " MB download (" + etaAtWifi10MBps(s.zipMiB) + "), " + s.unpackedMiB + " MB on disk";
     }
@@ -311,7 +544,7 @@ public final class SampleDataSupport {
      */
     public static boolean maybeDownload(Component parent, boolean force) {
         if (hasRecordings()) {
-            log.info("File > Open: sampleData already has recordings at " + folder().getAbsolutePath());
+            log.info("File > Open: jaerSampleData already has recordings at " + folder().getAbsolutePath());
             return true;
         }
         if (!force && JaerConstants.PREFS_ROOT.getBoolean(PREF_DECLINED, false)) {
@@ -322,9 +555,9 @@ public final class SampleDataSupport {
         String sizeLine = sizeOfferText(sizes);
         log.info("File > Open: offering sample-data download (" + sizeLine + ")");
         int choice = JOptionPane.showConfirmDialog(parent,
-                "<html>jAER sample recordings are not in this <code>sampleData</code> folder.<br><br>"
+                "<html>jAER sample recordings are not in <code>" + FOLDER_NAME + "</code>.<br><br>"
                         + sizeLine + ".<br><br>"
-                        + "Download from GitHub Latest? You will choose the unpack folder next.<br>"
+                        + "Download from GitHub Latest? You will choose where to put that folder.<br>"
                         + "You can cancel the download after it starts.<br>"
                         + "<code>" + DOWNLOAD_URL + "</code>",
                 "Download sample recordings?",
@@ -414,7 +647,7 @@ public final class SampleDataSupport {
                 log.warning("Sample data: Desktop not supported, cannot open folder");
             }
         } catch (Exception ex) {
-            log.log(Level.WARNING, "Could not open sampleData folder: " + ex, ex);
+            log.log(Level.WARNING, "Could not open jaerSampleData folder: " + ex, ex);
         }
         log.info("Sample data README: probing GitHub, then browser or in-app README");
         Thread probe = new Thread(() -> {
@@ -523,7 +756,7 @@ public final class SampleDataSupport {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-    /** Put {@code sampleData/} on the File menu recent-folders list. */
+    /** Put {@code jaerSampleData} on the File menu recent-folders list. */
     public static void rememberFolder(RecentFiles recentFiles) {
         if (recentFiles == null) {
             return;
@@ -555,9 +788,9 @@ public final class SampleDataSupport {
     }
 
     /**
-     * Modal folder chooser for the zip unpack location. Default is the install
-     * {@code sampleData} folder when writable, otherwise
-     * {@code user.home/jaerSampleData}. Returns {@code null} if the user cancels.
+     * Modal chooser for the parent of {@code jaerSampleData}. Default is the install
+     * folder when writable, otherwise {@code user.home/jaerSampleData}.
+     * Returns the qualified {@code jaerSampleData} directory, or {@code null} if the user cancels.
      */
     public static File chooseDownloadFolder(Component parent, RecentFiles recentFiles) {
         if (!SwingUtilities.isEventDispatchThread()) {
@@ -590,7 +823,7 @@ public final class SampleDataSupport {
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         chooser.setAcceptAllFileFilterUsed(false);
         chooser.setMultiSelectionEnabled(false);
-        chooser.setDialogTitle("Choose folder for jAER sample recordings");
+        chooser.setDialogTitle("Choose where to put jaerSampleData");
         chooser.setApproveButtonText("Use this folder");
         File current = suggested.isDirectory() ? suggested
                 : (suggested.getParentFile() != null && suggested.getParentFile().isDirectory()
@@ -603,10 +836,12 @@ public final class SampleDataSupport {
         accessory.setLayout(new BoxLayout(accessory, BoxLayout.Y_AXIS));
         String hintHtml;
         if (installWritable) {
-            hintHtml = "<html>Unpack into this folder.<br>Default is the jAER <code>sampleData</code> folder.</html>";
+            hintHtml = "<html>Recordings go in a folder named <code>" + FOLDER_NAME + "</code>.<br>"
+                    + "Default is the jAER <code>" + FOLDER_NAME + "</code> folder.</html>";
         } else {
-            hintHtml = "<html>The install folder is not writable<br>(for example under Program Files).<br>"
-                    + "Default is <code>" + HOME_FOLDER_NAME + "</code> in your home folder.</html>";
+            hintHtml = "<html>Recordings go in a folder named <code>" + FOLDER_NAME + "</code>.<br>"
+                    + "The install folder is not writable<br>(for example under Program Files).<br>"
+                    + "Default is <code>" + FOLDER_NAME + "</code> in your home folder.</html>";
         }
         JLabel hint = new JLabel(hintHtml);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -632,6 +867,7 @@ public final class SampleDataSupport {
             if (dir != null && dir.isFile()) {
                 dir = dir.getParentFile();
             }
+            dir = qualifiedUnpackFolder(dir);
             if (dir == null) {
                 JOptionPane.showMessageDialog(parent,
                         "That is not a usable folder. Choose another location.",
@@ -683,6 +919,7 @@ public final class SampleDataSupport {
      * Progress UI is created on the Swing EDT.
      */
     public static void downloadAndUnpack(Component parent, File dest) throws Exception {
+        dest = qualifiedUnpackFolder(dest);
         if (dest == null) {
             throw new Exception("No sample data folder chosen");
         }
@@ -853,6 +1090,27 @@ public final class SampleDataSupport {
         throw new Exception("Too many redirects for " + urlString);
     }
 
+    /** Drop one leading {@code jaerSampleData/} or {@code sampleData/} so a nested zip does not double-nest. */
+    static String stripSampleRoot(String name) {
+        if (name == null || name.isEmpty()) {
+            return name;
+        }
+        String n = name.replace('\\', '/');
+        while (n.startsWith("/")) {
+            n = n.substring(1);
+        }
+        n = stripOnePrefix(n, FOLDER_NAME + "/");
+        n = stripOnePrefix(n, LEGACY_FOLDER_NAME + "/");
+        return n;
+    }
+
+    private static String stripOnePrefix(String name, String prefix) {
+        if (name.length() >= prefix.length() && name.regionMatches(true, 0, prefix, 0, prefix.length())) {
+            return name.substring(prefix.length());
+        }
+        return name;
+    }
+
     private static void unzipTo(File zip, File destDir) throws Exception {
         Path dest = destDir.toPath().toAbsolutePath().normalize();
         try (ZipInputStream zin = new ZipInputStream(new BufferedInputStream(new FileInputStream(zip)),
@@ -860,7 +1118,7 @@ public final class SampleDataSupport {
             ZipEntry entry;
             byte[] buf = new byte[64 * 1024];
             while ((entry = zin.getNextEntry()) != null) {
-                String name = entry.getName();
+                String name = stripSampleRoot(entry.getName());
                 if (name == null || name.isEmpty()) {
                     continue;
                 }

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Clip source MP4/AVI (or mov/mkv/webm) to looping 240px-wide WebP previews for
-# sampleData/README.md. Name each source like the .aedat4 (same stem).
+# jaerSampleData/README.md. Name each source like the .aedat4 (same stem).
 #
 # Usage (repo root):
 #   bash scripts/make-sample-data-previews.sh
 #   bash scripts/make-sample-data-previews.sh --src ~/exports
 #   bash scripts/make-sample-data-previews.sh --force --duration 5 --width 240
 #
-# Looks for sources in --src, then sampleData/preview-src/, then sampleData/.
-# Optional start times: sampleData/previews/offsets.txt
+# Looks for sources in --src, then jaerSampleData/preview-src/, then jaerSampleData/.
+# Optional start times: jaerSampleData/previews/offsets.txt
 #   <aedat4 stem> <seconds>
 # (stem may contain spaces; last token is the start time.)
 set -euo pipefail
@@ -23,7 +23,7 @@ START_DEFAULT=0
 FORCE=0
 ALLOW_NO_FFMPEG=0
 SRC_DIR=""
-SAMPLE="$ROOT/sampleData"
+SAMPLE="$ROOT/jaerSampleData"
 OUT="$SAMPLE/previews"
 OFFSETS="$OUT/offsets.txt"
 
@@ -79,7 +79,7 @@ done
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
   if [ "$ALLOW_NO_FFMPEG" -eq 1 ]; then
-    echo "ffmpeg not on PATH; skipping WebP encode (existing sampleData/previews/ kept)"
+    echo "ffmpeg not on PATH; skipping WebP encode (existing jaerSampleData/previews/ kept)"
     exit 0
   fi
   echo "ffmpeg not found on PATH" >&2
@@ -164,7 +164,7 @@ for f in "$SAMPLE"/*.aedat4; do
 done
 if [ ${#AEDATS[@]} -eq 0 ]; then
   echo "No .aedat4 files in $SAMPLE — drop recordings (or only the matching source videos in preview-src) first." >&2
-  echo "Sources are matched by the .aedat4 stem listed in sampleData/README.md." >&2
+  echo "Sources are matched by the .aedat4 stem listed in jaerSampleData/README.md." >&2
   exit 1
 fi
 

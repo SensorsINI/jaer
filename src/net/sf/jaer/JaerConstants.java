@@ -65,18 +65,20 @@ public class JaerConstants {
     /** @deprecated use {@link #APPLICATION_NAME} */
     @Deprecated
     public static final String INSTALLER_PRODUCT_NAME = APPLICATION_NAME;
+    /** Git clone URL used by the hidden updater. User-facing home is {@link #HELP_URL_JAER_HOME}. */
     public static final String JAER_HOME = "https://github.com/SensorsINI/jaer.git";
     public static final String JAER_RELEASES = "https://github.com/SensorsINI/jaer/releases";
     /** Curated recordings zip on the GitHub Latest release (not packed in the installer). */
     public static final String SAMPLE_DATA_DOWNLOAD_URL = "https://github.com/SensorsINI/jaer/releases/latest/download/jaer-sample-data.zip";
     /** User-facing file list on GitHub (opened in the browser when online). */
-    public static final String SAMPLE_DATA_README_URL = "https://github.com/SensorsINI/jaer/tree/master/sampleData#readme";
+    public static final String SAMPLE_DATA_README_URL = "https://github.com/SensorsINI/jaer/tree/master/jaerSampleData#readme";
     public static final String JAER_COMMITS = "https://github.com/SensorsINI/jaer/commits/master";
     public static final String JAER_ISSUES = "https://github.com/SensorsINI/jaer/issues";
     public static final String JAER_ISSUES_NEW = JAER_ISSUES + "/new";
     /** Short anonymous Google Form (Help → Give feedback…). */
     public static final String HELP_URL_FEEDBACK_FORM = "https://docs.google.com/forms/d/e/1FAIpQLSe1YZNLg1gN7n82YnSK3ilgSV-YBkcaKEunx5woUJ7inE9cvw/viewform?usp=sharing";
-    public static final String HELP_URL_JAER_HOME = JAER_HOME;
+    /** Canonical landing page (jaerproject.org), not the GitHub clone URL. */
+    public static final String HELP_URL_JAER_HOME = "https://jaerproject.org";
     public static final String HELP_USER_GUIDE_URL_FLASHY = "https://docs.inivation.com/hardware/hardware-advanced-usage/firmware-update.html"; //"https://gitlab.com/inivation/devices-bin";
     public static final String HELP_FLASHY_LINUX_DOWNLOAD="https://s3.eu-central-1.amazonaws.com/release.inivation.com/flashy/flashy-linux-1.7.1.zip";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";

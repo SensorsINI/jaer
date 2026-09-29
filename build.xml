@@ -84,9 +84,9 @@ Releases
                           <!-- webp: --> files to GitHub user-attachments, rewrite notes
                           Dry run: -Djaer.upload.whatif=true
   upload-release-notes    media first, then GitHub Release body from release-notes/ (needs gh)
-  pack-sample-data        zip sampleData recordings, write SIZE.txt (skips if zip+name/size stamp match)
+  pack-sample-data        zip jaerSampleData recordings, write SIZE.txt (skips if zip+name/size stamp match)
                           Force rebuild: ant "-Djaer.sampleData.force=true" pack-sample-data
-  make-sample-data-previews  5s 240px WebP thumbs from sampleData/preview-src (needs ffmpeg)
+  make-sample-data-previews  5s 240px WebP thumbs from jaerSampleData/preview-src (needs ffmpeg)
   upload-sample-data-current
                           pack-sample-data then create/update GitHub Release sample-data-current
                           (prerelease, never Latest) with jaer-sample-data.zip. Required before
@@ -916,12 +916,12 @@ java.vendor=${java.vendor}
     </target>
 
     <target name="-detect-sample-data">
-        <available file="${basedir}/sampleData" type="dir" property="jaer.sampleData.dir"/>
+        <available file="${basedir}/jaerSampleData" type="dir" property="jaer.sampleData.dir"/>
         <condition property="jaer.sampleData.hasRecordings">
             <and>
                 <isset property="jaer.sampleData.dir"/>
                 <resourcecount when="greater" count="0">
-                    <fileset dir="${basedir}/sampleData"
+                    <fileset dir="${basedir}/jaerSampleData"
                              includes="**/*.aedat4,**/*.aedat,**/*.dat,**/*.raw"/>
                 </resourcecount>
             </and>
@@ -929,7 +929,7 @@ java.vendor=${java.vendor}
     </target>
 
     <target name="pack-sample-data" depends="-load-version"
-            description="Zip sampleData recordings and write SIZE.txt (skip if zip exists and recording name+size unchanged).">
+            description="Zip jaerSampleData recordings and write SIZE.txt (skip if zip exists and recording name+size unchanged).">
         <fail unless="jaer.version" message="VERSION.txt empty"/>
         <property name="jaer.sampleData.force" value="false"/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
@@ -946,12 +946,12 @@ java.vendor=${java.vendor}
             <arg file="${basedir}/scripts/pack-sample-data.sh"/>
             <arg value="--force" if:true="${jaer.sampleData.force}"/>
         </exec>
-        <property file="${basedir}/sampleData/SIZE.txt"/>
-        <echo message="sampleData zip ${zipMiB} MB download, ${unpackedMiB} MB unpacked"/>
+        <property file="${basedir}/jaerSampleData/SIZE.txt"/>
+        <echo message="jaerSampleData zip ${zipMiB} MB download, ${unpackedMiB} MB unpacked"/>
     </target>
 
     <target name="make-sample-data-previews" depends="checkos" unless="skip.sampleData.previews"
-            description="Encode sampleData/preview-src MP4/AVI to looping WebP thumbs (needs ffmpeg).">
+            description="Encode jaerSampleData/preview-src MP4/AVI to looping WebP thumbs (needs ffmpeg).">
         <property name="jaer.sampleData.previews.optional" value="false"/>
         <echo message="Encoding sample-data WebP previews (optional=${jaer.sampleData.previews.optional})."/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
@@ -968,7 +968,7 @@ java.vendor=${java.vendor}
             <arg file="${basedir}/scripts/make-sample-data-previews.sh"/>
             <arg value="--allow-no-ffmpeg" if:true="${jaer.sampleData.previews.optional}"/>
         </exec>
-        <echo message="WebP thumbs are not in the zip. Commit sampleData/previews/*.webp if they changed."/>
+        <echo message="WebP thumbs are not in the zip. Commit jaerSampleData/previews/*.webp if they changed."/>
     </target>
 
     <target name="-maybe-pack-sample-data" depends="-detect-sample-data" if="jaer.sampleData.hasRecordings">
@@ -976,11 +976,11 @@ java.vendor=${java.vendor}
     </target>
 
     <target name="-maybe-pack-sample-data-skip" depends="-detect-sample-data" unless="jaer.sampleData.hasRecordings">
-        <echo message="No recordings in sampleData/; skipping pack. Installer checkbox sizes stay ${zipMiB} MB / ${unpackedMiB} MB from SIZE.txt if present."/>
+        <echo message="No recordings in jaerSampleData/; skipping pack. Installer checkbox sizes stay ${zipMiB} MB / ${unpackedMiB} MB from SIZE.txt if present."/>
     </target>
 
     <target name="-load-sample-data-size" depends="init">
-        <property file="${basedir}/sampleData/SIZE.txt"/>
+        <property file="${basedir}/jaerSampleData/SIZE.txt"/>
         <property name="zipMiB" value="0"/>
         <property name="unpackedMiB" value="0"/>
         <mkdir dir="${build.dir}/tools"/>

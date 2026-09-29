@@ -37,7 +37,7 @@ import prophesee.chip.PropheseeIMX636HD;
  * rewind with and without IN, and IN/OUT marker bounds (repeat on/off).
  * {@code close()} persists marks — tests restore the tmpdir CSV cache so sample
  * files keep the user's IN/OUT.
- * Skips when {@code sampleData/*.aedat4} is not present.
+ * Skips when {@code jaerSampleData/*.aedat4} is not present.
  */
 public class Aedat4FileInputStreamSlicingTest {
 
@@ -269,17 +269,17 @@ public class Aedat4FileInputStreamSlicingTest {
     }
 
     private static void assumeRecordingsPresent() {
-        assumeTrue("sampleData/*.aedat4 not found (Help > Sample data download)",
+        assumeTrue("jaerSampleData/*.aedat4 not found (Help > Sample data download)",
                 recordings != null && !recordings.isEmpty());
     }
 
     private static List<File> listAedat4() {
         List<File> dirs = new ArrayList<>();
         dirs.add(SampleDataSupport.folder());
-        File install = new File("D:\\jAER\\sampleData");
-        if (!dirs.contains(install)) {
-            dirs.add(install);
-        }
+        dirs.add(new File("D:\\jAER\\jaer\\jaerSampleData"));
+        dirs.add(new File("D:\\jAER\\jaerSampleData"));
+        dirs.add(new File("D:\\jAER\\jaer\\sampleData"));
+        dirs.add(new File("D:\\jAER\\sampleData"));
         List<File> out = new ArrayList<>();
         for (File dir : dirs) {
             File[] files = dir.isDirectory() ? dir.listFiles((d, name) -> name.toLowerCase(Locale.ROOT).endsWith(".aedat4")) : null;

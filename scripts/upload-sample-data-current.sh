@@ -46,7 +46,7 @@ fi
 RELEASE_TAG="sample-data-current"
 ZIP="$ROOT/currentInstallers/$VERSION/jaer-sample-data.zip"
 if [ ! -f "$ZIP" ]; then
-  echo "Missing $ZIP — run ant pack-sample-data first (needs recordings in sampleData/)" >&2
+  echo "Missing $ZIP — run ant pack-sample-data first (needs recordings in jaerSampleData/)" >&2
   exit 1
 fi
 
