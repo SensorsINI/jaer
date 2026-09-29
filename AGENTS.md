@@ -6,7 +6,7 @@ jAER 3 (`master`) is an Ant + Ivy Java desktop app for event cameras. Not Maven/
 
 USB / file / network → typed `PacketBundle` (or legacy `AEPacketRaw` + `extractBundle`) → `AEViewer.ViewLoop` → `FilterChain.filterBundle` → optional AEDAT-4/2 record → `AEChipRenderer` / `ChipCanvas`.
 
-Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when Java under `src/` is in context (see `.cursor/rules/jaer3-architecture.mdc`). Read it before changing the live path, filters, or rendering. USB enumeration / EDT / Interface menu: `docs/README-usb.md`.
+Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when Java under `src/` is in context (see `.cursor/rules/jaer3-architecture.mdc`). Read it before changing the live path, filters, or rendering. USB enumeration / EDT / Interface menu: `docs/README-usb.md`. Adding a device and opening a PR: `docs/README-adding-devices.md` (fork, subclass, hardware test plan, log in the PR).
 
 ## Where to look
 
@@ -17,6 +17,7 @@ Canonical architecture: `docs/README-jaer3.md`. Cursor attaches that file when J
 | Filters | `src/net/sf/jaer/eventprocessing/` (`FilterChain`, `EventFilter2D`) |
 | USB / Interface | `src/net/sf/jaer/hardwareinterface/` |
 | Chips | `src/ch/unizh/ini/jaer/chip/`, `src/nrv/`, `src/prophesee/` |
+| New device PR | `docs/README-adding-devices.md` |
 | Render | `ChipCanvas`, `AEChipRenderer`, `DavisRenderer` |
 
 ## Logs

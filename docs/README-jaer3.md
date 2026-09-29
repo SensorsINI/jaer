@@ -452,6 +452,7 @@ update the active chip). The user can cancel or load anyway.
 ## Related docs
 
 - [README-usb.md](README-usb.md) — USB enumeration, Interface menu, EDT rules, per-camera libusb quirks.
+- [README-adding-devices.md](README-adding-devices.md) — fork, subclass, and the hardware test plan for a new-device pull request.
 - [README-frame-cameras.md](README-frame-cameras.md) — OpenCV / UVC webcams as RGB `FramePacket` sources and AEDAT-4 FRME.
 - [CDAVIS_GPU_DEMOSAIC.md](CDAVIS_GPU_DEMOSAIC.md) — GPU demosaic / color display path (orthogonal to PacketBundle).
 - [README-cursor-jaer-rules-setup.md](README-cursor-jaer-rules-setup.md) — Cursor Agent loads this file via `AGENTS.md` and `.cursor/rules/jaer3-architecture.mdc`.

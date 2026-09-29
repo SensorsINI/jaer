@@ -116,7 +116,8 @@ must use those fields, not a second copy of the hex.
 To add a live USB camera: put `VID`/`PID_*` on the HardwareInterface, call
 `addDeviceToMap` in that device’s factory (this updates the registry), and
 annotate matching AEChip classes with `@UsbDevices` using the **same**
-constants.
+constants. Fork, subclass, test plan, and what the pull request must attach:
+[README-adding-devices.md](README-adding-devices.md).
 
 **Not this map:** [`@UsbDevices`](../src/net/sf/jaer/UsbDevices.java) /
 `@UsbDevice` on AEChip classes is a separate mapping for

@@ -2,6 +2,11 @@
 
 **Welcome to jAER**
 
+**News:** 
+ * **Current development:** Packaging (snapshot builds and winget listing)
+ * **Do you have a device that is not supported by jAER?** See [Adding devices](docs/README-adding-devices.md).
+ * **[Give Anonymous Feedback](https://docs.google.com/forms/d/e/1FAIpQLSe1YZNLg1gN7n82YnSK3ilgSV-YBkcaKEunx5woUJ7inE9cvw/viewform?usp=header)** for desired features and fixes
+
 **Download and Permanent link:** [jaerproject.org](https://jaerproject.org) (platform installers). [Source on GitHub](https://github.com/SensorsINI/jaer). [jAER user group](https://groups.google.com/g/jaer-users).
 
 **Why use proprietary vendor camera software?** 
@@ -70,6 +75,7 @@ Stereo and multi-camera wrappers (e.g. `DVS128StereoPair`, `MultiDAVIS346BCamera
 
 Hardware docs in Help → Manufacturers: iniVation cameras, Prophesee sensors, NRV cameras, and the iniVation Flashy reflashing guide.
 USB enumeration, the Interface menu, EDT rules, and per-camera libusb quirks: [`docs/README-usb.md`](docs/README-usb.md).
+Adding a camera and opening a pull request: [`docs/README-adding-devices.md`](docs/README-adding-devices.md).
 
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 
