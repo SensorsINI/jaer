@@ -16,7 +16,6 @@
            from master jaerSampleData/SIZE.txt. Ant passes -D only when that file is in the checkout. -->
       <variable name="jaer.sampleDataZipMiB" value="995" />
       <variable name="jaer.sampleDataUnpackedMiB" value="995" />
-      <variable name="jaer.sampleDataEta" value="about 1.7 min at 10 MB/s Wi-Fi" />
     </variables>
     <codeSigning macEnabled="true" macPkcs12File="../signpath/macos-developer-id-application.p12" macNotarize="true" macApiIssuer="${compiler:appleIssuerId}" macApiKey="${compiler:appleKeyId}" macApiPrivateKey="../signpath/AuthKey.p8">
       <macAdditionalBinaries>
@@ -312,7 +311,11 @@
         </startup>
         <screens>
           <screen id="2" beanClass="com.install4j.runtime.beans.screens.WelcomeScreen" styleId="7" rollbackBarrierExitCode="0">
-            <preActivation>String offer = "${compiler:jaer.sampleDataZipMiB} MB download\n${compiler:jaer.sampleDataUnpackedMiB} MB on disk\n${compiler:jaer.sampleDataEta}\nDownloads while jAER is copied and unpacks before Setup finishes.\nLeave this unchecked to download later from Help → Sample data";
+            <preActivation>int zipFallback = Integer.parseInt("${compiler:jaer.sampleDataZipMiB}".trim());
+int unpackedFallback = Integer.parseInt("${compiler:jaer.sampleDataUnpackedMiB}".trim());
+double minutesFallback = Math.max(zipFallback / 10.0 / 60.0, 0.1);
+String etaFallback = String.format(java.util.Locale.ROOT, "about %.1f min at 10 MB/s Wi-Fi", minutesFallback);
+String offer = zipFallback + " MB download\n" + unpackedFallback + " MB on disk\n" + etaFallback + "\nDownloads while jAER is copied and unpacks before Setup finishes.\nLeave this unchecked to download later from Help → Sample data";
 java.net.HttpURLConnection conn = null;
 try {
     java.net.URL url = new java.net.URI("https://raw.githubusercontent.com/SensorsINI/jaer/master/jaerSampleData/SIZE.txt").toURL();

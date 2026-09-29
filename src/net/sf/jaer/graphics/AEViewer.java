@@ -531,9 +531,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final DataFlavor URI_LIST_FLAVOR = createUriListFlavor();
     private boolean recordingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
     /**
-     * When true, opening a recording whose chip differs from the viewer
-     * switches {@link AEChip} without asking. Default false.
-     * @deprecated use {@link #getAutoswitchRecordingSensor()}
+     * Legacy preference mirrored from {@link #autoswitchRecordingSensor}.
+     * Public access is {@link #isAutoSwitchAeChipForPlayback()}.
      */
     private boolean autoSwitchAeChipForPlayback = prefs.getBoolean("AEViewer.autoSwitchAeChipForPlayback", false);
     /** Ask / Always / No when a recording's detected sensor differs from this viewer. */
@@ -14974,6 +14973,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * @deprecated use {@link #getAutoswitchRecordingSensor()} {@code == ALWAYS}
      */
+    @Deprecated
     public boolean isAutoSwitchAeChipForPlayback() {
         return getAutoswitchRecordingSensor() == AutoswitchRecordingSensor.ALWAYS;
     }
@@ -14984,6 +14984,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * @deprecated use {@link #setAutoswitchRecordingSensor(AutoswitchRecordingSensor)}
      */
+    @Deprecated
     public void setAutoSwitchAeChipForPlayback(boolean autoSwitchAeChipForPlayback) {
         setAutoswitchRecordingSensor(autoSwitchAeChipForPlayback
                 ? AutoswitchRecordingSensor.ALWAYS : AutoswitchRecordingSensor.ASK);

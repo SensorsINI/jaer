@@ -1,8 +1,8 @@
 import java.util.Locale;
 
 /**
- * Minutes for jaer-sample-data.zip at 10 MB/s Wi-Fi. Prints one line for Ant
- * {@code outputproperty} / install4j {@code jaer.sampleDataEta}.
+ * Minutes for jaer-sample-data.zip at 10 MB/s Wi-Fi. Prints one line for the
+ * Ant log. The installer computes the same text from the MiB compiler variables.
  */
 public final class SampleDataEta {
 

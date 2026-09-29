@@ -994,6 +994,7 @@ java.vendor=${java.vendor}
               fork="true"
               failonerror="true"
               outputproperty="jaer.sampleDataEta"
+              errorproperty="jaer.sampleDataEta.stderr"
               if:set="zipMiB">
             <arg value="${zipMiB}"/>
         </java>
@@ -1015,8 +1016,6 @@ java.vendor=${java.vendor}
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1030,8 +1029,6 @@ java.vendor=${java.vendor}
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1048,8 +1045,6 @@ java.vendor=${java.vendor}
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1062,8 +1057,6 @@ java.vendor=${java.vendor}
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1202,8 +1195,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1221,8 +1212,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1242,8 +1231,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1257,8 +1244,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1275,8 +1260,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1289,8 +1272,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1317,8 +1298,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1335,8 +1314,6 @@ Then re-run:        ant install
             <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
             <arg value="-D" if:set="zipMiB"/>
             <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
-            <arg value="-D" if:set="zipMiB"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
