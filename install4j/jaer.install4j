@@ -344,8 +344,7 @@ try {
         conn.disconnect();
     }
 }
-context.setVariable("sampleDataSizeText", offer);
-return true;</preActivation>
+context.setVariable("sampleDataSizeText", offer);</preActivation>
             <actions>
               <action id="7" beanClass="com.install4j.runtime.beans.actions.misc.LoadResponseFileAction" rollbackBarrierExitCode="0" multiExec="true">
                 <serializedBean>
