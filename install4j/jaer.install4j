@@ -313,6 +313,7 @@
           <screen id="2" beanClass="com.install4j.runtime.beans.screens.WelcomeScreen" styleId="7" rollbackBarrierExitCode="0">
             <preActivation>int zipFallback = Integer.parseInt("${compiler:jaer.sampleDataZipMiB}".trim());
 int unpackedFallback = Integer.parseInt("${compiler:jaer.sampleDataUnpackedMiB}".trim());
+long unpackedBytes = unpackedFallback * 1024L * 1024L;
 double minutesFallback = Math.max(zipFallback / 10.0 / 60.0, 0.1);
 String etaFallback = String.format(java.util.Locale.ROOT, "about %.1f min at 10 MB/s Wi-Fi", minutesFallback);
 String offer = zipFallback + " MB download\n" + unpackedFallback + " MB on disk\n" + etaFallback + "\nDownloads while jAER is copied and unpacks before Setup finishes.\nLeave this unchecked to download later from Help → Sample data";
@@ -336,6 +337,12 @@ try {
             double minutes = Math.max(zipMiB / 10.0 / 60.0, 0.1);
             String eta = String.format(java.util.Locale.ROOT, "about %.1f min at 10 MB/s Wi-Fi", minutes);
             offer = zipMiB + " MB download\n" + unpackedMiB + " MB on disk\n" + eta + "\nDownloads while jAER is copied and unpacks before Setup finishes.\nLeave this unchecked to download later from Help → Sample data";
+            String rawBytes = props.getProperty("unpackedBytes", "");
+            if (rawBytes != null &amp;&amp; !rawBytes.trim().isEmpty()) {
+                unpackedBytes = Long.parseLong(rawBytes.trim());
+            } else {
+                unpackedBytes = unpackedMiB * 1024L * 1024L;
+            }
         }
     }
 } catch (Exception ignored) {
@@ -344,6 +351,7 @@ try {
         conn.disconnect();
     }
 }
+context.setVariable("sampleDataUnpackedBytes", Long.valueOf(unpackedBytes));
 context.setVariable("sampleDataSizeText", offer);</preActivation>
             <actions>
               <action id="7" beanClass="com.install4j.runtime.beans.actions.misc.LoadResponseFileAction" rollbackBarrierExitCode="0" multiExec="true">
@@ -655,7 +663,25 @@ return true;
                   </property>
                 </serializedBean>
               </action>
-              <action id="17" beanClass="com.install4j.runtime.beans.actions.InstallFilesAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="quit" errorMessage="${i18n:FileCorrupted}" />
+              <action id="17" beanClass="com.install4j.runtime.beans.actions.InstallFilesAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="quit" errorMessage="${i18n:FileCorrupted}">
+                <serializedBean>
+                  <property name="installationSizeCalculator">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">long extra = 0L;
+if (context.getBooleanVariable("downloadSampleData")) {
+    Object raw = context.getVariable("sampleDataUnpackedBytes");
+    if (raw instanceof Number) {
+        extra = ((Number) raw).longValue();
+    }
+    if (extra &lt; 1L) {
+        extra = Integer.parseInt("${compiler:jaer.sampleDataUnpackedMiB}".trim()) * 1024L * 1024L;
+    }
+}
+return size + extra;</property>
+                    </object>
+                  </property>
+                </serializedBean>
+              </action>
               <!-- Upgrade leftover cleanup: excludes only skip packing new media; ifNewer leaves old jars.
                    Class is under actions.control (not misc) in install4j 13. -->
               <action id="50" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
