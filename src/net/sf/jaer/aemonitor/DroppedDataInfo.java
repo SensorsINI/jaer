@@ -44,7 +44,8 @@ public final class DroppedDataInfo {
 
     public static DroppedDataInfo hostBufferOverrun() {
         return hostBufferOverrun(
-                "Host event buffer overrun: newest events discarded until the viewer catches up.");
+                "Rendering buffer overrun: newest events discarded until the viewer catches up. "
+                        + "Increase USB tuning Render events.");
     }
 
     public static DroppedDataInfo hostBufferOverrun(String detail) {
@@ -68,7 +69,8 @@ public final class DroppedDataInfo {
                 "Live keep cap %,d events/frame hit (kept %,d this frame%s). "
                         + "Further polarity events are discarded until the next display frame; "
                         + "timestamps still advance, so recordings show gaps. "
-                        + "Lower the DVS event rate: raise threshold or refractory on Biasgen, "
+                        + "Increase USB tuning Render events (and Live keep on Prophesee), "
+                        + "or lower the DVS event rate: raise threshold or refractory on Biasgen, "
                         + "or enable DVS Auto Controller (LimitEventRate / BoundEventRate).",
                 cap, kept, rate);
         return new DroppedDataInfo(

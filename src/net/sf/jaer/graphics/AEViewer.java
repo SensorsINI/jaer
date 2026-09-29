@@ -600,7 +600,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
             + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime<br>"
-            + "<b>(DROP)</b> / <b>(overrun)</b> — live events discarded (keep cap or host buffer); bar turns red. Lower DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
+            + "<b>(DROP)</b> / <b>(overrun)</b> — live events discarded (rendering buffer or live-keep cap); bar turns red. Increase USB tuning Render events (and Live keep on Prophesee), or lower the DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
             + "<b>eps</b> — event rate (events per second)<br>"
             + "<b>nX</b> — playback speedup vs real time (1X = realtime); Live/Seq or Paused otherwise<br>"
             + "<b>A/B fps, Dms</b> — achieved/target render rate, delay after frame<br>"
@@ -7767,7 +7767,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (droppedDataInfo.any()
                         && (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)) {
                     consecutiveEmptyLivePackets = 0;
-                    setStatisticsLabel("Live: dropping events (DROP) — raise DVS threshold / refractory");
+                    setStatisticsLabel("Live: dropping events (DROP) — increase rendering buffer, or DVS threshold / refractory");
                     statisticsLabel.setForeground(Color.RED);
                     String detail = droppedDataInfo.getDetail();
                     statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML
@@ -8221,7 +8221,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 long now = System.currentTimeMillis();
                 if (now - lastDroppedActionTextMs >= DROPPED_ACTION_TEXT_INTERVAL_MS) {
                     lastDroppedActionTextMs = now;
-                    showActionText("Dropping events — raise DVS threshold / refractory");
+                    showActionText("Dropping events — increase rendering buffer, or DVS threshold / refractory");
                 }
             }
         } else if (System.currentTimeMillis() >= droppedDataInfoHoldUntilMs) {

@@ -25,6 +25,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -40,6 +41,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 
+import net.sf.jaer.Help;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
@@ -49,6 +51,7 @@ import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.HtmlHelpFrame;
 import net.sf.jaer.util.WindowSaver;
 
 /**
@@ -61,6 +64,49 @@ import net.sf.jaer.util.WindowSaver;
  * still restore. {@link WindowSaver} applies bounds on a later EDT turn than
  * {@code WINDOW_OPENED}, so this frame packs again after that restore.
  */
+@Help("""
+<html>
+<body>
+<h2>USB tuning</h2>
+<p>USB &rarr; USB tuning sets how jAER reads the camera and how many events one display frame can hold.
+Edits apply a moment after you stop changing a field, while the camera is running.</p>
+<h3>Controls</h3>
+<ul>
+<li><b>FIFO bytes</b> &mdash; size of each host USB read (4&nbsp;KiB to 2&nbsp;MiB).
+The camera ends a transfer when its own chunk is finished, or when this buffer is full.
+A larger FIFO does not make the camera send larger packets.</li>
+<li><b>Buffers</b> &mdash; how many of those reads are queued at once (1&ndash;32).
+This covers a short pause in jAER. It does not change packet size.
+FIFO &times; buffers is limited to 8&nbsp;MB.</li>
+<li><b>Render events</b> &mdash; the rendering event buffer.
+If it fills, events are dropped even when USB itself is fine.
+Increase it when the display says events are dropping.</li>
+<li><b>Live keep</b> &mdash; Prophesee only. Maximum events kept per display frame.
+The smaller of Render events and Live keep is what you see and record.</li>
+</ul>
+<h3>USB IN statistics</h3>
+<p>The table is the last second of completed USB reads. Numbers are collected only while this window is open.</p>
+<ul>
+<li><b>Fill</b> &mdash; average completed size divided by FIFO.
+The note &ldquo;FIFO full&rdquo; means that average is at least 85%.
+It is not a report that the camera overflowed.
+A low fill means the camera sent less than the FIFO you requested.</li>
+<li><b>Avg / Min / Max size</b> &mdash; bytes in each completed read.</li>
+<li><b>Interval</b> &mdash; average time between completed reads.</li>
+<li><b>Throughput</b> &mdash; bytes per second.</li>
+<li><b>Completions</b> &mdash; completed reads per second.</li>
+<li><b>Empty</b> &mdash; reads that contained no data.</li>
+<li><b>Short</b> &mdash; reads shorter than the FIFO. Normal when the camera finishes early.</li>
+<li><b>Errors</b> &mdash; failed USB reads.
+Zero errors does not prove every sensor event was kept.
+NRV does not put an overflow marker in the USB stream.</li>
+</ul>
+<p>A red <b>(DROP)</b> or <b>(overrun)</b> on the status line means the rendering buffer
+or the live-keep cap discarded events. Increase <b>Render events</b>
+(and <b>Live keep</b> on Prophesee), or raise the DVS threshold or refractory period.</p>
+</body>
+</html>
+""")
 public class UsbTuningFrame extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final int UI_DEBOUNCE_MS = 350;
@@ -139,6 +185,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private PropertyChangeSupport subscribedSupport;
     private AEMonitorInterface boundMonitor;
     private HasUsbStatistics boundStats;
+    private HtmlHelpFrame helpFrame;
 
     public UsbTuningFrame(AEViewer viewer) {
         super("USB tuning" + (viewer != null && viewer.getTitle() != null ? " — " + viewer.getTitle() : ""));
@@ -305,6 +352,9 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         form.add(statusLabel, c);
 
         final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        final JButton help = new JButton("Help");
+        help.setToolTipText("How to use FIFO, buffers, the rendering buffer, and the USB IN statistics.");
+        help.addActionListener(e -> toggleHelp());
         final JButton refresh = new JButton("Refresh");
         refresh.addActionListener(e -> {
             refreshFromHardware();
@@ -312,6 +362,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         });
         final JButton close = new JButton("Close");
         close.addActionListener(e -> dispatchEvent(new WindowEvent(UsbTuningFrame.this, WindowEvent.WINDOW_CLOSING)));
+        buttons.add(help);
         buttons.add(refresh);
         buttons.add(close);
 
@@ -806,7 +857,29 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         }
     }
 
+    private void toggleHelp() {
+        if (helpFrame != null && helpFrame.isDisplayable() && helpFrame.isVisible()) {
+            helpFrame.setVisible(false);
+            return;
+        }
+        String html = Help.Html.of(UsbTuningFrame.class);
+        if (html == null) {
+            JOptionPane.showMessageDialog(this, "USB tuning help is missing.",
+                    "Help", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (helpFrame == null || !helpFrame.isDisplayable()) {
+            helpFrame = new HtmlHelpFrame("USB tuning", this, "UsbTuningHelp", 640, 560);
+        }
+        helpFrame.setHtml(html);
+        helpFrame.setVisible(true);
+        helpFrame.toFront();
+    }
+
     private void teardown() {
+        if (helpFrame != null && helpFrame.isVisible()) {
+            helpFrame.setVisible(false);
+        }
         if (applyTimer != null) {
             applyTimer.stop();
         }

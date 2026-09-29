@@ -233,6 +233,16 @@ On each USB callback, while the raw-pool lock is held:
    gates the timing samples. The same line is logged at INFO, 0.1 Hz, for one
    minute after the mode is enabled and for one minute after the first sample.
 
+Observed USB cycle intervals (the overlay gap) on live cameras:
+
+| Device | Cycle interval | Notes |
+| --- | --- | --- |
+| Davis346 | 125 µs to 1 ms | Early-packet timer setting 1–8 |
+| EVK4 | 4 ms to 16 ms | Depends on data rate |
+| NRV | 12 ms down to a few hundred µs | Depends on data rate |
+
+These intervals depend only weakly on the USB host buffer size and the number of buffers.
+
 Rendering mode only checks the flag and returns; it does not snapshot packets.
 Demux-off (Davis RGB, FX2 USBIO, the typed-demux kill switch) copies the new
 raw suffix, labels a stereo eye bit on that copy, then `extractBundle` under

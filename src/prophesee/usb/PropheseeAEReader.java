@@ -519,7 +519,8 @@ public class PropheseeAEReader {
                 "Prophesee live view saturating: only the first %,d events per display frame are kept "
                         + "(packet was at %,d, kept %,d from this USB chunk). "
                         + "Further polarity events are discarded until the next frame; EVT3 timebase still advances. "
-                        + "The HUD shows (DROP) in red — lower the DVS event rate "
+                        + "The HUD shows (DROP) in red — increase USB tuning Render events and Live keep, "
+                        + "or lower the DVS event rate "
                         + "(raise threshold or refractory, or enable DVS Auto Controller). "
                         + "Live view and AEDAT logging both use this capped packet; a recording will have timestamp gaps.",
                 maxEvents, startEvent, committed));

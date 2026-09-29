@@ -480,6 +480,39 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 
 ---
 
+## USB tuning
+
+**USB → USB tuning…** (`UsbTuningFrame`) is the live control for host USB reads and the rendering event buffer. Spinners apply after a short pause while the camera is running. The **Help** button opens the same text (`@Help` on `UsbTuningFrame`) in the standard HTML help window. USB IN statistics are collected only while the window is open, in about 1 s windows.
+
+### Parameters
+
+| Control | Range | What it does |
+|---------|-------|----------------|
+| FIFO bytes | 4 KiB–2 MiB | Size of each host bulk-IN request. The camera completes a transfer when its own chunk ends (a short packet) or when this many bytes have arrived. A larger FIFO does not make the camera send larger bursts. |
+| Buffers | 1–32 | How many of those requests are queued. Extra buffers absorb a pause in the reader. They do not change the camera’s packet size. FIFO × buffers is capped at 8 MB. |
+| Render events | 64 Ki–8 Mi events | jAER rendering buffer (`AEPacketRaw` pool). If it fills, events are dropped even when USB transfers succeed. This is the control behind the “increase rendering buffer” drop message. |
+| Live keep | Prophesee only | Maximum polarity events kept per display frame. The effective cap is the smaller of Render events and Live keep. |
+
+Observed USB cycle interval depends only weakly on FIFO size and buffer count. The camera’s own commit size dominates: a large FIFO that the camera fills only a few percent is normal, and “FIFO full” on a small FIFO is average fill, not proof of overflow.
+
+### Statistics
+
+| Metric | Meaning |
+|--------|---------|
+| FIFO, Buffers | Active request size and queue depth |
+| Fill | Average completed size ÷ FIFO. At least 85% shows “FIFO full — raise FIFO/buffers if dropping”. At most 15% shows that the FIFO is larger than what the camera sends. |
+| Avg / Min / Max size | Bytes in completed bulk INs during the window |
+| Interval | Mean time between completions |
+| Throughput | Bytes per second |
+| Completions | Completed transfers per second |
+| Empty | Zero-length completions per second |
+| Short | Completions shorter than FIFO. Normal when the camera ends the transfer early. |
+| Errors | Failed USB transfers per second |
+
+Davis346 and EVK4 can also mark a host overrun when the rendering buffer or the device stream reports loss; the status line turns red and shows **(DROP)** or **(overrun)**. NRV has no overflow word in the USB stream. A bulk IN that waits because no URB is queued is a NAK, not an error, so the panel can stay at 0 errors while the sensor drops events internally. When the overlay says events are dropping, increase **Render events** (and **Live keep** on Prophesee), or raise the DVS threshold or refractory period.
+
+---
+
 ## Exceptions during enumeration and open
 
 | Symptom | Typical cause | What jAER does |
