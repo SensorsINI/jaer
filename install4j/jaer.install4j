@@ -471,6 +471,29 @@ return !has;</visibilityScript>
           </screen>
           <screen id="8" beanClass="com.install4j.runtime.beans.screens.InstallationDirectoryScreen" rollbackBarrierExitCode="0">
             <condition>!context.getBooleanVariable("sys.streamlinedInstallation")</condition>
+            <preActivation>long base = 0L;
+try {
+    base = com.install4j.runtime.installer.helper.content.ContentInstaller.getInstance().getMinSize();
+} catch (Throwable ignored) {
+}
+long extra = 0L;
+if (context.getBooleanVariable("downloadSampleData")) {
+    Object raw = context.getVariable("sampleDataUnpackedBytes");
+    if (raw instanceof Number) {
+        extra = ((Number) raw).longValue();
+    }
+    if (extra &lt; 1L) {
+        extra = Integer.parseInt("${compiler:jaer.sampleDataUnpackedMiB}".trim()) * 1024L * 1024L;
+    }
+}
+long total = base + extra;
+long totalMb = (total + (1024L * 1024L) - 1L) / (1024L * 1024L);
+String text = "Required disk space: " + totalMb + " MB";
+if (extra &gt; 0L) {
+    long extraMb = (extra + (1024L * 1024L) - 1L) / (1024L * 1024L);
+    text = text + " (includes " + extraMb + " MB sample recordings)";
+}
+context.setVariable("requiredDiskSpaceText", text);</preActivation>
             <actions>
               <action id="11" beanClass="com.install4j.runtime.beans.actions.misc.LoadResponseFileAction" rollbackBarrierExitCode="0" multiExec="true">
                 <serializedBean>
@@ -490,6 +513,7 @@ return !has;</visibilityScript>
               <formComponent id="10" beanClass="com.install4j.runtime.beans.formcomponents.InstallationDirectoryChooserComponent" useExternalParametrization="true" externalParametrizationName="Installation Directory Chooser" externalParametrizationMode="include">
                 <serializedBean>
                   <property name="requestFocus" type="boolean" value="true" />
+                  <property name="showRequiredDiskSpace" type="boolean" value="false" />
                 </serializedBean>
                 <externalParametrizationPropertyNames>
                   <propertyName>suggestAppDir</propertyName>
@@ -498,12 +522,16 @@ return !has;</visibilityScript>
                   <propertyName>checkWritable</propertyName>
                   <propertyName>manualEntryAllowed</propertyName>
                   <propertyName>checkFreeSpace</propertyName>
-                  <propertyName>showRequiredDiskSpace</propertyName>
                   <propertyName>showFreeDiskSpace</propertyName>
                   <propertyName>allowSpacesOnUnix</propertyName>
                   <propertyName>validationScript</propertyName>
                   <propertyName>standardValidation</propertyName>
                 </externalParametrizationPropertyNames>
+              </formComponent>
+              <formComponent id="9202" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent">
+                <serializedBean>
+                  <property name="labelText" type="string">${installer:requiredDiskSpaceText}</property>
+                </serializedBean>
               </formComponent>
             </formComponents>
           </screen>
@@ -663,25 +691,7 @@ return true;
                   </property>
                 </serializedBean>
               </action>
-              <action id="17" beanClass="com.install4j.runtime.beans.actions.InstallFilesAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="quit" errorMessage="${i18n:FileCorrupted}">
-                <serializedBean>
-                  <property name="installationSizeCalculator">
-                    <object class="com.install4j.api.beans.ScriptProperty">
-                      <property name="value" type="string">long extra = 0L;
-if (context.getBooleanVariable("downloadSampleData")) {
-    Object raw = context.getVariable("sampleDataUnpackedBytes");
-    if (raw instanceof Number) {
-        extra = ((Number) raw).longValue();
-    }
-    if (extra &lt; 1L) {
-        extra = Integer.parseInt("${compiler:jaer.sampleDataUnpackedMiB}".trim()) * 1024L * 1024L;
-    }
-}
-return size + extra;</property>
-                    </object>
-                  </property>
-                </serializedBean>
-              </action>
+              <action id="17" beanClass="com.install4j.runtime.beans.actions.InstallFilesAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="quit" errorMessage="${i18n:FileCorrupted}" />
               <!-- Upgrade leftover cleanup: excludes only skip packing new media; ifNewer leaves old jars.
                    Class is under actions.control (not misc) in install4j 13. -->
               <action id="50" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
