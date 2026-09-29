@@ -95,6 +95,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int vertexShader;
     private int fragmentShader;
     private int vao;
+    /** False when this GL 2.1 context rejected vertex array objects. */
+    private boolean vaoInUse = false;
     private int vbo;
     final int v_vert = 0;
     private final int BUF_INITIAL_SIZE_EVENTS = 100000;
@@ -233,14 +235,34 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         checkGLError(gl, "linking shader program");
-        b.clear();
-        gl.glGenVertexArrays(1, b);
-        vao = b.get(0);
-        gl.glBindVertexArray(vao);
+        // GL 2.1 (this Mac: "2.1 Metal") has no core vertex-array object.
+        // glGenVertexArrays / glBindVertexArray return GL_INVALID_OPERATION there.
+        // Attribute state on the default array is valid in that compatibility profile.
+        vaoInUse = false;
+        vao = 0;
+        if (glMajorVersion(gl) >= 3) {
+            b.clear();
+            gl.glGenVertexArrays(1, b);
+            vao = b.get(0);
+            final int genVaoError = gl.glGetError();
+            if (vao != 0 && genVaoError == GL.GL_NO_ERROR) {
+                gl.glBindVertexArray(vao);
+                if (gl.glGetError() == GL.GL_NO_ERROR) {
+                    vaoInUse = true;
+                } else {
+                    vao = 0;
+                }
+            } else {
+                vao = 0;
+            }
+            if (!vaoInUse) {
+                log.log(Level.FINE, "vertex array object unavailable (GL error {0}); using the default array", genVaoError);
+            }
+        }
         b.clear();
         gl.glGenBuffers(1, b);
         vbo = b.get(0);
-        checkGLError(gl, "setting up vertex array and vertex buffer");
+        checkGLError(gl, "creating event vertex buffer");
 
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
         checkGLError(gl, "binding shader attributes");
@@ -260,6 +282,22 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         checkGLError(gl, "getting IDs for uniform modelview and projection matrices in shaders");
         shadersInstalled = true;
         return true;
+    }
+
+    /**
+     * {@code GL_VERSION} is {@code major.minor} or {@code major.minor.release}.
+     * This Mac reports {@code 2.1 Metal}.
+     */
+    private static int glMajorVersion(final GL2 gl) {
+        final String version = gl.glGetString(GL.GL_VERSION);
+        if (version == null || version.isEmpty() || !Character.isDigit(version.charAt(0))) {
+            return 2;
+        }
+        int major = 0;
+        for (int i = 0; i < version.length() && Character.isDigit(version.charAt(i)); i++) {
+            major = major * 10 + Character.digit(version.charAt(i), 10);
+        }
+        return major;
     }
 
     private boolean shaderCompiled(final GL2 gl, final int shader, final String which) {
@@ -941,7 +979,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 gl.glUniform1f(idPointSize, pointSize);
                 checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
 
-                gl.glBindVertexArray(vao);
+                if (vaoInUse) {
+                    gl.glBindVertexArray(vao);
+                }
                 gl.glEnableVertexAttribArray(v_vert);
                 gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
                 gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.limit(), buffer, GL2ES2.GL_STREAM_DRAW);
@@ -950,7 +990,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
                 checkGLError(gl, "drawArrays");
                 gl.glDisableVertexAttribArray(v_vert);
-                gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
+                gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
+                // Apple GL 2.1 Metal returns GL_INVALID_OPERATION for glBindVertexArray(0).
+                // The attribute is already disabled, which is what TextRenderer needs.
                 gl.glUseProgram(0);
                 checkGLError(gl, "disable program");
             }
