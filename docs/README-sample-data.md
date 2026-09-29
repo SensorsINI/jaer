@@ -11,7 +11,7 @@ Recordings are **not** in git and **not** in the basic installer. Git tracks `ja
 | GitHub Latest asset `jaer-sample-data.zip` | The zip users download |
 | `jaerSampleData/README.md` | What the files are (also inside the zip and the install tree) |
 | `jaerSampleData/previews/*.webp` | 5 s / 240 px loops for the GitHub README table. Not in the zip. |
-| `jaerSampleData/SIZE.txt` | Zip and unpacked MiB; written by pack, not in git |
+| `jaerSampleData/SIZE.txt` | Zip and unpacked MiB; written by pack and kept in git |
 | Installer Welcome checkbox | Optional download; default **off**. Shows zip/unpacked size and a time estimate at **10 MB/s Wi-Fi**. If checked, the zip downloads in the background while files are copied. After that (rollback barrier), Setup waits for any remaining download and unpacks into `jaer/jaerSampleData` with no extra prompt. Cancel on that wait skips the recordings — jAER is already installed. |
 | **Help > Sample data** | **Download** if recordings are missing. The chooser picks a parent; recordings always unpack into a folder named `jaerSampleData` (install tree when writable, otherwise `jaerSampleData` in the home directory). **Show jAER sample data folder and README** if recordings are already present |
 | Uninstaller | Deletes default `jaer/jaerSampleData` and a leftover `jaer/sampleData` (and those names at the install root when that directory is the jAER tree). Warns that extra files you put there are removed too. Does **not** delete a `jaerSampleData` folder outside the install directory. If files remain in the install folder after uninstall, that folder is opened. |
@@ -60,7 +60,7 @@ Commit the `.webp` files so the GitHub README table shows them. They are not pac
 
 `upload-installers` does **not** attach the sample zip. Cloud pipeline: `ant upload-sample-data-current` before tagging. Mini-era product Release: `ant upload-sample-data`.
 
-Installer checkbox sizes come from `SIZE.txt` at `install4jc` time (`-Djaer.sampleDataZipMiB` / `jaer.sampleDataUnpackedMiB`). `SIZE.txt` and `README.md` are install4j `fileEntry`s under `jaer/jaerSampleData`.
+The Welcome checkbox reads `https://raw.githubusercontent.com/SensorsINI/jaer/master/jaerSampleData/SIZE.txt` when Setup opens. If that fetch fails, it keeps the sizes compiled into the installer (`jaerSampleData/SIZE.txt` via `-D`, or the defaults in `jaer.install4j`). `SIZE.txt` and `README.md` are install4j `fileEntry`s under `jaer/jaerSampleData`.
 
 In-app File → Open may still offer a download if the folder has no recordings (prefs `AEViewer.sampleDataDownloadDeclined`).
 

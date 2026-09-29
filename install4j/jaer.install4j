@@ -12,8 +12,8 @@
     <variables>
       <variable name="appleIssuerId" />
       <variable name="appleKeyId" />
-      <!-- Defaults so the install4j IDE can build without Ant. ant install4j* / release-*
-           override these from jaerSampleData/SIZE.txt via -D. Keep in sync when the zip grows. -->
+      <!-- Offline fallback for the Welcome checkbox. Setup replaces these at runtime
+           from master jaerSampleData/SIZE.txt. Ant passes -D only when that file is in the checkout. -->
       <variable name="jaer.sampleDataZipMiB" value="995" />
       <variable name="jaer.sampleDataUnpackedMiB" value="995" />
       <variable name="jaer.sampleDataEta" value="about 1.7 min at 10 MB/s Wi-Fi" />
@@ -312,6 +312,37 @@
         </startup>
         <screens>
           <screen id="2" beanClass="com.install4j.runtime.beans.screens.WelcomeScreen" styleId="7" rollbackBarrierExitCode="0">
+            <preActivation>String offer = "${compiler:jaer.sampleDataZipMiB} MB download\n${compiler:jaer.sampleDataUnpackedMiB} MB on disk\n${compiler:jaer.sampleDataEta}\nDownloads while jAER is copied and unpacks before Setup finishes.\nLeave this unchecked to download later from Help → Sample data";
+java.net.HttpURLConnection conn = null;
+try {
+    java.net.URL url = new java.net.URI("https://raw.githubusercontent.com/SensorsINI/jaer/master/jaerSampleData/SIZE.txt").toURL();
+    conn = (java.net.HttpURLConnection) url.openConnection();
+    conn.setConnectTimeout(4000);
+    conn.setReadTimeout(4000);
+    conn.setInstanceFollowRedirects(true);
+    conn.setRequestProperty("User-Agent", "jAER-setup");
+    conn.connect();
+    if (conn.getResponseCode() == 200) {
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream in = conn.getInputStream()) {
+            props.load(in);
+        }
+        int zipMiB = Integer.parseInt(props.getProperty("zipMiB", "").trim());
+        int unpackedMiB = Integer.parseInt(props.getProperty("unpackedMiB", "").trim());
+        if (Integer.signum(zipMiB) == 1 &amp;&amp; Integer.signum(unpackedMiB) == 1) {
+            double minutes = Math.max(zipMiB / 10.0 / 60.0, 0.1);
+            String eta = String.format(java.util.Locale.ROOT, "about %.1f min at 10 MB/s Wi-Fi", minutes);
+            offer = zipMiB + " MB download\n" + unpackedMiB + " MB on disk\n" + eta + "\nDownloads while jAER is copied and unpacks before Setup finishes.\nLeave this unchecked to download later from Help → Sample data";
+        }
+    }
+} catch (Exception ignored) {
+} finally {
+    if (conn != null) {
+        conn.disconnect();
+    }
+}
+context.setVariable("sampleDataSizeText", offer);
+return true;</preActivation>
             <actions>
               <action id="7" beanClass="com.install4j.runtime.beans.actions.misc.LoadResponseFileAction" rollbackBarrierExitCode="0" multiExec="true">
                 <serializedBean>
@@ -389,11 +420,7 @@ return !has;</visibilityScript>
               </formComponent>
               <formComponent id="9203" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent" insetTop="4" insetBottom="4">
                 <serializedBean>
-                  <property name="labelText" type="string">${compiler:jaer.sampleDataZipMiB} MB download
-${compiler:jaer.sampleDataUnpackedMiB} MB on disk
-${compiler:jaer.sampleDataEta}
-Downloads while jAER is copied and unpacks before Setup finishes.
-Leave this unchecked to download later from Help → Sample data</property>
+                  <property name="labelText" type="string">${installer:sampleDataSizeText}</property>
                 </serializedBean>
                 <visibilityScript>File install = context.getInstallationDirectory();
 boolean has = false;

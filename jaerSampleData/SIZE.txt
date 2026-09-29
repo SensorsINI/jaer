@@ -1,0 +1,4 @@
+zipBytes=1043335976
+zipMiB=995
+unpackedBytes=1043173943
+unpackedMiB=995

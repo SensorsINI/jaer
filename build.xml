@@ -976,13 +976,11 @@ java.vendor=${java.vendor}
     </target>
 
     <target name="-maybe-pack-sample-data-skip" depends="-detect-sample-data" unless="jaer.sampleData.hasRecordings">
-        <echo message="No recordings in jaerSampleData/; skipping pack. Installer checkbox sizes stay ${zipMiB} MB / ${unpackedMiB} MB from SIZE.txt if present."/>
+        <echo message="No recordings in jaerSampleData/; skipping pack. Welcome sizes come from jaerSampleData/SIZE.txt."/>
     </target>
 
     <target name="-load-sample-data-size" depends="init">
         <property file="${basedir}/jaerSampleData/SIZE.txt"/>
-        <property name="zipMiB" value="0"/>
-        <property name="unpackedMiB" value="0"/>
         <mkdir dir="${build.dir}/tools"/>
         <javac srcdir="${basedir}/scripts"
                includes="SampleDataEta.java"
@@ -995,11 +993,12 @@ java.vendor=${java.vendor}
               classpath="${build.dir}/tools"
               fork="true"
               failonerror="true"
-              outputproperty="jaer.sampleDataEta">
+              outputproperty="jaer.sampleDataEta"
+              if:set="zipMiB">
             <arg value="${zipMiB}"/>
         </java>
-        <property name="jaer.sampleDataEta" value="about 1.4 min at 10 MB/s Wi-Fi"/>
-        <echo message="install4j sample-data sizes: zipMiB=${zipMiB} unpackedMiB=${unpackedMiB} eta=${jaer.sampleDataEta}"/>
+        <echo message="install4j sample-data sizes: zipMiB=${zipMiB} unpackedMiB=${unpackedMiB} eta=${jaer.sampleDataEta}" if:set="zipMiB"/>
+        <echo message="No jaerSampleData/SIZE.txt; install4j keeps its Welcome size defaults. Setup still reads SIZE.txt from GitHub." unless:set="zipMiB"/>
     </target>
 
     <!-- Unix: scripts/run-install4jc.sh injects Apple/license secrets (not logged by Ant).
@@ -1012,12 +1011,12 @@ java.vendor=${java.vendor}
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=${jaer.install4j.media.types}" if:set="jaer.install4j.media.types"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1027,12 +1026,12 @@ java.vendor=${java.vendor}
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1045,12 +1044,12 @@ java.vendor=${java.vendor}
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=${jaer.install4j.media.types}" if:set="jaer.install4j.media.types"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1059,12 +1058,12 @@ java.vendor=${java.vendor}
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1199,12 +1198,12 @@ Then re-run:        ant install
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1218,12 +1217,12 @@ Then re-run:        ant install
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1239,12 +1238,12 @@ Then re-run:        ant install
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=unixInstaller,linuxDeb"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1254,12 +1253,12 @@ Then re-run:        ant install
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1272,12 +1271,12 @@ Then re-run:        ant install
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=unixInstaller,linuxDeb"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
         <exec executable="install4jc" osfamily="windows" failonerror="true" searchpath="true" dir="${basedir}">
@@ -1286,12 +1285,12 @@ Then re-run:        ant install
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
             <arg value="--disable-signing"/>
             <arg value="--disable-notarization"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1314,12 +1313,12 @@ Then re-run:        ant install
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=macosFolder"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
@@ -1332,12 +1331,12 @@ Then re-run:        ant install
             <arg value="--release=${jaer.version}"/>
             <arg value="--media-types=macosFolder"/>
             <arg value="--faster" if:true="${jaer.install4j.faster}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataZipMiB=${zipMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}"/>
-            <arg value="-D"/>
-            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataZipMiB=${zipMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataUnpackedMiB=${unpackedMiB}" if:set="zipMiB"/>
+            <arg value="-D" if:set="zipMiB"/>
+            <arg value="jaer.sampleDataEta=${jaer.sampleDataEta}" if:set="zipMiB"/>
             <arg value="${jaer.install4j.project.effective}"/>
         </exec>
     </target>
