@@ -39,7 +39,9 @@ On [jaerproject.org](https://jaerproject.org/), the Snapshot line shows the real
 
 ## New feature
 
-**Low-latency processing on the USB acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new packet suffix. A label under the chip (**Low-latency mode**) shows the mean ± standard deviation of the last 100 intervals and the rate `1/mean`. Turn it off with **Show acquisition cycle overlay**. See the [Low-Latency section](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.og4z2km4xd8z) of the jAER User Guide.
+**Low-latency processing on the USB acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new USB request block (URB), **on the high priority USB thread**. This mode allows system latencies of <1ms when the event camera and USB computer output device (e.g. Arduino microcontroller) use at least USB 2.0 high speed mode, and even smaller latencies when both camera and system output are USB3.x devices.  This low-latency mode was used for many of the <a href="https://github.com/SensorsINI/jaer#jaer-applications">jAER demonstrator robots</a>.
+
+A label under the chip (**Low-latency mode**) shows the mean ± standard deviation of the last 100 filter chain processing intervals in seconds, along with the mean rate in Hz: `1/mean`. Turn off this overlay with **Show acquisition cycle overlay**. See the [Low-Latency section](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.og4z2km4xd8z) of the jAER User Guide.
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/low-latency-menu-item.png" alt="Filters Options menu with Process on acquisition cycle selected" width="70%" />
 
