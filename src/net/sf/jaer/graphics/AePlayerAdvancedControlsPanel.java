@@ -501,6 +501,30 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     }
 
     /**
+     * Recording scrubber: slider only until timeshift, then the pause/step row too.
+     */
+    void showRecordingScrubber(boolean show, boolean fullControls) {
+        moreControlsPanel.setVisible(show && fullControls);
+        showMoreControlsButton.setVisible(!show || fullControls);
+        if (show) {
+            setVisible(true);
+        }
+    }
+
+    /** Keep the thumb on the live edge without seeking. */
+    void pinSliderToEnd() {
+        if (playerSlider.getValueIsAdjusting()) {
+            return;
+        }
+        int end = playerSlider.getMaximum();
+        if (playerSlider.getValue() == end) {
+            return;
+        }
+        sliderDontProcess = true;
+        playerSlider.setValue(end);
+    }
+
+    /**
      * Use to set player if player changes, e.g. when SyncPlayer replaces player
      * for player functionality.
      *
@@ -1308,6 +1332,9 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         }
 
         float fracPos = (float) playerSlider.getValue() / (playerSlider.getMaximum());
+        if (aeViewer.offerLiveTimeshiftSlider(fracPos)) {
+            return;
+        }
 
         if (aeViewer.aePlayer.getAEInputStream() == null) {
             return;

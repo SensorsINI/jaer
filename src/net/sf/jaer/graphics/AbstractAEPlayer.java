@@ -493,6 +493,9 @@ public abstract class AbstractAEPlayer {
      */
     public boolean eventCountSlicingAllowed() {
         AEFileInputStreamInterface stream = getAEInputStream();
+        if (stream instanceof Aedat4FileInputStream a4 && a4.isLiveTail()) {
+            return true;
+        }
         return !(stream instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets());
     }
 
@@ -1552,6 +1555,12 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             showAction();
+            if (viewer != null && viewer.offerLiveTimeshiftStepBack()) {
+                setDirectionBackwards(true);
+                doSingleStep();
+                putValue(Action.SELECTED_KEY, true);
+                return;
+            }
             setDirectionBackwards(true);
             doSingleStep();
 //            if (viewer != null) {
@@ -1586,6 +1595,10 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             showAction(String.format("Jog backwards %d view slices", getJogPacketCount()));
+            if (viewer != null && viewer.offerLiveTimeshiftStepBack()) {
+                putValue(Action.SELECTED_KEY, true);
+                return;
+            }
             jogBackwards(getJogPacketCount());
             if (isPaused()) {
                 doSingleStep(); // ViewLoop is parked while paused; drain the history jump now

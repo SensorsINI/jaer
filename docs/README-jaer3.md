@@ -303,6 +303,31 @@ flowchart TD
 - AEDAT-2 path still writes reconstructed or raw `AEPacketRaw` via
   `AEFileOutputStream`.
 
+### Timeshift while recording
+
+While one viewer is writing its own AEDAT-4 file (not AEDAT-2/AEDZ, and not a
+synchronized multi-camera mux), a position scrubber stays under the canvas.
+The sparkline is a 1-second activity histogram. The view is still the camera
+until you scrub behind the live edge or jog backward.
+
+That timeshift stays in `PlayMode.LIVE`. The record path (acquire, filter,
+`writeBundle`) moves off the view thread: a `LiveRecordPump` in rendering mode,
+or the existing USB acquisition thread in acquisition mode. The view thread
+reads a second channel on the growing file. It does not filter again and it
+does not write the file. **Back to live** closes only that reader and shows
+the camera again. The writer stays open. Pause, step, and the slider pause the
+reader only.
+
+The FileDataTable is still written only in `Aedat4FileOutputStream.close`
+(`dataTablePosition` stays at the pending sentinel until then). Seek uses an
+in-memory catalog of the same row fields, published after each packet write.
+Playing into the live edge waits for the next catalog row. The first version
+plays the current cassette only; a VCR roll rebinds the reader to the new file.
+Toolbar labels: the scrubber is visible for the whole recording; **Back to live**
+appears beside **Stop recording** only while timeshift playback is on. The
+advanced playback panel stays closed. CountDuration, ConstantCount, and
+AreaEventCount stay available from View → Accumulation method.
+
 **Playback** of AEDAT-4 uses a **sparse packet index** (file offsets + time
 bounds + event counts), not a full per-event RAM dump. Polarity is decoded
 on demand for the current timeslice; FRME/IMUS are injected via

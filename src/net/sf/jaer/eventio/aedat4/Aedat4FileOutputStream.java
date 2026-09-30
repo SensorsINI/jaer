@@ -582,6 +582,45 @@ public class Aedat4FileOutputStream implements Closeable {
         writePacket(streamId, uncompressedPayload, numElements, timestampStart, timestampEnd);
     }
 
+    /**
+     * One FileDataTable row, published only after {@code channel.write} has returned.
+     * Immutable snapshot element from {@link #copyLiveCatalog()}.
+     */
+    public static final class LiveCatalogEntry {
+        public final long byteOffset;
+        public final int streamId;
+        public final int size;
+        public final long numElements;
+        public final long timestampStart;
+        public final long timestampEnd;
+
+        public LiveCatalogEntry(long byteOffset, int streamId, int size, long numElements,
+                long timestampStart, long timestampEnd) {
+            this.byteOffset = byteOffset;
+            this.streamId = streamId;
+            this.size = size;
+            this.numElements = numElements;
+            this.timestampStart = timestampStart;
+            this.timestampEnd = timestampEnd;
+        }
+    }
+
+    /**
+     * Immutable copy of packets written so far. The on-disk FileDataTable is still
+     * the close-time table ({@code dataTablePosition} stays at the pending sentinel).
+     */
+    public synchronized List<LiveCatalogEntry> copyLiveCatalog() {
+        if (closed || dataDefinitions.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<LiveCatalogEntry> copy = new ArrayList<>(dataDefinitions.size());
+        for (DataDefinition d : dataDefinitions) {
+            copy.add(new LiveCatalogEntry(d.byteOffset, d.streamId, d.size, d.numElements,
+                    d.timestampStart, d.timestampEnd));
+        }
+        return List.copyOf(copy);
+    }
+
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
         ByteBuffer toWrite = Aedat4Compression.compressDirect(payload, compression);
         uncompressedPayloadBytes += payload.length;

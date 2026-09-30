@@ -832,12 +832,42 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         rewindStreamOnly();
     }
 
+    /**
+     * Bind a live-tail reader without changing {@link AEViewer.PlayMode}.
+     * Recording stays on the camera path.
+     */
+    public void attachLiveTail(AEFileInputStreamInterface stream) {
+        cancelJog();
+        aeInputStream = stream;
+        setPaused(false);
+        resetViewHistoryOrigin();
+    }
+
+    /** Close and drop the live-tail reader. Does not change play mode. */
+    public void detachLiveTail() {
+        cancelJog();
+        AEFileInputStreamInterface s = aeInputStream;
+        aeInputStream = null;
+        viewHistory.clear();
+        setPaused(false);
+        if (s != null) {
+            try {
+                s.close();
+            } catch (IOException ignore) {
+            }
+        }
+    }
+
     /** Rewind this viewer's stream only. {@link net.sf.jaer.SyncPlayer} calls this for every member. */
     public void rewindStreamOnly() {
         cancelJog();
         if (aeInputStream == null) {
-            viewHistory.clear();
-            return;
+            if (viewer != null && viewer.offerLiveTimeshiftRewind()) {
+                // reader opened at the start of the cassette
+            } else {
+                viewHistory.clear();
+                return;
+            }
         }
         try {
             aeInputStream.rewind();
@@ -908,8 +938,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
 
         try {
-            final boolean typedOnly = aeInputStream instanceof Aedat4FileInputStream
-                    && !((Aedat4FileInputStream) aeInputStream).hasEventPackets();
+            final boolean typedOnly = aeInputStream instanceof Aedat4FileInputStream a4typed
+                    && !a4typed.isLiveTail()
+                    && !a4typed.hasEventPackets();
             final boolean followEvents = typedOnly && followsEventCameraSlices();
             boolean area = !typedOnly && viewer.aePlayer.isAreaEventCountEnabled();
             boolean flex = !typedOnly && !area && viewer.aePlayer.isFlexTimeEnabled();
@@ -981,7 +1012,15 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             return aeRaw;
         } catch (EOFException e) {
-            log.fine(String.format("%s: %s", player.getAEInputStream().getFile(), e.toString()));
+            if (aeInputStream instanceof Aedat4FileInputStream a4 && a4.isLiveTail()
+                    && e.getMessage() != null && e.getMessage().contains("live edge")) {
+                return aeRaw != null ? aeRaw : new AEPacketRaw(0);
+            }
+            AEFileInputStreamInterface ended = player == null ? aeInputStream : player.getAEInputStream();
+            if (ended == null) {
+                return aeRaw != null ? aeRaw : new AEPacketRaw(0);
+            }
+            log.fine(String.format("%s: %s", ended.getFile(), e.toString()));
             cancelJog();
             setDirectionForwards(true);
             if (viewer != null && viewer.synchronizedPlaybackRequiresCountDuration()

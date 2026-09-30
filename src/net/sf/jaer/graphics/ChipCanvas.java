@@ -750,6 +750,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             beginHudChipScale(gl, xpos, y);
             DrawGL.drawString(fontsize, xpos, y, .5f, RECORDING_OVERLAY_COLOR, recordingLine);
             y -= lineSpace;
+            if (viewer.isLiveTimeshiftView()) {
+                DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f, Color.cyan, "Timeshift");
+                y -= detailLineSpace;
+            }
             DrawGL.drawStringDropShadow(limitFontsize, xpos, y, .5f,
                     applyFilters ? Color.yellow : Color.lightGray, applyFiltersLine);
             y -= detailLineSpace;

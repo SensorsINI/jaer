@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
@@ -143,6 +144,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * Set in {@link #readHeaderAndResolveStreams()}.
      */
     private long dataTablePosition = -1L;
+    /** Growing-file reader. Catalog replaces the FileDataTable until close. */
+    private final boolean liveTail;
+    private Supplier<List<Aedat4FileOutputStream.LiveCatalogEntry>> liveCatalogSource;
+    private int liveCatalogApplied;
+    private long liveBaseUnixUs;
+    /** True until the user sets OUT. The live edge then stays the playback end. */
+    private boolean liveMarkOutFollowsEnd = true;
 
     /** Polarity stream packets (sparse seek table). */
     private PacketRef[] eventRefs = new PacketRef[0];
@@ -288,6 +296,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     public Aedat4FileInputStream(File file, AEChip chip, ProgressMonitor progressMonitor,
             Integer eventStreamId, boolean allowLinearIndexScan) throws IOException {
+        this(file, chip, progressMonitor, eventStreamId, allowLinearIndexScan, false);
+    }
+
+    /**
+     * Second read-only channel on a file that is still being written. Packet refs
+     * come from {@link Aedat4FileOutputStream#copyLiveCatalog()}, not a scan or
+     * FileDataTable, and no {@code .aedat4idx} is written.
+     */
+    public static Aedat4FileInputStream openLiveTail(File file, AEChip chip,
+            List<Aedat4FileOutputStream.LiveCatalogEntry> catalog, long baseUnixUs) throws IOException {
+        Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip, null, null, false, true);
+        in.installLiveCatalog(baseUnixUs, catalog);
+        return in;
+    }
+
+    private Aedat4FileInputStream(File file, AEChip chip, ProgressMonitor progressMonitor,
+            Integer eventStreamId, boolean allowLinearIndexScan, boolean liveTail) throws IOException {
+        this.liveTail = liveTail;
         this.file = file;
         this.chip = chip;
         this.requestedEventStreamId = eventStreamId;
@@ -306,8 +332,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     + " eventStreamId=" + this.eventStreamId
                     + " frameStreamId=" + this.frameStreamId
                     + " imuStreamId=" + this.imuStreamId
-                    + " source=" + selectedSource);
-            if (!maybeLoadCachedIndex(progressMonitor)) {
+                    + " source=" + selectedSource
+                    + " liveTail=" + liveTail);
+            if (liveTail) {
+                indexComplete = false;
+                log.fine("live tail: catalog replaces FileDataTable and packet scan");
+            } else if (!maybeLoadCachedIndex(progressMonitor)) {
                 log.fine("no usable cache; indexing " + file.getName());
                 indexFile(progressMonitor, allowLinearIndexScan);
                 if (indexComplete) {
@@ -338,10 +368,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw e;
         }
         clearMarks();
-        buildLogRelativeEventRateBins();
+        if (!liveTail) {
+            buildLogRelativeEventRateBins();
+        }
         chooseTimesliceEstimator();
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
+        if (liveTail) {
+            log.info(String.format(
+                    "Opened AEDAT-4 live tail %s (%s): dataTablePosition=%d (FileDataTable still pending)",
+                    file.getName(), Aedat4Compression.nameOf(compression), dataTablePosition));
+            support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
+            log.fine("Aedat4FileInputStream live-tail constructor returning");
+            return;
+        }
         log.info(String.format(
                 "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%s (%d EVTS packets indexed)",
                 file.getName(),
@@ -360,6 +400,143 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** Selected polarity stream ID after open. */
     public int getEventStreamId() {
         return eventStreamId;
+    }
+
+    public boolean isLiveTail() {
+        return liveTail;
+    }
+
+    /** IOHeader {@code dataTablePosition} (pending sentinel while the writer is open). */
+    public long getHeaderDataTablePosition() {
+        return dataTablePosition;
+    }
+
+    /** Polarity events in the current sparse index. */
+    public long getIndexedEventCount() {
+        return eventCount;
+    }
+
+    /** Payload offset of indexed polarity packet {@code index}, or -1. */
+    public long eventPayloadOffset(int index) {
+        if (index < 0 || index >= eventRefs.length) {
+            return -1L;
+        }
+        return eventRefs[index].payloadOffset;
+    }
+
+    public void setLiveCatalogSource(Supplier<List<Aedat4FileOutputStream.LiveCatalogEntry>> source) {
+        this.liveCatalogSource = source;
+    }
+
+    /**
+     * Replace the sparse index with {@code catalog}. Relative times are
+     * {@code timestamp - baseUnixUs} (the writer's recording epoch).
+     */
+    public synchronized void installLiveCatalog(long baseUnixUs,
+            List<Aedat4FileOutputStream.LiveCatalogEntry> catalog) {
+        this.liveBaseUnixUs = baseUnixUs;
+        this.baseUnixUs = baseUnixUs;
+        this.liveCatalogApplied = 0;
+        this.liveMarkOutFollowsEnd = true;
+        applyLiveCatalog(catalog == null ? List.of() : catalog, true);
+    }
+
+    /**
+     * Append catalog rows past the last snapshot. No {@code .aedat4idx} write.
+     *
+     * @return true when at least one new row was indexed
+     */
+    public synchronized boolean refreshLiveCatalog() {
+        if (!liveTail || liveCatalogSource == null) {
+            return false;
+        }
+        List<Aedat4FileOutputStream.LiveCatalogEntry> snap = liveCatalogSource.get();
+        if (snap == null) {
+            return false;
+        }
+        if (snap.size() < liveCatalogApplied) {
+            liveCatalogApplied = 0;
+            liveMarkOutFollowsEnd = true;
+            return applyLiveCatalog(snap, true);
+        }
+        if (snap.size() == liveCatalogApplied) {
+            return false;
+        }
+        return applyLiveCatalog(snap, false);
+    }
+
+    private boolean applyLiveCatalog(List<Aedat4FileOutputStream.LiveCatalogEntry> snap, boolean replace) {
+        int from = replace ? 0 : liveCatalogApplied;
+        if (from < 0 || from > snap.size()) {
+            from = 0;
+            replace = true;
+        }
+        ArrayList<PacketRef> events = new ArrayList<>();
+        ArrayList<PacketRef> frames = new ArrayList<>();
+        ArrayList<PacketRef> imus = new ArrayList<>();
+        long cumEvents = replace ? 0 : eventCount;
+        long imuElems = 0;
+        for (int i = from; i < snap.size(); i++) {
+            Aedat4FileOutputStream.LiveCatalogEntry d = snap.get(i);
+            if (d.size < 0 || d.byteOffset < 0) {
+                continue;
+            }
+            long tStart = d.timestampStart;
+            long tEnd = d.timestampEnd;
+            if (isIndexedEventStream(d.streamId)) {
+                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, d.numElements));
+                events.add(new PacketRef(d.byteOffset, d.size, tStart, tEnd, count, cumEvents, 0L, d.streamId));
+                cumEvents += count;
+            } else if (d.streamId == frameStreamId) {
+                frames.add(new PacketRef(d.byteOffset, d.size, tStart, tEnd, 1, 0));
+            } else if (d.streamId == imuStreamId) {
+                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, d.numElements));
+                imus.add(new PacketRef(d.byteOffset, d.size, tStart, tEnd, count, 0));
+                imuElems += count;
+            }
+        }
+        long oldPlayable = playableSize();
+        if (replace) {
+            eventCount = 0;
+            for (PacketRef r : events) {
+                eventCount += r.numElements;
+            }
+            frameCount = frames.size();
+            imuSampleCount = imuElems;
+            baseUnixUs = liveBaseUnixUs;
+            eventRefs = unwrapPacketRefs(toRelativeRefs(events));
+            frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
+            imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
+        } else if (!events.isEmpty() || !frames.isEmpty() || !imus.isEmpty()) {
+            baseUnixUs = liveBaseUnixUs;
+            eventRefs = concatRefs(eventRefs, unwrapPacketRefs(toRelativeRefs(events)));
+            frameRefs = concatRefs(frameRefs, unwrapPacketRefs(toRelativeRefs(frames)));
+            imuRefs = concatRefs(imuRefs, unwrapPacketRefs(toRelativeRefs(imus)));
+            eventCount = cumEvents;
+            frameCount += frames.size();
+            imuSampleCount += imuElems;
+        }
+        liveCatalogApplied = snap.size();
+        if (liveMarkOutFollowsEnd || markOut == oldPlayable) {
+            markOut = playableSize();
+            liveMarkOutFollowsEnd = true;
+        }
+        clearEventPacketCache();
+        chooseTimesliceEstimator();
+        return from < snap.size();
+    }
+
+    private static PacketRef[] concatRefs(PacketRef[] a, PacketRef[] b) {
+        if (a == null || a.length == 0) {
+            return b;
+        }
+        if (b == null || b.length == 0) {
+            return a;
+        }
+        PacketRef[] out = new PacketRef[a.length + b.length];
+        System.arraycopy(a, 0, out, 0, a.length);
+        System.arraycopy(b, 0, out, a.length, b.length);
+        return out;
     }
 
     public String getSelectedSource() {
@@ -3453,6 +3630,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private void ensureReadableOrThrow(boolean forwards) throws EOFException {
+        if (liveTail && forwards) {
+            long waitUntil = System.nanoTime() + 30_000_000L;
+            while (playableSize() == 0 || (position >= playableSize() && !isMarkOutSet())) {
+                refreshLiveCatalog();
+                if (playableSize() > 0 && (position < playableSize() || isMarkOutSet())) {
+                    break;
+                }
+                if (System.nanoTime() >= waitUntil) {
+                    throw new EOFException("live edge");
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new EOFException("live edge");
+                }
+            }
+        }
         if (playableSize() == 0) {
             throw new EOFException("AEDAT-4 file has no playable timeline (no events/frames/IMU)");
         }
@@ -4033,6 +4228,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public void clearMarks() {
         long[] oldMarks = new long[]{markIn, markOut};
         markIn = 0;
+        liveMarkOutFollowsEnd = true;
         markOut = playableSize();
         outLoopArmed = true;
         markers.clear();
@@ -4053,6 +4249,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public long setMarkOut() {
         if (position > markIn) {
             long old = markOut;
+            liveMarkOutFollowsEnd = false;
             markOut = position;
             support.firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, markOut);
         }

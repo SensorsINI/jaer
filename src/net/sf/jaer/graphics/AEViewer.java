@@ -521,6 +521,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     int aedat4RecordingTrackIndex;
     /** False when this viewer shares a muxed file owned by another viewer. */
     boolean aedat4RecordingOwnsClose = true;
+    /** Timeshift playback of the AEDAT-4 file while recording stays in LIVE. */
+    private final LiveTimeshift liveTimeshift = new LiveTimeshift(this);
+    private javax.swing.JButton backToLiveButton;
     AEDZOutputStream aedzRecordingOutputStream;
     private RecordingConfigurationSnapshot activeRecordingSnapshot;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
@@ -840,6 +843,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        installBackToLiveButton();
         Logger.getLogger("").addHandler(loggingHandler);
         // Cypress FX2 monitor/sequencer menu: historical and rarely used.
         monSeqMenu.setVisible(false);
@@ -6655,15 +6659,133 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rewindPlaybackMenuItem.setEnabled(yes);
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes && !synchronizedPlaybackRequiresCountDuration());
         if (playbackModeMenu != null) {
-            playbackModeMenu.setEnabled(yes);
+            playbackModeMenu.setEnabled(yes
+                    || (liveTimeshift != null && liveTimeshift.isScrubberShowing()
+                    && getPlayMode() != PlayMode.PLAYBACK));
         }
         togglePlaybackDirectionMenuItem.setEnabled(yes);
         clearMarksMI.setEnabled(yes);
         setMarkInMI.setEnabled(yes);
         setMarkOutMI.setEnabled(yes);
         //        if ( !playerControlPanel.isVisible() ){ // TODO why only do this if not visible?
-        playerControlPanel.setVisible(yes);
+        playerControlPanel.setVisible(yes || (liveTimeshift != null && liveTimeshift.isScrubberShowing()));
         //        }
+    }
+
+    private void installBackToLiveButton() {
+        backToLiveButton = new JButton("Back to live");
+        backToLiveButton.setFont(recordingButton.getFont());
+        backToLiveButton.setAlignmentY(0.0F);
+        backToLiveButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
+        backToLiveButton.setToolTipText("Stop timeshift playback and show the camera. Recording continues.");
+        backToLiveButton.setVisible(false);
+        backToLiveButton.addActionListener(e -> liveTimeshift.backToLive());
+        int index = buttonsPanel.getComponentCount();
+        for (int i = 0; i < buttonsPanel.getComponentCount(); i++) {
+            if (buttonsPanel.getComponent(i) == recordingButton) {
+                index = i + 1;
+                break;
+            }
+        }
+        buttonsPanel.add(backToLiveButton, index);
+    }
+
+    boolean isAedat4RecordingOwnedHere() {
+        return aedat4RecordingOwnsClose;
+    }
+
+    /** Scrubber under the canvas while this viewer writes its own AEDAT-4 file. */
+    void showLiveRecordingScrubber(boolean show, boolean fullControls) {
+        if (playerControls != null) {
+            playerControls.showRecordingScrubber(show, fullControls);
+        }
+        if (show) {
+            playerControlPanel.setVisible(true);
+        } else if (getPlayMode() != PlayMode.PLAYBACK) {
+            playerControlPanel.setVisible(false);
+        }
+        if (backToLiveButton != null) {
+            backToLiveButton.setVisible(show && liveTimeshift != null && liveTimeshift.isViewingFile());
+        }
+        if (playbackModeMenu != null && getPlayMode() != PlayMode.PLAYBACK) {
+            playbackModeMenu.setEnabled(show);
+            if (show) {
+                updatePlaybackModeMenuSelection();
+            }
+        }
+    }
+
+    boolean offerLiveTimeshiftSlider(float fraction) {
+        return liveTimeshift.offerSlider(fraction);
+    }
+
+    boolean offerLiveTimeshiftRewind() {
+        return liveTimeshift.offerRewind();
+    }
+
+    boolean offerLiveTimeshiftStepBack() {
+        return liveTimeshift.offerStepBack();
+    }
+
+    /**
+     * Rendering-mode record pump, or acquisition-mode pool drain. Does not
+     * render, set the last bundle, or pause the viewer.
+     *
+     * @return true when a USB buffer was taken
+     */
+    boolean liveRecordPumpOnce(boolean record) throws Exception {
+        if (aemon == null || !aemon.isOpen()) {
+            openAEMonitor();
+        }
+        if (aemon == null || !aemon.isOpen()) {
+            return false;
+        }
+        PacketBundle hw = aemon.acquireAvailablePacketBundle();
+        AEPacketRaw raw;
+        PacketBundle cooked;
+        if (hw != null) {
+            if (hw.isEmpty()) {
+                return false;
+            }
+            raw = hw.getRawPacket();
+            cooked = hw;
+        } else {
+            raw = aemon.acquireAvailableEventsFromDriver();
+            if (raw == null || raw.getNumEvents() == 0) {
+                return false;
+            }
+            if (!record) {
+                return true;
+            }
+            extractor = chip.getEventExtractor();
+            if (extractor == null) {
+                return true;
+            }
+            synchronized (extractor) {
+                cooked = extractor.extractBundle(raw);
+            }
+            if (cooked != null) {
+                cooked.setRawPacket(raw);
+            }
+        }
+        if (!record || cooked == null || cooked.isEmpty()) {
+            return cooked != null && !cooked.isEmpty() || (hw == null && raw != null && raw.getNumEvents() > 0);
+        }
+        FilterChain chain = chip.getFilterChain();
+        if (chain != null && AcquisitionCycle.viewLoopFilters(chain.getProcessingMode(), getPlayMode())) {
+            cooked = chain.filterBundle(cooked);
+        }
+        if (cooked == null || cooked.isEmpty()) {
+            return false;
+        }
+        if (isRecordingEnabled() && !isRecordingPaused()) {
+            viewLoop.recordPacket(raw, LiveTimeshift.firstEventPacket(cooked), cooked);
+        }
+        return true;
+    }
+
+    public boolean isLiveTimeshiftView() {
+        return liveTimeshift != null && liveTimeshift.isViewingFile();
     }
 
     /**
@@ -6748,8 +6870,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // in this branch, getString new data to show
                     getFrameRater().takeBefore();
 
+                    // Timeshift: this thread plays the growing file. USB acquire/filter/record
+                    // runs on LiveRecordPump (rendering) or the USB thread (acquisition).
+                    boolean timeshiftSlice = false;
+                    if (liveTimeshift != null && liveTimeshift.viewLoopYieldsUsb()) {
+                        if (!liveTimeshift.isViewingFile()) {
+                            try {
+                                Thread.sleep(5);
+                            } catch (InterruptedException ignored) {
+                            }
+                            getFrameRater().takeAfter();
+                            paceViewLoopFrame();
+                            continue;
+                        }
+                        Thread.interrupted();
+                        getAePlayer().adjustTimesliceForRealtimePlayback();
+                        clearDroppedDataHud();
+                        rawPacket = getAePlayer().getNextPacket(getAePlayer());
+                        AEFileInputStreamInterface playbackStream = getAeFileInputStream();
+                        boolean pendingTyped = playbackStream instanceof Aedat4FileInputStream a4
+                                && a4.hasPendingTypedPackets();
+                        if ((rawPacket == null || rawPacket.getNumEvents() == 0) && !pendingTyped) {
+                            getFrameRater().takeAfter();
+                            paceViewLoopFrame();
+                            continue;
+                        }
+                        if (rawPacket == null) {
+                            rawPacket = emptyRawPacket;
+                        }
+                        cookedBundle = extractBundle(rawPacket);
+                        if (playbackStream instanceof Aedat4FileInputStream a4) {
+                            if (cookedBundle == null) {
+                                cookedBundle = new PacketBundle();
+                            }
+                            a4.appendTypedPackets(cookedBundle);
+                        }
+                        if (cookedBundle == null || cookedBundle.isEmpty()) {
+                            paceViewLoopFrame();
+                            continue;
+                        }
+                        cookedPacket = firstEventPacket(cookedBundle);
+                        if (cookedPacket == null) {
+                            cookedPacket = emptyCookedPacket;
+                            cookedPacket.clear();
+                        }
+                        numEvents = cookedBundle.getNumPolarityEvents();
+                        timeshiftSlice = true;
+                    }
+
                     // Grab input from one of various sources
-                    if (getPlayMode() == PlayMode.FILTER_INPUT) {
+                    if (!timeshiftSlice && getPlayMode() == PlayMode.FILTER_INPUT) {
                         try {
                             if (cookedPacket == null) {
                                 cookedPacket = new EventPacket(chip.getEventClass());
@@ -6769,7 +6939,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         }
 
-                    } else {
+                    } else if (!timeshiftSlice) {
+                        if (liveTimeshift != null) {
+                            liveTimeshift.noteUsbGrab(true);
+                        }
+                        try {
                         // jAER 3.0: prefer USB-level typed PacketBundle when the HW interface supplies it
                         PacketBundle hwBundle = null;
                         viewLoopUsedHwTypedBundle = false;
@@ -6937,13 +7111,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             continue;
                         }
 
+                        } finally {
+                            if (liveTimeshift != null) {
+                                liveTimeshift.noteUsbGrab(false);
+                            }
+                        }
                     }
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
                     chip.setLastBundle(cookedBundle);
 
                     // if we are recording data to disk do it here.
                     // Acquisition mode records on the USB thread's writer, not here.
-                    if (!acquisitionOwns && (isRecordingEnabled() & !isRecordingPaused())) {
+                    // Timeshift view must not record: the pump or USB thread owns the writer.
+                    if (!timeshiftSlice && !acquisitionOwns && (isRecordingEnabled() & !isRecordingPaused())) {
                         // AEDAT-2 needs raw AE; when USB demux drops APS dual-write, reconstruct polarity
                         if (rawPacket == null && cookedPacket != null && aedat4RecordingOutputStream == null) {
                             rawPacket = extractor.reconstructRawPacket(cookedPacket);
@@ -12482,10 +12662,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (!recordingEnabled) {
             recordingTimeLimitOverlayText = null;
             if (wasRecording) {
+                if (liveTimeshift != null) {
+                    liveTimeshift.onRecordingStopped();
+                }
                 restoreAdaptiveRenderSkippingAfterRecording();
             }
         } else if (!wasRecording) {
             enableAdaptiveRenderSkippingForRecording();
+            if (liveTimeshift != null) {
+                liveTimeshift.onRecordingStarted();
+            }
         }
     }
 
@@ -14076,6 +14262,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             invalidateRecordingTimeLimitOverlay();
             log.info("VCR closed " + (closing != null ? closing.getName() : "?") + ": " + closedStats);
             log.info("VCR rolled to " + next.getAbsolutePath());
+            if (liveTimeshift != null) {
+                liveTimeshift.onCassetteRolled();
+            }
         } catch (IOException e) {
             log.log(Level.WARNING, "VCR cassette roll failed: " + e, e);
             String detail = e.getMessage() != null ? e.getMessage() : e.toString();
