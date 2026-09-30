@@ -2,11 +2,11 @@
   Paste-ready for GitHub Releases. Image links use raw.githubusercontent.com so they
   render in the Release body. Relative paths work in the repo, not in a Release description.
 
-  Public 3.5.4 notes. Packaging and bug-fix point release after 3.5.3.
+  Public 3.5.4 notes. New feature: low-latency processing. Then packaging and bug fixes after 3.5.3.
   Do not paste the OS how-to; link the install guide.
 -->
 
-**jAER 3.5.4** is a packaging and bug-fix release after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. Installers show the sample-recording size and count the unpacked files in the disk-space check. The viewer warns when timestamps freeze, loads shipped biases when you pick a sensor, and points event drops at the rendering buffer.
+**jAER 3.5.4** adds **low-latency processing** on the USB acquisition cycle, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. The rest of the release is packaging and bug fixes: installers show the sample-recording size and count the unpacked files in the disk-space check. The viewer warns when timestamps freeze, loads shipped biases when you pick a sensor, and points event drops at the rendering buffer.
 
 ## Download
 
@@ -37,15 +37,30 @@ The Welcome screen **Download sample recordings** checkbox shows the zip size, t
 
 On [jaerproject.org](https://jaerproject.org/), the Snapshot line shows the real build date and a link to commits since the current Stable release.
 
+## New feature
+
+**Low-latency processing on the USB acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new packet suffix. A label under the chip (**Low-latency mode**) shows the mean ± standard deviation of the last 100 intervals and the rate `1/mean`. Turn it off with **Show acquisition cycle overlay**. See the [Low-Latency section](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.og4z2km4xd8z) of the jAER User Guide.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/low-latency-menu-item.png" alt="Filters Options menu with Process on acquisition cycle selected" width="70%" />
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/low-latency-cycle-stats-display.png" alt="Low-latency mode overlay with interval mean, standard deviation, and rate" width="70%" />
+
 ## Fixes
 
 * **Timestamps frozen.** A blinking red caption appears when live event timestamps stop advancing.
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/timestamps-frozen-warning.png" alt="Blinking red Timestamps frozen caption on the chip view" width="70%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/timestamps-frozen-warning.png" alt="Blinking red Timestamps frozen caption on the chip view" width="50%" />
 
 * **Shipped biases.** Choosing a sensor with nothing plugged in, or switching chips while the viewer is already live, loads the shipped bias file. Hardware Configuration no longer opens with every pot at zero.
 * **Event drops.** A red **(DROP)** or **(overrun)** on the status line tells you to raise **Render events** in USB tuning (and **Live keep** on Prophesee), or to raise the DVS threshold or refractory period. USB → **USB tuning…** Help describes FIFO size, buffer count, and the IN statistics.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/dropping-events.png" alt="Dropping events overlay beside USB tuning Render events" width="50%" />
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/usb-tuning.png" alt="USB tuning window with FIFO, buffers, Render events, and USB IN statistics" width="50%" />
+
 * **Function keys.** Page Up, Page Down, Home, and End show a notice: those keys are not shortcuts. If you meant the arrow keys (contrast and render rate), turn off function-key mode.
-* **Acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new packet suffix. A label under the chip (**Low-latency mode**) shows the mean ± standard deviation of the last 100 intervals and the rate `1/mean`. Turn it off with **Show acquisition cycle overlay**.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.5.4/function-key-warning.png" alt="Notice that Page Up is not a shortcut and to turn off function-key mode" width="50%" />
+
 * **Remote output.** OpenCV and ROS slice settings take effect on the next frame.
 * **Preferences.** The preferences dialog uses a narrower layout.
