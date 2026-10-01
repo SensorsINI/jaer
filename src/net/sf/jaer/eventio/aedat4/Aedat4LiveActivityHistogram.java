@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * Fixed 1-second activity bins for a growing AEDAT-4 recording.
+ * The left edge is the first packet of this recording, not device-open time.
  * New catalog rows increment the bins their timestamp span covers. Earlier bins
  * are not rebuilt when the file gets longer.
  */
@@ -17,12 +18,15 @@ public final class Aedat4LiveActivityHistogram {
     private int usedBins;
     private int cursor;
     private long baseUnixUs;
+    /** First packet time of this recording. Camera timestamps keep running from device open. */
+    private long originUnixUs = Long.MIN_VALUE;
 
     public void reset(long baseUnixUs) {
         Arrays.fill(counts, 0L);
         usedBins = 0;
         cursor = 0;
         this.baseUnixUs = baseUnixUs;
+        originUnixUs = Long.MIN_VALUE;
     }
 
     public long getBaseUnixUs() {
@@ -132,8 +136,11 @@ public final class Aedat4LiveActivityHistogram {
     }
 
     private void addSpan(long timestampStart, long timestampEnd, long numElements) {
-        long rel0 = timestampStart - baseUnixUs;
-        long rel1 = timestampEnd - baseUnixUs;
+        if (originUnixUs == Long.MIN_VALUE) {
+            originUnixUs = timestampStart;
+        }
+        long rel0 = timestampStart - originUnixUs;
+        long rel1 = timestampEnd - originUnixUs;
         if (rel0 < 0) {
             rel0 = 0;
         }

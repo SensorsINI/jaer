@@ -591,7 +591,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Usable bytes on the recording volume; refreshed at {@link RecordingDiskSpace#CHECK_INTERVAL_MS}. */
     private volatile long recordingFreeSpaceBytes = -1L;
     private volatile long recordingFreeSpaceCheckedMs = 0L;
-    private boolean recordFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
+    private boolean recordFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", true);
     /** Recording format version string, e.g. {@code "4.0"} or {@code "2.0"}. */
     private String recordingDataFileVersion = prefs.get("AEViewer.loggingDataFileVersion",
             AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
@@ -6654,8 +6654,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         closeMenuItem.setEnabled(true);
         saveAsMenuItem.setEnabled(yes);
         showFileInfoMenuItem.setEnabled(yes && isShowFileInfoAvailable());
-        increasePlaybackSpeedMenuItem.setEnabled(yes);
-        decreasePlaybackSpeedMenuItem.setEnabled(yes);
+        boolean timeshiftView = liveTimeshift != null && liveTimeshift.isViewingFile();
+        increasePlaybackSpeedMenuItem.setEnabled(yes || timeshiftView);
+        decreasePlaybackSpeedMenuItem.setEnabled(yes || timeshiftView);
         rewindPlaybackMenuItem.setEnabled(yes);
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes && !synchronizedPlaybackRequiresCountDuration());
         if (playbackModeMenu != null) {
@@ -6712,6 +6713,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (show) {
                 updatePlaybackModeMenuSelection();
             }
+        }
+        boolean timeshiftView = show && liveTimeshift != null && liveTimeshift.isViewingFile();
+        if (increasePlaybackSpeedMenuItem != null) {
+            increasePlaybackSpeedMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
+            decreasePlaybackSpeedMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
         }
     }
 
@@ -6863,6 +6869,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // unless fastForward is set, in which case there is no delay
                 final boolean acquisitionOwns = chip.getFilterChain() != null
                         && AcquisitionCycle.acquiresOnUsb(chip.getFilterChain().getProcessingMode(), getPlayMode());
+                boolean timeshiftSlice = false;
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
                     // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
@@ -6872,7 +6879,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     // Timeshift: this thread plays the growing file. USB acquire/filter/record
                     // runs on LiveRecordPump (rendering) or the USB thread (acquisition).
-                    boolean timeshiftSlice = false;
                     if (liveTimeshift != null && liveTimeshift.viewLoopYieldsUsb()) {
                         if (!liveTimeshift.isViewingFile()) {
                             try {
@@ -7203,7 +7209,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 getRenderer().adaptRenderSkipping();
                 renderCount++;
-                paceViewLoopFrame();
+                if (timeshiftSlice
+                        && getAePlayer().getPlaybackMode() == AbstractAEPlayer.PlaybackMode.FixedTimeSlice) {
+                    paceTimeshiftCountDuration();
+                } else {
+                    paceViewLoopFrame();
+                }
             } // while (stop == false): end of run() loop - main loop of AEViewer.ViewLoop
 
             // Loop Cleanup
@@ -7814,6 +7825,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         void paceViewLoopFrame() {
             if (!isPaused()) {
                 getFrameRater().delayForDesiredFPS();
+            }
+        }
+
+        /**
+         * CountDuration during timeshift. One slice per display frame follows the
+         * live view FPS, so a 20 ms slice at a high FPS races ahead of the
+         * recording. Sleep so a 20 ms slice takes about 20 ms of wall time.
+         * A larger slice (playback faster) shortens the sleep.
+         */
+        void paceTimeshiftCountDuration() {
+            int sliceUs = Math.max(1, getAePlayer().getTimesliceUs());
+            long wantUs = (20_000L * 20_000L) / sliceUs;
+            long workedUs = Math.max(0L, getFrameRater().getLastDtNs() / 1000L);
+            long sleepUs = wantUs - workedUs;
+            Thread.interrupted();
+            if (sleepUs < 1000L) {
+                return;
+            }
+            try {
+                Thread.sleep(sleepUs / 1000L, (int) ((sleepUs % 1000L) * 1000L));
+            } catch (InterruptedException e) {
+                Thread.interrupted();
             }
         }
 

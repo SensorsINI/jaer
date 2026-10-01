@@ -496,6 +496,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         long oldPlayable = playableSize();
+        PacketRef[] addedEvents = null;
         if (replace) {
             eventCount = 0;
             for (PacketRef r : events) {
@@ -507,9 +508,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             eventRefs = unwrapPacketRefs(toRelativeRefs(events));
             frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
             imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
+            addedEvents = eventRefs;
+            timesliceScanPacketCount = 0;
+            scanTimesliceInPacket = false;
         } else if (!events.isEmpty() || !frames.isEmpty() || !imus.isEmpty()) {
             baseUnixUs = liveBaseUnixUs;
-            eventRefs = concatRefs(eventRefs, unwrapPacketRefs(toRelativeRefs(events)));
+            addedEvents = unwrapPacketRefs(toRelativeRefs(events));
+            eventRefs = concatRefs(eventRefs, addedEvents);
             frameRefs = concatRefs(frameRefs, unwrapPacketRefs(toRelativeRefs(frames)));
             imuRefs = concatRefs(imuRefs, unwrapPacketRefs(toRelativeRefs(imus)));
             eventCount = cumEvents;
@@ -522,7 +527,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             liveMarkOutFollowsEnd = true;
         }
         clearEventPacketCache();
-        chooseTimesliceEstimator();
+        noteTimeslicePackets(addedEvents);
         return from < snap.size();
     }
 
@@ -623,6 +628,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public boolean usesTimeMappedSlider() {
+        // Live tail has no closed-file index, but the catalog timestamps are enough
+        // to seek by time. Event-count seek does not line up with the time sparkline.
+        if (liveTail) {
+            return getDurationUsLong() > 0;
+        }
         return indexComplete && getDurationUsLong() > 0;
     }
 
@@ -1690,6 +1700,28 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             log.info(String.format(
                     "AEDAT-4 timeslice: %d/%d EVTS packets need timestamp scan when hit (inverted/zero-span=%d, maxSpan=%d us, maxEvents=%d)",
                     timesliceScanPacketCount, eventRefs.length, inverted, maxSpan, maxElements));
+        }
+    }
+
+    /**
+     * Count scan packets among {@code added} only. Live catalog appends must not
+     * walk the packets already indexed.
+     */
+    private void noteTimeslicePackets(PacketRef[] added) {
+        if (added == null || added.length == 0) {
+            return;
+        }
+        int before = timesliceScanPacketCount;
+        for (PacketRef r : added) {
+            if (packetNeedsTimesliceScan(r)) {
+                timesliceScanPacketCount++;
+            }
+        }
+        scanTimesliceInPacket = timesliceScanPacketCount > 0;
+        if (timesliceScanPacketCount != before && log.isLoggable(Level.FINE)) {
+            log.fine(String.format(
+                    "AEDAT-4 live tail timeslice scan packets %d -> %d (indexed EVTS %d)",
+                    before, timesliceScanPacketCount, eventRefs.length));
         }
     }
 

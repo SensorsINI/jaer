@@ -304,6 +304,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     }
 
     private void bindSliderToStream(AEFileInputStreamInterface stream) {
+        if (stream instanceof net.sf.jaer.eventio.aedat4.Aedat4FileInputStream a4 && a4.isLiveTail()) {
+            playerSlider.setToolTipText(
+                    "Recording time since this file started. Overlay is log event rate vs time.");
+            reapplyMarksFromStream(stream);
+            return;
+        }
         float[] rates = stream != null ? stream.getLogRelativeEventRateByTime() : null;
         boolean timeMapped = stream != null && stream.usesTimeMappedSlider();
         playerSlider.setLogRelativeRates(timeMapped ? rates : null);

@@ -71,6 +71,7 @@ final class LiveTimeshift {
         }
         Aedat4FileOutputStream writer = viewer.getAedat4RecordingOutputStream();
         histogram.reset(writer.getBaseUnixUs());
+        clearSparkline();
         showScrubber(false);
         startHistogramTimer();
     }
@@ -92,6 +93,7 @@ final class LiveTimeshift {
             return;
         }
         histogram.reset(writer.getBaseUnixUs());
+        clearSparkline();
         if (viewingFile) {
             boolean wasPaused = viewer.getAePlayer().isPaused();
             closeReader();
@@ -311,6 +313,15 @@ final class LiveTimeshift {
     private void hideScrubber() {
         scrubberShowing = false;
         SwingUtilities.invokeLater(() -> viewer.showLiveRecordingScrubber(false, false));
+    }
+
+    private void clearSparkline() {
+        SwingUtilities.invokeLater(() -> {
+            if (viewer.getPlayerControls() == null) {
+                return;
+            }
+            ((PlaybackPositionSlider) viewer.getPlayerControls().getPlayerSlider()).setLogRelativeRates(null);
+        });
     }
 
     private void pinThumb() {

@@ -511,7 +511,7 @@ public abstract class AbstractAEPlayer {
         if (areaEventCountExposer == null || areaEventCountExposer.getChip() != chip) {
             areaEventCountExposer = new AreaEventCountExposer(chip);
             areaEventCountExposer.setEventExposureMode(AreaEventCountExposer.EventExposureMode.AreaEventCount);
-            areaEventCountExposer.setEventCount(prefs.getInt("AbstractAEPlayer.areaEventCount", AreaEventCountExposer.EVENT_COUNT_DEFAULT));
+            areaEventCountExposer.setEventCount(storedAreaEventCount());
             areaEventCountExposer.setNumAreas(prefs.getInt("AbstractAEPlayer.numAreas", AreaEventCountExposer.NUM_AREAS_DEFAULT));
             areaEventCountExposer.setDurationMinUs(getMinimumExposureTimeUs());
             areaEventCountExposer.setDurationMaxUs(getMaximumExposureTimeUs());
@@ -547,7 +547,22 @@ public abstract class AbstractAEPlayer {
         if (areaEventCountExposer != null) {
             return areaEventCountExposer.getEventCount();
         }
-        return prefs.getInt("AbstractAEPlayer.areaEventCount", AreaEventCountExposer.EVENT_COUNT_DEFAULT);
+        return storedAreaEventCount();
+    }
+
+    /**
+     * Per-area threshold. Values at or above 100k were the spinner cap (1e6) or
+     * a CountDuration-sized number stored as an event count, so f/s looked stuck.
+     */
+    private int storedAreaEventCount() {
+        int stored = prefs.getInt("AbstractAEPlayer.areaEventCount", AreaEventCountExposer.EVENT_COUNT_DEFAULT);
+        if (stored >= 100_000 || stored < AreaEventCountExposer.EVENT_COUNT_MIN) {
+            log.info("AreaEventCount threshold " + stored + " reset to "
+                    + AreaEventCountExposer.EVENT_COUNT_DEFAULT + " events/area");
+            stored = AreaEventCountExposer.EVENT_COUNT_DEFAULT;
+            prefs.putInt("AbstractAEPlayer.areaEventCount", stored);
+        }
+        return stored;
     }
 
     public void setNumAreas(int numAreas) {

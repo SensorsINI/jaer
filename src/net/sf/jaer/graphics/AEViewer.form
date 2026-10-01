@@ -119,6 +119,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="recordFilteredEventsCheckBoxMenuItem">
               <Properties>
+                <Property name="selected" type="boolean" value="true"/>
                 <Property name="text" type="java.lang.String" value="Enable filtering of recorded or network output events"/>
                 <Property name="toolTipText" type="java.lang.String" value="Recording or network writes apply active filters first (reduces file size or network traffic)"/>
               </Properties>
