@@ -4,17 +4,22 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Fixed 1-second activity bins for a growing AEDAT-4 recording.
+ * Fixed activity bins for a growing AEDAT-4 recording.
  * The left edge is the first packet of this recording, not device-open time.
- * New catalog rows increment the bins their timestamp span covers. Earlier bins
- * are not rebuilt when the file gets longer.
+ * Each bin is the event count in that interval, same measure as the closed-file
+ * sparkline (events per bin time). A packet rate of events/microsecond is not
+ * used: a few tiny spans then own the percentile scale and the rest of the
+ * activity drops to the baseline. Earlier bins are not rebuilt when the file
+ * gets longer.
  */
 public final class Aedat4LiveActivityHistogram {
 
-    public static final long BIN_US = 1_000_000L;
+    /** Short enough that a burst is not averaged away, long enough that one packet span cannot explode the scale. */
+    public static final long BIN_US = 50_000L;
+    private static final double BIN_S = BIN_US * 1e-6;
     private static final double LOG_FLOOR_HZ = 1.0;
 
-    private long[] counts = new long[64];
+    private long[] counts = new long[256];
     private int usedBins;
     private int cursor;
     private long baseUnixUs;
@@ -67,7 +72,7 @@ public final class Aedat4LiveActivityHistogram {
     }
 
     /**
-     * Log-relative rates in {@code displayBins} columns (max of the 1 s bins in
+     * Log-relative rates in {@code displayBins} columns (max of the bins in
      * each column). Quiet columns are 0. Scale is the 5th–98th percentile of
      * occupied bins, matching closed-file playback.
      */
@@ -76,17 +81,16 @@ public final class Aedat4LiveActivityHistogram {
         if (usedBins <= 0) {
             return null;
         }
-        double[] hz = new double[usedBins];
         int nLog = 0;
         double[] logs = new double[usedBins];
         double maxHz = 0;
         for (int i = 0; i < usedBins; i++) {
-            hz[i] = counts[i];
-            if (hz[i] > maxHz) {
-                maxHz = hz[i];
+            double hz = counts[i] / BIN_S;
+            if (hz > maxHz) {
+                maxHz = hz;
             }
-            if (hz[i] > 0) {
-                logs[nLog++] = Math.log10(Math.max(hz[i], LOG_FLOOR_HZ));
+            if (hz > 0) {
+                logs[nLog++] = Math.log10(Math.max(hz, LOG_FLOOR_HZ));
             }
         }
         if (nLog == 0 || maxHz <= 0) {
@@ -115,10 +119,11 @@ public final class Aedat4LiveActivityHistogram {
             float peak = 0;
             for (int i = a; i < b; i++) {
                 float v;
-                if (hz[i] <= 0) {
+                double hz = counts[i] / BIN_S;
+                if (hz <= 0) {
                     v = 0;
                 } else {
-                    double log = Math.log10(Math.max(hz[i], LOG_FLOOR_HZ));
+                    double log = Math.log10(Math.max(hz, LOG_FLOOR_HZ));
                     v = (float) ((log - logMin) / span);
                     if (v < 0) {
                         v = 0;
