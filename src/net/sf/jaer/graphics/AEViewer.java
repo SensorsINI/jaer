@@ -714,6 +714,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
     private boolean eventAcquisitionPausedForPlayback;
     /**
+     * USB reader is stopped while a modal recording dialog is up. ViewLoop is
+     * blocked in that dialog and cannot swap the live frame, so an enabled
+     * reader fills one packet up to the live-keep cap (2,097,152 events on
+     * the Oct 1 2026 disk-space stop).
+     */
+    private volatile boolean liveUsbPausedForRecordingDialog;
+    /**
      * Set while a data file is being opened so ViewLoop must not call
      * {@link #openAEMonitor()} (USB open can block for a long time and miss PLAYBACK).
      */
@@ -6750,6 +6757,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @return true when a USB buffer was taken
      */
     boolean liveRecordPumpOnce(boolean record) throws Exception {
+        if (liveUsbPausedForRecordingDialog) {
+            return false;
+        }
         if (aemon == null || !aemon.isOpen()) {
             openAEMonitor();
         }
@@ -6969,7 +6979,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
                                     // File open flipped mode while we were opening USB — fall through to grabInput.
                                     hwBundle = null;
-                                } else if ((aemon != null) && aemon.isOpen()) {
+                                } else if ((aemon != null) && aemon.isOpen() && !liveUsbPausedForRecordingDialog) {
                                     hwBundle = aemon.acquireAvailablePacketBundle();
                                     if (hwBundle != null) {
                                         noteDroppedData(aemon.getDroppedDataInfo());
@@ -7447,6 +7457,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return emptyRawPacket; // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
                     }
                 case LIVE:
+                    if (liveUsbPausedForRecordingDialog) {
+                        return emptyRawPacket;
+                    }
                     if (aemon != null && aemon.isOpen()) {
                         liveOpenMisses = 0;
                     } else {
@@ -11765,6 +11778,53 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * false to skip dialog.
      * @return chosen File
      */
+    /**
+     * True while a recording stop/save dialog has stopped the USB reader.
+     * Acquire must not restart it: ViewLoop is not swapping the live frame.
+     */
+    public boolean isLiveUsbPausedForRecordingDialog() {
+        return liveUsbPausedForRecordingDialog;
+    }
+
+    /**
+     * Stop the USB reader before a modal recording dialog. Returns false when
+     * there is nothing to resume (not live, or acquisition already off).
+     */
+    private boolean pauseLiveUsbForRecordingDialog() {
+        if (getPlayMode() != PlayMode.LIVE && getPlayMode() != PlayMode.SEQUENCING) {
+            return false;
+        }
+        if (aemon == null || !aemon.isOpen() || !aemon.isEventAcquisitionEnabled()) {
+            return false;
+        }
+        // Set before the reader stops so an in-flight acquire does not autostart it again.
+        liveUsbPausedForRecordingDialog = true;
+        try {
+            log.info("pausing live USB acquisition while recording dialog is open");
+            aemon.setEventAcquisitionEnabled(false);
+            return true;
+        } catch (HardwareInterfaceException e) {
+            liveUsbPausedForRecordingDialog = false;
+            log.warning("failed to pause live USB for recording dialog: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void resumeLiveUsbAfterRecordingDialog() {
+        try {
+            if (aemon != null && aemon.isOpen()
+                    && (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)
+                    && !aemon.isEventAcquisitionEnabled()) {
+                log.info("resuming live USB acquisition after recording dialog");
+                aemon.setEventAcquisitionEnabled(true);
+            }
+        } catch (HardwareInterfaceException e) {
+            log.warning("failed to resume live USB after recording dialog: " + e.getMessage());
+        } finally {
+            liveUsbPausedForRecordingDialog = false;
+        }
+    }
+
     synchronized public File stopRecording(boolean confirmFilename) {
         return stopRecording(confirmFilename, null);
     }
@@ -11854,23 +11914,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     releaseActiveRecordingSnapshot(stoppingSnapshot);
                 }
 
-                if (autoStopMessage != null && !vcrSession) {
-                    JOptionPane.showMessageDialog(this, autoStopMessage, "Recording stopped",
-                            JOptionPane.WARNING_MESSAGE);
-                }
                 // Caller already sets confirmFilename false for multi-file .aeidx
                 // (stopSynchronizedRecording). Do not also require !isSyncEnabled:
                 // a single FlyEye window with File→Synchronize on skipped Save As
                 // (jAER-0.log 18:30:37).
+                //
+                // Stop USB before the warning dialog, not only before Save As.
+                // stopRecording runs on the EDT via invokeAndWait, so ViewLoop
+                // cannot swap the live frame while either dialog is open. On
+                // 2026-10-01 the warning stayed up overnight and the Prophesee
+                // reader allocated a 2,097,152-event frame nine seconds later.
+                final boolean showStopWarning = autoStopMessage != null && !vcrSession;
+                final boolean modalRecordingDialog = showStopWarning || confirmFilename || vcrSession;
+                final boolean wasPausedForRecordingDialog = isPaused();
+                final boolean pausedUsbForRecordingDialog = modalRecordingDialog
+                        && pauseLiveUsbForRecordingDialog();
+                if (modalRecordingDialog && !wasPausedForRecordingDialog) {
+                    setPaused(true);
+                }
+                try {
+                if (showStopWarning) {
+                    JOptionPane.showMessageDialog(this, autoStopMessage, "Recording stopped",
+                            JOptionPane.WARNING_MESSAGE);
+                }
 
                 if (confirmFilename) {
-                    // Pause live acquisition/rendering while the modal save UI is up so
-                    // USB packets are not cooked/rendered into unbounded memory.
-                    final boolean wasPausedForSaveDialog = isPaused();
-                    if (!wasPausedForSaveDialog) {
-                        setPaused(true);
-                    }
-                    try {
                     JFileChooser chooser = new JFileChooser();
                     chooser.setCurrentDirectory(lastRecordingFolder);
                     chooser.setFileFilter(new DATFileFilter());
@@ -11957,14 +12025,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                     } while (doneSavingOrCancelling == false); // keep trying until user is happy (unless they deleted some crucial data!)
-                    } finally {
-                        if (!wasPausedForSaveDialog) {
-                            setPaused(false);
-                            synchronized (viewLoopPauseLock) {
-                                viewLoopPauseLock.notifyAll();
-                            }
-                        }
-                    }
                 } else if (vcrSession) {
                     if (recordingVcrSession != null) {
                         RecordingSetupDialog.persistLastTimedPrefs(
@@ -11982,6 +12042,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     showVcrSessionFinishedDialog(recordingFile, fileInfo, vcrElapsedMs, autoStopMessage);
                     recordingVcrSession = null;
+                }
+                } finally {
+                    if (modalRecordingDialog && !wasPausedForRecordingDialog) {
+                        setPaused(false);
+                        synchronized (viewLoopPauseLock) {
+                            viewLoopPauseLock.notifyAll();
+                        }
+                    }
+                    if (pausedUsbForRecordingDialog) {
+                        resumeLiveUsbAfterRecordingDialog();
+                    }
                 }
 
             if ((retValue == JFileChooser.APPROVE_OPTION) && isRecordingPlaybackImmediatelyEnabled()) {
