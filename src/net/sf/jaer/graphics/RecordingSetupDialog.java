@@ -421,6 +421,25 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     }
 
     /**
+     * Name shown in the file-name field: no data-file suffix. The format menu
+     * supplies {@code .aedat4} / {@code .aedat2} / {@code .aedz} on accept.
+     */
+    static String baseNameForField(String name) {
+        if (name == null) {
+            return "";
+        }
+        String n = name.trim();
+        String ext = AEDataFile.dataFileExtensionOf(n);
+        if (!ext.isEmpty() && n.length() > ext.length()) {
+            n = n.substring(0, n.length() - ext.length());
+        }
+        while (n.endsWith(".") && n.length() > 1) {
+            n = n.substring(0, n.length() - 1);
+        }
+        return n;
+    }
+
+    /**
      * Force {@code name} to the extension for {@code version} (replace any other
      * data-file suffix).
      */
@@ -492,39 +511,18 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         c.gridx = 0;
         c.gridy = row;
         c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
         form.add(nameLabel, c);
         c.gridx = 1;
         c.weightx = 1;
-        nameField.setToolTipText("<html>Same chip + date name as Start recording / Save recorded data.<br>"
-                + "Folder is the row below. Paste a full path to split folder and name.</html>");
+        c.fill = GridBagConstraints.HORIZONTAL;
+        nameField.setToolTipText("<html>Base name only (chip + date). The format menu adds the suffix.<br>"
+                + "Type a suffix at the end. Folder is the row below. Paste a full path to split folder and name.</html>");
         form.add(nameField, c);
         c.gridx = 2;
         c.weightx = 0;
-        JButton browse = new JButton("Browse…");
-        browse.addActionListener(this::browseFolder);
-        form.add(browse, c);
-
-        row++;
-        c.gridx = 0;
-        c.gridy = row;
-        c.weightx = 0;
-        form.add(new JLabel("Folder:"), c);
-        c.gridx = 1;
-        c.gridwidth = 2;
-        c.weightx = 1;
-        folderCombo = new RecentFoldersJumpCombo(host.getRecentFiles(), () -> folder, this::setFolder);
-        folderCombo.setToolTipText("Next recording folder (AEViewer prefs / last Save recorded data)");
-        form.add(folderCombo, c);
-        c.gridwidth = 1;
-
-        row++;
-        c.gridx = 0;
-        c.gridy = row;
-        c.weightx = 0;
-        form.add(new JLabel("Format:"), c);
-        c.gridx = 1;
-        c.gridwidth = 2;
-        formatCombo.setToolTipText("<html>File format used by Start recording (same as File → Preferences).<br>"
+        c.fill = GridBagConstraints.NONE;
+        formatCombo.setToolTipText("<html>File format and name suffix for Start recording (same as File → Preferences).<br>"
                 + "AEDZ stores polarity events only.</html>");
         formatCombo.addActionListener(e -> {
             if (updatingUi) {
@@ -537,7 +535,27 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             }
         });
         form.add(formatCombo, c);
-        c.gridwidth = 1;
+
+        row++;
+        c.gridx = 0;
+        c.gridy = row;
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        form.add(new JLabel("Folder:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        folderCombo = new RecentFoldersJumpCombo(host.getRecentFiles(), () -> folder, this::setFolder);
+        folderCombo.setToolTipText("Next recording folder (AEViewer prefs / last Save recorded data)");
+        form.add(folderCombo, c);
+        c.gridx = 2;
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        JButton browse = new JButton("Browse…");
+        browse.setToolTipText("Choose recording folder");
+        browse.addActionListener(this::browseFolder);
+        form.add(browse, c);
+        c.fill = GridBagConstraints.HORIZONTAL;
 
         row++;
         c.gridx = 0;
@@ -651,7 +669,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
-                start.requestFocusInWindow();
+                SwingUtilities.invokeLater(() -> focusNameForSuffix());
             }
         });
     }
@@ -793,7 +811,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         }
         updateCompressionEnabled();
         File proposed = proposedFile(host, applyTargets, selectedVersion(), stamp, folder);
-        nameField.setText(proposed.getName());
+        setDisplayedName(proposed.getName());
         if (proposed.getParentFile() != null) {
             folder = proposed.getParentFile();
         }
@@ -944,21 +962,42 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             nameLabel.setText("Session folder:");
             String cur = nameField.getText().trim();
             if (cur.isEmpty()) {
-                nameField.setText(proposedSessionFolderName());
+                setDisplayedName(proposedSessionFolderName());
             } else {
-                nameField.setText(RecordingVcrSession.ensureVcrFolderMark(cur));
+                setDisplayedName(RecordingVcrSession.ensureVcrFolderMark(cur));
             }
         } else {
             nameLabel.setText("File name:");
             String cur = nameField.getText().trim();
             if (cur.isEmpty()) {
-                nameField.setText(proposedFile(host, applyTargets, selectedVersion(), stamp, folder).getName());
+                setDisplayedName(proposedFile(host, applyTargets, selectedVersion(), stamp, folder).getName());
             } else {
-                nameField.setText(withFormatExtension(
-                        RecordingVcrSession.stripVcrFolderMark(cur), selectedVersion()));
+                setDisplayedName(RecordingVcrSession.stripVcrFolderMark(cur));
             }
         }
         updateNameTooltip();
+    }
+
+    /** Field text is the base name; the format menu owns the suffix. */
+    private void setDisplayedName(String name) {
+        String shown = baseNameForField(name);
+        if (!shown.equals(nameField.getText())) {
+            nameField.setText(shown);
+            nameField.setCaretPosition(nameField.getDocument().getLength());
+        }
+    }
+
+    /** Caret at the end of the default base name so a suffix can be typed immediately. */
+    private void focusNameForSuffix() {
+        if (!nameField.isEnabled()) {
+            JButton start = getRootPane().getDefaultButton();
+            if (start != null) {
+                start.requestFocusInWindow();
+            }
+            return;
+        }
+        nameField.requestFocusInWindow();
+        nameField.setCaretPosition(nameField.getDocument().getLength());
     }
 
     private void updateNameExtension() {
@@ -1021,7 +1060,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
                 || text.indexOf('/') >= 0
                 || text.indexOf('\\') >= 0;
         if (looksAbsolute && asFile.getParentFile() != null) {
-            nameField.setText(asFile.getName());
+            setDisplayedName(asFile.getName());
             File parent = asFile.getParentFile();
             if (FileAccessTimeout.isDirectory(parent)) {
                 setFolder(parent);

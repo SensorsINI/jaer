@@ -17,6 +17,19 @@ import net.sf.jaer.eventio.RecordingFilename;
 public class RecordingSetupDialogTest {
 
     @Test
+    public void baseNameForFieldDropsDataSuffix() {
+        assertEquals("NRVS5KRC1S_2026-10-02T01-45-35-0400",
+                RecordingSetupDialog.baseNameForField(
+                        "NRVS5KRC1S_2026-10-02T01-45-35-0400.aedat4"));
+        assertEquals("cam",
+                RecordingSetupDialog.baseNameForField("cam.aedat2"));
+        assertEquals("cam",
+                RecordingSetupDialog.baseNameForField("cam.aedz"));
+        assertEquals("notes.trial",
+                RecordingSetupDialog.baseNameForField("notes.trial"));
+    }
+
+    @Test
     public void withFormatExtensionReplacesDataSuffix() {
         assertEquals("Davis346_2026-09-09.aedat4",
                 RecordingSetupDialog.withFormatExtension("Davis346_2026-09-09.aedz",
