@@ -8,7 +8,9 @@
   Do not paste the OS how-to; link the install guide.
 -->
 
-**jAER 3.6.0** adds **live playback while recording** and **low-latency processing** on the USB acquisition cycle, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)** (there is no public 3.5.4). The rest of the release is packaging and bug fixes: installers show the sample-recording size and count the unpacked files in the disk-space check. The viewer warns when timestamps freeze, loads shipped biases when you pick a sensor, and points event drops at the rendering buffer.
+**jAER 3.6.0** adds two useful features: **Live playback while recording** and **low-latency processing** on the USB acquisition cycle, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. 
+
+The rest of the release is packaging and bug fixes: installers show the sample-recording size and count the unpacked files in the disk-space check. The viewer warns when timestamps freeze, loads shipped biases when you pick a sensor, points event drops at the rendering buffer and pauses USB while Save-As dialog shows (to prevent OOM during unattended recordings).
 
 ## Download
 
@@ -45,7 +47,7 @@ On [jaerproject.org](https://jaerproject.org/), the Snapshot line shows the real
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/live-playback.webp" alt="Scrubbing an AEDAT-4 recording while it is still being written, then returning to the live camera" width="70%" />
 
-**Low-latency processing on the USB acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new USB request block (URB), **on the high priority USB thread**. This mode allows system latencies of <1ms when the event camera and USB computer output device (e.g. Arduino microcontroller) use at least USB 2.0 high speed mode, and even smaller latencies when both camera and system output are USB3.x devices.  This low-latency mode was used for many of the <a href="https://github.com/SensorsINI/jaer#jaer-applications">jAER demonstrator robots</a>.
+**Low-latency processing on the USB acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new USB request block (URB), **on the high priority USB thread**. This mode allows system latencies of <1ms when the event camera and USB computer output device (e.g. Arduino microcontroller) use at least USB 2.0 high speed mode, and even smaller latencies when both camera and system output are USB3.x devices.  This low-latency mode was used for many of the <a href="https://github.com/SensorsINI/jaer#jaer-applications">jAER demonstrator robots</a>, e.g. the well-known robot goalie, slot car racer, and Trixsy card magic robot.
 
 A label under the chip (**Low-latency mode**) shows the mean ± standard deviation of the last 100 filter chain processing intervals in seconds, along with the mean rate in Hz: `1/mean`. Turn off this overlay with **Show acquisition cycle overlay**. See the [Low-Latency section](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.og4z2km4xd8z) of the jAER User Guide.
 
