@@ -102,6 +102,7 @@ import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import java.util.prefs.Preferences;
 
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.TooltipComboBoxModel;
 import net.sf.jaer.util.XMLFileFilter;
 
 /**
@@ -247,7 +248,8 @@ import net.sf.jaer.util.XMLFileFilter;
  * <p>
  * To show ComboBox for either enum or ComboBox model, define get and set
  * methods for them. See NoiseTesterFilter for how to use a ComboBoxModel for
- * classes.
+ * classes. A {@link net.sf.jaer.util.TooltipComboBoxModel} also shows a tooltip
+ * on each row and refreshes when the popup opens.
  * </p>
  *
  *
@@ -1445,7 +1447,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     }
                 }
             };
-            control.setMaximumSize(new Dimension(100, 30));
+            if (model instanceof TooltipComboBoxModel) {
+                TooltipComboBoxModel.install(control);
+            } else {
+                control.setMaximumSize(new Dimension(100, 30));
+            }
             setFontSizeStyle(control);
 
             add(label);

@@ -18,17 +18,16 @@ import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.Description;
@@ -43,6 +42,10 @@ import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import javax.swing.ComboBoxModel;
+import javax.swing.SwingUtilities;
+import net.sf.jaer.hardwareinterface.serial.SerialPortInfo;
+import net.sf.jaer.hardwareinterface.serial.SerialPorts;
 import net.sf.jaer.hardwareinterface.serial.witmotion.WinSerialPort;
 
 /**
@@ -64,8 +67,11 @@ Firmware: <a href="https://github.com/SensorsINI/DVSLatencyMeasurement">SensorsI
 <ol>
 <li>Flash the sketch from
 <a href="https://github.com/SensorsINI/DVSLatencyMeasurement">SensorsINI/DVSLatencyMeasurement</a>.
-Connect USB serial. Set <code>serialPortName</code> and
-<code>serialBaudRate</code> (the published sketch uses 115200).</li>
+Connect USB serial and choose the port under <code>serialPort</code>
+(macOS <code>/dev/cu.usbmodem…</code>, Linux <code>/dev/serial/by-id</code> or
+<code>/dev/ttyACM*</code>, Windows <code>COM</code>). The choice is saved in preferences.
+<code>serialBaudRate</code> is applied on Windows; Teensy USB serial ignores host baud
+(the published sketch uses 115200).</li>
 <li>Place two LEDs in the FOV, split by <code>xborder</code> (left vs right).</li>
 <li>Enable this filter, then check the board with the LED buttons.
 <code>flash</code> should blink the LED; <code>idle</code> should turn it off.
@@ -92,7 +98,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     /** Windows kernel32 port, or the closer for a Linux device file. */
     private AutoCloseable serialLink;
     private int serialBaudRate = getInt("serialBaudRate", 2000000); // note firmware is programmed for max 2Mbaud
-    private String serialPortName = getString("serialPortName", "COM3");
+    /** Open path: COM name, Linux tty or by-id path, or macOS {@code /dev/cu.*}. Empty until chosen. */
+    private String serialPortName = getString("serialPortName", "");
+    private final TooltipComboBoxModel serialPortComboBoxModel
+            = new TooltipComboBoxModel(this::serialPortChoices, this::chooseSerialPort);
     private DataOutputStream serialPortOutputStream = null;
     private DataInputStream serialPortInputStream = null;
 
@@ -148,8 +157,11 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         chain.add(roiFilter);
         chain.add(noiseFilter);
         setEnclosedFilterChain(chain);
-        setPropertyTooltip("serialPortName", "COM port (Windows) or /dev/ttyACM device (Linux) for the Teensy or Arduino");
-        setPropertyTooltip("serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
+        hideProperty("serialPortName");
+        setPropertyTooltip("serialPortComboBoxModel",
+                "USB serial port for the Teensy or Arduino. Hover a row for the device path and USB name. The choice is saved in preferences.");
+        setPropertyTooltip("serialBaudRate",
+                "Baud rate applied when opening the port on Windows. Teensy USB serial on macOS and Linux ignores host baud.");
         setPropertyTooltip("autoScaleHist", "Automatically determine bounds for histogram of intervals");
         setPropertyTooltip("histMin", "Minimum interval");
         setPropertyTooltip("histMax", "Maximum interval");
@@ -431,22 +443,31 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
 
     private void openSerial() throws IOException {
         closeSerial();
+        final List<SerialPortInfo> available = SerialPorts.list();
         StringBuilder sb = new StringBuilder("List of all available serial ports: ");
-        final Set<String> availableSerialPorts = availableSerialPorts();
-        if (availableSerialPorts.isEmpty()) {
+        if (available.isEmpty()) {
             sb.append("none");
         } else {
-            for (String s : availableSerialPorts) {
-                sb.append(s).append(" ");
+            for (SerialPortInfo port : available) {
+                sb.append(port.label()).append(" [").append(port.device()).append("] ");
             }
         }
         log.info(sb.toString());
-        if (!containsPort(availableSerialPorts, serialPortName)) {
-            final String warningString = serialPortName + " is not in available " + sb.toString();
-            log.warning(warningString);
-            showWarningDialogInSwingThread(warningString, "Serial port not available");
-            return;
+        if (!containsPort(available, serialPortName)) {
+            if ((serialPortName == null || serialPortName.isBlank()) && available.size() == 1) {
+                serialPortName = available.get(0).device();
+                putString("serialPortName", serialPortName);
+            } else {
+                publishSerialChoices(available);
+                final String warningString = (serialPortName == null || serialPortName.isBlank())
+                        ? "No serial port selected. " + sb
+                        : serialPortName + " is not in available " + sb;
+                log.warning(warningString);
+                showWarningDialogInSwingThread(warningString, "Serial port not available");
+                return;
+            }
         }
+        publishSerialChoices(available);
 
         if (isWindows()) {
             WinSerialPort port = new WinSerialPort(serialPortName, serialBaudRate);
@@ -512,29 +533,43 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 
-    /** Windows COM ports from the kernel serial map. Linux device nodes under /dev. */
-    private static Set<String> availableSerialPorts() {
-        LinkedHashSet<String> names = new LinkedHashSet<>();
-        if (isWindows()) {
-            names.addAll(WinSerialPort.listPortNames());
-            return names;
+    private List<TooltipChoice> serialPortChoices() {
+        List<SerialPortInfo> ports = SerialPorts.list();
+        ArrayList<TooltipChoice> choices = new ArrayList<>(ports.size());
+        for (SerialPortInfo port : ports) {
+            choices.add(new TooltipChoice(port.device(), port.label(), port.tooltip()));
         }
-        File dev = new File("/dev");
-        File[] nodes = dev.listFiles((dir, name) -> name.startsWith("ttyACM") || name.startsWith("ttyUSB"));
-        if (nodes != null) {
-            for (File node : nodes) {
-                names.add(node.getAbsolutePath());
-            }
-        }
-        return names;
+        return choices;
     }
 
-    private static boolean containsPort(Set<String> ports, String name) {
-        if (name == null) {
+    /** User picked a row. Programmatic reloads do not come through here. */
+    private void chooseSerialPort(String device) {
+        if (device == null || device.equalsIgnoreCase(serialPortName)) {
+            return;
+        }
+        setSerialPortName(device);
+    }
+
+    private void publishSerialChoices(List<SerialPortInfo> ports) {
+        final List<TooltipChoice> choices = new ArrayList<>(ports.size());
+        for (SerialPortInfo port : ports) {
+            choices.add(new TooltipChoice(port.device(), port.label(), port.tooltip()));
+        }
+        final String selected = serialPortName;
+        Runnable update = () -> serialPortComboBoxModel.reload(selected, choices);
+        if (SwingUtilities.isEventDispatchThread()) {
+            update.run();
+        } else {
+            SwingUtilities.invokeLater(update);
+        }
+    }
+
+    private static boolean containsPort(List<SerialPortInfo> ports, String name) {
+        if (name == null || name.isBlank()) {
             return false;
         }
-        for (String port : ports) {
-            if (port.equalsIgnoreCase(name)) {
+        for (SerialPortInfo port : ports) {
+            if (port.device().equalsIgnoreCase(name)) {
                 return true;
             }
         }
@@ -637,12 +672,33 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
      */
     public void setSerialPortName(String serialPortName) {
         try {
-            this.serialPortName = serialPortName;
-            putString("serialPortName", serialPortName);
-            openSerial();
+            this.serialPortName = serialPortName == null ? "" : serialPortName;
+            putString("serialPortName", this.serialPortName);
+            if (isFilterEnabled()) {
+                openSerial();
+            }
         } catch (IOException ex) {
             log.warning(ex.toString());
         }
+    }
+
+    /**
+     * Port chooser. Rows are the ports present now; each row's tooltip names the
+     * USB device. The selected device path is stored as {@code serialPortName}.
+     */
+    @Preferred
+    public ComboBoxModel<TooltipChoice> getSerialPortComboBoxModel() {
+        if (serialPortComboBoxModel.getSize() == 0) {
+            serialPortComboBoxModel.reload(serialPortName);
+            if ((serialPortName == null || serialPortName.isBlank()) && serialPortComboBoxModel.getSize() == 1) {
+                serialPortComboBoxModel.setSelectedItem(serialPortComboBoxModel.getElementAt(0));
+            }
+        }
+        return serialPortComboBoxModel;
+    }
+
+    /** Required by the filter panel. The filter owns the model instance. */
+    public void setSerialPortComboBoxModel(ComboBoxModel<TooltipChoice> serialPortComboBoxModel) {
     }
 
     /**
