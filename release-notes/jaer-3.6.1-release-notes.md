@@ -2,13 +2,14 @@
   Paste-ready for GitHub Releases. Image links use raw.githubusercontent.com so they
   render in the Release body. Relative paths work in the repo, not in a Release description.
 
-  Public 3.6.0 notes. There is no public 3.5.4.
+  Public 3.6.1 notes. There is no public 3.6.0 or 3.5.4.
   New features: live playback while recording, and low-latency processing.
   Then packaging and bug fixes since 3.5.3.
   Do not paste the OS how-to; link the install guide.
+  Latency-bench screenshots stay in the user guide; they are not in these notes.
 -->
 
-**jAER 3.6.0** adds two useful features: **Live playback while recording** and **low-latency processing** on the USB acquisition cycle, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. 
+**jAER 3.6.1** adds two useful features: **Live playback while recording** and **low-latency processing** on the USB acquisition cycle, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. There is no public 3.6.0.
 
 The rest of the release is packaging and bug fixes: installers show the sample-recording size and count the unpacked files in the disk-space check. The viewer warns when timestamps freeze, loads shipped biases when you pick a sensor, points event drops at the rendering buffer and pauses USB while Save-As dialog shows (to prevent OOM during unattended recordings).
 
@@ -16,12 +17,12 @@ The rest of the release is packaging and bug fixes: installers show the sample-r
 
 | You have | CPU | Download |
 |---|---|---|
-| Windows 10 / 11 | x64 | [jAER_windows-x64_3_6_0.exe](https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_windows-x64_3_6_0.exe) |
-| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_6_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_macos_aarch64_3_6_0.dmg) |
-| macOS | Intel | [jAER_macos_3_6_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_macos_3_6_0.dmg) |
-| Linux | x64 | [jAER_unix_3_6_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_unix_3_6_0.sh) |
-| Linux | x64 `.deb` | [jAER_linux-amd64_3_6_0.deb](https://github.com/SensorsINI/jaer/releases/download/3.6.0/jAER_linux-amd64_3_6_0.deb) |
-| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.6.0/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/jaerSampleData/README.md)) |
+| Windows 10 / 11 | x64 | [jAER_windows-x64_3_6_1.exe](https://github.com/SensorsINI/jaer/releases/download/3.6.1/jAER_windows-x64_3_6_1.exe) |
+| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_6_1.dmg](https://github.com/SensorsINI/jaer/releases/download/3.6.1/jAER_macos_aarch64_3_6_1.dmg) |
+| macOS | Intel | [jAER_macos_3_6_1.dmg](https://github.com/SensorsINI/jaer/releases/download/3.6.1/jAER_macos_3_6_1.dmg) |
+| Linux | x64 | [jAER_unix_3_6_1.sh](https://github.com/SensorsINI/jaer/releases/download/3.6.1/jAER_unix_3_6_1.sh) |
+| Linux | x64 `.deb` | [jAER_linux-amd64_3_6_1.deb](https://github.com/SensorsINI/jaer/releases/download/3.6.1/jAER_linux-amd64_3_6_1.deb) |
+| Any OS | Sample data (~995 MB) | [jaer-sample-data.zip](https://github.com/SensorsINI/jaer/releases/download/3.6.1/jaer-sample-data.zip) ([README](https://github.com/SensorsINI/jaer/blob/master/jaerSampleData/README.md)) |
 
 Each installer includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK 25. You do not install Java yourself. GitHub lists the same files again under **Assets**.
 
@@ -45,32 +46,37 @@ On [jaerproject.org](https://jaerproject.org/), the Snapshot line shows the real
 
 **Live playback while recording.** While one viewer is writing its own AEDAT-4 file, the position scrubber stays under the canvas. The sparkline is a 1-second activity histogram, and the view stays on the camera until you scrub behind the live edge or jog backward. Playback reads the file written so far; recording continues. **Back to live**, next to **Stop recording**, returns the view to the camera without closing the file. Pause, step, and the slider affect playback only. This is for one viewer’s own AEDAT-4 recording (not AEDAT-2 or AEDZ, and not a synchronized multi-camera file). The first version plays the current cassette; a VCR roll follows the new file.
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/live-playback.webp" alt="Scrubbing an AEDAT-4 recording while it is still being written, then returning to the live camera" width="70%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/live-playback.webp" alt="Scrubbing an AEDAT-4 recording while it is still being written, then returning to the live camera" width="70%" />
 
 **Low-latency processing on the USB acquisition cycle.** Filters → Options → **Process on acquisition cycle** runs the chain on each new USB request block (URB), **on the high priority USB thread**. This mode allows system latencies of <1ms when the event camera and USB computer output device (e.g. Arduino microcontroller) use at least USB 2.0 high speed mode, and even smaller latencies when both camera and system output are USB3.x devices.  This low-latency mode was used for many of the <a href="https://github.com/SensorsINI/jaer#jaer-applications">jAER demonstrator robots</a>, e.g. the well-known robot goalie, slot car racer, and Trixsy card magic robot.
 
 A label under the chip (**Low-latency mode**) shows the mean ± standard deviation of the last 100 filter chain processing intervals in seconds, along with the mean rate in Hz: `1/mean`. Turn off this overlay with **Show acquisition cycle overlay**. See the [Low-Latency section](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.og4z2km4xd8z) of the jAER User Guide.
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/low-latency-menu-item.png" alt="Filters Options menu with Process on acquisition cycle selected" width="70%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/low-latency-menu-item.png" alt="Filters Options menu with Process on acquisition cycle selected" width="70%" />
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/low-latency-cycle-stats-display.png" alt="Low-latency mode overlay with interval mean, standard deviation, and rate" width="70%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/low-latency-cycle-stats-display.png" alt="Low-latency mode overlay with interval mean, standard deviation, and rate" width="70%" />
 
 ## Fixes
 
+* **Start recording.** The file name is the base name only (chip and date). The format menu beside it adds the suffix. The cursor starts at the end of that name so a suffix can be typed immediately.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/recording-start-dialog.png" alt="Start recording dialog with the base file name and the format menu beside it" width="70%" />
+
+* **Latency bench.** DVSLatencyMeasurement talks to the Teensy through the Windows COM port, without nrjavaserial. Setup and the latency figures are in the [Low-Latency section](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?tab=t.0#bookmark=id.og4z2km4xd8z) of the jAER User Guide.
 * **Timestamps frozen.** A blinking red caption appears when live event timestamps stop advancing.
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/timestamps-frozen-warning.png" alt="Blinking red Timestamps frozen caption on the chip view" width="50%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/timestamps-frozen-warning.png" alt="Blinking red Timestamps frozen caption on the chip view" width="50%" />
 
 * **Shipped biases.** Choosing a sensor with nothing plugged in, or switching chips while the viewer is already live, loads the shipped bias file. Hardware Configuration no longer opens with every pot at zero.
 * **Event drops.** A red **(DROP)** or **(overrun)** on the status line tells you to raise **Render events** in USB tuning (and **Live keep** on Prophesee), or to raise the DVS threshold or refractory period. USB → **USB tuning…** Help describes FIFO size, buffer count, and the IN statistics.
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/dropping-events.png" alt="Dropping events overlay beside USB tuning Render events" width="50%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/dropping-events.png" alt="Dropping events overlay beside USB tuning Render events" width="50%" />
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/usb-tuning.png" alt="USB tuning window with FIFO, buffers, Render events, and USB IN statistics" width="50%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/usb-tuning.png" alt="USB tuning window with FIFO, buffers, Render events, and USB IN statistics" width="50%" />
 
 * **Function keys.** Page Up, Page Down, Home, and End show a notice: those keys are not shortcuts. If you meant the arrow keys (contrast and render rate), turn off function-key mode.
 
-<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.0/function-key-warning.png" alt="Notice that Page Up is not a shortcut and to turn off function-key mode" width="50%" />
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/function-key-warning.png" alt="Notice that Page Up is not a shortcut and to turn off function-key mode" width="50%" />
 
 * **Remote output.** OpenCV and ROS slice settings take effect on the next frame.
 * **Preferences.** The preferences dialog uses a narrower layout.
