@@ -9,28 +9,30 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.awt.GLCanvas;
-import com.jogamp.opengl.util.awt.TextRenderer;
-
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
-import gnu.io.NRSerialPort;
-import gnu.io.RXTXCommDriver;
-import java.awt.Font;
+import java.awt.Color;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.Description;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.Help;
 import net.sf.jaer.event.BasicEvent;
@@ -41,6 +43,7 @@ import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.hardwareinterface.serial.witmotion.WinSerialPort;
 
 /**
  * Tests DVS latency using Arduino DVSLatencyMeasurement.
@@ -77,7 +80,8 @@ or <code>turnOnBothLeds</code>.</li>
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
-    NRSerialPort serialPort = null;
+    /** Windows kernel32 port, or the closer for a Linux device file. */
+    private AutoCloseable serialLink;
     private int serialBaudRate = getInt("serialBaudRate", 2000000); // note firmware is programmed for max 2Mbaud
     private String serialPortName = getString("serialPortName", "COM3");
     private DataOutputStream serialPortOutputStream = null;
@@ -86,11 +90,17 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
 
     private Point currentMousePoint = null;
-    private GLCanvas glCanvas;
-    private ChipCanvas canvas;
-    private TextRenderer renderer = null;
-
     private TimeStats timeStats;
+
+    /** Overlay font in chip pixels. First use auto-fits to chip width. */
+    @Preferred
+    private float fontSize = getFloat("fontSize", defaultFontSize());
+    private boolean fontSizeChecked = false;
+    private boolean fontFitting = false;
+    private static final String PREF_FONT_AUTO = "fontSizeAuto";
+    private static final float FONT_CHAR_ADVANCE = 0.55f;
+    /** Latency summary is a long line; the first-use fit starts from this width. */
+    private static final int FONT_OVERLAY_CHARS = 72;
     public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
     private int histNumBins = getInt("histNumBins", 300);
     protected int statsWindowLength = getInt("statsWindowLength", 300);
@@ -129,7 +139,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         chain.add(roiFilter);
         chain.add(noiseFilter);
         setEnclosedFilterChain(chain);
-        setPropertyTooltip("serialPortName", "Name of serial port to send Arduino Nano commands to");
+        setPropertyTooltip("serialPortName", "COM port (Windows) or /dev/ttyACM device (Linux) for the Teensy or Arduino");
         setPropertyTooltip("serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
         setPropertyTooltip("autoScaleHist", "Automatically determine bounds for histogram of intervals");
         setPropertyTooltip("histMin", "Minimum interval");
@@ -147,6 +157,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("logging", "Toggle ON/OFF logging of delta times to TobiLogger CSV file");
         setPropertyTooltip("xborder", "Left/Right LED X address discrimination border");
         setPropertyTooltip("thresholdEventCount", "How many events to detect LED");
+        setPropertyTooltip("fontSize", "Overlay text size in chip pixels; first use auto-fits to chip width.");
         tobiLogger = new TobiLogger("DVSLatencyMeasurement", "DVSLatencyMeasurement");
         tobiLogger.setColumnHeaderLine("lastTimestamp(us),dt(us)");
     }
@@ -270,28 +281,35 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     @Override
     synchronized public void resetFilter() {
         noiseFilter.resetFilter();
-        timeStats.reset();
-//        state = State.Idle;
+        if (timeStats != null) {
+            timeStats.reset();
+        }
     }
 
     @Override
     public void initFilter() {
         timeStats = new TimeStats();
-        if ((chip.getCanvas() != null) && (chip.getCanvas().getCanvas() != null)) {
-            canvas = chip.getCanvas();
-            glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        if (!isPreferenceStored("fontSize")) {
+            fontSize = defaultFontSize();
+            fontSizeChecked = false;
+        } else {
+            fontSize = getFloat("fontSize", defaultFontSize());
+            fontSizeChecked = false;
         }
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        noiseFilter.annotate(drawable);
+        if (noiseFilter != null) {
+            noiseFilter.annotate(drawable);
+        }
+        if (timeStats == null || drawable == null || chip == null) {
+            return;
+        }
         GL2 gl = drawable.getGL().getGL2();
-        canvas = chip.getCanvas();
-        glCanvas = (GLCanvas) canvas.getCanvas();
-
-        float csx = chip.getSizeX(), csy = chip.getSizeY();
+        if (gl == null) {
+            return;
+        }
         gl.glColor3f(1, 1, 1);
         gl.glLineWidth(2);
         gl.glBegin(GL.GL_LINES);
@@ -403,36 +421,42 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     }
 
     private void openSerial() throws IOException {
-        if (serialPort != null) {
-            closeSerial();
-        }
+        closeSerial();
         StringBuilder sb = new StringBuilder("List of all available serial ports: ");
-        final Set<String> availableSerialPorts = NRSerialPort.getAvailableSerialPorts();
+        final Set<String> availableSerialPorts = availableSerialPorts();
         if (availableSerialPorts.isEmpty()) {
-            sb.append("\nNo ports found, sorry.  If you are on linux, serial port support may suffer");
+            sb.append("none");
         } else {
             for (String s : availableSerialPorts) {
                 sb.append(s).append(" ");
             }
         }
         log.info(sb.toString());
-        if (!availableSerialPorts.contains(serialPortName)) {
-            final String warningString = serialPortName + " is not in avaiable " + sb.toString();
+        if (!containsPort(availableSerialPorts, serialPortName)) {
+            final String warningString = serialPortName + " is not in available " + sb.toString();
             log.warning(warningString);
             showWarningDialogInSwingThread(warningString, "Serial port not available");
             return;
         }
 
-        serialPort = new NRSerialPort(serialPortName, serialBaudRate);
-        if (serialPort == null) {
-            final String warningString = "null serial port returned when trying to open " + serialPortName + "; available " + sb.toString();
-            log.warning(warningString);
-            showWarningDialogInSwingThread(warningString, "Serial port not available");
-            return;
+        if (isWindows()) {
+            WinSerialPort port = new WinSerialPort(serialPortName, serialBaudRate);
+            serialLink = port;
+            serialPortOutputStream = new DataOutputStream(port.output());
+            serialPortInputStream = new DataInputStream(port.input());
+        } else {
+            FileInputStream in = new FileInputStream(serialPortName);
+            FileOutputStream out = new FileOutputStream(serialPortName);
+            serialLink = () -> {
+                try {
+                    out.close();
+                } finally {
+                    in.close();
+                }
+            };
+            serialPortOutputStream = new DataOutputStream(out);
+            serialPortInputStream = new DataInputStream(in);
         }
-        serialPort.connect();
-        serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
-        serialPortInputStream = new DataInputStream(serialPort.getInputStream());
         log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
         // drain serial port chars from Arduino startup
         try {
@@ -458,17 +482,118 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     private void closeSerial() {
         if (serialPortOutputStream != null) {
             try {
-                serialPortOutputStream.close();
+                serialPortOutputStream.flush();
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
             serialPortOutputStream = null;
         }
-        if ((serialPort != null) && serialPort.isConnected()) {
-            serialPort.disconnect();
-            serialPort = null;
+        serialPortInputStream = null;
+        if (serialLink != null) {
+            try {
+                serialLink.close();
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+            serialLink = null;
         }
-//        log.info("closed serial port");
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    /** Windows COM ports from the kernel serial map. Linux device nodes under /dev. */
+    private static Set<String> availableSerialPorts() {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (isWindows()) {
+            names.addAll(WinSerialPort.listPortNames());
+            return names;
+        }
+        File dev = new File("/dev");
+        File[] nodes = dev.listFiles((dir, name) -> name.startsWith("ttyACM") || name.startsWith("ttyUSB"));
+        if (nodes != null) {
+            for (File node : nodes) {
+                names.add(node.getAbsolutePath());
+            }
+        }
+        return names;
+    }
+
+    private static boolean containsPort(Set<String> ports, String name) {
+        if (name == null) {
+            return false;
+        }
+        for (String port : ports) {
+            if (port.equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Heuristic font so a typical overlay line fills the chip width. First
+     * annotate then measures with {@link DrawGL#fontSizeToFitWidth}.
+     */
+    private float defaultFontSize() {
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0) {
+            return 6f;
+        }
+        float fs = (sizeX * 0.96f) / (FONT_OVERLAY_CHARS * FONT_CHAR_ADVANCE);
+        return Math.max(DrawGL.MIN_FONT_SIZE, Math.min(fs, 48f));
+    }
+
+    /**
+     * Pick a font that fills the chip width. Runs while the auto flag is set
+     * (first use, or after Defaults). A user change of {@code fontSize} clears
+     * the auto flag.
+     */
+    private void maybeFitFontToChipWidth(String[] lines) {
+        if (fontSizeChecked) {
+            return;
+        }
+        if (!getBoolean(PREF_FONT_AUTO, true)) {
+            fontSizeChecked = true;
+            return;
+        }
+        int sizeX = (chip != null) ? chip.getSizeX() : 0;
+        if (sizeX <= 0 || lines == null || lines.length == 0) {
+            return;
+        }
+        try {
+            float start = Math.max(Math.max(24f, sizeX / 4f), fontSize);
+            float fitted = DrawGL.fontSizeToFitWidth(start, lines, sizeX * 0.99f);
+            fontFitting = true;
+            try {
+                setFontSize(fitted);
+                putBoolean(PREF_FONT_AUTO, true);
+            } finally {
+                fontFitting = false;
+            }
+            fontSizeChecked = true;
+        } catch (RuntimeException e) {
+            // TextRenderer needs a current GL context; retry next frame
+        }
+    }
+
+    public float getFontSize() {
+        return fontSize;
+    }
+
+    public void setFontSize(float fontSize) {
+        float old = this.fontSize;
+        if (fontSize < DrawGL.MIN_FONT_SIZE) {
+            fontSize = DrawGL.MIN_FONT_SIZE;
+        }
+        this.fontSize = fontSize;
+        putFloat("fontSize", fontSize);
+        if (!fontFitting) {
+            putBoolean(PREF_FONT_AUTO, false);
+            fontSizeChecked = true;
+        }
+        getSupport().firePropertyChange("fontSize", old, this.fontSize);
     }
 
     /**
@@ -522,8 +647,16 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     }
 
     private Point getMousePoint(MouseEvent e) {
-        synchronized (glCanvas) { // sync here on opengl canvas because getPixelFromMouseEvent calls opengl and we don't want that during rendering
-            return canvas.getPixelFromMouseEvent(e);
+        if (chip == null || chip.getCanvas() == null) {
+            return null;
+        }
+        ChipCanvas chipCanvas = chip.getCanvas();
+        Object gl = chipCanvas.getCanvas();
+        if (!(gl instanceof GLCanvas)) {
+            return chipCanvas.getPixelFromMouseEvent(e);
+        }
+        synchronized (gl) { // getPixelFromMouseEvent calls OpenGL; do not overlap a paint
+            return chipCanvas.getPixelFromMouseEvent(e);
         }
     }
 
@@ -794,19 +927,19 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 gl.glPopAttrib();
             }
 
-            // draw limits
-            renderer.begin3DRendering();
-            renderer.draw3D(String.format("%ss", fmt.format(histMin * 1e-6f)), 0, -8, 0, .3f);
-            renderer.draw3D(String.format("%ss", fmt.format(histMax * 1e-6f)), chip.getSizeX(), -8, 0, .3f);
-            renderer.end3DRendering();
+            String status = String.format("State: %s\n%s", state.toString(), statsSummaryString());
+            maybeFitFontToChipWidth(status.split("\n", -1));
+            float labelY = -DrawGL.lineAdvance(fontSize);
+            DrawGL.drawString(fontSize, 0, labelY, 0f, Color.white,
+                    String.format("%ss", fmt.format(histMin * 1e-6f)));
+            DrawGL.drawString(fontSize, chip.getSizeX(), labelY, 1f, Color.white,
+                    String.format("%ss", fmt.format(histMax * 1e-6f)));
 
             if (currentMousePoint != null) {
                 if (currentMousePoint.y <= 0) {
                     float sampleValue = ((float) currentMousePoint.x / chip.getSizeX()) * (1e-6f * histMax);
-                    gl.glColor3fv(SELECT_COLOR, 0);
-                    renderer.begin3DRendering();
-                    renderer.draw3D(String.format("%ss", fmt.format(sampleValue)), currentMousePoint.x, -8, 0, .3f);
-                    renderer.end3DRendering();
+                    DrawGL.drawString(fontSize, currentMousePoint.x, labelY, 0.5f, Color.red,
+                            String.format("%ss", fmt.format(sampleValue)));
                     gl.glLineWidth(3);
                     gl.glColor3fv(SELECT_COLOR, 0);
                     gl.glBegin(GL.GL_LINES);
@@ -816,8 +949,8 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 }
             }
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("State: %s\n%s",
-                    state.toString(),statsSummaryString()));
+            MultilineAnnotationTextRenderer.setFontSize(fontSize);
+            MultilineAnnotationTextRenderer.renderMultilineString(status);
 
         }
 

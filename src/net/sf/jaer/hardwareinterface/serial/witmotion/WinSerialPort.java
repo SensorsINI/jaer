@@ -1,5 +1,6 @@
 package net.sf.jaer.hardwareinterface.serial.witmotion;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -11,12 +12,17 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Windows COM port opened through {@code kernel32}. nrjavaserial's JNA 4.2
  * native library does not load on JDK 25, so the HWT906 path cannot use it.
  */
-final class WinSerialPort implements AutoCloseable {
+public final class WinSerialPort implements AutoCloseable {
 
     private static final int GENERIC_READ = 0x80000000;
     private static final int GENERIC_WRITE = 0x40000000;
@@ -71,7 +77,7 @@ final class WinSerialPort implements AutoCloseable {
     private final OutputStream output;
     private volatile boolean closed;
 
-    WinSerialPort(String portName, int baudRate) throws IOException {
+    public WinSerialPort(String portName, int baudRate) throws IOException {
         this.name = portName;
         String path = "\\\\.\\" + portName;
         try (Arena arena = Arena.ofConfined()) {
@@ -106,16 +112,56 @@ final class WinSerialPort implements AutoCloseable {
         this.output = new ComOutput();
     }
 
-    String name() {
+    public String name() {
         return name;
     }
 
-    InputStream input() {
+    public InputStream input() {
         return input;
     }
 
-    OutputStream output() {
+    public OutputStream output() {
         return output;
+    }
+
+    /**
+     * COM ports named in {@code HKLM\HARDWARE\DEVICEMAP\SERIALCOMM}. This is the
+     * map Windows updates when a USB CDC device such as a Teensy enumerates.
+     * It does not load nrjavaserial.
+     */
+    public static List<String> listPortNames() {
+        List<String> names = new ArrayList<>();
+        Pattern com = Pattern.compile("\\bCOM\\d+\\b", Pattern.CASE_INSENSITIVE);
+        try {
+            Process process = new ProcessBuilder(
+                    "reg", "query", "HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM")
+                    .redirectErrorStream(true)
+                    .start();
+            ByteArrayOutputStream captured = new ByteArrayOutputStream();
+            Thread reader = new Thread(() -> {
+                try {
+                    process.getInputStream().transferTo(captured);
+                } catch (IOException ignored) {
+                    // process destroyed, or the pipe closed
+                }
+            }, "WinSerial-reg");
+            reader.setDaemon(true);
+            reader.start();
+            if (!process.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+            reader.join(1000);
+            Matcher matcher = com.matcher(captured.toString(java.nio.charset.Charset.defaultCharset()));
+            while (matcher.find()) {
+                String found = matcher.group().toUpperCase(Locale.ROOT);
+                if (!names.contains(found)) {
+                    names.add(found);
+                }
+            }
+        } catch (Exception ignored) {
+            // empty list: the caller reports that no port was found
+        }
+        return names;
     }
 
     @Override
