@@ -57,15 +57,24 @@ import net.sf.jaer.hardwareinterface.serial.witmotion.WinSerialPort;
 <h2>DVSLatencyMeasurement</h2>
 <p>Measures DVS-to-PC latency with two LEDs driven by an Arduino sketch
 (<code>DVSLatencyMeasurement</code>). One LED is the stimulus; the other can mark the
-command. Encloses a denoiser and <code>XYTypeFilter</code> to isolate the LEDs.</p>
+command. Encloses a denoiser and <code>XYTypeFilter</code> to isolate the LEDs.
+Firmware: <a href="https://github.com/SensorsINI/DVSLatencyMeasurement">SensorsINI/DVSLatencyMeasurement</a>.</p>
 <hr>
 <h3>How to use</h3>
 <ol>
-<li>Flash the Arduino firmware. Connect USB serial. Set <code>serialPortName</code> and
-<code>serialBaudRate</code> (firmware often 2&nbsp;Mbaud).</li>
+<li>Flash the sketch from
+<a href="https://github.com/SensorsINI/DVSLatencyMeasurement">SensorsINI/DVSLatencyMeasurement</a>.
+Connect USB serial. Set <code>serialPortName</code> and
+<code>serialBaudRate</code> (the published sketch uses 115200).</li>
 <li>Place two LEDs in the FOV, split by <code>xborder</code> (left vs right).</li>
-<li>Enable the filter. Use <code>flash</code> / <code>flashOnce</code> / <code>idle</code>
-or <code>turnOnBothLeds</code>.</li>
+<li>Enable this filter, then check the board with the LED buttons.
+<code>flash</code> should blink the LED; <code>idle</code> should turn it off.
+<code>flashOnce</code> and <code>turnOnBothLeds</code> are the other LED controls.</li>
+<li>Set the enclosed <code>XYTypeFilter</code> ROI on the flashing LED.
+Expand that filter so mouse events go to it, uncheck <code>lockSelections</code>,
+press <code>flash</code>, and drag a box around the LED. Check <code>lockSelections</code>
+again when the box is right, and leave <code>XYTypeFilter</code> enabled so events
+outside the box are dropped.</li>
 <li><code>masterMode</code>: PC timestamps the command vs DVS events
 (<code>thresholdEventCount</code> to detect the LED).
 <code>slaveMode</code>: the MCU measures latency.
