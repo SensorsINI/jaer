@@ -3,13 +3,13 @@
   render in the Release body. Relative paths work in the repo, not in a Release description.
 
   Public 3.6.1 notes. There is no public 3.6.0 or 3.5.4.
-  New features: live playback while recording, and low-latency processing.
+  New features: live playback while recording, low-latency processing, and Help → Search actions.
   Then packaging and bug fixes since 3.5.3.
   Do not paste the OS how-to; link the install guide.
   Latency-bench screenshots stay in the user guide; they are not in these notes.
 -->
 
-**jAER 3.6.1** adds two useful features: **Live playback while recording** and **low-latency processing** on the USB acquisition cycle, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. There is no public 3.6.0.
+**jAER 3.6.1** adds **live playback while recording**, **low-latency processing** on the USB acquisition cycle, and **Help → Search actions…**, after **[3.5.3](https://github.com/SensorsINI/jaer/releases/tag/3.5.3)**. There is no public 3.6.0.
 
 The rest of the release is packaging and bug fixes: installers show the sample-recording size and count the unpacked files in the disk-space check. The viewer warns when timestamps freeze, loads shipped biases when you pick a sensor, points event drops at the rendering buffer and pauses USB while Save-As dialog shows (to prevent OOM during unattended recordings).
 
@@ -43,6 +43,10 @@ The Welcome screen **Download sample recordings** checkbox shows the zip size, t
 On [jaerproject.org](https://jaerproject.org/), the Snapshot line shows the real build date and a link to commits since the current Stable release.
 
 ## New features
+
+**Help → Search actions…** (**Ctrl+K**) finds a menu item by name and runs it. Type part of the name or the menu path. The list covers the viewer menu bar, and the Filters and Hardware Configuration menus when those windows are already open. Enter runs the selected item. Esc closes the dialog. Individual filter controls are not in the list.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.6.1/search-actions.webp" alt="Search actions dialog filtering the viewer menus and running a match" width="70%" />
 
 **Live playback while recording.** While one viewer is writing its own AEDAT-4 file, the position scrubber stays under the canvas. The sparkline is a 1-second activity histogram, and the view stays on the camera until you scrub behind the live edge or jog backward. Playback reads the file written so far; recording continues. **Back to live**, next to **Stop recording**, returns the view to the camera without closing the file. Pause, step, and the slider affect playback only. This is for one viewer’s own AEDAT-4 recording (not AEDAT-2 or AEDZ, and not a synchronized multi-camera file). The first version plays the current cassette; a VCR roll follows the new file.
 
