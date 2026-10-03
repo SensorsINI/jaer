@@ -671,8 +671,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeButtonGroup.add(renderingModeMenuItem);
         renderingModeMenuItem.setMnemonic('r');
         renderingModeMenuItem.setSelected(true);
-        renderingModeMenuItem.setText("Process on rendering cycle");
-        renderingModeMenuItem.setToolTipText("Process events on rendering cycle");
+        renderingModeMenuItem.setText("Process on rendering cycle (at rendering FPS, normal mode)");
+        renderingModeMenuItem.setToolTipText("Process events on rendering cycle,  at the FPS rate");
         renderingModeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 renderingModeMenuItemActionPerformed(evt);
@@ -682,8 +682,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         modeButtonGroup.add(acquisitionModeMenuItem);
         acquisitionModeMenuItem.setMnemonic('a');
-        acquisitionModeMenuItem.setText("Process on acquisition cycle");
-        acquisitionModeMenuItem.setToolTipText("Filters run on the USB thread. Display may skip. The log is buffered and can drop if the queue fills.");
+        acquisitionModeMenuItem.setText("Process on acquisition cycle (low-latency)");
+        acquisitionModeMenuItem.setToolTipText("Use for low-latency processing. Filters run on the high priority USB thread. Display may skip. The log is buffered and can drop if the queue fills.");
         acquisitionModeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 acquisitionModeMenuItemActionPerformed(evt);
