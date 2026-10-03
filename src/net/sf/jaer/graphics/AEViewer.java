@@ -1149,6 +1149,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             });
             quickHelpMenuItem.setToolTipText("Mouse gestures and common keyboard shortcuts (F1 toggles)");
             quickHelpMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+            JMenuItem searchActionsMenuItem = new JMenuItem(new AbstractAction("Search actions...") {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    HelpActionSearchDialog.show(AEViewer.this);
+                }
+            });
+            searchActionsMenuItem.setToolTipText("Find a menu item by name and run it");
+            searchActionsMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK));
             int userGuideIndex = -1;
             for (int i = 0; i < helpMenu.getMenuComponentCount(); i++) {
                 Component c = helpMenu.getMenuComponent(i);
@@ -1157,7 +1165,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
             }
-            helpMenu.insert(quickHelpMenuItem, userGuideIndex < 0 ? 1 : userGuideIndex + 1);
+            int searchAt = userGuideIndex < 0 ? 1 : userGuideIndex + 1;
+            helpMenu.insert(searchActionsMenuItem, searchAt);
+            helpMenu.insert(quickHelpMenuItem, searchAt + 1);
             addHelpURLItem(JaerConstants.HELP_URL_HELP_FORUM, "jAER help forum", "Opens the help forum.  Post your questions and look for answers there.");
             addHelpItem(new JSeparator());
             addHelpURLItem(JaerConstants.HELP_URL_FEEDBACK_FORM, "Give feedback...",
