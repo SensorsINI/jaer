@@ -46,8 +46,8 @@ import net.sf.jaer.assistant.MenuActionCatalog;
 import net.sf.jaer.assistant.MenuActionCatalog.Entry;
 
 /**
- * Help → Search actions. Filters the viewer menu bar and runs the chosen item.
- * Call only on the EDT.
+ * Help → Search actions. Filters the viewer menu bar, and the Filters and
+ * Hardware menus when those windows already exist. Call only on the EDT.
  */
 public final class HelpActionSearchDialog extends JDialog {
 
@@ -62,7 +62,7 @@ public final class HelpActionSearchDialog extends JDialog {
 
     private HelpActionSearchDialog(AEViewer viewer) {
         super(viewer, "Search actions", true);
-        this.catalog = MenuActionCatalog.fromMenuBar(viewer.getJMenuBar());
+        this.catalog = MenuActionCatalog.forViewer(viewer);
         if (viewer.getIconImage() != null) {
             setIconImage(viewer.getIconImage());
         }
@@ -252,8 +252,14 @@ public final class HelpActionSearchDialog extends JDialog {
             status.setText("Disabled: " + entry.path);
             return;
         }
+        Runnable beforeClick = entry.beforeClick;
         dispose();
-        SwingUtilities.invokeLater(item::doClick);
+        SwingUtilities.invokeLater(() -> {
+            if (beforeClick != null) {
+                beforeClick.run();
+            }
+            item.doClick();
+        });
     }
 
     private static final class PromptField extends JTextField {

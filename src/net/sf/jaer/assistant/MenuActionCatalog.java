@@ -9,6 +9,8 @@
 package net.sf.jaer.assistant;
 
 import java.awt.Component;
+import java.awt.Frame;
+import java.awt.Window;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,10 +22,14 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 
+import net.sf.jaer.biasgen.BiasgenFrame;
+import net.sf.jaer.eventprocessing.FilterFrame;
+import net.sf.jaer.graphics.AEViewer;
+
 /**
- * Viewer menu bar as a path catalog. Not a global Swing ActionMap: filter
- * panels and the hardware configuration window are not included.
- * Call only on the EDT.
+ * Menu bars as a path catalog. The viewer bar is always included. Filter and
+ * hardware-configuration menus are included only when those frames already
+ * exist. Per-filter controls are not included. Call only on the EDT.
  */
 public final class MenuActionCatalog {
 
@@ -35,28 +41,82 @@ public final class MenuActionCatalog {
 
     public static MenuActionCatalog fromMenuBar(JMenuBar bar) {
         List<Entry> entries = new ArrayList<>();
-        if (bar != null) {
-            for (int i = 0; i < bar.getMenuCount(); i++) {
-                JMenu menu = bar.getMenu(i);
-                if (menu != null && menu.getText() != null) {
-                    walk(menu, itemText(menu), entries);
-                }
+        appendMenuBar(bar, null, null, entries);
+        return new MenuActionCatalog(entries);
+    }
+
+    /**
+     * Viewer menus, plus Filters and Hardware menus when those frames already
+     * exist. Choosing one of those items shows the frame if it is hidden.
+     */
+    public static MenuActionCatalog forViewer(AEViewer viewer) {
+        List<Entry> entries = new ArrayList<>();
+        if (viewer != null) {
+            appendMenuBar(viewer.getJMenuBar(), null, null, entries);
+            FilterFrame filters = viewer.getFilterFrame();
+            if (usable(filters)) {
+                appendMenuBar(filters.getJMenuBar(), "Filters", () -> showFilters(viewer), entries);
+            }
+            BiasgenFrame hardware = viewer.getBiasgenFrame();
+            if (usable(hardware)) {
+                appendMenuBar(hardware.getJMenuBar(), "Hardware", () -> showHardware(viewer), entries);
             }
         }
         return new MenuActionCatalog(entries);
     }
 
-    private static void walk(JMenu menu, String path, List<Entry> entries) {
+    private static boolean usable(Window window) {
+        return window != null && window.isDisplayable();
+    }
+
+    private static void showFilters(AEViewer viewer) {
+        viewer.showFilters(true);
+        FilterFrame frame = viewer.getFilterFrame();
+        if (frame != null) {
+            frame.toFront();
+        }
+    }
+
+    private static void showHardware(AEViewer viewer) {
+        viewer.showBiasgen(true);
+        BiasgenFrame frame = viewer.getBiasgenFrame();
+        if (frame == null) {
+            return;
+        }
+        if (frame.getState() == Frame.ICONIFIED) {
+            frame.setState(Frame.NORMAL);
+        }
+        frame.setVisible(true);
+        frame.toFront();
+    }
+
+    private static void appendMenuBar(JMenuBar bar, String prefix, Runnable beforeClick, List<Entry> entries) {
+        if (bar == null) {
+            return;
+        }
+        for (int i = 0; i < bar.getMenuCount(); i++) {
+            JMenu menu = bar.getMenu(i);
+            if (menu != null && menu.getText() != null) {
+                String path = itemText(menu);
+                if (prefix != null && !prefix.isBlank()) {
+                    path = prefix + " > " + path;
+                }
+                walk(menu, path, beforeClick, entries);
+            }
+        }
+    }
+
+    private static void walk(JMenu menu, String path, Runnable beforeClick, List<Entry> entries) {
         for (Component c : menu.getMenuComponents()) {
             if (c instanceof JMenu sub) {
                 String text = itemText(sub);
                 if (!text.isEmpty()) {
-                    walk(sub, path + " > " + text, entries);
+                    walk(sub, path + " > " + text, beforeClick, entries);
                 }
             } else if (c instanceof JMenuItem item) {
                 String text = itemText(item);
                 if (!text.isEmpty()) {
-                    entries.add(new Entry(path + " > " + text, item));
+                    entries.add(new Entry(path + " > " + text, item, beforeClick));
                 }
             }
         }
@@ -283,10 +343,13 @@ public final class MenuActionCatalog {
     public static final class Entry {
         public final String path;
         public final JMenuItem item;
+        /** Shows the owning window before {@link JMenuItem#doClick()}. Null for viewer items. */
+        public final Runnable beforeClick;
 
-        Entry(String path, JMenuItem item) {
+        Entry(String path, JMenuItem item, Runnable beforeClick) {
             this.path = path;
             this.item = item;
+            this.beforeClick = beforeClick;
         }
     }
 
