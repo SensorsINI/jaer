@@ -751,6 +751,12 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             open();
         }
         if (!eventAcquisitionEnabled) {
+            // A recording dialog stopped the reader because ViewLoop cannot drain.
+            // Autostart here would fill one live-keep frame (2M events) again.
+            AEViewer viewer = chip != null ? chip.getAeViewer() : null;
+            if (viewer != null && viewer.isLiveUsbPausedForRecordingDialog()) {
+                return aePacketRawPool.readBuffer();
+            }
             setEventAcquisitionEnabled(true);
         }
         final AEPacketRaw lastEventsAcquired;

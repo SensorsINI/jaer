@@ -20,6 +20,7 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PacketBundle;
@@ -642,6 +643,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             return aePacketRawPool.readBuffer();
         }
         if (!eventAcquisitionEnabled) {
+            AEViewer viewer = chip != null ? chip.getAeViewer() : null;
+            if (viewer != null && viewer.isLiveUsbPausedForRecordingDialog()) {
+                return aePacketRawPool.readBuffer();
+            }
             if (net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
                 synchronized (aePacketRawPool) {
                     aePacketRawPool.swap();
