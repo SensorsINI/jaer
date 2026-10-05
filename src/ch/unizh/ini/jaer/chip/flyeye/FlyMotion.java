@@ -66,8 +66,9 @@ vector (longer &rarr; smoother, slower response).</li>
 <code>localFlowVectorBrightness</code> fades them so the eye vectors stay
 readable. Vector hue encodes direction (see the color wheel legend).</li>
 <li><code>displayVectorsPpsScale</code> sets drawn vector length in chip pixels
-per px/s of flow. Local arrows, the per-eye arrows, and the OF scale bar
-all use that same scale.</li>
+per px/s of flow for local arrows and the OF scale bar.
+<code>globalFlowVectorScale</code> draws the per-eye arrows that many times
+longer (default 5). Their px/s labels stay the true speed.</li>
 <li><code>minDtThreshold</code> (Dir. Selective) rejects flow slower than
 1&nbsp;pixel per that many &micro;s.</li>
 </ol>
@@ -88,7 +89,9 @@ public class FlyMotion extends DirectionSelectiveFlow {
     private final LowpassFilter2D[] eyeFlowFilter = {new LowpassFilter2D(), new LowpassFilter2D()};
 
     private float eyeFlowTauMs = getFloat("eyeFlowTauMs", 100);
-    private boolean showEyeFlowVectors = getBoolean("showEyeFlowVectors", true);
+    private boolean showGlobalFlowVectors = getBoolean("showGlobalFlowVectors", true);
+    /** Extra length of the per-eye arrows relative to local arrows and the OF scale bar. */
+    private float globalFlowVectorScale = getFloat("globalFlowVectorScale", 5f);
 
     public FlyMotion(AEChip chip) {
         super(chip);
@@ -124,8 +127,13 @@ public class FlyMotion extends DirectionSelectiveFlow {
         for (LowpassFilter2D f : eyeFlowFilter) {
             f.setTauMs(eyeFlowTauMs);
         }
+        // Renamed from showEyeFlowVectors; keep a saved checkbox state.
+        if (!preferenceExists("showGlobalFlowVectors") && preferenceExists("showEyeFlowVectors")) {
+            setShowGlobalFlowVectors(getBoolean("showEyeFlowVectors", true));
+        }
         setPropertyTooltip(FLY_TT, "eyeFlowTauMs", "time constant (ms) of the per-eye lowpass of local flow vectors; loosely a tangential-cell membrane/integration time");
-        setPropertyTooltip(FLY_TT, "showEyeFlowVectors", "draw each eye's global flow vector centered over that eye");
+        setPropertyTooltip(FLY_TT, "showGlobalFlowVectors", "draw each eye's global flow vector centered over that eye");
+        setPropertyTooltip(FLY_TT, "globalFlowVectorScale", "draws the per-eye global arrows this many times longer than a local arrow of the same px/s (and than the OF scale bar). The px/s label is the true speed");
         // The combined panorama-wide global motion is suppressed
         // (isCombinedGlobalMotionEnabled=false); hide its inert controls.
         hideProperty("displayGlobalMotion");
@@ -175,7 +183,7 @@ public class FlyMotion extends DirectionSelectiveFlow {
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        if (!showEyeFlowVectors || !isFilterEnabled()) {
+        if (!showGlobalFlowVectors || !isFilterEnabled()) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
@@ -201,8 +209,9 @@ public class FlyMotion extends DirectionSelectiveFlow {
         final float fvy = p.y;
         final float speed = (float) Math.sqrt((fvx * fvx) + (fvy * fvy));
         final float[] rgba = motionColor(fvx, fvy, 1, 1);
-        // Same chip-pixel scale as local arrows and the OF scale bar.
-        final float scale = flowVectorDrawScale();
+        // globalFlowVectorScale lengthens only these arrows. The px/s label
+        // and the OF scale bar stay in true px/s.
+        final float scale = flowVectorDrawScale() * globalFlowVectorScale;
         final float dx = fvx * scale, dy = fvy * scale;
         final float x0 = x - (dx / 2), y0 = y - (dy / 2);
         final float w = Math.min(2 * getMotionVectorLineWidthPixels(), 6);
@@ -266,14 +275,28 @@ public class FlyMotion extends DirectionSelectiveFlow {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showEyeFlowVectors--">
-    public boolean isShowEyeFlowVectors() {
-        return showEyeFlowVectors;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showGlobalFlowVectors--">
+    public boolean isShowGlobalFlowVectors() {
+        return showGlobalFlowVectors;
     }
 
-    public void setShowEyeFlowVectors(boolean showEyeFlowVectors) {
-        this.showEyeFlowVectors = showEyeFlowVectors;
-        putBoolean("showEyeFlowVectors", showEyeFlowVectors);
+    public void setShowGlobalFlowVectors(boolean showGlobalFlowVectors) {
+        this.showGlobalFlowVectors = showGlobalFlowVectors;
+        putBoolean("showGlobalFlowVectors", showGlobalFlowVectors);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --globalFlowVectorScale--">
+    public float getGlobalFlowVectorScale() {
+        return globalFlowVectorScale;
+    }
+
+    public void setGlobalFlowVectorScale(float globalFlowVectorScale) {
+        if (globalFlowVectorScale < 0.1f) {
+            globalFlowVectorScale = 0.1f;
+        }
+        this.globalFlowVectorScale = globalFlowVectorScale;
+        putFloat("globalFlowVectorScale", globalFlowVectorScale);
     }
     // </editor-fold>
 }

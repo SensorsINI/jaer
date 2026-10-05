@@ -260,7 +260,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     /**
      * Extra length factor for the global rotation line and expansion circle only.
-     * Translation arrows (local, global, per-eye) and the OF scale bar share
+     * Local and global translation arrows and the OF scale bar share
      * {@link #flowVectorDrawScale()} so a labeled px/s matches the same length.
      */
     protected static final float GLOBAL_MOTION_DRAWING_SCALE = 10;
@@ -271,7 +271,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      */
     protected static String displayVectorsPpsScaleTooltip() {
         return "<html>Chip pixels of arrow length per px/s of flow.<br>"
-                + "Local arrows, the global translation arrow, per-eye arrows, and the OF scale bar all use this same scale.<br>"
+                + "Local arrows, the global translation arrow, and the OF scale bar all use this same scale.<br>"
                 + "When <i>ppsScaleDisplayRelativeOFLength</i> is selected and combined global motion is enabled, "
                 + "a flow equal to the mean global speed is drawn 100&times; this value long.</html>";
     }
@@ -1234,7 +1234,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     /**
      * Chip pixels of arrow length per px/s. Local arrows, the global translation
-     * arrow, per-eye arrows, and the OF scale bar all use this.
+     * arrow, and the OF scale bar all use this.
      */
     protected float flowVectorDrawScale() {
         float scale = displayVectorsPpsScale;
