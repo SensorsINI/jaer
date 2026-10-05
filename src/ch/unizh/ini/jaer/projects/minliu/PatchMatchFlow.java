@@ -414,8 +414,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
         String patchTT = "0a: Block matching";
         // move displayVectorsPpsScale to main top GUI since we use it a lot
-        setPropertyTooltip(patchTT, "displayVectorsPpsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
-                + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
+        setPropertyTooltip(patchTT, "displayVectorsPpsScale", displayVectorsPpsScaleTooltip());
         setPropertyTooltip(patchTT, "blockDimension", "Linear dimenion of patches to match on coarse scale, in pixels. Median and fine scale block sizes are scaled up approx by powers of 2.");
         setPropertyTooltip(patchTT, "searchDistance", "Search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");

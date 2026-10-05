@@ -259,11 +259,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected MotionField motionField = new MotionField();
 
     /**
-     * Display scale of the global translation arrow relative to local vectors
-     * ({@code ppsScale}). Local vectors at {@code ppsScale=0.1} stay readable;
-     * the global arrow is drawn this many times longer.
+     * Extra length factor for the global rotation line and expansion circle only.
+     * Translation arrows (local, global, per-eye) and the OF scale bar share
+     * {@link #flowVectorDrawScale()} so a labeled px/s matches the same length.
      */
     protected static final float GLOBAL_MOTION_DRAWING_SCALE = 10;
+
+    /**
+     * Tooltip for {@code displayVectorsPpsScale}. Subclasses that re-register
+     * the property should use this so the text stays the same as the drawing.
+     */
+    protected static String displayVectorsPpsScaleTooltip() {
+        return "<html>Chip pixels of arrow length per px/s of flow.<br>"
+                + "Local arrows, the global translation arrow, per-eye arrows, and the OF scale bar all use this same scale.<br>"
+                + "When <i>ppsScaleDisplayRelativeOFLength</i> is selected and combined global motion is enabled, "
+                + "a flow equal to the mean global speed is drawn 100&times; this value long.</html>";
+    }
 
     /** Line width of the global translation arrow relative to local vectors. */
     protected static final float GLOBAL_MOTION_LINE_WIDTH_SCALE = 5;
@@ -354,9 +365,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
 
         setPropertyTooltip(dispTT, "fontSize", "Font size for annotations (chip pixels, fractional). On first use it is chosen to fit the chip width; change this to stop auto-sizing.");
-        setPropertyTooltip(dispTT, "displayVectorsPpsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
-                + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
-        setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
+        setPropertyTooltip(dispTT, "displayVectorsPpsScale", displayVectorsPpsScaleTooltip());
+        setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Draw flow arrow lengths relative to the mean global speed (combined global motion must be enabled). A vector at that mean speed is 100&times;<i>displayVectorsPpsScale</i> chip pixels long.");
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
         setPropertyTooltip(dispTT, "displayVectorsFraction", "fraction of local motion vectors that are rendered (1=all); reduce to unclutter the display and cut rendering cost");
         setPropertyTooltip(dispTT, "displayVectorsAsColorDots", "shows local motion vector events as color dots, rather than arrows");
@@ -364,8 +374,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
 
-        setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
-        setPropertyTooltip(dispTT, "displayGlobalMotionAngleHistogram", "shows global motion histogram. These values are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " px/s per chip pixel");
+        setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global translational, rotational, and expansive motion. The translation arrow uses the same chip-pixel scale as local flow (displayVectorsPpsScale). The rotation line and expansion circle are drawn with an extra factor of " + GLOBAL_MOTION_DRAWING_SCALE);
+        setPropertyTooltip(dispTT, "displayGlobalMotionAngleHistogram", "shows the global motion angle histogram. A bin with 100% of the counts has radius half the chip width");
 
         setPropertyTooltip(dispTT, "displayRawInput", "<html>If selected, render original DVS polarity events with motion vectors overlaid.<br>If not selected, color pixels by motion event type; vectors still overlaid (see color wheel).");
         setPropertyTooltip(dispTT, "showFilterName", "shows the class simple name on display, useful for generating videos");
@@ -1222,12 +1232,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         return drawMotionVector(gl, x, y, vx, vy, rgba, getMotionVectorLineWidthPixels());
     }
 
-    protected float[] drawMotionVector(GL2 gl, int x, int y, float vx, float vy, float[] rgba, float lineWidthPixels) {
-        gl.glColor4fv(rgba, 0);
+    /**
+     * Chip pixels of arrow length per px/s. Local arrows, the global translation
+     * arrow, per-eye arrows, and the OF scale bar all use this.
+     */
+    protected float flowVectorDrawScale() {
         float scale = displayVectorsPpsScale;
         if (ppsScaleDisplayRelativeOFLength && displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
-            scale = 100 * displayVectorsPpsScale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+            float mean = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+            if (mean > 1e-3f) {
+                scale = 100f * displayVectorsPpsScale / mean;
+            }
         }
+        return scale;
+    }
+
+    protected float[] drawMotionVector(GL2 gl, int x, int y, float vx, float vy, float[] rgba, float lineWidthPixels) {
+        gl.glColor4fv(rgba, 0);
+        float scale = flowVectorDrawScale();
         if (displayVectorsEnabled) {
             gl.glPushMatrix();
             gl.glLineWidth(lineWidthPixels);
@@ -1356,24 +1378,30 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             }
             gl.glDisable(GL.GL_BLEND);
 
-            // draw scale bar vector at bottom
+            // Reference arrow. Drawn from its origin (not centered) and always at
+            // flowVectorDrawScale, so unit-vector mode and origin scatter cannot
+            // make the labeled px/s disagree with the shaft length.
             gl.glPushMatrix();
-            float speed = (chip.getSizeX() / 2);
+            float speed = (chip.getSizeX() / 2f);
             if (displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
                 speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
             }
             final int px = 10, py = -13;
-
-            float[] rgba = drawMotionVector(gl, px, py, speed, 0);
-            gl.glRasterPos2f(px + 100 * displayVectorsPpsScale, py); // use same scaling
+            final float barScale = flowVectorDrawScale();
+            final float dx = speed * barScale;
+            final float[] rgba = motionColor(speed, 0, 1, 1);
+            gl.glColor4fv(rgba, 0);
+            gl.glLineWidth(getMotionVectorLineWidthPixels());
+            gl.glPushMatrix();
+            DrawGL.drawVector(gl, px, py, dx, 0, VECTOR_HEAD_LENGTH_PIXELS, 1);
+            gl.glPopMatrix();
             String s = null;
             if (displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
                 s = String.format("%.1f px/s avg. speed and OF vector scale", speed);
             } else {
                 s = String.format("%.1f px/s OF scale", speed);
             }
-//            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(fontSize, px + 4 + speed * displayVectorsPpsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(fontSize, px + dx / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
@@ -1390,7 +1418,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
 
         if (displayGlobalMotion && isCombinedGlobalMotionEnabled()) {
-            float gScale = displayVectorsPpsScale * GLOBAL_MOTION_DRAWING_SCALE;
+            float gScale = flowVectorDrawScale();
             float gVx = motionFlowStatistics.getGlobalMotion().meanGlobalVx;
             float gVy = motionFlowStatistics.getGlobalMotion().meanGlobalVy;
             gl.glLineWidth(motionVectorLineWidthPixels * GLOBAL_MOTION_LINE_WIDTH_SCALE);
@@ -2612,7 +2640,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //                    gl.glColor4f(angle, 1 - angle, 1 / (1 + 10 * angle), .5f);
                     if (!displayMotionFieldColorBlobs) {
                         gl.glPushMatrix();
-                        DrawGL.drawVector(gl, x, y, vx * displayVectorsPpsScale, vy * displayVectorsPpsScale, VECTOR_HEAD_LENGTH_PIXELS, 1);
+                        float mfScale = flowVectorDrawScale();
+                        DrawGL.drawVector(gl, x, y, vx * mfScale, vy * mfScale, VECTOR_HEAD_LENGTH_PIXELS, 1);
                         gl.glPopMatrix();
                     } else if (displayMotionFieldColorBlobs) {
                         gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);

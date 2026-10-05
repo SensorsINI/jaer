@@ -1747,7 +1747,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      *
      * @see FilterPanel
      */
-    protected void hideProperty(String propertyName) {
+    public void hideProperty(String propertyName) {
         if (!hiddenProperties.contains(propertyName)) {
             hiddenProperties.add(propertyName);
         }

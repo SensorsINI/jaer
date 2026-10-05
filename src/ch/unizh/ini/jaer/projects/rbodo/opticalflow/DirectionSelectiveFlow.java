@@ -48,6 +48,8 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         oriFilter.setShowRawInputEnabled(false); // So that the orientation filter 
         // returns the orientation events, 
         // not the input packet.
+        // The viewer packet is chosen by displayRawInput, not this enclosed flag.
+        oriFilter.hideProperty("showRawInputEnabled");
         setEnclosedFilter(oriFilter);
         setPropertyTooltip("Dir. Selective", "minDtThreshold", "min delta time (us) "
                 + "for past events allowed for selecting a particular direction. "

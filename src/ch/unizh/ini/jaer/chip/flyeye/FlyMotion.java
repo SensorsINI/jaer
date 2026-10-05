@@ -65,9 +65,9 @@ vector (longer &rarr; smoother, slower response).</li>
 (<code>displayVectorsFraction</code>) of the local flow vectors;
 <code>localFlowVectorBrightness</code> fades them so the eye vectors stay
 readable. Vector hue encodes direction (see the color wheel legend).</li>
-<li><code>displayVectorsPpsScale</code> sets drawn vector length in pixels per
-px/s of flow; the eye vectors are additionally magnified so they remain
-visible.</li>
+<li><code>displayVectorsPpsScale</code> sets drawn vector length in chip pixels
+per px/s of flow. Local arrows, the per-eye arrows, and the OF scale bar
+all use that same scale.</li>
 <li><code>minDtThreshold</code> (Dir. Selective) rejects flow slower than
 1&nbsp;pixel per that many &micro;s.</li>
 </ol>
@@ -201,9 +201,8 @@ public class FlyMotion extends DirectionSelectiveFlow {
         final float fvy = p.y;
         final float speed = (float) Math.sqrt((fvx * fvx) + (fvy * fvy));
         final float[] rgba = motionColor(fvx, fvy, 1, 1);
-        // Center the vector on the eye center, like the local flow vectors.
-        // Scaled up like the combined global flow arrow so it stays visible.
-        final float scale = getDisplayVectorsPpsScale() * GLOBAL_MOTION_DRAWING_SCALE;
+        // Same chip-pixel scale as local arrows and the OF scale bar.
+        final float scale = flowVectorDrawScale();
         final float dx = fvx * scale, dy = fvy * scale;
         final float x0 = x - (dx / 2), y0 = y - (dy / 2);
         final float w = Math.min(2 * getMotionVectorLineWidthPixels(), 6);

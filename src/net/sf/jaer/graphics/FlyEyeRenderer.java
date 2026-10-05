@@ -38,8 +38,13 @@ public class FlyEyeRenderer extends DavisRenderer implements FrameAnnotater {
         if (e.isSpecial()) {
             return;
         }
-        // FlyEyeEvent.getNumCellTypes() is 4 (camera×polarity). DavisRenderer
-        // would then paint type-color RGB instead of GrayLevel/RedGreen/RedBlue/LeftRight.
+        // Raw FlyEye packets report 4 types (camera×polarity). Those must stay on
+        // GrayLevel / RedGreen / RedBlue / LeftRight. Motion-output packets
+        // (displayRawInput off) report 8 direction types and color by direction.
+        if (packet != null && packet.getNumCellTypes() > 4) {
+            super.updateEventMaps(e);
+            return;
+        }
         float[] map = dvsEventsMap.array();
         final int index = getIndex(e);
         if ((index < 0) || (index >= map.length)) {

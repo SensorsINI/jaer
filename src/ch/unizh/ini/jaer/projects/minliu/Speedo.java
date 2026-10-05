@@ -284,7 +284,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSliceBitMap", "enables displaying the slices' bitmap");
-        setPropertyTooltip(patchDispTT, "displayVectorsPpsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
+        setPropertyTooltip(patchDispTT, "displayVectorsPpsScale", displayVectorsPpsScaleTooltip());
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
 
