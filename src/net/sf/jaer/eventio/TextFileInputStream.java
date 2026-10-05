@@ -227,6 +227,12 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     private boolean repeat;
 
     private final static int ERROR_DELAY_MS = 1000;
+    /** Repeat a CSV parse warning at most this often while a bad file keeps failing. */
+    private static final long CSV_PARSE_ERROR_LOG_INTERVAL_MS = 5_000;
+    private static final int CSV_PARSE_ERROR_LOG_MAX_CHARS = 240;
+    private int csvParseErrorCount;
+    private int csvParseErrorsSinceLog;
+    private long lastCsvParseErrorLogMs;
 
     protected boolean checkNonMonotonicTimestamps = prefs != null ? prefs.getBoolean("checkNonMonotonicTimestamps", true) : true;
     private boolean openFileAndRecordAedat = false;
@@ -502,14 +508,12 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             lastLineRead = line;
 
             return e;
+        } catch (EventFormatException e) {
+            throw e;
         } catch (NumberFormatException nfe) {
-            nfe.printStackTrace();
-            String s = String.format("%s: Line #%d has a bad number format: \"%s\"; check options; maybe you should set timestampLast?",
-                    nfe.toString(),
-                    lastLineNumber,
-                    line);
-            log.warning(s);
-            throwLineFormatException(s);
+            throwLineFormatException(String.format(
+                    "bad number format (%s); check options; maybe you should set timestampLast? %s",
+                    nfe.toString(), lineinfo(line)));
         }
         return null;
     }
@@ -681,10 +685,38 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     }
 
     private void throwLineFormatException(String s) throws EventFormatException {
-        log.warning(s);
+        logCsvParseError(s);
         getSupport().firePropertyChange("sampleLine", null, lastLineRead);
         getSupport().firePropertyChange("lastError", null, s);
         throw new EventFormatException(s, null);
+    }
+
+    /**
+     * First failure is logged immediately. Later failures from the same file are
+     * logged at most once per {@link #CSV_PARSE_ERROR_LOG_INTERVAL_MS}, with a count
+     * of the ones skipped.
+     */
+    private void logCsvParseError(String detail) {
+        csvParseErrorCount++;
+        csvParseErrorsSinceLog++;
+        long now = System.currentTimeMillis();
+        if (csvParseErrorCount != 1 && now - lastCsvParseErrorLogMs < CSV_PARSE_ERROR_LOG_INTERVAL_MS) {
+            return;
+        }
+        String source = file == null ? "(no file)" : file.getPath();
+        String oneLine = detail.replace('\r', ' ').replace('\n', ' ');
+        if (oneLine.length() > CSV_PARSE_ERROR_LOG_MAX_CHARS) {
+            oneLine = oneLine.substring(0, CSV_PARSE_ERROR_LOG_MAX_CHARS) + "...";
+        }
+        if (csvParseErrorsSinceLog > 1) {
+            log.warning(String.format(
+                    "CSV parse error: %s line %d (%d more since last warning, %d total): %s",
+                    source, lastLineNumber, csvParseErrorsSinceLog - 1, csvParseErrorCount, oneLine));
+        } else {
+            log.warning(String.format("CSV parse error: %s line %d: %s", source, lastLineNumber, oneLine));
+        }
+        csvParseErrorsSinceLog = 0;
+        lastCsvParseErrorLogMs = now;
     }
 
     /**
@@ -957,9 +989,13 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         prefs.putBoolean("checkNonMonotonicTimestamps", nonMonotonicTimestampsChecked);
     }
 
+    /**
+     * Text files have no recording date. {@code 0} is the same as an AEDAT file
+     * whose name could not be parsed; the playback overlay then shows relative time.
+     */
     @Override
     public long getAbsoluteStartingTimeMs() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        return 0;
     }
 
     @Override

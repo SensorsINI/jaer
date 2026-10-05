@@ -35,6 +35,8 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventprocessing.gnss.NmeaGnssFilter;
+import net.sf.jaer.eventprocessing.witmotion.WitMotionImuFilter;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
@@ -101,6 +103,8 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         setSizeY(FlyEyeGeometry.NATIVE_H);
         setEventExtractor(new Extractor(this));
         addDefaultEventFilter(FlyMotion.class);
+        addDefaultEventFilter(NmeaGnssFilter.class);
+        addDefaultEventFilter(WitMotionImuFilter.class);
         FlyEyeRenderer renderer = new FlyEyeRenderer(this);
         setRenderer(renderer);
         if (getCanvas() != null && getCanvas().getDisplayMethod() != null) {
