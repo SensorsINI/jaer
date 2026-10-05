@@ -65,9 +65,20 @@
       <li><a data-key="linux" href="https://github.com/SensorsINI/jaer/releases/latest">Linux x64</a></li>
     </ul>
 
+    <!--
+      Hero is the animated WebP at repo root (jaer3.webp). That file stays in git.
+      src is the website-media prerelease asset, which browsers will play.
+      When the video changes:
+        1. Replace jaer3.webp at the repo root and commit it.
+        2. Re-upload (same name replaces the asset):
+             gh release upload website-media jaer3.webp --repo SensorsINI/jaer --clobber
+        3. Re-link if you upload under a new filename. Paste the browser_download_url into src:
+             gh release view website-media --repo SensorsINI/jaer --json assets --jq ".assets[].url"
+      Leave website-media as a prerelease so Download Stable stays on the product release.
+    -->
     <figure class="hero">
       <img
-        src="https://github.com/SensorsINI/jaer/blob/master/jaer3.webp"
+        src="https://github.com/SensorsINI/jaer/releases/download/website-media/jaer3.webp"
         width="800"
         height="800"
         alt="jAER features video">
