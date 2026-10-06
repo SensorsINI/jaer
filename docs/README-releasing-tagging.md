@@ -82,7 +82,7 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
 
 ## Snapshot (moving tester build)
 
-Pushing code to `master` queues [Snapshot](https://github.com/SensorsINI/jaer/actions/workflows/snapshot.yml). After a 20 minute quiet period it rebuilds the signed installers, including `jAER_linux-amd64_*.deb`, if `master` moved since the last snapshot. The GitHub Release / lightweight tag **`snapshot`** is replaced (`--clobber` assets, force-moved tag). It is never Latest and does not write `updates.xml`. Help → Check for updates stays on Stable.
+Pushing code to `master` queues [Snapshot](https://github.com/SensorsINI/jaer/actions/workflows/snapshot.yml). After a 20 minute quiet period it rebuilds the signed installers, including `jAER_linux-amd64_*.deb`, if `master` moved since the last snapshot. The lightweight tag **`snapshot`** is force-moved. Upload uses `--clobber` for identical filenames, then deletes any other installer still attached to that Release. It is never Latest and does not write `updates.xml`. Help → Check for updates stays on Stable.
 
 Doc-only and `website/` pushes do not start a snapshot. Manual run: **Actions → Snapshot → Run workflow**. jaerproject.org shows **Download Snapshot** (short SHA + date) when that Release is ahead of Latest.
 

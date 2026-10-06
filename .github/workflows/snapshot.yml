@@ -193,6 +193,36 @@ jobs:
           git tag -f snapshot "$sha"
           git push origin refs/tags/snapshot --force
 
+      - name: Drop stale snapshot installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # --clobber replaces only an identical filename. VERSION.txt is in the
+          # name, so a bump leaves the previous installers on this release.
+          keep=(
+            "${{ steps.files.outputs.exe }}"
+            "${{ steps.files.outputs.intel }}"
+            "${{ steps.files.outputs.arm }}"
+            "${{ steps.files.outputs.unix }}"
+            "${{ steps.files.outputs.deb }}"
+          )
+          mapfile -t existing < <(gh release view snapshot --json assets --jq '.assets[].name')
+          for name in "${existing[@]}"; do
+            [[ -z "$name" ]] && continue
+            drop=1
+            for k in "${keep[@]}"; do
+              if [[ "$name" == "$k" ]]; then
+                drop=0
+                break
+              fi
+            done
+            if [[ "$drop" -eq 1 ]]; then
+              echo "Deleting stale asset $name"
+              gh release delete-asset snapshot "$name" --yes
+            fi
+          done
+
       - name: Summary
         run: |
           {
