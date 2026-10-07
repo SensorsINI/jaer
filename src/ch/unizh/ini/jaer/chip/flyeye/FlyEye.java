@@ -150,7 +150,12 @@ public class FlyEye extends DVS128 implements StereoChipInterface {
         // and after every setHardwareInterface (notifyObservers). Do not claim
         // while already binding. Interface / Refresh run on the EDT: pair bind
         // is WAITING / bindLiveHardwareIfCompatible.
-        if (!bindingPair && getAeViewer() != null && !SwingUtilities.isEventDispatchThread()) {
+        // openAEMonitor's "interface changed" check also calls this. Claiming a
+        // new pair there aborted the open that was already in progress and left
+        // the exclusive USB pause held (jAER 17:05:50).
+        AEViewer viewer = getAeViewer();
+        if (!bindingPair && getAeViewer() != null && !SwingUtilities.isEventDispatchThread()
+                && !viewer.isNullInterface() && !viewer.isUsbOpenOrCloseInFlight()) {
             bindDvs128PairIfAvailable();
         }
         return hardwareInterface;

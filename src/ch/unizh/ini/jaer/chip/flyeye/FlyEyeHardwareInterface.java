@@ -111,7 +111,7 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
                 continue;
             }
             if (hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2 fx2
-                    && fx2.isUnopenableAfterUnplug()) {
+                    && (fx2.isUnopenableAfterUnplug() || fx2.isSynchronizedUsbBusy())) {
                 continue;
             }
             if (takenByOtherViewer(hw, fly.getAeViewer())) {
@@ -148,6 +148,16 @@ public class FlyEyeHardwareInterface extends StereoBiasgenHardwareInterface {
     private static boolean childUnusableAfterUnplug(AEMonitorInterface aemon) {
         return aemon instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2 fx2
                 && fx2.isUnopenableAfterUnplug();
+    }
+
+    /** True when a child still holds its synchronized open/close monitor. */
+    public boolean hasSynchronizedUsbBusyChild() {
+        return childSynchronizedUsbBusy(getAemonLeft()) || childSynchronizedUsbBusy(getAemonRight());
+    }
+
+    private static boolean childSynchronizedUsbBusy(AEMonitorInterface aemon) {
+        return aemon instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2 fx2
+                && fx2.isSynchronizedUsbBusy();
     }
 
     public static boolean isDvs128Monitor(HardwareInterface hw) {

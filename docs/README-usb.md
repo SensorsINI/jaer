@@ -183,7 +183,12 @@ VID/PID path (`UsbIds` / registered HI class), not USB string descriptors.
   the click); a busy sibling `open()` is waited on `USB_OPEN_SERIAL_LOCK`.
 - **FlyEye / stereo pair:** Sensor → FlyEye claims **two** unused DVS128 wrappers
   for that one AEViewer (`FlyEyeHardwareInterface`, no `LibUsb.open` in the
-  getter). [`UsbIds.samePhysicalDevice`](../src/net/sf/jaer/hardwareinterface/usb/UsbIds.java)
+  getter). WAITING autobind calls `bindDvs128PairIfAvailable` directly because
+  `@UsbDevices` is empty, so a VID/PID match never selects FlyEye. The getter
+  does not claim while Interface → None is set or while USB open/close is in
+  flight (that claim aborted the open already running). A DVS128 whose
+  synchronized `open`/`close` still holds the monitor is skipped.
+  [`UsbIds.samePhysicalDevice`](../src/net/sf/jaer/hardwareinterface/usb/UsbIds.java)
   unwraps [`CompositeHardwareInterface`](../src/net/sf/jaer/hardwareinterface/CompositeHardwareInterface.java)
   so both cameras show as taken (`— AEViewer #N`). Empty `@UsbDevices({})` on
   FlyEye so a single DVS128 does not auto-offer FlyEye. A closed or failed

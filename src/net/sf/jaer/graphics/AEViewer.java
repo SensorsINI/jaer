@@ -1725,12 +1725,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean loggedStartupBindMiss;
     /** WAITING polls every ~1 s; log the OpenCV skip once per skip period. */
     private boolean loggedSkipOpenCvAutobind;
+    /** One INFO while a DVS128 open/close still holds the FlyEye children. */
+    private boolean loggedFlyEyeUsbBusy;
 
     private boolean bindRememberedInterfaceIfPossible(int ninterfaces) {
         if (!autobindOnWaiting && !SessionCameraOpenCoordinator.hasOpenGrant(this)) {
             return false;
         }
-        if (!isRememberLastInterface() || nullInterface || chip == null || ninterfaces < 1) {
+        if (nullInterface || chip == null) {
+            return false;
+        }
+        if (chip instanceof FlyEye fly) {
+            return bindFlyEyePairIfWaiting(fly);
+        }
+        if (!isRememberLastInterface() || ninterfaces < 1) {
             return false;
         }
         if (chip.getHardwareInterface() != null) {
@@ -1771,6 +1779,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             bindLiveHardwareIfCompatible(match, getViewerWindowLabel() + " autobind (" + reason + ") ");
             return chip.getHardwareInterface() != null;
         }
+    }
+
+    /**
+     * FlyEye has empty {@code @UsbDevices}, so VID/PID autobind never matches a
+     * DVS128. Claim two unused cameras for this window instead.
+     */
+    private boolean bindFlyEyePairIfWaiting(FlyEye fly) {
+        HardwareInterface assigned = fly.getAssignedHardwareInterface();
+        if (assigned instanceof FlyEyeHardwareInterface existing && !existing.isUnusableAfterUnplug()) {
+            return true;
+        }
+        if (isUsbOpenOrCloseInFlight()) {
+            logBindMiss("USB open/close still in progress");
+            return false;
+        }
+        synchronized (HARDWARE_CLAIM_LOCK) {
+            if (!fly.bindDvs128PairIfAvailable()) {
+                logBindMiss("FlyEye needs 2 unused DVS128 cameras");
+                return false;
+            }
+        }
+        log.info(getViewerWindowLabel() + " autobind FlyEye pair " + fly.getAssignedHardwareInterface());
+        showOpeningCameraOverlay(fly.getAssignedHardwareInterface());
+        notifyOtherViewersOfHardwareClaimChange();
+        return true;
     }
 
     private volatile String lastAutobindReason;
@@ -4624,6 +4657,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return nullInterface;
     }
 
+    /**
+     * True while this viewer is still inside USB open or close. FlyEye must
+     * not claim another pair until that call leaves the device monitor.
+     */
+    public boolean isUsbOpenOrCloseInFlight() {
+        Thread opener = hardwareOpenThread;
+        Thread closer = hardwareCloseThread;
+        Thread busReset = usbBusResetCloser;
+        return (opener != null && opener.isAlive())
+                || (closer != null && closer.isAlive())
+                || (busReset != null && busReset.isAlive());
+    }
+
     public boolean isHardwareSwitchInProgress() {
         return hardwareSwitchInProgress;
     }
@@ -5283,7 +5329,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
                 return false;
             }
-            if (chip == null || chip.getHardwareInterface() != opening) {
+            if (chip == null || chip.getAssignedHardwareInterface() != opening) {
                 return false;
             }
             try {
@@ -5405,11 +5451,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             try {
-                HardwareInterface bound = (chip != null) ? chip.getHardwareInterface() : null;
+                HardwareInterface bound = (chip != null) ? chip.getAssignedHardwareInterface() : null;
                 // AEReader shutdown closes the live wrapper on unplug but leaves it on the
                 // chip. Reopening that instance throws devicePointer-not-initialized and
                 // used to set nullInterface, so the next plug was ignored (jAER-0.log 17:44:59).
-                if (bound != null && aemon == bound && !bound.isOpen()) {
+                // Read the assigned interface only. FlyEye.getHardwareInterface() claims a
+                // pair; doing that here while an open was in progress looked like an
+                // Interface change and aborted it (jAER 17:05:50).
+                if (bound instanceof FlyEyeHardwareInterface flyWaiting
+                        && aemon == bound && !bound.isOpen() && !flyWaiting.isUnusableAfterUnplug()) {
+                    if (flyWaiting.hasSynchronizedUsbBusyChild() || isUsbOpenOrCloseInFlight()) {
+                        if (!loggedFlyEyeUsbBusy) {
+                            loggedFlyEyeUsbBusy = true;
+                            log.info("FlyEye pair is claimed; waiting for the previous DVS128 USB call to finish");
+                        }
+                        return;
+                    }
+                    loggedFlyEyeUsbBusy = false;
+                } else if (bound != null && aemon == bound && !bound.isOpen()) {
                     if (LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
                         log.fine("USB closed during exclusive sibling pause; keeping wrapper " + bound);
                         return;
@@ -5477,6 +5536,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return;
                     }
 
+                    if (aemon instanceof FlyEyeHardwareInterface flyOpen && flyOpen.hasSynchronizedUsbBusyChild()) {
+                        if (!loggedFlyEyeUsbBusy) {
+                            loggedFlyEyeUsbBusy = true;
+                            log.info("FlyEye not opening yet; a DVS128 USB open/close still holds the device");
+                        }
+                        aemon = null;
+                        return;
+                    }
+                    loggedFlyEyeUsbBusy = false;
                     aemon.setChip(chip);
                     log.info("openAEMonitor: opening " + aemon);
                     showActionText("Opening " + aemon + "…");
@@ -5592,7 +5660,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     + " ms for " + opening + " waiter=" + UsbLog.t()
                                     + " worker=" + UsbLog.stack(opener, 8));
                         }
-                        if (chip.getHardwareInterface() != opening) {
+                        if (chip.getAssignedHardwareInterface() != opening) {
                             log.info("openAEMonitor: interface changed while opening " + opening
                                     + "; aborting (not closing hung USB handle)");
                             log.fine("openAEMonitor abort (HI changed) " + UsbLog.t()
@@ -5634,6 +5702,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // Do not close() the same instance: open() is synchronized and
                         // still inside native USB, so close() blocks forever (log 11:14:16).
                         // Unbind so ViewLoop does not retry this wrapper (became "CypressFX3").
+                        // The worker's finally may never run while open() is blocked, which
+                        // left eventLoopsPausedForExclusiveSync true and every later FlyEye
+                        // tick returned without opening (jAER 17:06).
+                        releaseAbandonedExclusivePause();
                         abandonedHungHardware = opening;
                         unbindAbandonedHardware(opening);
                         if (aemon == opening) {
@@ -5644,7 +5716,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     "release serializer so remaining cameras can open",
                                     UsbIds.enumerationKey(opening) + " " + UsbLog.stack(opener, 6));
                         }
-                        HardwareInterface nextHi = (chip != null) ? chip.getHardwareInterface() : null;
+                        HardwareInterface nextHi = (chip != null) ? chip.getAssignedHardwareInterface() : null;
                         if (nextHi != null && nextHi != opening) {
                             nullInterface = false;
                             SessionCameraOpenCoordinator.userRequestedOpen(this);
@@ -5671,7 +5743,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         throw new HardwareInterfaceException("open failed: " + openTh, openTh);
                     }
                     // User may have selected another Interface while ISSD/USB open ran.
-                    if (chip.getHardwareInterface() != aemon) {
+                    if (chip.getAssignedHardwareInterface() != aemon) {
                         log.info("openAEMonitor: interface changed during open of " + aemon
                                 + "; closing abandoned open");
                         try {
@@ -6085,13 +6157,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (hung != null) {
             abandonedHungHardware = hung;
         }
-        HardwareInterface current = (chip != null) ? chip.getHardwareInterface() : null;
+        HardwareInterface current = (chip != null) ? chip.getAssignedHardwareInterface() : null;
         if (current != null && hung != null && current != hung) {
             if (aemon == hung) {
                 aemon = null;
             }
             log.info("Unbound hung hardware; keeping newly bound " + current);
             log.fine("unbindAbandonedHardware hung=" + hung + " kept=" + current + " " + UsbLog.t());
+            clearOpeningCameraOverlay();
+            return;
+        }
+        if (hung instanceof FlyEyeHardwareInterface) {
+            if (chip != null && current == hung) {
+                chip.setHardwareInterface(null);
+            }
+            if (aemon == hung) {
+                aemon = null;
+            }
+            // Leave nullInterface false so WAITING can claim the two DVS128s
+            // after this USB call leaves the device monitor.
+            log.info("Unbound hung FlyEye; WAITING will claim the DVS128s after that USB call finishes");
+            log.fine("unbindAbandonedHardware hung=" + hung + " " + UsbLog.t());
             clearOpeningCameraOverlay();
             return;
         }
@@ -6109,6 +6195,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         log.info("Unbound hung hardware; choose Interface again (do not retry the same USB wrapper)");
         log.fine("unbindAbandonedHardware hung=" + hung + " " + UsbLog.t());
         clearOpeningCameraOverlay();
+    }
+
+    /** The abandoned opener's finally may still be blocked inside open(). */
+    private void releaseAbandonedExclusivePause() {
+        if (LibUsbAsyncReaderRegistry.eventLoopsPausedForExclusiveSync()) {
+            LibUsbAsyncReaderRegistry.endPauseEventLoops();
+            log.info("released exclusive USB pause left by abandoned camera open");
+        }
     }
 
     /**

@@ -433,6 +433,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     private volatile boolean isOpened = false;
     /**
+     * True while this object's synchronized {@link #open()} or {@link #close()}
+     * holds the monitor. Another thread blocked on that monitor must not be
+     * wrapped into a second FlyEye pair (jAER 17:05:22).
+     */
+    private volatile boolean usbMonitorBusy = false;
+    /**
      * Native handle stashed on unplug so {@link #releaseAbandonedNativeHandle()}
      * can {@code LibUsb.close} after sibling FlyEye readers have stopped.
      */
@@ -803,6 +809,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             UsbAsyncBulkReaderLifecycle.closeHostOffReaderThread(this::close);
             return;
         }
+        usbMonitorBusy = true;
         try {
             if (isOpen()) {
                 boolean readerDead = true;
@@ -836,6 +843,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         } finally {
             inEndpointEnabled = false;
             isOpened = false;
+            usbMonitorBusy = false;
         }
     }
 
@@ -959,6 +967,11 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     /** Factory wrappers that already lost IN cannot be reopened; wait for a rescan. */
     public boolean isUnopenableAfterUnplug() {
         return inEndpointLost || (deviceHandle == null && abandonedNativeHandle != null);
+    }
+
+    /** True while {@link #open()} or {@link #close()} holds this device's monitor. */
+    public boolean isSynchronizedUsbBusy() {
+        return usbMonitorBusy;
     }
 
     /**
@@ -1708,6 +1721,15 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     synchronized public void open() throws HardwareInterfaceException {
+        usbMonitorBusy = true;
+        try {
+            openHoldingMonitor();
+        } finally {
+            usbMonitorBusy = false;
+        }
+    }
+
+    private void openHoldingMonitor() throws HardwareInterfaceException {
         // device has already been UsbIo Opened by now, in factory
 
         // opens the USBIOInterface device, configures it, binds a reader thread
