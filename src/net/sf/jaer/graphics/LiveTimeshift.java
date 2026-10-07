@@ -111,7 +111,8 @@ final class LiveTimeshift {
     }
 
     void backToLive() {
-        stopPumpIfStartedHere();
+        // Join before ViewLoop takes USB back. Do not interrupt: this thread writes the file.
+        stopPumpIfStartedHere(true);
         closeReader();
         viewingFile = false;
         yieldsUsb = false;
@@ -210,7 +211,9 @@ final class LiveTimeshift {
     }
 
     private void leaveTimeshift() {
-        stopPumpIfStartedHere();
+        // onRecordingStopped runs while AEViewer holds the writer lock. Joining
+        // here would deadlock the pump inside recordPacketLocked.
+        stopPumpIfStartedHere(false);
         closeReader();
         viewingFile = false;
         yieldsUsb = false;
@@ -234,19 +237,23 @@ final class LiveTimeshift {
         }
     }
 
-    private void stopPumpIfStartedHere() {
+    /**
+     * @param join wait for the pump to leave the writer. False when the caller
+     * already holds the recording stream lock.
+     */
+    private void stopPumpIfStartedHere(boolean join) {
         Thread t;
         synchronized (pumpLock) {
             if (!pumpStartedHere) {
                 return;
             }
             stopPump = true;
+            pumpLock.notifyAll();
             t = pumpThread;
             pumpThread = null;
             pumpStartedHere = false;
         }
-        if (t != null) {
-            t.interrupt();
+        if (t != null && join) {
             try {
                 t.join(2000);
             } catch (InterruptedException e) {
@@ -259,17 +266,24 @@ final class LiveTimeshift {
      * Rendering mode records here so ViewLoop can read the file. Acquisition mode
      * already records on the USB thread; this loop only swaps the capture pool
      * so that thread does not stall, and it does not record again.
+     * <p>
+     * Never {@link Thread#interrupt()} this thread. It calls
+     * {@code FileChannel.position} while recording, and an interrupt closes that
+     * channel ({@code ClosedByInterruptException}), which stops the recording.
      */
     private void pumpLoop(boolean record) {
         while (!stopPump) {
+            // A stale interrupt flag closes the recording FileChannel on the next write.
+            Thread.interrupted();
             try {
                 boolean got = viewer.liveRecordPumpOnce(record);
                 if (!got) {
-                    Thread.sleep(2);
+                    waitForPumpWork(2);
                 }
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+                if (stopPump) {
+                    break;
+                }
             } catch (Exception e) {
                 long now = System.currentTimeMillis();
                 if (now - lastPumpWarnMs > 2000) {
@@ -277,11 +291,20 @@ final class LiveTimeshift {
                     log.log(Level.WARNING, "live record pump: " + e, e);
                 }
                 try {
-                    Thread.sleep(20);
+                    waitForPumpWork(20);
                 } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
+                    if (stopPump) {
+                        break;
+                    }
                 }
+            }
+        }
+    }
+
+    private void waitForPumpWork(long ms) throws InterruptedException {
+        synchronized (pumpLock) {
+            if (!stopPump) {
+                pumpLock.wait(ms);
             }
         }
     }
