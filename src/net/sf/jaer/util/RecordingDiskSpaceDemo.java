@@ -11,6 +11,7 @@ public final class RecordingDiskSpaceDemo {
 
     public static void main(String[] args) {
         testFormatBytes();
+        testEngineeringBytes();
         testEta();
         testEnoughSpaceThreshold();
         testOverlayLine();
@@ -28,11 +29,31 @@ public final class RecordingDiskSpaceDemo {
         System.out.println("PASS testFormatBytes");
     }
 
+    private static void testEngineeringBytes() {
+        assertTrue("0".equals(RecordingDiskSpace.formatEngineeringBytes(0)), "zero");
+        assertTrue("10.0G".equals(RecordingDiskSpace.formatEngineeringBytes(10_000_000_000L)), "10G");
+        assertTrue("1.0k".equals(RecordingDiskSpace.formatEngineeringBytes(1000)), "1k");
+        assertTrue("1.1G".equals(RecordingDiskSpace.formatEngineeringBytes(1L << 30)), "1 GiB is 1.1G");
+        assertTrue(!RecordingDiskSpace.formatEngineeringBytes(10_000_000_000L).startsWith("+"), "no leading plus");
+        System.out.println("PASS testEngineeringBytes");
+    }
+
     private static void testEta() {
         assertTrue("12s".equals(RecordingDiskSpace.formatEta(12)), "seconds");
         assertTrue("5m".equals(RecordingDiskSpace.formatEta(5 * 60)), "minutes");
         assertTrue("2h".equals(RecordingDiskSpace.formatEta(2 * 3600)), "hours");
         assertTrue("1h 5m".equals(RecordingDiskSpace.formatEta(3600 + 5 * 60)), "hours and minutes");
+        assertTrue("2d".equals(RecordingDiskSpace.formatEta(2 * 86_400)), "days");
+        assertTrue("2d".equals(RecordingDiskSpace.formatEta(2 * 86_400 + 3 * 3600)), "days ignore hours under half a day");
+        assertTrue("3d".equals(RecordingDiskSpace.formatEta(2 * 86_400 + 12 * 3600)), "round half day up");
+        assertTrue("1w".equals(RecordingDiskSpace.formatEta(7 * 86_400)), "one week");
+        assertTrue("1w 2d".equals(RecordingDiskSpace.formatEta(9 * 86_400)), "weeks and days");
+        assertTrue("4w".equals(RecordingDiskSpace.formatEta(28 * 86_400)), "four weeks");
+        assertTrue("4w 6d".equals(RecordingDiskSpace.formatEta(34 * 86_400)), "still weeks through 4w");
+        assertTrue("1mo 1w".equals(RecordingDiskSpace.formatEta(35 * 86_400)), "months after four weeks");
+        assertTrue("8mo 2w".equals(RecordingDiskSpace.formatEta(242 * 86_400)), "long recording");
+        assertTrue("1y".equals(RecordingDiskSpace.formatEta(48L * 7L * 86_400L)), "one year of 28-day months");
+        assertTrue("1y 2mo".equals(RecordingDiskSpace.formatEta(56L * 7L * 86_400L)), "years and months");
         System.out.println("PASS testEta");
     }
 
@@ -49,7 +70,7 @@ public final class RecordingDiskSpaceDemo {
     private static void testOverlayLine() {
         String line = RecordingDiskSpace.overlayLine(RecordingDiskSpace.MIN_FREE_BYTES * 2, 0, 0);
         assertTrue(line.startsWith("Free "), "overlay starts with Free");
-        assertTrue(line.contains("GB"), "human units in overlay");
+        assertTrue(line.contains("G") && !line.contains("GB"), "engineering units in overlay: " + line);
         String withEta = RecordingDiskSpace.overlayLine(
                 RecordingDiskSpace.MIN_FREE_BYTES * 2, 10L << 20, 10_000L);
         assertTrue(withEta.contains("\n~"), "ETA is a second line: " + withEta);

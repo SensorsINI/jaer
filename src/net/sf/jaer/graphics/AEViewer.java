@@ -12380,10 +12380,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Overlay detail while recording: elapsed compact duration (e.g. {@code 1m37s}), plus
-     * total and remaining when a time limit is set, VCR mode/cassette when that
-     * session option is on, free disk space (volume probe at most every 5 s),
-     * and ARS skip state. Refreshed at most once per second.
+     * Overlay detail while recording: elapsed compact duration (e.g. {@code 1m37s})
+     * and approximate file size, plus total and remaining when a time limit is set,
+     * VCR mode/cassette when that session option is on, free disk space (volume probe
+     * at most every 5 s), and ARS skip state. Refreshed at most once per second.
      *
      * @return overlay lines, or {@code null} when not recording or overlay is off
      */
@@ -12398,8 +12398,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         recordingTimeLimitOverlayLastMs = now;
         long elapsedMs = Math.max(0L, now - recordingStartTime);
+        long recordedBytes = recordedFileBytes();
         StringBuilder sb = new StringBuilder("Recorded ");
         sb.append(formatRecordingDurationHms(elapsedMs));
+        if (recordedBytes >= 0L) {
+            sb.append(" · ").append(RecordingDiskSpace.formatEngineeringBytes(recordedBytes));
+        }
         if (recordingTimeLimit > 0) {
             long remainingMs = Math.max(0L, recordingTimeLimit - elapsedMs);
             boolean vcr = recordingVcrSession != null || RecordingSetupDialog.isSessionVcrEnabled();
@@ -12411,7 +12415,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (vcr != null) {
             sb.append('\n').append(vcr);
         }
-        sb.append('\n').append(recordingFreeSpaceOverlayLine());
+        sb.append('\n').append(recordingFreeSpaceOverlayLine(recordedBytes));
         sb.append('\n').append(recordingArsOverlayLine());
         recordingTimeLimitOverlayText = sb.toString();
         return recordingTimeLimitOverlayText;
@@ -13971,14 +13975,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         recordingFreeSpaceCheckedMs = now;
     }
 
-    private String recordingFreeSpaceOverlayLine() {
-        refreshRecordingFreeSpaceCache(false);
-        long recordedBytes = 0L;
+    /** Bytes currently in the recording file, or {@code -1} if unknown. */
+    private long recordedFileBytes() {
         try {
             if (recordingFile != null) {
-                recordedBytes = recordingFile.length();
+                return Math.max(0L, recordingFile.length());
             }
         } catch (SecurityException e) {
+            return -1L;
+        }
+        return -1L;
+    }
+
+    private String recordingFreeSpaceOverlayLine(long recordedBytes) {
+        refreshRecordingFreeSpaceCache(false);
+        if (recordedBytes < 0L) {
             recordedBytes = 0L;
         }
         return RecordingDiskSpace.overlayLine(recordingFreeSpaceBytes, recordedBytes, recordingElapsedMs());
