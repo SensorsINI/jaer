@@ -1323,6 +1323,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public void clearMarks() {
         if (aeInputStream != null) {
             aeInputStream.clearMarks();
+            if (viewer != null) {
+                viewer.captureLiveRecordingMarks();
+            }
+        } else if (viewer != null && viewer.liveRecordingMarksArmed()) {
+            viewer.clearLiveRecordingMarks();
         }
     }
 
@@ -1361,34 +1366,58 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public long setMarkIn() {
         if (aeInputStream == null) {
-            return -1;
+            return viewer != null && viewer.liveRecordingMarksArmed()
+                    ? viewer.offerLiveRecordingMarkIn() : -1;
         }
-        return aeInputStream.setMarkIn();
+        long v = aeInputStream.setMarkIn();
+        if (viewer != null) {
+            viewer.captureLiveRecordingMarks();
+        }
+        return v;
     }
 
     @Override
     public long setMarkOut() {
         if (aeInputStream == null) {
-            return -1;
+            return viewer != null && viewer.liveRecordingMarksArmed()
+                    ? viewer.offerLiveRecordingMarkOut() : -1;
         }
-        return aeInputStream.setMarkOut();
+        long v = aeInputStream.setMarkOut();
+        if (viewer != null) {
+            viewer.captureLiveRecordingMarks();
+        }
+        return v;
     }
 
     @Override
     public boolean toggleMarker() {
         lastMarkerReactionOffsetMs = 0;
         if (aeInputStream == null) {
+            if (viewer != null && viewer.liveRecordingMarksArmed()) {
+                boolean added = viewer.toggleLiveRecordingMarker();
+                lastMarkerReactionOffsetMs = viewer.liveRecordingMarkerOffsetMs();
+                return added;
+            }
             return false;
         }
+        boolean added;
         if (!isPaused() && isPlayingForwards() && markerReactionTimeMs > 0) {
             PlaybackSliceHistory.Bookmark b = viewHistory.findRenderedAgo(markerReactionTimeMs * 1_000_000L);
             if (b != null) {
                 long lagNs = System.nanoTime() - b.renderedAtNanos;
                 lastMarkerReactionOffsetMs = (int) Math.max(0L, lagNs / 1_000_000L);
-                return aeInputStream.toggleMarkerAt(b.positionAfter);
+                added = aeInputStream.toggleMarkerAt(b.positionAfter);
+                if (viewer != null) {
+                    viewer.captureLiveRecordingMarks();
+                }
+                return added;
             }
         }
-        return aeInputStream.toggleMarker();
+        added = aeInputStream.toggleMarker();
+        if (viewer != null) {
+            viewer.captureLiveRecordingMarks();
+        }
+        return added;
     }
 
     @Override

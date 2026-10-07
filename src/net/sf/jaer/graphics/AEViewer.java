@@ -6682,9 +6682,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     && getPlayMode() != PlayMode.PLAYBACK));
         }
         togglePlaybackDirectionMenuItem.setEnabled(yes);
-        clearMarksMI.setEnabled(yes);
-        setMarkInMI.setEnabled(yes);
-        setMarkOutMI.setEnabled(yes);
+        boolean canMark = yes || (liveTimeshift != null && liveTimeshift.isScrubberShowing());
+        clearMarksMI.setEnabled(canMark);
+        setMarkInMI.setEnabled(canMark);
+        setMarkOutMI.setEnabled(canMark);
+        if (toggleMarkerMI != null) {
+            toggleMarkerMI.setEnabled(canMark);
+        }
         //        if ( !playerControlPanel.isVisible() ){ // TODO why only do this if not visible?
         playerControlPanel.setVisible(yes || (liveTimeshift != null && liveTimeshift.isScrubberShowing()));
         //        }
@@ -6736,6 +6740,41 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             increasePlaybackSpeedMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
             decreasePlaybackSpeedMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
         }
+        boolean canMark = getPlayMode() == PlayMode.PLAYBACK || show;
+        if (setMarkInMI != null) {
+            setMarkInMI.setEnabled(canMark);
+            setMarkOutMI.setEnabled(canMark);
+            clearMarksMI.setEnabled(canMark);
+            toggleMarkerMI.setEnabled(canMark);
+        }
+    }
+
+    boolean liveRecordingMarksArmed() {
+        return liveTimeshift != null && liveTimeshift.marksArmed();
+    }
+
+    long offerLiveRecordingMarkIn() {
+        return liveTimeshift.setMarkIn();
+    }
+
+    long offerLiveRecordingMarkOut() {
+        return liveTimeshift.setMarkOut();
+    }
+
+    boolean toggleLiveRecordingMarker() {
+        return liveTimeshift.toggleMarker();
+    }
+
+    int liveRecordingMarkerOffsetMs() {
+        return liveTimeshift.getLastMarkerOffsetMs();
+    }
+
+    void clearLiveRecordingMarks() {
+        liveTimeshift.clearMarks();
+    }
+
+    void captureLiveRecordingMarks() {
+        liveTimeshift.captureFromReader();
     }
 
     boolean offerLiveTimeshiftSlider(float fraction) {
@@ -12069,6 +12108,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getSupport().firePropertyChange(EVENT_RECORDING_STOPPED, recordedAs, recordingFile);
             if (recordedAs != null && recordingFile != null
                     && !recordedAs.getAbsoluteFile().equals(recordingFile.getAbsoluteFile())) {
+                AEFileInputStream.marksMoveForFile(recordedAs, recordingFile);
                 getSupport().firePropertyChange(EVENT_RECORDING_RENAMED, recordedAs, recordingFile);
             }
         }

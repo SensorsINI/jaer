@@ -3938,6 +3938,42 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return snapshotMarks();
     }
 
+    /**
+     * Apply marks without moving the playhead. Used when a live recording
+     * already has IN/OUT/markers and the reader is opened for timeshift.
+     */
+    public void installPlaybackMarks(Marks saved) {
+        if (saved == null) {
+            clearMarks();
+            return;
+        }
+        long n = playableSize();
+        markIn = saved.markIn < 0 ? 0 : saved.markIn;
+        if (n > 0 && markIn > n) {
+            markIn = n;
+        }
+        boolean follow = saved.markOut == Long.MAX_VALUE || saved.markOut < 0;
+        if (follow) {
+            liveMarkOutFollowsEnd = true;
+            markOut = n;
+        } else {
+            liveMarkOutFollowsEnd = false;
+            markOut = saved.markOut;
+            if (n > 0 && markOut > n) {
+                markOut = n;
+            }
+        }
+        markers.clear();
+        if (saved.otherMarks != null) {
+            for (Long m : saved.otherMarks) {
+                if (m != null && m >= 0 && (n <= 0 || m <= n)) {
+                    markers.add(m);
+                }
+            }
+        }
+        support.firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, snapshotMarks());
+    }
+
     /** Writes current marks into the shared tmpdir CSV cache (or deletes the sidecar). */
     private void persistMarks() {
         if (file == null) {

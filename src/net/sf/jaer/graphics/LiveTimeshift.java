@@ -1,7 +1,10 @@
 package net.sf.jaer.graphics;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -12,6 +15,9 @@ import net.sf.jaer.JAERViewer;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.TypedDataPacket;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStream.Marks;
+import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4LiveActivityHistogram;
@@ -43,6 +49,13 @@ final class LiveTimeshift {
     private ScheduledExecutorService histogramTimer;
     private Aedat4FileInputStream reader;
     private long lastPumpWarnMs;
+    private final Object markLock = new Object();
+    private final TreeSet<Long> markers = new TreeSet<>();
+    private long markIn;
+    private long markOut = Long.MAX_VALUE;
+    private boolean outFollowsEnd = true;
+    private int lastMarkerOffsetMs;
+    private File markedFile;
 
     LiveTimeshift(AEViewer viewer) {
         this.viewer = viewer;
@@ -70,14 +83,21 @@ final class LiveTimeshift {
             return;
         }
         Aedat4FileOutputStream writer = viewer.getAedat4RecordingOutputStream();
+        resetMarks();
+        markedFile = viewer.getRecordingFile();
         histogram.reset(writer.getBaseUnixUs());
         clearSparkline();
+        SwingUtilities.invokeLater(this::clearMarkWidgets);
         showScrubber(false);
         startHistogramTimer();
     }
 
     void onRecordingStopped() {
         leaveTimeshift();
+        persistMarks(markedFile);
+        resetMarks();
+        markedFile = null;
+        SwingUtilities.invokeLater(this::clearMarkWidgets);
         stopHistogramTimer();
         histogram.reset(0);
         hideScrubber();
@@ -92,11 +112,19 @@ final class LiveTimeshift {
         if (writer == null) {
             return;
         }
+        boolean resume = viewingFile;
+        File previous = markedFile;
+        if (resume) {
+            closeReader();
+        }
+        persistMarks(previous);
+        resetMarks();
+        markedFile = viewer.getRecordingFile();
+        SwingUtilities.invokeLater(this::clearMarkWidgets);
         histogram.reset(writer.getBaseUnixUs());
         clearSparkline();
-        if (viewingFile) {
+        if (resume) {
             boolean wasPaused = viewer.getAePlayer().isPaused();
-            closeReader();
             try {
                 openReader(0f);
             } catch (IOException e) {
@@ -117,7 +145,10 @@ final class LiveTimeshift {
         viewingFile = false;
         yieldsUsb = false;
         showScrubber(false);
-        SwingUtilities.invokeLater(this::pinThumb);
+        SwingUtilities.invokeLater(() -> {
+            pinThumb();
+            paintStoredMarks();
+        });
     }
 
     /**
@@ -198,15 +229,28 @@ final class LiveTimeshift {
         });
         reader = in;
         viewer.aePlayer.attachLiveTail(in);
+        if (viewer.getPlayerControls() != null) {
+            viewer.getPlayerControls().addMeToPropertyChangeListeners(in);
+        }
         viewer.aePlayer.setPlaybackSliderFraction(fraction);
+        Marks saved = snapshotMarks();
+        if (saved != null) {
+            in.installPlaybackMarks(saved);
+        }
     }
 
     private void closeReader() {
         viewingFile = false;
         Aedat4FileInputStream in = reader;
         reader = null;
-        if (in != null && viewer.aePlayer != null) {
-            viewer.aePlayer.detachLiveTail();
+        if (in != null) {
+            captureFrom(in);
+            if (viewer.getPlayerControls() != null) {
+                viewer.getPlayerControls().removeMeFromPropertyChangeListeners(in);
+            }
+            if (viewer.aePlayer != null) {
+                viewer.aePlayer.detachLiveTail();
+            }
         }
     }
 
@@ -390,8 +434,268 @@ final class LiveTimeshift {
             ((PlaybackPositionSlider) viewer.getPlayerControls().getPlayerSlider()).setLogRelativeRates(rates);
             if (!viewingFile) {
                 pinThumb();
+                paintStoredMarks();
+            } else {
+                viewer.getPlayerControls().repositionMarksFromStream();
             }
         });
+    }
+
+    boolean marksArmed() {
+        return scrubberShowing && viewer.getAedat4RecordingOutputStream() != null;
+    }
+
+    int getLastMarkerOffsetMs() {
+        return lastMarkerOffsetMs;
+    }
+
+    long setMarkIn() {
+        synchronized (markLock) {
+            long pos = liveEdgeIndex();
+            if (pos <= 0 || (!outFollowsEnd && pos > markOut)) {
+                return markIn;
+            }
+            markIn = pos;
+        }
+        publishMarks();
+        return markIn;
+    }
+
+    long setMarkOut() {
+        synchronized (markLock) {
+            long pos = liveEdgeIndex();
+            if (pos <= markIn) {
+                return outFollowsEnd ? -1 : markOut;
+            }
+            outFollowsEnd = false;
+            markOut = pos;
+        }
+        publishMarks();
+        return markOut;
+    }
+
+    boolean toggleMarker() {
+        long pos;
+        int offsetMs = 0;
+        synchronized (markLock) {
+            int reactionMs = viewer.aePlayer == null ? 0 : viewer.aePlayer.getMarkerReactionTimeMs();
+            if (reactionMs > 0) {
+                long latest = latestEventTimestampUs();
+                if (latest > Long.MIN_VALUE) {
+                    pos = eventIndexAtTime(latest - reactionMs * 1000L);
+                    offsetMs = reactionMs;
+                } else {
+                    pos = liveEdgeIndex();
+                }
+            } else {
+                pos = liveEdgeIndex();
+            }
+            lastMarkerOffsetMs = offsetMs;
+            if (pos < 0) {
+                return false;
+            }
+            if (!markers.add(pos)) {
+                markers.remove(pos);
+                publishMarks();
+                return false;
+            }
+        }
+        publishMarks();
+        return true;
+    }
+
+    void clearMarks() {
+        resetMarks();
+        SwingUtilities.invokeLater(this::clearMarkWidgets);
+    }
+
+    void captureFromReader() {
+        captureFrom(reader);
+    }
+
+    private void captureFrom(Aedat4FileInputStream in) {
+        if (in == null) {
+            return;
+        }
+        Marks m = in.getPlaybackMarks();
+        synchronized (markLock) {
+            markIn = m.markIn;
+            if (in.isMarkOutSet()) {
+                outFollowsEnd = false;
+                markOut = m.markOut;
+            } else {
+                outFollowsEnd = true;
+                markOut = Long.MAX_VALUE;
+            }
+            markers.clear();
+            if (m.otherMarks != null) {
+                markers.addAll(m.otherMarks);
+            }
+        }
+    }
+
+    private void resetMarks() {
+        synchronized (markLock) {
+            markIn = 0;
+            markOut = Long.MAX_VALUE;
+            outFollowsEnd = true;
+            markers.clear();
+            lastMarkerOffsetMs = 0;
+        }
+    }
+
+    private Marks snapshotMarks() {
+        synchronized (markLock) {
+            if (markIn <= 0 && outFollowsEnd && markers.isEmpty()) {
+                return null;
+            }
+            Marks m = new Marks();
+            m.markIn = markIn;
+            m.markOut = outFollowsEnd ? Long.MAX_VALUE : markOut;
+            m.otherMarks = new TreeSet<>(markers);
+            return m;
+        }
+    }
+
+    private void persistMarks(File file) {
+        if (file == null) {
+            return;
+        }
+        AEFileInputStream.marksPutForFile(file, snapshotMarks());
+    }
+
+    private long liveEdgeIndex() {
+        Aedat4FileOutputStream writer = viewer.getAedat4RecordingOutputStream();
+        return writer == null ? 0 : writer.getEventsWritten();
+    }
+
+    private void publishMarks() {
+        final Marks snap = snapshotMarks();
+        final List<Aedat4FileOutputStream.LiveCatalogEntry> catalog = catalogSnapshot();
+        SwingUtilities.invokeLater(() -> paintStoredMarks(snap, catalog));
+    }
+
+    private void paintStoredMarks() {
+        paintStoredMarks(snapshotMarks(), catalogSnapshot());
+    }
+
+    private void paintStoredMarks(Marks snap, List<Aedat4FileOutputStream.LiveCatalogEntry> catalog) {
+        AePlayerAdvancedControlsPanel controls = viewer.getPlayerControls();
+        if (controls == null) {
+            return;
+        }
+        if (snap == null) {
+            controls.clearSliderMarks();
+            return;
+        }
+        int sliderMax = controls.getPlayerSlider().getMaximum();
+        Integer inPos = snap.markIn > 0 ? toSlider(snap.markIn, catalog, sliderMax) : null;
+        Integer outPos = snap.markOut != Long.MAX_VALUE && snap.markOut >= 0
+                ? toSlider(snap.markOut, catalog, sliderMax) : null;
+        List<Integer> others = new ArrayList<>();
+        if (snap.otherMarks != null) {
+            for (Long p : snap.otherMarks) {
+                if (p != null) {
+                    others.add(toSlider(p, catalog, sliderMax));
+                }
+            }
+        }
+        controls.showMarkPositions(inPos, outPos, others);
+    }
+
+    private void clearMarkWidgets() {
+        if (viewer.getPlayerControls() != null) {
+            viewer.getPlayerControls().clearSliderMarks();
+        }
+    }
+
+    private List<Aedat4FileOutputStream.LiveCatalogEntry> catalogSnapshot() {
+        Aedat4FileOutputStream writer = viewer.getAedat4RecordingOutputStream();
+        if (writer == null) {
+            return List.of();
+        }
+        return writer.copyLiveCatalog();
+    }
+
+    private Integer toSlider(long index, List<Aedat4FileOutputStream.LiveCatalogEntry> catalog, int sliderMax) {
+        float f = fractionForEvent(index, catalog);
+        if (f < 0f) {
+            f = 0f;
+        } else if (f > 1f) {
+            f = 1f;
+        }
+        return Math.round(f * sliderMax);
+    }
+
+    private float fractionForEvent(long index, List<Aedat4FileOutputStream.LiveCatalogEntry> catalog) {
+        long origin = Long.MIN_VALUE;
+        long end = Long.MIN_VALUE;
+        long cum = 0;
+        Long at = null;
+        if (catalog != null) {
+            for (Aedat4FileOutputStream.LiveCatalogEntry e : catalog) {
+                if (!isEvents(e) || e.numElements <= 0) {
+                    continue;
+                }
+                if (origin == Long.MIN_VALUE) {
+                    origin = e.timestampStart;
+                }
+                end = e.timestampEnd;
+                long next = cum + e.numElements;
+                if (at == null && index < next) {
+                    double frac = e.numElements <= 1 ? 0
+                            : (index - cum) / (double) e.numElements;
+                    long span = e.timestampEnd - e.timestampStart;
+                    at = e.timestampStart + (long) (frac * span);
+                }
+                cum = next;
+            }
+        }
+        if (origin == Long.MIN_VALUE || end <= origin) {
+            return 1f;
+        }
+        if (at == null) {
+            at = end;
+        }
+        return (float) ((at - origin) / (double) (end - origin));
+    }
+
+    private long latestEventTimestampUs() {
+        long end = Long.MIN_VALUE;
+        List<Aedat4FileOutputStream.LiveCatalogEntry> catalog = catalogSnapshot();
+        for (Aedat4FileOutputStream.LiveCatalogEntry e : catalog) {
+            if (isEvents(e) && e.timestampEnd > end) {
+                end = e.timestampEnd;
+            }
+        }
+        return end;
+    }
+
+    private long eventIndexAtTime(long timestampUs) {
+        long cum = 0;
+        List<Aedat4FileOutputStream.LiveCatalogEntry> catalog = catalogSnapshot();
+        for (Aedat4FileOutputStream.LiveCatalogEntry e : catalog) {
+            if (!isEvents(e) || e.numElements <= 0) {
+                continue;
+            }
+            if (timestampUs <= e.timestampStart) {
+                return cum;
+            }
+            if (timestampUs < e.timestampEnd && e.timestampEnd > e.timestampStart) {
+                double frac = (timestampUs - e.timestampStart) / (double) (e.timestampEnd - e.timestampStart);
+                return cum + Math.round(frac * e.numElements);
+            }
+            cum += e.numElements;
+        }
+        return cum;
+    }
+
+    private static boolean isEvents(Aedat4FileOutputStream.LiveCatalogEntry e) {
+        int rem = e.streamId % Aedat4CameraTrack.STREAMS_PER_CAMERA;
+        if (rem < 0) {
+            rem += Aedat4CameraTrack.STREAMS_PER_CAMERA;
+        }
+        return rem == 0;
     }
 
     static EventPacket firstEventPacket(PacketBundle bundle) {

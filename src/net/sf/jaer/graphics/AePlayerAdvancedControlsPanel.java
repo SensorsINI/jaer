@@ -140,6 +140,34 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         bindSliderToStream(is);
     }
 
+    public void removeMeFromPropertyChangeListeners(AEFileInputStreamInterface is) {
+        if (is != null) {
+            is.getSupport().removePropertyChangeListener(this);
+        }
+    }
+
+    /** Slider positions already mapped. Used while recording before a reader is open. */
+    public void showMarkPositions(Integer inPos, Integer outPos, java.util.Collection<Integer> others) {
+        marksTable.clear();
+        markInPosition = null;
+        markOutPosition = null;
+        putMark(inPos, markInLabel);
+        markInPosition = inPos;
+        putMark(outPos, markOutLabel);
+        markOutPosition = outPos;
+        if (others != null) {
+            for (Integer p : others) {
+                putMark(p, markerLabel);
+            }
+        }
+        refreshSliderMarkPaint();
+    }
+
+    /** Move existing file marks as the recording grows. */
+    public void repositionMarksFromStream() {
+        reapplyMarksFromStream(playbackStream());
+    }
+
     /**
      * Attach the log event-rate sparkline to the current file (EDT).
      */

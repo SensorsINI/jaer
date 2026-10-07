@@ -1981,6 +1981,27 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * {@link JaerTmpdir#markers()}. Removes a leftover preferences entry so
      * stale IN/OUT do not come back after a clear.
      */
+    /**
+     * Point marks saved for {@code from} at {@code to} after a recording is renamed.
+     */
+    public static void marksMoveForFile(File from, File to) {
+        if (from == null || to == null) {
+            return;
+        }
+        File src = marksCacheFile(from);
+        File dst = marksCacheFile(to);
+        if (!src.isFile() || src.getAbsolutePath().equals(dst.getAbsolutePath())) {
+            return;
+        }
+        if (dst.isFile() && !dst.delete()) {
+            log.warning("Could not replace marks file " + dst);
+            return;
+        }
+        if (!src.renameTo(dst)) {
+            log.warning("Could not move marks from " + src + " to " + dst);
+        }
+    }
+
     public static void marksPutForFile(File file, Marks marks) {
         if (file == null) {
             return;

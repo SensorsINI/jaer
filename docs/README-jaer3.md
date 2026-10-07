@@ -327,6 +327,9 @@ Toolbar labels: the scrubber is visible for the whole recording; **Back to live*
 appears beside **Stop recording** only while timeshift playback is on. The
 advanced playback panel stays closed. CountDuration, ConstantCount, and
 AreaEventCount stay available from View → Accumulation method.
+**i**, **o**, and **m** set IN, OUT, and markers while the recording is open,
+including while the view is still the camera. Clear removes them. They are
+stored in the same mark sidecar playback uses, and follow a renamed file.
 
 **Playback** of AEDAT-4 uses a **sparse packet index** (file offsets + time
 bounds + event counts), not a full per-event RAM dump. Polarity is decoded
