@@ -72,6 +72,10 @@ public final class RecordingFolderChooser {
         }
         accessory.add(Box.createVerticalGlue());
         chooser.setAccessory(accessory);
+        // Aqua packs this chooser to 550px and puts the accessory on the left.
+        // An unwrapped path is wider than that, so the folder list on the right
+        // gets zero width unless the dialog is opened wider than the accessory.
+        chooser.setPreferredSize(new Dimension(880, 480));
 
         while (true) {
             int ret = chooser.showDialog(parent, approve);
@@ -122,16 +126,19 @@ public final class RecordingFolderChooser {
             refresh();
         }
 
+        /** Keep the left column narrow so Aqua's folder list stays visible. */
+        static final int COLUMN_WIDTH = 280;
+
         @Override
         public Dimension getMaximumSize() {
             Dimension p = getPreferredSize();
-            return new Dimension(Integer.MAX_VALUE, p.height);
+            return new Dimension(COLUMN_WIDTH, p.height);
         }
 
         @Override
         public Dimension getPreferredSize() {
             Dimension p = super.getPreferredSize();
-            return new Dimension(Math.max(280, p.width), p.height);
+            return new Dimension(COLUMN_WIDTH, p.height);
         }
 
         void refresh() {
@@ -148,9 +155,9 @@ public final class RecordingFolderChooser {
             long free = RecordingDiskSpace.usableBytes(dir);
             boolean enough = free >= RecordingDiskSpace.MIN_FREE_BYTES;
             String path = dir != null ? dir.getAbsolutePath() : "(none)";
-            label.setText("<html>Selected folder:<br>" + escape(path)
+            label.setText("<html><body style='width:240px'>Selected folder:<br>" + escape(path)
                     + "<br><b>" + RecordingDiskSpace.formatBytes(free) + " free</b>"
-                    + " (need " + RecordingDiskSpace.minFreeSpaceLabel() + ")</html>");
+                    + " (need " + RecordingDiskSpace.minFreeSpaceLabel() + ")</body></html>");
             label.setForeground(enough ? new Color(0x1B5E20) : new Color(0xB71C1C));
         }
 
