@@ -598,6 +598,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** AEDAT-4 {@link net.sf.jaer.eventio.aedat4.dv.CompressionType} (default LZ4). */
     private int aedat4Compression = prefs.getInt("AEViewer.aedat4Compression",
             net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4);
+    /** Collapse same-bin pixel+polarity events. Default off (DV FlatBuffers). */
+    private boolean aedat4LossyTimeBins = prefs.getBoolean("AEViewer.aedat4LossyTimeBins", false);
+    /** Right-shift of Unix µs when lossy time bins are on. 10 ≈ 1 ms. */
+    private int aedat4LossyTimeShift = net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.clampShift(
+            prefs.getInt("AEViewer.aedat4LossyTimeShift",
+                    net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_DEFAULT));
     /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
@@ -11384,9 +11390,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (chip instanceof FlyEye fly) {
                         aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream,
                                 fly.aedat4RecordingTracks(snapshot), getAedat4Compression(),
-                                System.currentTimeMillis() * 1000L);
+                                System.currentTimeMillis() * 1000L, aedat4LossyTimeShiftForRecording());
                     } else {
-                        aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(), snapshot);
+                        aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(),
+                                snapshot, aedat4LossyTimeShiftForRecording());
                     }
                     aedat4RecordingTrackIndex = 0;
                     aedat4RecordingOwnsClose = true;
@@ -14576,10 +14583,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             if (tracks != null && !tracks.isEmpty() && sessionBaseUnixUs > 0L) {
                 aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, tracks,
-                        getAedat4Compression(), sessionBaseUnixUs);
+                        getAedat4Compression(), sessionBaseUnixUs, aedat4LossyTimeShiftForRecording());
             } else {
                 aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip,
-                        getAedat4Compression(), activeRecordingSnapshot);
+                        getAedat4Compression(), activeRecordingSnapshot, aedat4LossyTimeShiftForRecording());
             }
             aedat4RecordingTrackIndex = 0;
             aedat4RecordingOwnsClose = true;
@@ -15842,6 +15849,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setAedat4Compression(int aedat4Compression) {
         this.aedat4Compression = net.sf.jaer.eventio.aedat4.Aedat4Compression.clamp(aedat4Compression);
         prefs.putInt("AEViewer.aedat4Compression", this.aedat4Compression);
+    }
+
+    public boolean isAedat4LossyTimeBins() {
+        return aedat4LossyTimeBins;
+    }
+
+    public void setAedat4LossyTimeBins(boolean aedat4LossyTimeBins) {
+        this.aedat4LossyTimeBins = aedat4LossyTimeBins;
+        prefs.putBoolean("AEViewer.aedat4LossyTimeBins", aedat4LossyTimeBins);
+    }
+
+    public int getAedat4LossyTimeShift() {
+        return net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.clampShift(aedat4LossyTimeShift);
+    }
+
+    public void setAedat4LossyTimeShift(int aedat4LossyTimeShift) {
+        this.aedat4LossyTimeShift = net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.clampShift(aedat4LossyTimeShift);
+        prefs.putInt("AEViewer.aedat4LossyTimeShift", this.aedat4LossyTimeShift);
+    }
+
+    /** Shift passed to the writer, or {@link net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins#SHIFT_OFF}. */
+    public int aedat4LossyTimeShiftForRecording() {
+        return aedat4LossyTimeBins ? getAedat4LossyTimeShift() : net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_OFF;
     }
 
     /**

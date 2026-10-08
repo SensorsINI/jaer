@@ -117,6 +117,10 @@ public final class SaveAsOptions {
     public boolean applyEventFilters = true;
     /** DV {@link net.sf.jaer.eventio.aedat4.dv.CompressionType} for AEDAT-4. */
     public int aedat4Compression = net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4;
+    /** When true, EVTS payloads are LBEV time bins instead of DV FlatBuffers. */
+    public boolean lossyTimeBins;
+    /** Right-shift bits when {@link #lossyTimeBins} is set. Ignored otherwise. */
+    public int lossyTimeShift = net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_DEFAULT;
     public DavisTextEventFormatter csvFormatter = DavisTextEventFormatter.rpg();
     /** HVS sidecar APS frames as compressed PNG. */
     public boolean writeFrames = false;

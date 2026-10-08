@@ -35,7 +35,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -46,6 +48,7 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -96,6 +99,12 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         "ZSTD",
         "ZSTD high"
     });
+    private final JCheckBox lossyTimeBinsCb = new JCheckBox("Lossy time bins");
+    private final JSpinner lossyTimeShiftSpinner = new JSpinner(new SpinnerNumberModel(
+            Aedat4LossyTimeBins.SHIFT_DEFAULT,
+            Aedat4LossyTimeBins.SHIFT_MIN,
+            Aedat4LossyTimeBins.SHIFT_MAX,
+            1));
 
     private final JCheckBox csvCommaCb = new JCheckBox("Comma separated (CSV)", true);
     private final JCheckBox csvUsCb = new JCheckBox("Timestamps in µs (else float seconds)", false);
@@ -479,6 +488,22 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         aedat4CompressionCombo.setToolTipText("<html>DV-compatible per-packet compression.<br>"
                 + "LZ4 is best for large files. HIGH modes shrink more but take longer.</html>");
         aedat4Panel.add(aedat4CompressionCombo, ac);
+        ac.gridy++;
+        ac.gridx = 0;
+        ac.gridwidth = 2;
+        lossyTimeBinsCb.setToolTipText("<html>Group polarity events that share a right-shifted timestamp, pixel, and polarity"
+                + " into a count.<br>Playback expands each count into that many events at the quantized time,"
+                + " in first-seen order.<br><b>jAER-only.</b> iniVation DV and older jAER cannot read these event packets."
+                + "<br>Frames and IMU stay exact. Compression above still wraps the payload.</html>");
+        lossyTimeBinsCb.addActionListener(e -> lossyTimeShiftSpinner.setEnabled(lossyTimeBinsCb.isSelected()));
+        JPanel lossyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        lossyRow.add(lossyTimeBinsCb);
+        lossyRow.add(new JLabel("Time right shift (bits):"));
+        lossyTimeShiftSpinner.setToolTipText("<html>10 drops the low 10 bits of the microsecond timestamp"
+                + " (1024 µs, about 1 ms).</html>");
+        lossyRow.add(lossyTimeShiftSpinner);
+        aedat4Panel.add(lossyRow, ac);
+        ac.gridwidth = 1;
 
         row++;
         c.gridy = row;
@@ -572,6 +597,10 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         applyFiltersCb.setSelected(prefs.getBoolean("applyFilters", true));
         int compression = Aedat4Compression.clamp(prefs.getInt("aedat4Compression", viewer.getAedat4Compression()));
         aedat4CompressionCombo.setSelectedIndex(compression);
+        lossyTimeBinsCb.setSelected(prefs.getBoolean("lossyTimeBins", viewer.isAedat4LossyTimeBins()));
+        lossyTimeShiftSpinner.setValue(Aedat4LossyTimeBins.clampShift(
+                prefs.getInt("lossyTimeShift", viewer.getAedat4LossyTimeShift())));
+        lossyTimeShiftSpinner.setEnabled(lossyTimeBinsCb.isSelected());
         csvCommaCb.setSelected(prefs.getBoolean("csvComma", true));
         csvUsCb.setSelected(prefs.getBoolean("csvUs", false));
         csvSignedCb.setSelected(prefs.getBoolean("csvSigned", false));
@@ -620,6 +649,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         prefs.putBoolean("useMarkers", useMarkersCb.isSelected());
         prefs.putBoolean("applyFilters", applyFiltersCb.isSelected());
         prefs.putInt("aedat4Compression", aedat4CompressionCombo.getSelectedIndex());
+        prefs.putBoolean("lossyTimeBins", lossyTimeBinsCb.isSelected());
+        prefs.putInt("lossyTimeShift", ((Number) lossyTimeShiftSpinner.getValue()).intValue());
         prefs.putBoolean("csvComma", csvCommaCb.isSelected());
         prefs.putBoolean("csvUs", csvUsCb.isSelected());
         prefs.putBoolean("csvSigned", csvSignedCb.isSelected());
@@ -906,6 +937,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         opt.useInOutMarkers = useMarkersCb.isSelected();
         opt.applyEventFilters = applyFiltersCb.isSelected();
         opt.aedat4Compression = Aedat4Compression.clamp(aedat4CompressionCombo.getSelectedIndex());
+        opt.lossyTimeBins = lossyTimeBinsCb.isSelected();
+        opt.lossyTimeShift = Aedat4LossyTimeBins.clampShift(((Number) lossyTimeShiftSpinner.getValue()).intValue());
         opt.csvFormatter = currentFormatter();
         boolean hvs = viewer.getChip() instanceof DavisChip;
         boolean sidecars = hvs && opt.format != SaveAsOptions.Format.AEDAT4;
@@ -1071,6 +1104,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             recentFolderCombo.setEnabled(!running && recentFolderCombo.getItemCount() > 0);
         }
         aedat4CompressionCombo.setEnabled(!running);
+        lossyTimeBinsCb.setEnabled(!running);
+        lossyTimeShiftSpinner.setEnabled(!running && lossyTimeBinsCb.isSelected());
         applyFiltersCb.setEnabled(!running);
         useMarkersCb.setEnabled(!running);
         updateFilterSummary();

@@ -54,6 +54,7 @@ import javax.swing.event.DocumentListener;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.RecordingFilename;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.util.FileAccessTimeout;
@@ -118,6 +119,12 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private final JTextField nameField = new JTextField(36);
     private final JComboBox<String> formatCombo = new JComboBox<>(FORMAT_LABELS);
     private final JComboBox<String> compressionCombo = new JComboBox<>(COMPRESSION_LABELS);
+    private final JCheckBox lossyTimeBinsCb = new JCheckBox("Lossy time bins");
+    private final JSpinner lossyTimeShiftSpinner = new JSpinner(new SpinnerNumberModel(
+            Aedat4LossyTimeBins.SHIFT_DEFAULT,
+            Aedat4LossyTimeBins.SHIFT_MIN,
+            Aedat4LossyTimeBins.SHIFT_MAX,
+            1));
     private final JComboBox<String> timeLimitPreset = new JComboBox<>(RecordingTimeLimit.PRESETS);
     private final JTextField timeLimitField = new JTextField(16);
     private final JCheckBox vcrCb = new JCheckBox("VCR (multiple files)");
@@ -572,6 +579,29 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         row++;
         c.gridx = 0;
         c.gridy = row;
+        c.gridwidth = 2;
+        c.weightx = 1;
+        lossyTimeBinsCb.setToolTipText("<html>Group polarity events that share a right-shifted timestamp, pixel, and polarity"
+                + " into a count.<br>Playback expands each count into that many events at the quantized time,"
+                + " in first-seen order.<br><b>jAER-only.</b> iniVation DV and older jAER cannot read these event packets."
+                + "<br>Frames and IMU stay exact. The compression above still wraps the payload.</html>");
+        lossyTimeBinsCb.addActionListener(e -> {
+            if (!updatingUi) {
+                updateCompressionEnabled();
+            }
+        });
+        JPanel lossyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        lossyRow.add(lossyTimeBinsCb);
+        lossyRow.add(new JLabel("Time right shift (bits):"));
+        lossyTimeShiftSpinner.setToolTipText("<html>10 drops the low 10 bits of the microsecond timestamp (1024 µs, about 1 ms).<br>"
+                + "0 keeps microsecond bins and only collapses events that already share a timestamp.</html>");
+        lossyRow.add(lossyTimeShiftSpinner);
+        form.add(lossyRow, c);
+        c.gridwidth = 1;
+
+        row++;
+        c.gridx = 0;
+        c.gridy = row;
         c.gridwidth = 3;
         c.weightx = 1;
         JPanel filterSection = new JPanel(new BorderLayout(6, 4));
@@ -806,6 +836,8 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             formatCombo.setSelectedIndex(
                     AEViewerPreferencesDialog.recordingFormatIndexForVersion(host.getRecordingDataFileVersion()));
             compressionCombo.setSelectedIndex(Aedat4Compression.clamp(host.getAedat4Compression()));
+            lossyTimeBinsCb.setSelected(host.isAedat4LossyTimeBins());
+            lossyTimeShiftSpinner.setValue(host.getAedat4LossyTimeShift());
         } finally {
             updatingUi = false;
         }
@@ -864,8 +896,10 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     }
 
     private void updateCompressionEnabled() {
-        compressionCombo.setEnabled(
-                AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(selectedVersion()));
+        boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(selectedVersion());
+        compressionCombo.setEnabled(aedat4);
+        lossyTimeBinsCb.setEnabled(aedat4);
+        lossyTimeShiftSpinner.setEnabled(aedat4 && lossyTimeBinsCb.isSelected());
     }
 
     private void onTimeLimitEdited() {
@@ -1111,6 +1145,8 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             }
             v.setRecordingDataFileVersion(version);
             v.setAedat4Compression(compression);
+            v.setAedat4LossyTimeBins(lossyTimeBinsCb.isSelected());
+            v.setAedat4LossyTimeShift(((Number) lossyTimeShiftSpinner.getValue()).intValue());
             v.setLastRecordingFolder(parentFolder);
             v.applyRecordingTimeLimit(sessionTimeLimitMs.get());
         }

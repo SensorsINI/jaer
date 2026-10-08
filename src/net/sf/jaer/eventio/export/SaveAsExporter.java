@@ -201,7 +201,10 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                     }
                 }
                 aedat4 = new Aedat4FileOutputStream(options.outputFile, chip, options.aedat4Compression, baseUs,
-                        stream.getZoneId());
+                        stream.getZoneId(),
+                        options.lossyTimeBins
+                                ? net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.clampShift(options.lossyTimeShift)
+                                : net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_OFF);
             }
             if (options.writeImu) {
                 imu = new ImuCsvSink(options.imuFile(), source);
@@ -580,7 +583,11 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         in.readUncompressedPayload(packet), packet.numElements,
                         packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
                 case EVENTS -> {
-                    if (!filter && packet.eventsFullyInside(start, end)) {
+                    boolean sameLossy = in.getLossyTimeShift() == out.getLossyTimeShift();
+                    if (!filter && packet.eventsFullyInside(start, end) && sameLossy) {
+                        if (out.hasOpenLossyBin()) {
+                            out.flushOpenLossyBins();
+                        }
                         eventsIn += packet.numElements;
                         out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_EVENTS,
                                 in.readUncompressedPayload(packet), packet.numElements,

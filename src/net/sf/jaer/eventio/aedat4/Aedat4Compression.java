@@ -62,6 +62,15 @@ Decompression is cheaper than compression. LZ4 decode is extremely fast; ZSTD is
 but usually fine for playback. Dependent-block LZ4 from some DV files is a playback issue,
 not a recording one (jAER writes independent blocks).</p>
 
+<h3>Lossy time bins</h3>
+<p>Separate from the codec above. File → Preferences and Start recording can enable
+<b>Lossy time bins</b> with a right-shift (default 10 bits, 1024&nbsp;µs, about 1&nbsp;ms).
+Events that share that bin, pixel, and polarity are stored as a count. Playback expands
+each count into that many jAER events, all stamped <code>(t &gt;&gt;&gt; shift) &lt;&lt; shift</code>,
+in first-seen order. On and Off stay separate. Frames and IMU are unchanged, and the
+codec above still wraps every payload. These event packets are <b>jAER-only</b>
+(magic <code>LBEV</code>); iniVation DV and older jAER will not parse them.</p>
+
 <h3>Match the codec to the scene, not the camera name</h3>
 <p>Cost is per <b>packet of events</b>. A quiet night scene at 20&nbsp;keps is a few small
 packets per frame time. A high-contrast drive at 10–50&nbsp;Meps is tens of megabytes of

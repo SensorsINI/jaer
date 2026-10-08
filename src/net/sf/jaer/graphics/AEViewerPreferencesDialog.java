@@ -62,6 +62,7 @@ import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
+import net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins;
 import net.sf.jaer.eventio.aedat4.Aedat4WriteBench;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
@@ -143,6 +144,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JTextField timestampResetBitmaskTF;
     private JComboBox<String> recordingFormatCB;
     private JComboBox<String> aedat4CompressionCB;
+    private JCheckBox aedat4LossyTimeBinsCB;
+    private JSpinner aedat4LossyTimeShiftSpinner;
     private JButton aedat4CompressionBenchButton;
     private JButton aedat4CompressionHelpButton;
     private HtmlHelpFrame aedat4CompressionHelpDialog;
@@ -818,6 +821,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(version);
                 viewer.setRecordingDataFileVersion(version);
                 aedat4CompressionCB.setEnabled(aedat4);
+                if (aedat4LossyTimeBinsCB != null) {
+                    aedat4LossyTimeBinsCB.setEnabled(aedat4);
+                    aedat4LossyTimeShiftSpinner.setEnabled(aedat4 && aedat4LossyTimeBinsCB.isSelected());
+                }
             }
         });
         p.add(recordingFormatCB, gbcField(y++));
@@ -844,6 +851,38 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
         });
         p.add(aedat4CompressionCB, gbcField(y++));
+
+        aedat4LossyTimeBinsCB = new JCheckBox("Lossy time bins");
+        aedat4LossyTimeBinsCB.setToolTipText("<html>Group polarity events that share a right-shifted timestamp, pixel, and polarity"
+                + " into a count.<br>Playback expands each count into that many events at the quantized time,"
+                + " in first-seen order.<br><b>jAER-only.</b> iniVation DV and older jAER cannot read these event packets."
+                + "<br>Frames and IMU stay exact. The codec above still wraps the payload.<br>"
+                + "Takes effect on the next Start recording.</html>");
+        aedat4LossyTimeBinsCB.addActionListener(e -> {
+            if (updatingUi) {
+                return;
+            }
+            viewer.setAedat4LossyTimeBins(aedat4LossyTimeBinsCB.isSelected());
+            boolean aedat4 = aedat4CompressionCB.isEnabled();
+            aedat4LossyTimeShiftSpinner.setEnabled(aedat4 && aedat4LossyTimeBinsCB.isSelected());
+        });
+        p.add(aedat4LossyTimeBinsCB, gbcField(y++));
+
+        p.add(new JLabel("Time right shift (bits):"), gbcLabel(y));
+        aedat4LossyTimeShiftSpinner = new JSpinner(new SpinnerNumberModel(
+                Aedat4LossyTimeBins.SHIFT_DEFAULT,
+                Aedat4LossyTimeBins.SHIFT_MIN,
+                Aedat4LossyTimeBins.SHIFT_MAX,
+                1));
+        aedat4LossyTimeShiftSpinner.setToolTipText("<html>10 drops the low 10 bits of the microsecond timestamp"
+                + " (1024 µs, about 1 ms).<br>0 keeps microsecond bins and only collapses events that already share a timestamp.</html>");
+        aedat4LossyTimeShiftSpinner.addChangeListener(e -> {
+            if (updatingUi) {
+                return;
+            }
+            viewer.setAedat4LossyTimeShift(((Number) aedat4LossyTimeShiftSpinner.getValue()).intValue());
+        });
+        p.add(aedat4LossyTimeShiftSpinner, gbcField(y++));
 
         JPanel compressionActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         aedat4CompressionHelpButton = new JButton("Help");
@@ -1819,6 +1858,12 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             recordingFormatCB.setSelectedIndex(versionIndex);
             aedat4CompressionCB.setSelectedIndex(viewer.getAedat4Compression());
             aedat4CompressionCB.setEnabled(aedat4);
+            if (aedat4LossyTimeBinsCB != null) {
+                aedat4LossyTimeBinsCB.setSelected(viewer.isAedat4LossyTimeBins());
+                aedat4LossyTimeBinsCB.setEnabled(aedat4);
+                aedat4LossyTimeShiftSpinner.setValue(viewer.getAedat4LossyTimeShift());
+                aedat4LossyTimeShiftSpinner.setEnabled(aedat4 && viewer.isAedat4LossyTimeBins());
+            }
             if (aedat4CompressionHelpButton != null) {
                 aedat4CompressionHelpButton.setEnabled(true);
             }

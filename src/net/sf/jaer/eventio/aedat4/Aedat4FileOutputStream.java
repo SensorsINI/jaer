@@ -52,6 +52,9 @@ public class Aedat4FileOutputStream implements Closeable {
     private final FileChannel channel;
     private final AEChip chip;
     private final int compression;
+    /** {@link Aedat4LossyTimeBins#SHIFT_OFF} or the right-shift for LBEV event packets. */
+    private final int lossyTimeShift;
+    private final Aedat4LossyTimeBins.Accumulator[] lossyAcc;
     private final RecordingConfigurationSnapshot snapshot;
     private final List<Aedat4CameraTrack> tracks;
     private Aedat4CameraTrack currentTrack;
@@ -117,7 +120,17 @@ public class Aedat4FileOutputStream implements Closeable {
      */
     public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs,
             java.time.ZoneId recordingTimeZone) throws IOException {
-        this(new FileOutputStream(file), chip, compression, baseUnixUs, null, true, null, recordingTimeZone);
+        this(file, chip, compression, baseUnixUs, recordingTimeZone, Aedat4LossyTimeBins.SHIFT_OFF);
+    }
+
+    /**
+     * @param lossyTimeShift {@link Aedat4LossyTimeBins#SHIFT_OFF} for DV events,
+     *                       otherwise right-shift bits (10 ≈ 1 ms) for LBEV payloads
+     */
+    public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs,
+            java.time.ZoneId recordingTimeZone, int lossyTimeShift) throws IOException {
+        this(new FileOutputStream(file), chip, compression, baseUnixUs, null, true, null, recordingTimeZone,
+                lossyTimeShift);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression, long baseUnixUs)
@@ -140,7 +153,16 @@ public class Aedat4FileOutputStream implements Closeable {
      */
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             RecordingConfigurationSnapshot snapshot) throws IOException {
-        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot, false, null);
+        this(outputStream, chip, compression, snapshot, Aedat4LossyTimeBins.SHIFT_OFF);
+    }
+
+    /**
+     * @param lossyTimeShift {@link Aedat4LossyTimeBins#SHIFT_OFF} or the LBEV right-shift
+     */
+    public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            RecordingConfigurationSnapshot snapshot, int lossyTimeShift) throws IOException {
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot, false, null, null,
+                lossyTimeShift);
     }
 
     /**
@@ -158,8 +180,13 @@ public class Aedat4FileOutputStream implements Closeable {
      */
     public Aedat4FileOutputStream(FileOutputStream outputStream, List<Aedat4CameraTrack> tracks, int compression,
             long baseUnixUs) throws IOException {
+        this(outputStream, tracks, compression, baseUnixUs, Aedat4LossyTimeBins.SHIFT_OFF);
+    }
+
+    public Aedat4FileOutputStream(FileOutputStream outputStream, List<Aedat4CameraTrack> tracks, int compression,
+            long baseUnixUs, int lossyTimeShift) throws IOException {
         this(outputStream, tracks == null || tracks.isEmpty() ? null : tracks.get(0).chip, compression,
-                baseUnixUs, firstSnapshot(tracks), false, tracks);
+                baseUnixUs, firstSnapshot(tracks), false, tracks, null, lossyTimeShift);
     }
 
     private static RecordingConfigurationSnapshot firstSnapshot(List<Aedat4CameraTrack> tracks) {
@@ -179,17 +206,29 @@ public class Aedat4FileOutputStream implements Closeable {
             long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure,
             List<Aedat4CameraTrack> suppliedTracks)
             throws IOException {
-        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, suppliedTracks, null);
+        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, suppliedTracks, null,
+                Aedat4LossyTimeBins.SHIFT_OFF);
     }
 
     private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
             long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure,
             List<Aedat4CameraTrack> suppliedTracks, java.time.ZoneId recordingTimeZone)
             throws IOException {
+        this(outputStream, chip, compression, baseUnixUs, snapshot, closeOnInitializationFailure, suppliedTracks,
+                recordingTimeZone, Aedat4LossyTimeBins.SHIFT_OFF);
+    }
+
+    private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            long baseUnixUs, RecordingConfigurationSnapshot snapshot, boolean closeOnInitializationFailure,
+            List<Aedat4CameraTrack> suppliedTracks, java.time.ZoneId recordingTimeZone, int lossyTimeShift)
+            throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
+        this.lossyTimeShift = lossyTimeShift < 0
+                ? Aedat4LossyTimeBins.SHIFT_OFF
+                : Aedat4LossyTimeBins.clampShift(lossyTimeShift);
         this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
         this.recordingTimeZone = recordingTimeZone != null ? recordingTimeZone : java.time.ZoneId.systemDefault();
         ByteBuffer initializedPacketHeader;
@@ -210,6 +249,15 @@ public class Aedat4FileOutputStream implements Closeable {
             this.tracks = initializedTracks;
             this.currentTrack = initializedTracks.get(0);
             this.snapshot = initializedSnapshot;
+            if (this.lossyTimeShift >= 0) {
+                Aedat4LossyTimeBins.Accumulator[] acc = new Aedat4LossyTimeBins.Accumulator[initializedTracks.size()];
+                for (int i = 0; i < acc.length; i++) {
+                    acc[i] = new Aedat4LossyTimeBins.Accumulator(this.lossyTimeShift);
+                }
+                this.lossyAcc = acc;
+            } else {
+                this.lossyAcc = null;
+            }
             initializedPacketHeader = ByteBuffer.allocateDirect(8).order(ByteOrder.LITTLE_ENDIAN);
             channel.write(ByteBuffer.wrap(VERSION_LINE));
             initializedHeaderPosition = channel.position();
@@ -237,6 +285,38 @@ public class Aedat4FileOutputStream implements Closeable {
 
     public int getCompression() {
         return compression;
+    }
+
+    /** {@link Aedat4LossyTimeBins#SHIFT_OFF} when event packets are DV FlatBuffers. */
+    public int getLossyTimeShift() {
+        return lossyTimeShift;
+    }
+
+    public boolean hasOpenLossyBin() {
+        if (lossyAcc == null) {
+            return false;
+        }
+        for (Aedat4LossyTimeBins.Accumulator acc : lossyAcc) {
+            if (acc != null && acc.hasOpenBin()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Write any time bin still open so a following copied packet stays in order. */
+    public synchronized void flushOpenLossyBins() throws IOException {
+        if (lossyAcc == null) {
+            return;
+        }
+        for (int i = 0; i < lossyAcc.length; i++) {
+            Aedat4LossyTimeBins.Encoded encoded = lossyAcc[i].finish();
+            if (encoded == null) {
+                continue;
+            }
+            currentTrack = tracks.get(i);
+            writePacket(currentTrack.eventsStreamId(), encoded.payload, encoded.expanded, encoded.tMin, encoded.tMax);
+        }
     }
 
     /** Unix-µs origin used by {@code toUnixUs}; keep this across VCR cassette rolls. */
@@ -374,6 +454,10 @@ public class Aedat4FileOutputStream implements Closeable {
         if (n == 0) {
             return;
         }
+        if (lossyTimeShift >= 0) {
+            writeLossyEvents(n);
+            return;
+        }
         long tMin = evTimestamps[0];
         long tMax = evTimestamps[0];
         for (int i = 1; i < n; i++) {
@@ -398,6 +482,33 @@ public class Aedat4FileOutputStream implements Closeable {
         byte[] payload = eventBuilder.sizedByteArray();
         writePacket(currentTrack.eventsStreamId(), payload, n, tMin, tMax);
         noteBundlePolarityUnix(tMin, tMax);
+    }
+
+    private void writeLossyEvents(int n) throws IOException {
+        int trackPos = tracks.indexOf(currentTrack);
+        if (trackPos < 0) {
+            trackPos = 0;
+        }
+        Aedat4LossyTimeBins.Accumulator acc = lossyAcc[trackPos];
+        long notedLo = Long.MAX_VALUE;
+        long notedHi = Long.MIN_VALUE;
+        for (int i = 0; i < n; i++) {
+            long q = Aedat4LossyTimeBins.quantizeUnixUs(evTimestamps[i], lossyTimeShift);
+            acc.add(evTimestamps[i], evXs[i], evYs[i], evPolarities[i]);
+            if (q < notedLo) {
+                notedLo = q;
+            }
+            if (q > notedHi) {
+                notedHi = q;
+            }
+        }
+        if (n > 0) {
+            noteBundlePolarityUnix(notedLo, notedHi);
+        }
+        Aedat4LossyTimeBins.Encoded encoded = acc.pollCompleted();
+        if (encoded != null) {
+            writePacket(currentTrack.eventsStreamId(), encoded.payload, encoded.expanded, encoded.tMin, encoded.tMax);
+        }
     }
 
     private void noteBundlePolarityUnix(long t0, long t1) {
@@ -659,7 +770,7 @@ public class Aedat4FileOutputStream implements Closeable {
 
     private byte[] buildIOHeader(long dataTablePosition, RecordingConfigurationSnapshot headerSnapshot) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        int info = builder.createString(Aedat4InfoNode.build(tracks, compression, recordingTimeZone));
+        int info = builder.createString(Aedat4InfoNode.build(tracks, compression, recordingTimeZone, lossyTimeShift));
         int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
@@ -687,6 +798,7 @@ public class Aedat4FileOutputStream implements Closeable {
         closed = true;
         Throwable failure = null;
         try {
+            flushOpenLossyBins();
             long tablePosition = channel.position();
             byte[] table = Aedat4Compression.compress(buildFileDataTable(), compression);
             channel.write(ByteBuffer.wrap(table));
@@ -758,7 +870,8 @@ public class Aedat4FileOutputStream implements Closeable {
                     Aedat4Compression.nameOf(compression));
         }
         return "AEDAT-4 " + Aedat4Compression.formatPayloadCompression(
-                compression, uncompressedPayloadBytes, compressedPayloadBytes);
+                compression, uncompressedPayloadBytes, compressedPayloadBytes)
+                + (lossyTimeShift >= 0 ? ", lossy time bins shift " + lossyTimeShift : "");
     }
 
     /** Uncompressed FlatBuffer packet payload bytes (before LZ4/ZSTD). */
