@@ -17,15 +17,25 @@ public class Aedat4WriteBenchTest {
     @Test
     public void tinyBenchRunsAllCodecsAndQuietCompresses() throws Exception {
         Aedat4WriteBench.Report report = Aedat4WriteBench.run(Aedat4WriteBench.Config.tiny());
-        assertEquals(Aedat4WriteBench.CODECS.length * Aedat4WriteBench.Workload.values().length,
-                report.rows.size());
+        assertEquals(Aedat4WriteBench.expectedRowCount(), report.rows.size());
         Aedat4WriteBench.Row quietNone = null;
         Aedat4WriteBench.Row quietZstdHigh = null;
         Aedat4WriteBench.Row highNone = null;
+        boolean sawLossy = false;
+        boolean sawAedz = false;
         for (Aedat4WriteBench.Row row : report.rows) {
             assertTrue(row.events > 0);
             assertTrue(row.fileBytes > 0);
             assertTrue(row.wallNs > 0);
+            if (row.lossyShift >= 0) {
+                sawLossy = true;
+            }
+            if (row.aedz) {
+                sawAedz = true;
+            }
+            if (row.aedz || row.lossyShift >= 0) {
+                continue;
+            }
             if (row.workload == Aedat4WriteBench.Workload.QUIET_BURST) {
                 if (row.compression == CompressionType.NONE) {
                     quietNone = row;
@@ -39,6 +49,8 @@ public class Aedat4WriteBenchTest {
             }
         }
         assertTrue(quietNone != null && quietZstdHigh != null && highNone != null);
+        assertTrue(sawLossy);
+        assertTrue(sawAedz);
         assertTrue("quiet ZSTD_HIGH should beat NONE on size",
                 quietZstdHigh.fileBytes < quietNone.fileBytes);
         assertTrue(quietZstdHigh.payloadRatio() > 1.2);

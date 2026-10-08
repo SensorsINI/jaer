@@ -145,6 +145,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JComboBox<String> recordingFormatCB;
     private JComboBox<String> aedat4CompressionCB;
     private JCheckBox aedat4LossyTimeBinsCB;
+    private JCheckBox aedat4LossyCollapseCB;
     private JSpinner aedat4LossyTimeShiftSpinner;
     private JButton aedat4CompressionBenchButton;
     private JButton aedat4CompressionHelpButton;
@@ -824,6 +825,9 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 if (aedat4LossyTimeBinsCB != null) {
                     aedat4LossyTimeBinsCB.setEnabled(aedat4);
                     aedat4LossyTimeShiftSpinner.setEnabled(aedat4 && aedat4LossyTimeBinsCB.isSelected());
+                    if (aedat4LossyCollapseCB != null) {
+                        aedat4LossyCollapseCB.setEnabled(aedat4 && aedat4LossyTimeBinsCB.isSelected());
+                    }
                 }
             }
         });
@@ -865,8 +869,23 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             viewer.setAedat4LossyTimeBins(aedat4LossyTimeBinsCB.isSelected());
             boolean aedat4 = aedat4CompressionCB.isEnabled();
             aedat4LossyTimeShiftSpinner.setEnabled(aedat4 && aedat4LossyTimeBinsCB.isSelected());
+            aedat4LossyCollapseCB.setEnabled(aedat4 && aedat4LossyTimeBinsCB.isSelected());
         });
         p.add(aedat4LossyTimeBinsCB, gbcField(y++));
+
+        aedat4LossyCollapseCB = new JCheckBox("Collapse On and Off");
+        aedat4LossyCollapseCB.setToolTipText("<html>One record per pixel stores an On count and an Off count"
+                + " (each a byte, 0–255).<br>Playback emits that pixel's On events, then its Off events."
+                + "<br>Event order inside the bin is not kept."
+                + "<br>A pixel with more than 255 of one polarity continues in the next record."
+                + "<br>Takes effect on the next Start recording.</html>");
+        aedat4LossyCollapseCB.addActionListener(e -> {
+            if (updatingUi) {
+                return;
+            }
+            viewer.setAedat4LossyCollapsePolarities(aedat4LossyCollapseCB.isSelected());
+        });
+        p.add(aedat4LossyCollapseCB, gbcField(y++));
 
         p.add(new JLabel("Time right shift (bits):"), gbcLabel(y));
         aedat4LossyTimeShiftSpinner = new JSpinner(new SpinnerNumberModel(
@@ -1863,6 +1882,10 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 aedat4LossyTimeBinsCB.setEnabled(aedat4);
                 aedat4LossyTimeShiftSpinner.setValue(viewer.getAedat4LossyTimeShift());
                 aedat4LossyTimeShiftSpinner.setEnabled(aedat4 && viewer.isAedat4LossyTimeBins());
+                if (aedat4LossyCollapseCB != null) {
+                    aedat4LossyCollapseCB.setSelected(viewer.isAedat4LossyCollapsePolarities());
+                    aedat4LossyCollapseCB.setEnabled(aedat4 && viewer.isAedat4LossyTimeBins());
+                }
             }
             if (aedat4CompressionHelpButton != null) {
                 aedat4CompressionHelpButton.setEnabled(true);

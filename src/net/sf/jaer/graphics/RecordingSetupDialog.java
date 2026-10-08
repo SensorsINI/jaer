@@ -120,6 +120,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
     private final JComboBox<String> formatCombo = new JComboBox<>(FORMAT_LABELS);
     private final JComboBox<String> compressionCombo = new JComboBox<>(COMPRESSION_LABELS);
     private final JCheckBox lossyTimeBinsCb = new JCheckBox("Lossy time bins");
+    private final JCheckBox lossyCollapseCb = new JCheckBox("Collapse On and Off");
     private final JSpinner lossyTimeShiftSpinner = new JSpinner(new SpinnerNumberModel(
             Aedat4LossyTimeBins.SHIFT_DEFAULT,
             Aedat4LossyTimeBins.SHIFT_MIN,
@@ -596,6 +597,11 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         lossyTimeShiftSpinner.setToolTipText("<html>10 drops the low 10 bits of the microsecond timestamp (1024 µs, about 1 ms).<br>"
                 + "0 keeps microsecond bins and only collapses events that already share a timestamp.</html>");
         lossyRow.add(lossyTimeShiftSpinner);
+        lossyCollapseCb.setToolTipText("<html>One record per pixel stores an On count and an Off count"
+                + " (each a byte, 0–255).<br>Playback emits that pixel's On events, then its Off events."
+                + "<br>Event order inside the bin is not kept."
+                + "<br>A pixel with more than 255 of one polarity continues in the next record.</html>");
+        lossyRow.add(lossyCollapseCb);
         form.add(lossyRow, c);
         c.gridwidth = 1;
 
@@ -837,6 +843,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
                     AEViewerPreferencesDialog.recordingFormatIndexForVersion(host.getRecordingDataFileVersion()));
             compressionCombo.setSelectedIndex(Aedat4Compression.clamp(host.getAedat4Compression()));
             lossyTimeBinsCb.setSelected(host.isAedat4LossyTimeBins());
+            lossyCollapseCb.setSelected(host.isAedat4LossyCollapsePolarities());
             lossyTimeShiftSpinner.setValue(host.getAedat4LossyTimeShift());
         } finally {
             updatingUi = false;
@@ -900,6 +907,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
         compressionCombo.setEnabled(aedat4);
         lossyTimeBinsCb.setEnabled(aedat4);
         lossyTimeShiftSpinner.setEnabled(aedat4 && lossyTimeBinsCb.isSelected());
+        lossyCollapseCb.setEnabled(aedat4 && lossyTimeBinsCb.isSelected());
     }
 
     private void onTimeLimitEdited() {
@@ -1147,6 +1155,7 @@ public final class RecordingSetupDialog extends JDialog implements PropertyChang
             v.setAedat4Compression(compression);
             v.setAedat4LossyTimeBins(lossyTimeBinsCb.isSelected());
             v.setAedat4LossyTimeShift(((Number) lossyTimeShiftSpinner.getValue()).intValue());
+            v.setAedat4LossyCollapsePolarities(lossyCollapseCb.isSelected());
             v.setLastRecordingFolder(parentFolder);
             v.applyRecordingTimeLimit(sessionTimeLimitMs.get());
         }

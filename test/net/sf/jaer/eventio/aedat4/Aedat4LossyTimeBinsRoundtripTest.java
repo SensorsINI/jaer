@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 
 import org.junit.Test;
@@ -130,6 +131,79 @@ public class Aedat4LossyTimeBinsRoundtripTest {
                 assertEquals(addr[0], addr[5]);
                 assertTrue(addr[2] != addr[0]);
                 assertTrue(addr[3] != addr[2]);
+            } finally {
+                in.close();
+            }
+        } finally {
+            Files.deleteIfExists(file.toPath());
+        }
+    }
+
+    @Test
+    public void collapsedPolaritiesPackOnAndOffAndSpillPast255() throws Exception {
+        Aedat4LossyTimeBins.Accumulator acc = new Aedat4LossyTimeBins.Accumulator(10, true);
+        acc.add(100, 1, 2, true);
+        acc.add(200, 1, 2, false);
+        acc.add(300, 1, 2, true);
+        acc.add(400, 1, 2, false);
+        acc.add(500, 1, 2, true);
+        acc.add(600, 3, 4, false);
+        acc.add(1500, 9, 9, true);
+        Aedat4LossyTimeBins.View view = Aedat4LossyTimeBins.decode(
+                ByteBuffer.wrap(acc.pollCompleted().payload));
+        assertEquals(6, view.expandedLength());
+        assertEquals(1, view.type(0));
+        assertEquals(1, view.type(2));
+        assertEquals(0, view.type(3));
+        assertEquals(0, view.type(4));
+        assertEquals(1, view.x(0));
+        assertEquals(2, view.y(0));
+        assertEquals(3, view.x(5));
+        assertEquals(0, view.type(5));
+        assertEquals(0, view.timestamp(0));
+
+        Aedat4LossyTimeBins.Accumulator hot = new Aedat4LossyTimeBins.Accumulator(10, true);
+        for (int i = 0; i < 256; i++) {
+            hot.add(i, 7, 8, true);
+        }
+        hot.add(2000, 1, 1, false);
+        Aedat4LossyTimeBins.View spilled = Aedat4LossyTimeBins.decode(
+                ByteBuffer.wrap(hot.pollCompleted().payload));
+        assertEquals(256, spilled.expandedLength());
+        assertEquals(1, spilled.type(0));
+        assertEquals(1, spilled.type(255));
+        assertEquals(7, spilled.x(255));
+    }
+
+    @Test
+    public void collapsedFilePlaysOnThenOff() throws Exception {
+        File file = File.createTempFile("jaer-lossy-pairs", ".aedat4");
+        DVS128 chip = new DVS128();
+        try {
+            try (Aedat4FileOutputStream out = new Aedat4FileOutputStream(
+                    file, chip, CompressionType.LZ4, BASE_US, null, 10, true)) {
+                PacketBundle bundle = new PacketBundle();
+                EventPacket<PolarityEvent> events = new EventPacket<>(PolarityEvent.class);
+                OutputEventIterator<PolarityEvent> it = events.outputIterator();
+                add(it, 100, 1, 2, PolarityEvent.Polarity.On);
+                add(it, 200, 1, 2, PolarityEvent.Polarity.Off);
+                add(it, 300, 1, 2, PolarityEvent.Polarity.On);
+                add(it, 400, 1, 2, PolarityEvent.Polarity.Off);
+                add(it, 500, 1, 2, PolarityEvent.Polarity.On);
+                bundle.add(events);
+                out.writeBundle(bundle);
+            }
+            Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip);
+            try {
+                assertTrue(in.isLossyCollapsePolarities());
+                assertEquals(5, in.getIndexedEventCount());
+                AEPacketRaw raw = in.readPacketByNumber(10);
+                assertEquals(5, raw.getNumEvents());
+                int[] addr = raw.getAddresses();
+                assertEquals(addr[0], addr[1]);
+                assertEquals(addr[0], addr[2]);
+                assertEquals(addr[3], addr[4]);
+                assertTrue(addr[0] != addr[3]);
             } finally {
                 in.close();
             }

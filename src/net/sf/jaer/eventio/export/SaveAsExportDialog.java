@@ -100,6 +100,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         "ZSTD high"
     });
     private final JCheckBox lossyTimeBinsCb = new JCheckBox("Lossy time bins");
+    private final JCheckBox lossyCollapseCb = new JCheckBox("Collapse On and Off");
     private final JSpinner lossyTimeShiftSpinner = new JSpinner(new SpinnerNumberModel(
             Aedat4LossyTimeBins.SHIFT_DEFAULT,
             Aedat4LossyTimeBins.SHIFT_MIN,
@@ -116,6 +117,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     private final JPanel optionsHost = new JPanel(new BorderLayout());
     private JPanel aedat4Panel;
+    private JPanel aedzPanel;
+    private final JPanel lossyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private JPanel csvPanel;
     private JPanel dsecPanel;
     private final JPanel hvsPanel = new JPanel(new GridBagLayout());
@@ -491,19 +494,38 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         ac.gridy++;
         ac.gridx = 0;
         ac.gridwidth = 2;
-        lossyTimeBinsCb.setToolTipText("<html>Group polarity events that share a right-shifted timestamp, pixel, and polarity"
-                + " into a count.<br>Playback expands each count into that many events at the quantized time,"
-                + " in first-seen order.<br><b>jAER-only.</b> iniVation DV and older jAER cannot read these event packets."
-                + "<br>Frames and IMU stay exact. Compression above still wraps the payload.</html>");
-        lossyTimeBinsCb.addActionListener(e -> lossyTimeShiftSpinner.setEnabled(lossyTimeBinsCb.isSelected()));
-        JPanel lossyRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        lossyTimeBinsCb.addActionListener(e -> {
+            boolean bins = lossyTimeBinsCb.isSelected();
+            boolean aedz = formatCombo.getSelectedItem() == SaveAsOptions.Format.AEDZ;
+            lossyTimeShiftSpinner.setEnabled(bins);
+            lossyCollapseCb.setEnabled(bins && !aedz);
+        });
         lossyRow.add(lossyTimeBinsCb);
         lossyRow.add(new JLabel("Time right shift (bits):"));
         lossyTimeShiftSpinner.setToolTipText("<html>10 drops the low 10 bits of the microsecond timestamp"
                 + " (1024 µs, about 1 ms).</html>");
         lossyRow.add(lossyTimeShiftSpinner);
-        aedat4Panel.add(lossyRow, ac);
+        lossyCollapseCb.setToolTipText("<html>One record per pixel stores an On count and an Off count"
+                + " (each a byte, 0–255).<br>Playback emits that pixel's On events, then its Off events."
+                + "<br>Event order inside the bin is not kept. AEDAT-4 only."
+                + "<br>A pixel with more than 255 of one polarity continues in the next record.</html>");
+        lossyRow.add(lossyCollapseCb);
         ac.gridwidth = 1;
+
+        aedzPanel = new JPanel(new GridBagLayout());
+        aedzPanel.setBorder(BorderFactory.createTitledBorder("AEDAT-Z"));
+        GridBagConstraints zc = new GridBagConstraints();
+        zc.anchor = GridBagConstraints.NORTHWEST;
+        zc.fill = GridBagConstraints.HORIZONTAL;
+        zc.weightx = 1;
+        zc.insets = new Insets(2, 4, 2, 4);
+        zc.gridx = 0;
+        zc.gridy = 0;
+        zc.gridwidth = 2;
+        aedzPanel.add(htmlWrap("Compressed AEDAT-2 polarity (<code>.aedz</code>). "
+                + "Frames and IMU are not stored in the file (HVS sidecars still apply on DAVIS). "
+                + "Lossy timestamp resolution keeps every event and stores "
+                + "<code>(t &gt;&gt;&gt; shift) &lt;&lt; shift</code> so existing AEDZ playback shows the coarser times."), zc);
 
         row++;
         c.gridy = row;
@@ -598,9 +620,11 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         int compression = Aedat4Compression.clamp(prefs.getInt("aedat4Compression", viewer.getAedat4Compression()));
         aedat4CompressionCombo.setSelectedIndex(compression);
         lossyTimeBinsCb.setSelected(prefs.getBoolean("lossyTimeBins", viewer.isAedat4LossyTimeBins()));
+        lossyCollapseCb.setSelected(prefs.getBoolean("lossyCollapsePolarities", viewer.isAedat4LossyCollapsePolarities()));
         lossyTimeShiftSpinner.setValue(Aedat4LossyTimeBins.clampShift(
                 prefs.getInt("lossyTimeShift", viewer.getAedat4LossyTimeShift())));
         lossyTimeShiftSpinner.setEnabled(lossyTimeBinsCb.isSelected());
+        lossyCollapseCb.setEnabled(lossyTimeBinsCb.isSelected());
         csvCommaCb.setSelected(prefs.getBoolean("csvComma", true));
         csvUsCb.setSelected(prefs.getBoolean("csvUs", false));
         csvSignedCb.setSelected(prefs.getBoolean("csvSigned", false));
@@ -650,6 +674,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         prefs.putBoolean("applyFilters", applyFiltersCb.isSelected());
         prefs.putInt("aedat4Compression", aedat4CompressionCombo.getSelectedIndex());
         prefs.putBoolean("lossyTimeBins", lossyTimeBinsCb.isSelected());
+        prefs.putBoolean("lossyCollapsePolarities", lossyCollapseCb.isSelected());
         prefs.putInt("lossyTimeShift", ((Number) lossyTimeShiftSpinner.getValue()).intValue());
         prefs.putBoolean("csvComma", csvCommaCb.isSelected());
         prefs.putBoolean("csvUs", csvUsCb.isSelected());
@@ -683,11 +708,38 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
 
     private void updateFormatUi() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
+        boolean aedz = f == SaveAsOptions.Format.AEDZ;
+        boolean lossyOn = lossyTimeBinsCb.isSelected();
+        lossyCollapseCb.setEnabled(!aedz && lossyOn);
+        lossyTimeBinsCb.setToolTipText(aedz
+                ? "<html>Right-shift each polarity timestamp before AEDZ compression.<br>"
+                + "Every event is still stored. Playback in current jAER shows the quantized time.<br>"
+                + "10 bits is 1024 µs, about 1 ms.</html>"
+                : "<html>Group polarity events that share a right-shifted timestamp, pixel, and polarity"
+                + " into a count.<br>Playback expands each count into that many events at the quantized time,"
+                + " in first-seen order.<br><b>jAER-only.</b> iniVation DV and older jAER cannot read these event packets."
+                + "<br>Frames and IMU stay exact. Compression above still wraps the payload.</html>");
+        if (lossyRow.getParent() != null) {
+            lossyRow.getParent().remove(lossyRow);
+        }
         JPanel card = aedat4Panel;
         if (f == SaveAsOptions.Format.CSV) {
             card = csvPanel;
         } else if (f == SaveAsOptions.Format.DSEC_H5) {
             card = dsecPanel;
+        } else if (aedz) {
+            card = aedzPanel;
+        }
+        if (f == SaveAsOptions.Format.AEDAT4 || aedz) {
+            GridBagConstraints lc = new GridBagConstraints();
+            lc.gridx = 0;
+            lc.gridy = aedz ? 1 : 2;
+            lc.gridwidth = 2;
+            lc.weightx = 1;
+            lc.fill = GridBagConstraints.HORIZONTAL;
+            lc.anchor = GridBagConstraints.WEST;
+            lc.insets = new Insets(2, 4, 2, 4);
+            card.add(lossyRow, lc);
         }
         optionsHost.removeAll();
         if (card != null) {
@@ -863,6 +915,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         }
         if (f == SaveAsOptions.Format.AEDAT4) {
             chooser.setFileFilter(new FileNameExtensionFilter("AEDAT-4 (*.aedat4)", "aedat4"));
+        } else if (f == SaveAsOptions.Format.AEDZ) {
+            chooser.setFileFilter(new FileNameExtensionFilter("AEDAT-Z (*.aedz)", "aedz"));
         } else if (f == SaveAsOptions.Format.DSEC_H5) {
             chooser.setFileFilter(new FileNameExtensionFilter("DSEC HDF5 (*.h5, *.hdf5)", "h5", "hdf5"));
         } else {
@@ -937,8 +991,11 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         opt.useInOutMarkers = useMarkersCb.isSelected();
         opt.applyEventFilters = applyFiltersCb.isSelected();
         opt.aedat4Compression = Aedat4Compression.clamp(aedat4CompressionCombo.getSelectedIndex());
-        opt.lossyTimeBins = lossyTimeBinsCb.isSelected();
+        opt.lossyTimeBins = lossyTimeBinsCb.isSelected() && format != SaveAsOptions.Format.CSV
+                && format != SaveAsOptions.Format.DSEC_H5;
         opt.lossyTimeShift = Aedat4LossyTimeBins.clampShift(((Number) lossyTimeShiftSpinner.getValue()).intValue());
+        opt.lossyCollapsePolarities = format == SaveAsOptions.Format.AEDAT4
+                && lossyTimeBinsCb.isSelected() && lossyCollapseCb.isSelected();
         opt.csvFormatter = currentFormatter();
         boolean hvs = viewer.getChip() instanceof DavisChip;
         boolean sidecars = hvs && opt.format != SaveAsOptions.Format.AEDAT4;
@@ -1106,6 +1163,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         aedat4CompressionCombo.setEnabled(!running);
         lossyTimeBinsCb.setEnabled(!running);
         lossyTimeShiftSpinner.setEnabled(!running && lossyTimeBinsCb.isSelected());
+        lossyCollapseCb.setEnabled(!running && lossyTimeBinsCb.isSelected()
+                && formatCombo.getSelectedItem() != SaveAsOptions.Format.AEDZ);
         applyFiltersCb.setEnabled(!running);
         useMarkersCb.setEnabled(!running);
         updateFilterSummary();

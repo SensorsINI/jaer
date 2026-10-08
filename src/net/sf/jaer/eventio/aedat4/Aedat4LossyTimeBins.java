@@ -11,13 +11,20 @@ import java.util.ArrayList;
  * polarity collapse to a count. Playback expands each count into that many
  * events at {@code (t >>> shift) << shift}, in first-seen order.
  * <p>
+ * With {@link Accumulator#Accumulator(int, boolean) polarity collapsing}, On and
+ * Off of the same pixel share one record and event order inside the bin is not
+ * kept. Playback emits that pixel's On events, then its Off events. Each count
+ * is one unsigned byte (0–255). A pixel that exceeds 255 of one polarity in the
+ * bin continues in the next record.
+ * <p>
  * The bytes are the uncompressed EVTS payload. The file's existing LZ4 or
  * ZSTD setting still wraps them. Frames and IMU stay FlatBuffers.
  * <p>
- * Layout, little-endian: magic {@code LBEV}, version u16 = 1, bin count u32,
- * then each bin as restored Unix µs u64, record count u32, and records of
- * x u16, y u16, polarity u8, count u16. A count above 65535 is split into
- * back-to-back records for that same pixel.
+ * Layout, little-endian: magic {@code LBEV}, version u16, bin count u32,
+ * then each bin as restored Unix µs u64, record count u32, and records.
+ * Version 1 records are x u16, y u16, polarity u8, count u16 (a count above
+ * 65535 splits into back-to-back records). Version 2 records are x u16, y u16,
+ * on count u8, off count u8.
  */
 public final class Aedat4LossyTimeBins {
 
@@ -26,9 +33,14 @@ public final class Aedat4LossyTimeBins {
     public static final int SHIFT_MAX = 24;
     public static final int SHIFT_DEFAULT = 10;
     public static final int VERSION = 1;
-    /** One on-disk record stores at most this many events. */
+    /** On and Off counts packed in one record. Order inside the bin is not kept. */
+    public static final int VERSION_PAIRS = 2;
+    /** One version-1 record stores at most this many events. */
     public static final int COUNT_MAX = 65535;
+    /** One side of a version-2 record. The next record continues a hotter pixel. */
+    public static final int PAIR_COUNT_MAX = 255;
     private static final int RECORD_BYTES = 7;
+    private static final int PAIR_RECORD_BYTES = 6;
 
     private Aedat4LossyTimeBins() {
     }
@@ -64,18 +76,30 @@ public final class Aedat4LossyTimeBins {
     /** One open time bin, plus bins already closed by a newer timestamp. */
     public static final class Accumulator {
         private final int shift;
+        private final boolean collapsePolarities;
         private boolean open;
         private long openTs;
         private int[] xs = new int[16];
         private int[] ys = new int[16];
         private int[] types = new int[16];
         private int[] counts = new int[16];
+        private int[] onCounts = new int[16];
+        private int[] offCounts = new int[16];
         private int n;
         private OpenMap map = new OpenMap(32);
         private final ArrayList<Bin> completed = new ArrayList<>();
 
         public Accumulator(int shift) {
+            this(shift, false);
+        }
+
+        /**
+         * @param collapsePolarities when true, one record holds On and Off counts
+         *                           for a pixel and playback emits On then Off
+         */
+        public Accumulator(int shift, boolean collapsePolarities) {
             this.shift = clampShift(shift);
+            this.collapsePolarities = collapsePolarities;
         }
 
         public boolean hasOpenBin() {
@@ -94,6 +118,10 @@ public final class Aedat4LossyTimeBins {
             int type = on ? 1 : 0;
             int x16 = x & 0xffff;
             int y16 = y & 0xffff;
+            if (collapsePolarities) {
+                addCollapsed(x16, y16, on);
+                return;
+            }
             long key = key(x16, y16, type);
             int slot = map.get(key);
             if (slot < 0) {
@@ -131,7 +159,9 @@ public final class Aedat4LossyTimeBins {
                 n = 0;
                 return;
             }
-            completed.add(Bin.copyOf(openTs, xs, ys, types, counts, n));
+            completed.add(collapsePolarities
+                    ? Bin.copyPairs(openTs, xs, ys, onCounts, offCounts, n)
+                    : Bin.copyOf(openTs, xs, ys, types, counts, n));
             open = false;
             n = 0;
             map.clear();
@@ -164,6 +194,49 @@ public final class Aedat4LossyTimeBins {
             map.shiftSlotsAbove(slot);
         }
 
+        private void addCollapsed(int x, int y, boolean on) {
+            long key = ((long) x << 16) | y;
+            int slot = map.get(key);
+            if (slot < 0) {
+                appendPair(x, y, on ? 1 : 0, on ? 0 : 1);
+                map.put(key, n - 1);
+                return;
+            }
+            int[] side = on ? onCounts : offCounts;
+            if (side[slot] >= PAIR_COUNT_MAX) {
+                insertPairAfter(slot, x, y, on ? 1 : 0, on ? 0 : 1);
+                map.put(key, slot + 1);
+                return;
+            }
+            side[slot]++;
+        }
+
+        private void appendPair(int x, int y, int on, int off) {
+            ensure(n + 1);
+            xs[n] = x;
+            ys[n] = y;
+            onCounts[n] = on;
+            offCounts[n] = off;
+            n++;
+        }
+
+        private void insertPairAfter(int slot, int x, int y, int on, int off) {
+            ensure(n + 1);
+            int tail = n - slot - 1;
+            if (tail > 0) {
+                System.arraycopy(xs, slot + 1, xs, slot + 2, tail);
+                System.arraycopy(ys, slot + 1, ys, slot + 2, tail);
+                System.arraycopy(onCounts, slot + 1, onCounts, slot + 2, tail);
+                System.arraycopy(offCounts, slot + 1, offCounts, slot + 2, tail);
+            }
+            xs[slot + 1] = x;
+            ys[slot + 1] = y;
+            onCounts[slot + 1] = on;
+            offCounts[slot + 1] = off;
+            n++;
+            map.shiftSlotsAbove(slot);
+        }
+
         private void ensure(int need) {
             if (need <= xs.length) {
                 return;
@@ -176,6 +249,8 @@ public final class Aedat4LossyTimeBins {
             ys = java.util.Arrays.copyOf(ys, cap);
             types = java.util.Arrays.copyOf(types, cap);
             counts = java.util.Arrays.copyOf(counts, cap);
+            onCounts = java.util.Arrays.copyOf(onCounts, cap);
+            offCounts = java.util.Arrays.copyOf(offCounts, cap);
         }
     }
 
@@ -277,9 +352,11 @@ public final class Aedat4LossyTimeBins {
             throw new IOException("truncated LBEV header");
         }
         int version = buf.getShort() & 0xffff;
-        if (version != VERSION) {
+        if (version != VERSION && version != VERSION_PAIRS) {
             throw new IOException("unsupported LBEV version " + version);
         }
+        boolean pairs = version == VERSION_PAIRS;
+        int recordBytes = pairs ? PAIR_RECORD_BYTES : RECORD_BYTES;
         int nBins = buf.getInt();
         if (nBins < 0) {
             throw new IOException("negative LBEV bin count " + nBins);
@@ -300,33 +377,51 @@ public final class Aedat4LossyTimeBins {
             if (nRecs < 0) {
                 throw new IOException("negative LBEV record count");
             }
-            long need = (long) nRecs * RECORD_BYTES;
+            long need = (long) nRecs * recordBytes;
             if (need > buf.remaining()) {
                 throw new IOException("truncated LBEV records in bin " + b);
             }
             for (int r = 0; r < nRecs; r++) {
                 int x = buf.getShort() & 0xffff;
                 int y = buf.getShort() & 0xffff;
+                if (pairs) {
+                    int on = buf.get() & 0xff;
+                    int off = buf.get() & 0xff;
+                    if (on == 0 && off == 0) {
+                        throw new IOException("LBEV pair counts are 0");
+                    }
+                    if (on > 0) {
+                        xs = grown(xs, n);
+                        ys = grown(ys, n);
+                        types = grown(types, n);
+                        ends = grownLong(ends, n);
+                        tss = grownLong(tss, n);
+                        n = appendView(xs, ys, types, ends, tss, n, x, y, 1, on, ts);
+                        expanded += on;
+                    }
+                    if (off > 0) {
+                        xs = grown(xs, n);
+                        ys = grown(ys, n);
+                        types = grown(types, n);
+                        ends = grownLong(ends, n);
+                        tss = grownLong(tss, n);
+                        n = appendView(xs, ys, types, ends, tss, n, x, y, 0, off, ts);
+                        expanded += off;
+                    }
+                    continue;
+                }
                 int type = buf.get() & 0xff;
                 int count = buf.getShort() & 0xffff;
                 if (count == 0) {
                     throw new IOException("LBEV record count is 0");
                 }
-                if (n == xs.length) {
-                    int cap = n * 2;
-                    xs = java.util.Arrays.copyOf(xs, cap);
-                    ys = java.util.Arrays.copyOf(ys, cap);
-                    types = java.util.Arrays.copyOf(types, cap);
-                    ends = java.util.Arrays.copyOf(ends, cap);
-                    tss = java.util.Arrays.copyOf(tss, cap);
-                }
+                xs = grown(xs, n);
+                ys = grown(ys, n);
+                types = grown(types, n);
+                ends = grownLong(ends, n);
+                tss = grownLong(tss, n);
+                n = appendView(xs, ys, types, ends, tss, n, x, y, type == 0 ? 0 : 1, count, ts);
                 expanded += count;
-                xs[n] = x;
-                ys[n] = y;
-                types[n] = type == 0 ? 0 : 1;
-                tss[n] = ts;
-                ends[n] = expanded;
-                n++;
             }
         }
         return new View(n, expanded,
@@ -342,11 +437,13 @@ public final class Aedat4LossyTimeBins {
         long expanded = 0;
         long tMin = Long.MAX_VALUE;
         long tMax = Long.MIN_VALUE;
+        boolean pairs = !bins.isEmpty() && bins.get(0).pairs;
+        int recordBytes = pairs ? PAIR_RECORD_BYTES : RECORD_BYTES;
         for (int i = 0; i < bins.size(); i++) {
             Bin bin = bins.get(i);
             records += bin.n;
             for (int r = 0; r < bin.n; r++) {
-                expanded += bin.counts[r];
+                expanded += pairs ? (bin.onCounts[r] + bin.offCounts[r]) : bin.counts[r];
             }
             if (bin.ts < tMin) {
                 tMin = bin.ts;
@@ -355,13 +452,13 @@ public final class Aedat4LossyTimeBins {
                 tMax = bin.ts;
             }
         }
-        int size = 4 + 2 + 4 + bins.size() * (8 + 4) + records * RECORD_BYTES;
+        int size = 4 + 2 + 4 + bins.size() * (8 + 4) + records * recordBytes;
         ByteBuffer buf = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         buf.put((byte) 'L');
         buf.put((byte) 'B');
         buf.put((byte) 'E');
         buf.put((byte) 'V');
-        buf.putShort((short) VERSION);
+        buf.putShort((short) (pairs ? VERSION_PAIRS : VERSION));
         buf.putInt(bins.size());
         for (int i = 0; i < bins.size(); i++) {
             Bin bin = bins.get(i);
@@ -370,11 +467,41 @@ public final class Aedat4LossyTimeBins {
             for (int r = 0; r < bin.n; r++) {
                 buf.putShort((short) bin.xs[r]);
                 buf.putShort((short) bin.ys[r]);
-                buf.put((byte) bin.types[r]);
-                buf.putShort((short) bin.counts[r]);
+                if (pairs) {
+                    buf.put((byte) bin.onCounts[r]);
+                    buf.put((byte) bin.offCounts[r]);
+                } else {
+                    buf.put((byte) bin.types[r]);
+                    buf.putShort((short) bin.counts[r]);
+                }
             }
         }
         return new Encoded(buf.array(), expanded, tMin, tMax);
+    }
+
+    private static int appendView(int[] xs, int[] ys, int[] types, long[] ends, long[] tss,
+            int n, int x, int y, int type, int count, long ts) {
+        xs[n] = x;
+        ys[n] = y;
+        types[n] = type;
+        long expanded = (n == 0 ? 0L : ends[n - 1]) + count;
+        ends[n] = expanded;
+        tss[n] = ts;
+        return n + 1;
+    }
+
+    private static int[] grown(int[] a, int used) {
+        if (used < a.length) {
+            return a;
+        }
+        return java.util.Arrays.copyOf(a, a.length * 2);
+    }
+
+    private static long[] grownLong(long[] a, int used) {
+        if (used < a.length) {
+            return a;
+        }
+        return java.util.Arrays.copyOf(a, a.length * 2);
     }
 
     private static long key(int x, int y, int type) {
@@ -388,14 +515,25 @@ public final class Aedat4LossyTimeBins {
         final int[] ys;
         final int[] types;
         final int[] counts;
+        final boolean pairs;
+        final int[] onCounts;
+        final int[] offCounts;
 
         Bin(long ts, int n, int[] xs, int[] ys, int[] types, int[] counts) {
+            this(ts, n, xs, ys, types, counts, false, null, null);
+        }
+
+        Bin(long ts, int n, int[] xs, int[] ys, int[] types, int[] counts,
+                boolean pairs, int[] onCounts, int[] offCounts) {
             this.ts = ts;
             this.n = n;
             this.xs = xs;
             this.ys = ys;
             this.types = types;
             this.counts = counts;
+            this.pairs = pairs;
+            this.onCounts = onCounts;
+            this.offCounts = offCounts;
         }
 
         static Bin copyOf(long ts, int[] xs, int[] ys, int[] types, int[] counts, int n) {
@@ -404,6 +542,15 @@ public final class Aedat4LossyTimeBins {
                     java.util.Arrays.copyOf(ys, n),
                     java.util.Arrays.copyOf(types, n),
                     java.util.Arrays.copyOf(counts, n));
+        }
+
+        static Bin copyPairs(long ts, int[] xs, int[] ys, int[] onCounts, int[] offCounts, int n) {
+            return new Bin(ts, n,
+                    java.util.Arrays.copyOf(xs, n),
+                    java.util.Arrays.copyOf(ys, n),
+                    null, null, true,
+                    java.util.Arrays.copyOf(onCounts, n),
+                    java.util.Arrays.copyOf(offCounts, n));
         }
     }
 

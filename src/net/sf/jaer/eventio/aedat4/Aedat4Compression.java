@@ -69,7 +69,32 @@ Events that share that bin, pixel, and polarity are stored as a count. Playback 
 each count into that many jAER events, all stamped <code>(t &gt;&gt;&gt; shift) &lt;&lt; shift</code>,
 in first-seen order. On and Off stay separate. Frames and IMU are unchanged, and the
 codec above still wraps every payload. These event packets are <b>jAER-only</b>
-(magic <code>LBEV</code>); iniVation DV and older jAER will not parse them.</p>
+(magic <code>LBEV</code>); iniVation DV and older jAER will not parse them.
+<b>Collapse On and Off</b> is a further option: one record per pixel stores an On count and an Off count
+(each one byte, 0–255). Playback emits that pixel's On events, then its Off events, so order inside
+the bin is not kept. A pixel with more than 255 events of one polarity continues in the next record.
+AEDZ lossy mode does not use this packing; it still stores every event.</p>
+
+<h3>Measured on one real recording</h3>
+<p>Prophesee IMX636 HD cassette
+<code>PropheseeIMX636HD-00050491_2026-10-07T14-06-35-0400-VCR_c0010.aedat4</code>:
+<b>182,787,226</b> polarity events, <b>1&nbsp;h 0.12&nbsp;s</b>, no frames, no IMU.
+The file on disk is already AEDAT-4 ZSTD in 156,446 packets:
+<b>1,034,468,740</b> bytes.
+The table rewrites those same events in 65,536-event slices (Windows 11, JDK 25, SSD).
+AEDAT-4 rows use ZSTD. Shift 10 is 1024&nbsp;µs.
+Write time is the encoder only; reading the source took another 14.5&nbsp;s.</p>
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>Output</th><th>What is stored</th><th>File bytes</th><th>vs rewritten AEDAT-4 ZSTD</th><th>Write</th></tr>
+<tr><td><b>AEDAT-4 ZSTD</b></td><td>Every event, microsecond timestamps</td><td>1,012,249,445</td><td>1.00</td><td>36.3&nbsp;s, 5.0&nbsp;Meps</td></tr>
+<tr><td><b>AEDAT-4 ZSTD + 10-bit bins</b></td><td>Per-pixel polarity counts. Playback expands them. jAER-only EVTS</td><td>515,216,708</td><td>50.9% (1.96:1)</td><td>25.7&nbsp;s, 7.1&nbsp;Meps</td></tr>
+<tr><td><b>AEDZ</b></td><td>Every event, microsecond timestamps. Polarity only</td><td>525,295,464</td><td>51.9% (1.93:1)</td><td>12.2&nbsp;s, 15.0&nbsp;Meps</td></tr>
+<tr><td><b>AEDZ + 10-bit timestamps</b></td><td>Every event, timestamps quantized to 1024&nbsp;µs. Existing AEDZ readers play it</td><td>406,606,855</td><td>40.2% (2.49:1)</td><td>11.8&nbsp;s, 15.5&nbsp;Meps</td></tr>
+</table>
+<p>The rewritten AEDAT-4 ZSTD file is 2.1% smaller than the original cassette because each packet holds 65,536 events.
+On this recording, coarsening AEDZ timestamps (and leaving every event in the file) beat collapsing counts into AEDAT-4 bins:
+the timestamp byte planes become mostly zeros.
+All four outputs play back as 182,787,226 events.</p>
 
 <h3>Match the codec to the scene, not the camera name</h3>
 <p>Cost is per <b>packet of events</b>. A quiet night scene at 20&nbsp;keps is a few small

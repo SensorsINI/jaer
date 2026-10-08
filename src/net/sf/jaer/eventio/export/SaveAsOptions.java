@@ -13,6 +13,7 @@ public final class SaveAsOptions {
 
     public enum Format {
         AEDAT4("AEDAT-4", "aedat4"),
+        AEDZ("AEDAT-Z", "aedz"),
         CSV("CSV / text", "csv"),
         DSEC_H5("DSEC HDF5", "h5");
 
@@ -32,6 +33,8 @@ public final class SaveAsOptions {
             switch (this) {
                 case CSV:
                     return new String[]{"csv", "txt"};
+                case AEDZ:
+                    return new String[]{"aedz"};
                 case DSEC_H5:
                     return new String[]{"hdf5", "h5"};
                 case AEDAT4:
@@ -121,6 +124,11 @@ public final class SaveAsOptions {
     public boolean lossyTimeBins;
     /** Right-shift bits when {@link #lossyTimeBins} is set. Ignored otherwise. */
     public int lossyTimeShift = net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_DEFAULT;
+    /**
+     * When true with {@link #lossyTimeBins}, one record holds On and Off counts
+     * for a pixel. Event order inside the bin is not kept. AEDAT-4 only.
+     */
+    public boolean lossyCollapsePolarities;
     public DavisTextEventFormatter csvFormatter = DavisTextEventFormatter.rpg();
     /** HVS sidecar APS frames as compressed PNG. */
     public boolean writeFrames = false;

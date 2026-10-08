@@ -993,7 +993,7 @@ public class JAERViewer {
             FileOutputStream fos = new FileOutputStream(file);
             long baseUs = System.currentTimeMillis() * 1000L;
             muxedAedat4OutputStream = new Aedat4FileOutputStream(fos, tracks, first.getAedat4Compression(), baseUs,
-                    first.aedat4LossyTimeShiftForRecording());
+                    first.aedat4LossyTimeShiftForRecording(), first.aedat4LossyCollapseForRecording());
             int idx = 0;
             for (AEViewer v : rec) {
                 v.attachSharedAedat4Recording(muxedAedat4OutputStream, file, idx, idx == 0, tracks.get(idx).snapshot);
@@ -1058,7 +1058,7 @@ public class JAERViewer {
                 File next = session.openNextCassette();
                 FileOutputStream fos = new FileOutputStream(next);
                 muxedAedat4OutputStream = new Aedat4FileOutputStream(fos, tracks, compression, sessionBaseUs,
-                        owner.aedat4LossyTimeShiftForRecording());
+                        owner.aedat4LossyTimeShiftForRecording(), owner.aedat4LossyCollapseForRecording());
                 int idx = 0;
                 for (AEViewer v : muxedRecordingViewers) {
                     v.rebindMuxedAedat4AfterVcrRoll(muxedAedat4OutputStream, next, idx, idx == 0);

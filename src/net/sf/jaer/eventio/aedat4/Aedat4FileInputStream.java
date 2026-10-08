@@ -118,6 +118,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private int compression = CompressionType.NONE;
     /** {@link Aedat4LossyTimeBins#SHIFT_OFF} unless infoNode has jAERLossyTimeBins. */
     private int lossyTimeShift = Aedat4LossyTimeBins.SHIFT_OFF;
+    private boolean lossyCollapsePolarities;
     private ZoneId zoneId = ZoneId.systemDefault();
 
     /**
@@ -404,6 +405,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     public boolean isLossyTimeBins() {
         return lossyTimeShift >= 0;
+    }
+
+    /** True when On and Off of one pixel share a record and order inside the bin is not kept. */
+    public boolean isLossyCollapsePolarities() {
+        return lossyCollapsePolarities;
     }
 
     /** Selected polarity stream ID after open. */
@@ -723,7 +729,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 eng.format((double) imuSampleCount).trim(),
                 durationStr));
         if (lossyTimeShift >= 0) {
-            sb.append(String.format("\nLossy time bins: right shift %d bits (jAER-only EVTS)", lossyTimeShift));
+            sb.append(String.format("\nLossy time bins: right shift %d bits (jAER-only EVTS)%s",
+                    lossyTimeShift, lossyCollapsePolarities ? ", On and Off collapsed" : ""));
         }
         if (file != null) {
             sb.append(String.format("\nSize: %sB on disk", eng.format((double) file.length()).trim()));
@@ -1094,6 +1101,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         compression = Aedat4Compression.clamp(header.compression());
         dataTablePosition = header.dataTablePosition();
         lossyTimeShift = Aedat4InfoNode.parseLossyTimeShiftBits(header.infoNode());
+        lossyCollapsePolarities = Aedat4InfoNode.parseLossyCollapsePolarities(header.infoNode());
         resolveStreamIds(header.infoNode());
         ZoneId fromInfo = Aedat4InfoNode.parseRecordingTimeZone(header.infoNode());
         if (fromInfo != null) {

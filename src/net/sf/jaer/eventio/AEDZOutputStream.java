@@ -36,6 +36,7 @@ import com.github.luben.zstd.Zstd;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -75,6 +76,8 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
 
     private final FileChannel channel;
     private final FileOutputStream fos;
+    /** {@link Aedat4LossyTimeBins#SHIFT_OFF} keeps microsecond timestamps. */
+    private final int timeShiftBits;
 
     // Buffered events (at most one chunk is ever held in memory)
     private int[] addrBuf = new int[CHUNK_EVENTS];
@@ -125,8 +128,22 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      * @throws IOException on write error
      */
     public AEDZOutputStream(FileOutputStream fos, AEChip chip, RecordingConfigurationSnapshot snapshot) throws IOException {
+        this(fos, chip, snapshot, Aedat4LossyTimeBins.SHIFT_OFF);
+    }
+
+    /**
+     * @param timeShiftBits {@link Aedat4LossyTimeBins#SHIFT_OFF} to store each
+     *                       microsecond timestamp, or 0..24 to store
+     *                       {@code (t >>> shift) << shift}. Every event is still
+     *                       written. Existing AEDZ readers play the coarser times.
+     */
+    public AEDZOutputStream(FileOutputStream fos, AEChip chip, RecordingConfigurationSnapshot snapshot,
+            int timeShiftBits) throws IOException {
         this.fos = fos;
         this.channel = fos.getChannel();
+        this.timeShiftBits = timeShiftBits >= 0
+                ? Aedat4LossyTimeBins.clampShift(timeShiftBits)
+                : Aedat4LossyTimeBins.SHIFT_OFF;
         this.startDate = new Date();
         this.startTimeMs = System.currentTimeMillis();
 
@@ -136,9 +153,20 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         } else {
             aedatHeader = buildAedatHeader(chip);
         }
+        if (this.timeShiftBits >= 0) {
+            ByteArrayOutputStream extra = new ByteArrayOutputStream(aedatHeader.length + 48);
+            extra.write(aedatHeader);
+            writeCommentLine(extra, "jAERLossyTimeShift=" + this.timeShiftBits);
+            aedatHeader = extra.toByteArray();
+        }
 
         // Write AEDZ binary header.
         writeAedzHeader();
+    }
+
+    /** {@link Aedat4LossyTimeBins#SHIFT_OFF} when timestamps are not quantized. */
+    public int getTimeShiftBits() {
+        return timeShiftBits;
     }
 
     /**
@@ -282,12 +310,13 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
         int[] ts = ae.getTimestamps();
 
         for (int i = 0; i < n; i++) {
+            int storedTs = storedTimestamp(ts[i]);
             addrBuf[bufCount] = addr[i];
-            tsBuf[bufCount] = ts[i];
+            tsBuf[bufCount] = storedTs;
             bufCount++;
 
             // Update CRC32 as if writing AEDAT-2 (little-endian addr+ts pairs).
-            updateCRC(addr[i], ts[i]);
+            updateCRC(addr[i], storedTs);
 
             if (bufCount >= CHUNK_EVENTS) {
                 flushChunk();
@@ -302,6 +331,16 @@ public class AEDZOutputStream implements AEDataFile, java.io.Closeable {
      * byte-compatible).
      */
     private final byte[] crcBuf = new byte[8];
+
+    private int storedTimestamp(int timestampUs) {
+        if (timeShiftBits < 0) {
+            return timestampUs;
+        }
+        if (timestampUs >= 0) {
+            return (int) Aedat4LossyTimeBins.quantizeUnixUs(timestampUs, timeShiftBits);
+        }
+        return (timestampUs >> timeShiftBits) << timeShiftBits;
+    }
 
     private void updateCRC(int addr, int ts) {
         // big-endian addr

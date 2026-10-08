@@ -44,6 +44,7 @@ public final class Aedat4InfoNode {
      */
     public static final String LOSSY_NODE_NAME = "jAERLossyTimeBins";
     public static final String TIME_SHIFT_ATTR = "timeShiftBits";
+    public static final String COLLAPSE_POLARITIES_ATTR = "collapsePolarities";
 
     private Aedat4InfoNode() {
     }
@@ -104,12 +105,17 @@ public final class Aedat4InfoNode {
      */
     public static String build(java.util.List<Aedat4CameraTrack> tracks, int compression, ZoneId recordingTimeZone,
             int lossyTimeShift) {
+        return build(tracks, compression, recordingTimeZone, lossyTimeShift, false);
+    }
+
+    public static String build(java.util.List<Aedat4CameraTrack> tracks, int compression, ZoneId recordingTimeZone,
+            int lossyTimeShift, boolean collapsePolarities) {
         if (tracks == null || tracks.isEmpty()) {
             return buildStreams(compression, new StreamSpec[]{
                 new StreamSpec("0", "EVTS", "events", "Array of events (polarity ON/OFF).", 0, 0, "jAER", null),
                 new StreamSpec("1", "FRME", "frames", "Standard frame (8-bit image).", 0, 0, "jAER", null),
                 new StreamSpec("2", "IMUS", "imu", "Inertial Measurement Unit data samples.", 0, 0, "jAER", null)
-            }, new RecordingConfigurationSnapshot[]{null}, recordingTimeZone, lossyTimeShift);
+            }, new RecordingConfigurationSnapshot[]{null}, recordingTimeZone, lossyTimeShift, collapsePolarities);
         }
         if (tracks.size() == 1) {
             Aedat4CameraTrack t = tracks.get(0);
@@ -123,7 +129,7 @@ public final class Aedat4InfoNode {
             }
             StringBuilder sb = new StringBuilder(xml.length() + 96);
             sb.append(xml, 0, end);
-            appendLossyNode(sb, lossyTimeShift);
+            appendLossyNode(sb, lossyTimeShift, collapsePolarities);
             sb.append("</dv>");
             return sb.toString();
         }
@@ -138,7 +144,8 @@ public final class Aedat4InfoNode {
                     "Inertial Measurement Unit data samples.", t.sizeX, t.sizeY, t.source, null));
             snaps[t.index] = t.snapshot;
         }
-        return buildStreams(compression, specs.toArray(new StreamSpec[0]), snaps, recordingTimeZone, lossyTimeShift);
+        return buildStreams(compression, specs.toArray(new StreamSpec[0]), snaps, recordingTimeZone,
+                lossyTimeShift, collapsePolarities);
     }
 
     private static String buildStreams(int compression, StreamSpec[] streams,
@@ -148,6 +155,12 @@ public final class Aedat4InfoNode {
 
     private static String buildStreams(int compression, StreamSpec[] streams,
             RecordingConfigurationSnapshot[] snapshots, ZoneId recordingTimeZone, int lossyTimeShift) {
+        return buildStreams(compression, streams, snapshots, recordingTimeZone, lossyTimeShift, false);
+    }
+
+    private static String buildStreams(int compression, StreamSpec[] streams,
+            RecordingConfigurationSnapshot[] snapshots, ZoneId recordingTimeZone, int lossyTimeShift,
+            boolean collapsePolarities) {
         String compressionName = Aedat4Compression.nameOf(Aedat4Compression.clamp(compression));
         StringBuilder sb = new StringBuilder(1024);
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -164,17 +177,20 @@ public final class Aedat4InfoNode {
             }
         }
         appendRecordingNode(sb, recordingTimeZone);
-        appendLossyNode(sb, lossyTimeShift);
+        appendLossyNode(sb, lossyTimeShift, collapsePolarities);
         sb.append("</dv>");
         return sb.toString();
     }
 
-    private static void appendLossyNode(StringBuilder sb, int lossyTimeShift) {
+    private static void appendLossyNode(StringBuilder sb, int lossyTimeShift, boolean collapsePolarities) {
         if (lossyTimeShift < 0) {
             return;
         }
         sb.append("<node name=\"").append(LOSSY_NODE_NAME).append("\">");
         attr(sb, TIME_SHIFT_ATTR, "int", Integer.toString(Aedat4LossyTimeBins.clampShift(lossyTimeShift)));
+        if (collapsePolarities) {
+            attr(sb, COLLAPSE_POLARITIES_ATTR, "bool", "1");
+        }
         sb.append("</node>");
     }
 
@@ -206,6 +222,30 @@ public final class Aedat4InfoNode {
         } catch (NumberFormatException e) {
             return Aedat4LossyTimeBins.SHIFT_DEFAULT;
         }
+    }
+
+    /** True when the lossy node asks playback to ignore event order inside a bin. */
+    public static boolean parseLossyCollapsePolarities(String infoNode) {
+        if (infoNode == null || infoNode.isEmpty()) {
+            return false;
+        }
+        Pattern node = Pattern.compile(
+                "<node\\s+name\\s*=\\s*\"" + Pattern.quote(LOSSY_NODE_NAME) + "\"[^>]*>(.*?)</node>",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher nm = node.matcher(infoNode);
+        if (!nm.find()) {
+            return false;
+        }
+        Pattern attrPat = Pattern.compile(
+                "<attr\\s+key\\s*=\\s*\"" + Pattern.quote(COLLAPSE_POLARITIES_ATTR)
+                        + "\"[^>]*>([^<]*)</attr>",
+                Pattern.CASE_INSENSITIVE);
+        Matcher am = attrPat.matcher(nm.group(1));
+        if (!am.find()) {
+            return false;
+        }
+        String v = am.group(1).trim();
+        return "1".equals(v) || "true".equalsIgnoreCase(v);
     }
 
     private static void appendRecordingNode(StringBuilder sb, ZoneId recordingTimeZone) {

@@ -604,6 +604,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int aedat4LossyTimeShift = net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.clampShift(
             prefs.getInt("AEViewer.aedat4LossyTimeShift",
                     net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_DEFAULT));
+    /** Pack On and Off of one pixel into one count pair. Order inside the bin is not kept. */
+    private boolean aedat4LossyCollapsePolarities = prefs.getBoolean("AEViewer.aedat4LossyCollapsePolarities", false);
     /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
@@ -11390,10 +11392,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (chip instanceof FlyEye fly) {
                         aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream,
                                 fly.aedat4RecordingTracks(snapshot), getAedat4Compression(),
-                                System.currentTimeMillis() * 1000L, aedat4LossyTimeShiftForRecording());
+                                System.currentTimeMillis() * 1000L, aedat4LossyTimeShiftForRecording(),
+                                aedat4LossyCollapseForRecording());
                     } else {
                         aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip, getAedat4Compression(),
-                                snapshot, aedat4LossyTimeShiftForRecording());
+                                snapshot, aedat4LossyTimeShiftForRecording(), aedat4LossyCollapseForRecording());
                     }
                     aedat4RecordingTrackIndex = 0;
                     aedat4RecordingOwnsClose = true;
@@ -14583,10 +14586,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             if (tracks != null && !tracks.isEmpty() && sessionBaseUnixUs > 0L) {
                 aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, tracks,
-                        getAedat4Compression(), sessionBaseUnixUs, aedat4LossyTimeShiftForRecording());
+                        getAedat4Compression(), sessionBaseUnixUs, aedat4LossyTimeShiftForRecording(),
+                        aedat4LossyCollapseForRecording());
             } else {
                 aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream, chip,
-                        getAedat4Compression(), activeRecordingSnapshot, aedat4LossyTimeShiftForRecording());
+                        getAedat4Compression(), activeRecordingSnapshot, aedat4LossyTimeShiftForRecording(),
+                        aedat4LossyCollapseForRecording());
             }
             aedat4RecordingTrackIndex = 0;
             aedat4RecordingOwnsClose = true;
@@ -15869,9 +15874,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         prefs.putInt("AEViewer.aedat4LossyTimeShift", this.aedat4LossyTimeShift);
     }
 
+    public boolean isAedat4LossyCollapsePolarities() {
+        return aedat4LossyCollapsePolarities;
+    }
+
+    public void setAedat4LossyCollapsePolarities(boolean aedat4LossyCollapsePolarities) {
+        this.aedat4LossyCollapsePolarities = aedat4LossyCollapsePolarities;
+        prefs.putBoolean("AEViewer.aedat4LossyCollapsePolarities", aedat4LossyCollapsePolarities);
+    }
+
     /** Shift passed to the writer, or {@link net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins#SHIFT_OFF}. */
     public int aedat4LossyTimeShiftForRecording() {
         return aedat4LossyTimeBins ? getAedat4LossyTimeShift() : net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_OFF;
+    }
+
+    /** Collapse flag passed to the writer. Off unless lossy time bins are on. */
+    public boolean aedat4LossyCollapseForRecording() {
+        return aedat4LossyTimeBins && aedat4LossyCollapsePolarities;
     }
 
     /**

@@ -3,6 +3,7 @@ package net.sf.jaer.eventio.export;
 import java.awt.Point;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
@@ -31,8 +32,10 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEOutputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -112,6 +115,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         }
     }
 
+    private final AEPacketRaw aedzBatch = new AEPacketRaw(4096);
+
     @Override
     protected Result doInBackground() throws Exception {
         Thread.currentThread().setName("jaer-save-as");
@@ -132,6 +137,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         CsvEventSink csv = null;
         DsecHdf5AEOutputStream h5 = null;
         Aedat4FileOutputStream aedat4 = null;
+        AEDZOutputStream aedz = null;
         ImuCsvSink imu = null;
         FramePngSink frames = null;
         DavisFrameAssembler assembler = null;
@@ -186,6 +192,11 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 csv = new CsvEventSink(options.outputFile, options.csvFormatter, source);
             } else if (options.format == SaveAsOptions.Format.DSEC_H5) {
                 h5 = new DsecHdf5AEOutputStream(options.outputFile, options.sensorWidth, options.sensorHeight);
+            } else if (options.format == SaveAsOptions.Format.AEDZ) {
+                int shift = options.lossyTimeBins
+                        ? Aedat4LossyTimeBins.clampShift(options.lossyTimeShift)
+                        : Aedat4LossyTimeBins.SHIFT_OFF;
+                aedz = new AEDZOutputStream(new FileOutputStream(options.outputFile), chip, null, shift);
             } else {
                 long baseUs = 0;
                 if (stream instanceof Aedat4FileInputStream) {
@@ -204,7 +215,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         stream.getZoneId(),
                         options.lossyTimeBins
                                 ? net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.clampShift(options.lossyTimeShift)
-                                : net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_OFF);
+                                : net.sf.jaer.eventio.aedat4.Aedat4LossyTimeBins.SHIFT_OFF,
+                        options.lossyTimeBins && options.lossyCollapsePolarities);
             }
             if (options.writeImu) {
                 imu = new ImuCsvSink(options.imuFile(), source);
@@ -295,7 +307,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         aedat4.writeBundle(toTypedBundle(bundle, null, chip, true), true);
                     } else {
                         for (TypedDataPacket p : bundle) {
-                            consume(p, csv, h5, imu, frames, null, chip);
+                            consume(p, csv, h5, aedz, imu, frames, null, chip);
                         }
                     }
                 } catch (RuntimeException | IOException ex) {
@@ -312,14 +324,15 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 }
                 stuckSlices = 0;
                 covered = Math.max(0L, Math.min(clipRange, stream.position() - clipStart));
-                reportUi(false, eventsWritten(csv, h5, aedat4), badEvents);
+                reportUi(false, eventsWritten(csv, h5, aedat4, aedz), badEvents);
             }
             if (isCancelled()) {
                 throw new CancellationException("Save As cancelled");
             }
+            flushAedzBatch(aedz);
             Result result = new Result();
             result.outputFile = options.outputFile;
-            result.events = eventsWritten(csv, h5, aedat4);
+            result.events = eventsWritten(csv, h5, aedat4, aedz);
             result.imuSamples = aedat4 != null ? aedat4.getImuSamplesWritten()
                     : (imu != null ? imu.getSamplesWritten() : 0);
             result.frames = aedat4 != null ? aedat4.getFramesWritten()
@@ -327,18 +340,21 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             result.badEvents = badEvents;
             result.cancelled = false;
             result.sourceFileInfo = sourceFileInfo;
-            result.outputFileInfo = snapshotOutputFileInfo(aedat4, csv, h5,
+            result.outputFileInfo = snapshotOutputFileInfo(aedat4, aedz, csv, h5,
                     result.events, result.frames, result.imuSamples);
             if (badEvents > 0) {
                 log.warning(String.format("Save As skipped %,d bad events while writing %s",
                         badEvents, options.outputFile.getName()));
             }
+            flushAedzBatch(aedz);
             closeSink(csv);
             csv = null;
             closeSink(h5);
             h5 = null;
             closeSink(aedat4);
             aedat4 = null;
+            closeSink(aedz);
+            aedz = null;
             closeSink(imu);
             imu = null;
             closeSink(frames);
@@ -363,6 +379,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             closeQuietly(csv);
             closeQuietly(h5);
             closeQuietly(aedat4);
+            closeQuietly(aedz);
             closeQuietly(imu);
             closeQuietly(frames);
             if (stream != null) {
@@ -473,10 +490,17 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     /** Saved-file summary, matching the recording-finished confirmation when AEDAT-4. */
-    private static String snapshotOutputFileInfo(Aedat4FileOutputStream aedat4,
+    private static String snapshotOutputFileInfo(Aedat4FileOutputStream aedat4, AEDZOutputStream aedz,
             CsvEventSink csv, DsecHdf5AEOutputStream h5, long events, long frames, long imuSamples) {
         if (aedat4 != null) {
             return aedat4.toString();
+        }
+        if (aedz != null) {
+            String s = aedz.toString();
+            if (aedz.getTimeShiftBits() >= 0) {
+                s = s + ", lossy timestamp shift " + aedz.getTimeShiftBits();
+            }
+            return s;
         }
         StringBuilder sb = new StringBuilder();
         if (csv != null) {
@@ -583,7 +607,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         in.readUncompressedPayload(packet), packet.numElements,
                         packet.fileUnixStart(baseUnixUs), packet.fileUnixEnd(baseUnixUs));
                 case EVENTS -> {
-                    boolean sameLossy = in.getLossyTimeShift() == out.getLossyTimeShift();
+                    boolean sameLossy = in.getLossyTimeShift() == out.getLossyTimeShift()
+                            && in.isLossyCollapsePolarities() == out.isLossyCollapsePolarities();
                     if (!filter && packet.eventsFullyInside(start, end) && sameLossy) {
                         if (out.hasOpenLossyBin()) {
                             out.flushOpenLossyBins();
@@ -693,10 +718,13 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         return bad;
     }
 
-    private static long eventsWritten(CsvEventSink csv, DsecHdf5AEOutputStream h5,
-            Aedat4FileOutputStream aedat4) {
+    private long eventsWritten(CsvEventSink csv, DsecHdf5AEOutputStream h5,
+            Aedat4FileOutputStream aedat4, AEDZOutputStream aedz) {
         if (aedat4 != null) {
             return aedat4.getEventsWritten();
+        }
+        if (aedz != null) {
+            return aedz.getNumEvents() + aedzBatch.getNumEvents();
         }
         if (csv != null) {
             return csv.getEventsWritten();
@@ -952,7 +980,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     private void consume(TypedDataPacket p, CsvEventSink csv, DsecHdf5AEOutputStream h5,
-            ImuCsvSink imu, FramePngSink frames, DavisFrameAssembler assembler, AEChip chip)
+            AEDZOutputStream aedz, ImuCsvSink imu, FramePngSink frames, DavisFrameAssembler assembler, AEChip chip)
             throws IOException {
         if (p instanceof FramePacket) {
             if (frames != null) {
@@ -970,20 +998,20 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             return;
         }
         if (p instanceof ApsDvsEventPacket) {
-            consumeMixed((ApsDvsEventPacket<?>) p, csv, h5, imu, frames, assembler, chip);
+            consumeMixed((ApsDvsEventPacket<?>) p, csv, h5, aedz, imu, frames, assembler, chip);
             return;
         }
         if (p instanceof EventPacket) {
             @SuppressWarnings("unchecked")
             EventPacket<BasicEvent> ep = (EventPacket<BasicEvent>) p;
             for (BasicEvent be : ep) {
-                writePolarity(be, csv, h5);
+                writePolarity(be, csv, h5, aedz, chip);
             }
         }
     }
 
     private void consumeMixed(ApsDvsEventPacket<?> packet, CsvEventSink csv, DsecHdf5AEOutputStream h5,
-            ImuCsvSink imu, FramePngSink frames, DavisFrameAssembler assembler, AEChip chip)
+            AEDZOutputStream aedz, ImuCsvSink imu, FramePngSink frames, DavisFrameAssembler assembler, AEChip chip)
             throws IOException {
         boolean rolling = chip instanceof DavisBaseCamera
                 && ((DavisBaseCamera) chip).getDavisConfig() != null
@@ -1019,11 +1047,12 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                 }
                 continue;
             }
-            writePolarity(e, csv, h5);
+            writePolarity(e, csv, h5, aedz, chip);
         }
     }
 
-    private void writePolarity(BasicEvent be, CsvEventSink csv, DsecHdf5AEOutputStream h5) throws IOException {
+    private void writePolarity(BasicEvent be, CsvEventSink csv, DsecHdf5AEOutputStream h5,
+            AEDZOutputStream aedz, AEChip chip) throws IOException {
         if (be == null || be.isFilteredOut() || !(be instanceof PolarityEvent)) {
             return;
         }
@@ -1038,6 +1067,31 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             csv.write(pe);
         } else if (h5 != null) {
             h5.write(pe);
+        } else if (aedz != null) {
+            int addr = pe.address;
+            if (options.applyEventFilters && chip != null && chip.getEventExtractor() != null) {
+                addr = chip.getEventExtractor().getAddressFromCell(pe.x, pe.y, pe.type);
+            }
+            queueAedzEvent(aedz, addr, pe.timestamp);
+        }
+    }
+
+    private void queueAedzEvent(AEDZOutputStream out, int address, int timestamp) throws IOException {
+        int n = aedzBatch.getNumEvents();
+        if (n >= 4096) {
+            out.writePacket(aedzBatch);
+            aedzBatch.setNumEvents(0);
+            n = 0;
+        }
+        aedzBatch.addresses[n] = address;
+        aedzBatch.timestamps[n] = timestamp;
+        aedzBatch.setNumEvents(n + 1);
+    }
+
+    private void flushAedzBatch(AEDZOutputStream out) throws IOException {
+        if (out != null && aedzBatch.getNumEvents() > 0) {
+            out.writePacket(aedzBatch);
+            aedzBatch.setNumEvents(0);
         }
     }
 

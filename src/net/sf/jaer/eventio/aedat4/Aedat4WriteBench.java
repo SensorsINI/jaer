@@ -1,15 +1,18 @@
 package net.sf.jaer.eventio.aedat4;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.util.EngineeringFormat;
 
@@ -31,7 +34,9 @@ public final class Aedat4WriteBench {
         CompressionType.ZSTD_HIGH
     };
 
-    private Aedat4WriteBench() {
+    public static int expectedRowCount() {
+        int workloads = Workload.values().length;
+        return CODECS.length * workloads * 2 + workloads * 2;
     }
 
     public static final class Config {
@@ -85,11 +90,21 @@ public final class Aedat4WriteBench {
         public final long compressedPayloadBytes;
         public final long fileBytes;
 
-        Row(Workload workload, int compression, long events, int packets, long wallNs,
+        public final int lossyShift;
+        public final boolean aedz;
+
+        Row(Workload workload, int compression, int lossyShift, boolean aedz, long events, int packets, long wallNs,
                 long uncompressedPayloadBytes, long compressedPayloadBytes, long fileBytes) {
             this.workload = workload;
-            this.compression = compression;
-            this.codecName = Aedat4Compression.nameOf(compression);
+            this.compression = aedz ? -1 : compression;
+            this.lossyShift = lossyShift;
+            this.aedz = aedz;
+            if (aedz) {
+                this.codecName = lossyShift >= 0 ? "AEDZ+10bit" : "AEDZ";
+            } else {
+                String name = Aedat4Compression.nameOf(compression);
+                this.codecName = lossyShift >= 0 ? name + "+10bit" : name;
+            }
             this.events = events;
             this.packets = packets;
             this.wallNs = wallNs;
@@ -134,11 +149,11 @@ public final class Aedat4WriteBench {
             StringBuilder sb = new StringBuilder();
             sb.append("AEDAT-4 write bench (").append(host).append(")\n");
             sb.append(String.format(Locale.US,
-                    "%-28s %-10s %8s %8s %10s %10s %8s %8s%n",
+                    "%-28s %-16s %8s %8s %10s %10s %8s %8s%n",
                     "workload", "codec", "events/s", "MiB/s", "raw B", "file B", "ratio", "ms"));
             for (Row r : rows) {
                 sb.append(String.format(Locale.US,
-                        "%-28s %-10s %8s %8.0f %10s %10s %7.2f:1 %7.0f%n",
+                        "%-28s %-16s %8s %8.0f %10s %10s %7.2f:1 %7.0f%n",
                         r.workload.label, r.codecName,
                         eng.format(r.eventsPerSec()).trim(),
                         r.uncompressedMebiPerSec(),
@@ -159,7 +174,11 @@ public final class Aedat4WriteBench {
             sb.append("<h2>AEDAT-4 write / compress bench</h2>");
             sb.append("<p>").append(esc(host)).append("</p>");
             sb.append("<p>Times <code>Aedat4FileOutputStream.writeBundle</code> (FlatBuffers + codec + disk) ");
-            sb.append("for synthetic polarity packets. Run this on the PC you record with.</p>");
+            sb.append("and <code>AEDZOutputStream</code> for synthetic polarity packets. ");
+            sb.append("<b>+10bit</b> right-shifts timestamps by 10 (about 1&nbsp;ms). ");
+            sb.append("AEDAT-4 +10bit also stores per-pixel polarity counts. ");
+            sb.append("AEDZ +10bit keeps every event and only coarsens the timestamp. ");
+            sb.append("Run this on the PC you record with.</p>");
             sb.append("<table border=\"1\" cellpadding=\"4\" cellspacing=\"0\">");
             sb.append("<tr><th>Workload</th><th>Codec</th><th>events/s</th><th>MiB/s raw</th>");
             sb.append("<th>Uncompressed</th><th>File</th><th>Ratio</th><th>ms</th></tr>");
@@ -203,6 +222,7 @@ public final class Aedat4WriteBench {
                                 new EngineeringFormat().format(quietPick.eventsPerSec()).trim()));
             }
             sb.append("\nDefault for live recording is LZ4. If the viewer stalls while recording a fast camera, switch to NONE.");
+            sb.append("\n+10bit and AEDZ rows are offline size comparisons, not the live recording default.");
             return sb.toString();
         }
 
@@ -216,7 +236,7 @@ public final class Aedat4WriteBench {
             Row best = none;
             double bestRate = noneRate;
             for (Row r : high) {
-                if (r.compression == CompressionType.NONE) {
+                if (r.compression == CompressionType.NONE || r.aedz || r.lossyShift >= 0) {
                     continue;
                 }
                 boolean savesDisk = none == null || r.fileBytes < none.fileBytes * 0.85;
@@ -244,6 +264,9 @@ public final class Aedat4WriteBench {
             double minRate = lz4 != null ? lz4.eventsPerSec() * 0.25 : 0;
             Row best = null;
             for (Row r : quiet) {
+                if (r.aedz || r.lossyShift >= 0) {
+                    continue;
+                }
                 if (r.eventsPerSec() < minRate && minRate > 0 && r.compression != CompressionType.LZ4) {
                     continue;
                 }
@@ -266,6 +289,9 @@ public final class Aedat4WriteBench {
 
         private static Row find(List<Row> rows, int compression) {
             for (Row r : rows) {
+                if (r.aedz || r.lossyShift >= 0) {
+                    continue;
+                }
                 if (r.compression == compression) {
                     return r;
                 }
@@ -302,8 +328,13 @@ public final class Aedat4WriteBench {
         Report report = new Report();
         for (Workload w : Workload.values()) {
             for (int codec : CODECS) {
-                report.rows.add(runOne(c, w, codec));
+                report.rows.add(runOne(c, w, codec, Aedat4LossyTimeBins.SHIFT_OFF));
             }
+            for (int codec : CODECS) {
+                report.rows.add(runOne(c, w, codec, 10));
+            }
+            report.rows.add(runAedz(c, w, Aedat4LossyTimeBins.SHIFT_OFF));
+            report.rows.add(runAedz(c, w, 10));
         }
         return report;
     }
@@ -318,10 +349,10 @@ public final class Aedat4WriteBench {
         w.highRateEventsPerPacket = Math.min(256, c.highRateEventsPerPacket);
         w.quietPackets = 0;
         w.burstPackets = 0;
-        runOne(w, Workload.HIGH_RATE, CompressionType.LZ4);
+        runOne(w, Workload.HIGH_RATE, CompressionType.LZ4, Aedat4LossyTimeBins.SHIFT_OFF);
     }
 
-    private static Row runOne(Config c, Workload workload, int compression) throws IOException {
+    private static Row runOne(Config c, Workload workload, int compression, int lossyShift) throws IOException {
         File file = File.createTempFile("jaer-aedat4-write-bench-", ".aedat4", c.tempDir);
         EventPacket<PolarityEvent> packet = new EventPacket<>(PolarityEvent.class);
         PacketBundle bundle = new PacketBundle();
@@ -331,7 +362,7 @@ public final class Aedat4WriteBench {
         long wallNs;
         long uncompressed;
         long compressed;
-        try (Aedat4FileOutputStream out = new Aedat4FileOutputStream(file, null, compression)) {
+        try (Aedat4FileOutputStream out = openAedat4(file, compression, lossyShift)) {
             long t0 = System.nanoTime();
             for (int p = 0; p < packets; p++) {
                 int n = eventsInPacket(c, workload, p);
@@ -349,7 +380,50 @@ public final class Aedat4WriteBench {
         if (!file.delete()) {
             file.deleteOnExit();
         }
-        return new Row(workload, compression, events, packets, wallNs, uncompressed, compressed, fileBytes);
+        return new Row(workload, compression, lossyShift, false, events, packets, wallNs,
+                uncompressed, compressed, fileBytes);
+    }
+
+    private static Aedat4FileOutputStream openAedat4(File file, int compression, int lossyShift) throws IOException {
+        if (lossyShift >= 0) {
+            return new Aedat4FileOutputStream(file, null, compression, 0L, null, lossyShift);
+        }
+        return new Aedat4FileOutputStream(file, null, compression);
+    }
+
+    private static Row runAedz(Config c, Workload workload, int lossyShift) throws IOException {
+        File file = File.createTempFile("jaer-aedz-write-bench-", ".aedz", c.tempDir);
+        EventPacket<PolarityEvent> packet = new EventPacket<>(PolarityEvent.class);
+        Random rng = new Random(1L);
+        int packets = packetCount(c, workload);
+        int cap = Math.max(c.highRateEventsPerPacket, Math.max(c.quietEventsPerPacket, c.burstEventsPerPacket));
+        AEPacketRaw raw = new AEPacketRaw(Math.max(1, cap));
+        long events = 0;
+        long wallNs;
+        try (AEDZOutputStream out = new AEDZOutputStream(new FileOutputStream(file), null, null, lossyShift)) {
+            long t0 = System.nanoTime();
+            for (int p = 0; p < packets; p++) {
+                int n = eventsInPacket(c, workload, p);
+                fillPacket(packet, rng, c, workload, p, n);
+                raw.setNumEvents(0);
+                raw.ensureCapacity(n);
+                for (int i = 0; i < n; i++) {
+                    PolarityEvent e = packet.getEvent(i);
+                    raw.addresses[i] = (e.x & 0xffff) | ((e.y & 0xffff) << 16) | ((e.type & 1) << 17);
+                    raw.timestamps[i] = e.timestamp;
+                }
+                raw.setNumEvents(n);
+                out.writePacket(raw);
+                events += n;
+            }
+            wallNs = System.nanoTime() - t0;
+        }
+        long fileBytes = file.length();
+        long rawBytes = events * 8L;
+        if (!file.delete()) {
+            file.deleteOnExit();
+        }
+        return new Row(workload, -1, lossyShift, true, events, packets, wallNs, rawBytes, fileBytes, fileBytes);
     }
 
     private static int packetCount(Config c, Workload w) {
