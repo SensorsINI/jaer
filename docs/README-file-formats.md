@@ -12,7 +12,8 @@ Official format specs (where available) are linked from the **Format** column an
 
 | Format | Ext. | Generation / magic | Manufacturer / origin | Play | Record | Legacy | Compression | Matching cameras / chips |
 |--------|------|--------------------|------------------------|:----:|:------:|:------:|-------------|---------------------------|
-| **[AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html)** | `.aedat4` | AEDAT **4.0** (`#!AER-DAT4.0`) | [iniVation](https://inivation.com/) DV / jAER 3 | yes | **yes (default)** + Save As⁷ | no | Per-packet: **NONE**, **LZ4** (default), **LZ4_HIGH**, **ZSTD**, **ZSTD_HIGH**. Optional lossy time bins (jAER-only EVTS) under the same codec | DAVIS346 / DAVIS240 / DVXplorer family; any jAER chip that records AEDAT-4 (incl. Prophesee EVK4, NRV when recording in jAER) |
+| **[AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html)** | `.aedat4` | AEDAT **4.0** (`#!AER-DAT4.0`) | [iniVation](https://inivation.com/) DV / jAER 3 | yes | **yes (default)** + Save As⁷ | no | Per-packet: **NONE**, **LZ4** (default), **LZ4_HIGH**, **ZSTD**, **ZSTD_HIGH**. Optional [lossy timestamp resolution](#lossy-timestamp-resolution) under the same codec (jAER-only EVTS) | DAVIS346 / DAVIS240 / DVXplorer family; any jAER chip that records AEDAT-4 (incl. Prophesee EVK4, NRV when recording in jAER) |
+| **AEDZ** | `.aedz` | Binary magic `AEDZ`, then an embedded AEDAT-2 header | SensorsINI / jAER | yes | yes + Save As⁷ | no | 8 byte-planes, zstd level 1. Optional [lossy timestamp shift](#lossy-timestamp-resolution) (every event kept) | Polarity-only chips. Live Davis / DVXplorer are steered to AEDAT-4 (frames and IMU are not stored) |
 | **[AEDAT-2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html)** | `.aedat2` (preferred write), also `.aedat` | AEDAT **2.0** (`#!AER-DAT2.0`) | SensorsINI / jAER | yes | yes | partial¹ | None (raw `int32` address + `int32` timestamp) | Classic DVS/DAVIS jAER chips (DVS128, DAVIS240/346, Cochlea, etc.); widely used historical logs |
 | **[AEDAT-1](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-1.0.html)** | `.aedat`, `.dat` | AEDAT **1.0** (`#!AER-DAT1.0`) | SensorsINI / jAER | yes | no | **yes** | None (`int16` address + `int32` timestamp) | Early AER boards / old DVS128-era recordings |
 | **[AEDAT-3](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-3.1.html)** | typically `.aedat` | AEDAT **3.0 / 3.1** (`#!AER-DAT3.x`) | cAER / community | yes² | no | **yes** | None (packed AER-3 address words) | Rare in modern jAER workflows; open if header declares 3.x |
@@ -53,6 +54,7 @@ Official format specs (where available) are linked from the **Format** column an
 | Event Planar HDF5 | [tudelft/event_planar `H5Loader.get_events`](https://github.com/tudelft/event_planar/blob/main/dataloader/h5.py) — not DSEC and not DDD17/DDD20 |
 | ROS bag | [ROS wiki — Bags](http://wiki.ros.org/Bags) |
 | Text CSV/TXT | No formal standard; see [`TextFileInputStream`](../src/net/sf/jaer/eventio/TextFileInputStream.java) options |
+| AEDZ | jAER-specific compressed AEDAT-2 polarity; no external spec. See [`AEDZOutputStream`](../src/net/sf/jaer/eventio/AEDZOutputStream.java) |
 | `.aeidx` index | jAER-specific playlist (paths to AE files); no external spec |
 
 ---
@@ -90,7 +92,8 @@ Playback IN, OUT, and other markers are stored as CSV under `${java.io.tmpdir}/j
 
 | Format | Reader | Notes |
 |--------|--------|--------|
-| [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileInputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileInputStream.java) | Multi-camera EVTS stream selection; decompresses LZ4/ZSTD as needed. |
+| [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileInputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileInputStream.java) | Multi-camera EVTS stream selection; decompresses LZ4/ZSTD as needed. Lossy `LBEV` event packets expand back into normal polarity events. |
+| AEDZ | [`AEDZInputStream`](../src/net/sf/jaer/eventio/AEDZInputStream.java) | Polarity only. A lossy timestamp shift is already applied in the stored times; the reader does not expand counts. |
 | [AEDAT-1](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-1.0.html)/[2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html)/[3](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-3.1.html), legacy `.dat` | [`AEFileInputStream`](../src/net/sf/jaer/eventio/AEFileInputStream.java) | Version from `#!AER-DAT…` header line. Used for `.dat` only when the file is **not** Metavision DAT. |
 | [Metavision DAT](https://docs.prophesee.ai/stable/data/file_formats/dat.html) | [`MetavisionDatFileInputStream`](../src/prophesee/eventio/MetavisionDatFileInputStream.java) | Peek: lines starting with `% ` (vs jAER `#` / raw AEDAT-1). CD / Event2d types `0` and `12` only (8-byte LE `t` + packed `x`/`y`/`p`). External-trigger DAT (`type 14`) is not played. Random-access seek; no index cache. |
 | [Metavision RAW EVT3](https://docs.prophesee.ai/stable/data/file_formats/raw.html) | [`MetavisionRawFileInputStream`](../src/prophesee/eventio/MetavisionRawFileInputStream.java) | Same `Evt3Parser` as live USB ([EVT3](https://docs.prophesee.ai/stable/data/encoding_formats/evt3.html)). Seek index cached as `*.metavisionrawidx` in `${java.io.tmpdir}/jaer/aeidx/`. **EVT2 / Prophesee HDF5 not supported yet.** |
@@ -108,13 +111,61 @@ Chip auto-detect for recordings: [`RecordingChipDetector`](../src/net/sf/jaer/ev
 
 | Format | Options | Where set |
 |--------|---------|-----------|
-| AEDAT-4 | `NONE` (0), `LZ4` (1, default), `LZ4_HIGH` (2), `ZSTD` (3), `ZSTD_HIGH` (4). Optional **lossy time bins** (checkbox, not a sixth codec id): right-shift Unix µs (default 10 ≈ 1 ms), store per-pixel polarity counts, expand on playback. jAER-only EVTS (`LBEV`). Frames/IMU stay FlatBuffers. The codec above still wraps payloads. | Live recording: AEViewer recording prefs. Save As: File → Save As dialog. See [`CompressionType`](../src/net/sf/jaer/eventio/aedat4/dv/CompressionType.java), [`Aedat4Compression`](../src/net/sf/jaer/eventio/aedat4/Aedat4Compression.java), [`Aedat4LossyTimeBins`](../src/net/sf/jaer/eventio/aedat4/Aedat4LossyTimeBins.java) |
+| AEDAT-4 | `NONE` (0), `LZ4` (1, default), `LZ4_HIGH` (2), `ZSTD` (3), `ZSTD_HIGH` (4). Optional [lossy timestamp resolution](#lossy-timestamp-resolution) under that codec (not a sixth codec id). | Live recording: AEViewer recording prefs. Save As: File → Save As dialog. See [`CompressionType`](../src/net/sf/jaer/eventio/aedat4/dv/CompressionType.java), [`Aedat4Compression`](../src/net/sf/jaer/eventio/aedat4/Aedat4Compression.java), [`Aedat4LossyTimeBins`](../src/net/sf/jaer/eventio/aedat4/Aedat4LossyTimeBins.java) |
+| AEDZ | Byte-plane zstd level 1. Optional [lossy timestamp shift](#lossy-timestamp-resolution) (every event kept). | Live recording format **AEDZ**, or File → Save As. See [`AEDZOutputStream`](../src/net/sf/jaer/eventio/AEDZOutputStream.java) |
 | AEDAT-1/2/3, legacy `.dat` | None | — |
 | Metavision `.dat` | None (decoded events; typically larger than RAW) | Exported by Metavision Studio / SDK (`File to DAT`) |
 | Metavision `.raw` | None (sensor EVT3 encoding is the “compression”) | Recorded by Metavision Studio / SDK |
 | ROS bag | ROS bag storage (not exposed in jAER UI) | — |
 | Text CSV/TXT | None (optionally gzip outside jAER) | — |
 | DSEC HDF5 (Save As) | Uncompressed contiguous datasets (jHDF 0.12 cannot write gzip/Blosc) | File → Save As |
+
+---
+
+## Lossy timestamp resolution
+
+Off by default. Use this compression when you know that the source sensor timestamp resolution is excessive for your appliction, or that you know the timestamp jitter exceeeds the raw timestamp resoulution. By using this mode, many events can share the same lower-resolution timestamp, reducing file size significantly. This mode also includes the option to preserve or discard the source event **order**. Not preserving the order allows lumping all the events with the same timestamp, address, and polarity to  one slot with a byte count value.
+
+The controls are in AEViewer **Preferences → File**, the Start recording dialog, and **File → Save As**. They do not add a DV compression id. The selected NONE / LZ4 / ZSTD codec still wraps AEDAT-4 payloads. AEDZ always uses its own byte-plane zstd.
+
+Prefs on `AEViewer`: `aedat4LossyTimeBins` (false), `aedat4LossyTimeShift` (10), `aedat4LossyCollapsePolarities` (false). The shift spinner is **0..24** and is enabled only when lossy time bins are on. **10** drops the low 10 bits (1024 µs, about 1 ms). Restored time is `(t >>> shift) << shift`.
+
+### AEDAT-4 time bins
+
+Checkbox **Lossy time bins**. Polarity events that share the quantized time, pixel, and polarity become one count. Playback expands each count into that many normal jAER events, in first-seen order. On and Off stay separate. Frames and IMU stay exact FlatBuffers.
+
+These event packets are **jAER-only** (magic `LBEV`, version 1). iniVation DV and older jAER will not parse them. The shift is stored in the infoNode node `jAERLossyTimeBins`, attribute `timeShiftBits`. `FileDataTable.numElements` is the expanded event count.
+
+Uncompressed EVTS payload, then the chosen codec:
+
+- Magic `LBEV`, version u16 = 1, bin count u32
+- Each bin: restored Unix µs u64, record count u32, then records `x` u16, `y` u16, polarity u8, count u16
+- A count above 65535 splits into back-to-back records for that pixel
+
+The writer keeps one open bin and flushes it when the next event’s bin differs, or on close. Packet cadence stays the view-loop packet.
+
+### Collapse On and Off
+
+Second checkbox, AEDAT-4 only, enabled only when lossy time bins are on. Order inside the bin is not kept. One record holds both polarities of a pixel: `x` u16, `y` u16, On count u8, Off count u8 (`LBEV` version 2). Playback emits that pixel’s On events, then its Off events. Pixels stay in first-seen order. Each count is 0–255; a hotter pixel continues in the next record. The infoNode attribute is `collapsePolarities`.
+
+AEDZ does not use this packing.
+
+### AEDZ timestamp shift
+
+The same shift control on an AEDZ recording or Save As. Every polarity event is still stored. Only the timestamp is quantized, so existing [`AEDZInputStream`](../src/net/sf/jaer/eventio/AEDZInputStream.java) playback shows the coarser times. The embedded AEDAT-2 header gains a comment `jAERLossyTimeShift=<bits>`. Frames and IMU are not in the `.aedz` file.
+
+### One measured recording
+
+`PropheseeIMX636HD-00050491_2026-10-07T14-06-35-0400-VCR_c0010.aedat4`: **182,787,226** polarity events, **1 h 0.12 s**, no frames, no IMU. The file on disk is already AEDAT-4 ZSTD (**1,034,468,740** bytes, 156,446 packets). The table rewrites those events in 65,536-event slices. AEDAT-4 rows use ZSTD. Shift is 10. All four outputs play back as the same event count. Collapse On and Off was not part of this run.
+
+| Output | What is stored | File bytes | vs rewritten AEDAT-4 ZSTD |
+|--------|----------------|----------:|--------------------------:|
+| AEDAT-4 ZSTD | Every event, microsecond timestamps | 1,012,249,445 | 1.00 |
+| AEDAT-4 ZSTD + 10-bit bins | Per-pixel polarity counts (`LBEV` v1) | 515,216,708 | 50.9% (1.96:1) |
+| AEDZ | Every event, microsecond timestamps | 525,295,464 | 51.9% (1.93:1) |
+| AEDZ + 10-bit timestamps | Every event, timestamps quantized to 1024 µs | 406,606,855 | 40.2% (2.49:1) |
+
+The rewritten AEDAT-4 ZSTD file is slightly smaller than the original cassette because each packet holds 65,536 events. On this recording, coarsening AEDZ timestamps beat collapsing counts into AEDAT-4 bins: the timestamp byte planes become mostly zeros.
 
 ---
 
