@@ -9531,7 +9531,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomInMenuItem.setText("Zoom in");
-        zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel. Right click and drag to pan.");
+        zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel. Drag to pan (one finger, or left or right button).");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomInMenuItemActionPerformed(evt);
@@ -9541,7 +9541,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_MINUS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomOutMenuItem.setText("Zoom out");
-        zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel. Right click and drag to pan.");
+        zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel. Drag to pan (one finger, or left or right button).");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomOutMenuItemActionPerformed(evt);
@@ -9551,7 +9551,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         unzoomMenuItem.setText("Unzoom");
-        unzoomMenuItem.setToolTipText("<html>Default display zooming, with border (see View/Filtering options/Set border space...). <p> Right click and drag to pan. <p> Ctl+wheel to zoom.");
+        unzoomMenuItem.setToolTipText("<html>Default display zooming, with border (see View/Filtering options/Set border space...). <p> Drag to pan (one finger, or left or right button). <p> Ctl+wheel to zoom.");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unzoomMenuItemActionPerformed(evt);

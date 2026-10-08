@@ -146,7 +146,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author Tobi
  * @see ch.unizh.ini.jaer.projects.minliu.Speedometer
  */
-abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements MouseListener, MouseMotionListener, MouseWheelListener, FrameAnnotater {
+abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements MouseListener, MouseMotionListener, MouseWheelListener, FrameAnnotater, CanvasLeftDragClaim {
 
     protected GLCanvas glCanvas;
     protected ChipCanvas chipCanvas;
@@ -294,6 +294,32 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     protected boolean isDontProcessMouse() {
         return !isFilterEnabled() || !isSelected()
                 || (isEnclosed() && getEnclosingFilter() != null && (!getEnclosingFilter().isFilterEnabled() || !getEnclosingFilter().isSelected()));
+    }
+
+    private static final ClassValue<Boolean> OVERRIDES_MOUSE_DRAGGED = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            Class<?> c = type;
+            while (c != null && c != EventFilter2DMouseAdaptor.class) {
+                try {
+                    c.getDeclaredMethod("mouseDragged", MouseEvent.class);
+                    return Boolean.TRUE;
+                } catch (NoSuchMethodException ex) {
+                    c = c.getSuperclass();
+                }
+            }
+            return Boolean.FALSE;
+        }
+    };
+
+    /**
+     * Left-drag belongs to this filter when it is selected, enabled, and
+     * overrides {@link #mouseDragged}. Otherwise a one-finger or left-button
+     * drag pans the chip view.
+     */
+    @Override
+    public boolean claimsCanvasLeftDrag() {
+        return !isDontProcessMouse() && OVERRIDES_MOUSE_DRAGGED.get(getClass());
     }
 
     @Override

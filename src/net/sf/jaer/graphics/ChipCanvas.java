@@ -42,6 +42,7 @@ import javax.swing.JRadioButtonMenuItem;
 import net.sf.jaer.Welcome;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
+import net.sf.jaer.eventprocessing.CanvasLeftDragClaim;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -3320,18 +3321,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                     begin3dInteractionPreview();
                 }
             }
-            if (evt.getButton() == MouseEvent.BUTTON3) {
+            if (evt.getButton() == MouseEvent.BUTTON1 && !is3DEnabled() && !canvasFilterClaimsLeftDrag()) {
+                // One-finger touchpad press-and-slide is a left-button drag.
+                begin2dPan(evt.getPoint());
+            } else if (evt.getButton() == MouseEvent.BUTTON3) {
                 dragging = true;
                 origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
-
-                if (mdStPt == null) {
-                    mdStPt = new Point(evt.getPoint());
-                } else {
-                    mdStPt.setLocation(evt.getPoint());
-                }
-                drStPx = new Vec(mdStPt.x / getScale(),
-                        -mdStPt.y / getScale()); //getPixelUnclippedFromMouseEvent(evt);
-                getZoom().dragPx.clear();
+                begin2dPan(evt.getPoint());
                 log.fine(getMousePixel().toString());
             }
             log.fine("pressed pixel " + getPixelFromMouseEventUnclipped(evt));
@@ -3377,6 +3373,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                     setAnglex((maxAngle * (screenY - (glCanvas.getHeight() / 2))) / glCanvas.getHeight());
                     log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f", anglex, angley));
                     // Keep current 3D frustum; dirtying the 2D clip area changes apparent zoom.
+                } else if (!canvasFilterClaimsLeftDrag()) {
+                    pan2d(e);
                 }
             } else if ((e.getModifiersEx() & but3mask) == but3mask) { // right mouse button drag
                 if (is3DEnabled()) {
@@ -3393,32 +3391,64 @@ public class ChipCanvas implements GLEventListener, Observer {
                     float dy = screenY - mdStPt.y;
                     origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / glCanvas.getWidth());
                     origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / glCanvas.getHeight());
-                } else { // normal pan
-                    Point mPt = e.getPoint();
-                    // drag in chip px is flipped vertically from screen drag
-                    Vec dr = new Vec(mPt.x / getScale(), -mPt.y / getScale());
-                    // mouseDragged can arrive without mousePressed (GLCanvas rebuilt on
-                    // chip switch / file close, or drag entered from outside the canvas).
-                    if (drStPx == null) {
-                        drStPx = new Vec(dr);
-                        getZoom().dragPx.clear();
-                        dragging = true;
-                    }
-                    Vec newDrag = dr.subtract(drStPx);
-                    if (isZoomed()) {
-                        // While zoomed, clip bounds are incremental; apply only the delta since last drag event.
-                        Vec delta = newDrag.subtract(getZoom().dragPx);
-                        getZoom().dragPx = newDrag;
-                        getClipArea().panFromCurrentBy(-delta.x, -delta.y);
-                        getClipArea().computeCenterPixel();
-                    } else {
-                        getZoom().dragPx = newDrag;
-                        getClipArea().setDirty();
-                    }
+                } else {
+                    pan2d(e);
                 }
             }
             repaint();
         }
 
+        private void begin2dPan(Point p) {
+            dragging = true;
+            if (mdStPt == null) {
+                mdStPt = new Point(p);
+            } else {
+                mdStPt.setLocation(p);
+            }
+            drStPx = new Vec(mdStPt.x / getScale(), -mdStPt.y / getScale());
+            getZoom().dragPx.clear();
+        }
+
+        /** Pan in chip pixels. Drag-right moves the image with the pointer. */
+        private void pan2d(final MouseEvent e) {
+            Point mPt = e.getPoint();
+            // drag in chip px is flipped vertically from screen drag
+            Vec dr = new Vec(mPt.x / getScale(), -mPt.y / getScale());
+            // mouseDragged can arrive without mousePressed (GLCanvas rebuilt on
+            // chip switch / file close, or drag entered from outside the canvas).
+            if (drStPx == null) {
+                drStPx = new Vec(dr);
+                getZoom().dragPx.clear();
+                dragging = true;
+            }
+            Vec newDrag = dr.subtract(drStPx);
+            if (isZoomed()) {
+                // While zoomed, clip bounds are incremental; apply only the delta since last drag event.
+                Vec delta = newDrag.subtract(getZoom().dragPx);
+                getZoom().dragPx = newDrag;
+                getClipArea().panFromCurrentBy(-delta.x, -delta.y);
+                getClipArea().computeCenterPixel();
+            } else {
+                getZoom().dragPx = newDrag;
+                getClipArea().setDirty();
+            }
+        }
+
+    }
+
+    /**
+     * True when a selected filter owns left-drag (ROI, prober, labeler, …).
+     * One-finger and left-button pans wait for that filter.
+     */
+    private boolean canvasFilterClaimsLeftDrag() {
+        if (glCanvas == null) {
+            return false;
+        }
+        for (MouseMotionListener listener : glCanvas.getMouseMotionListeners()) {
+            if (listener instanceof CanvasLeftDragClaim claim && claim.claimsCanvasLeftDrag()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

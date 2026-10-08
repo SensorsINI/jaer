@@ -40,6 +40,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.CanvasLeftDragClaim;
 import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.TensorFlowNativeSupport;
@@ -96,7 +97,7 @@ import org.tensorflow.types.TFloat32;
  */
 @Description("<html>Denoising noise filter that uses an MLP neural network to classify events as signal or noise events. Published in Guo & Delbruck, T-PAMI 2022 <a href=\"http://dx.doi.org/10.1109/TPAMI.2022.3152999\">10.1109/TPAMI.2022.3152999</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener, MouseMotionListener, MouseWheelListener {
+public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener, MouseMotionListener, MouseWheelListener, CanvasLeftDragClaim {
 
     public final String DEFAULT_MLPF_NETWORK_FOLDER = "MLPF_2xMSEO1H20_linear_7";
     private final String KEY_NETWORK_FILENAME = "lastNetworkFilename";
@@ -1404,6 +1405,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 
     @Override
     public void mouseEntered(MouseEvent e) {
+    }
+
+    /**
+     * ROI selection uses left-drag while this filter is selected, including
+     * when {@code freezeRoi} only warns instead of updating the rectangle.
+     */
+    @Override
+    public boolean claimsCanvasLeftDrag() {
+        return isSelected();
     }
 
     @Override

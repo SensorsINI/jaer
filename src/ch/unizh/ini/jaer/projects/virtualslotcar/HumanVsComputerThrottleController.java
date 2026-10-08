@@ -34,6 +34,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.CanvasLeftDragClaim;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.ChipCanvas;
@@ -51,7 +52,7 @@ import net.sf.jaer.event.BasicEvent;
  * @author Tobi
  */
 @Description("Controls slot car adaptively according to speed of human controlled car")
-public class HumanVsComputerThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener, PropertyChangeListener {
+public class HumanVsComputerThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener, PropertyChangeListener, CanvasLeftDragClaim {
 
     // prefs
     private int numSegmentsToBrakeBeforeCrash = getInt("numSegmentsToBrakeBeforeCrash", 2);
@@ -1550,6 +1551,11 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         Increae, Decrease, None
     };
     volatile EditState editState = EditState.None;
+
+    @Override
+    public boolean claimsCanvasLeftDrag() {
+        return isSelected();
+    }
 
     @Override
     public void mouseDragged(MouseEvent e) {

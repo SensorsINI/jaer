@@ -15,6 +15,7 @@ import java.beans.PropertyChangeEvent;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
+import net.sf.jaer.eventprocessing.CanvasLeftDragClaim;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -63,7 +64,7 @@ point).
  * @author Michael Pfeiffer
  */
 @Description("Detects a track from incoming pixels and user input")
-public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener, PropertyChangeListener {
+public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener, PropertyChangeListener, CanvasLeftDragClaim {
 
     
     private GLCanvas glCanvas;
@@ -448,6 +449,11 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
 
     @Override
     public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public boolean claimsCanvasLeftDrag() {
+        return isFilterEnabled();
     }
 
     @Override
