@@ -827,12 +827,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         fmt.setPrecision(1);
         StringBuilder sb = new StringBuilder();
         sb.append(fmt.format((double) file.length()).trim()).append("B");
-        long durUs;
-        if (stream instanceof Aedat4FileInputStream a4) {
-            durUs = a4.getDurationUsLong();
-        } else {
-            durUs = stream.getDurationUs();
-        }
+        long durUs = stream.getDurationUsLong();
         sb.append("  ").append(AEViewer.formatRecordingDurationUs(durUs)).append('\n');
         sb.append(fmt.format((double) stream.size()).trim()).append(" ev");
         if (aedat4 && stream instanceof Aedat4FileInputStream a4) {

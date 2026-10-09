@@ -70,8 +70,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * v12: FlyEye dual EVTS index stores per-packet streamId.
+     * Per-packet {@code numElements} stays a 32-bit field (FlatBuffers vector length).
+     * The file total {@code eventCount} is a long and is not clamped.
      */
     private static final int INDEX_CACHE_VERSION = 12;
+    /**
+     * Largest FileDataTable a {@link ByteBuffer} can hold. A bigger trailer
+     * cannot be indexed in one shot (the old 512 MiB cap rejected long files).
+     */
+    static final long MAX_FILE_DATA_TABLE_BYTES = Integer.MAX_VALUE - 8L;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
@@ -384,12 +391,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return;
         }
         log.info(String.format(
-                "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%s (%d EVTS packets indexed)",
+                "Opened AEDAT-4 %s (%s): stream %d%s: %s (%,d) events, %s frames, %s IMU samples, duration=%s (%d EVTS packets indexed)",
                 file.getName(),
                 Aedat4Compression.nameOf(compression),
                 this.eventStreamId,
                 selectedSource == null ? "" : " (" + selectedSource + ")",
                 eng.format((double) eventCount).trim(),
+                eventCount,
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
                 AEViewer.formatRecordingDurationUs(getDurationUsLong()),
@@ -499,13 +507,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             long tStart = d.timestampStart;
             long tEnd = d.timestampEnd;
             if (isIndexedEventStream(d.streamId)) {
-                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, d.numElements));
+                long count = Math.max(0L, d.numElements);
                 events.add(new PacketRef(d.byteOffset, d.size, tStart, tEnd, count, cumEvents, 0L, d.streamId));
                 cumEvents += count;
             } else if (d.streamId == frameStreamId) {
                 frames.add(new PacketRef(d.byteOffset, d.size, tStart, tEnd, 1, 0));
             } else if (d.streamId == imuStreamId) {
-                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, d.numElements));
+                long count = Math.max(0L, d.numElements);
                 imus.add(new PacketRef(d.byteOffset, d.size, tStart, tEnd, count, 0));
                 imuElems += count;
             }
@@ -711,9 +719,22 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * Summary of this AEDAT-4 recording: event/frame/IMU counts, duration,
      * on-disk size, and packet-payload compression vs uncompressed FlatBuffers
      * when codec headers store the original size (ZSTD; LZ4 written by current jAER).
+     * Counts are exact {@code long} values; the engineering prefix is only a reading aid.
      */
     @Override
     public String getFileInfo() {
+        try {
+            return getFileInfo(null);
+        } catch (IOException e) {
+            return "File info failed: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Same text as {@link #getFileInfo()}. {@code progress} is updated while
+     * peeking codec headers (one read per packet). Cancel throws.
+     */
+    public String getFileInfo(ProgressMonitor progress) throws IOException {
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         StringBuilder sb = new StringBuilder();
@@ -722,11 +743,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         long durationUs = getDurationUsLong();
         String durationStr = AEViewer.formatRecordingDurationUs(durationUs);
-        sb.append(String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples, duration=%s",
+        sb.append(String.format(
+                "AEDAT-4 %s: %s (%,d) events, %s (%,d) frames, %s (%,d) IMU samples, duration=%s",
                 Aedat4Compression.nameOf(compression),
-                eng.format((double) eventCount).trim(),
-                eng.format((double) frameCount).trim(),
-                eng.format((double) imuSampleCount).trim(),
+                eng.format((double) eventCount).trim(), eventCount,
+                eng.format((double) frameCount).trim(), frameCount,
+                eng.format((double) imuSampleCount).trim(), imuSampleCount,
                 durationStr));
         if (lossyTimeShift >= 0) {
             sb.append(String.format("\nLossy time bins: right shift %d bits (jAER-only EVTS)%s",
@@ -735,14 +757,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (file != null) {
             sb.append(String.format("\nSize: %sB on disk", eng.format((double) file.length()).trim()));
         }
-        ensurePayloadCompressionStats();
+        ensurePayloadCompressionStats(progress);
         String compressionLine = Aedat4Compression.formatPayloadCompression(
                 compression, cachedUncompressedPayloadBytes > 0 ? cachedUncompressedPayloadBytes : -1,
                 cachedCompressedPayloadBytes);
         if (!compressionLine.isEmpty()) {
             sb.append('\n').append(compressionLine);
         }
-        sb.append(String.format("\nStream %d%s, %d EVTS packets indexed",
+        sb.append(String.format("\nStream %d%s, %,d EVTS packets indexed",
                 eventStreamId,
                 selectedSource == null ? "" : " (" + selectedSource + ")",
                 eventRefs.length));
@@ -755,50 +777,80 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /**
      * Sum compressed payload sizes; peek ZSTD/LZ4 frame headers for uncompressed size.
      * Positional {@link FileChannel} reads do not move the playback cursor.
+     * Cache fields are written only after a finished scan so cancel can be retried.
      */
-    private void ensurePayloadCompressionStats() {
+    private void ensurePayloadCompressionStats(ProgressMonitor progress) throws IOException {
         if (cachedCompressedPayloadBytes >= 0) {
             return;
         }
-        cachedCompressedPayloadBytes = sumPayloadBytes(eventRefs)
-                + sumPayloadBytes(frameRefs) + sumPayloadBytes(imuRefs);
+        PacketRef[] events = eventRefs;
+        PacketRef[] frames = frameRefs;
+        PacketRef[] imus = imuRefs;
+        long compressed = sumPayloadBytes(events) + sumPayloadBytes(frames) + sumPayloadBytes(imus);
         if (compression == CompressionType.NONE) {
-            cachedUncompressedPayloadBytes = cachedCompressedPayloadBytes;
+            cachedCompressedPayloadBytes = compressed;
+            cachedUncompressedPayloadBytes = compressed;
             return;
         }
         if (channel == null || !channel.isOpen()) {
+            cachedCompressedPayloadBytes = compressed;
             cachedUncompressedPayloadBytes = -2;
             return;
+        }
+        int total = refsLength(events) + refsLength(frames) + refsLength(imus);
+        if (progress != null) {
+            progress.setMinimum(0);
+            progress.setMaximum(100);
+            progress.setProgress(0);
+            progress.setNote("Reading compression headers (0 / " + total + ")");
         }
         ByteBuffer peek = ByteBuffer.allocate(Aedat4Compression.UNCOMPRESSED_SIZE_HEADER_BYTES);
-        long uncompressed = 0;
-        long fromEvents = uncompressedFromRefs(eventRefs, peek);
+        int[] done = new int[1];
+        long fromEvents = uncompressedFromRefs(events, peek, progress, done, total);
         if (fromEvents < 0) {
+            cachedCompressedPayloadBytes = compressed;
             cachedUncompressedPayloadBytes = -2;
             return;
         }
-        uncompressed += fromEvents;
-        long fromFrames = uncompressedFromRefs(frameRefs, peek);
+        long fromFrames = uncompressedFromRefs(frames, peek, progress, done, total);
         if (fromFrames < 0) {
+            cachedCompressedPayloadBytes = compressed;
             cachedUncompressedPayloadBytes = -2;
             return;
         }
-        uncompressed += fromFrames;
-        long fromImu = uncompressedFromRefs(imuRefs, peek);
+        long fromImu = uncompressedFromRefs(imus, peek, progress, done, total);
         if (fromImu < 0) {
+            cachedCompressedPayloadBytes = compressed;
             cachedUncompressedPayloadBytes = -2;
             return;
         }
-        cachedUncompressedPayloadBytes = uncompressed + fromImu;
+        cachedCompressedPayloadBytes = compressed;
+        cachedUncompressedPayloadBytes = fromEvents + fromFrames + fromImu;
+        if (progress != null) {
+            progress.setProgress(100);
+        }
+    }
+
+    private static int refsLength(PacketRef[] refs) {
+        return refs == null ? 0 : refs.length;
     }
 
     /** Sum of uncompressed payload sizes, or {@code -1} if any packet header omits it. */
-    private long uncompressedFromRefs(PacketRef[] refs, ByteBuffer peek) {
+    private long uncompressedFromRefs(PacketRef[] refs, ByteBuffer peek, ProgressMonitor progress,
+            int[] done, int total) throws IOException {
         if (refs == null || refs.length == 0) {
             return 0;
         }
         long n = 0;
         for (PacketRef r : refs) {
+            if ((done[0] & 8191) == 0) {
+                throwIfCanceled(progress, "File info");
+                if (progress != null && total > 0) {
+                    progress.setProgress((int) Math.min(99, (done[0] * 100L) / total));
+                    progress.setNote("Reading compression headers (" + done[0] + " / " + total + ")");
+                }
+            }
+            done[0]++;
             if (r.payloadSize <= 0) {
                 continue;
             }
@@ -808,6 +860,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             try {
                 read = channel.read(peek, r.payloadOffset);
             } catch (IOException e) {
+                if (e.getMessage() != null && e.getMessage().contains("canceled")) {
+                    throw e;
+                }
                 log.log(Level.FINE, "Could not peek AEDAT-4 payload header at " + r.payloadOffset, e);
                 return -1;
             }
@@ -834,6 +889,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         return n;
+    }
+
+    /** FlatBuffers vector indexes are int. Saturate instead of wrapping past 2^31 events in one packet. */
+    private static int saturateToInt(long v) {
+        if (v > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        if (v < Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        }
+        return (int) v;
     }
 
     private static void throwIfCanceled(ProgressMonitor progressMonitor, String what) throws IOException {
@@ -1312,7 +1378,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         throwIfCanceled(progressMonitor, "AEDAT-4 FileDataTable index");
         final long remaining = fileSize - dataTablePosition;
-        if (remaining < 8 || remaining > 512L * 1024 * 1024) {
+        if (remaining < 8 || remaining > MAX_FILE_DATA_TABLE_BYTES) {
             log.warning("AEDAT-4 FileDataTable remaining bytes implausible (" + remaining + "); scanning packets");
             return false;
         }
@@ -1421,7 +1487,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 continue;
             }
             if (isIndexedEventStream(streamId)) {
-                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, numElements));
+                long count = Math.max(0L, numElements);
                 events.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, cumEvents, 0L, streamId));
                 cumEvents += count;
                 used++;
@@ -1429,7 +1495,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 frames.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, 1, 0));
                 used++;
             } else if (streamId == imuStreamId) {
-                int count = (int) Math.min(Integer.MAX_VALUE, Math.max(0, numElements));
+                long count = Math.max(0L, numElements);
                 imus.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, 0));
                 imuElems += count;
                 used++;
@@ -1554,12 +1620,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             if (isIndexedEventStream(streamId)) {
                 Aedat4PolaritySamples samples = Aedat4PolaritySamples.fromDecompressed(flat);
-                int num = samples.length();
+                long num = samples.length();
                 long start = 0;
                 long end = 0;
                 if (num > 0 && samples.load(0)) {
                     start = samples.timestamp;
-                    if (samples.load(num - 1)) {
+                    if (samples.load((int) (num - 1))) {
                         end = samples.timestamp;
                     }
                 }
@@ -1576,12 +1642,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 frames.add(new PacketRef(payloadOffset, payloadSize, start, end, 1, 0));
             } else if (streamId == imuStreamId) {
                 IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(flat);
-                int num = packet.elementsLength();
+                long num = packet.elementsLength();
                 long start = 0;
                 long end = 0;
                 if (num > 0) {
                     start = packet.elements(0).timestamp();
-                    end = packet.elements(num - 1).timestamp();
+                    end = packet.elements((int) (num - 1)).timestamp();
                 }
                 imus.add(new PacketRef(payloadOffset, payloadSize, start, end, num, 0));
                 imuElems += num;
@@ -1612,6 +1678,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             for (PacketRef r : imus) {
                 imuSampleCount += r.numElements;
             }
+        }
+        if (eventCount > Integer.MAX_VALUE || imuSampleCount > Integer.MAX_VALUE) {
+            log.info(String.format(
+                    "AEDAT-4 counts exceed 32-bit signed max (events=%,d IMU=%,d); playback uses long indexes",
+                    eventCount, imuSampleCount));
         }
 
         if (!events.isEmpty()) {
@@ -2002,7 +2073,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long idx = Math.max(0, Math.min(eventIndex, eventCount - 1));
         int pi = findEventPacket(idx);
         PacketRef ref = eventRefs[pi];
-        int local = (int) (idx - ref.firstEventIndex);
+        int local = saturateToInt(idx - ref.firstEventIndex);
         Aedat4PolaritySamples samples = polarityAt(pi);
         if (!samples.load(local)) {
             log.warning(String.format(
@@ -2122,8 +2193,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             int pi = findEventPacket(i);
             PacketRef ref = eventRefs[pi];
             Aedat4PolaritySamples packet = polarityAt(pi);
-            int local = (int) (i - ref.firstEventIndex);
-            int localEnd = (int) Math.min(ref.numElements, endIdx - ref.firstEventIndex);
+            int local = saturateToInt(i - ref.firstEventIndex);
+            int localEnd = saturateToInt(Math.min(ref.numElements, endIdx - ref.firstEventIndex));
             int packetElements = packet.length();
             if (localEnd > packetElements) {
                 log.warning(String.format(
@@ -3112,7 +3183,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeInt(r.payloadSize);
             out.writeLong(r.unixStart);
             out.writeLong(r.unixEnd);
-            out.writeInt((int) Math.min(Integer.MAX_VALUE, r.numElements));
+            // Low 32 bits. Read back unsigned. A DV packet vector cannot exceed 2^31-1 elements.
+            out.writeInt((int) r.numElements);
             out.writeLong(r.firstEventIndex);
             out.writeLong(r.wrapOffset);
             out.writeInt(r.streamId);
@@ -3139,7 +3211,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeInt(r.payloadSize);
             out.writeLong(r.unixStart);
             out.writeLong(r.unixEnd);
-            out.writeInt((int) Math.min(Integer.MAX_VALUE, r.numElements));
+            out.writeInt((int) r.numElements);
             out.writeLong(r.wrapOffset);
         }
     }
@@ -3502,7 +3574,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 wrap = ref.wrapOffset;
                 lastTs = Long.MIN_VALUE;
             }
-            int local = (int) (i - ref.firstEventIndex);
+            int local = saturateToInt(i - ref.firstEventIndex);
             if (local < 0 || local >= nEl || !packet.load(local)) {
                 i = ref.firstEventIndex + Math.max(1, ref.numElements);
                 continue;
@@ -3646,7 +3718,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 wrap = ref.wrapOffset;
                 lastTs = Long.MIN_VALUE;
             }
-            int local = (int) (i - ref.firstEventIndex);
+            int local = saturateToInt(i - ref.firstEventIndex);
             if (local < 0 || local >= nEl || !packet.load(local)) {
                 i = ref.firstEventIndex - 1;
                 continue;
@@ -3824,7 +3896,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return (int) d;
     }
 
-    /** Unwrapped duration in µs (12 h recordings exceed 32-bit). */
+    /** Unwrapped duration in µs. Longer than ~35.8 min (2^31 µs) does not fit in {@link #getDurationUs()}. */
+    @Override
     public long getDurationUsLong() {
         if (flyEyeNativePair && eventRefs.length > 0) {
             return Math.max(0L, flyEyeUnixMax - flyEyeUnixMin);
@@ -4230,7 +4303,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             setFractionalPosition(frac);
             return;
         }
-        long t = timelineOriginUs() + (long) (frac * dur);
+        // frac is float; multiplying the long duration in float rounds a 24 h span to ~8 ms steps.
+        long t = timelineOriginUs() + (long) ((double) frac * dur);
         position(eventIndexNearestTimestamp(t));
         if (!hasPolarity()) {
             typedPlayheadUs = t;
@@ -4301,7 +4375,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public void setFractionalPosition(float frac) {
-        position((long) (Math.max(0, Math.min(1, frac)) * playableSize()));
+        double f = Math.max(0d, Math.min(1d, frac));
+        // Keep the event count in double. float cannot represent counts above 2^24 exactly.
+        position((long) (f * playableSize()));
     }
 
     @Override

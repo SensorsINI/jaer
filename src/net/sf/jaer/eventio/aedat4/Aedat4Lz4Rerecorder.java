@@ -304,7 +304,7 @@ public final class Aedat4Lz4Rerecorder {
             return null;
         }
         long remaining = fileSize - dataTablePosition;
-        if (remaining < 8 || remaining > 512L * 1024 * 1024) {
+        if (remaining < 8 || remaining > Aedat4FileInputStream.MAX_FILE_DATA_TABLE_BYTES) {
             return null;
         }
         long saved;

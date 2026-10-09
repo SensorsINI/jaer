@@ -32,7 +32,7 @@ public final class Aedat4PlaybackBench {
         long tOpen = System.nanoTime();
         Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip);
         System.out.printf("open %.0f ms  events=%d  duration=%.3fs  scanPackets=%d/%s%n",
-                (System.nanoTime() - tOpen) * 1e-6, in.size(), in.getDurationUs() * 1e-6,
+                (System.nanoTime() - tOpen) * 1e-6, in.size(), in.getDurationUsLong() * 1e-6,
                 in.getTimesliceScanPacketCount(), Boolean.toString(in.isScanTimesliceInPacket()));
         System.out.println(in.getFileInfo().replace('\n', ' '));
 
@@ -70,7 +70,7 @@ public final class Aedat4PlaybackBench {
             // file consumed
         }
         double wallS = (System.nanoTime() - tWall) * 1e-9;
-        double fileS = Math.max(1e-9, in.getDurationUs() * 1e-6);
+        double fileS = Math.max(1e-9, in.getDurationUsLong() * 1e-6);
         System.out.println(in.formatPlaybackProfile());
         System.out.printf("chip extractPacket  %7.1f ms  (%.2f ms/slice)%n",
                 nsExtract * 1e-6, nsExtract * 1e-6 / Math.max(1, slices));

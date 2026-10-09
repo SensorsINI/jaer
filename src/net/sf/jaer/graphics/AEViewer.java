@@ -100,6 +100,7 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.ProgressMonitor;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -624,6 +625,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Nonmodal File/Show file info window; reused while this viewer is open. */
     private JFrame fileInfoDialog;
     private JTextArea fileInfoTextArea;
+    /** File info header scan is off the EDT; ignore a second click until it finishes. */
+    private volatile boolean fileInfoBusy;
     /** Last File → Save As output, for File info input/output compression summary. */
     private File lastSaveAsOutputFile;
     private String lastSaveAsSourceFileInfo;
@@ -14710,8 +14713,65 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         private void showFileInfoDialog() {
             AEFileInputStreamInterface stream = getAePlayer() == null ? null : getAePlayer().getAEInputStream();
-            String info = composeFileInfoText(stream);
-            File f = stream == null ? null : stream.getFile();
+            if (!(stream instanceof Aedat4FileInputStream) || fileInfoBusy) {
+                if (!fileInfoBusy) {
+                    presentFileInfoDialog(composeFileInfoText(stream), stream == null ? null : stream.getFile());
+                }
+                return;
+            }
+            fileInfoBusy = true;
+            setFileInfoWaitCursor(true);
+            Aedat4FileInputStream aedat4 = (Aedat4FileInputStream) stream;
+            File file = aedat4.getFile();
+            ProgressMonitor monitor = new ProgressMonitor(AEViewer.this,
+                    "Reading file info", "Starting…", 0, 100);
+            monitor.setMillisToDecideToPopup(400);
+            monitor.setMillisToPopup(400);
+            // Return to the EDT once so the wait cursor paints before the scan starts.
+            SwingUtilities.invokeLater(() -> {
+                Thread worker = new Thread(() -> {
+                    String info;
+                    boolean canceled = false;
+                    try {
+                        info = composeFileInfoText(aedat4, monitor);
+                    } catch (IOException ex) {
+                        canceled = ex.getMessage() != null && ex.getMessage().contains("canceled");
+                        info = canceled ? null : "File info failed: " + ex.getMessage();
+                        if (!canceled) {
+                            log.warning("File info failed: " + ex);
+                        }
+                    } catch (RuntimeException ex) {
+                        log.log(Level.WARNING, "File info failed", ex);
+                        info = "File info failed: " + ex.getMessage();
+                    }
+                    String text = info;
+                    boolean skip = canceled;
+                    SwingUtilities.invokeLater(() -> {
+                        fileInfoBusy = false;
+                        setFileInfoWaitCursor(false);
+                        monitor.close();
+                        if (!skip && text != null) {
+                            presentFileInfoDialog(text, file);
+                        }
+                    });
+                }, "file-info");
+                worker.setDaemon(true);
+                worker.start();
+            });
+        }
+
+        private void setFileInfoWaitCursor(boolean wait) {
+            Cursor cursor = Cursor.getPredefinedCursor(wait ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR);
+            setCursor(cursor);
+            if (getRootPane() == null) {
+                return;
+            }
+            Component glass = getRootPane().getGlassPane();
+            glass.setCursor(wait ? cursor : null);
+            glass.setVisible(wait);
+        }
+
+        private void presentFileInfoDialog(String info, File f) {
             boolean firstShow = fileInfoDialog == null;
             if (firstShow) {
                 fileInfoTextArea = new JTextArea();
@@ -14768,7 +14828,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * when this file is the last File → Save As output.
          */
         private String composeFileInfoText(AEFileInputStreamInterface stream) {
-            String info = stream == null ? "" : stream.getFileInfo();
+            try {
+                return composeFileInfoText(stream, null);
+            } catch (IOException e) {
+                return "File info failed: " + e.getMessage();
+            }
+        }
+
+        private String composeFileInfoText(AEFileInputStreamInterface stream, ProgressMonitor monitor)
+                throws IOException {
+            String info;
+            if (stream instanceof Aedat4FileInputStream a4) {
+                info = a4.getFileInfo(monitor);
+            } else {
+                info = stream == null ? "" : stream.getFileInfo();
+            }
             if (info == null || info.isEmpty()) {
                 info = "File info is not available for this recording format.";
             }

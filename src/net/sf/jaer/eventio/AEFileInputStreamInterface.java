@@ -84,9 +84,19 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      * @return the duration of the file in us.
      * <p>
      * Assumes data file is timestamped in us. This method fails to provide a
-     * sensible value if the timestamp wwaps.
+     * sensible value if the timestamp wraps. Values that do not fit in a signed
+     * 32-bit microsecond count (~35.8 min) are saturated; use
+     * {@link #getDurationUsLong()} for the full span.
      */
     int getDurationUs();
+
+    /**
+     * Duration in microseconds. AEDAT-4 packet times are 64-bit, so a recording
+     * longer than 2<sup>31</sup> µs (~35.8 min) does not fit in {@link #getDurationUs()}.
+     */
+    default long getDurationUsLong() {
+        return getDurationUs();
+    }
 
     /**
      * returns the first timestamp in the stream

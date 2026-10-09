@@ -69,6 +69,31 @@ public class Aedat4LossyTimeBinsRoundtripTest {
     }
 
     @Test
+    public void fileInfoPrintsExactLongEventCount() throws Exception {
+        File file = File.createTempFile("jaer-file-info", ".aedat4");
+        DVS128 chip = new DVS128();
+        try {
+            try (Aedat4FileOutputStream out = new Aedat4FileOutputStream(
+                    file, chip, CompressionType.LZ4, BASE_US)) {
+                out.writeBundle(sampleEvents());
+            }
+            Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip);
+            try {
+                assertEquals(5L, in.getIndexedEventCount());
+                String info = in.getFileInfo();
+                assertTrue(info.contains("(5) events"));
+                assertTrue(info.contains("(0) frames"));
+                assertTrue(info.contains("(0) IMU samples"));
+                assertEquals(info, in.getFileInfo(null));
+            } finally {
+                in.close();
+            }
+        } finally {
+            Files.deleteIfExists(file.toPath());
+        }
+    }
+
+    @Test
     public void lossyOffKeepsMicrosecondTimestamps() throws Exception {
         File file = File.createTempFile("jaer-lossy-off", ".aedat4");
         DVS128 chip = new DVS128();
