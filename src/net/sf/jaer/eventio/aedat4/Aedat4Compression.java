@@ -1,6 +1,8 @@
 package net.sf.jaer.eventio.aedat4;
 
 import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdCompressCtx;
+import com.github.luben.zstd.ZstdDecompressCtx;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -235,6 +237,55 @@ public final class Aedat4Compression {
     /**
      * Decompresses one AEDAT-4 packet payload to a size-prefixed FlatBuffer.
      */
+    /**
+     * One thread's ZSTD contexts, reused across packets. One-shot
+     * {@link Zstd#compress(byte[], int)} builds a new context every packet;
+     * cassette merge does that millions of times. Close when the thread is done.
+     * LZ4 still goes through {@link #compress(byte[], int)}.
+     */
+    static final class Reusable implements AutoCloseable {
+        private final ZstdCompressCtx compressCtx = new ZstdCompressCtx();
+        private final ZstdDecompressCtx decompressCtx = new ZstdDecompressCtx();
+        private int level = Integer.MIN_VALUE;
+
+        byte[] compress(byte[] uncompressed, int compression) throws IOException {
+            compression = clamp(compression);
+            if (compression == CompressionType.NONE || uncompressed == null || uncompressed.length == 0) {
+                return uncompressed;
+            }
+            if (compression == CompressionType.ZSTD || compression == CompressionType.ZSTD_HIGH) {
+                int want = compression == CompressionType.ZSTD_HIGH ? ZSTD_HIGH_LEVEL : ZSTD_LEVEL;
+                if (level != want) {
+                    compressCtx.setLevel(want);
+                    level = want;
+                }
+                return compressCtx.compress(uncompressed);
+            }
+            return Aedat4Compression.compress(uncompressed, compression);
+        }
+
+        byte[] decompress(byte[] compressed, int compression) throws IOException {
+            compression = clamp(compression);
+            if (compression == CompressionType.NONE || compressed == null || compressed.length == 0) {
+                return compressed;
+            }
+            if (compression == CompressionType.ZSTD || compression == CompressionType.ZSTD_HIGH) {
+                long size = Zstd.decompressedSize(compressed);
+                if (size <= 0 || size > Integer.MAX_VALUE) {
+                    return Zstd.decompress(compressed, compressed.length * 8);
+                }
+                return decompressCtx.decompress(compressed, (int) size);
+            }
+            return Aedat4Compression.decompress(compressed, compression);
+        }
+
+        @Override
+        public void close() {
+            compressCtx.close();
+            decompressCtx.close();
+        }
+    }
+
     public static byte[] decompress(byte[] compressed, int compression) throws IOException {
         compression = clamp(compression);
         if (compression == CompressionType.NONE || compressed == null || compressed.length == 0) {

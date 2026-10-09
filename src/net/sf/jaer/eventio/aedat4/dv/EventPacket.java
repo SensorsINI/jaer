@@ -54,6 +54,16 @@ public final class EventPacket extends Table {
         return o != 0 ? __vector_len(o) : 0;
     }
 
+    /**
+     * Absolute {@link ByteBuffer} index of {@code elements(0)}, or {@code -1}
+     * when the vector is absent. Each element is 16 bytes; the timestamp is the
+     * first little-endian long.
+     */
+    public int elementsVectorStart() {
+        int o = __offset(4);
+        return o != 0 ? __vector(o) : -1;
+    }
+
     public static int createEventPacket(FlatBufferBuilder builder, int elementsOffset) {
         builder.startTable(1);
         addElements(builder, elementsOffset);

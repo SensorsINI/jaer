@@ -4,17 +4,23 @@ import com.google.flatbuffers.FlatBufferBuilder;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
 import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
-import net.sf.jaer.eventio.aedat4.dv.Event;
 import net.sf.jaer.eventio.aedat4.dv.EventPacket;
 import net.sf.jaer.eventio.aedat4.dv.FileDataDefinition;
 import net.sf.jaer.eventio.aedat4.dv.FileDataTable;
@@ -30,7 +36,9 @@ import net.sf.jaer.util.RecordingDiskSpace;
  * Copies packets in record order and does not delete sources. Cassette
  * boundaries that jumped because each file used a new Unix origin (VCR roll)
  * are stitched so playback time is continuous; gaps inside a cassette (e.g.
- * denoising) are left as-is.
+ * denoising) are left as-is. A stitched cassette is decompressed, shifted,
+ * and recompressed on several cores; a cassette that needs no time shift is
+ * copied as compressed bytes.
  */
 public final class Aedat4Concat {
 
@@ -41,6 +49,10 @@ public final class Aedat4Concat {
     static final long OVERHEAD_FLOOR_BYTES = 64L << 20;
     /** Close a cassette-boundary jump larger than this (VCR double-counted baseUs). */
     static final long STITCH_GAP_US = 50_000L;
+    /** Packets rewritten together so the stitch can use more than one core. */
+    private static final int WAVE_PACKETS = 512;
+    /** Compressed bytes per rewrite wave. Caps memory when packets are large. */
+    private static final int WAVE_BYTES = 8 << 20;
 
     private Aedat4Concat() {
     }
@@ -158,6 +170,7 @@ public final class Aedat4Concat {
             }
         }, "aedat4-concat-partial-cleanup");
         Runtime.getRuntime().addShutdownHook(hook);
+        long started = System.nanoTime();
         try {
             int packets = doMerge(sources, partial, progress);
             throwIfCanceled(progress);
@@ -167,8 +180,8 @@ public final class Aedat4Concat {
             if (!partial.renameTo(dest)) {
                 throw new IOException("cannot rename " + partial + " to " + dest);
             }
-            log.info("AEDAT-4 concat " + sources.size() + " files -> " + dest.getName()
-                    + " packets=" + packets);
+            log.info(String.format("AEDAT-4 concat %d files -> %s packets=%d in %.1fs",
+                    sources.size(), dest.getName(), packets, (System.nanoTime() - started) / 1e9));
             return new Result(dest, packets, sources);
         } catch (Throwable t) {
             if (partial.exists() && !partial.delete()) {
@@ -192,12 +205,14 @@ public final class Aedat4Concat {
     private static int doMerge(List<File> sources, File partial, ProgressMonitor progress)
             throws IOException, InterruptedException {
         Header first = readHeader(sources.get(0));
+        RewritePool pool = new RewritePool();
         try (RandomAccessFile outRaf = new RandomAccessFile(partial, "rw");
                 FileChannel out = outRaf.getChannel()) {
-            out.write(ByteBuffer.wrap(Aedat4FileOutputStream.VERSION_LINE));
-            long headerPosition = out.position();
+            PacketWriter writer = new PacketWriter(out);
+            writer.write(Aedat4FileOutputStream.VERSION_LINE);
+            long headerPosition = writer.position();
             byte[] outHeader = buildIOHeader(first.compression, DATA_TABLE_POSITION_PENDING, first.infoNode);
-            out.write(ByteBuffer.wrap(outHeader));
+            writer.write(outHeader);
             List<DataDef> defs = new ArrayList<>();
             long[] lastEndUs = { 0L };
             int fileIndex = 0;
@@ -217,7 +232,7 @@ public final class Aedat4Concat {
                     progress.setNote("Concat " + (fileIndex + 1) + "/" + sources.size()
                             + ": " + source.getName());
                 }
-                copyPackets(source, h, out, defs, progress, fileIndex, sources.size(), lastEndUs);
+                copyPackets(source, h, writer, defs, progress, fileIndex, sources.size(), lastEndUs, pool);
                 fileIndex++;
             }
             throwIfCanceled(progress);
@@ -225,16 +240,17 @@ public final class Aedat4Concat {
                 progress.setNote("Writing FileDataTable");
                 progress.setProgress(95);
             }
-            long tablePosition = out.position();
+            long tablePosition = writer.position();
             byte[] ftab = Aedat4Compression.compress(buildFileDataTable(defs), first.compression);
-            out.write(ByteBuffer.wrap(ftab));
+            writer.write(ftab);
+            writer.flush();
             byte[] patched = buildIOHeader(first.compression, tablePosition, first.infoNode);
             if (patched.length != outHeader.length) {
                 throw new IOException(String.format(
                         "IOHeader size changed on concat close (%d -> %d)",
                         outHeader.length, patched.length));
             }
-            long end = out.position();
+            long end = writer.position();
             out.position(headerPosition);
             out.write(ByteBuffer.wrap(patched));
             out.position(end);
@@ -243,11 +259,13 @@ public final class Aedat4Concat {
                 progress.setProgress(99);
             }
             return defs.size();
+        } finally {
+            pool.close();
         }
     }
 
-    private static void copyPackets(File source, Header header, FileChannel out, List<DataDef> defs,
-            ProgressMonitor progress, int fileIndex, int fileCount, long[] lastEndUs)
+    private static void copyPackets(File source, Header header, PacketWriter out, List<DataDef> defs,
+            ProgressMonitor progress, int fileIndex, int fileCount, long[] lastEndUs, RewritePool pool)
             throws IOException, InterruptedException {
         try (RandomAccessFile inRaf = new RandomAccessFile(source, "r");
                 FileChannel in = inRaf.getChannel()) {
@@ -259,13 +277,37 @@ public final class Aedat4Concat {
                     ? header.dataTablePosition : fileSize;
             List<FtabMeta> srcMeta = tryLoadSourceFtabMeta(in, header.dataTablePosition, fileSize,
                     header.compression);
+            long delta = 0L;
+            int shiftFrom = Integer.MAX_VALUE;
+            boolean deltaResolved = fileIndex == 0 || lastEndUs[0] <= 0L;
+            if (!deltaResolved && srcMeta != null) {
+                for (int i = 0; i < srcMeta.size(); i++) {
+                    FtabMeta m = srcMeta.get(i);
+                    if (m.numElements > 0 || m.timestampStart != 0L || m.timestampEnd != 0L) {
+                        long gap = m.timestampStart - lastEndUs[0];
+                        if (gap > STITCH_GAP_US || gap < 0L) {
+                            delta = lastEndUs[0] + 1L - m.timestampStart;
+                            log.info(String.format(
+                                    "VCR concat stitch %s: closed %.3fs gap at cassette boundary",
+                                    source.getName(), gap / 1e6));
+                        }
+                        shiftFrom = i;
+                        deltaResolved = true;
+                        break;
+                    }
+                }
+            }
+            if (delta != 0L) {
+                copyPacketsStitched(in, dataEnd, header, srcMeta, shiftFrom, delta, out, defs,
+                        progress, fileIndex, fileCount, lastEndUs, pool);
+                return;
+            }
             ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+            byte[] outHdr = new byte[8];
             int packetIndex = 0;
             final long dataStart = in.position();
             final long dataSpan = Math.max(1L, dataEnd - dataStart);
             final long[] meta = new long[3];
-            long delta = 0L;
-            boolean deltaResolved = fileIndex == 0 || lastEndUs[0] <= 0L;
             while (in.position() + 8 <= dataEnd) {
                 throwIfCanceled(progress);
                 packetHeader.clear();
@@ -315,26 +357,193 @@ public final class Aedat4Concat {
                     tEnd += delta;
                     toWrite = Aedat4Compression.compress(flat, header.compression);
                 }
-                long outPacketOffset = out.position() + 8L;
-                ByteBuffer outHdr = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
-                outHdr.putInt(streamId);
-                outHdr.putInt(toWrite.length);
-                outHdr.flip();
-                out.write(outHdr);
-                out.write(ByteBuffer.wrap(toWrite));
-                defs.add(new DataDef(outPacketOffset, streamId, toWrite.length, numElements, tStart, tEnd));
-                if (tEnd > lastEndUs[0]) {
-                    lastEndUs[0] = tEnd;
-                }
+                writePacket(out, outHdr, streamId, toWrite, defs, numElements, tStart, tEnd, lastEndUs);
                 packetIndex++;
-                if (progress != null && (packetIndex & 31) == 0) {
-                    int base = (fileIndex * 90) / Math.max(1, fileCount);
-                    int span = 90 / Math.max(1, fileCount);
-                    progress.setProgress((int) Math.min(90,
-                            base + ((in.position() - dataStart) * span) / dataSpan));
+                if (progress != null && (packetIndex & 255) == 0) {
+                    reportProgress(progress, fileIndex, fileCount, in.position() - dataStart, dataSpan);
                 }
             }
         }
+    }
+
+    /**
+     * Cassette-boundary stitch. Every packet from {@code shiftFrom} is
+     * decompressed, shifted by the same {@code delta}, and recompressed.
+     * Packets in a wave are rewritten on {@code pool}; the output order matches
+     * the source.
+     */
+    private static void copyPacketsStitched(FileChannel in, long dataEnd, Header header, List<FtabMeta> srcMeta,
+            int shiftFrom, long delta, PacketWriter out, List<DataDef> defs, ProgressMonitor progress,
+            int fileIndex, int fileCount, long[] lastEndUs, RewritePool pool)
+            throws IOException, InterruptedException {
+        final long dataStart = in.position();
+        final long dataSpan = Math.max(1L, dataEnd - dataStart);
+        byte[] packetHeader = new byte[8];
+        byte[] outHdr = new byte[8];
+        int packetIndex = 0;
+        List<InPacket> wave = new ArrayList<>(WAVE_PACKETS);
+        int waveBytes = 0;
+        while (in.position() + 8 <= dataEnd) {
+            throwIfCanceled(progress);
+            readFully(in, ByteBuffer.wrap(packetHeader));
+            int streamId = getIntLE(packetHeader, 0);
+            int payloadSize = getIntLE(packetHeader, 4);
+            if (payloadSize < 0 || in.position() + payloadSize > dataEnd) {
+                break;
+            }
+            byte[] compressed = new byte[payloadSize];
+            readFully(in, ByteBuffer.wrap(compressed));
+            InPacket packet = new InPacket();
+            packet.streamId = streamId;
+            packet.compressed = compressed;
+            packet.shift = packetIndex >= shiftFrom;
+            if (srcMeta != null && packetIndex < srcMeta.size()
+                    && srcMeta.get(packetIndex).streamId == streamId) {
+                FtabMeta m = srcMeta.get(packetIndex);
+                packet.numElements = m.numElements;
+                packet.tStart = m.timestampStart;
+                packet.tEnd = m.timestampEnd;
+                packet.metaKnown = true;
+            }
+            wave.add(packet);
+            waveBytes += payloadSize;
+            packetIndex++;
+            if (wave.size() >= WAVE_PACKETS || waveBytes >= WAVE_BYTES) {
+                flushWave(wave, header.compression, delta, pool, out, outHdr, defs, lastEndUs);
+                waveBytes = 0;
+                reportProgress(progress, fileIndex, fileCount, in.position() - dataStart, dataSpan);
+            }
+        }
+        flushWave(wave, header.compression, delta, pool, out, outHdr, defs, lastEndUs);
+    }
+
+    private static void flushWave(List<InPacket> wave, int compression, long delta, RewritePool pool,
+            PacketWriter out, byte[] outHdr, List<DataDef> defs, long[] lastEndUs)
+            throws IOException, InterruptedException {
+        if (wave.isEmpty()) {
+            return;
+        }
+        rewriteWave(wave, compression, delta, pool);
+        for (InPacket p : wave) {
+            long tStart = p.tStart;
+            long tEnd = p.tEnd;
+            if (p.shift && delta != 0L) {
+                tStart += delta;
+                tEnd += delta;
+            }
+            writePacket(out, outHdr, p.streamId, p.rewritten, defs, p.numElements, tStart, tEnd, lastEndUs);
+        }
+        wave.clear();
+    }
+
+    private static void rewriteWave(List<InPacket> wave, int compression, long delta, RewritePool pool)
+            throws IOException, InterruptedException {
+        int n = wave.size();
+        ExecutorService exec = pool.executor();
+        int workers = exec == null ? 1 : Math.min(pool.threads, n);
+        if (workers <= 1) {
+            Aedat4Compression.Reusable codec = pool.codec();
+            for (int i = 0; i < n; i++) {
+                rewritePacket(wave.get(i), codec, compression, delta);
+            }
+            return;
+        }
+        int chunk = (n + workers - 1) / workers;
+        List<Future<Void>> futures = new ArrayList<>(workers);
+        for (int t = 0; t < workers; t++) {
+            int from = t * chunk;
+            int to = Math.min(n, from + chunk);
+            if (from >= to) {
+                break;
+            }
+            futures.add(exec.submit(() -> {
+                try {
+                    Aedat4Compression.Reusable codec = pool.codec();
+                    for (int i = from; i < to; i++) {
+                        rewritePacket(wave.get(i), codec, compression, delta);
+                    }
+                    return null;
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }));
+        }
+        for (Future<Void> f : futures) {
+            try {
+                f.get();
+            } catch (ExecutionException e) {
+                Throwable c = e.getCause();
+                if (c instanceof UncheckedIOException uio && uio.getCause() instanceof IOException io) {
+                    throw io;
+                }
+                if (c instanceof IOException io) {
+                    throw io;
+                }
+                if (c instanceof RuntimeException re) {
+                    throw re;
+                }
+                throw new IOException("AEDAT-4 concat rewrite failed", c);
+            }
+        }
+    }
+
+    private static void rewritePacket(InPacket packet, Aedat4Compression.Reusable codec, int compression, long delta)
+            throws IOException {
+        byte[] flat = null;
+        if (!packet.metaKnown) {
+            flat = codec.decompress(packet.compressed, compression);
+            long[] meta = new long[3];
+            fillMetaFromFlat(flat, meta);
+            packet.numElements = meta[0];
+            packet.tStart = meta[1];
+            packet.tEnd = meta[2];
+        }
+        if (!packet.shift || delta == 0L) {
+            packet.rewritten = packet.compressed;
+            return;
+        }
+        if (flat == null) {
+            flat = codec.decompress(packet.compressed, compression);
+        }
+        shiftFlatTimestamps(flat, delta);
+        packet.rewritten = codec.compress(flat, compression);
+    }
+
+    private static void writePacket(PacketWriter out, byte[] outHdr, int streamId, byte[] payload, List<DataDef> defs,
+            long numElements, long tStart, long tEnd, long[] lastEndUs) throws IOException {
+        long outPacketOffset = out.position() + 8L;
+        putIntLE(outHdr, 0, streamId);
+        putIntLE(outHdr, 4, payload.length);
+        out.write(outHdr);
+        out.write(payload);
+        defs.add(new DataDef(outPacketOffset, streamId, payload.length, numElements, tStart, tEnd));
+        if (tEnd > lastEndUs[0]) {
+            lastEndUs[0] = tEnd;
+        }
+    }
+
+    private static void reportProgress(ProgressMonitor progress, int fileIndex, int fileCount,
+            long done, long span) {
+        if (progress == null) {
+            return;
+        }
+        int base = (fileIndex * 90) / Math.max(1, fileCount);
+        int width = 90 / Math.max(1, fileCount);
+        progress.setProgress((int) Math.min(90, base + (done * width) / Math.max(1L, span)));
+    }
+
+    private static int getIntLE(byte[] b, int off) {
+        return (b[off] & 0xff)
+                | ((b[off + 1] & 0xff) << 8)
+                | ((b[off + 2] & 0xff) << 16)
+                | ((b[off + 3] & 0xff) << 24);
+    }
+
+    private static void putIntLE(byte[] b, int off, int value) {
+        b[off] = (byte) value;
+        b[off + 1] = (byte) (value >>> 8);
+        b[off + 2] = (byte) (value >>> 16);
+        b[off + 3] = (byte) (value >>> 24);
     }
 
     static void shiftFlatTimestamps(byte[] flat, long deltaUs) {
@@ -349,11 +558,13 @@ public final class Aedat4Concat {
         try {
             if (c0 == 'E' && c1 == 'V' && c2 == 'T' && c3 == 'S') {
                 EventPacket p = EventPacket.getSizePrefixedRootAsEventPacket(bb);
-                Event e = new Event();
                 int n = p.elementsLength();
-                for (int i = 0; i < n; i++) {
-                    p.elements(e, i);
-                    e.mutateTimestamp(e.timestamp() + deltaUs);
+                int base = n > 0 ? p.elementsVectorStart() : -1;
+                if (base >= 0) {
+                    for (int i = 0; i < n; i++) {
+                        int pos = base + (i << 4);
+                        bb.putLong(pos, bb.getLong(pos) + deltaUs);
+                    }
                 }
             } else if (c0 == 'F' && c1 == 'R' && c2 == 'M' && c3 == 'E') {
                 Frame.getSizePrefixedRootAsFrame(bb).addToTimestamps(deltaUs);
@@ -482,7 +693,7 @@ public final class Aedat4Concat {
             return null;
         }
         long remaining = fileSize - dataTablePosition;
-        if (remaining < 8 || remaining > 512L * 1024 * 1024) {
+        if (remaining < 8 || remaining > Aedat4FileInputStream.MAX_FILE_DATA_TABLE_BYTES) {
             return null;
         }
         long saved;
@@ -614,6 +825,111 @@ public final class Aedat4Concat {
             System.err.println(e.getMessage());
             System.exit(1);
         }
+    }
+
+    private static final class RewritePool implements AutoCloseable {
+        final int threads;
+        private ExecutorService executor;
+        private final ConcurrentLinkedQueue<Aedat4Compression.Reusable> codecs = new ConcurrentLinkedQueue<>();
+        private final ThreadLocal<Aedat4Compression.Reusable> local = ThreadLocal.withInitial(() -> {
+            Aedat4Compression.Reusable codec = new Aedat4Compression.Reusable();
+            codecs.add(codec);
+            return codec;
+        });
+
+        RewritePool() {
+            int n = Runtime.getRuntime().availableProcessors();
+            threads = n <= 1 ? 1 : Math.min(n, 16);
+        }
+
+        ExecutorService executor() {
+            if (threads <= 1) {
+                return null;
+            }
+            if (executor == null) {
+                log.info("AEDAT-4 concat timestamp stitch uses " + threads + " threads");
+                executor = Executors.newFixedThreadPool(threads, r -> {
+                    Thread t = new Thread(r, "aedat4-concat");
+                    t.setDaemon(true);
+                    return t;
+                });
+            }
+            return executor;
+        }
+
+        Aedat4Compression.Reusable codec() {
+            return local.get();
+        }
+
+        @Override
+        public void close() {
+            if (executor != null) {
+                executor.shutdown();
+                try {
+                    if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                        executor.shutdownNow();
+                        executor.awaitTermination(30, TimeUnit.SECONDS);
+                    }
+                } catch (InterruptedException e) {
+                    executor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
+            }
+            Aedat4Compression.Reusable codec;
+            while ((codec = codecs.poll()) != null) {
+                codec.close();
+            }
+        }
+    }
+
+    /** Buffered writes. Packet offsets use {@link #position()}, not the channel. */
+    private static final class PacketWriter {
+        private final FileChannel out;
+        private final ByteBuffer buf = ByteBuffer.allocate(1 << 20);
+        private long pos;
+
+        PacketWriter(FileChannel out) throws IOException {
+            this.out = out;
+            this.pos = out.position();
+        }
+
+        long position() {
+            return pos;
+        }
+
+        void write(byte[] b) throws IOException {
+            int off = 0;
+            int n = b.length;
+            while (n > 0) {
+                if (!buf.hasRemaining()) {
+                    flush();
+                }
+                int take = Math.min(buf.remaining(), n);
+                buf.put(b, off, take);
+                off += take;
+                n -= take;
+                pos += take;
+            }
+        }
+
+        void flush() throws IOException {
+            buf.flip();
+            while (buf.hasRemaining()) {
+                out.write(buf);
+            }
+            buf.clear();
+        }
+    }
+
+    private static final class InPacket {
+        int streamId;
+        byte[] compressed;
+        byte[] rewritten;
+        long numElements;
+        long tStart;
+        long tEnd;
+        boolean shift;
+        boolean metaKnown;
     }
 
     private static final class Header {
