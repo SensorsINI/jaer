@@ -30,7 +30,7 @@ flowchart TB
 
 ![GitHub Actions graph for a 3.5.2-rc run](../release-notes/3.5.2/jaer-release-flow.png)
 
-`publish-release` is **skipped** on `-rc` tags (grey node). On a **public** tag it waits for you to **Approve** GitHub Environment [`publish-release`](https://github.com/SensorsINI/jaer/settings/environments).
+`publish-release` is **skipped** on `-rc` tags (grey node). On a **public** tag it waits until you approve the [publish-release](https://github.com/SensorsINI/jaer/settings/environments/publish-release) environment on that Actions run. Do not publish the draft from the Releases page. That would skip `updates.xml` and the landing-page job.
 
 | Job | Runner | What | Details |
 |-----|--------|------|---------|
@@ -39,7 +39,7 @@ flowchart TB
 | windows | windows-latest | Azure-signed `.exe` (publisher **Tobias Delbruck**) | [build-win-sign.yml](../.github/workflows/build-win-sign.yml), [Azure Artifact Signing](../packaging/azure-artifact-signing.md) |
 | macos | macos-latest | notarized Intel + Apple Silicon `.dmg` | [build-macos-notarize.yml](../.github/workflows/build-macos-notarize.yml), [macOS notarization](../packaging/macos-notarization.md) |
 | assemble | ubuntu | attaches four installers + copies `jaer-sample-data.zip`; **rc** → published **prerelease** (not Latest); **public** → **draft** | needs [sample-data-current](https://github.com/SensorsINI/jaer/releases/tag/sample-data-current) |
-| publish-release | ubuntu | writes `updates.xml` to `master`, then `--latest` | skipped on `-rc`; [Environment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) `publish-release` |
+| publish-release | ubuntu | writes `updates.xml` to `master`, then marks the draft public and Latest | skipped on `-rc`; waits for a required reviewer on environment [publish-release](https://github.com/SensorsINI/jaer/settings/environments/publish-release) |
 | landing-page | ubuntu | queues [Deploy landing page](https://github.com/SensorsINI/jaer/actions/workflows/pages.yml) on `master` (rebakes `latest.json` for [jaerproject.org](https://jaerproject.org)) | after assemble on **rc**; after Approve on **public**. Needed because `GITHUB_TOKEN` does not fire Pages’ `release: published` |
 
 install4j project: [`install4j/README.md`](../install4j/README.md) / [`jaer.install4j`](../install4j/jaer.install4j). JDK **25**.
@@ -76,8 +76,8 @@ Work on `master`. `VERSION.txt` is the **public** number (`3.5.2`), never `3.5.2
    git push origin 3.5.2
    ```
 
-   Wait for assemble (Release is a **draft**).
-9. **Approve** Environment [`publish-release`](https://github.com/SensorsINI/jaer/settings/environments) on that run. That job commits `updates.xml` and sets GitHub **Latest**. Check [Releases](https://github.com/SensorsINI/jaer/releases), in-app **Help → Check for updates**, and [jaerproject.org](https://jaerproject.org).
+   Wait for assemble (Release is a **draft**). Download links in the notes 404 until this draft is published.
+9. **Approve the waiting deployment.** Open [Actions → Release](https://github.com/SensorsINI/jaer/actions/workflows/release.yml), open the run for this tag (it stays yellow on **publish-release**), and click **Review deployments**. Check **publish-release**, then **Approve and deploy**. There is no `ant` target and no `gh` command for this step. Required reviewer: the GitHub user **tobidelbruck**. That job commits `updates.xml` to `master` and runs `gh release edit <tag> --draft=false --latest`, which is what makes `/releases/download/<tag>/…` work. Check [Releases](https://github.com/SensorsINI/jaer/releases), in-app **Help → Check for updates**, and [jaerproject.org](https://jaerproject.org).
 10. **Package managers start at 3.5.3.** Do not `wingetcreate submit` or create `SensorsINI/homebrew-jaer` for 3.5.2 or any `-rc` tag. When Latest is public **3.5.3**, hash that tag’s exe and DMGs (not an rc) into `packaging/winget/3.5.3/` and the cask. The Linux `.deb` (`jAER_linux-amd64_*.deb`) is attached beside the `.sh` from 3.5.3 on; it is not on the 3.5.2 release. No `apt install jaer` by name. Details: [`packaging/winget/README.md`](../packaging/winget/README.md), [`packaging/homebrew/README.md`](../packaging/homebrew/README.md), [`packaging/deb/README.md`](../packaging/deb/README.md).
 
 ## Snapshot (moving tester build)
