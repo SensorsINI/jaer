@@ -11,6 +11,7 @@ import java.util.concurrent.CancellationException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
 
 import eu.seebetter.ini.chips.DavisChip;
@@ -67,6 +68,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
 
     public static final String PROP_PROGRESS = "saveAsProgress";
     public static final String PROP_STATUS = "saveAsStatus";
+    /** {@code Boolean}: bar pulses while opening/indexing, then tracks export percent. */
+    public static final String PROP_INDETERMINATE = "saveAsIndeterminate";
 
     private final SaveAsOptions options;
     private long clipStart;
@@ -75,7 +78,12 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private long covered;
     private long eventsIn;
     private long exportStartNs;
+    /** Nano time of the first event-packet write. Prep (open, index, sort) is excluded. */
+    private long outputStartNs;
     private long lastUiNs;
+    private boolean phaseIndeterminate;
+    private String phaseNote = "";
+    private int phasePercent = -1;
     private volatile long lastLogNs;
     /** INFO ETA lines only while the Save As window is hidden. */
     private volatile boolean progressLogEnabled;
@@ -120,7 +128,6 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     @Override
     protected Result doInBackground() throws Exception {
         Thread.currentThread().setName("jaer-save-as");
-        Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
         if (options.sourceFile == null || !options.sourceFile.isFile()) {
             throw new IOException("No source recording to export");
         }
@@ -131,6 +138,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         if (sameRecordingPath(options.outputFile, options.sourceFile)) {
             throw new IOException("Cannot overwrite a playing recording; choose a different output file");
         }
+        beginPrep("Starting export…");
         AEChip chip = constructHeadlessChip(options.chipClass);
         AEFileInputStreamInterface stream = null;
         final String sourceFileInfo = options.sourceFileInfo != null ? options.sourceFileInfo : "";
@@ -141,12 +149,15 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         ImuCsvSink imu = null;
         FramePngSink frames = null;
         DavisFrameAssembler assembler = null;
+        boolean deletePartial = false;
+        boolean completed = false;
         try {
             if (chip.getEventExtractor() != null) {
                 chip.getEventExtractor().setSubsamplingEnabled(false);
             }
-            publish("Opening source for export…");
-            stream = chip.openDetachedFileInputStream(options.sourceFile, options.aedat4EventStreamId);
+            beginPrep("Opening source for export…");
+            stream = chip.openDetachedFileInputStream(options.sourceFile, options.aedat4EventStreamId,
+                    new OpenProgress());
             stream.setRepeat(false);
             stream.setNonMonotonicTimeExceptionsChecked(false);
             long start = Math.max(0L, options.rangeStart);
@@ -244,7 +255,10 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             long badEvents = 0;
             int stuckSlices = 0;
             setProgress(0);
-            publish("Exporting…");
+            if (!(aedat4 != null && sourceIsAedat4)) {
+                beginPrep("Exporting…");
+                Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+            }
             if (aedat4 != null && sourceIsAedat4) {
                 exportAedat4RecordOrder((Aedat4FileInputStream) stream, aedat4, chip, chain, start, end);
             }
@@ -303,6 +317,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
                         }
                     }
                     badEvents += markOutOfBounds(bundle, chip);
+                    ensureOutputClock();
                     if (aedat4 != null) {
                         aedat4.writeBundle(toTypedBundle(bundle, null, chip, true), true);
                     } else {
@@ -364,17 +379,32 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             log.info("Save As finished " + options.outputFile.getName()
                     + String.format(": %,d events, %,d frames, %,d IMU",
                             result.events, result.frames, result.imuSamples));
+            completed = true;
             return result;
         } catch (CancellationException cancel) {
+            deletePartial = true;
             log.info("Save As cancelled: " + (options != null && options.outputFile != null
                     ? options.outputFile.getName() : ""));
             if (h5 != null) {
                 h5.abort();
             }
             throw cancel;
+        } catch (Exception e) {
+            if (isCancelled()) {
+                deletePartial = true;
+                log.info("Save As cancelled: " + (options != null && options.outputFile != null
+                        ? options.outputFile.getName() : ""));
+                throw new CancellationException("Save As cancelled");
+            }
+            throw e;
         } finally {
-            if (isCancelled() && h5 != null) {
-                h5.abort();
+            boolean dropPartial = !completed && (deletePartial || isCancelled());
+            if (dropPartial) {
+                if (h5 != null) {
+                    h5.abort();
+                }
+                discardQuietly(aedat4);
+                aedat4 = null;
             }
             closeQuietly(csv);
             closeQuietly(h5);
@@ -382,6 +412,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             closeQuietly(aedz);
             closeQuietly(imu);
             closeQuietly(frames);
+            if (dropPartial) {
+                deletePartialOutputs();
+            }
             if (stream != null) {
                 try {
                     stream.close();
@@ -469,15 +502,16 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
 
     /**
      * Original recording summary captured before the export scan. AEDAT-4 uses
-     * {@link Aedat4FileInputStream#getFileInfo()}; other formats get path +
-     * {@link Object#toString()}.
+     * the in-memory index ({@link Aedat4FileInputStream#getFileInfoFromIndex()}),
+     * not {@link Aedat4FileInputStream#getFileInfo()}, which peeks every packet
+     * codec header. Other formats get path + {@link Object#toString()}.
      */
     static String snapshotSourceFileInfo(AEFileInputStreamInterface stream) {
         if (stream == null) {
             return "";
         }
-        if (stream instanceof Aedat4FileInputStream) {
-            String info = stream.getFileInfo();
+        if (stream instanceof Aedat4FileInputStream aedat4) {
+            String info = aedat4.getFileInfoFromIndex();
             return info != null ? info : "";
         }
         StringBuilder sb = new StringBuilder();
@@ -576,18 +610,31 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private void exportAedat4RecordOrder(Aedat4FileInputStream in, Aedat4FileOutputStream out,
             AEChip chip, FilterChain chain, long start, long end) throws IOException {
         in.setPolarityEventSkip(0);
+        beginPrep("Sorting packets…");
         List<Aedat4FileInputStream.RecordedPacket> packets = in.packetsInRecordOrder();
         final boolean filter = options.applyEventFilters && chain != null;
         int totalInRange = 0;
+        int seen = 0;
+        int packetCount = packets.size();
         for (Aedat4FileInputStream.RecordedPacket packet : packets) {
+            if (isCancelled()) {
+                throw new CancellationException("Save As cancelled");
+            }
+            seen++;
             if (in.inEventIndexRange(packet, start, end)) {
                 totalInRange++;
+            }
+            if ((seen & 1023) == 0) {
+                publishStatus(String.format("Preparing %,d / %,d packets…", seen, packetCount), false);
             }
         }
         log.info(String.format(
                 "Save As AEDAT-4 record-order: %d packets (%d in IN/OUT range), events [%d, %d), filters=%s",
-                packets.size(), totalInRange, start, end, filter));
+                packetCount, totalInRange, start, end, filter));
+        publishStatus(String.format("Copying %,d packets…", totalInRange), true);
+        Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
         final long baseUnixUs = in.getBaseUnixUs();
+        int copied = 0;
         for (Aedat4FileInputStream.RecordedPacket packet : packets) {
             if (isCancelled()) {
                 throw new CancellationException("Save As cancelled");
@@ -595,9 +642,14 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             if (!in.inEventIndexRange(packet, start, end)) {
                 continue;
             }
+            copied++;
+            if (outputStartNs == 0L) {
+                publishStatus(String.format("Copying packet %,d / %,d…", copied, totalInRange), copied == 1);
+            }
             if (packet.kind == Aedat4FileInputStream.RecordedPacket.Kind.EVENTS) {
                 long begin = Math.max(clipStart, packet.firstEventIndex);
                 covered = Math.max(covered, Math.max(0L, begin - clipStart));
+                ensureOutputClock();
             }
             switch (packet.kind) {
                 case FRAME -> out.writeCopiedPacket(Aedat4FileOutputStream.STREAM_FRAMES,
@@ -743,10 +795,25 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
         covered = 0;
         eventsIn = 0;
         exportStartNs = System.nanoTime();
+        outputStartNs = 0L;
         lastUiNs = 0;
         lastLogNs = exportStartNs;
         lastRateCovered = 0;
-        lastRateNs = exportStartNs;
+        lastRateNs = 0L;
+        etaRateLp.reset();
+    }
+
+    /**
+     * Start the ETA clock at the first event-packet write. Indexing, sorting,
+     * and the in-range scan are not output and must not dilute the rate.
+     */
+    private void ensureOutputClock() {
+        if (outputStartNs != 0L) {
+            return;
+        }
+        outputStartNs = System.nanoTime();
+        lastRateNs = outputStartNs;
+        lastRateCovered = covered;
         etaRateLp.reset();
     }
 
@@ -776,8 +843,9 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     /**
-     * Remaining time from average rate. Uses double so {@code elapsed * remaining}
-     * cannot overflow {@code long} (that showed as {@code ETA 0s} at ~tens of %).
+     * Remaining time from average rate over output-only elapsed. Uses double so
+     * {@code elapsed * remaining} cannot overflow {@code long} (that showed as
+     * {@code ETA 0s} at ~tens of %). {@code elapsedNs} must exclude open/index time.
      */
     static long etaRemainingNs(long elapsedNs, long covered, long range) {
         if (covered <= 0 || range <= 0 || elapsedNs <= 0) {
@@ -788,6 +856,29 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             return 0L;
         }
         return (long) (elapsedNs * (remaining / (double) covered));
+    }
+
+    /**
+     * ETA once output is underway. {@code outputElapsedNs} starts at the first
+     * event write, not at open/index. A positive {@code smoothedPerSec} (running
+     * output rate) wins over the lifetime average so a slow first packet does
+     * not pin the estimate for the rest of the file.
+     *
+     * @return remaining ns, {@code 0} when done, or {@code -1} when output has
+     *         not yet run for {@link #ETA_MIN_ELAPSED_NS}
+     */
+    static long etaRemainingFromOutput(long outputElapsedNs, long covered, long range, float smoothedPerSec) {
+        if (outputElapsedNs < ETA_MIN_ELAPSED_NS || covered <= 0 || range <= 0) {
+            return -1L;
+        }
+        long remaining = range - covered;
+        if (remaining <= 0) {
+            return 0L;
+        }
+        if (smoothedPerSec > 1e-3f) {
+            return (long) (remaining / smoothedPerSec * 1_000_000_000d);
+        }
+        return etaRemainingNs(outputElapsedNs, covered, range);
     }
 
     static String formatEta(long remainingNs) {
@@ -842,11 +933,15 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     private void reportUi(boolean force, long eventsWritten, long badEvents) {
+        if (outputStartNs == 0L || covered <= 0) {
+            return;
+        }
         long now = System.nanoTime();
         if (!force && lastUiNs != 0 && now - lastUiNs < UI_INTERVAL_NS) {
             return;
         }
         lastUiNs = now;
+        setPhaseIndeterminate(false);
         int pct = clipProgressPercent(clipStart, clipEndExclusive, clipStart + covered);
         setProgress(pct);
         StringBuilder sb = new StringBuilder();
@@ -871,19 +966,14 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     }
 
     /**
-     * Instantaneous coverage/sec through {@link LowpassFilter} (first sample
-     * initializes the state). Falls back to mean rate. Never uses overflowing
-     * {@code long} multiply.
+     * Smoothed source-events/sec since the first event write. The open/index/sort
+     * interval is not part of {@link #outputStartNs}, so it cannot stretch the ETA.
      */
     private long etaRemainingNsSmoothed(long nowNs) {
-        long elapsedNs = nowNs - exportStartNs;
-        if (elapsedNs < ETA_MIN_ELAPSED_NS || covered <= 0) {
+        if (outputStartNs == 0L) {
             return -1L;
         }
-        long remaining = clipRange - covered;
-        if (remaining <= 0) {
-            return 0L;
-        }
+        long elapsedNs = nowNs - outputStartNs;
         long dtNs = nowNs - lastRateNs;
         long dCovered = covered - lastRateCovered;
         if (dtNs > 0 && dCovered > 0) {
@@ -894,13 +984,7 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
             lastRateNs = nowNs;
         }
         float rate = etaRateLp.isInitialized() ? etaRateLp.getValue() : 0f;
-        long avgNs = etaRemainingNs(elapsedNs, covered, clipRange);
-        if (rate > 1e-3f) {
-            long lpNs = (long) (remaining / rate * 1_000_000_000d);
-            // Prefer the slower estimate so a fast burst cannot collapse ETA to 0s.
-            return Math.max(avgNs, lpNs);
-        }
-        return avgNs;
+        return etaRemainingFromOutput(elapsedNs, covered, clipRange, rate);
     }
 
     /**
@@ -1110,6 +1194,132 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
     private static void closeSink(AutoCloseable c) throws Exception {
         if (c != null) {
             c.close();
+        }
+    }
+
+    private void beginPrep(String status) {
+        setPhaseIndeterminate(true);
+        phaseNote = status != null ? status : "";
+        phasePercent = -1;
+        publishStatus(phaseNote, true);
+    }
+
+    private void setPhaseIndeterminate(boolean on) {
+        if (phaseIndeterminate == on) {
+            return;
+        }
+        phaseIndeterminate = on;
+        firePropertyChange(PROP_INDETERMINATE, null, on);
+    }
+
+    private void publishStatus(String status, boolean force) {
+        long now = System.nanoTime();
+        if (!force && lastUiNs != 0L && now - lastUiNs < UI_INTERVAL_NS) {
+            return;
+        }
+        lastUiNs = now;
+        publish(status);
+    }
+
+    private void publishPhase() {
+        String text = phasePercent >= 0 ? phaseNote + " (" + phasePercent + "%)" : phaseNote;
+        publishStatus(text, false);
+    }
+
+    /**
+     * Forwards AEDAT-4 open/index notes without opening a second progress dialog.
+     */
+    private final class OpenProgress extends ProgressMonitor {
+        OpenProgress() {
+            super(null, "Save As", "", 0, 100);
+        }
+
+        @Override
+        public void setNote(String note) {
+            if (note != null && !note.isEmpty()) {
+                phaseNote = note;
+            }
+            publishPhase();
+        }
+
+        @Override
+        public void setProgress(int nv) {
+            phasePercent = nv;
+            publishPhase();
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return SaveAsExporter.this.isCancelled();
+        }
+    }
+
+    private void deletePartialOutputs() {
+        if (options == null) {
+            return;
+        }
+        deleteIfExportOutput(options.outputFile, options.sourceFile);
+        if (options.writeImu) {
+            deleteIfExportOutput(options.imuFile(), options.sourceFile);
+        }
+        if (options.writeFrames) {
+            deleteExportTree(options.framesDir(), options.sourceFile);
+        }
+    }
+
+    /** Delete a cancelled export file. Never deletes the source recording. */
+    static boolean deleteIfExportOutput(File file, File source) {
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+        if (sameRecordingPath(file, source)) {
+            log.warning("Refusing to delete source recording " + file.getAbsolutePath());
+            return false;
+        }
+        if (!file.delete()) {
+            log.warning("Could not delete cancelled Save As file " + file.getAbsolutePath());
+            return false;
+        }
+        log.info("Deleted cancelled Save As file " + file.getAbsolutePath());
+        return true;
+    }
+
+    static void deleteExportTree(File dir, File source) {
+        if (dir == null || !dir.exists()) {
+            return;
+        }
+        if (source != null) {
+            File parent = source.getParentFile();
+            if (sameRecordingPath(dir, source) || (parent != null && sameRecordingPath(dir, parent))) {
+                log.warning("Refusing to delete source folder " + dir.getAbsolutePath());
+                return;
+            }
+        }
+        File[] kids = dir.listFiles();
+        if (kids != null) {
+            for (File kid : kids) {
+                if (kid.isDirectory()) {
+                    deleteExportTree(kid, source);
+                } else if (!kid.delete()) {
+                    log.warning("Could not delete cancelled Save As file " + kid.getAbsolutePath());
+                }
+            }
+        }
+        if (!dir.delete()) {
+            log.warning("Could not delete cancelled Save As folder " + dir.getAbsolutePath());
+        } else {
+            log.info("Deleted cancelled Save As folder " + dir.getAbsolutePath());
+        }
+    }
+
+    private static void discardQuietly(Aedat4FileOutputStream out) {
+        if (out == null) {
+            return;
+        }
+        try {
+            out.discard();
+        } catch (Exception e) {
+            log.log(Level.WARNING, "Error discarding cancelled AEDAT-4 export", e);
         }
     }
 

@@ -536,7 +536,17 @@ public class AEChip extends Chip2D {
      */
     public AEFileInputStreamInterface openDetachedFileInputStream(File file, Integer aedat4EventStreamId)
             throws IOException, InterruptedException {
-        return openFileInputStream(file, null, false, aedat4EventStreamId);
+        return openDetachedFileInputStream(file, aedat4EventStreamId, null);
+    }
+
+    /**
+     * @param progressMonitor optional; Save As forwards index notes onto its
+     *                        status line. Playback passes {@code null} here and
+     *                        uses {@link #constuctFileInputStream} instead.
+     */
+    public AEFileInputStreamInterface openDetachedFileInputStream(File file, Integer aedat4EventStreamId,
+            ProgressMonitor progressMonitor) throws IOException, InterruptedException {
+        return openFileInputStream(file, progressMonitor, false, aedat4EventStreamId);
     }
 
     private AEFileInputStreamInterface openFileInputStream(File file, ProgressMonitor progressMonitor,

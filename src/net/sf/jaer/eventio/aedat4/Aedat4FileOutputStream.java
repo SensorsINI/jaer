@@ -76,6 +76,13 @@ public class Aedat4FileOutputStream implements Closeable {
     private long uncompressedPayloadBytes;
     /** Compressed packet payload bytes written to the file (same as uncompressed if NONE). */
     private long compressedPayloadBytes;
+    /**
+     * Running totals. {@code dataDefinitions} is one row per packet (millions on
+     * a long recording); scanning it on every progress tick is quadratic.
+     */
+    private long eventsWritten;
+    private long framesWritten;
+    private long imuSamplesWritten;
     private long[] evTimestamps;
     private short[] evXs;
     private short[] evYs;
@@ -382,27 +389,15 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public long getEventsWritten() {
-        long n = 0;
-        for (Aedat4CameraTrack t : tracks) {
-            n += countStream(t.eventsStreamId());
-        }
-        return n;
+        return eventsWritten;
     }
 
     public long getFramesWritten() {
-        long n = 0;
-        for (Aedat4CameraTrack t : tracks) {
-            n += countStream(t.framesStreamId());
-        }
-        return n;
+        return framesWritten;
     }
 
     public long getImuSamplesWritten() {
-        long n = 0;
-        for (Aedat4CameraTrack t : tracks) {
-            n += countStream(t.imuStreamId());
-        }
-        return n;
+        return imuSamplesWritten;
     }
 
     public int getTrackCount() {
@@ -411,16 +406,6 @@ public class Aedat4FileOutputStream implements Closeable {
 
     public List<Aedat4CameraTrack> getTracks() {
         return tracks;
-    }
-
-    private long countStream(int streamId) {
-        long n = 0;
-        for (DataDefinition d : dataDefinitions) {
-            if (d.streamId == streamId) {
-                n += d.numElements;
-            }
-        }
-        return n;
     }
 
     /** Writes all packets; includes polarity events marked filteredOut. */
@@ -782,6 +767,21 @@ public class Aedat4FileOutputStream implements Closeable {
         channel.write(packetHeader);
         channel.write(toWrite);
         dataDefinitions.add(new DataDefinition(byteOffset, streamId, compressedLen, numElements, timestampStart, timestampEnd));
+        addStreamCount(streamId, numElements);
+    }
+
+    private void addStreamCount(int streamId, long numElements) {
+        if (numElements <= 0) {
+            return;
+        }
+        int rem = Math.floorMod(streamId, Aedat4CameraTrack.STREAMS_PER_CAMERA);
+        if (rem == 0) {
+            eventsWritten += numElements;
+        } else if (rem == 1) {
+            framesWritten += numElements;
+        } else if (rem == 2) {
+            imuSamplesWritten += numElements;
+        }
     }
 
     /**
@@ -825,6 +825,37 @@ public class Aedat4FileOutputStream implements Closeable {
         int root = FileDataTable.createFileDataTable(builder, vector);
         builder.finishSizePrefixed(root, "FTAB");
         return builder.sizedByteArray();
+    }
+
+    /**
+     * Release the file without writing the FileDataTable. The bytes on disk are
+     * not a readable AEDAT-4 file; Save As deletes them after cancel.
+     */
+    public synchronized void discard() throws IOException {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        IOException failure = null;
+        try {
+            outputStream.close();
+        } catch (IOException e) {
+            failure = e;
+        }
+        if (channel.isOpen()) {
+            try {
+                channel.close();
+            } catch (IOException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
     }
 
     @Override

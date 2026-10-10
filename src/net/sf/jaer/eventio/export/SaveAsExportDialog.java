@@ -1011,7 +1011,9 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
         exporter.addPropertyChangeListener(this);
         updateRecordingUi(true);
         statusLabel.setText("Starting…");
-        applyTaskbarProgress(0, Taskbar.State.NORMAL);
+        progressBar.setIndeterminate(true);
+        progressBar.setString("");
+        applyTaskbarProgress(0, Taskbar.State.INDETERMINATE);
         exporter.execute();
     }
 
@@ -1191,9 +1193,19 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             return;
         }
         if ("progress".equals(evt.getPropertyName())) {
+            if (progressBar.isIndeterminate()) {
+                return;
+            }
+            progressBar.setIndeterminate(false);
+            progressBar.setString(null);
             int pct = (Integer) evt.getNewValue();
             progressBar.setValue(pct);
             applyTaskbarProgress(pct, Taskbar.State.NORMAL);
+        } else if (SaveAsExporter.PROP_INDETERMINATE.equals(evt.getPropertyName())) {
+            boolean on = Boolean.TRUE.equals(evt.getNewValue());
+            progressBar.setIndeterminate(on);
+            progressBar.setString(on ? "" : null);
+            applyTaskbarProgress(progressBar.getValue(), on ? Taskbar.State.INDETERMINATE : Taskbar.State.NORMAL);
         } else if (SaveAsExporter.PROP_STATUS.equals(evt.getPropertyName())) {
             statusLabel.setText(String.valueOf(evt.getNewValue()));
         } else if ("state".equals(evt.getPropertyName()) && exporter != null && exporter.isDone()) {
@@ -1202,6 +1214,8 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
             updateRecordingUi(false);
             try {
                 SaveAsExporter.Result r = exporter.get();
+                progressBar.setIndeterminate(false);
+                progressBar.setString(null);
                 progressBar.setValue(100);
                 applyTaskbarProgress(100, Taskbar.State.NORMAL);
                 statusLabel.setText(r.badEvents > 0
@@ -1220,12 +1234,16 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                 viewer.showSavedFileConfirmation(exported, msg);
             } catch (CancellationException | InterruptedException cancel) {
                 statusLabel.setText("Cancelled.");
+                progressBar.setIndeterminate(false);
+                progressBar.setString(null);
                 progressBar.setValue(0);
                 applyTaskbarProgress(0, Taskbar.State.OFF);
             } catch (ExecutionException ex) {
                 Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                 if (cause instanceof CancellationException) {
                     statusLabel.setText("Cancelled.");
+                    progressBar.setIndeterminate(false);
+                    progressBar.setString(null);
                     progressBar.setValue(0);
                     applyTaskbarProgress(0, Taskbar.State.OFF);
                     return;
@@ -1260,7 +1278,7 @@ public final class SaveAsExportDialog extends JFrame implements PropertyChangeLi
                     if (windowState) {
                         tb.setWindowProgressState(w, state);
                     }
-                    if (windowValue && state != Taskbar.State.OFF) {
+                    if (windowValue && (state == Taskbar.State.NORMAL || state == Taskbar.State.ERROR)) {
                         tb.setWindowProgressValue(w, value);
                     }
                 }

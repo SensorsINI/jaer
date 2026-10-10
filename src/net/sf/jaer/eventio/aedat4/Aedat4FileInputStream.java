@@ -731,10 +731,28 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
+     * Index summary only: counts, duration, size, stream. Does not peek codec
+     * headers. Save As uses this so starting an export does not read every
+     * packet of a multi-hour file on the UI thread. Includes the compression
+     * line when a previous File Info scan already filled the cache.
+     */
+    public String getFileInfoFromIndex() {
+        try {
+            return buildFileInfo(false, null);
+        } catch (IOException e) {
+            return "File info failed: " + e.getMessage();
+        }
+    }
+
+    /**
      * Same text as {@link #getFileInfo()}. {@code progress} is updated while
      * peeking codec headers (one read per packet). Cancel throws.
      */
     public String getFileInfo(ProgressMonitor progress) throws IOException {
+        return buildFileInfo(true, progress);
+    }
+
+    private String buildFileInfo(boolean scanCompressionHeaders, ProgressMonitor progress) throws IOException {
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         StringBuilder sb = new StringBuilder();
@@ -757,10 +775,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (file != null) {
             sb.append(String.format("\nSize: %sB on disk", eng.format((double) file.length()).trim()));
         }
-        ensurePayloadCompressionStats(progress);
-        String compressionLine = Aedat4Compression.formatPayloadCompression(
-                compression, cachedUncompressedPayloadBytes > 0 ? cachedUncompressedPayloadBytes : -1,
-                cachedCompressedPayloadBytes);
+        if (scanCompressionHeaders) {
+            ensurePayloadCompressionStats(progress);
+        }
+        String compressionLine = cachedCompressedPayloadBytes >= 0
+                ? Aedat4Compression.formatPayloadCompression(
+                        compression, cachedUncompressedPayloadBytes > 0 ? cachedUncompressedPayloadBytes : -1,
+                        cachedCompressedPayloadBytes)
+                : "";
         if (!compressionLine.isEmpty()) {
             sb.append('\n').append(compressionLine);
         }
