@@ -104,21 +104,13 @@ BEGIN { FS = "\t" }
 NF < 5 { next }
 {
   tag = $1
-  if (single_tag == "" && !(tag in seen_tag)) {
-    if (nrel >= limit) next
+  if ($3 == "") next
+  if (!(tag in seen_tag)) {
+    if (single_tag == "" && nrel >= limit) next
     seen_tag[tag] = 1
     tag_order[++nrel] = tag
     pub[tag] = substr($2, 1, 10)
-  } else if (single_tag != "") {
-    if (!(tag in seen_tag)) {
-      seen_tag[tag] = 1
-      tag_order[++nrel] = tag
-      pub[tag] = substr($2, 1, 10)
-    }
-  } else if (!(tag in seen_tag)) {
-    next
   }
-  if ($3 == "") next
   key = tag SUBSEP ++n[tag]
   name[key] = $3
   dl[key] = $4 + 0
@@ -140,11 +132,6 @@ END {
   for (i = 1; i <= nrel; i++) {
     t = tag_order[i]
     printf "%s  %s  release total: %d\n", t, pub[t], rel[t] + 0
-    if (n[t] + 0 == 0) {
-      print "  (no matching assets)"
-      print ""
-      continue
-    }
     # insertion sort by download count desc
     m = n[t]
     for (a = 1; a <= m; a++) idx[a] = a

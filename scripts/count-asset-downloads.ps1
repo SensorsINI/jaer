@@ -78,15 +78,18 @@ Write-Host ""
 
 foreach ($r in $releases) {
     if ($r.draft) { continue }
-    if (-not $Tag) {
-        if ($shown -ge $Limit) { break }
-        $shown++
-    }
 
     $assets = @($r.assets)
     if (-not $includeAll) {
         $assets = @($assets | Where-Object { Test-InstallerName $_.name })
     }
+    if ($assets.Count -eq 0) { continue }
+
+    if (-not $Tag) {
+        if ($shown -ge $Limit) { break }
+    }
+    $shown++
+
     $assets = @($assets | Sort-Object { - [int]$_.download_count }, name)
 
     $pub = $r.published_at
@@ -100,11 +103,6 @@ foreach ($r in $releases) {
     foreach ($a in $assets) { $relTotal += [int]$a.download_count }
 
     Write-Host ("{0}  {1}{2}  release total: {3}" -f $r.tag_name, $pub, $flagText, $relTotal)
-    if ($assets.Count -eq 0) {
-        Write-Host "  (no matching assets)"
-        Write-Host ""
-        continue
-    }
     foreach ($a in $assets) {
         $n = [int]$a.download_count
         $mb = [double]$a.size / 1MB
@@ -118,8 +116,12 @@ foreach ($r in $releases) {
     Write-Host ""
 }
 
-if (-not $Tag -and $shown -eq 0) {
-    Write-Host "No published releases found."
+if ($shown -eq 0) {
+    if ($Tag) {
+        Write-Host "No matching assets for tag $Tag."
+    } else {
+        Write-Host "No matching published assets."
+    }
     return
 }
 
