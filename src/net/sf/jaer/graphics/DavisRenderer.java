@@ -12,6 +12,7 @@ import java.beans.PropertyChangeEvent;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.logging.Level;
@@ -24,6 +25,7 @@ import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
@@ -136,7 +138,17 @@ public class DavisRenderer extends AEChipRenderer {
     private int framesRenderedSinceApsFrame = 0; // to deactivate frames after some time with none
     private static int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 2000;
     protected boolean renderedApsFrame = false; // flag set true on start of frame to signal not to disable frame display automatically
-    private int lastTimestampFrameEndWeSentPropertyChangeFor = 0; // saves the time we sent propertyChange for a new frame to not send it multiple times during pause if the packet has a frame end in it
+    /**
+     * Frame-end timestamps already published for the packet currently held.
+     * Paused ViewLoop redraws that packet about once a second. Remembering only
+     * the last timestamp republishes every earlier frame in a multi-frame
+     * packet, and the 3-D view keeps a full pixmap copy of each one.
+     */
+    private final HashSet<Integer> announcedFrameEndTimestamps = new HashSet<>();
+    private int frameAnnouncementDepth = 0;
+    private boolean haveFrameAnnouncementSignature = false;
+    private int lastFrameAnnouncementSignature = 0;
+    private int lastTimestampFrameEndWeSentPropertyChangeFor = 0;
     private float lastAnnotationResetValue; // last value we set annotation gray value to
 
     public DavisRenderer(final AEChip chip) {
@@ -258,27 +270,32 @@ public class DavisRenderer extends AEChipRenderer {
 
     @Override
     public synchronized void render(final EventPacket pkt) {
-        if (!addedPropertyChangeListener) {
-            if (chip != null) {
-                if (chip.getAeViewer() != null) {
-                    chip.getAeViewer().getSupport().addPropertyChangeListener(this);
-                    addedPropertyChangeListener = true;
+        enterFrameAnnouncement(frameAnnouncementSignature(pkt));
+        try {
+            if (!addedPropertyChangeListener) {
+                if (chip != null) {
+                    if (chip.getAeViewer() != null) {
+                        chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+                        addedPropertyChangeListener = true;
+                    }
                 }
             }
-        }
 
-        packet = pkt;
-        if (pkt.isEmpty()) {
-            return;
-        }
+            packet = pkt;
+            if (pkt.isEmpty()) {
+                return;
+            }
 //        adaptDvsDownsampling();
 
-        numEventTypes = pkt.getNumCellTypes();
+            numEventTypes = pkt.getNumCellTypes();
 
-        if (pkt instanceof ApsDvsEventPacket) {
-            renderApsDvsEvents(pkt);
-        } else {
-            renderPureDvsEvents(pkt);
+            if (pkt instanceof ApsDvsEventPacket) {
+                renderApsDvsEvents(pkt);
+            } else {
+                renderPureDvsEvents(pkt);
+            }
+        } finally {
+            leaveFrameAnnouncement();
         }
     }
 
@@ -290,6 +307,15 @@ public class DavisRenderer extends AEChipRenderer {
      */
     @Override
     public synchronized void render(final PacketBundle bundle) {
+        enterFrameAnnouncement(frameAnnouncementSignature(bundle));
+        try {
+            renderPacketBundle(bundle);
+        } finally {
+            leaveFrameAnnouncement();
+        }
+    }
+
+    private void renderPacketBundle(final PacketBundle bundle) {
         if (!addedPropertyChangeListener) {
             if (chip != null && chip.getAeViewer() != null) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(this);
@@ -773,10 +799,75 @@ public class DavisRenderer extends AEChipRenderer {
         if ((contrastController != null) && (minValue != Float.MAX_VALUE) && (maxValue != Float.MIN_VALUE)) {
             contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
         }
-        if (timestampFrameEnd != lastTimestampFrameEndWeSentPropertyChangeFor) {
+        // add() is false when this end timestamp was already published for the
+        // packet ViewLoop is redrawing while paused.
+        if (announcedFrameEndTimestamps.add(timestampFrameEnd)) {
             getSupport().firePropertyChange(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
             lastTimestampFrameEndWeSentPropertyChangeFor = timestampFrameEnd;
         }
+    }
+
+    private static int mixAnnouncement(final int sig, final int value) {
+        return (31 * sig) + value;
+    }
+
+    /**
+     * Identity of the packet being rendered. Unchanged across paused redraws
+     * of the same bundle, so {@link #announcedFrameEndTimestamps} is kept.
+     * A new packet (playback or single step) gets a new signature and the set
+     * is cleared so each of its frames is published once.
+     */
+    private int frameAnnouncementSignature(final PacketBundle bundle) {
+        int sig = 17;
+        int nFrames = 0;
+        if (bundle != null) {
+            for (TypedDataPacket p : bundle) {
+                if (p instanceof FramePacket frame && !frame.isEmpty()) {
+                    sig = mixAnnouncement(sig, (int) frame.getTimestampStartUs());
+                    sig = mixAnnouncement(sig, (int) frame.getTimestampEndUs());
+                    sig = mixAnnouncement(sig, frame.getSize());
+                    nFrames++;
+                }
+            }
+            final EventPacket polarity = bundle.getFirstPolarityPacket();
+            if (polarity != null && !polarity.isEmpty()) {
+                sig = mixAnnouncement(sig, polarity.getFirstTimestamp());
+                sig = mixAnnouncement(sig, polarity.getLastTimestamp());
+                sig = mixAnnouncement(sig, polarity.getSize());
+            }
+        }
+        return mixAnnouncement(sig, nFrames);
+    }
+
+    private int frameAnnouncementSignature(final EventPacket pkt) {
+        int sig = 17;
+        if (pkt != null && !pkt.isEmpty()) {
+            sig = mixAnnouncement(sig, pkt.getFirstTimestamp());
+            sig = mixAnnouncement(sig, pkt.getLastTimestamp());
+            sig = mixAnnouncement(sig, pkt.getSize());
+        }
+        return sig;
+    }
+
+    private void enterFrameAnnouncement(final int signature) {
+        if (frameAnnouncementDepth == 0
+                && (!haveFrameAnnouncementSignature || signature != lastFrameAnnouncementSignature)) {
+            announcedFrameEndTimestamps.clear();
+            lastFrameAnnouncementSignature = signature;
+            haveFrameAnnouncementSignature = true;
+        }
+        frameAnnouncementDepth++;
+    }
+
+    private void leaveFrameAnnouncement() {
+        if (frameAnnouncementDepth > 0) {
+            frameAnnouncementDepth--;
+        }
+    }
+
+    private void clearAnnouncedFrameEnds() {
+        announcedFrameEndTimestamps.clear();
+        haveFrameAnnouncementSignature = false;
     }
 
     /**
@@ -1451,6 +1542,13 @@ public class DavisRenderer extends AEChipRenderer {
 
     @Override
     public void propertyChange(final PropertyChangeEvent pce) {
+        if (AEInputStream.EVENT_REWOUND.equals(pce.getPropertyName())) {
+            // The 3-D view drops its frame copies on rewind. Republish the
+            // packet that is redrawn next, even if it is the same one.
+            synchronized (this) {
+                clearAnnouncedFrameEnds();
+            }
+        }
         super.propertyChange(pce); // To change body of generated methods, choose Tools | Templates.
         if (chip != null && chip.getBiasgen() != null) {
             chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration

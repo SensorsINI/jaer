@@ -1468,8 +1468,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             if (renderer != null) {
 //            float[] pixmap = renderer.getPixmapArray();
 //            FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
+                final int before = apsFramesInTimeWindow.size();
                 apsFramesInTimeWindow.add(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
-                log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
+                if (apsFramesInTimeWindow.size() != before) {
+                    log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
+                }
             }
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             apsFramesInTimeWindow.clear();
@@ -1656,17 +1659,37 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
          * @return true
          */
         public boolean add(FloatBuffer input, int timestampUs) {
+            if (input == null) {
+                return false;
+            }
+            // Paused redraws republish the frames already in the window. Replace
+            // the pixmap in place; appending a new 4MB copy each time exhausts the heap.
+            for (FrameWithTime existing : this) {
+                if (existing.timestampUs == timestampUs) {
+                    copyPixmap(existing, input);
+                    return true;
+                }
+            }
             FrameWithTime fr = null;
             if (unusedFrames.isEmpty()) {
                 fr = new FrameWithTime(input, timestampUs);
             } else {
                 fr = unusedFrames.pop();
             }
-            input.rewind();
-            fr.pixBuffer.rewind();
-            fr.pixBuffer.put(input);
+            copyPixmap(fr, input);
             fr.timestampUs = timestampUs;
             return add(fr);
+        }
+
+        private void copyPixmap(final FrameWithTime fr, final FloatBuffer input) {
+            input.rewind();
+            final int n = input.remaining();
+            if (fr.pixBuffer == null || fr.pixBuffer.capacity() != n) {
+                fr.pixBuffer = FloatBuffer.allocate(n);
+            }
+            input.rewind();
+            fr.pixBuffer.clear();
+            fr.pixBuffer.put(input);
         }
 
         /**
