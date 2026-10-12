@@ -1681,7 +1681,7 @@ See docs/README-releasing-tagging.md
     </target>
 
     <target name="replace-installed-jar" depends="jar-fast,-require-dist-jar,checkos"
-            description="Rebuild dist/jAER.jar (jar-fast) and copy it over the install4j install (Windows UAC).">
+            description="Rebuild dist/jAER.jar (jar-fast) and copy it over the install4j install (Windows UAC; macOS folder install).">
         <echo message="Replacing install4j jAER.jar with ${dist.jar} (rebuilt by jar-fast)"/>
         <exec executable="powershell.exe" osfamily="windows" searchpath="true"
               failonerror="true" dir="${basedir}">

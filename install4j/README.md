@@ -110,7 +110,7 @@ The `jaer` launcher uses **single instance** mode. Windows/Linux installers show
 | `install4j-linux` | Same as `install4j`, Unix `.sh` and Linux `.deb` |
 | `install4j-mac` | Same as `install4j`, macOS DMGs only (Intel + Apple Silicon) |
 | `install4j-win` | Same as `install4j`, Windows `.exe` only |
-| `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG) |
+| `replace-installed-jar` | `jar-fast` then copy `dist/jAER.jar` onto an existing install (does **not** refresh the native splash PNG). macOS folder installs: jar is outside `jaer.app`. A jar sealed inside a signed `.app` is refused; use the snapshot installer |
 
 After a splash or `jaer.install4j` launcher change, rebuild media (`ant macos-build-notarize`, `ant release-linux`, or `ant install4j`). Replacing only the jar (`ant replace-installed-jar`) leaves the old native splash PNG inside the installed tree.
 
