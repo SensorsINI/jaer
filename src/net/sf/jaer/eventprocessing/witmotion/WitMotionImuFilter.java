@@ -51,10 +51,12 @@ file playhead.</p>
 The port is opened only while the filter is enabled and the viewer is
 <b>LIVE</b> or <b>WAITING</b>. <b>updateRate</b> is written to the sensor on
 open and whenever you change it (1–200 Hz).</p>
-<p><b>showHud</b> draws a transparent attitude indicator (horizon, roll arc,
-pitch ladder) with a north-up compass above it. N stays at the top and the
-arrow is the heading. Positive pitch moves the horizon down. Use it to check
-axis signs and calibration. Turn it off when you only want the text readout.</p>
+<p><b>showHud</b> draws a north-up compass. <b>displayMode</b> chooses what sits
+under it: a cockpit horizon (roll arc and pitch ladder; positive pitch moves
+the horizon down) or rate-gyro vectors like the DAVIS IMU (pan right, tilt up,
+roll clockwise). <b>gyroScaleDps</b> is the rate that reaches the disk rim
+(default 50 deg/s). The compass stays for both. <b>showText</b> is the status and
+RPY/accel/gyro readout; turn it off when it covers the recording-time clock.</p>
 </body>
 </html>
 """)
@@ -81,6 +83,22 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         }
     }
 
+    /** Instrument drawn under the compass. */
+    public enum DisplayMode {
+        /** Attitude indicator: horizon, pitch ladder, roll arc. */
+        CockpitHorizon,
+        /** Pan, tilt, and roll rate vectors, same layout as the DAVIS IMU. */
+        RateGyro;
+
+        @Override
+        public String toString() {
+            return switch (this) {
+                case CockpitHorizon -> "Cockpit horizon";
+                case RateGyro -> "Rate gyro";
+            };
+        }
+    }
+
     @Preferred
     private String port = getString("port", "");
     @Preferred
@@ -100,6 +118,13 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
 
     @Preferred
     private boolean showHud = getBoolean("showHud", true);
+    @Preferred
+    private boolean showText = getBoolean("showText", true);
+    @Preferred
+    private DisplayMode displayMode = storedDisplayMode();
+    /** Deg/s that draws a rate-gyro vector out to the disk rim. */
+    @Preferred
+    private float gyroScaleDps = getFloat("gyroScaleDps", 50f);
 
     private volatile WitMotionSample live = new WitMotionSample();
     private volatile String status = "WitMotion: idle";
@@ -125,8 +150,14 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         setPropertyTooltip(serial, "doDisconnect", "Close the IMU serial port.");
         setPropertyTooltip(disp, "fontSize", "Overlay text size in chip pixels; first use auto-fits to chip width.");
         setPropertyTooltip(disp, "showHud",
-                "Transparent horizon and north-up compass. Roll tilts the horizon, positive pitch moves it down, "
-                        + "N stays at the top, and the arrow shows heading.");
+                "North-up compass plus the instrument selected by displayMode. N stays at the top and the arrow is heading.");
+        setPropertyTooltip(disp, "showText",
+                "Status and RPY / acceleration / gyro readout. Turn off when it covers the recording-time clock.");
+        setPropertyTooltip(disp, "displayMode",
+                "Under the compass: cockpit horizon, or rate-gyro vectors (pan right, tilt up, roll clockwise) like the DAVIS IMU. "
+                        + "The compass stays visible for both.");
+        setPropertyTooltip(disp, "gyroScaleDps",
+                "Rate in deg/s that reaches the rate-gyro disk rim. Smaller values draw longer vectors.");
     }
 
     @Override
@@ -170,6 +201,9 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         if (showHud) {
             drawHud(drawable);
         }
+        if (!showText) {
+            return;
+        }
         String text = overlayText();
         maybeFitFontToChipWidth(text.split("\n", -1));
         float advance = DrawGL.lineAdvance(fontSize);
@@ -198,9 +232,57 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         getSupport().firePropertyChange("showHud", old, showHud);
     }
 
+    public boolean isShowText() {
+        return showText;
+    }
+
+    public void setShowText(boolean showText) {
+        boolean old = this.showText;
+        this.showText = showText;
+        putBoolean("showText", showText);
+        getSupport().firePropertyChange("showText", old, showText);
+    }
+
+    public DisplayMode getDisplayMode() {
+        return displayMode;
+    }
+
+    public void setDisplayMode(DisplayMode displayMode) {
+        if (displayMode == null) {
+            return;
+        }
+        DisplayMode old = this.displayMode;
+        this.displayMode = displayMode;
+        putString("displayMode", displayMode.name());
+        getSupport().firePropertyChange("displayMode", old, displayMode);
+    }
+
+    private DisplayMode storedDisplayMode() {
+        try {
+            return DisplayMode.valueOf(getString("displayMode", DisplayMode.CockpitHorizon.name()));
+        } catch (IllegalArgumentException e) {
+            return DisplayMode.CockpitHorizon;
+        }
+    }
+
+    public float getGyroScaleDps() {
+        return gyroScaleDps;
+    }
+
+    public void setGyroScaleDps(float gyroScaleDps) {
+        float old = this.gyroScaleDps;
+        if (!(gyroScaleDps > 0f)) {
+            gyroScaleDps = 50f;
+        }
+        this.gyroScaleDps = gyroScaleDps;
+        putFloat("gyroScaleDps", gyroScaleDps);
+        getSupport().firePropertyChange("gyroScaleDps", old, this.gyroScaleDps);
+    }
+
     /**
-     * Attitude ball with a compass above it. Both are translucent so camera
-     * events stay visible. Missing angles draw as level with N at the top.
+     * Compass with either the attitude ball or the rate-gyro vectors under it.
+     * Both are translucent so camera events stay visible. Missing angles draw
+     * as level with N at the top.
      */
     private void drawHud(GLAutoDrawable drawable) {
         if (chip == null) {
@@ -215,14 +297,16 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         double roll = shown == null || Double.isNaN(shown.roll) ? 0 : shown.roll;
         double pitch = shown == null || Double.isNaN(shown.pitch) ? 0 : shown.pitch;
         double yaw = shown == null || Double.isNaN(shown.yaw) ? 0 : shown.yaw;
+        boolean horizon = displayMode != DisplayMode.RateGyro;
 
         float unit = Math.min(sx, sy);
         float margin = unit * 0.03f;
         float gap = unit * 0.02f;
         float compassR = Math.min(unit * 0.15f, 72f);
         float aiR = compassR * 1.05f;
-        float rollArcR = aiR * 1.28f;
-        float stack = margin + 2f * compassR + gap + rollArcR + aiR;
+        float rollArcR = horizon ? aiR * 1.28f : 0f;
+        float instrumentBelow = horizon ? rollArcR + aiR : 2f * aiR;
+        float stack = margin + 2f * compassR + gap + instrumentBelow;
         float maxStack = sy * 0.78f;
         if (stack > maxStack && stack > 0f) {
             float scale = maxStack / stack;
@@ -234,7 +318,7 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         }
         float cx = sx * 0.5f;
         float compassCy = sy - margin - compassR;
-        float aiCy = compassCy - compassR - gap - rollArcR;
+        float aiCy = compassCy - compassR - gap - (horizon ? rollArcR : aiR);
 
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_CURRENT_BIT | GL2.GL_LINE_BIT);
@@ -244,8 +328,116 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         float lw = Math.max(1f, aiR / 36f);
         gl.glLineWidth(lw);
         drawCompass(gl, cx, compassCy, compassR, yaw, lw);
-        drawAttitude(gl, cx, aiCy, aiR, rollArcR, roll, pitch, lw);
+        if (horizon) {
+            drawAttitude(gl, cx, aiCy, aiR, rollArcR, roll, pitch, lw);
+        } else {
+            double rollRate = shown == null ? Double.NaN : shown.wx;
+            double tiltRate = shown == null ? Double.NaN : shown.wy;
+            double panRate = shown == null ? Double.NaN : shown.wz;
+            drawRateGyro(gl, cx, aiCy, aiR, rollRate, tiltRate, panRate, lw);
+        }
         gl.glPopAttrib();
+    }
+
+    /**
+     * Pan/tilt vector from the disk center and a roll vector on the upper horizontal,
+     * matching the DAVIS IMU gyro drawing. HWT906 {@code wx/wy/wz} are the roll,
+     * pitch, and yaw rates. Positive pan is to the right, positive tilt is up,
+     * positive roll is clockwise (right wing down). The rim is {@link #gyroScaleDps} deg/s.
+     */
+    private void drawRateGyro(GL2 gl, float cx, float cy, float radius,
+            double rollDps, double tiltDps, double panDps, float lw) {
+        gl.glColor4f(0.02f, 0.03f, 0.06f, 0.22f);
+        fillDisk(gl, cx, cy, radius);
+        gl.glColor4f(1f, 1f, 1f, 0.75f);
+        gl.glLineWidth(lw);
+        strokeCircle(gl, cx, cy, radius, 48);
+
+        float rollAxis = radius * 0.55f;
+        float half = (float) Math.sqrt(Math.max(0d, radius * radius - rollAxis * rollAxis));
+        gl.glColor4f(1f, 1f, 1f, 0.28f);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(cx - radius, cy);
+        gl.glVertex2f(cx + radius, cy);
+        gl.glVertex2f(cx, cy - radius);
+        gl.glVertex2f(cx, cy + radius);
+        gl.glVertex2f(cx - half, cy + rollAxis);
+        gl.glVertex2f(cx + half, cy + rollAxis);
+        gl.glEnd();
+
+        float scale = gyroScaleDps > 0f ? gyroScaleDps : 50f;
+        float pxPerDps = radius / scale;
+        float limit = radius * 1.15f;
+        float pan = clampAbs((float) (finiteOrZero(panDps) * pxPerDps), limit);
+        float tilt = clampAbs((float) (finiteOrZero(tiltDps) * pxPerDps), limit);
+        float roll = clampAbs((float) (finiteOrZero(rollDps) * pxPerDps), limit);
+        float head = radius * 0.12f;
+        gl.glColor3f(1f, 0f, 1f);
+        gl.glLineWidth(Math.max(lw * 1.6f, 1.5f));
+        drawVector(gl, cx, cy, cx + pan, cy + tilt, head);
+        drawVector(gl, cx, cy + rollAxis, cx + roll, cy + rollAxis, head * 0.85f);
+
+        float font = Math.max(3f, radius * 0.1f);
+        Color mag = new Color(1f, 0f, 1f, 0.95f);
+        Color dim = new Color(1f, 1f, 1f, 0.9f);
+        float len = (float) Math.hypot(pan, tilt);
+        float labelX;
+        float labelY;
+        if (len < font) {
+            labelX = cx + font;
+            labelY = cy - font * 0.2f;
+        } else {
+            labelX = cx + pan + pan / len * font * 0.8f;
+            labelY = cy + tilt + tilt / len * font * 0.35f;
+        }
+        DrawGL.drawString(font, labelX, labelY, 0.5f, mag, fmtDps(panDps) + ", " + fmtDps(tiltDps));
+        DrawGL.drawString(font, cx + roll, cy + rollAxis + font * 0.45f, 0.5f, mag, fmtDps(rollDps));
+        float axisFont = font / 3f;
+        DrawGL.drawString(axisFont, cx + radius * 0.92f, cy + axisFont * 0.15f, 1f, dim, "pan");
+        DrawGL.drawString(axisFont, cx + axisFont * 0.3f, cy + radius * 0.78f, 0f, dim, "tilt");
+        DrawGL.drawString(axisFont, cx - half + axisFont * 0.15f, cy + rollAxis + axisFont * 0.15f, 0f, dim, "roll");
+    }
+
+    private static void drawVector(GL2 gl, float x0, float y0, float x1, float y1, float head) {
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(x0, y0);
+        gl.glVertex2f(x1, y1);
+        gl.glEnd();
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float len = (float) Math.hypot(dx, dy);
+        if (len < 2f) {
+            return;
+        }
+        float ux = dx / len;
+        float uy = dy / len;
+        float px = -uy;
+        float py = ux;
+        float h = Math.min(head, len * 0.45f);
+        float w = h * 0.45f;
+        gl.glBegin(GL.GL_TRIANGLES);
+        gl.glVertex2f(x1, y1);
+        gl.glVertex2f(x1 - ux * h + px * w, y1 - uy * h + py * w);
+        gl.glVertex2f(x1 - ux * h - px * w, y1 - uy * h - py * w);
+        gl.glEnd();
+    }
+
+    private static float clampAbs(float v, float limit) {
+        if (v > limit) {
+            return limit;
+        }
+        if (v < -limit) {
+            return -limit;
+        }
+        return v;
+    }
+
+    private static double finiteOrZero(double v) {
+        return Double.isFinite(v) ? v : 0d;
+    }
+
+    private static String fmtDps(double v) {
+        return Double.isFinite(v) ? String.format("%.0f", v) : "--";
     }
 
     private void drawCompass(GL2 gl, float cx, float cy, float r, double yawDeg, float lw) {
