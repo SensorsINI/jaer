@@ -3864,7 +3864,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             StartupProfiler.mark("setAeChipClass after showFilters(" + enableFiltersOnStartup + ")");
             if (enableFiltersOnStartup) {
                 getFilterFrame().setState(Frame.ICONIFIED); // set the filter frame iconified at first (but open) so that it doesn't obscure view
-            }            // fix selected radio button for chip class
+            } else {
+                suspendFiltersWhenDisabledAtStartup();
+            }
+            // fix selected radio button for chip class
             if (deviceMenu.getItemCount() == 0) {
                 log.warning("tried to select device in menu but no device menu has been built yet");
             }
@@ -9416,7 +9419,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.add(recordingFilterSeparator);
 
         enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("When checked, filters that were enabled last session start processing and drawing annotations. When unchecked, they stay off until you open Filters.");
         enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
@@ -11052,6 +11055,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         filtersToggleButton.setSelected(yes);
+    }
+
+    /**
+     * File → Enable filters on startup is off, so the filter window was not
+     * built and saved enabled flags were not restored. Constructors (and a few
+     * chip-setup helpers) can still turn a filter on. Clear that for processing
+     * without writing Preferences, so the next launch with the flag on can
+     * restore the saved checkboxes. Remote outputs keep the state they already
+     * restored for the Interface menu.
+     */
+    private void suspendFiltersWhenDisabledAtStartup() {
+        if (filterChain == null) {
+            return;
+        }
+        int suspended = 0;
+        StringBuilder names = new StringBuilder();
+        for (EventFilter f : filterChain) {
+            if (f == null || !f.isFilterEnabled() || keepsEnabledStateWhenFiltersOffAtStartup(f)) {
+                continue;
+            }
+            f.setFilterEnabledForProcessing(false);
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append(f.getShortName());
+            suspended++;
+        }
+        if (suspended > 0) {
+            log.info("Enable filters on startup is off; suspended " + names);
+        }
+    }
+
+    private static boolean keepsEnabledStateWhenFiltersOffAtStartup(EventFilter f) {
+        return f instanceof ROSOutput
+                || f instanceof DNNOutputViaSharedMemory
+                || f instanceof OpenCVOutput;
     }
 
     /**

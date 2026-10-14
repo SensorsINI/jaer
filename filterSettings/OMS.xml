@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="Davis346blue">
+          <map/>
+          <node name="ObjectMotionCell">
+            <map>
+              <entry key="ObjectMotionCell.filterEnabled" value="true"/>
+              <entry key="ObjectMotionCell.showOutputCell" value="true"/>
+              <entry key="ObjectMotionCell.showSubunits" value="true"/>
+              <entry key="ObjectMotionCell.barsHeight" value="30.0"/>
+              <entry key="ObjectMotionCell.subunitSubsamplingBits" value="5"/>
+              <entry key="ObjectMotionCell.integrateAndFireThreshold" value="0.3"/>
+              <entry key="ObjectMotionCell.subunitDecayTimeconstantMs" value="4.9674263"/>
+            </map>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

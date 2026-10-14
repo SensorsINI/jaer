@@ -1295,7 +1295,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         p.add(borderSpaceSpinner, gbcField(y++));
 
         enableFiltersOnStartupCB = new JCheckBox("Enable filters on startup");
-        enableFiltersOnStartupCB.setToolTipText("Enables creation of event processing filters on startup");
+        enableFiltersOnStartupCB.setToolTipText("When checked, filters that were enabled last session start processing and drawing annotations. When unchecked, they stay off until you open Filters.");
         enableFiltersOnStartupCB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

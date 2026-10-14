@@ -1459,14 +1459,31 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         gl.glUseProgram(0);
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
+        gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, 0);
         gl.glActiveTexture(GL.GL_TEXTURE0);
         gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
         gl.glDisable(GL.GL_TEXTURE_2D);
         gl.glDisable(GL.GL_BLEND);
         gl.glDisable(GL2.GL_ALPHA_TEST);
         gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glDisable(GL.GL_SCISSOR_TEST);
+        gl.glDisable(GL.GL_CULL_FACE);
+        gl.glDisable(GL2.GL_LIGHTING);
+        gl.glDisable(GL.GL_STENCIL_TEST);
+        // TextRenderer / gluDisk can leave these set. They are not in the enables
+        // above, and a stuck color mask or scissor blanks the chip until restart
+        // even after the filter that caused it is disabled.
+        gl.glColorMask(true, true, true, true);
+        gl.glDepthMask(true);
+        gl.glDisableClientState(GL2.GL_VERTEX_ARRAY);
+        gl.glDisableClientState(GL2.GL_COLOR_ARRAY);
+        gl.glDisableClientState(GL2.GL_TEXTURE_COORD_ARRAY);
+        gl.glDisableClientState(GL2.GL_NORMAL_ARRAY);
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
         gl.glPixelStorei(GL2.GL_UNPACK_ROW_LENGTH, 0);
+        gl.glPixelStorei(GL2.GL_UNPACK_SKIP_PIXELS, 0);
+        gl.glPixelStorei(GL2.GL_UNPACK_SKIP_ROWS, 0);
     }
 
     private ZoomMouseAdaptor zoomMouseAdaptor;
