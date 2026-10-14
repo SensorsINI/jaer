@@ -2,11 +2,13 @@ package net.sf.jaer.eventio.aedat4;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.graphics.RecordingVcrSession;
 
 /**
@@ -22,6 +24,8 @@ public final class Aedat4ConcatDemo {
         testMismatchDeletesPartial();
         testStitchClosesCassetteGap();
         testStitchLeavesSmallBoundaryGap();
+        testOpenCassetteStillFeedsHistogram();
+        testTrailingZeroTimeDoesNotZeroDuration();
         System.out.println("ALL PASS");
     }
 
@@ -151,6 +155,81 @@ public final class Aedat4ConcatDemo {
             deleteTree(tmp);
         }
         System.out.println("PASS testStitchLeavesSmallBoundaryGap");
+    }
+
+    /**
+     * Last cassette discarded the way a VCR roll still being written is: packets
+     * on disk, FileDataTable not written yet. Those LBEV times must survive concat
+     * and the merged file must still have a playback duration and sparkline.
+     */
+    private static void testOpenCassetteStillFeedsHistogram() throws Exception {
+        File tmp = Files.createTempDirectory("vcr-open-cassette-").toFile();
+        try {
+            long base = 1_700_000_000_000_000L;
+            File closed = new File(tmp, "c0001.aedat4");
+            File open = new File(tmp, "c0002.aedat4");
+            writeLossy(closed, base, new int[] { 1_000, 2_000 }, true);
+            writeLossy(open, base, new int[] { 0, 20_000 }, false);
+            File out = new File(tmp, "merged.aedat4");
+            Aedat4Concat.mergeFiles(List.of(closed, open), out);
+            List<long[]> ranges = Aedat4Concat.packetTimeRanges(out);
+            assertTrue(ranges.size() >= 2, "closed plus open cassette packets, n=" + ranges.size());
+            for (long[] range : ranges) {
+                assertTrue(range[0] > 1_000_000_000_000L && range[1] >= range[0],
+                        "packet time not left at 0: " + range[0] + ".." + range[1]);
+            }
+            Aedat4FileInputStream in = new Aedat4FileInputStream(out, null);
+            try {
+                assertTrue(in.getDurationUsLong() > 0, "duration " + in.getDurationUsLong());
+                float[] rates = in.getLogRelativeEventRateByTime();
+                assertTrue(rates != null && rates.length > 0, "sparkline bins");
+                boolean any = false;
+                for (float v : rates) {
+                    if (v > 0f) {
+                        any = true;
+                        break;
+                    }
+                }
+                assertTrue(any, "sparkline has activity");
+            } finally {
+                in.close();
+            }
+        } finally {
+            deleteTree(tmp);
+        }
+        System.out.println("PASS testOpenCassetteStillFeedsHistogram");
+    }
+
+    /** The already-merged spider file: last rows are time 0, so last end is before the origin. */
+    private static void testTrailingZeroTimeDoesNotZeroDuration() {
+        long span = Aedat4FileInputStream.polarityTimelineSpanUs(0L,
+                new long[] { 90_007_957_504L, -1_791_897_491_726_336L });
+        assertTrue(span == 90_007_957_504L, "span " + span);
+        long monotonic = Aedat4FileInputStream.polarityTimelineSpanUs(0L, new long[] { 500L, 2_000L });
+        assertTrue(monotonic == 2_000L, "monotonic " + monotonic);
+        System.out.println("PASS testTrailingZeroTimeDoesNotZeroDuration");
+    }
+
+    private static void writeLossy(File file, long baseUnixUs, int[] timestamps, boolean close) throws Exception {
+        PacketBundle bundle = new PacketBundle();
+        net.sf.jaer.event.EventPacket<PolarityEvent> events = new net.sf.jaer.event.EventPacket<>(PolarityEvent.class);
+        OutputEventIterator<PolarityEvent> it = events.outputIterator();
+        for (int i = 0; i < timestamps.length; i++) {
+            PolarityEvent event = it.nextOutput();
+            event.timestamp = timestamps[i];
+            event.x = (short) i;
+            event.y = (short) (i + 1);
+            event.setPolarity(PolarityEvent.Polarity.On);
+        }
+        bundle.add(events);
+        Aedat4FileOutputStream output = new Aedat4FileOutputStream(file, null, CompressionType.LZ4, baseUnixUs,
+                ZoneId.of("UTC"), Aedat4LossyTimeBins.SHIFT_DEFAULT);
+        output.writeBundle(bundle);
+        if (close) {
+            output.close();
+        } else {
+            output.discard();
+        }
     }
 
     private static void writeTinyAedat4(File file, int nEvents) throws Exception {

@@ -339,6 +339,132 @@ public final class Aedat4LossyTimeBins {
         }
     }
 
+    /** Expanded event count and first/last bin time. Does not build a playback view. */
+    public static final class Summary {
+        public final long expanded;
+        public final long tMin;
+        public final long tMax;
+
+        Summary(long expanded, long tMin, long tMax) {
+            this.expanded = expanded;
+            this.tMin = tMin;
+            this.tMax = tMax;
+        }
+    }
+
+    /**
+     * Count and time bounds of an LBEV payload. Used when a cassette was merged
+     * without a FileDataTable, so the packet header is the only timestamp source.
+     */
+    public static Summary summarize(ByteBuffer src) throws IOException {
+        ByteBuffer buf = lossyBuffer(src);
+        int version = buf.getShort() & 0xffff;
+        if (version != VERSION && version != VERSION_PAIRS) {
+            throw new IOException("unsupported LBEV version " + version);
+        }
+        boolean pairs = version == VERSION_PAIRS;
+        int nBins = buf.getInt();
+        if (nBins < 0) {
+            throw new IOException("negative LBEV bin count " + nBins);
+        }
+        long expanded = 0;
+        long tMin = 0;
+        long tMax = 0;
+        for (int b = 0; b < nBins; b++) {
+            if (buf.remaining() < 12) {
+                throw new IOException("truncated LBEV bin " + b);
+            }
+            long ts = buf.getLong();
+            int nRecs = buf.getInt();
+            if (nRecs < 0) {
+                throw new IOException("negative LBEV record count");
+            }
+            if (b == 0) {
+                tMin = ts;
+                tMax = ts;
+            } else {
+                if (ts < tMin) {
+                    tMin = ts;
+                }
+                if (ts > tMax) {
+                    tMax = ts;
+                }
+            }
+            for (int r = 0; r < nRecs; r++) {
+                if (pairs) {
+                    if (buf.remaining() < PAIR_RECORD_BYTES) {
+                        throw new IOException("truncated LBEV records in bin " + b);
+                    }
+                    buf.position(buf.position() + 4);
+                    int on = buf.get() & 0xff;
+                    int off = buf.get() & 0xff;
+                    expanded += (long) on + off;
+                } else {
+                    if (buf.remaining() < RECORD_BYTES) {
+                        throw new IOException("truncated LBEV records in bin " + b);
+                    }
+                    buf.position(buf.position() + 5);
+                    expanded += buf.getShort() & 0xffffL;
+                }
+            }
+        }
+        return new Summary(expanded, tMin, tMax);
+    }
+
+    /** Add {@code deltaUs} to every bin timestamp. No effect on DV FlatBuffers. */
+    public static void addDeltaToBinTimestamps(ByteBuffer src, long deltaUs) {
+        if (src == null || deltaUs == 0L || !isLossyPayload(src)) {
+            return;
+        }
+        ByteBuffer buf;
+        try {
+            buf = lossyBuffer(src);
+        } catch (IOException e) {
+            return;
+        }
+        int version = buf.getShort() & 0xffff;
+        if (version != VERSION && version != VERSION_PAIRS) {
+            return;
+        }
+        int recordBytes = version == VERSION_PAIRS ? PAIR_RECORD_BYTES : RECORD_BYTES;
+        int nBins = buf.getInt();
+        if (nBins < 0) {
+            return;
+        }
+        for (int b = 0; b < nBins; b++) {
+            if (buf.remaining() < 12) {
+                return;
+            }
+            int tsPos = buf.position();
+            long ts = buf.getLong();
+            buf.putLong(tsPos, ts + deltaUs);
+            int nRecs = buf.getInt();
+            if (nRecs < 0) {
+                return;
+            }
+            long skip = (long) nRecs * recordBytes;
+            if (skip > buf.remaining()) {
+                return;
+            }
+            buf.position(buf.position() + (int) skip);
+        }
+    }
+
+    private static ByteBuffer lossyBuffer(ByteBuffer src) throws IOException {
+        if (src == null) {
+            throw new IOException("missing lossy EVTS payload");
+        }
+        ByteBuffer buf = src.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        if (!isLossyPayload(buf)) {
+            throw new IOException("EVTS payload is not LBEV");
+        }
+        buf.position(buf.position() + 4);
+        if (buf.remaining() < 6) {
+            throw new IOException("truncated LBEV header");
+        }
+        return buf;
+    }
+
     public static View decode(ByteBuffer src) throws IOException {
         if (src == null) {
             throw new IOException("missing lossy EVTS payload");

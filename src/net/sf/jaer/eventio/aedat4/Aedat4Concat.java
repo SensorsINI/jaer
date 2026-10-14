@@ -277,6 +277,10 @@ public final class Aedat4Concat {
                     ? header.dataTablePosition : fileSize;
             List<FtabMeta> srcMeta = tryLoadSourceFtabMeta(in, header.dataTablePosition, fileSize,
                     header.compression);
+            if (srcMeta == null && header.dataTablePosition < 0) {
+                log.info(source.getName()
+                        + " has no FileDataTable (cassette was still open); reading timestamps from packet payloads");
+            }
             long delta = 0L;
             int shiftFrom = Integer.MAX_VALUE;
             boolean deltaResolved = fileIndex == 0 || lastEndUs[0] <= 0L;
@@ -547,10 +551,17 @@ public final class Aedat4Concat {
     }
 
     static void shiftFlatTimestamps(byte[] flat, long deltaUs) {
-        if (flat == null || flat.length < 12 || deltaUs == 0L) {
+        if (flat == null || flat.length < 4 || deltaUs == 0L) {
             return;
         }
         ByteBuffer bb = ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
+        if (Aedat4LossyTimeBins.isLossyPayload(bb)) {
+            Aedat4LossyTimeBins.addDeltaToBinTimestamps(bb, deltaUs);
+            return;
+        }
+        if (flat.length < 12) {
+            return;
+        }
         char c0 = (char) (bb.get(8) & 0xff);
         char c1 = (char) (bb.get(9) & 0xff);
         char c2 = (char) (bb.get(10) & 0xff);
@@ -650,10 +661,23 @@ public final class Aedat4Concat {
         out[0] = 0;
         out[1] = 0;
         out[2] = 0;
-        if (flat == null || flat.length < 12) {
+        if (flat == null || flat.length < 4) {
             return;
         }
         ByteBuffer bb = ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
+        if (Aedat4LossyTimeBins.isLossyPayload(bb)) {
+            try {
+                Aedat4LossyTimeBins.Summary summary = Aedat4LossyTimeBins.summarize(bb);
+                out[0] = summary.expanded;
+                out[1] = summary.tMin;
+                out[2] = summary.tMax;
+            } catch (IOException ignore) {
+            }
+            return;
+        }
+        if (flat.length < 12) {
+            return;
+        }
         char c0 = (char) (bb.get(8) & 0xff);
         char c1 = (char) (bb.get(9) & 0xff);
         char c2 = (char) (bb.get(10) & 0xff);

@@ -165,6 +165,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private PacketRef[] frameRefs = new PacketRef[0];
     private PacketRef[] imuRefs = new PacketRef[0];
     private long baseUnixUs;
+    /** {@link Long#MIN_VALUE} until {@link #getDurationUsLong()} has run for the current packet table. */
+    private long durationUsCache = Long.MIN_VALUE;
     private long eventCount;
     private long frameCount;
     private long imuSampleCount;
@@ -545,6 +547,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             imuSampleCount += imuElems;
         }
         liveCatalogApplied = snap.size();
+        durationUsCache = Long.MIN_VALUE;
         if (liveMarkOutFollowsEnd || markOut == oldPlayable) {
             markOut = playableSize();
             liveMarkOutFollowsEnd = true;
@@ -1723,6 +1726,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             synthesizeTimelineFromTypedStreams(frames, imus);
         }
         markOut = playableSize();
+        durationUsCache = Long.MIN_VALUE;
         clearEventPacketCache();
         refreshFlyEyeUnixBounds();
         flyEyeCdPlayheadSet = false;
@@ -1864,6 +1868,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             long s = r.unixStart - t0;
             long e = r.unixEnd - t0;
+            // A cassette merged while still open has no FileDataTable. Its rows
+            // are timestamp 0, which after the recording epoch is before t0.
+            // Clamping those onto bin 0 flattens the histogram and, when they
+            // are the last rows, used to force duration to 0.
+            if (e < 0) {
+                continue;
+            }
+            if (s < 0) {
+                s = 0;
+            }
             if (e <= s) {
                 e = s + 1;
             }
@@ -3125,6 +3139,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             frameRefs = readRefs(in);
             imuRefs = readRefs(in);
             markOut = playableSize();
+            durationUsCache = Long.MIN_VALUE;
             clearEventPacketCache();
             refreshFlyEyeUnixBounds();
             flyEyeCdPlayheadSet = false;
@@ -3921,17 +3936,66 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** Unwrapped duration in µs. Longer than ~35.8 min (2^31 µs) does not fit in {@link #getDurationUs()}. */
     @Override
     public long getDurationUsLong() {
+        if (durationUsCache != Long.MIN_VALUE) {
+            return durationUsCache;
+        }
+        durationUsCache = computeDurationUsLong();
+        return durationUsCache;
+    }
+
+    private long computeDurationUsLong() {
         if (flyEyeNativePair && eventRefs.length > 0) {
             return Math.max(0L, flyEyeUnixMax - flyEyeUnixMin);
         }
         if (hasPolarity() && eventRefs.length > 0) {
-            return Math.max(0L, eventRefs[eventRefs.length - 1].unixEnd - eventRefs[0].unixStart);
+            long origin = eventRefs[0].unixStart;
+            long last = eventRefs[eventRefs.length - 1].unixEnd;
+            if (last >= origin) {
+                return last - origin;
+            }
+            long[] ends = new long[eventRefs.length];
+            for (int i = 0; i < eventRefs.length; i++) {
+                ends[i] = eventRefs[i].unixEnd;
+            }
+            return polarityTimelineSpanUs(origin, ends);
         }
         if (timelineTimestamps.length == 0) {
             return 0;
         }
         return (timelineTimestamps[timelineTimestamps.length - 1] & 0xffffffffL)
                 - (timelineTimestamps[0] & 0xffffffffL);
+    }
+
+    /**
+     * Span from {@code origin} to the last packet end. When that end is before
+     * the origin (trailing rows merged from a cassette that had no FileDataTable),
+     * use the latest end that is still at or after the origin.
+     */
+    static long polarityTimelineSpanUs(long origin, long[] unixEnd) {
+        if (unixEnd == null || unixEnd.length == 0) {
+            return 0;
+        }
+        long end = unixEnd[unixEnd.length - 1];
+        if (end < origin) {
+            end = origin;
+            int before = 0;
+            for (long e : unixEnd) {
+                if (e > end) {
+                    end = e;
+                }
+                if (e < origin) {
+                    before++;
+                }
+            }
+            if (before > 0) {
+                log.info(String.format(
+                        "AEDAT-4 packet table: %d polarity packets end before the recording start"
+                                + " (a cassette merged while still open has no FileDataTable and those rows stay at time 0)."
+                                + " Duration %s is taken from the later packets.",
+                        before, AEViewer.formatRecordingDurationUs(Math.max(0L, end - origin))));
+            }
+        }
+        return Math.max(0L, end - origin);
     }
 
     @Override
