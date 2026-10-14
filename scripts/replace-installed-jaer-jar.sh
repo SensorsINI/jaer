@@ -35,6 +35,7 @@ fi
 SOURCE_JAR="$(cd "$(dirname "$SOURCE_JAR")" && pwd)/$(basename "$SOURCE_JAR")"
 APP_ID="$(grep -oE 'applicationId="[^"]+"' "$INSTALL4J_PROJECT" | head -1 | cut -d'"' -f2)"
 SHORT_NAME="$(grep -oE 'shortName="[^"]+"' "$INSTALL4J_PROJECT" | head -1 | cut -d'"' -f2)"
+APP_NAME="$(grep -oE '<application name="[^"]+"' "$INSTALL4J_PROJECT" | head -1 | cut -d'"' -f2)"
 EXE_NAME="$(grep -oE '<executable name="[^"]+"' "$INSTALL4J_PROJECT" | head -1 | cut -d'"' -f2)"
 EXE_NAME="${EXE_NAME:-jaer}"
 
@@ -63,17 +64,76 @@ is_install_root() {
     [[ -d "$root/.install4j" || -x "$root/$EXE_NAME" || -d "$root/${EXE_NAME}.app" || -x "$root/${EXE_NAME}.exe" ]]
 }
 
+# install4j writes instdir<applicationId> here (same id Windows stores in the registry).
+read_install4j_instdir() {
+    local plist dir
+    [[ -n "$APP_ID" ]] || return 1
+    for plist in \
+        "$HOME/Library/Preferences/com.install4j.installations.plist" \
+        "/Library/Preferences/com.install4j.installations.plist"
+    do
+        [[ -f "$plist" ]] || continue
+        dir="$(/usr/libexec/PlistBuddy -c "Print :/com/install4j/installations/:instdir${APP_ID}" "$plist" 2>/dev/null || true)"
+        if [[ -n "$dir" ]]; then
+            echo "$dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# macosFolder media installs a sibling tree. jAER.jar is not a sealed resource of jaer.app.
+# A jar inside Contents/ is sealed; replacing it invalidates Developer ID and Gatekeeper.
+enclosing_signed_app() {
+    local path="$1" dir base
+    dir="$(cd "$(dirname "$path")" && pwd)"
+    while [[ "$dir" != "/" ]]; do
+        base="$(basename "$dir")"
+        if [[ "$base" == *.app && -d "$dir/Contents/_CodeSignature" ]]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    return 1
+}
+
+refuse_sealed_macos_jar() {
+    local jar="$1" app
+    [[ "$(uname -s)" == "Darwin" ]] || return 0
+    app="$(enclosing_signed_app "$jar" || true)"
+    [[ -n "$app" ]] || return 0
+    cat >&2 <<EOF
+jAER.jar is inside the signed app bundle:
+  $app
+Replacing it invalidates the Developer ID signature, and Gatekeeper will not launch the app.
+Install a snapshot build (signed installers from current master):
+  https://github.com/SensorsINI/jaer/releases/tag/snapshot
+EOF
+    exit 1
+}
+
 ROOT=""
+PLIST_DIR=""
 if [[ -n "$INSTALL_DIR" ]]; then
     ROOT="$INSTALL_DIR"
-elif [[ -d "$HOME/$SHORT_NAME" ]] && is_install_root "$HOME/$SHORT_NAME"; then
-    ROOT="$HOME/$SHORT_NAME"
-elif [[ -d "/opt/$SHORT_NAME" ]] && is_install_root "/opt/$SHORT_NAME"; then
-    ROOT="/opt/$SHORT_NAME"
-elif [[ -d "/Applications/$SHORT_NAME" ]] && is_install_root "/Applications/$SHORT_NAME"; then
-    ROOT="/Applications/$SHORT_NAME"
-elif [[ -d "/Applications/jAER.app" ]] && is_install_root "/Applications/jAER.app"; then
-    ROOT="/Applications/jAER.app"
+else
+    PLIST_DIR="$(read_install4j_instdir || true)"
+    if [[ -n "$PLIST_DIR" ]] && is_install_root "$PLIST_DIR"; then
+        ROOT="$PLIST_DIR"
+    elif [[ -n "$APP_NAME" && -d "/Applications/$APP_NAME" ]] && is_install_root "/Applications/$APP_NAME"; then
+        ROOT="/Applications/$APP_NAME"
+    elif [[ -n "$APP_NAME" && -d "$HOME/Applications/$APP_NAME" ]] && is_install_root "$HOME/Applications/$APP_NAME"; then
+        ROOT="$HOME/Applications/$APP_NAME"
+    elif [[ -d "$HOME/$SHORT_NAME" ]] && is_install_root "$HOME/$SHORT_NAME"; then
+        ROOT="$HOME/$SHORT_NAME"
+    elif [[ -d "/opt/$SHORT_NAME" ]] && is_install_root "/opt/$SHORT_NAME"; then
+        ROOT="/opt/$SHORT_NAME"
+    elif [[ -d "/Applications/$SHORT_NAME" ]] && is_install_root "/Applications/$SHORT_NAME"; then
+        ROOT="/Applications/$SHORT_NAME"
+    elif [[ -d "/Applications/jAER.app" ]] && is_install_root "/Applications/jAER.app"; then
+        ROOT="/Applications/jAER.app"
+    fi
 fi
 
 if [[ -z "$ROOT" ]]; then
@@ -91,6 +151,8 @@ if [[ "$SOURCE_JAR" -ef "$DEST_JAR" ]]; then
     echo "Source and installed jar are the same file: $SOURCE_JAR" >&2
     exit 1
 fi
+
+refuse_sealed_macos_jar "$DEST_JAR"
 
 echo "Source: $SOURCE_JAR"
 echo "  mtime $(date -r "$SOURCE_JAR" '+%Y-%m-%d %H:%M:%S')  $(wc -c < "$SOURCE_JAR" | tr -d ' ') bytes"
@@ -119,3 +181,12 @@ SRC_KB=$(wc -c < "$SOURCE_JAR" | tr -d ' ')
 DST_KB=$(wc -c < "$DEST_JAR" | tr -d ' ')
 echo "Replaced $DEST_JAR"
 echo "  source $SRC_KB bytes, dest $DST_KB bytes, backup ${DEST_JAR}.bak"
+
+if [[ "$(uname -s)" == "Darwin" && -d "$ROOT/${EXE_NAME}.app" ]] && command -v codesign >/dev/null 2>&1; then
+    if ! codesign --verify --strict "$ROOT/${EXE_NAME}.app" >/dev/null 2>&1; then
+        echo "Launcher signature no longer verifies; restoring ${DEST_JAR}.bak" >&2
+        cp -f "${DEST_JAR}.bak" "$DEST_JAR"
+        exit 1
+    fi
+    echo "Launcher signature still valid: $ROOT/${EXE_NAME}.app"
+fi
