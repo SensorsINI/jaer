@@ -47,7 +47,6 @@ import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RecentFoldersComboAccessory;
 import net.sf.jaer.util.RecentFoldersJumpCombo;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
-import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.WindowSaver;
 
 /**
@@ -59,7 +58,7 @@ import net.sf.jaer.util.WindowSaver;
 public class ExportVideoDialog extends JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(ExportVideoDialog.class);
-    /** Title / prefs key for {@link WarningDialogWithDontShowPreference} overwrite confirm. */
+    /** Title of the overwrite confirm shown every time an output file already exists. */
     private static final String OVERWRITE_TITLE = "Overwrite export video";
     /** Live export stamp: chip name plus date-hh-mm (no seconds / zone). */
     private static final DateTimeFormatter LIVE_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm");
@@ -87,7 +86,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     private final JCheckBox rewindBeforeRecordingCb = new JCheckBox("Rewind before recording", true);
     private final JCheckBox closeOnRewindCb = new JCheckBox("Close on rewind", true);
     private final JCheckBox convertMp4Cb = new JCheckBox("Convert to MP4 with ffmpeg after close", true);
-    private final JCheckBox deleteAviCb = new JCheckBox("Delete intermediate AVI after successful MP4", false);
+    private final JCheckBox deleteAviCb = new JCheckBox("Delete intermediate AVI after successful MP4", true);
     private final JTextField ffmpegPathField = new JTextField(24);
     private final JLabel statusLabel = new JLabel(" ");
     private final JLabel ffmpegStatusLabel = new JLabel(" ");
@@ -334,7 +333,9 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         rewindBeforeRecordingCb.setSelected(prefs.getBoolean("rewindBeforeRecording", true));
         closeOnRewindCb.setSelected(prefs.getBoolean("closeOnRewind", true));
         convertMp4Cb.setSelected(prefs.getBoolean("convertMp4", true));
-        deleteAviCb.setSelected(prefs.getBoolean("deleteAvi", false));
+        // New key: the old "deleteAvi" default was false and was saved on every Start,
+        // so changing only the fallback would leave existing installs unchecked.
+        deleteAviCb.setSelected(prefs.getBoolean("deleteIntermediateAvi", true));
         ffmpegPathField.setText(FfmpegMp4Converter.getConfiguredFfmpegPath());
         syncFrameRateSpinnerEnabled();
     }
@@ -387,7 +388,7 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
         prefs.putBoolean("rewindBeforeRecording", rewindBeforeRecordingCb.isSelected());
         prefs.putBoolean("closeOnRewind", closeOnRewindCb.isSelected());
         prefs.putBoolean("convertMp4", convertMp4Cb.isSelected());
-        prefs.putBoolean("deleteAvi", deleteAviCb.isSelected());
+        prefs.putBoolean("deleteIntermediateAvi", deleteAviCb.isSelected());
         FfmpegMp4Converter.setConfiguredFfmpegPath(ffmpegPathField.getText().trim());
     }
 
@@ -558,6 +559,9 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
             mp4File = new File((dot > 0 ? base.substring(0, dot) : base) + ".mp4");
         }
         deleteAviAfterMp4 = deleteAviCb.isSelected();
+        if (!confirmOverwrite("Cancel does not convert.", mp4File)) {
+            return;
+        }
         if (!FfmpegMp4Converter.isFfmpegAvailable()) {
             FfmpegMp4Converter.showMissingFfmpegDialog(this, avi);
             return;
@@ -855,27 +859,58 @@ public class ExportVideoDialog extends JFrame implements PropertyChangeListener,
     }
 
     /**
-     * Confirm overwrite of AVI and/or MP4. {@link WarningDialogWithDontShowPreference}
-     * "Don't show again" is stored for this dialog title so later exports skip the prompt.
+     * Confirm overwrite of an existing AVI and/or MP4 before recording starts.
+     * Cancel leaves the files unchanged and does not start. This is not a
+     * don't-show-again warning: a stored "don't show" used to skip the prompt,
+     * and ffmpeg {@code -y} then replaced the MP4 with no further question.
+     *
+     * @return true to start recording
      */
     private boolean confirmOverwriteIfNeeded() {
+        File second = (mp4File != null && !mp4File.equals(aviFile)) ? mp4File : null;
+        return confirmOverwrite("Cancel does not start recording.", aviFile, second);
+    }
+
+    /**
+     * @param ifCancel sentence after the file list (Cancel / window close aborts)
+     * @param files output paths that would be replaced; null entries are ignored
+     * @return true when nothing exists, or the user chose OK
+     */
+    private boolean confirmOverwrite(String ifCancel, File... files) {
         StringBuilder existing = new StringBuilder();
-        if (aviFile != null && aviFile.exists()) {
-            existing.append("<br>").append(ShowFolderSaveConfirmation.escapeHtml(aviFile.getAbsolutePath()));
-        }
-        if (mp4File != null && mp4File.exists() && !mp4File.equals(aviFile)) {
-            existing.append("<br>").append(ShowFolderSaveConfirmation.escapeHtml(mp4File.getAbsolutePath()));
+        if (files != null) {
+            for (File file : files) {
+                appendExistingOutput(existing, file);
+            }
         }
         if (existing.length() == 0) {
             return true;
         }
-        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true,
+        int choice = JOptionPane.showConfirmDialog(this,
+                "<html>Overwrite existing file(s)?" + existing
+                        + "<br><br>" + ifCancel,
                 OVERWRITE_TITLE,
-                "<html>Overwrite existing file(s)?" + existing,
-                JOptionPane.WARNING_MESSAGE, true, JOptionPane.OK_CANCEL_OPTION);
-        d.setLocationRelativeTo(this);
-        d.setVisible(true);
-        return d.isConfirmed();
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        return choice == JOptionPane.OK_OPTION;
+    }
+
+    /**
+     * Append {@code file} when it is a regular file. A timed-out probe is treated
+     * as present so a wedged volume (Dropbox, offline placeholder) cannot skip the prompt.
+     */
+    private static void appendExistingOutput(StringBuilder existing, File file) {
+        if (file == null) {
+            return;
+        }
+        FileAccessTimeout.Kind kind = FileAccessTimeout.kind(file);
+        if (kind != FileAccessTimeout.Kind.FILE && kind != FileAccessTimeout.Kind.TIMEOUT) {
+            return;
+        }
+        existing.append("<br>").append(ShowFolderSaveConfirmation.escapeHtml(file.getAbsolutePath()));
+        if (kind == FileAccessTimeout.Kind.TIMEOUT) {
+            existing.append(" (could not check; filesystem probe timed out)");
+        }
     }
 
     private void restorePlaybackAfterExport() {
