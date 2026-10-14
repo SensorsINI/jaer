@@ -1500,7 +1500,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         sliderTimeAbsoluteRB.addActionListener(sliderTimeListener);
         p.add(sliderTimeRelativeRB, gbc(y++));
         p.add(sliderTimeAbsoluteRB, gbc(y++));
-        sliderTimeAnalogCB = new JCheckBox("Analog clock");
+        sliderTimeAnalogCB = new JCheckBox("Analog clock time");
         sliderTimeAnalogCB.setToolTipText(
                 "Show an analog clock (absolute) or stopwatch (relative) at the lower-left of the chip view, with hh:mm:ss.dd above and the date below");
         sliderTimeAnalogCB.addActionListener(new ActionListener() {
@@ -1513,7 +1513,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             }
         });
         p.add(sliderTimeAnalogCB, gbc(y++));
-        sliderTimeAlwaysCB = new JCheckBox("Always display time");
+        sliderTimeAlwaysCB = new JCheckBox("Always display clock time");
         sliderTimeAlwaysCB.setToolTipText(
                 "Keep the relative or absolute time overlay on the chip view during playback, not only while dragging the slider");
         sliderTimeAlwaysCB.addActionListener(new ActionListener() {
