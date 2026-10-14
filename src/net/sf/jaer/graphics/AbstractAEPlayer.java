@@ -1477,8 +1477,8 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
             toggleDirection();
+            showAction(getPlaybackDirection() == PlaybackDirection.Backward ? "Reverse" : "Forward");
             putValue(Action.SELECTED_KEY, true);
         }
     }
