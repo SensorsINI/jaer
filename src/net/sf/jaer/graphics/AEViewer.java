@@ -2490,8 +2490,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * it. Do not open USB to distinguish SciDVS from Davis346.</li>
      * <li>If several match and the current AEChip cannot drive this device,
      * offer a chooser that lists every match (including SciDVS). OK stores a
-     * dialog default; Remember auto-applies next time. Choosing from the AEChip
-     * menu clears Remember mappings.</li>
+     * dialog default; Remember auto-applies next time. The preference identity
+     * is VID/PID plus hardware type, not USB bus/addr (the address changes
+     * every enumeration). Choosing from the AEChip menu clears Remember
+     * mappings.</li>
      * </ul>
      * Safe to call from ViewLoop (uses EDT).
      */
@@ -2537,7 +2539,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // Prefer remembered AEChip. Same VID/PID for Davis346 and experimental
         // SciDVS is resolved by AEChip menu / chooser, not by opening USB.
         String deviceKey = liveDevicePromptKey(hw, ids);
-        Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, found);
+        final String chipPrefKey = liveChipChooserPrefKey(hw, ids);
+        Class<? extends AEChip> remembered = loadRememberedLiveChip(chipPrefKey, ids.key(), found);
         if (remembered != null) {
             liveChipOfferPromptedKeys.add(deviceKey);
             if (!remembered.equals(getAeChipClass())) {
@@ -2570,8 +2573,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (matches.size() == 1 && !currentIsMatch) {
             Class<? extends AEChip> suggested = matches.get(0);
             liveChipOfferPromptedKeys.add(deviceKey);
-            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_REMEMBERED_PREF_PREFIX, deviceKey),
+            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_REMEMBERED_PREF_PREFIX, chipPrefKey),
                     suggested.getName());
+            flushLiveChipPrefs();
             log.info("Switching AEChip from "
                     + (current == null ? "(none)" : current.getSimpleName())
                     + " to " + suggested.getSimpleName()
@@ -2609,12 +2613,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final Class<? extends AEChip>[] chosenHolder = new Class[1];
         final boolean[] rememberHolder = new boolean[1];
         final String idLabel = UsbIds.enumerationKey(hw);
-        final String promptDeviceKey = deviceKey;
+        final String promptChipPrefKey = chipPrefKey;
+        final String promptVidPid = ids.key();
         Runnable dialog = () -> {
             String currentName = current == null ? "(none)" : current.getSimpleName();
             String[] names = new String[matches.size()];
             int preselect = 0;
-            Class<? extends AEChip> defaultChoice = loadDefaultLiveChip(promptDeviceKey, matches);
+            Class<? extends AEChip> defaultChoice = loadDefaultLiveChip(promptChipPrefKey, promptVidPid, matches);
             for (int i = 0; i < matches.size(); i++) {
                 names[i] = matches.get(i).getSimpleName();
                 if (defaultChoice != null && matches.get(i).equals(defaultChoice)) {
@@ -2677,17 +2682,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if (chosenHolder[0] != null) {
             // OK and Remember both store the dialog default for next prompt.
-            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_DEFAULT_PREF_PREFIX, deviceKey),
+            // Key is VID/PID + hardware type, not bus/addr.
+            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_DEFAULT_PREF_PREFIX, chipPrefKey),
                     chosenHolder[0].getName());
             if (rememberHolder[0]) {
-                prefs.put(liveChipPrefStorageKey(LIVE_CHIP_REMEMBERED_PREF_PREFIX, deviceKey),
+                prefs.put(liveChipPrefStorageKey(LIVE_CHIP_REMEMBERED_PREF_PREFIX, chipPrefKey),
                         chosenHolder[0].getName());
                 log.info("Remembered AEChip " + chosenHolder[0].getSimpleName()
-                        + " for USB device " + deviceKey + " (auto-open)");
+                        + " for USB device " + chipPrefKey + " (auto-open)");
             } else {
-                log.info("Default AEChip for USB device " + deviceKey
+                log.info("Default AEChip for USB device " + chipPrefKey
                         + " dialog set to " + chosenHolder[0].getSimpleName());
             }
+            flushLiveChipPrefs();
             if (!chosenHolder[0].equals(getAeChipClass())) {
                 log.info("Switching AEChip to " + chosenHolder[0].getSimpleName()
                         + " for USB device " + deviceKey);
@@ -2703,21 +2710,101 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Loads a previously remembered AEChip for {@code deviceKey} if it is still
-     * among the VID/PID matches (silent auto-apply).
+     * Loads a previously remembered AEChip for {@code prefKey} if it is still
+     * among the VID/PID matches (silent auto-apply). Falls back to an older
+     * bus/addr key for the same VID/PID.
      */
-    private Class<? extends AEChip> loadRememberedLiveChip(String deviceKey,
+    private Class<? extends AEChip> loadRememberedLiveChip(String prefKey, String vidPid,
             java.util.List<Class<? extends AEChip>> matches) {
-        return loadLiveChipPref(LIVE_CHIP_REMEMBERED_PREF_PREFIX, deviceKey, matches, true);
+        Class<? extends AEChip> exact = loadLiveChipPref(
+                LIVE_CHIP_REMEMBERED_PREF_PREFIX, prefKey, matches, true);
+        if (exact != null) {
+            return exact;
+        }
+        return loadLiveChipPrefForVidPid(
+                LIVE_CHIP_REMEMBERED_PREF_PREFIX, prefKey, vidPid, matches, false);
     }
 
     /**
-     * Loads the last OK/Remember dialog default for {@code deviceKey} if still
-     * among the VID/PID matches (preselect only).
+     * Loads the last OK/Remember dialog default for {@code prefKey} if still
+     * among the VID/PID matches (preselect only). Copies a matching older
+     * bus/addr key onto {@code prefKey} so the next startup does not depend
+     * on the USB address.
      */
-    private Class<? extends AEChip> loadDefaultLiveChip(String deviceKey,
+    private Class<? extends AEChip> loadDefaultLiveChip(String prefKey, String vidPid,
             java.util.List<Class<? extends AEChip>> matches) {
-        return loadLiveChipPref(LIVE_CHIP_DEFAULT_PREF_PREFIX, deviceKey, matches, false);
+        Class<? extends AEChip> exact = loadLiveChipPref(
+                LIVE_CHIP_DEFAULT_PREF_PREFIX, prefKey, matches, false);
+        if (exact != null) {
+            return exact;
+        }
+        Class<? extends AEChip> legacy = loadLiveChipPrefForVidPid(
+                LIVE_CHIP_DEFAULT_PREF_PREFIX, prefKey, vidPid, matches, false);
+        if (legacy != null) {
+            prefs.put(liveChipPrefStorageKey(LIVE_CHIP_DEFAULT_PREF_PREFIX, prefKey),
+                    legacy.getName());
+            flushLiveChipPrefs();
+            log.info("AEChip dialog default for " + prefKey + " is " + legacy.getSimpleName()
+                    + " (kept across USB address change)");
+        }
+        return legacy;
+    }
+
+    /**
+     * Older builds stored the chooser under vid:pid plus USB bus/addr
+     * ({@code .b2a8}). The address changes every enumeration. If every leftover
+     * key for this VID/PID names the same AEChip, use it.
+     */
+    private Class<? extends AEChip> loadLiveChipPrefForVidPid(String prefix, String exactPrefKey,
+            String vidPid, java.util.List<Class<? extends AEChip>> matches, boolean forgetStale) {
+        if (vidPid == null || vidPid.isEmpty() || matches == null) {
+            return null;
+        }
+        String exactStorage = liveChipPrefStorageKey(prefix, exactPrefKey);
+        String needle = prefix + vidPid;
+        Class<? extends AEChip> agreed = null;
+        try {
+            for (String key : prefs.keys()) {
+                if (key == null || key.equals(exactStorage) || !key.startsWith(needle)) {
+                    continue;
+                }
+                String fqcn = prefs.get(key, null);
+                Class<? extends AEChip> match = null;
+                if (fqcn != null) {
+                    for (Class<? extends AEChip> m : matches) {
+                        if (m.getName().equals(fqcn)) {
+                            match = m;
+                            break;
+                        }
+                    }
+                }
+                if (match == null) {
+                    if (forgetStale && fqcn != null && !fqcn.isEmpty()) {
+                        log.info("Forgetting stale live AEChip pref " + fqcn + " for " + key);
+                        prefs.remove(key);
+                    }
+                    continue;
+                }
+                if (agreed == null) {
+                    agreed = match;
+                } else if (!agreed.equals(match)) {
+                    log.info("Conflicting saved AEChip choices for " + vidPid
+                            + "; dialog will not guess");
+                    return null;
+                }
+            }
+        } catch (java.util.prefs.BackingStoreException e) {
+            log.warning("Could not read live AEChip prefs for " + vidPid + ": " + e);
+        }
+        return agreed;
+    }
+
+    private void flushLiveChipPrefs() {
+        try {
+            prefs.flush();
+        } catch (java.util.prefs.BackingStoreException e) {
+            log.warning("Could not store AEChip chooser preference: " + e);
+        }
     }
 
     private Class<? extends AEChip> loadLiveChipPref(String prefix, String deviceKey,
@@ -2803,6 +2890,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return compact;
         }
         return ids.key();
+    }
+
+    /**
+     * Preference identity for the AEChip chooser. USB device address is not
+     * included; see {@link UsbIds#chipChooserPrefsKey}.
+     */
+    private static String liveChipChooserPrefKey(HardwareInterface hw, UsbIds.Pair ids) {
+        String type = hw == null ? "" : hw.getClass().getSimpleName();
+        return UsbIds.chipChooserPrefsKey(ids, type);
     }
 
     /**
@@ -3941,7 +4037,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             String deviceKey = liveDevicePromptKey(hw, ids);
-            Class<? extends AEChip> chosen = loadRememberedLiveChip(deviceKey, matches);
+            String chipPrefKey = liveChipChooserPrefKey(hw, ids);
+            Class<? extends AEChip> chosen = loadRememberedLiveChip(chipPrefKey, ids.key(), matches);
             if (chosen == null && matches.size() == 1
                     && (aeChipClass == null || !matches.get(0).equals(aeChipClass))) {
                 chosen = matches.get(0);

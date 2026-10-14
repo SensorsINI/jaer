@@ -328,6 +328,8 @@ public final class UsbEnumerationSafetyDemo {
                 "AEChip chooser shows VID/PID and bus/addr");
         require(ensure.contains("liveChipPrefStorageKey("),
                 "remembered AEChip prefs must clamp keys to Preferences.MAX_KEY_LENGTH");
+        require(ensure.contains("liveChipChooserPrefKey"),
+                "OK stores the AEChip dialog default without USB device address");
         String promptKey = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics",
                 "AEViewer.java"),
                 "private String liveDevicePromptKey(HardwareInterface hw, UsbIds.Pair ids)",
@@ -1373,6 +1375,20 @@ public final class UsbEnumerationSafetyDemo {
                 "UsbIds.prefsKey is the compact Preferences identity");
         require(usbIds.contains("HardwareInterface"),
                 "prefsKey strips HardwareInterface so Micro vs classic stay distinct");
+        require(usbIds.contains("public static String chipChooserPrefsKey("),
+                "AEChip chooser prefs identity omits bus/addr");
+        String stable = UsbIds.chipChooserPrefsKey(
+                new UsbIds.Pair((short) 0x152a, (short) 0x841a),
+                "DAViSFX3HardwareInterface");
+        require("152a:841a.DAViSFX3".equals(stable),
+                "chooser prefs key is vid:pid plus type, not bus/addr: " + stable);
+        String stored = "AEViewer.liveChipOffer.default." + stable;
+        require(stored.length() <= java.util.prefs.Preferences.MAX_KEY_LENGTH,
+                "stable Davis chooser key must fit Windows Preferences.MAX_KEY_LENGTH");
+        String viewerSrc = Files.readString(Paths.get("src", "net", "sf", "jaer",
+                "graphics", "AEViewer.java"), StandardCharsets.UTF_8);
+        require(viewerSrc.contains("loadLiveChipPrefForVidPid"),
+                "dialog default still reads older bus/addr keys for the same VID/PID");
     }
 
     /**

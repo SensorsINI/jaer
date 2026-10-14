@@ -277,6 +277,30 @@ public final class UsbIds {
     }
 
     /**
+     * Identity for the AEChip chooser preference. Omits bus and device address:
+     * the host reassigns the address on every enumeration, so a key that includes
+     * it does not match after the next startup and the combo falls back to the
+     * first match. Hardware type keeps DVX Micro distinct from classic DVX
+     * (same stripping as {@link #prefsKey}, without topology).
+     *
+     * @param ids VID/PID, or null
+     * @param hardwareSimpleName {@code hw.getClass().getSimpleName()}, or null
+     * @return {@code vid:pid.Type} with a trailing {@code HardwareInterface} stripped
+     */
+    public static String chipChooserPrefsKey(Pair ids, String hardwareSimpleName) {
+        String type = hardwareSimpleName == null ? "" : hardwareSimpleName;
+        final String hi = "HardwareInterface";
+        if (type.endsWith(hi)) {
+            type = type.substring(0, type.length() - hi.length());
+        }
+        String id = (ids != null && ids.isKnown()) ? ids.key() : "0000:0000";
+        if (type.isEmpty()) {
+            return id;
+        }
+        return id + "." + type;
+    }
+
+    /**
      * Fill a new {@link DeviceDescriptor} from libusb without claiming the
      * interface. Returns {@code null} when {@code device} is gone or the
      * native descriptor pointer was never initialized (unplug). Never returns

@@ -397,8 +397,8 @@ When a single USB device is available and the viewer has no open interface
 [`LiveDeviceChipDetector`](../src/net/sf/jaer/hardwareinterface/usb/LiveDeviceChipDetector.java)
 matches that device against the AEChip menu. AEViewer then:
 
-- if a **Remember this selection** mapping exists for `{vid:pid[#serial]}` and is
-  still a valid match, applies that AEChip silently;
+- if a **Remember this selection** mapping exists for `{vid:pid.HardwareType}`
+  and is still a valid match, applies that AEChip silently;
 - binds without prompting if the current chip is the **sole** VID/PID match;
 - switches automatically when exactly one menu chip matches but differs from current;
 - keeps the current AEChip when it already matches the VID/PID (session restore /
@@ -412,9 +412,10 @@ matches that device against the AEChip menu. AEViewer then:
 - choosing an AEChip from the **AEChip menu** clears Remember mappings so a different
   camera is not forced to the old variant;
 
-Prefs keys:
-- `AEViewer.liveChipOffer.chip.<deviceKey>` → Remember auto-open FQCN
-- `AEViewer.liveChipOffer.default.<deviceKey>` → OK dialog default FQCN
+Prefs keys omit USB bus/addr (the host reassigns the device address on every
+enumeration, so an address-qualified key misses on the next startup):
+- `AEViewer.liveChipOffer.chip.<vid:pid>.<HardwareType>` → Remember auto-open FQCN
+- `AEViewer.liveChipOffer.default.<vid:pid>.<HardwareType>` → last OK/Remember dialog default FQCN
 
 To support a new camera chip, register its VID/PID in the appropriate
 hardware-interface factory (which also updates the registry) and annotate the
