@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="NRVS5KRC1S">
+          <map>
+            <entry key="colorScale" value="1"/>
+            <entry key="borderSpacePixels" value="20"/>
+            <entry key="ChipCanvas.origin3dx" value="0"/>
+            <entry key="ChipCanvas.origin3dy" value="0"/>
+            <entry key="NRVConfig.lastSettingsFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\NRV\Delta_10_2000FPS.txt"/>
+            <entry key="AbstractAEPlayer.packetSizeEvents" value="512"/>
+            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\NRV\Delta10.xml"/>
+            <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAOdwQAAAAOdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ACduZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkluZm90ADJuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkNlbGxTdGF0c1Byb2JlcnQAPm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy50cmFja2luZy5SZWN0YW5ndWxhckNsdXN0ZXJUcmFja2VydAAobmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuSmFlckF2aVdyaXRlcnQAM25ldC5zZi5qYWVyLnV0aWwuYXZpb3V0cHV0LkROTk91dHB1dFZpYVNoYXJlZE1lbW9yeXQAIm5ldC5zZi5qYWVyLmV2ZW50aW8ucm9zMi5ST1NPdXRwdXR0ACduZXQuc2YuamFlci5ldmVudGlvLm9wZW5jdi5PcGVuQ1ZPdXRwdXR0ACZuZXQuc2YuamFlci51dGlsLkRWU0xhdGVuY3lNZWFzdXJlbWVudHQAL2NoLnVuaXpoLmluaS5qYWVyLmNoaXAucmV0aW5hLkRWU0JpYXNDb250cm9sbGVyeA=="/>
+            <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAADdwQAAAADc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABAQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXE5SVncCAFx4c3EAfgACdABVQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXE5SVlxEZWx0YV8xMF8yMDAwRlBTLnR4dHcCAFx4c3EAfgACdABUQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXE5SVlxTNUtSQzFTXzMwMF9DWDMudHh0dwIAXHh4"/>
+            <entry key="fadingEnabled" value="false"/>
+            <entry key="FilterFrame.lastFilterSelected" value=""/>
+            <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
+            <entry key="Masterbias.rx" value="8200.0"/>
+            <entry key="Masterbias.rint" value="46000.0"/>
+            <entry key="Masterbias.internalResistorUsed" value="false"/>
+            <entry key="FilterChain.processingMode" value="RENDERING"/>
+            <entry key="FilterFrame.lastFile" value="C:\Program Files\jAER\filterSettings\NRV hummingbirds RCT tracking.xml"/>
+            <entry key="ChipRenderer.colorMode" value="GrayLevel"/>
+            <entry key="fadingFrames" value="1"/>
+            <entry key="slidingWindowEnabled" value="true"/>
+          </map>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

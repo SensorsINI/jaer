@@ -4,6 +4,7 @@ import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
@@ -38,6 +39,8 @@ public class NRVAEReader {
     private static final byte ENDPOINT_IN = (byte) 0x81;
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
     private static final long STOP_JOIN_TIMEOUT_MS = 3000L;
+    /** First look at whether bulk IN is delivering bytes the parser can use. */
+    private static final long BULK_SUMMARY_MS = 2000L;
 
     private static final int XMASK = 0x3FF;
     private static final int YMASK = 0x3FF << 10;
@@ -59,6 +62,14 @@ public class NRVAEReader {
     private final AtomicInteger timestampEpoch = new AtomicInteger();
     /** Reused parse result to avoid per-USB-transfer allocation. */
     private final ParsedChunk parseScratchChunk = new ParsedChunk(0, false);
+    private final AtomicInteger bulkCompletions = new AtomicInteger();
+    private final AtomicLong bulkBytes = new AtomicLong();
+    private final AtomicLong bulkEvents = new AtomicLong();
+    private final AtomicInteger bulkOtherStatus = new AtomicInteger();
+    private volatile int lastBulkStatus = Integer.MIN_VALUE;
+    private volatile String firstBulkHex = "";
+    private volatile boolean bulkStallLogged;
+    private long lastBulkSummaryMs;
 
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
@@ -144,6 +155,7 @@ public class NRVAEReader {
         }
         readerActive = true;
         clearEndpointHalt(monitor.getDeviceHandle());
+        resetBulkCounters();
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
                 + " buffers=" + getNumBuffers()
                 + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED
@@ -180,7 +192,95 @@ public class NRVAEReader {
             throw UsbTransferSubmit.startFailed("NRV AEReader", err);
         }
         running.set(true);
+        armBulkWatchdog();
         monitor.getReaderSupportInternal().firePropertyChange("readerStarted", false, true);
+    }
+
+    private void resetBulkCounters() {
+        bulkCompletions.set(0);
+        bulkBytes.set(0);
+        bulkEvents.set(0);
+        bulkOtherStatus.set(0);
+        lastBulkStatus = Integer.MIN_VALUE;
+        firstBulkHex = "";
+        bulkStallLogged = false;
+        lastBulkSummaryMs = System.currentTimeMillis();
+    }
+
+    /** If the device never completes a bulk IN, the callback never runs. */
+    private void armBulkWatchdog() {
+        final Thread watch = new Thread(() -> {
+            try {
+                Thread.sleep(BULK_SUMMARY_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            if (!readerActive) {
+                return;
+            }
+            logBulkSummary(true);
+        }, "NRV-bulk-watch");
+        watch.setDaemon(true);
+        watch.start();
+    }
+
+    private void noteBulkCompletion(int byteCount, int eventsWritten, int status, String firstHex) {
+        final int completions = bulkCompletions.incrementAndGet();
+        bulkBytes.addAndGet(byteCount);
+        bulkEvents.addAndGet(Math.max(0, eventsWritten));
+        lastBulkStatus = status;
+        if (completions == 1 && firstHex != null && !firstHex.isEmpty()) {
+            firstBulkHex = firstHex;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastBulkSummaryMs >= BULK_SUMMARY_MS) {
+            lastBulkSummaryMs = now;
+            logBulkSummary(false);
+        }
+    }
+
+    private void logBulkSummary(boolean fromWatchdog) {
+        final int completions = bulkCompletions.get();
+        final long bytes = bulkBytes.get();
+        final long events = bulkEvents.get();
+        final int other = bulkOtherStatus.get();
+        final String msg = "NRV bulk IN 0x81: completions=" + completions
+                + " bytes=" + bytes
+                + " events=" + events
+                + " otherStatus=" + other
+                + " lastStatus=" + (lastBulkStatus == Integer.MIN_VALUE ? "none" : lastBulkStatus)
+                + (firstBulkHex.isEmpty() ? "" : " first=" + firstBulkHex);
+        if (completions == 0) {
+            if (!bulkStallLogged) {
+                bulkStallLogged = true;
+                log.warning(msg + (fromWatchdog ? " (no completion in " + BULK_SUMMARY_MS + " ms)" : ""));
+            }
+            return;
+        }
+        if (bytes == 0 || events == 0) {
+            if (!bulkStallLogged) {
+                bulkStallLogged = true;
+                log.warning(msg);
+            } else {
+                log.fine(msg);
+            }
+            return;
+        }
+        log.fine(msg);
+    }
+
+    private static String hexPrefix(ByteBuffer buffer, int max) {
+        final int pos = buffer.position();
+        final int n = Math.min(max, buffer.remaining());
+        final StringBuilder sb = new StringBuilder(n * 3);
+        for (int i = 0; i < n; i++) {
+            if (i > 0) {
+                sb.append(' ');
+            }
+            sb.append(String.format("%02X", buffer.get(pos + i) & 0xFF));
+        }
+        return sb.toString();
     }
 
     private static void clearEndpointHalt(DeviceHandle handle) {
@@ -477,21 +577,32 @@ public class NRVAEReader {
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
                 monitor.noteUsbTransfer(transfer);
+                final ByteBuffer raw = transfer.buffer();
+                final int byteCount = raw == null ? 0 : raw.remaining();
+                final String firstHex = bulkCompletions.get() == 0 && byteCount > 0
+                        ? hexPrefix(raw, 16) : "";
                 if (!bufferLifecycle.isCurrent(generation)) {
+                    noteBulkCompletion(byteCount, 0, transfer.status(), firstHex);
                     return;
                 }
                 final UsbPipelineBench.Sample sample = UsbPipelineBench.newSample("NRV");
                 final long totalStart = sample != null ? System.nanoTime() : 0;
-                final ParsedChunk chunk = parseUsbChunk(transfer.buffer(), sample);
+                final ParsedChunk chunk = parseUsbChunk(raw, sample);
                 if (!bufferLifecycle.isCurrent(generation)) {
+                    noteBulkCompletion(byteCount, 0, transfer.status(), firstHex);
                     return;
                 }
                 commitParsedChunk(chunk, sample);
+                noteBulkCompletion(byteCount, chunk.parsed, transfer.status(), firstHex);
                 if (sample != null) {
                     sample.totalNs = System.nanoTime() - totalStart;
                     UsbPipelineBench.record(sample);
                 }
             } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                bulkOtherStatus.incrementAndGet();
+                lastBulkStatus = transfer.status();
+                log.warning("NRV bulk IN 0x81 status " + transfer.status()
+                        + " (" + LibUsb.errorName(transfer.status()) + ")");
                 active = false;
                 monitor.markUsbDisconnected(transfer.status());
             }

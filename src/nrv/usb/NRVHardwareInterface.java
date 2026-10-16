@@ -8,9 +8,13 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import org.usb4java.BufferUtils;
+import org.usb4java.ConfigDescriptor;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
+import org.usb4java.EndpointDescriptor;
+import org.usb4java.Interface;
+import org.usb4java.InterfaceDescriptor;
 import org.usb4java.LibUsb;
 
 import net.sf.jaer.aemonitor.AEListener;
@@ -297,6 +301,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             sensorStreaming = false;
             isOpened = true;
             LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
+            logUsbEndpoints();
         } catch (HardwareInterfaceException | RuntimeException e) {
             closePartialOpen();
             throw e;
@@ -462,6 +467,37 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
                         ? " Device may still be enumerating after hotplug; try Interface → Refresh."
                         : "");
         throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status) + hint);
+    }
+
+    /** Active configuration endpoints. Delta10 FX20 may not use the CX3 bulk IN. */
+    private void logUsbEndpoints() {
+        final ConfigDescriptor config = new ConfigDescriptor();
+        final int status = LibUsb.getActiveConfigDescriptor(device, config);
+        if (status != LibUsb.SUCCESS) {
+            log.warning("NRV config descriptor: " + LibUsb.errorName(status));
+            return;
+        }
+        try {
+            final StringBuilder sb = new StringBuilder("NRV USB endpoints:");
+            for (final Interface iface : config.iface()) {
+                for (final InterfaceDescriptor alt : iface.altsetting()) {
+                    sb.append(String.format(" iface=%d alt=%d class=0x%02x eps=%d",
+                            alt.bInterfaceNumber() & 0xFF,
+                            alt.bAlternateSetting() & 0xFF,
+                            alt.bInterfaceClass() & 0xFF,
+                            alt.bNumEndpoints() & 0xFF));
+                    for (final EndpointDescriptor ep : alt.endpoint()) {
+                        sb.append(String.format(" [ep=0x%02x attr=0x%02x max=%d]",
+                                ep.bEndpointAddress() & 0xFF,
+                                ep.bmAttributes() & 0xFF,
+                                ep.wMaxPacketSize() & 0xFFFF));
+                    }
+                }
+            }
+            log.info(sb.toString());
+        } finally {
+            LibUsb.freeConfigDescriptor(config);
+        }
     }
 
     /** CX3 after hotplug is often still config 0; claim iface 0 then returns NOT_FOUND. */
