@@ -59,8 +59,19 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final int AE_BUFFER_SIZE = 2_097_152;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
-    private static final int DEFAULT_USB_FIFO_SIZE = 524288;
+    /**
+     * Host URB size. The FX20 and CX3 end each bulk IN at 65,504 bytes, just
+     * under 64 KiB, so a larger FIFO stays empty and a smaller one splits a chunk.
+     */
+    public static final int USB_FIFO_SIZE = 64 * 1024;
     private static final int DEFAULT_USB_NUM_BUFFERS = 16;
+    /** Bump when default FIFO/buffer tuning changes; migrates stored prefs once. */
+    private static final int USB_READER_PREFS_VERSION = 1;
+    static final String USB_FIFO_TOOLTIP = "<html>Fixed at 65,536 bytes for NRV.<br>"
+            + "The camera ends each bulk read at 65,504 bytes (just under 64 KiB)."
+            + " A larger host FIFO stays empty after that short packet.<br>"
+            + "A smaller one splits one camera chunk across reads."
+            + " Queue more chunks with Buffers.</html>";
     /** After hotplug, Linux can list the CX3 before config 1 / iface 0 exist. */
     private static final long CLAIM_RETRY_MS = 2000L;
     /**
@@ -86,6 +97,18 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
                 JaerConstants.PREFS_ROOT_HARDWARE, "NRV.AEReader.fifoSize", PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE);
         UsbReaderBufferSettings.migrateLegacyRootKey(
                 JaerConstants.PREFS_ROOT_HARDWARE, "NRV.AEReader.numBuffers", PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS);
+        migrateUsbReaderPrefs();
+    }
+
+    private static void migrateUsbReaderPrefs() {
+        if (PREFS.getInt("AEReader.prefsVersion", 0) >= USB_READER_PREFS_VERSION) {
+            return;
+        }
+        PREFS.putInt(UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, USB_FIFO_SIZE);
+        PREFS.putInt(UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS);
+        PREFS.putInt("AEReader.prefsVersion", USB_READER_PREFS_VERSION);
+        log.info("NRV USB reader prefs set to " + USB_FIFO_SIZE + "-byte FIFO x "
+                + DEFAULT_USB_NUM_BUFFERS + " buffers");
     }
 
     private final Preferences prefs = PREFS;
@@ -96,8 +119,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private NRVI2CTransport i2cTransport;
     private NRVAEReader aeReader;
     private int buffersize = loadAeBufferSizePref();
-    private int usbFifoSize = UsbReaderBufferSettings.loadFifoSize(
-            PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE, log, "NRV");
+    private int usbFifoSize = clampStoredFifo(UsbReaderBufferSettings.loadFifoSize(
+            PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, USB_FIFO_SIZE, log, "NRV"));
     private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
             PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS, usbFifoSize, log, "NRV");
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
@@ -114,6 +137,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private boolean settingsApplied = false;
     /** True after {@code MODE_SELECT=1} (settings file or resume). */
     private volatile boolean sensorStreaming = false;
+    /** Save As keeps bulk IN queued and drops events instead of MODE_SELECT=0. */
+    private volatile boolean liveStreamHeld;
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private String[] stringDescriptors = new String[3];
@@ -386,12 +411,70 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     /**
      * Restore streaming after URBs are queued (FIFO replace or playback→LIVE).
+     * A restart after the pipe was idle pulses {@code MODE_SELECT} 0 then 1.
+     * The first start, when settings already left the sensor streaming, only writes 1.
      */
     void resumeStreamingAfterUsbRestart() {
-        writeModeSelect(MODE_SELECT_STREAM, false);
+        resumeStreamingAfterUsbRestart(!sensorStreaming);
+    }
+
+    /**
+     * @param restartEdge true to write standby, wait, then stream, while URBs
+     *                    are already queued. FX20 {@code ReadThread} primes the
+     *                    pipe before data and resets the endpoint when a transfer
+     *                    is stuck. A lone {@code MODE_SELECT=1} after the Save As
+     *                    dialog left the bus idle does not restart the scan.
+     */
+    void resumeStreamingAfterUsbRestart(boolean restartEdge) {
+        if (restartEdge) {
+            writeModeSelect(MODE_SELECT_STANDBY, false, "stream off (restart edge)");
+            try {
+                Thread.sleep(STREAM_OFF_DRAIN_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        writeModeSelect(MODE_SELECT_STREAM, false, "stream on");
+    }
+
+    /**
+     * Save As. Leave the sensor in stream mode and keep endpoint 0x81 queued.
+     * Standing down and idling the bus does not restart on MODE_SELECT=1; a later
+     * pipe reset dropped the FX20 off the bus (LIBUSB_TRANSFER_NO_DEVICE) and
+     * events returned only after re-enumeration.
+     */
+    public void holdLiveStream() {
+        liveStreamHeld = true;
+        if (aeReader != null) {
+            aeReader.setDiscardEvents(true);
+        }
+        synchronized (aePacketRawPool) {
+            aePacketRawPool.reset();
+            packetBundlePool.reset();
+            eventCounter = 0;
+        }
+        log.info("NRV live stream held; bulk IN stays queued");
+    }
+
+    public void releaseLiveStreamHold() {
+        liveStreamHeld = false;
+        if (aeReader != null) {
+            aeReader.setDiscardEvents(false);
+        }
+        log.info("NRV live stream hold released");
+    }
+
+    public boolean isLiveStreamHeld() {
+        return liveStreamHeld;
     }
 
     private void writeModeSelect(int value, boolean drainAfterStandby) {
+        writeModeSelect(value, drainAfterStandby,
+                value == MODE_SELECT_STANDBY ? "stream off before USB join" : "stream on");
+    }
+
+    private void writeModeSelect(int value, boolean drainAfterStandby, String reason) {
         final NRVI2CTransport i2c = i2cTransport;
         if (i2c == null || !isOpened) {
             return;
@@ -399,10 +482,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         try {
             i2c.writeReg(NRVConfig.I2C_SLAVE, REG_MODE_SELECT, value);
             sensorStreaming = value != MODE_SELECT_STANDBY;
-            log.info("NRV MODE_SELECT=" + value
-                    + (value == MODE_SELECT_STANDBY
-                            ? " (stream off before USB join)"
-                            : " (stream on)"));
+            log.info("NRV MODE_SELECT=" + value + " (" + reason + ")");
             if (drainAfterStandby && value == MODE_SELECT_STANDBY) {
                 Thread.sleep(STREAM_OFF_DRAIN_MS);
             }
@@ -853,6 +933,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             aeReader.startThread();
             resumeStreamingAfterUsbRestart();
         } else if (aeReader != null) {
+            liveStreamHeld = false;
+            aeReader.setDiscardEvents(false);
             aeReader.stopThread();
         }
         eventAcquisitionEnabled = enable;
@@ -975,6 +1057,30 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         return new byte[0];
     }
 
+    private static int clampStoredFifo(int loaded) {
+        if (loaded == USB_FIFO_SIZE) {
+            return loaded;
+        }
+        log.info("NRV USB FIFO " + loaded + " bytes clamped to " + USB_FIFO_SIZE);
+        return UsbReaderBufferSettings.applyFifoSize(
+                PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, USB_FIFO_SIZE, log, "NRV");
+    }
+
+    @Override
+    public int getMinFifoSize() {
+        return USB_FIFO_SIZE;
+    }
+
+    @Override
+    public int getMaxFifoSize() {
+        return USB_FIFO_SIZE;
+    }
+
+    @Override
+    public String getFifoSizeToolTip() {
+        return USB_FIFO_TOOLTIP;
+    }
+
     @Override
     public int getFifoSize() {
         return usbFifoSize;
@@ -982,8 +1088,11 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public void setFifoSize(int fifoSize) {
+        if (fifoSize != USB_FIFO_SIZE) {
+            log.info("NRV USB FIFO is fixed at " + USB_FIFO_SIZE + " bytes; ignoring " + fifoSize);
+        }
         this.usbFifoSize = UsbReaderBufferSettings.applyFifoSize(
-                prefs, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, fifoSize, log, "NRV");
+                prefs, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, USB_FIFO_SIZE, log, "NRV");
         this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
                 prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, usbNumBuffers, this.usbFifoSize, log, "NRV");
         if (aeReader != null) {
@@ -1064,5 +1173,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     @Override
     public USBPacketStatistics.Snapshot takeUsbStatisticsSnapshot() {
         return usbPacketStatistics.takeSnapshot();
+    }
+
+    @Override
+    public void resetUsbStatistics() {
+        usbPacketStatistics.reset();
     }
 }

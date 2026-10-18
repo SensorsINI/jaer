@@ -23,6 +23,23 @@ public interface ReaderBufferControl {
 
     public int getNumBuffers();
     public void setNumBuffers(int numBuffers);
+
+    /** Smallest host FIFO this device accepts. */
+    default int getMinFifoSize() {
+        return UsbReaderBufferSettings.MIN_FIFO_SIZE;
+    }
+
+    /** Largest host FIFO this device accepts. */
+    default int getMaxFifoSize() {
+        return UsbReaderBufferSettings.MAX_FIFO_SIZE;
+    }
+
+    /**
+     * Tooltip for the FIFO control, or {@code null} for the generic range tip.
+     */
+    default String getFifoSizeToolTip() {
+        return null;
+    }
     /** The reader should fire PropertyChangeEvent "readerStarted" when the reader is started and "readerStopped" when it is stopped. */
     public PropertyChangeSupport getReaderSupport();
 

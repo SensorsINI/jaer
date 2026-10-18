@@ -20,6 +20,10 @@ public final class LibUsbLinkInfoDemo {
                 "SUPER should mention 5 Gbit/s");
         require(LibUsbLinkInfo.speedLabel(LibUsb.SPEED_SUPER_PLUS).contains("10 Gbit"),
                 "SUPER_PLUS should mention 10 Gbit/s");
+        require(LibUsbLinkInfo.speedLabel(LibUsb.SPEED_SUPER_PLUS_X2).contains("20 Gbit"),
+                "SUPER_PLUS_X2 should mention 20 Gbit/s");
+        require(LibUsbLinkInfo.downgradeHint(LibUsb.SPEED_SUPER_PLUS_X2, 0x0320) == null,
+                "USB 3.2 device at Gen2x2 is not a downgrade");
         require(LibUsbLinkInfo.bcdUsbLabel(0x0320).contains("3.20"),
                 "0x0320 is USB 3.20");
         require(LibUsbLinkInfo.downgradeHint(LibUsb.SPEED_SUPER, 0x0300) == null,
@@ -39,6 +43,12 @@ public final class LibUsbLinkInfoDemo {
                 "tooltip is HTML with line breaks");
         require(tip.contains("USB 2 link"),
                 "downgraded USB 3 device tooltip mentions USB 2 link");
+        String tuning = new LibUsbLinkInfo.Snapshot(LibUsb.SPEED_SUPER_PLUS, 0x0320, 1, 14, 2, "2",
+                "parent hub", LibUsb.SPEED_SUPER_PLUS).tuningText();
+        require(tuning.contains("10 Gbit") && tuning.contains("USB 3.20") && tuning.contains("port=2"),
+                "tuning text has negotiated speed, bcdUSB, and port");
+        require(tuning.contains("parent hub"),
+                "tuning text includes the parent hub");
         System.out.println("PASS LibUsbLinkInfo speed/bcdUSB labels");
     }
 

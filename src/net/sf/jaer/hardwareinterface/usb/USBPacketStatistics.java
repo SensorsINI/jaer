@@ -243,6 +243,11 @@ public class USBPacketStatistics implements HasUsbStatistics {
         }
     }
 
+    @Override
+    public void resetUsbStatistics() {
+        reset();
+    }
+
     private void resetWindowLocked() {
         windowTransfers = 0;
         windowBytes = 0;

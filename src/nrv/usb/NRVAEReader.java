@@ -70,6 +70,11 @@ public class NRVAEReader {
     private volatile String firstBulkHex = "";
     private volatile boolean bulkStallLogged;
     private long lastBulkSummaryMs;
+    /**
+     * Recording Save As. The FX20 read thread keeps every buffer queued so the
+     * link does not idle into U3. Drop events here instead of MODE_SELECT=0.
+     */
+    private volatile boolean discardEvents;
 
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
@@ -284,6 +289,9 @@ public class NRVAEReader {
     }
 
     private static void clearEndpointHalt(DeviceHandle handle) {
+        if (handle == null) {
+            return;
+        }
         final int status = LibUsb.clearHalt(handle, ENDPOINT_IN);
         if (status != LibUsb.SUCCESS && status != LibUsb.ERROR_NOT_FOUND) {
             log.fine("NRV clearHalt 0x81: " + LibUsb.errorName(status));
@@ -319,6 +327,14 @@ public class NRVAEReader {
         bufferLifecycle.markStopped();
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
         return true;
+    }
+
+    void setDiscardEvents(boolean discard) {
+        discardEvents = discard;
+    }
+
+    boolean isDiscardingEvents() {
+        return discardEvents;
     }
 
     public void resetTimestamps() {
@@ -388,8 +404,10 @@ public class NRVAEReader {
             }
             final boolean writeBufferOverrun = monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag;
             // Keep scanning the USB chunk for timestamp/column state, but emit no events
-            // while the current write buffer is already in overrun.
-            parseLimit = writeBufferOverrun ? 0 : Math.max(0, monitor.getAEBufferSize() - monitor.getEventCounter());
+            // while the current write buffer is already in overrun or Save As is holding the stream.
+            parseLimit = (discardEvents || writeBufferOverrun)
+                    ? 0
+                    : Math.max(0, monitor.getAEBufferSize() - monitor.getEventCounter());
         }
 
         final long copyStart = sample != null ? System.nanoTime() : 0;
@@ -431,7 +449,7 @@ public class NRVAEReader {
     }
 
     private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
-        if (chunk == ParsedChunk.EMPTY) {
+        if (discardEvents || chunk == ParsedChunk.EMPTY) {
             return;
         }
         if (chunk.epoch != timestampEpoch.get()) {

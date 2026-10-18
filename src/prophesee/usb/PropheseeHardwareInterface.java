@@ -1188,6 +1188,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     @Override
+    public void resetUsbStatistics() {
+        usbPacketStatistics.reset();
+    }
+
+    @Override
     public String toString() {
         try {
             if (UsbIds.descriptorReadable(deviceDescriptor)) {

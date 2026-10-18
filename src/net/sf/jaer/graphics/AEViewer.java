@@ -124,6 +124,7 @@ import ch.unizh.ini.jaer.chip.flyeye.FlyEye;
 import ch.unizh.ini.jaer.chip.flyeye.FlyEyeHardwareInterface;
 import ch.unizh.ini.jaer.chip.retina.*;
 import nrv.chip.NRVS5KRC1S;
+import nrv.usb.NRVHardwareInterface;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
 import prophesee.usb.PropheseeHardwareInterface;
@@ -12081,6 +12082,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         // Set before the reader stops so an in-flight acquire does not autostart it again.
         liveUsbPausedForRecordingDialog = true;
+        if (aemon instanceof NRVHardwareInterface nrv) {
+            // FX20 ReadThread never idles the bulk pipe. MODE_SELECT=0 for the
+            // Save As dialog left the scan stopped, and resetting the pipe
+            // dropped the camera off the bus.
+            nrv.holdLiveStream();
+            log.info("holding NRV live USB (bulk IN stays queued) while recording dialog is open");
+            return true;
+        }
         try {
             log.info("pausing live USB acquisition while recording dialog is open");
             aemon.setEventAcquisitionEnabled(false);
@@ -12094,7 +12103,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void resumeLiveUsbAfterRecordingDialog() {
         try {
-            if (aemon != null && aemon.isOpen()
+            if (aemon instanceof NRVHardwareInterface nrv && nrv.isLiveStreamHeld()) {
+                log.info("releasing NRV live USB hold after recording dialog");
+                nrv.releaseLiveStreamHold();
+            } else if (aemon != null && aemon.isOpen()
                     && (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)
                     && !aemon.isEventAcquisitionEnabled()) {
                 log.info("resuming live USB acquisition after recording dialog");

@@ -2338,4 +2338,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         return usbPacketStatistics.takeSnapshot();
     }
 
+    @Override
+    public void resetUsbStatistics() {
+        usbPacketStatistics.reset();
+    }
+
 }

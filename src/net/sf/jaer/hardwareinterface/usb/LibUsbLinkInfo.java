@@ -16,7 +16,9 @@ import org.usb4java.LibUsb;
  * {@link LibUsb#getDeviceSpeed} is the <em>negotiated</em> link (what the
  * port/cable/hub actually trained), not marketing names on the connector.
  * SuperSpeed 5&nbsp;Gbit/s is USB 3.0, 3.1 Gen1, and 3.2 Gen1 — libusb does not
- * distinguish those. SuperSpeed+ 10&nbsp;Gbit/s is USB 3.1 Gen2 / 3.2 Gen2.
+ * distinguish those. SuperSpeed+ 10&nbsp;Gbit/s is USB 3.1 Gen2 / 3.2 Gen2
+ * (one 10&nbsp;Gbit/s lane, or two 5&nbsp;Gbit/s lanes). SuperSpeed+ 20&nbsp;Gbit/s
+ * is USB 3.2 Gen2x2.
  * {@link DeviceDescriptor#bcdUSB()} is what the device advertises, which can
  * still say 3.x when the link fell back to USB 2.0 High Speed.
  */
@@ -29,7 +31,7 @@ public final class LibUsbLinkInfo {
 
     /**
      * Last successful {@link #logOnOpen} snapshot, or {@code null}. Used for the
-     * ChipCanvas overlay and Interface-menu tooltip after AEChip matching.
+     * ChipCanvas overlay, Interface-menu tooltip, and USB tuning dialog.
      */
     public static Snapshot lastOpen() {
         return lastOpen;
@@ -133,6 +135,9 @@ public final class LibUsbLinkInfo {
         if (speed == LibUsb.SPEED_SUPER_PLUS) {
             return "SuperSpeed+ 10 Gbit/s (USB 3.1 Gen2 / 3.2 Gen2)";
         }
+        if (speed == LibUsb.SPEED_SUPER_PLUS_X2) {
+            return "SuperSpeed+ 20 Gbit/s (USB 3.2 Gen2x2)";
+        }
         if (speed == LibUsb.SPEED_UNKNOWN) {
             return "unknown speed";
         }
@@ -163,7 +168,8 @@ public final class LibUsbLinkInfo {
         if (bcdUsb < 0x0300) {
             return null;
         }
-        if (speed == LibUsb.SPEED_SUPER || speed == LibUsb.SPEED_SUPER_PLUS) {
+        if (speed == LibUsb.SPEED_SUPER || speed == LibUsb.SPEED_SUPER_PLUS
+                || speed == LibUsb.SPEED_SUPER_PLUS_X2) {
             return null;
         }
         if (speed == LibUsb.SPEED_UNKNOWN) {
@@ -217,6 +223,36 @@ public final class LibUsbLinkInfo {
             }
             if (parentKind != null && parentSpeed >= 0) {
                 sb.append("; ").append(parentKind).append(' ').append(speedLabel(parentSpeed));
+            }
+            return sb.toString();
+        }
+
+        /**
+         * USB tuning dialog: negotiated link, device USB version, bus/port, parent.
+         * Does not wrap; the dialog wraps the text.
+         */
+        public String tuningText() {
+            StringBuilder sb = new StringBuilder(speedLabel(speed));
+            if (bcdUsb >= 0 || bus >= 0) {
+                sb.append('\n');
+            }
+            if (bcdUsb >= 0) {
+                sb.append("Device ").append(bcdUsbLabel(bcdUsb));
+            }
+            if (bus >= 0) {
+                if (bcdUsb >= 0) {
+                    sb.append("; ");
+                }
+                sb.append(String.format("bus=%d addr=%d port=%d", bus, addr, port));
+                if (!path.isEmpty()) {
+                    sb.append(" path=").append(path);
+                }
+            }
+            if (parentKind != null && parentSpeed >= 0) {
+                sb.append('\n').append(parentKind).append(' ').append(speedLabel(parentSpeed));
+            }
+            if (downgradeHint != null) {
+                sb.append('\n').append(downgradeHint);
             }
             return sb.toString();
         }

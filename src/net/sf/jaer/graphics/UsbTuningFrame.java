@@ -46,6 +46,7 @@ import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
+import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
@@ -58,8 +59,9 @@ import net.sf.jaer.util.WindowSaver;
  * Separate top-level window for live USB FIFO / buffer count / AE render-packet
  * size (and Prophesee live keep limit when available). Spinner and typed edits
  * auto-apply after a short pause so touchpad / arrow-key adjustments stay usable
- * while the camera runs. While this window is open, USB IN transfer statistics
- * are collected and shown in the table (~1 s windows).
+ * while the camera runs. The USB link block is the negotiated speed captured
+ * when the camera was opened. While this window is open, USB IN transfer
+ * statistics are collected and shown in the table (~1 s windows).
  * {@link WindowSaver.DontResize} keeps {@link #pack()} size; last position may
  * still restore. {@link WindowSaver} applies bounds on a later EDT turn than
  * {@code WINDOW_OPENED}, so this frame packs again after that restore.
@@ -74,7 +76,8 @@ Edits apply a moment after you stop changing a field, while the camera is runnin
 <ul>
 <li><b>FIFO bytes</b> &mdash; size of each host USB read (4&nbsp;KiB to 2&nbsp;MiB).
 The camera ends a transfer when its own chunk is finished, or when this buffer is full.
-A larger FIFO does not make the camera send larger packets.</li>
+A larger FIFO does not make the camera send larger packets.
+NRV is fixed at 64&nbsp;KiB: the camera ends each read at 65,504 bytes, so a larger host buffer stays empty.</li>
 <li><b>Buffers</b> &mdash; how many of those reads are queued at once (1&ndash;32).
 This covers a short pause in jAER. It does not change packet size.
 FIFO &times; buffers is limited to 8&nbsp;MB.</li>
@@ -84,16 +87,27 @@ Increase it when the display says events are dropping.</li>
 <li><b>Live keep</b> &mdash; Prophesee only. Maximum events kept per display frame.
 The smaller of Render events and Live keep is what you see and record.</li>
 </ul>
+<h3>USB link</h3>
+<p>Negotiated speed from when the camera was opened, the device USB version (bcdUSB),
+bus, address, port, and the parent hub speed. Editing FIFO or buffers does not change it.
+10&nbsp;Gbit/s can be one 10&nbsp;Gbit/s lane or two 5&nbsp;Gbit/s lanes.
+20&nbsp;Gbit/s is USB 3.2 Gen2x2.</p>
 <h3>USB IN statistics</h3>
-<p>The table is the last second of completed USB reads. Numbers are collected only while this window is open.</p>
+<p>The table is the last second of completed USB reads. Numbers are collected only while this window is open.
+Each completed read is added to that window. Once a second the table shows the window and a new one starts.
+Nothing is averaged across seconds, or since the camera was opened.
+<b>Refresh</b> reloads the controls on the left from the camera and clears this window.
+The table stays blank until the next second of reads.</p>
 <ul>
 <li><b>Fill</b> &mdash; average completed size divided by FIFO.
 The note &ldquo;FIFO full&rdquo; means that average is at least 85%.
 It is not a report that the camera overflowed.
 A low fill means the camera sent less than the FIFO you requested.</li>
-<li><b>Avg / Min / Max size</b> &mdash; bytes in each completed read.</li>
+<li><b>Avg read size</b> &mdash; mean bytes in each completed read.</li>
 <li><b>Interval</b> &mdash; average time between completed reads.</li>
 <li><b>Throughput</b> &mdash; bytes per second.</li>
+<li><b>Effective</b> &mdash; that throughput in megabits or gigabits per second (bytes/s × 8).
+This is the measured payload rate, not the negotiated link speed.</li>
 <li><b>Completions</b> &mdash; completed reads per second.</li>
 <li><b>Empty</b> &mdash; reads that contained no data.</li>
 <li><b>Short</b> &mdash; reads shorter than the FIFO. Normal when the camera finishes early.</li>
@@ -101,6 +115,16 @@ A low fill means the camera sent less than the FIFO you requested.</li>
 Zero errors does not prove every sensor event was kept.
 NRV does not put an overflow marker in the USB stream.</li>
 </ul>
+<h3>How a one-second window is computed</h3>
+<ul>
+<li><b>Avg read size</b> &mdash; sum of bytes in non-empty reads, divided by how many of those reads completed.</li>
+<li><b>Interval</b> &mdash; window length divided by (completions &minus; 1).</li>
+<li><b>Throughput</b> &mdash; total bytes in the window divided by the window length.</li>
+<li><b>Effective</b> &mdash; throughput &times; 8, shown in Mbit/s or Gbit/s.</li>
+<li><b>Completions</b>, <b>Empty</b>, <b>Short</b>, <b>Errors</b> &mdash; counts in the window divided by the window length, so the column says &ldquo;per second&rdquo;.</li>
+<li><b>Fill</b> &mdash; avg read size divided by FIFO bytes.</li>
+</ul>
+<p>The line under the table is the window number and how long that window actually was (about 1&nbsp;s).</p>
 <p>A red <b>(DROP)</b> or <b>(overrun)</b> on the status line means the rendering buffer
 or the live-keep cap discarded events. Increase <b>Render events</b>
 (and <b>Live keep</b> on Prophesee), or raise the DVS threshold or refractory period.</p>
@@ -114,17 +138,29 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private static final int RENDER_MIN = 1 << 16;
     private static final int RENDER_MAX = 1 << 23;
     private static final int SPINNER_COLUMNS = 9;
-    private static final int METRIC_COL_WIDTH = 108;
+    private static final int METRIC_COL_WIDTH = 124;
     private static final int VALUE_COL_WIDTH = 112;
     private static final int NOTE_PREF_WIDTH = 400;
     private static final int NOTE_PREF_HEIGHT = 56;
     private static final int TABLE_ROW_HEIGHT = 20;
     private static final String DASH = "—";
+    private static final String USB_STATS_TIP = "<html>Each row is one second of completed USB reads."
+            + " The window is shown, then cleared, once a second. Nothing carries over from the previous second."
+            + "<br>Avg read size is the mean of non-empty reads. Throughput is total bytes / window length."
+            + " Effective is that rate × 8."
+            + "<br>Completions, empty, short, and errors are window counts / window length."
+            + "<br>Refresh clears the window immediately.</html>";
     private static final int ROW_FIFO = 0;
     private static final int ROW_BUFFERS = 1;
     private static final int ROW_FILL = 2;
-    private static final int ROW_THROUGHPUT = 7;
-    private static final int ROW_ERRORS = 11;
+    private static final int ROW_AVG_READ = 3;
+    private static final int ROW_INTERVAL = 4;
+    private static final int ROW_THROUGHPUT = 5;
+    private static final int ROW_EFFECTIVE = 6;
+    private static final int ROW_COMPLETIONS = 7;
+    private static final int ROW_EMPTY = 8;
+    private static final int ROW_SHORT = 9;
+    private static final int ROW_ERRORS = 10;
     private static final Color FILL_YELLOW = new Color(255, 230, 80);
     private static final Color FILL_ORANGE = new Color(255, 160, 40);
     private static final Color FILL_RED = new Color(220, 50, 50);
@@ -132,11 +168,10 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         "FIFO",
         "Buffers",
         "Fill",
-        "Avg size",
-        "Min size",
-        "Max size",
+        "Avg read size",
         "Interval",
         "Throughput",
+        "Effective",
         "Completions",
         "Empty",
         "Short",
@@ -145,12 +180,11 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private static final String[] STAT_TIPS = {
         "Host bulk-IN buffer (URB) size you set on the left. The camera may complete far less than this.",
         "Number of those URBs queued at once.",
-        "Avg completed size / FIFO. Low fill with min=max means the camera always finishes a small, fixed burst.",
+        "Avg completed size / FIFO. A low fill means the camera finishes each read before the FIFO is full.",
         "Mean bytes per completed USB bulk IN in the last second. Not event count.",
-        "Smallest completed bulk IN in the last second.",
-        "Largest completed bulk IN in the last second.",
         "Mean time between completed bulk INs.",
         "Bytes completed per second (size × completions).",
+        "Throughput as bits per second (bytes/s × 8). Payload rate, not the negotiated link speed.",
         "Completed bulk INs per second.",
         "Completions with 0 bytes (ZLP).",
         "Completions shorter than FIFO (normal if the camera sends less than the URB).",
@@ -161,6 +195,9 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private final NumberFormat intFormat = NumberFormat.getIntegerInstance();
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
+    private static final String GENERIC_FIFO_TIP =
+            "Host USB FIFO bytes per async bulk transfer (4 KiB–2 MiB, powers of two).";
+    private JLabel fifoLabel;
     private JSpinner fifoSpinner;
     private JSpinner buffersSpinner;
     private JSpinner renderSpinner;
@@ -171,6 +208,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private JLabel allocationLabel;
     private JLabel statusLabel;
     private JLabel statsStatusLabel;
+    private JTextArea linkArea;
     private DefaultTableModel statsModel;
     private JTable statsTable;
     private JScrollPane statsScroll;
@@ -284,6 +322,20 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         final JPanel root = new JPanel(new BorderLayout(8, 8));
         root.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
 
+        linkArea = new JTextArea("No USB device open");
+        linkArea.setEditable(false);
+        linkArea.setOpaque(false);
+        linkArea.setLineWrap(true);
+        linkArea.setWrapStyleWord(true);
+        linkArea.setRows(3);
+        linkArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        linkArea.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        linkArea.setToolTipText("Negotiated USB link from when this camera was opened.");
+        final JPanel linkPanel = new JPanel(new BorderLayout());
+        linkPanel.setBorder(BorderFactory.createTitledBorder("USB link"));
+        linkPanel.add(linkArea, BorderLayout.CENTER);
+        root.add(linkPanel, BorderLayout.NORTH);
+
         final JPanel form = new JPanel(new GridBagLayout());
         final GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
@@ -311,7 +363,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         configureSpinnerEditor(renderSpinner);
         configureSpinnerEditor(keepSpinner);
 
-        fifoSpinner.setToolTipText("Host USB FIFO bytes per async bulk transfer (4 KiB–2 MiB, powers of two).");
+        fifoSpinner.setToolTipText(GENERIC_FIFO_TIP);
         buffersSpinner.setToolTipText("Number of overlapped USB read buffers (1–32).");
         renderSpinner.setToolTipText("AEPacketRaw pool size in events (2 buffers).");
         keepSpinner.setToolTipText("<html>Prophesee only: max polarity events kept per live display frame.<br>"
@@ -319,7 +371,15 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
                 + "at high event rates; AEDAT logging uses the same capped packet.</html>");
 
         int row = 0;
-        addRow(form, c, row++, "FIFO bytes", fifoSpinner);
+        fifoLabel = new JLabel("FIFO bytes");
+        fifoLabel.setToolTipText(GENERIC_FIFO_TIP);
+        c.gridx = 0;
+        c.gridy = row;
+        c.gridwidth = 1;
+        form.add(fifoLabel, c);
+        c.gridx = 1;
+        form.add(fifoSpinner, c);
+        row++;
         addRow(form, c, row++, "Buffers", buffersSpinner);
         addRow(form, c, row++, "Render events", renderSpinner);
         keepLabel = new JLabel("Live keep");
@@ -356,9 +416,11 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         help.setToolTipText("How to use FIFO, buffers, the rendering buffer, and the USB IN statistics.");
         help.addActionListener(e -> toggleHelp());
         final JButton refresh = new JButton("Refresh");
+        refresh.setToolTipText("<html>Reload FIFO, buffers, and render size from the camera,"
+                + "<br>and clear the USB IN average so the next second starts from zero.</html>");
         refresh.addActionListener(e -> {
             refreshFromHardware();
-            pollStatisticsTable();
+            resetStatisticsAveraging();
         });
         final JButton close = new JButton("Close");
         close.addActionListener(e -> dispatchEvent(new WindowEvent(UsbTuningFrame.this, WindowEvent.WINDOW_CLOSING)));
@@ -434,7 +496,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         statsTable.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
         statsTable.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         statsTable.setToolTipText("<html>USB bulk IN completions for the last 1 s (updates at 1 Hz).<br>"
-                + "Size rows are bytes delivered when libusb finishes one read, not DVS events.<br>"
+                + "Avg read size is bytes delivered when libusb finishes one read, not DVS events.<br>"
                 + "Fill is that size divided by the host FIFO. Hover a row for details.</html>");
         TableColumn metricCol = statsTable.getColumnModel().getColumn(0);
         metricCol.setMinWidth(METRIC_COL_WIDTH);
@@ -462,6 +524,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
 
         final JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.setBorder(BorderFactory.createTitledBorder("USB IN statistics"));
+        panel.setToolTipText(USB_STATS_TIP);
         panel.add(statsScroll, BorderLayout.CENTER);
         panel.add(statsStatusLabel, BorderLayout.SOUTH);
         return panel;
@@ -484,7 +547,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             setVerticalAlignment(SwingConstants.CENTER);
             if (row == ROW_FIFO || row == ROW_BUFFERS) {
                 setFont(valueCol ? paramValueFont : paramFont);
-            } else if (row == ROW_FILL || row == ROW_THROUGHPUT) {
+            } else if (row == ROW_FILL || row == ROW_THROUGHPUT || row == ROW_EFFECTIVE) {
                 setFont(valueCol ? criticalValueFont : criticalFont);
             } else {
                 setFont(valueCol ? measureValueFont : measureFont);
@@ -615,7 +678,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         try {
             final boolean hasReader = monitor instanceof ReaderBufferControl;
             final boolean hasKeep = monitor instanceof HasLiveDisplayEventCap;
-            fifoSpinner.setEnabled(hasReader);
             buffersSpinner.setEnabled(hasReader);
             renderSpinner.setEnabled(monitor != null);
             keepLabel.setVisible(hasKeep);
@@ -636,23 +698,66 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             }
             if (hasReader) {
                 final ReaderBufferControl reader = (ReaderBufferControl) monitor;
+                final int minFifo = reader.getMinFifoSize();
+                final int maxFifo = reader.getMaxFifoSize();
                 int fifo = reader.getPendingFifoSize();
-                fifo = Math.max(UsbReaderBufferSettings.MIN_FIFO_SIZE,
-                        Math.min(UsbReaderBufferSettings.MAX_FIFO_SIZE, fifo));
+                fifo = Math.max(minFifo, Math.min(maxFifo, fifo));
+                applyFifoSpinnerRange(fifo, minFifo, maxFifo);
+                final String tip = reader.getFifoSizeToolTip();
+                final String fifoTip = tip != null ? tip : GENERIC_FIFO_TIP;
+                fifoSpinner.setToolTipText(fifoTip);
+                fifoLabel.setToolTipText(fifoTip);
+                fifoSpinner.setEnabled(minFifo < maxFifo);
                 int buffers = reader.getPendingNumBuffers();
                 buffers = Math.max(UsbReaderBufferSettings.MIN_NUM_BUFFERS,
                         Math.min(UsbReaderBufferSettings.MAX_NUM_BUFFERS, buffers));
-                fifoSpinner.setValue(fifo);
                 buffersSpinner.setValue(buffers);
+            } else {
+                fifoSpinner.setEnabled(false);
+                fifoSpinner.setToolTipText(GENERIC_FIFO_TIP);
+                fifoLabel.setToolTipText(GENERIC_FIFO_TIP);
             }
         } finally {
             updatingUi = false;
         }
         refreshStatusLabels();
         updateAllocationLabel();
+        refreshLinkInfo();
         if (isDisplayable()) {
             packToContent();
         }
+    }
+
+    /**
+     * Puts {@code fifo} into the spinner, then tightens the model range.
+     * {@link SpinnerNumberModel} rejects a value outside the current range.
+     */
+    private void applyFifoSpinnerRange(int fifo, int minFifo, int maxFifo) {
+        final SpinnerNumberModel model = (SpinnerNumberModel) fifoSpinner.getModel();
+        final int currentMin = ((Number) model.getMinimum()).intValue();
+        final int currentMax = ((Number) model.getMaximum()).intValue();
+        if (fifo < currentMin) {
+            model.setMinimum(fifo);
+        }
+        if (fifo > currentMax) {
+            model.setMaximum(fifo);
+        }
+        model.setValue(fifo);
+        model.setMinimum(minFifo);
+        model.setMaximum(maxFifo);
+    }
+
+    private void refreshLinkInfo() {
+        if (viewer == null || viewer.aemon == null) {
+            linkArea.setText("No USB device open");
+            return;
+        }
+        final LibUsbLinkInfo.Snapshot snap = LibUsbLinkInfo.lastOpen();
+        if (snap == null) {
+            linkArea.setText("Link information was not captured for this open.");
+            return;
+        }
+        linkArea.setText(snap.tuningText());
     }
 
     private void refreshStatusLabels() {
@@ -734,6 +839,30 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         }
     }
 
+    /**
+     * Drop the current one-second USB IN window. The table stays blank until
+     * the next poll fills a new window.
+     */
+    private void resetStatisticsAveraging() {
+        if (viewer != null && viewer.aemon instanceof HasUsbStatistics && boundStats == null) {
+            bindStatisticsCollection();
+        }
+        if (boundStats != null) {
+            boundStats.resetUsbStatistics();
+        }
+        fillStatsDashes();
+        if (statsStatusLabel == null) {
+            return;
+        }
+        if (boundStats == null) {
+            statsStatusLabel.setText(viewer == null || viewer.aemon == null
+                    ? "USB IN: no device open"
+                    : "USB IN: this interface does not report transfer sizes");
+        } else {
+            statsStatusLabel.setText("USB IN: collecting… (1 s)");
+        }
+    }
+
     private void pollStatisticsTable() {
         final HasUsbStatistics current = viewer.aemon instanceof HasUsbStatistics
                 ? (HasUsbStatistics) viewer.aemon
@@ -766,14 +895,13 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         setStat(ROW_FIFO, exactBytes(s.fifoSizeBytes));
         setStat(ROW_BUFFERS, s.numBuffers > 0 ? intFormat.format(s.numBuffers) : DASH);
         setStat(ROW_FILL, Float.isNaN(fill) ? DASH : Math.round(100 * fill) + "%");
-        setStat(3, exactBytes(s.avgPacketBytes));
-        setStat(4, s.minBytes > 0 ? exactBytes(s.minBytes) : DASH);
-        setStat(5, s.maxBytes > 0 ? exactBytes(s.maxBytes) : DASH);
-        setStat(6, s.avgIntervalUs > 0 ? eng(s.avgIntervalUs * 1e-6) + "s" : DASH);
+        setStat(ROW_AVG_READ, exactBytes(s.avgPacketBytes));
+        setStat(ROW_INTERVAL, s.avgIntervalUs > 0 ? eng(s.avgIntervalUs * 1e-6) + "s" : DASH);
         setStat(ROW_THROUGHPUT, s.bytesPerSec > 0 ? eng(s.bytesPerSec) + "B/s" : DASH);
-        setStat(8, intFormat.format(s.transfers) + "/s");
-        setStat(9, intFormat.format(s.emptyCount) + "/s");
-        setStat(10, intFormat.format(s.shortCount) + "/s");
+        setStat(ROW_EFFECTIVE, s.bytesPerSec > 0 ? bitRateLabel(s.bytesPerSec) : DASH);
+        setStat(ROW_COMPLETIONS, intFormat.format(s.transfers) + "/s");
+        setStat(ROW_EMPTY, intFormat.format(s.emptyCount) + "/s");
+        setStat(ROW_SHORT, intFormat.format(s.shortCount) + "/s");
         setStat(ROW_ERRORS, intFormat.format(s.errorCount) + "/s");
         setNote(s.hint);
         statsStatusLabel.setText(String.format("USB IN: 1 Hz  #%d  (%.2f s)", s.seq, s.elapsedS));
@@ -792,6 +920,27 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         if (statsTable != null) {
             statsTable.repaint();
         }
+    }
+
+    /**
+     * Bytes per second as megabits or gigabits per second ({@code bytes/s × 8}).
+     */
+    static String bitRateLabel(double bytesPerSec) {
+        double mbit = bytesPerSec * 8.0 / 1.0e6;
+        if (mbit >= 1000.0) {
+            double gbit = mbit / 1000.0;
+            if (Math.abs(gbit - Math.rint(gbit)) < 0.05) {
+                return String.format("%.0f Gbit/s", gbit);
+            }
+            return String.format("%.2f Gbit/s", gbit);
+        }
+        if (mbit >= 10.0) {
+            return String.format("%.0f Mbit/s", mbit);
+        }
+        if (mbit >= 0.05) {
+            return String.format("%.1f Mbit/s", mbit);
+        }
+        return String.format("%.0f kbit/s", bytesPerSec * 8.0 / 1.0e3);
     }
 
     private void setStat(int row, String value) {

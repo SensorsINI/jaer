@@ -58,17 +58,18 @@ Live USB cameras selectable in the AEViewer **AEChip** menu (default list and re
 
 | Camera / product | Manufacturer | Sensor / resolution | Interface | jAER chip class(es) | Status |
 |------------------|--------------|---------------------|-----------|---------------------|--------|
-| **DAVIS346** (red/blue/color) | [iniVation](https://inivation.com/) | APS+DVS 346×260 | USB 3 (FX3) | `Davis346red`, `Davis346blue`, `Davis346redColor`, … | Stable |
-| **DAVIS240** (A/B/C) | [iniVation](https://inivation.com/) / [inilabs](https://inilabs.com/) | APS+DVS 240×180 | USB 2/3 | `DAVIS240C`, `DAVIS240B`, … | Stable (`DAVIS240C`); Experimental (`DAVIS240A`/`B`) |
-| **DVXplorer** | [iniVation](https://inivation.com/) | DVS (Samsung S5K231Y) 640×480, 9 µm | USB 3 (FX3) | `DVXplorer` | Stable |
-| **DVXplorer Mini** | [iniVation](https://inivation.com/) | same Samsung DVS 640×480, 9 µm | USB 3 (CX3 MIPI) | `DVXplorer` | Stable |
-| **DVXplorer Micro** | [iniVation](https://inivation.com/) | same Samsung DVS 640×480, 9 µm | USB-C (CX3 MIPI) | `DVXplorer` | Stable |
-| **DVS128** | [inilabs](https://inilabs.com/) / [SensorsINI](https://sensors.ini.ch) | DVS 128×128 | USB 2 (FX2) | `DVS128` | Stable |
-| **EVK4 HD** | [Prophesee](https://www.prophesee.ai/) | Sony IMX636 DVS 1280×720 | USB 3 (Cypress) | `PropheseeIMX636HD` | Stable ([notes](src/prophesee/README.md)); also Metavision `.raw` EVT3 playback |
-| **DELTA01** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3 (FX20/CX3) | `NRVS5KRC1S` | Stable ([notes](src/nrv/README.md)) |
-| **CDAVIS** | [SensorsINI](https://sensors.ini.ch) / [iniVation](https://inivation.com/) | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Experimental |
-| **SciDVS** | [SensorsINI](https://sensors.ini.ch) | Sensitive 100×114 DVS / Basic APS  | USB 3 | `SciDVS` | Experimental |
-| **CochleaAMS / CochleaLP** | [SensorsINI](https://sensors.ini.ch) / [inilabs](https://inilabs.com/) | Silicon cochlea (audio AER) | USB 2/3 | `CochleaAMS1c`, `CochleaLP`, … | Stable (`CochleaAMS1c`); Experimental (`CochleaLP`) |
+| **DAVIS346** (red/blue/color) | [iniVation](https://inivation.com/) | APS+DVS+IMU 346×260 | USB 3.0 (5 Gbps, FX3) | `Davis346red`, `Davis346blue`, `Davis346redColor`, … | Stable |
+| **DAVIS240** (A/B/C) | [iniVation](https://inivation.com/) / [inilabs](https://inilabs.com/) | APS+DVS+IMU 240×180 | USB 2.0 (480 Mbps) / USB 3.0 (5 Gbps) | `DAVIS240C`, `DAVIS240B`, … | Stable (`DAVIS240C`); Experimental (`DAVIS240A`/`B`) |
+| **DVXplorer** | [iniVation](https://inivation.com/) | DVS+IMU (Samsung S5K231Y) 640×480, 9 µm | USB 3.0 (5 Gbps, FX3) | `DVXplorer` | Stable |
+| **DVXplorer Mini** | [iniVation](https://inivation.com/) | same Samsung DVS+IMU 640×480, 9 µm | USB 3.0 (5 Gbps, CX3 MIPI) | `DVXplorer` | Stable |
+| **DVXplorer Micro** | [iniVation](https://inivation.com/) | same Samsung DVS+IMU 640×480, 9 µm | USB 3.0 (5 Gbps, CX3 MIPI, USB-C) | `DVXplorer` | Stable |
+| **DVS128** | [inilabs](https://inilabs.com/) / [SensorsINI](https://sensors.ini.ch) | DVS 128×128 | USB 2.0 (480 Mbps, FX2) | `DVS128` | Stable |
+| **EVK4 HD** | [Prophesee](https://www.prophesee.ai/) | Sony IMX636 DVS 1280×720 | USB 3.0 (5 Gbps, Cypress) | `PropheseeIMX636HD` | Stable ([notes](src/prophesee/README.md)); also Metavision `.raw` EVT3 playback |
+| **DELTA01** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3.0 (5 Gbps, CX3) | `NRVS5KRC1S` | Stable ([notes](src/nrv/README.md)) |
+| **DELTA10** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3.2 Gen 2×2 (20 Gbps, FX20) | `NRVS5KRC1S` | Stable ([notes](src/nrv/README.md)) |
+| **CDAVIS** | [SensorsINI](https://sensors.ini.ch) / [iniVation](https://inivation.com/) | Color APS+DVS+IMU 640×480 / 320×240 DVS | USB 3.0 (5 Gbps) | `CDAVIS` | Experimental |
+| **SciDVS** | [SensorsINI](https://sensors.ini.ch) | Sensitive 100×114 DVS+IMU / Basic APS  | USB 3.0 (5 Gbps) | `SciDVS` | Experimental |
+| **CochleaAMS / CochleaLP** | [SensorsINI](https://sensors.ini.ch) / [inilabs](https://inilabs.com/) | Silicon cochlea (audio AER) | USB 2.0 (480 Mbps) / USB 3.0 (5 Gbps) | `CochleaAMS1c`, `CochleaLP`, … | Stable (`CochleaAMS1c`); Experimental (`CochleaLP`) |
 | Generic DVS viewers | — | 640×480, 1280×720 | Playback / viz | `DVS640`, `DVS1280x720SD` | Stable |
 
 Stereo and multi-camera wrappers (e.g. `DVS128StereoPair`, `MultiDAVIS346BCameraChip`) combine several of the above over separate USB interfaces.

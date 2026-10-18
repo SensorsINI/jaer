@@ -29,6 +29,7 @@ public final class UsbTuningFrameDemo {
         if (GraphicsEnvironment.isHeadless()) {
             throw new IllegalStateException("needs a display");
         }
+        testBitRateLabel();
         SwingUtilities.invokeAndWait(() -> {
             try {
                 testPackedSizeStaysBelowScreen();
@@ -48,6 +49,20 @@ public final class UsbTuningFrameDemo {
         testCloseSavesBoundsForReopen();
         System.out.println("USB_TUNING_LAYOUT ASSERTIONS=" + assertions);
         System.out.println("USB_TUNING_LAYOUT PASS");
+    }
+
+    private static void testBitRateLabel() {
+        requireBitRate(27.0e6, "216 Mbit/s");
+        requireBitRate(1.25e9, "10 Gbit/s");
+        requireBitRate(220.0e6, "1.76 Gbit/s");
+    }
+
+    private static void requireBitRate(double bytesPerSec, String expected) {
+        String got = UsbTuningFrame.bitRateLabel(bytesPerSec);
+        if (!expected.equals(got)) {
+            throw new AssertionError("bit rate for " + bytesPerSec + " B/s: expected " + expected + " got " + got);
+        }
+        assertions++;
     }
 
     private static void testPackedSizeStaysBelowScreen() {

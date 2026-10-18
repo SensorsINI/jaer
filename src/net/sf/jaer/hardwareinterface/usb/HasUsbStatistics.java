@@ -42,4 +42,11 @@ public interface HasUsbStatistics {
     default USBPacketStatistics.Snapshot takeUsbStatisticsSnapshot() {
         return snapshotUsbStatistics();
     }
+
+    /**
+     * Drop the current accumulation and the last displayed window. The next
+     * completed reads start a fresh second. USB tuning Refresh calls this.
+     */
+    default void resetUsbStatistics() {
+    }
 }

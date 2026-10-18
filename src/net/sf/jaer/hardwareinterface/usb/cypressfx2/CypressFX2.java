@@ -3196,6 +3196,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return usbPacketStatistics.takeSnapshot();
     }
 
+    @Override
+    public void resetUsbStatistics() {
+        usbPacketStatistics.reset();
+    }
+
     private final class UsbIoBufferHost implements UsbAsyncBulkReaderLifecycle.Host {
         @Override
         public String deviceLabel() {
