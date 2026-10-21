@@ -1819,7 +1819,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
             isOpened = true;
 
             CypressFX2.log.info("open(): device opened");
-            LibUsbLinkInfo.logOnOpen(CypressFX2.log, "CypressFX2", device, deviceDescriptor);
+            LibUsbLinkInfo.logOnOpen(CypressFX2.log, "CypressFX2", device, deviceDescriptor, deviceHandle);
 
             if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
                 CypressFX2.log

@@ -4,10 +4,15 @@ import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
 import org.apache.commons.text.WordUtils;
+import org.usb4java.BosDescriptor;
+import org.usb4java.BosDevCapabilityDescriptor;
 import org.usb4java.BufferUtils;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
+import org.usb4java.DeviceHandle;
 import org.usb4java.LibUsb;
+import org.usb4java.SsPlusSublinkAttribute;
+import org.usb4java.SsPlusUsbDeviceCapabilityDescriptor;
 
 /**
  * Formats libusb link topology so a camera open log shows negotiated speed,
@@ -49,8 +54,24 @@ public final class LibUsbLinkInfo {
         if (log == null || device == null) {
             return;
         }
+        logOnOpen(log, label, device, descriptor, null);
+    }
+
+    /**
+     * Same as {@link #logOnOpen(Logger, String, Device, DeviceDescriptor)}, and
+     * when {@code handle} is open and the loaded libusb is 1.0.30 or newer,
+     * appends SuperSpeedPlus lane rates from the BOS descriptor. The BOS read
+     * is a control transfer with a 1 second timeout. A missing descriptor is
+     * normal for USB 2 and plain SuperSpeed devices.
+     */
+    public static void logOnOpen(Logger log, String label, Device device, DeviceDescriptor descriptor,
+            DeviceHandle handle) {
+        if (log == null || device == null) {
+            return;
+        }
+        LibUsbNativeLog.installIfFine();
         try {
-            Snapshot snap = capture(device, descriptor);
+            Snapshot snap = capture(device, descriptor, handle);
             lastOpen = snap;
             log.info(label + " USB link: " + snap.logLine());
             if (snap.downgradeHint != null) {
@@ -63,6 +84,11 @@ public final class LibUsbLinkInfo {
 
     /** Capture speed and topology without logging. */
     public static Snapshot capture(Device device, DeviceDescriptor descriptor) {
+        return capture(device, descriptor, null);
+    }
+
+    /** Capture speed, topology, and SuperSpeedPlus lanes when {@code handle} is open. */
+    public static Snapshot capture(Device device, DeviceDescriptor descriptor, DeviceHandle handle) {
         if (device == null) {
             return null;
         }
@@ -107,7 +133,92 @@ public final class LibUsbLinkInfo {
         } catch (RuntimeException e) {
             // root of tree
         }
-        return new Snapshot(speed, bcd, bus, addr, port, path, parentKind, parentSpeed);
+        String ssp = null;
+        if (handle != null && speed >= LibUsb.SPEED_SUPER) {
+            ssp = sspSummary(handle);
+        }
+        return new Snapshot(speed, bcd, bus, addr, port, path, parentKind, parentSpeed, ssp);
+    }
+
+    /**
+     * SuperSpeedPlus lane summary, or {@code null} when libusb is older than
+     * 1.0.30, the device has no such capability, or the read fails.
+     */
+    static String sspSummary(DeviceHandle handle) {
+        if (handle == null || !LibUsbRuntime.atLeast130()) {
+            return null;
+        }
+        BosDescriptor bos = new BosDescriptor();
+        try {
+            int status = LibUsb.getBosDescriptor(handle, bos);
+            if (status != LibUsb.SUCCESS) {
+                if (status != LibUsb.ERROR_NOT_FOUND) {
+                    Logger.getLogger("net.sf.jaer").fine(
+                            "USB SuperSpeedPlus descriptor unavailable: " + LibUsb.errorName(status));
+                }
+                return null;
+            }
+            BosDevCapabilityDescriptor[] caps = bos.devCapability();
+            if (caps == null) {
+                return null;
+            }
+            for (BosDevCapabilityDescriptor cap : caps) {
+                if (cap == null
+                        || (cap.bDevCapabilityType() & 0xff) != (LibUsb.BT_SUPERSPEED_PLUS_CAPABILITY & 0xff)) {
+                    continue;
+                }
+                SsPlusUsbDeviceCapabilityDescriptor ssp = new SsPlusUsbDeviceCapabilityDescriptor();
+                try {
+                    int parsed = LibUsb.getSsPlusUsbDeviceCapabilityDescriptor(null, cap, ssp);
+                    if (parsed != LibUsb.SUCCESS) {
+                        Logger.getLogger("net.sf.jaer").fine(
+                                "USB SuperSpeedPlus descriptor unavailable: " + LibUsb.errorName(parsed));
+                        return null;
+                    }
+                    return formatSsp(ssp);
+                } finally {
+                    LibUsb.freeSsPlusUsbDeviceCapabilityDescriptor(ssp);
+                }
+            }
+            return null;
+        } catch (UnsatisfiedLinkError | RuntimeException e) {
+            Logger.getLogger("net.sf.jaer").fine("USB SuperSpeedPlus descriptor unavailable: " + e);
+            return null;
+        } finally {
+            try {
+                LibUsb.freeBosDescriptor(bos);
+            } catch (UnsatisfiedLinkError | RuntimeException e) {
+                // descriptor was never filled
+            }
+        }
+    }
+
+    static String formatSsp(SsPlusUsbDeviceCapabilityDescriptor ssp) {
+        int count = ssp.numSublinkSpeedAttributes() & 0xff;
+        StringBuilder sb = new StringBuilder();
+        sb.append("SSP min lanes RX ").append(ssp.minRxLaneCount() & 0xff);
+        sb.append(" TX ").append(ssp.minTxLaneCount() & 0xff);
+        for (int i = 0; i < count; i++) {
+            SsPlusSublinkAttribute lane = ssp.sublink(i);
+            sb.append("; ");
+            sb.append(lane.direction() == LibUsb.SSPLUS_ATTR_DIR_TX ? "TX " : "RX ");
+            sb.append(laneRateLabel(lane.bitRate()));
+        }
+        return sb.toString();
+    }
+
+    /** Bits per second as a short rate, for example {@code 10 Gbit/s}. */
+    static String laneRateLabel(long bitRate) {
+        if (bitRate < 0) {
+            return "unknown rate";
+        }
+        if (bitRate >= 1_000_000_000L && bitRate % 1_000_000_000L == 0) {
+            return (bitRate / 1_000_000_000L) + " Gbit/s";
+        }
+        if (bitRate >= 1_000_000L && bitRate % 1_000_000L == 0) {
+            return (bitRate / 1_000_000L) + " Mbit/s";
+        }
+        return bitRate + " bit/s";
     }
 
     /**
@@ -195,9 +306,16 @@ public final class LibUsbLinkInfo {
         public final String parentKind;
         public final int parentSpeed;
         public final String downgradeHint;
+        /** SuperSpeedPlus lane text, or {@code null}. */
+        public final String ssp;
 
         Snapshot(int speed, int bcdUsb, int bus, int addr, int port, String path,
                 String parentKind, int parentSpeed) {
+            this(speed, bcdUsb, bus, addr, port, path, parentKind, parentSpeed, null);
+        }
+
+        Snapshot(int speed, int bcdUsb, int bus, int addr, int port, String path,
+                String parentKind, int parentSpeed, String ssp) {
             this.speed = speed;
             this.bcdUsb = bcdUsb;
             this.bus = bus;
@@ -206,6 +324,7 @@ public final class LibUsbLinkInfo {
             this.path = path == null ? "" : path;
             this.parentKind = parentKind;
             this.parentSpeed = parentSpeed;
+            this.ssp = ssp;
             this.downgradeHint = LibUsbLinkInfo.downgradeHint(speed, bcdUsb);
         }
 
@@ -223,6 +342,9 @@ public final class LibUsbLinkInfo {
             }
             if (parentKind != null && parentSpeed >= 0) {
                 sb.append("; ").append(parentKind).append(' ').append(speedLabel(parentSpeed));
+            }
+            if (ssp != null && !ssp.isEmpty()) {
+                sb.append("; ").append(ssp);
             }
             return sb.toString();
         }
@@ -251,6 +373,9 @@ public final class LibUsbLinkInfo {
             if (parentKind != null && parentSpeed >= 0) {
                 sb.append('\n').append(parentKind).append(' ').append(speedLabel(parentSpeed));
             }
+            if (ssp != null && !ssp.isEmpty()) {
+                sb.append('\n').append(ssp);
+            }
             if (downgradeHint != null) {
                 sb.append('\n').append(downgradeHint);
             }
@@ -272,6 +397,9 @@ public final class LibUsbLinkInfo {
             }
             if (parentKind != null && parentSpeed >= 0) {
                 sb.append('\n').append(parentKind).append(' ').append(speedLabel(parentSpeed));
+            }
+            if (ssp != null && !ssp.isEmpty()) {
+                sb.append('\n').append(ssp);
             }
             if (downgradeHint != null) {
                 sb.append('\n').append("USB 2 link — try SuperSpeed port, cable, or hub");
@@ -305,6 +433,9 @@ public final class LibUsbLinkInfo {
                 sb.append('\n').append("USB 2 link — try SuperSpeed port, cable, or hub");
             } else if (parentKind != null && parentSpeed >= 0) {
                 sb.append('\n').append(parentKind).append(' ').append(speedLabel(parentSpeed));
+            }
+            if (ssp != null && !ssp.isEmpty()) {
+                sb.append('\n').append(ssp);
             }
             return "<html>" + wrapLines(sb.toString(), 52).replace("\n", "<br>");
         }

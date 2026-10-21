@@ -78,6 +78,7 @@ public final class LibUsbHotplug {
             return;
         }
         started = true;
+        LibUsbNativeLog.installIfFine();
         supported = isSupported();
         String version = "?";
         try {

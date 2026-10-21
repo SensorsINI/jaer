@@ -49,6 +49,19 @@ public final class LibUsbLinkInfoDemo {
                 "tuning text has negotiated speed, bcdUSB, and port");
         require(tuning.contains("parent hub"),
                 "tuning text includes the parent hub");
+        require("10 Gbit/s".equals(LibUsbLinkInfo.laneRateLabel(10_000_000_000L)),
+                "10 Gbit/s lane");
+        require("5 Gbit/s".equals(LibUsbLinkInfo.laneRateLabel(5_000_000_000L)),
+                "5 Gbit/s lane");
+        require(LibUsbNativeLog.julLevel(LibUsb.LOG_LEVEL_INFO) == java.util.logging.Level.FINE,
+                "libusb info is jAER FINE");
+        require(LibUsbNativeLog.julLevel(LibUsb.LOG_LEVEL_DEBUG) == java.util.logging.Level.FINER,
+                "libusb debug is jAER FINER");
+        String ssp = new LibUsbLinkInfo.Snapshot(LibUsb.SPEED_SUPER_PLUS, 0x0320, 1, 21, 3, "3",
+                "parent hub", LibUsb.SPEED_SUPER_PLUS,
+                "SSP min lanes RX 1 TX 1; RX 10 Gbit/s; TX 10 Gbit/s").logLine();
+        require(ssp.contains("SSP min lanes RX 1 TX 1") && ssp.contains("10 Gbit/s"),
+                "link line includes SuperSpeedPlus lanes");
         System.out.println("PASS LibUsbLinkInfo speed/bcdUSB labels");
     }
 

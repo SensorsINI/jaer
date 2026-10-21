@@ -309,8 +309,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             selectI2CTransport(deviceDescriptor.idProduct());
 
             // Never issue USB string-descriptor control transfers during open.
-            // On Windows WinUSB, LibUsb.getStringDescriptor has no timeout and
-            // can hang jaer-aemon-open (same class as CypressFX3 / Prophesee).
+            // On Windows WinUSB that transfer has no timeout and can hang
+            // jaer-aemon-open (same class as CypressFX3 / Prophesee).
             stringDescriptors[0] = "NRV";
             stringDescriptors[1] = getTypeName();
             if (device != null) {
@@ -325,7 +325,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             closing = false;
             sensorStreaming = false;
             isOpened = true;
-            LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor);
+            LibUsbLinkInfo.logOnOpen(log, "NRV", device, deviceDescriptor, deviceHandle);
             logUsbEndpoints();
         } catch (HardwareInterfaceException | RuntimeException e) {
             closePartialOpen();
@@ -544,7 +544,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         String hint = (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY)
                 ? " Another process may hold the CX3/FX20, or the driver is not WinUSB."
                 : (status == LibUsb.ERROR_NOT_FOUND
-                        ? " Device may still be enumerating after hotplug; try Interface → Refresh."
+                        ? " Device may still be enumerating after hotplug; try USB Interface → Refresh."
                         : "");
         throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status) + hint);
     }

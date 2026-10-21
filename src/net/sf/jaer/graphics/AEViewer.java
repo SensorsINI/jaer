@@ -2276,9 +2276,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         ButtonGroup deviceGroup = new ButtonGroup();
         deviceMenu.removeAll();
         chipClasses = new ArrayList<Class>();
-        deviceMenu.addSeparator();
+        // Header stays put: Biases, then a separator. Footer (last 4) is
+        // separator, Renew, separator, Customize. Chips insert just above that footer.
+        deviceMenu.add(viewBiasesMenuItem);
+        deviceMenu.add(jSeparator26);
+        deviceMenu.add(jSeparator3);
         deviceMenu.add(renewChipMI);
-        deviceMenu.addSeparator();
+        deviceMenu.add(deviceMenuSpparator);
         deviceMenu.add(customizeDevicesMenuItem);
         getChipClassPrefs();
         ArrayList<String> notFoundClasses = new ArrayList<String>();
@@ -2288,7 +2292,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chipClasses.add(c);
                 JRadioButtonMenuItem b = new JRadioButtonMenuItem(deviceClassName);
                 b.setToolTipText(descriptionTooltipForClass(c));
-                deviceMenu.insert(b, deviceMenu.getItemCount() - 4); // change if more items added at end of AEChip menu, e.g. renewChipMI
+                deviceMenu.insert(b, deviceMenu.getItemCount() - 4); // keep above the 4-item footer
                 b.addActionListener((ActionEvent evt) -> {
                     try {
                         String name1 = evt.getActionCommand();
@@ -2327,7 +2331,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
              * arguments are: items to show, scrolling interval,
              * froozen items top, frozen items bottom
          */
-        MenuScroller.setScrollerFor(deviceMenu, 15, 100, 4, 2);
+        MenuScroller.setScrollerFor(deviceMenu, 15, 100, 2, 4);
     }
 
     /** Tooltip from {@link Description} on a class, or a short placeholder. */
@@ -4398,13 +4402,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
         refreshInterfaceMenuItem.setToolTipText("Rescan USB for newly attached cameras without closing the current interface. Opens the camera if exactly one is found (Ctrl+Shift+U; needed on Windows which lacks USB hotplug)");
         interfaceMenu.add(refreshInterfaceMenuItem);
-
-        // make a 'reset device' item 
-        interfaceMenu.add(new JSeparator());
-        JMenuItem resetDeviceB = new JMenuItem(new ResetHardwareIntefaceAction());
-        interfaceMenu.add(resetDeviceB);
         JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(getRememberLastInterfaceAction());
         interfaceMenu.add(rememberSeletedInterfaceMI);
+
+        // USB tuning, then Zero timestamps and Reset in their own section.
+        // removeAll() above drops these each time the menu opens, so they are added here.
+        interfaceMenu.add(new JSeparator());
+        interfaceMenu.add(usbTuningMenuItem);
+        interfaceMenu.add(new JSeparator());
+        interfaceMenu.add(zeroTimestampsMenuItem);
+        interfaceMenu.add(resetUsbInterfaceMenuItem);
+        applyUsbMenuItemEnabled();
 
         snapshotInterfaceMenuDevices();
         showWelcomeOverlay();
@@ -4554,8 +4562,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             super("Remember last interface selected");
             putValue(Action.SHORT_DESCRIPTION,
                     "Reopen each window's last USB camera on restart (global). "
-                            + "Deselect this, then Interface → None, so a built-in webcam is not taken over on the next start. "
-                            + "Pick the webcam from Interface when you want it.");
+                            + "Deselect this, then USB Interface → None, so a built-in webcam is not taken over on the next start. "
+                            + "Pick the webcam from USB Interface when you want it.");
             putValue(Action.SELECTED_KEY, isRememberLastInterface());
         }
 
@@ -4564,7 +4572,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setRememberLastInterface(!rememberLastInterface);
             showAction(isRememberLastInterface()
                     ? "Will reopen last interface automatically"
-                    : "Then Interface → None so restart will not take a webcam");
+                    : "Then USB Interface → None so restart will not take a webcam");
         }
 
     }
@@ -4623,7 +4631,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 "Davis APS readout stuck",
                 "<html>The Davis FPGA APS sequencer is still mid-frame "
                         + "(incomplete frames, far fewer signal samples than W×H).<br>"
-                        + "Interface → Reset USB only restarts the host USB reader; "
+                        + "USB Interface → Reset USB only restarts the host USB reader; "
                         + "it does not reset camera logic.<br>"
                         + "<p><b>Unplug the Davis USB cable, wait a second, then plug it back in.</b></html>");
         d.setLocationRelativeTo(this);
@@ -4872,7 +4880,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         buildInterfaceMenu(interfaceMenu, false);
         StringBuilder sb = new StringBuilder();
-        sb.append(getViewerWindowLabel()).append(" Interface menu\n");
+        sb.append(getViewerWindowLabel()).append(" USB Interface menu\n");
         if (interfaceMenu == null) {
             return sb.append("  (menu not created)\n").toString();
         }
@@ -4920,6 +4928,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             JMenuItem item = (JMenuItem) c;
             String text = item.getText();
             if (text == null) {
+                continue;
+            }
+            if (item == usbTuningMenuItem || item == zeroTimestampsMenuItem
+                    || item == resetUsbInterfaceMenuItem
+                    || text.startsWith("Remember last interface")) {
                 continue;
             }
             if (want.equalsIgnoreCase("None") && text.equalsIgnoreCase("None")) {
@@ -5956,7 +5969,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (!blankDeviceMessageShown) {
                     log.info(bd.getMessage() + " suppressing further blank device messages");
                     blankDeviceMessageShown = true;
-                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). <br>Caught exception " + bd.getMessage() + ".<br>Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB menu to download desired firmware to RAM for CypressFX2 devices");
+                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). <br>Caught exception " + bd.getMessage() + ".<br>Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB Interface menu to download desired firmware to RAM for CypressFX2 devices");
 
                     if (v == JOptionPane.YES_OPTION) {
                         CypressFX2EEPROM instance = new CypressFX2EEPROM();
@@ -9151,7 +9164,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         customizeDevicesMenuItem = new javax.swing.JMenuItem();
         interfaceMenu = new javax.swing.JMenu();
         refreshInterfaceMenuItem = new javax.swing.JMenuItem();
-        controlMenu = new javax.swing.JMenu();
         viewBiasesMenuItem = new javax.swing.JMenuItem();
         jSeparator26 = new javax.swing.JPopupMenu.Separator();
         usbTuningMenuItem = new javax.swing.JMenuItem();
@@ -9342,7 +9354,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         closeMenuItem.setMnemonic('C');
         closeMenuItem.setText("Close");
-        closeMenuItem.setToolTipText("Ctrl+W: stop recording (all cameras if synchronized); if not recording, close a playing file, or Interface → None when LIVE or opening. Window close still uses the title-bar X.");
+        closeMenuItem.setToolTipText("Ctrl+W: stop recording (all cameras if synchronized); if not recording, close a playing file, or USB Interface → None when LIVE or opening. Window close still uses the title-bar X.");
         closeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeMenuItemActionPerformed(evt);
@@ -9889,6 +9901,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         deviceMenu.setMnemonic('s');
         deviceMenu.setText("Sensor");
         deviceMenu.setToolTipText("Sensor class (event camera type or silicon cochlea) - formerly AEChip");
+
+        viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        viewBiasesMenuItem.setMnemonic('b');
+        viewBiasesMenuItem.setText("Biases/HW Configuration");
+        viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
+        viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewBiasesMenuItemActionPerformed(evt);
+            }
+        });
+        deviceMenu.add(viewBiasesMenuItem);
+        deviceMenu.add(jSeparator26);
         deviceMenu.add(jSeparator3);
 
         renewChipMI.setText("Renew Sensor");
@@ -9913,9 +9937,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         menuBar.add(deviceMenu);
 
-        interfaceMenu.setMnemonic('i');
-        interfaceMenu.setText("Interface");
-        interfaceMenu.setToolTipText("Select the HW interface to use");
+        interfaceMenu.setMnemonic('u');
+        interfaceMenu.setText("USB Interface");
+        interfaceMenu.setToolTipText("Choose a USB camera, tune the reader, or reset the interface");
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
             public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
@@ -9942,24 +9966,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         interfaceMenu.add(refreshInterfaceMenuItem);
 
-        menuBar.add(interfaceMenu);
-
-        controlMenu.setMnemonic('c');
-        controlMenu.setText("USB");
-        controlMenu.setToolTipText("USB reader and render buffer tuning");
-
-        viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        viewBiasesMenuItem.setMnemonic('b');
-        viewBiasesMenuItem.setText("Biases/HW Configuration");
-        viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
-        viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewBiasesMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(viewBiasesMenuItem);
-        controlMenu.add(jSeparator26);
-
         usbTuningMenuItem.setText("USB tuning...");
         usbTuningMenuItem.setToolTipText("<html>Open a window to adjust USB FIFO, buffer count, and AE render packet size<br>"
                 + "while the camera is running. The table shows USB IN fill, interval, and throughput (~1 s).");
@@ -9968,8 +9974,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 usbTuningMenuItemActionPerformed(evt);
             }
         });
-        controlMenu.add(usbTuningMenuItem);
-        controlMenu.add(jSeparator5);
+        interfaceMenu.add(usbTuningMenuItem);
+        interfaceMenu.add(jSeparator5);
 
         zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
         zeroTimestampsMenuItem.setText("Zero timestamps");
@@ -9978,12 +9984,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 zeroTimestampsMenuItemActionPerformed(evt);
             }
         });
-        controlMenu.add(zeroTimestampsMenuItem);
+        interfaceMenu.add(zeroTimestampsMenuItem);
 
         resetUsbInterfaceMenuItem.setAction(new ResetHardwareIntefaceAction());
-        controlMenu.add(resetUsbInterfaceMenuItem);
+        interfaceMenu.add(resetUsbInterfaceMenuItem);
 
-        menuBar.add(controlMenu);
+        menuBar.add(interfaceMenu);
 
         monSeqMenu.setText("MonSeq");
         monSeqMenu.setToolTipText("For sequencer or monitor+sequencer devices");
@@ -10691,7 +10697,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             interruptViewloop();
                             showActionText("Found 1 hardware interface, opening…");
                         } else if (n > 1) {
-                            showActionText(String.format("Found %d hardware interfaces; choose one from Interface menu", n));
+                            showActionText(String.format("Found %d hardware interfaces; choose one from USB Interface", n));
                         } else {
                             showActionText(String.format("Found %d hardware interface(s)", n));
                         }
@@ -10839,10 +10845,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_cycleNextColorRenderingMethodMenuItemActionPerformed
 
     /**
-     * Fills in the device control menu (the USB menu) so that menu items are
-     * populated with correct values of USB buffer size and number of buffers,
-     * etc. Runs in the Swing worker thread. Coalesced: ViewLoop used to call
-     * this every packet via {@link #openAEMonitor()}, flooding the EDT.
+     * Enables USB tuning and Zero timestamps only while a device is open.
+     * Reset stays enabled so a failed session can still be cleared.
+     */
+    private void applyUsbMenuItemEnabled() {
+        boolean deviceOpen = aemon != null && aemon.isOpen();
+        usbTuningMenuItem.setEnabled(deviceOpen);
+        zeroTimestampsMenuItem.setEnabled(deviceOpen);
+        resetUsbInterfaceMenuItem.setEnabled(true);
+    }
+
+    /**
+     * Enables the USB Interface items that depend on an open device. Runs on
+     * the Swing thread. Coalesced: ViewLoop used to call this every packet via
+     * {@link #openAEMonitor()}, flooding the EDT.
      */
     private final AtomicBoolean deviceControlMenuFixScheduled = new AtomicBoolean(false);
 
@@ -10854,33 +10870,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             @Override
             public void run() {
                 deviceControlMenuFixScheduled.set(false);
-                final boolean deviceOpen = aemon != null && aemon.isOpen();
-                if (!deviceOpen) {
-                    for (int i = 0; i < controlMenu.getMenuComponentCount(); i++) {
-                        if (controlMenu.getMenuComponent(i) instanceof JMenuItem) {
-                            final JMenuItem item = (JMenuItem) controlMenu.getMenuComponent(i);
-                            // Keep reset available for recovery after a failed USB session.
-                            item.setEnabled(item == resetUsbInterfaceMenuItem);
-                        }
-                    }
+                applyUsbMenuItemEnabled();
+                if (aemon == null || !aemon.isOpen()) {
                     return;
                 }
-
-                final boolean readerControl = aemon instanceof ReaderBufferControl;
-
-                if (readerControl) {
+                if (aemon instanceof ReaderBufferControl) {
                     ReaderBufferControl reader = (ReaderBufferControl) aemon;
                     PropertyChangeSupport readerSupport = reader.getReaderSupport();
                     if (!readerSupport.hasListeners("readerStarted")) {
                         readerSupport.addPropertyChangeListener("readerStarted", AEViewer.this);
-                    }
-                }
-
-                final int k = controlMenu.getMenuComponentCount();
-                for (int i = 0; i < k; i++) {
-                    final Component c = controlMenu.getMenuComponent(i);
-                    if (c instanceof JMenuItem) {
-                        ((JMenuItem) c).setEnabled(true);
                     }
                 }
             }
@@ -16567,7 +16565,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JMenuItem exportVideoMenuItem;
     private javax.swing.JMenuItem stopVideoExportMenuItem;
-    private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem customizeDevicesMenuItem;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
     private javax.swing.JMenuItem cycleNextColorRenderingMethodMenuItem;

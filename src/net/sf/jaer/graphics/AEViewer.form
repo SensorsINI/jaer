@@ -720,6 +720,21 @@
             <Property name="toolTipText" type="java.lang.String" value="Sensor class (event camera type or silicon cochlea) - formerly AEChip"/>
           </Properties>
           <SubComponents>
+            <MenuItem class="javax.swing.JMenuItem" name="viewBiasesMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Ctrl+B"/>
+                </Property>
+                <Property name="mnemonic" type="int" value="98"/>
+                <Property name="text" type="java.lang.String" value="Biases/HW Configuration"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows chip or board configuration controls"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewBiasesMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator26">
+            </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator3">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="renewChipMI">
@@ -747,9 +762,9 @@
         </Menu>
         <Menu class="javax.swing.JMenu" name="interfaceMenu">
           <Properties>
-            <Property name="mnemonic" type="int" value="105"/>
-            <Property name="text" type="java.lang.String" value="Interface"/>
-            <Property name="toolTipText" type="java.lang.String" value="Select the HW interface to use"/>
+            <Property name="mnemonic" type="int" value="117"/>
+            <Property name="text" type="java.lang.String" value="USB Interface"/>
+            <Property name="toolTipText" type="java.lang.String" value="Choose a USB camera, tune the reader, or reset the interface"/>
           </Properties>
           <Events>
             <EventHandler event="menuSelected" listener="javax.swing.event.MenuListener" parameters="javax.swing.event.MenuEvent" handler="interfaceMenuMenuSelected"/>
@@ -768,30 +783,6 @@
                 <EventHandler event="componentShown" listener="java.awt.event.ComponentListener" parameters="java.awt.event.ComponentEvent" handler="refreshInterfaceMenuItemComponentShown"/>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="refreshInterfaceMenuItemActionPerformed"/>
               </Events>
-            </MenuItem>
-          </SubComponents>
-        </Menu>
-        <Menu class="javax.swing.JMenu" name="controlMenu">
-          <Properties>
-            <Property name="mnemonic" type="int" value="99"/>
-            <Property name="text" type="java.lang.String" value="USB"/>
-            <Property name="toolTipText" type="java.lang.String" value="control CypresFX2 driver parameters"/>
-          </Properties>
-          <SubComponents>
-            <MenuItem class="javax.swing.JMenuItem" name="viewBiasesMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Ctrl+B"/>
-                </Property>
-                <Property name="mnemonic" type="int" value="98"/>
-                <Property name="text" type="java.lang.String" value="Biases/HW Configuration"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows chip or board configuration controls"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewBiasesMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator26">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="usbTuningMenuItem">
               <Properties>

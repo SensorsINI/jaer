@@ -291,8 +291,8 @@ public final class OpenCvCameraFactory implements HardwareInterfaceFactoryInterf
             sb.append("<br>").append(geo);
         }
         sb.append("<br>Selecting this occupies the camera so Zoom, Meet, and other apps cannot use it");
-        sb.append(" until Interface → None.");
-        sb.append("<br>The index is OpenCV's camera number, not a USB serial. Interface → Refresh after plugging another webcam.");
+        sb.append(" until USB Interface → None.");
+        sb.append("<br>The index is OpenCV's camera number, not a USB serial. USB Interface → Refresh after plugging another webcam.");
         return sb.toString();
     }
 

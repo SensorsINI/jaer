@@ -1534,8 +1534,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         JPanel p = titledSection("Interface");
         rememberLastInterfaceCB = new JCheckBox("Remember last interface selected");
         rememberLastInterfaceCB.setToolTipText("Reopen each window's last USB camera on restart (global). "
-                + "Deselect this, then Interface → None, so a built-in webcam is not taken over on the next start. "
-                + "Pick the webcam from Interface when you want it. Mapping is "
+                + "Deselect this, then USB Interface → None, so a built-in webcam is not taken over on the next start. "
+                + "Pick the webcam from USB Interface when you want it. Mapping is "
                 + ViewerInterfaceBindingMap.file().getAbsolutePath());
         rememberLastInterfaceCB.addActionListener(new ActionListener() {
             @Override

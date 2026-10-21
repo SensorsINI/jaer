@@ -480,7 +480,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             log.info("Prophesee EVK4 opened serial=" + serial + " VID:PID="
                     + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct())
                     + " in " + (System.currentTimeMillis() - t0) + " ms");
-            LibUsbLinkInfo.logOnOpen(log, "Prophesee EVK4", device, deviceDescriptor);
+            LibUsbLinkInfo.logOnOpen(log, "Prophesee EVK4", device, deviceDescriptor, deviceHandle);
         } catch (HardwareInterfaceException | RuntimeException e) {
             releasePartialOpen();
             throw (e instanceof HardwareInterfaceException)

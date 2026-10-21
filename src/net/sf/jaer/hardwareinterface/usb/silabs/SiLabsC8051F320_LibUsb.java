@@ -301,7 +301,7 @@ public abstract class SiLabsC8051F320_LibUsb implements
         isOpened = true;
 
         SiLabsC8051F320_LibUsb.log.info("open(): device opened");
-        LibUsbLinkInfo.logOnOpen(SiLabsC8051F320_LibUsb.log, "SiLabs C8051F320", retina, deviceDescriptor);
+        LibUsbLinkInfo.logOnOpen(SiLabsC8051F320_LibUsb.log, "SiLabs C8051F320", retina, deviceDescriptor, retinahandle);
 
         if (LibUsb.getDeviceSpeed(retina) != LibUsb.SPEED_FULL) {
             SiLabsC8051F320_LibUsb.log

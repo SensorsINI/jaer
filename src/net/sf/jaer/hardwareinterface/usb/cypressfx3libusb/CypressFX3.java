@@ -1920,7 +1920,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         CypressFX3.log.info(String.format("open(): device opened in %d ms (%s)",
                 System.currentTimeMillis() - tOpen, stringDescription));
-        LibUsbLinkInfo.logOnOpen(CypressFX3.log, "CypressFX3", device, deviceDescriptor);
+        LibUsbLinkInfo.logOnOpen(CypressFX3.log, "CypressFX3", device, deviceDescriptor, deviceHandle);
 
         try {
             if (LibUsb.getDeviceSpeed(device) == LibUsb.SPEED_FULL) {
