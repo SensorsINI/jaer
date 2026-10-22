@@ -68,13 +68,18 @@ public class AEPacketRawPool {
         buffers[readBuffer].clear();
     }
 
-    /** allocates AEPacketRaw buffers each with capacity of outer.getAEBufferSize() */
+    /**
+     * Allocates the two packets. When {@link AEMonitorInterface#allocatesRawEventArrays()}
+     * is false, capacity stays 0 and the address and timestamp arrays are not reserved.
+     */
     public final synchronized void allocateMemory() {
         buffers = new AEPacketRaw[2];
-        final int capacity = outer.getAEBufferSize();
+        final int capacity = outer.allocatesRawEventArrays() ? outer.getAEBufferSize() : 0;
         for (int i = 0; i < buffers.length; i++) {
             buffers[i] = new AEPacketRaw();
-            buffers[i].ensureCapacity(capacity);
+            if (capacity > 0) {
+                buffers[i].ensureCapacity(capacity);
+            }
         }
     }
 }

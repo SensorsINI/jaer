@@ -96,10 +96,15 @@ When demux is active on Davis, APS/IMU synthetic AEs are **not** dual-written
 into `AEPacketRaw` by default (`DAViSFX3/dualWriteApsImuAe=false`) — the largest
 live memory win under APS+DVS. DVXplorer (classic FX3 and Mini/Micro MIPI) skips
 filling live `AEPacketRaw` entirely when demux is on (`DVXplorerFX3/usbTypedDemux`).
+NRV and Prophesee do the same, and they also skip allocating the raw address and
+timestamp arrays (`AEMonitorInterface.allocatesRawEventArrays()`). The empty
+`AEPacketRaw` pair remains so the swap lock and `overrunOccuredFlag` stay in one
+place. Turning the `usbTypedDemux` pref off allocates and fills those arrays again.
 
-**Overrun:** if the USB thread fills the write buffer before ViewLoop swaps, the
-pool sets `overrunOccuredFlag` (lost events). Increase AE buffer size (Control →
-rendering AE buffer size) for high-rate sensors such as NRV.
+**Overrun:** if the USB thread fills the write slot before ViewLoop swaps, the
+pool sets `overrunOccuredFlag` (lost events). The cap is Render events
+(`getAEBufferSize()`), including Prophesee. Increase it in USB tuning for
+high-rate sensors such as NRV.
 
 ---
 

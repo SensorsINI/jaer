@@ -44,7 +44,6 @@ import javax.swing.table.TableColumn;
 import net.sf.jaer.Help;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
-import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
@@ -57,7 +56,7 @@ import net.sf.jaer.util.WindowSaver;
 
 /**
  * Separate top-level window for live USB FIFO / buffer count / AE render-packet
- * size (and Prophesee live keep limit when available). Spinner and typed edits
+ * size. Spinner and typed edits
  * auto-apply after a short pause so touchpad / arrow-key adjustments stay usable
  * while the camera runs. The USB link block is the negotiated speed captured
  * when the camera was opened. While this window is open, USB IN transfer
@@ -81,11 +80,9 @@ NRV is fixed at 64&nbsp;KiB: the camera ends each read at 65,504 bytes, so a lar
 <li><b>Buffers</b> &mdash; how many of those reads are queued at once (1&ndash;32).
 This covers a short pause in jAER. It does not change packet size.
 FIFO &times; buffers is limited to 8&nbsp;MB.</li>
-<li><b>Render events</b> &mdash; the rendering event buffer.
+<li><b>Render events</b> &mdash; how many polarity events one display frame can hold.
 If it fills, events are dropped even when USB itself is fine.
 Increase it when the display says events are dropping.</li>
-<li><b>Live keep</b> &mdash; Prophesee only. Maximum events kept per display frame.
-The smaller of Render events and Live keep is what you see and record.</li>
 </ul>
 <h3>USB link</h3>
 <p>Negotiated speed from when the camera was opened, the device USB version (bcdUSB),
@@ -125,9 +122,9 @@ NRV does not put an overflow marker in the USB stream.</li>
 <li><b>Fill</b> &mdash; avg read size divided by FIFO bytes.</li>
 </ul>
 <p>The line under the table is the window number and how long that window actually was (about 1&nbsp;s).</p>
-<p>A red <b>(DROP)</b> or <b>(overrun)</b> on the status line means the rendering buffer
-or the live-keep cap discarded events. Increase <b>Render events</b>
-(and <b>Live keep</b> on Prophesee), or raise the DVS threshold or refractory period.</p>
+<p>A red <b>(overrun)</b> on the status line means the display frame filled
+and later events were discarded. Increase <b>Render events</b>,
+or raise the DVS threshold or refractory period.</p>
 </body>
 </html>
 """)
@@ -201,8 +198,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
     private JSpinner fifoSpinner;
     private JSpinner buffersSpinner;
     private JSpinner renderSpinner;
-    private JSpinner keepSpinner;
-    private JLabel keepLabel;
     private JLabel requestedLabel;
     private JLabel activeLabel;
     private JLabel allocationLabel;
@@ -354,21 +349,14 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
                 UsbReaderBufferSettings.MAX_NUM_BUFFERS,
                 1));
         renderSpinner = new JSpinner(new OctaveSpinnerNumberModel(RENDER_MIN, RENDER_MIN, RENDER_MAX, RENDER_MIN));
-        keepSpinner = new JSpinner(new OctaveSpinnerNumberModel(
-                HasLiveDisplayEventCap.DEFAULT_LIVE_DISPLAY_EVENT_CAP,
-                RENDER_MIN, RENDER_MAX, RENDER_MIN));
 
         configureSpinnerEditor(fifoSpinner);
         configureSpinnerEditor(buffersSpinner);
         configureSpinnerEditor(renderSpinner);
-        configureSpinnerEditor(keepSpinner);
 
         fifoSpinner.setToolTipText(GENERIC_FIFO_TIP);
         buffersSpinner.setToolTipText("Number of overlapped USB read buffers (1–32).");
-        renderSpinner.setToolTipText("AEPacketRaw pool size in events (2 buffers).");
-        keepSpinner.setToolTipText("<html>Prophesee only: max polarity events kept per live display frame.<br>"
-                + "Effective keep is min(Render events, Live keep). Raising this past ~256k can hitch the UI<br>"
-                + "at high event rates; AEDAT logging uses the same capped packet.</html>");
+        renderSpinner.setToolTipText("Polarity events kept per display frame. Later events are dropped until the next frame.");
 
         int row = 0;
         fifoLabel = new JLabel("FIFO bytes");
@@ -382,16 +370,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         row++;
         addRow(form, c, row++, "Buffers", buffersSpinner);
         addRow(form, c, row++, "Render events", renderSpinner);
-        keepLabel = new JLabel("Live keep");
-        c.gridx = 0;
-        c.gridy = row;
-        c.gridwidth = 1;
-        c.fill = GridBagConstraints.NONE;
-        c.weightx = 0;
-        form.add(keepLabel, c);
-        c.gridx = 1;
-        form.add(keepSpinner, c);
-        row++;
 
         requestedLabel = new JLabel("Requested: —");
         activeLabel = new JLabel("Active: —");
@@ -472,7 +450,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         fifoSpinner.addChangeListener(this::onSpinnerChanged);
         buffersSpinner.addChangeListener(this::onSpinnerChanged);
         renderSpinner.addChangeListener(this::onSpinnerChanged);
-        keepSpinner.addChangeListener(this::onSpinnerChanged);
     }
 
     private JPanel buildStatsPanel() {
@@ -649,14 +626,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             monitor.setAEBufferSize(render);
         }
 
-        if (monitor instanceof HasLiveDisplayEventCap) {
-            final HasLiveDisplayEventCap keep = (HasLiveDisplayEventCap) monitor;
-            final int value = ((Number) keepSpinner.getValue()).intValue();
-            if (keep.getLiveDisplayEventCap() != value) {
-                keep.setLiveDisplayEventCap(value);
-            }
-        }
-
         if (monitor instanceof ReaderBufferControl) {
             final ReaderBufferControl reader = (ReaderBufferControl) monitor;
             final int fifo = ((Number) fifoSpinner.getValue()).intValue();
@@ -677,24 +646,13 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
         updatingUi = true;
         try {
             final boolean hasReader = monitor instanceof ReaderBufferControl;
-            final boolean hasKeep = monitor instanceof HasLiveDisplayEventCap;
             buffersSpinner.setEnabled(hasReader);
             renderSpinner.setEnabled(monitor != null);
-            keepLabel.setVisible(hasKeep);
-            keepSpinner.setVisible(hasKeep);
-            keepSpinner.setEnabled(hasKeep);
 
             if (monitor != null) {
                 int render = monitor.getAEBufferSize();
                 render = Math.max(RENDER_MIN, Math.min(RENDER_MAX, render));
                 renderSpinner.setValue(render);
-            }
-            if (hasKeep) {
-                final HasLiveDisplayEventCap keep = (HasLiveDisplayEventCap) monitor;
-                int value = keep.getLiveDisplayEventCap();
-                value = Math.max(keep.getMinLiveDisplayEventCap(),
-                        Math.min(keep.getMaxLiveDisplayEventCap(), value));
-                keepSpinner.setValue(value);
             }
             if (hasReader) {
                 final ReaderBufferControl reader = (ReaderBufferControl) monitor;
@@ -788,15 +746,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
                     : "";
             phase = status.shortLabel() + detail;
         }
-        if (monitor instanceof HasLiveDisplayEventCap) {
-            final int render = monitor.getAEBufferSize();
-            final int keep = ((HasLiveDisplayEventCap) monitor).getLiveDisplayEventCap();
-            final int effective = Math.min(render, keep);
-            statusLabel.setText(String.format("Status: %s; keep %s/frame",
-                    phase, intFormat.format(effective)));
-        } else {
-            statusLabel.setText("Status: " + phase);
-        }
+        statusLabel.setText("Status: " + phase);
     }
 
     private void updateAllocationLabel() {
@@ -990,7 +940,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             subscribedSupport.addPropertyChangeListener(UsbAsyncBulkReaderLifecycle.EVENT_CONFIG_STATUS, this);
             subscribedSupport.addPropertyChangeListener("readerStarted", this);
             subscribedSupport.addPropertyChangeListener("readerStopped", this);
-            subscribedSupport.addPropertyChangeListener("liveDisplayEventCap", this);
         }
     }
 
@@ -1001,7 +950,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
             subscribedSupport.removePropertyChangeListener(UsbAsyncBulkReaderLifecycle.EVENT_CONFIG_STATUS, this);
             subscribedSupport.removePropertyChangeListener("readerStarted", this);
             subscribedSupport.removePropertyChangeListener("readerStopped", this);
-            subscribedSupport.removePropertyChangeListener("liveDisplayEventCap", this);
             subscribedSupport = null;
         }
     }
@@ -1062,11 +1010,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener, Wi
                                 Math.min(UsbReaderBufferSettings.MAX_FIFO_SIZE, reader.getPendingFifoSize())));
                         buffersSpinner.setValue(Math.max(UsbReaderBufferSettings.MIN_NUM_BUFFERS,
                                 Math.min(UsbReaderBufferSettings.MAX_NUM_BUFFERS, reader.getPendingNumBuffers())));
-                    }
-                    if (monitor instanceof HasLiveDisplayEventCap) {
-                        final HasLiveDisplayEventCap keep = (HasLiveDisplayEventCap) monitor;
-                        keepSpinner.setValue(Math.max(keep.getMinLiveDisplayEventCap(),
-                                Math.min(keep.getMaxLiveDisplayEventCap(), keep.getLiveDisplayEventCap())));
                     }
                 } finally {
                     updatingUi = false;

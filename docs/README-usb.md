@@ -496,8 +496,7 @@ byte (`DEVICE_TYPE_CX3_MIPI = 4`). Classic SPI is not used on this type.
 |---------|-------|----------------|
 | FIFO bytes | 4 KiB–2 MiB | Size of each host bulk-IN request. The camera completes a transfer when its own chunk ends (a short packet) or when this many bytes have arrived. A larger FIFO does not make the camera send larger bursts. |
 | Buffers | 1–32 | How many of those requests are queued. Extra buffers absorb a pause in the reader. They do not change the camera’s packet size. FIFO × buffers is capped at 8 MB. |
-| Render events | 64 Ki–8 Mi events | jAER rendering buffer (`AEPacketRaw` pool). If it fills, events are dropped even when USB transfers succeed. This is the control behind the “increase rendering buffer” drop message. |
-| Live keep | Prophesee only | Maximum polarity events kept per display frame. The effective cap is the smaller of Render events and Live keep. |
+| Render events | 64 Ki–8 Mi events | Polarity events kept per display frame. If it fills, events are dropped even when USB transfers succeed. This is the control behind the “increase rendering buffer” drop message. |
 
 Observed USB cycle interval depends only weakly on FIFO size and buffer count. The camera’s own commit size dominates: a large FIFO that the camera fills only a few percent is normal, and “FIFO full” on a small FIFO is average fill, not proof of overflow.
 
@@ -515,7 +514,7 @@ Observed USB cycle interval depends only weakly on FIFO size and buffer count. T
 | Short | Completions shorter than FIFO. Normal when the camera ends the transfer early. |
 | Errors | Failed USB transfers per second |
 
-Davis346 and EVK4 can also mark a host overrun when the rendering buffer or the device stream reports loss; the status line turns red and shows **(DROP)** or **(overrun)**. NRV has no overflow word in the USB stream. A bulk IN that waits because no URB is queued is a NAK, not an error, so the panel can stay at 0 errors while the sensor drops events internally. When the overlay says events are dropping, increase **Render events** (and **Live keep** on Prophesee), or raise the DVS threshold or refractory period.
+Davis346, NRV, and EVK4 mark a host overrun when the display frame fills before ViewLoop swaps; the status line turns red and shows **(overrun)**. NRV has no overflow word in the USB stream. A bulk IN that waits because no URB is queued is a NAK, not an error, so the panel can stay at 0 errors while the sensor drops events internally. When the overlay says events are dropping, increase **Render events**, or raise the DVS threshold or refractory period.
 
 ---
 

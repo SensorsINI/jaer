@@ -891,6 +891,11 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     }
 
     @Override
+    public boolean allocatesRawEventArrays() {
+        return !usbTypedDemuxActive;
+    }
+
+    @Override
     public int getAEBufferSize() {
         return buffersize;
     }

@@ -379,7 +379,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Live USB / ISSD step under {@link #pendingOpeningCameraLabel}; {@code null} uses the generic hint. */
     private volatile String pendingOpeningCameraStatus = null;
     DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
-    /** Keep (DROP)/(overrun) on the HUD after the flag clears so it does not flicker. */
+    /** Keep (overrun) on the HUD after the flag clears so it does not flicker. */
     private static final long DROPPED_DATA_HUD_HOLD_MS = 1500L;
     private static final long DROPPED_ACTION_TEXT_INTERVAL_MS = 4000L;
     private volatile long droppedDataInfoHoldUntilMs;
@@ -612,7 +612,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
             + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime<br>"
-            + "<b>(DROP)</b> / <b>(overrun)</b> — live events discarded (rendering buffer or live-keep cap); bar turns red. Increase USB tuning Render events (and Live keep on Prophesee), or lower the DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
+            + "<b>(overrun)</b> — live events discarded because the display frame filled; bar turns red. Increase USB tuning Render events, or lower the DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
             + "<b>eps</b> — event rate (events per second)<br>"
             + "<b>nX</b> — playback speedup vs real time (1X = realtime); Live/Seq or Paused otherwise<br>"
             + "<b>A/B fps, Dms</b> — achieved/target render rate, delay after frame<br>"
@@ -728,7 +728,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * USB reader is stopped while a modal recording dialog is up. ViewLoop is
      * blocked in that dialog and cannot swap the live frame, so an enabled
-     * reader fills one packet up to the live-keep cap (2,097,152 events on
+     * reader fills one packet up to Render events (2,097,152 events on
      * the Oct 1 2026 disk-space stop).
      */
     private volatile boolean liveUsbPausedForRecordingDialog;
@@ -8260,7 +8260,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (droppedDataInfo.any()
                         && (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)) {
                     consecutiveEmptyLivePackets = 0;
-                    setStatisticsLabel("Live: dropping events (DROP) — increase rendering buffer, or DVS threshold / refractory");
+                    setStatisticsLabel("Live: dropping events (overrun) — increase rendering buffer, or DVS threshold / refractory");
                     statisticsLabel.setForeground(Color.RED);
                     String detail = droppedDataInfo.getDetail();
                     statisticsBarHelpHtml = STATISTICS_BAR_HELP_HTML

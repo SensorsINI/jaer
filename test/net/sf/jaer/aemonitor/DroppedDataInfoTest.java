@@ -26,17 +26,4 @@ public class DroppedDataInfoTest {
         assertTrue(o.getStatsLineToken().startsWith("(overrun)"));
     }
 
-    @Test
-    public void liveKeepCapTokenAndBiasAdvice() {
-        DroppedDataInfo d = DroppedDataInfo.liveKeepCap(232_695, 262_144, 80_000_000);
-        assertTrue(d.any());
-        assertEquals(DroppedDataInfo.Kind.LIVE_KEEP_CAP, d.getKind());
-        assertEquals(10, d.getStatsLineToken().length());
-        assertTrue(d.getStatsLineToken().startsWith("(DROP)"));
-        assertEquals(232_695, d.getRecentCount());
-        assertEquals(262_144, d.getTotalCount());
-        assertTrue(d.getDetail().contains("262,144"));
-        assertTrue(d.getDetail().contains("threshold") || d.getDetail().contains("refractory"));
-        assertTrue(d.getDetail().contains("80,000,000"));
-    }
 }

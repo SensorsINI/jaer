@@ -151,13 +151,6 @@ public class PropheseeAEReader {
         usbBytesTotal = 0;
         usbEventsParsed = 0;
         ensureParseBuffers();
-        final int cap = displayEventCap();
-        if (monitor.getAEBufferSize() > cap) {
-            log.info("Prophesee live keep limit " + cap
-                    + " events/frame (AE buffer " + monitor.getAEBufferSize()
-                    + ", keep pref " + monitor.getLiveDisplayEventCap()
-                    + "). Further events keep EVT3 timebase but are not stored.");
-        }
 
         // Draining 0x81 is only safe while the sensor is idle. A streaming EVK4 refills the
         // endpoint faster than synchronous reads empty it, which blocks this thread for tens of
@@ -260,34 +253,13 @@ public class PropheseeAEReader {
         }
     }
 
-    /**
-     * Max polarity events committed per ViewLoop write buffer. Defaults to
-     * {@link HasLiveDisplayEventCap#DEFAULT_LIVE_DISPLAY_EVENT_CAP}; raised via
-     * USB tuning. Still cannot exceed the AE packet pool size.
-     * EVT3 timebase is still advanced for dropped events.
-     */
-    int displayEventCap() {
-        final int pool = Math.max(monitor.getAEBufferSize(), 1000);
-        final int keep = Math.max(1000, monitor.getLiveDisplayEventCap());
-        return Math.min(pool, keep);
-    }
-
     private static final int[] DISCARD_INTS = new int[1];
-
-    void onAeBufferSizeChanged(int size) {
-        final int cap = displayEventCap();
-        ensureStaging(cap);
-        polarityBuilder.ensureCapacity(cap);
-    }
 
     private void ensureParseBuffers() {
         final int fifo = Math.max(fifoSize, UsbReaderBufferSettings.MIN_FIFO_SIZE);
         if (parseScratch == null || parseScratch.length < fifo) {
             parseScratch = new byte[fifo];
         }
-        final int cap = displayEventCap();
-        ensureStaging(cap);
-        polarityBuilder.ensureCapacity(cap);
     }
 
     private void ensureStaging(int eventCapacity) {
@@ -323,7 +295,7 @@ public class PropheseeAEReader {
                 sample.limitLockNs = System.nanoTime() - limitLockStart;
             }
             final boolean writeBufferOverrun = monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag;
-            final int cap = displayEventCap();
+            final int cap = monitor.getAEBufferSize();
             parseLimit = writeBufferOverrun ? 0 : Math.max(0, cap - monitor.getEventCounter());
         }
 
@@ -378,7 +350,7 @@ public class PropheseeAEReader {
             return;
         }
         final boolean demux = monitor.isUsbTypedDemuxActive();
-        final int maxEvents = displayEventCap();
+        final int maxEvents = monitor.getAEBufferSize();
         final int requested;
         synchronized (monitor.getAePacketRawPool()) {
             final AEPacketRaw writeBuffer = monitor.getAePacketRawPool().writeBuffer();
@@ -403,8 +375,8 @@ public class PropheseeAEReader {
         long arrayCopyNs = 0;
         if (demux && requested > 0) {
             final long decodeStart = sample != null ? System.nanoTime() : 0;
-            // Grow on this USB thread so a Live-keep change from the EDT cannot race allocate().
-            polarityBuilder.ensureCapacity(Math.max(requested, displayEventCap()));
+            // Size the typed packet to this chunk. Do not preallocate the whole Render events cap.
+            polarityBuilder.ensureCapacity(requested);
             final AEChip chip = monitor.getChip();
             final int sizeX = chip != null ? chip.getSizeX() : Evt3Parser.WIDTH;
             final int sizeY = chip != null ? chip.getSizeY() : Evt3Parser.HEIGHT;
@@ -440,6 +412,9 @@ public class PropheseeAEReader {
                     writeBuffer.setNumEvents(0);
                 } else {
                     acquisitionCycle.markRaw(monitor.getChip(), writeBuffer);
+                    if (writeBuffer.getAddresses() == null || writeBuffer.getCapacity() < startEvent + toCopy) {
+                        writeBuffer.ensureCapacity(Math.max(maxEvents, startEvent + toCopy));
+                    }
                     final long acStart = System.nanoTime();
                     System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
                     System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
@@ -516,10 +491,10 @@ public class PropheseeAEReader {
         // startEvent = fill index before this USB commit (0 after a ViewLoop swap is normal);
         // committed = events kept from this chunk; remaining polarity events for the frame are dropped.
         log.warning(String.format(
-                "Prophesee live view saturating: only the first %,d events per display frame are kept "
+                "Prophesee display frame full: only the first %,d events per frame are kept "
                         + "(packet was at %,d, kept %,d from this USB chunk). "
                         + "Further polarity events are discarded until the next frame; EVT3 timebase still advances. "
-                        + "The HUD shows (DROP) in red — increase USB tuning Render events and Live keep, "
+                        + "The HUD shows (overrun) in red — increase USB tuning Render events, "
                         + "or lower the DVS event rate "
                         + "(raise threshold or refractory, or enable DVS Auto Controller). "
                         + "Live view and AEDAT logging both use this capped packet; a recording will have timestamp gaps.",

@@ -37,7 +37,6 @@ import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
-import net.sf.jaer.aemonitor.DroppedDataInfo;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import prophesee.chip.PropheseeConfig;
@@ -50,7 +49,6 @@ import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbLinkInfo;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
@@ -70,7 +68,7 @@ import prophesee.usb.evk4.Imx636Init;
  * @see https://www.prophesee.ai/
  */
 public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEMonitorInterface,
-        ReaderBufferControl, HasLiveDisplayEventCap, USBInterface, HasUsbStatistics {
+        ReaderBufferControl, USBInterface, HasUsbStatistics {
 
     public static final short VID = (short) 0x04B4;
     public static final short PID_EVK4_HD = (short) 0x00F5;
@@ -80,7 +78,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
     private static final int DEFAULT_USB_FIFO_SIZE = 2 * 1024 * 1024;
     private static final int DEFAULT_USB_NUM_BUFFERS = 4;
-    private static final int DEFAULT_LIVE_DISPLAY_EVENT_CAP = 2_097_152;
     /** Bump when default fifo/buffer tuning changes; migrates stored hardware prefs once. */
     private static final int USB_READER_PREFS_VERSION = 1;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
@@ -89,7 +86,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("Prophesee");
     /** Pref kill-switch for USB→PacketBundle polarity demux. */
     public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
-    public static final String PREF_LIVE_DISPLAY_EVENT_CAP = "liveDisplayEventCap";
 
     /** After a failed ISSD, WinUSB often leaves the EVK4 at config 0 (claim NOT_FOUND). */
     private static final long CLAIM_RETRY_MS = 2000L;
@@ -133,7 +129,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private volatile boolean closing;
     private PropheseeAEReader aeReader;
     private int buffersize = loadAeBufferSizePref();
-    private volatile int liveDisplayEventCap = loadLiveDisplayEventCapPref();
     private int usbFifoSize = UsbReaderBufferSettings.loadFifoSize(
             PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE, log, "Prophesee");
     private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
@@ -234,35 +229,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             return AE_BUFFER_SIZE;
         }
         return saved;
-    }
-
-    private int loadLiveDisplayEventCapPref() {
-        final int saved = prefs.getInt(PREF_LIVE_DISPLAY_EVENT_CAP, DEFAULT_LIVE_DISPLAY_EVENT_CAP);
-        return clampLiveDisplayEventCap(saved);
-    }
-
-    private int clampLiveDisplayEventCap(int events) {
-        return Math.max(getMinLiveDisplayEventCap(), Math.min(getMaxLiveDisplayEventCap(), events));
-    }
-
-    @Override
-    public int getLiveDisplayEventCap() {
-        return liveDisplayEventCap;
-    }
-
-    @Override
-    public void setLiveDisplayEventCap(int events) {
-        final int clamped = clampLiveDisplayEventCap(events);
-        if (clamped == liveDisplayEventCap) {
-            return;
-        }
-        liveDisplayEventCap = clamped;
-        prefs.putInt(PREF_LIVE_DISPLAY_EVENT_CAP, liveDisplayEventCap);
-        log.info("Prophesee live display keep limit set to " + liveDisplayEventCap + " events/frame"
-                + " (USB thread will grow polarity capacity on next transfer)");
-        // Do not allocate hundreds of thousands of PolarityEvents on the EDT — that races with
-        // the USB reader and freezes the UI. The reader calls ensureCapacity before the next fill.
-        support.firePropertyChange("liveDisplayEventCap", null, liveDisplayEventCap);
     }
 
     public DeviceHandle getDeviceHandle() {
@@ -752,7 +718,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         }
         if (!eventAcquisitionEnabled) {
             // A recording dialog stopped the reader because ViewLoop cannot drain.
-            // Autostart here would fill one live-keep frame (2M events) again.
+            // Autostart here would fill one Render-events frame again.
             AEViewer viewer = chip != null ? chip.getAeViewer() : null;
             if (viewer != null && viewer.isLiveUsbPausedForRecordingDialog()) {
                 return aePacketRawPool.readBuffer();
@@ -877,17 +843,8 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     @Override
-    public DroppedDataInfo getDroppedDataInfo() {
-        if (!overrunOccurred()) {
-            return DroppedDataInfo.none();
-        }
-        final int kept = usbTypedDemuxActive
-                ? lastPacketBundle.getNumPolarityEvents()
-                : aePacketRawPool.readBuffer().getNumEvents();
-        final int cap = aeReader != null
-                ? aeReader.displayEventCap()
-                : Math.min(Math.max(getAEBufferSize(), 1000), Math.max(1000, getLiveDisplayEventCap()));
-        return DroppedDataInfo.liveKeepCap(kept, cap, estimatedEventRate);
+    public boolean allocatesRawEventArrays() {
+        return !usbTypedDemuxActive;
     }
 
     @Override
@@ -904,9 +861,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         prefs.putInt("Prophesee.aeBufferSize", size);
         synchronized (aePacketRawPool) {
             aePacketRawPool.allocateMemory();
-        }
-        if (aeReader != null) {
-            aeReader.onAeBufferSizeChanged(size);
         }
     }
 

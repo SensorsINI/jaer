@@ -559,8 +559,8 @@ public class NRVAEReader {
         }
         lastOverrunLogMs = now;
         log.warning(String.format(
-                "NRV AEPacketRaw buffer overrun at event index %d (capacity %d, committed %d). "
-                        + "Increase via Control > Set rendering AE buffer size (NRV needs ~500k+).",
+                "NRV display frame full at event index %d (Render events %d, committed %d). "
+                        + "Increase USB tuning Render events.",
                 startEvent, maxEvents, committed));
     }
 

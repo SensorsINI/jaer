@@ -82,6 +82,17 @@ public interface AEMonitorInterface extends HardwareInterface{
     /** Returns the size of the host buffer.
      * @return the size of the buffer in events */
     public int getAEBufferSize() ;
+
+    /**
+     * When false, {@link net.sf.jaer.aemonitor.AEPacketRawPool} still swaps and
+     * holds {@code overrunOccuredFlag}, but it does not allocate address and
+     * timestamp arrays. NRV and Prophesee USB demux store the frame in a
+     * {@link net.sf.jaer.event.PacketBundle} and leave those arrays unused.
+     * The raw kill-switch path returns true and allocates them.
+     */
+    default boolean allocatesRawEventArrays() {
+        return true;
+    }
     
     /** Sets the size in events of the host buffer. Default is AE_BUFFER_SIZE. You can set this larger if you
      *have overruns because your host processing (e.g. rendering) is taking too long.
