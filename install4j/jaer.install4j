@@ -3,7 +3,7 @@
   <directoryPresets config="../images/800w" />
   <!-- Production: shrinkRuntime=true and JRE module set. defaultModules all packed the
        whole JDK (~185 MB extra per media on GHA). Local ant install4j sets shrinkRuntime=false. -->
-  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.5.3" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
+  <application name="jAER - Desktop Application for Event Sensors" applicationId="9973-7238-2132-7351" mediaDir="../currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shrinkRuntime="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.6.2" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./install4j-custom-resources.utf8" />
     </languages>
@@ -62,7 +62,7 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.webp,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore,install4j_linux*,install4j_macos*,install4j_windows*">
+      <dirEntry mountPoint="24" file=".." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,*.bak,jaer-clone*,*.7z,*.webp,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks,*conflicted copy*,.dropboxignore,install4j_linux*,install4j_macos*,install4j_windows*">
         <exclude>
           <!-- Do not honor .gitignore wholesale: lib/, jars/, and dist/jAER.jar are
                gitignored Ivy/build products but are required at runtime. Exclude local
@@ -779,6 +779,17 @@ if (jars.isDirectory()) {
     File[] srcZips = jars.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.endsWith("-src.zip") || n.endsWith("-sources.zip") || n.equals("usb4java-usb4java-1.3.0.zip")));
     if (srcZips != null) {
         for (File f : srcZips) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+    // scanDirectory loads every jar. 1.3.0 sorts before 1.3.1, so an upgrade that
+    // only adds the new files keeps the old usb4java API and libusb JNI.
+    File[] oldUsb = jars.listFiles((dir, n) -&gt; dir != null &amp;&amp; n != null
+        &amp;&amp; (n.startsWith("libusb4java-1.3.0") || n.startsWith("usb4java-1.3.0") || n.endsWith(".jar.bak")));
+    if (oldUsb != null) {
+        for (File f : oldUsb) {
             if (f.isFile() &amp;&amp; f.delete()) {
                 com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
             }
