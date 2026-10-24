@@ -116,10 +116,14 @@ public final class JaerWindowGroupRaiser implements AWTEventListener {
     }
 
     /**
-     * True when a different modal dialog is showing: do not shuffle z-order
-     * under it.
+     * True when {@code focused} is a modal dialog, or a different modal dialog
+     * is showing. Raising the owner frame (the GL canvas) over a modal dialog
+     * leaves that dialog visible and unable to take clicks after sleep.
      */
     static boolean modalBlocksRaise(Window focused) {
+        if (focused instanceof Dialog d && d.isModal()) {
+            return true;
+        }
         for (Window w : Window.getWindows()) {
             if (w instanceof Dialog) {
                 Dialog d = (Dialog) w;

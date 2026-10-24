@@ -483,6 +483,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * sleep can overlap an in-flight AEDAT-4 {@code grabInput}).
      */
     private volatile boolean viewLoopSuspendedForOfflineExport = false;
+    /**
+     * Sleep/unplug save dialog is up. ViewLoop parks on {@link #viewLoopPauseLock}
+     * instead of blocking in {@code invokeAndWait}: it is the JOGL thread, and a
+     * modal dialog repaint of the GL canvas waits for that thread (the dialog
+     * paints and then ignores clicks after resume).
+     */
+    private volatile boolean viewLoopSuspendedForRecordingDialog = false;
     /** ViewLoop has left grabInput and is waiting on {@link #viewLoopPauseLock}. */
     private volatile boolean viewLoopParkedForOfflineExport = false;
     /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
@@ -7126,8 +7133,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
                 maybeStopRecordingAfterSleepResume(!skipSleepDetect);
-                if (viewLoopSuspendedForOfflineExport) {
-                    // Still owned by Save As (spurious wakeup). Do not grabInput/render.
+                if (viewLoopSuspendedForRecordingDialog || viewLoopSuspendedForOfflineExport) {
+                    // Dialog or Save As owns the loop. Do not grabInput/render.
                     continue;
                 }
                 stopRecordingIfTimeLimitReached();
@@ -7282,6 +7289,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             PlayMode playModeBeforeGrab = getPlayMode();
                             try {
                                 rawPacket = grabInput();
+                                if (viewLoopSuspendedForRecordingDialog) {
+                                    getFrameRater().takeAfter();
+                                    paceViewLoopFrame();
+                                    continue;
+                                }
                             } catch (RuntimeException e) {
                                 log.log(Level.WARNING, "grabInput failed; ViewLoop continues", e);
                                 getFrameRater().takeAfter();
@@ -8062,6 +8074,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         /** Idle wait while paused (no acquisition). */
         void pauseIdleWaitIfNeeded() {
+            if (viewLoopSuspendedForRecordingDialog) {
+                interrupted();
+                synchronized (viewLoopPauseLock) {
+                    while (viewLoopSuspendedForRecordingDialog && !stop) {
+                        try {
+                            viewLoopPauseLock.wait();
+                        } catch (InterruptedException e) {
+                            interrupted();
+                        }
+                    }
+                }
+                return;
+            }
             if (viewLoopSuspendedForOfflineExport) {
                 // Park until Save As finishes. Do not use interruptViewloop(): it
                 // closes FileChannel. Do not honor interrupted() by skipping the
@@ -14354,41 +14379,67 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             return;
         }
+        if (viewLoopSuspendedForRecordingDialog) {
+            return;
+        }
+        // Park ViewLoop (see viewLoopSuspendedForRecordingDialog). Do not
+        // invokeAndWait: that blocks the JOGL thread inside the modal dialog.
+        recordingPaused = true;
+        viewLoopSuspendedForRecordingDialog = true;
         Runnable stop = () -> {
-            if (!isRecordingEnabled() && (jaerViewer == null || !jaerViewer.recordingEnabled)) {
-                return;
-            }
-            boolean save = confirmSaveOrDiscardRecording(reason);
-            if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.recordingEnabled) {
-                jaerViewer.stopSynchronizedRecording(save);
-            } else if (isRecordingEnabled()) {
-                if (save) {
-                    stopRecording(true);
-                } else {
-                    discardClosedRecording(stopRecording(false));
+            try {
+                if (!isRecordingEnabled() && (jaerViewer == null || !jaerViewer.recordingEnabled)) {
+                    return;
+                }
+                boolean save = confirmSaveOrDiscardRecording(reason);
+                log.info("interrupted recording choice: " + (save ? "save" : "discard"));
+                if (jaerViewer != null && jaerViewer.isSyncEnabled() && jaerViewer.recordingEnabled) {
+                    jaerViewer.stopSynchronizedRecording(save);
+                } else if (isRecordingEnabled()) {
+                    if (save) {
+                        stopRecording(true);
+                    } else {
+                        discardClosedRecording(stopRecording(false));
+                    }
+                }
+            } finally {
+                recordingPaused = false;
+                viewLoopSuspendedForRecordingDialog = false;
+                synchronized (viewLoopPauseLock) {
+                    viewLoopPauseLock.notifyAll();
                 }
             }
         };
         if (SwingUtilities.isEventDispatchThread()) {
             stop.run();
         } else {
-            try {
-                SwingUtilities.invokeAndWait(stop);
-            } catch (Exception e) {
-                log.log(Level.SEVERE, "Exception stopping recording after live USB loss: " + e.toString(), e);
-            }
+            SwingUtilities.invokeLater(stop);
         }
     }
 
     /**
      * Two-button prompt after USB unplug or sleep. Closing the window keeps the
-     * file (same as Yes, save).
+     * file (same as Yes, save). Not owned by the viewer: the GL canvas is
+     * heavyweight and takes clicks from an owned dialog after sleep.
      */
     private boolean confirmSaveOrDiscardRecording(String reason) {
         Object[] options = {"Yes, save", "No, discard"};
-        int n = JOptionPane.showOptionDialog(this, reason, "Recording stopped",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
-        return n != JOptionPane.NO_OPTION;
+        JOptionPane pane = new JOptionPane(reason, JOptionPane.WARNING_MESSAGE,
+                JOptionPane.YES_NO_OPTION, null, options, options[0]);
+        final JDialog dialog = pane.createDialog((Component) null, "Recording stopped");
+        dialog.setAlwaysOnTop(true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                dialog.toFront();
+                dialog.requestFocus();
+            }
+        });
+        dialog.setVisible(true);
+        dialog.dispose();
+        Object value = pane.getValue();
+        return !options[1].equals(value);
     }
 
     /** Deletes the closed temp recording after the user chose No, discard. */
