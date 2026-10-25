@@ -1073,6 +1073,19 @@ public class OpenCVOutput extends EventFilter2D {
         return skipChipRendering;
     }
 
+    /**
+     * True when a minimized AEViewer must keep updating the chip pixmap.
+     * Auto and RenderedPixmap copy that pixmap after {@code render()}.
+     * APS frames, DVS histograms, and {@link #isSkipChipRendering()} do not.
+     */
+    public boolean dependsOnChipRendering() {
+        if (!isFilterEnabled() || skipChipRendering) {
+            return false;
+        }
+        FrameSource src = frameSource;
+        return src == FrameSource.Auto || src == FrameSource.RenderedPixmap;
+    }
+
     public void setSkipChipRendering(boolean skipChipRendering) {
         boolean old = this.skipChipRendering;
         this.skipChipRendering = skipChipRendering;

@@ -276,6 +276,14 @@ playback uses every event. Starting a data recording turns ARS **on** if it was 
 LZ4/write runs; the recording overlay shows `ARS auto skip n/max`.
 The previous ARS on/off state is restored when recording stops.
 
+A minimized window (`Frame.ICONIFIED`; the frame stays `isVisible()`) skips
+chip pixmap updates and `paintFrame()`. Acquisition, filters, recording, UDP,
+ROS2/Foxglove, and DNN shared memory keep running — they do not read the chip
+view. Rendering stays on while minimized when OpenCV output is publishing that
+view (Auto or RenderedPixmap, and `skipChipRendering` is off) or when AVI
+capture is active. Restoring the window resumes rendering on the next view
+iteration.
+
 ---
 
 ## Saving to AEDAT-4

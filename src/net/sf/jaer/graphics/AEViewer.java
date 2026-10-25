@@ -365,6 +365,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
     /**
+     * Set on the EDT from {@code WINDOW_STATE_CHANGED}. Iconified frames stay
+     * {@link #isVisible()}, so ViewLoop must not treat minimize as "not shown".
+     */
+    private volatile boolean windowIconified;
+    /** Log-once flags for minimized render skip; touched only by ViewLoop. */
+    private boolean loggedMinimizedRenderSkip;
+    private boolean loggedMinimizedRenderKeep;
+    /**
      * Non-null overlay text: skip chip pixmap {@code render()} and
      * {@code paintFrame()} a blank canvas with this message (no APS, DVS, IMU,
      * or filter annotations).
@@ -1322,6 +1330,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void windowOpened(WindowEvent e) {
                 StartupProfiler.mark("AEViewer.windowOpened");
                 StartupProfiler.dump();
+            }
+        });
+        windowIconified = (getExtendedState() & Frame.ICONIFIED) != 0;
+        addWindowStateListener(e -> {
+            boolean iconified = (e.getNewState() & Frame.ICONIFIED) != 0;
+            boolean wasIconified = windowIconified;
+            windowIconified = iconified;
+            if (wasIconified && !iconified) {
+                synchronized (viewLoopPauseLock) {
+                    viewLoopPauseLock.notifyAll();
+                }
             }
         });
         addComponentListener(new ComponentAdapter() {
@@ -7124,6 +7143,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 getRenderer().clearPacketRenderSkipDecision();
                 boolean skipRendering = false;
+                // Minimize skips OpenGL only. Grab, filter, record, and remote event sinks still run.
+                final boolean skipBecauseMinimized = skipChipRenderingBecauseMinimized();
                 viewLoopUsedHwTypedBundle = false;
                 setTitleAccordingToState();
                 boolean skipSleepDetect = isPaused() || viewLoopSuspendedForOfflineExport;
@@ -7366,7 +7387,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             getFrameRater().takeAfter();
                             getRenderer().adaptRenderSkipping();
                             renderCount++;
-                            if (isRecordingEnabled() && chipCanvas != null) {
+                            if (isRecordingEnabled() && chipCanvas != null && !skipBecauseMinimized) {
                                 // Skip pixmap render but keep the recording overlay updating.
                                 chipCanvas.paintFrame();
                             }
@@ -7446,7 +7467,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
                         boolean skipRequested = isSkipChipRenderingRequested() && !isJaerAviRecordingActive();
-                        boolean skipChipGfx = skipRendering || isRosOutputSkipChipRendering()
+                        boolean skipChipGfx = skipRendering || skipBecauseMinimized || isRosOutputSkipChipRendering()
                                 || isOpenCvOutputSkipChipRendering() || skipRequested;
                         boolean glBusy = acquisitionOwns && chipCanvas != null && chipCanvas.isGlDisplayActive();
                         if (glBusy) {
@@ -7458,7 +7479,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if (opencvOut != null) {
                                 opencvOut.publishChipViewAfterRender();
                             }
-                        } else if (!glBusy && (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested)) {
+                        } else if (!skipBecauseMinimized && !glBusy
+                                && (isShowRosOutputOverlay() || isShowOpenCvOutputOverlay() || skipRequested)) {
                             // Skip pixmap render(); paint a blank canvas + overlay (no APS/IMU/markers).
                             chipCanvas.paintFrame();
                         }
@@ -16042,6 +16064,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean isOpenCvOutputSkipChipRendering() {
         OpenCVOutput o = findOpenCvOutput();
         return o != null && o.isFilterEnabled() && o.isSkipChipRendering();
+    }
+
+    /**
+     * True when this frame is minimized and nothing still needs the chip view.
+     * Acquisition, filters, recording, UDP, ROS2/Foxglove, and DNN mmap keep
+     * running: those paths do not read the OpenGL pixmap. OpenCV
+     * Auto/RenderedPixmap and AVI capture do, so rendering stays on for them.
+     */
+    private boolean skipChipRenderingBecauseMinimized() {
+        if (!windowIconified) {
+            noteIconifiedRenderSkip(false, false);
+            return false;
+        }
+        boolean required = chipRenderingRequiredWhileMinimized();
+        noteIconifiedRenderSkip(true, required);
+        return !required;
+    }
+
+    private boolean chipRenderingRequiredWhileMinimized() {
+        if (isJaerAviRecordingActive()) {
+            return true;
+        }
+        OpenCVOutput opencv = findOpenCvOutput();
+        return opencv != null && opencv.dependsOnChipRendering();
+    }
+
+    private void noteIconifiedRenderSkip(boolean iconified, boolean required) {
+        if (!iconified) {
+            if (loggedMinimizedRenderSkip || loggedMinimizedRenderKeep) {
+                loggedMinimizedRenderSkip = false;
+                loggedMinimizedRenderKeep = false;
+                log.info("AEViewer window restored; chip rendering resumed");
+            }
+            return;
+        }
+        if (required) {
+            if (!loggedMinimizedRenderKeep) {
+                loggedMinimizedRenderKeep = true;
+                loggedMinimizedRenderSkip = false;
+                log.info("AEViewer window minimized; chip rendering continues"
+                        + " (OpenCV chip-view output or AVI capture is active)");
+            }
+            return;
+        }
+        if (!loggedMinimizedRenderSkip) {
+            loggedMinimizedRenderSkip = true;
+            loggedMinimizedRenderKeep = false;
+            log.info("AEViewer window minimized; skipping chip rendering"
+                    + " (acquisition, filters, and recording continue)");
+        }
     }
 
     private void disposeOpenCvOutputDialog() {
