@@ -37,11 +37,15 @@ public class PlaybackPositionSlider extends JSlider {
 
     private static final Color FILL = new Color(30, 110, 200, 140);
     private static final Color LINE = new Color(15, 70, 150, 200);
+    private static final Color FILL_NIGHT = new Color(190, 40, 45, 155);
+    private static final Color LINE_NIGHT = new Color(130, 20, 25, 210);
     private static final Color IN_COLOR = new Color(40, 220, 80);
     private static final Color OUT_COLOR = new Color(255, 90, 30);
     private static final Color OTHER_COLOR = new Color(255, 220, 50);
 
     private float[] logRelativeRates;
+    /** Same length as {@link #logRelativeRates}, or null for a single blue fill. */
+    private boolean[] nightBins;
     private Integer markInValue;
     private Integer markOutValue;
     private final List<Integer> otherMarkValues = new ArrayList<>();
@@ -62,7 +66,16 @@ public class PlaybackPositionSlider extends JSlider {
     }
 
     public void setLogRelativeRates(float[] bins) {
+        setLogRelativeRates(bins, null);
+    }
+
+    /**
+     * @param night per-bin night flags, same length as {@code bins}, or null to
+     *        paint the whole sparkline in blue
+     */
+    public void setLogRelativeRates(float[] bins, boolean[] night) {
         this.logRelativeRates = bins;
+        this.nightBins = night != null && bins != null && night.length == bins.length ? night : null;
         repaint();
     }
 
@@ -259,10 +272,38 @@ public class PlaybackPositionSlider extends JSlider {
             int w = Math.max(1, x1 - x0);
             int yBase = slider.getHeight() - slider.getInsets().bottom - 3;
             int maxH = Math.max(6, slider.getHeight() - slider.getInsets().top - slider.getInsets().bottom - 6);
+            boolean[] night = playback().nightBins;
+            if (night == null) {
+                paintSparklineRun(g2, rates, x0, w, yBase, maxH, 0, w, FILL, LINE);
+                return;
+            }
+            int x = 0;
+            while (x <= w) {
+                boolean nigh = sampleNight(night, rates.length, w, x);
+                int x2 = x;
+                while (x2 < w && sampleNight(night, rates.length, w, x2 + 1) == nigh) {
+                    x2++;
+                }
+                paintSparklineRun(g2, rates, x0, w, yBase, maxH, x, x2,
+                        nigh ? FILL_NIGHT : FILL, nigh ? LINE_NIGHT : LINE);
+                x = x2 + 1;
+            }
+        }
+
+        private static boolean sampleNight(boolean[] night, int n, int w, int x) {
+            int i = (int) ((long) x * n / w);
+            if (i >= night.length) {
+                i = night.length - 1;
+            }
+            return night[i];
+        }
+
+        private static void paintSparklineRun(Graphics2D g2, float[] rates,
+                int x0, int w, int yBase, int maxH, int xFrom, int xTo, Color fill, Color line) {
             int n = rates.length;
             Path2D.Float path = new Path2D.Float();
-            path.moveTo(x0, yBase);
-            for (int x = 0; x <= w; x++) {
+            path.moveTo(x0 + xFrom, yBase);
+            for (int x = xFrom; x <= xTo; x++) {
                 int i = (int) ((long) x * n / w);
                 if (i >= n) {
                     i = n - 1;
@@ -270,11 +311,11 @@ public class PlaybackPositionSlider extends JSlider {
                 float h = Math.min(1f, Math.max(0f, rates[i])) * maxH;
                 path.lineTo(x0 + x, yBase - h);
             }
-            path.lineTo(x0 + w, yBase);
+            path.lineTo(x0 + xTo, yBase);
             path.closePath();
-            g2.setColor(FILL);
+            g2.setColor(fill);
             g2.fill(path);
-            g2.setColor(LINE);
+            g2.setColor(line);
             g2.draw(path);
         }
 

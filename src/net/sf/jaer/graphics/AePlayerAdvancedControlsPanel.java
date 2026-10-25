@@ -339,9 +339,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             return;
         }
         float[] rates = stream != null ? stream.getLogRelativeEventRateByTime() : null;
+        boolean[] night = stream != null ? stream.getEventRateBinNight() : null;
         boolean timeMapped = stream != null && stream.usesTimeMappedSlider();
-        playerSlider.setLogRelativeRates(timeMapped ? rates : null);
-        if (timeMapped) {
+        playerSlider.setLogRelativeRates(timeMapped ? rates : null, timeMapped ? night : null);
+        if (timeMapped && night != null) {
+            playerSlider.setToolTipText(
+                    "Playback position in recording time. Overlay is log event rate vs time. Blue is local daytime (06:00–18:00), red is night.");
+        } else if (timeMapped) {
             playerSlider.setToolTipText(
                     "Playback position in recording time. Overlay is log event rate vs time (5th–98th percentile).");
         } else {

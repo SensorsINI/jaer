@@ -19,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,9 +62,9 @@ import net.sf.jaer.util.EngineeringFormat;
  * decoded on demand for the current playback window (not stored for the whole file).
  * <p>
  * First open prefers the trailing FileDataTable (decompress once, no per-packet LZ4);
- * falls back to a linear packet scan when the table is missing or invalid. A small
+ * falls back to a linear packet scan when the table is missing or invalid. An
  * index cache under {@link net.sf.jaer.util.JaerTmpdir#aeidx()} then makes reopen
- * effectively instant.
+ * skip that scan.
  */
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
@@ -80,8 +81,19 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     static final long MAX_FILE_DATA_TABLE_BYTES = Integer.MAX_VALUE - 8L;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
-    private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
+    /**
+     * Sanity cap for a corrupt cache or FileDataTable, not a duration limit.
+     * A 221 h IMX636 concat is about 29 million EVTS packets (~1.5 GB cache).
+     * The old 10 million cap rejected that table and the cache, then decompressed
+     * every packet on every open.
+     */
+    private static final int INDEX_CACHE_MAX_PACKETS = 64_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
+    /** Sparkline uses local day/night colors only when the file is longer than this. */
+    static final long DAY_NIGHT_MIN_DURATION_US = 12L * 3_600_000_000L;
+    /** Local hours in {@code [DAY_START_HOUR, DAY_END_HOUR)} are daytime. */
+    static final int DAY_START_HOUR = 6;
+    static final int DAY_END_HOUR = 18;
     /**
      * File-dialog preview: index at most this many EVTS packets when FileDataTable
      * and the {@code *.aedat4idx} cache are missing (avoids a full linear scan).
@@ -268,6 +280,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * sparse packet table (no decompress).
      */
     private float[] logRelativeEventRateByTime;
+    /**
+     * Night flag per {@link #logRelativeEventRateByTime} bin, recording-zone local
+     * time. Null when the file is {@link #DAY_NIGHT_MIN_DURATION_US} or shorter.
+     */
+    private boolean[] eventRateBinNight;
     /**
      * True when some EVTS packets need FlatBuffer timestamp scans (inverted/zero
      * span or Save-As mega-packet). Applied per timeslice, not globally.
@@ -699,6 +716,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public float[] getLogRelativeEventRateByTime() {
         return logRelativeEventRateByTime;
+    }
+
+    @Override
+    public boolean[] getEventRateBinNight() {
+        return eventRateBinNight;
     }
 
     @Override
@@ -1852,6 +1874,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     private void buildLogRelativeEventRateBins() {
         logRelativeEventRateByTime = null;
+        eventRateBinNight = null;
         if (!hasPolarity() || eventRefs.length == 0) {
             return;
         }
@@ -1947,6 +1970,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         logRelativeEventRateByTime = out;
+        eventRateBinNight = nightBinsForSpan(baseUnixUs + t0, dur, nBins, getZoneId());
+        if (eventRateBinNight != null) {
+            int nNight = 0;
+            for (boolean night : eventRateBinNight) {
+                if (night) {
+                    nNight++;
+                }
+            }
+            log.info(String.format(
+                    "AEDAT-4 day/night sparkline: %d/%d bins night, zone=%s, local day %02d:00–%02d:00",
+                    nNight, nBins, getZoneId(), DAY_START_HOUR, DAY_END_HOUR));
+        }
         if (log.isLoggable(Level.FINE)) {
             int nz = 0;
             float minP = 1, maxP = 0;
@@ -3135,7 +3170,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             for (int i = 0; i < nTimeline; i++) {
                 timelineTimestamps[i] = in.readInt();
             }
-            eventRefs = readEventRefs(in);
+            eventRefs = readEventRefs(in, progressMonitor);
             frameRefs = readRefs(in);
             imuRefs = readRefs(in);
             markOut = playableSize();
@@ -3200,17 +3235,49 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
     }
 
-    private static PacketRef[] readEventRefs(DataInputStream in) throws IOException {
+    private static PacketRef[] readEventRefs(DataInputStream in, ProgressMonitor progressMonitor) throws IOException {
         int n = in.readInt();
         if (n < 0 || n > INDEX_CACHE_MAX_PACKETS) {
             throw new IOException("bad event packet count " + n);
+        }
+        if (progressMonitor != null) {
+            progressMonitor.setNote(String.format("Reading cached AEDAT-4 index (%,d packets)", n));
+            progressMonitor.setProgress(2);
         }
         PacketRef[] refs = new PacketRef[n];
         for (int i = 0; i < n; i++) {
             refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(),
                     in.readInt() & 0xffffffffL, in.readLong(), in.readLong(), in.readInt());
+            if (progressMonitor != null && (i & 0x3ffff) == 0) {
+                progressMonitor.setProgress(2 + (int) Math.min(70, (i * 70L) / Math.max(1, n)));
+            }
         }
         return refs;
+    }
+
+    /**
+     * Per-bin night flags for a sparkline that starts at {@code startUnixUs} and
+     * lasts {@code durationUs}. Null when the span does not exceed 12 hours.
+     * Bin {@code i} is classified by its center, in {@code zone}.
+     */
+    static boolean[] nightBinsForSpan(long startUnixUs, long durationUs, int nBins, ZoneId zone) {
+        if (durationUs <= DAY_NIGHT_MIN_DURATION_US || nBins <= 0 || zone == null) {
+            return null;
+        }
+        boolean[] night = new boolean[nBins];
+        for (int i = 0; i < nBins; i++) {
+            long center = startUnixUs + (durationUs * (2L * i + 1)) / (2L * nBins);
+            night[i] = localHourIsNight(center, zone);
+        }
+        return night;
+    }
+
+    /** Local hour outside 06:00–18:00. */
+    static boolean localHourIsNight(long unixUs, ZoneId zone) {
+        long sec = Math.floorDiv(unixUs, 1_000_000L);
+        int nano = (int) (Math.floorMod(unixUs, 1_000_000L) * 1000L);
+        int hour = Instant.ofEpochSecond(sec, nano).atZone(zone).getHour();
+        return hour < DAY_START_HOUR || hour >= DAY_END_HOUR;
     }
 
     private static void writeEventRefs(DataOutputStream out, PacketRef[] refs) throws IOException {

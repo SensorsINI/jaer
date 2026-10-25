@@ -244,6 +244,15 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
     }
 
     /**
+     * Night flag for each bin of {@link #getLogRelativeEventRateByTime()}, in the
+     * recording time zone. Null when that sparkline is absent or the file is
+     * 12 hours or shorter. Daytime is local 06:00–18:00.
+     */
+    default boolean[] getEventRateBinNight() {
+        return null;
+    }
+
+    /**
      * Approx timestamp at the current read position, unwrapped µs from file time base.
      */
     default long getPositionTimestampUs() {
