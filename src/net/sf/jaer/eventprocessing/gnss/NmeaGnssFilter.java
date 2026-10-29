@@ -57,54 +57,29 @@ F-Droid APK, install it, then in F-Droid install
 </ol>
 <p>Source code:
 <a href="https://github.com/project-kaat/gpsdRelay">github.com/project-kaat/gpsdRelay</a>
-(Kotlin, Apache-2.0). Android 7+. Grant <b>precise location</b>. Optionally
-exempt the app from battery optimization so it keeps running with the screen
-off.</p>
+(Kotlin, Apache-2.0). Android 7+. Exempt it from battery optimization so it
+keeps running with the screen off.</p>
 <hr>
-<h3>2. Start a TCP server in gpsdRelay (not UDP)</h3>
-<p>In gpsdRelay the IPv4 field defaults to <code>0.0.0.0</code>. Leave it.
-That means listen on all interfaces, not “pick a 192.168 address.” You only
-choose the <b>port</b> (jAER default <code>2947</code>, gpsd's port). The 192.168 address goes in
-<b>jAER</b> <code>host</code> after the laptop has joined the hotspot: it is
-the phone's real IP (gateway), which Android assigned. Do not type
-<code>0.0.0.0</code> into jAER.</p>
-<p>If gpsdRelay offers generated vs relayed NMEA, enable <b>generation</b>
-unless you know the chip still emits sentences.</p>
-<hr>
-<h3>3. Network in the field (no mesh Wi-Fi)</h3>
-<p>Yes: turn on the phone <b>Wi-Fi hotspot</b>, join that SSID from the laptop.
-The phone is the access point. GNSS still uses the phone radios (GPS/Galileo);
-the hotspot is only the NMEA link to the PC. Cellular data is not required.</p>
+<h3>2. Phone</h3>
 <ol>
-<li>Phone: Hotspot &amp; tethering &rarr; Wi-Fi hotspot on. Set a password.</li>
-<li>Laptop: connect to that Wi-Fi. Ignore “no internet” if shown.</li>
-<li>Phone IP is the hotspot gateway: on the laptop, the default gateway of
-that Wi-Fi adapter (often <code>192.168.43.1</code> or
-<code>192.168.137.1</code>; gpsdRelay may show it). Put that in
-<code>host</code>.</li>
-<li>USB tethering is an alternative if Wi-Fi hotspot is flaky; then
-<code>host</code> is the phone's USB-LAN address (Windows often
-<code>192.168.42.129</code> / <code>192.168.137.1</code>).</li>
+<li>Location on. In gpsdRelay allow precise location, <b>Allow all the time</b>.</li>
+<li>Turn the Wi-Fi hotspot on. Join it from the laptop.</li>
+<li>In gpsdRelay add a <b>TCP</b> server: IPv4 <code>0.0.0.0</code>, port <code>2947</code>.</li>
+<li>On that row turn the switch <b>on</b> and <b>NMEA generation</b> on.</li>
+<li>Press <b>play</b>. The notification must say <b>NMEA relay is running</b>. Set the switches before play; changing them restarts the listener.</li>
+<li>Open Maps until it has a fix, then leave Maps. That starts the GPS chip. gpsdRelay keeps sending.</li>
 </ol>
-<p>Keep gpsdRelay running after the hotspot is on so it is listening when
-jAER connects.</p>
 <hr>
-<h3>4. Connect jAER</h3>
+<h3>3. jAER</h3>
 <ol>
-<li>Add <b>NmeaGnssFilter</b> and enable it.</li>
-<li><code>transport</code> = <b>TCP_CLIENT</b>.</li>
-<li><code>host</code> = phone IP (hotspot gateway).</li>
-<li><code>port</code> = gpsdRelay TCP port. Use <code>doConnect</code> if you
-change host/port after enabling.</li>
-<li>When lat/lon appear, record as usual. Muxed cameras: enable this filter on
-<b>one</b> viewer only. The NMEA socket runs only while the filter is enabled
-and the viewer is <b>LIVE</b> or <b>WAITING</b> (not playback), so you can bind
-gpsdRelay before plugging in the camera.</li>
+<li>Enable <b>NmeaGnssFilter</b> on one viewer, in <b>LIVE</b> or <b>WAITING</b>.</li>
+<li><code>transport</code> = <b>TCP_CLIENT</b>, <code>hotspotGateway</code> on, <code>host</code> empty, <code>port</code> 2947. jAER dials the hotspot gateway.</li>
+<li>Record when lat/lon appear. If the overlay says <b>connected, no NMEA</b>, repeat the phone steps.</li>
 </ol>
-<p>Use <code>TCP_SERVER</code> only if the phone is the TCP client.
-<code>UDP</code> only if you later set gpsdRelay to send UDP to the laptop.</p>
+<p>USB tethering: set <code>host</code> to the phone USB address and turn <code>hotspotGateway</code> off.
+<code>TCP_SERVER</code> only if the phone connects here. <code>UDP</code> only if gpsdRelay sends UDP here.</p>
 <hr>
-<h3>5. Playback map</h3>
+<h3>4. Playback map</h3>
 <p>With a <code>.gnss.csv</code> sidecar, enable <code>showMap</code> (Map
 section). The track is north-up, centered on the chip, scaled so the longer of
 NS/EW range fits in the pixel array. The current sample draws COG/SOG as a
@@ -136,6 +111,8 @@ public class NmeaGnssFilter extends EventFilterSidecarWriter<GnssFix> implements
     private Transport transport = Transport.valueOf(getString("transport", Transport.TCP_CLIENT.name()));
     @Preferred
     private String host = getString("host", "");
+    @Preferred
+    private boolean hotspotGateway = getBoolean("hotspotGateway", true);
     @Preferred
     private int port = getInt("port", 2947);
 
@@ -174,7 +151,9 @@ public class NmeaGnssFilter extends EventFilterSidecarWriter<GnssFix> implements
         String net = "Network", disp = "Display", map = "Map";
         setPropertyTooltip(net, "transport",
                 "TCP_CLIENT: connect to phone (gpsdRelay TCP server). TCP_SERVER: phone connects here. UDP: bind port.");
-        setPropertyTooltip(net, "host", "Phone IP for TCP_CLIENT (empty waits). Same Wi‑Fi or phone hotspot.");
+        setPropertyTooltip(net, "host", "Phone IP for TCP_CLIENT on a shared Wi-Fi. Leave empty on a phone hotspot.");
+        setPropertyTooltip(net, "hotspotGateway",
+                "On a phone Wi-Fi hotspot, dial the Wi-Fi gateway (the phone). gpsdRelay stays on 0.0.0.0.");
         setPropertyTooltip(net, "port", "TCP/UDP port the phone app listens on (default 2947, same as gpsd / gpsdRelay).");
         setPropertyTooltip(net, "doConnect", "Start or restart the NMEA socket (LIVE or WAITING, not playback).");
         setPropertyTooltip(net, "doDisconnect", "Close the NMEA socket.");
@@ -373,7 +352,8 @@ public class NmeaGnssFilter extends EventFilterSidecarWriter<GnssFix> implements
         stopSource();
         loggedFirstFix = false;
         NmeaNetworkSource.Transport t = NmeaNetworkSource.Transport.valueOf(transport.name());
-        source = new NmeaNetworkSource(t, host, port, this::onNmeaLine, s -> netStatus = s, this::isFilterEnabled);
+        source = new NmeaNetworkSource(t, host, port, this::onNmeaLine, s -> netStatus = s,
+                this::isFilterEnabled, hotspotGateway);
         source.start();
         netStatus = "GNSS: starting " + transport;
         log.info("GNSS starting " + transport + " " + host + ":" + port);
@@ -498,6 +478,20 @@ public class NmeaGnssFilter extends EventFilterSidecarWriter<GnssFix> implements
         this.transport = transport;
         putString("transport", transport.name());
         getSupport().firePropertyChange("transport", old, transport);
+        if (isFilterEnabled() && isLiveOrWaiting()) {
+            startSource();
+        }
+    }
+
+    public boolean isHotspotGateway() {
+        return hotspotGateway;
+    }
+
+    public void setHotspotGateway(boolean hotspotGateway) {
+        boolean old = this.hotspotGateway;
+        this.hotspotGateway = hotspotGateway;
+        putBoolean("hotspotGateway", hotspotGateway);
+        getSupport().firePropertyChange("hotspotGateway", old, hotspotGateway);
         if (isFilterEnabled() && isLiveOrWaiting()) {
             startSource();
         }
