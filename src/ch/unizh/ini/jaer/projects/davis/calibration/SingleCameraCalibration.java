@@ -1475,7 +1475,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             if (calibrated) {
                 log.info("Calibrated: loaded cameraMatrix and distortionCoefs from folder " + dirPath);
             } else {
-                log.warning("Uncalibrated: Something was wrong with calibration files so that cameraMatrix or distortionCoefs could not be loaded");
+                log.fine("Uncalibrated: Something was wrong with calibration files so that cameraMatrix or distortionCoefs could not be loaded");
             }
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (Exception i) {
@@ -1523,7 +1523,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             mat = y.readMatYml(fn);
             return mat;
         } catch (FileNotFoundException ex) {
-            log.info(String.format("No calibration loaded: %s", ex.toString()));
+            log.fine(String.format("No calibration loaded: %s", ex.toString()));
             return null;
         } catch (YamlException yex) {
             log.warning(String.format("Calibration file format incorrect: %s", yex.toString()));
