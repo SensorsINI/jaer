@@ -502,9 +502,8 @@ public final class SaveAsExporter extends SwingWorker<SaveAsExporter.Result, Str
 
     /**
      * Original recording summary captured before the export scan. AEDAT-4 uses
-     * the in-memory index ({@link Aedat4FileInputStream#getFileInfoFromIndex()}),
-     * not {@link Aedat4FileInputStream#getFileInfo()}, which peeks every packet
-     * codec header. Other formats get path + {@link Object#toString()}.
+     * the in-memory index ({@link Aedat4FileInputStream#getFileInfoFromIndex()}).
+     * Other formats get path + {@link Object#toString()}.
      */
     static String snapshotSourceFileInfo(AEFileInputStreamInterface stream) {
         if (stream == null) {

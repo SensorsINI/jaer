@@ -14942,34 +14942,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setFileInfoWaitCursor(true);
             Aedat4FileInputStream aedat4 = (Aedat4FileInputStream) stream;
             File file = aedat4.getFile();
-            ProgressMonitor monitor = new ProgressMonitor(AEViewer.this,
-                    "Reading file info", "Starting…", 0, 100);
-            monitor.setMillisToDecideToPopup(400);
-            monitor.setMillisToPopup(400);
-            // Return to the EDT once so the wait cursor paints before the scan starts.
+            // Payload sizes are already on the open index. Sum them off the EDT;
+            // do not open a progress dialog or reread packet headers.
             SwingUtilities.invokeLater(() -> {
                 Thread worker = new Thread(() -> {
                     String info;
-                    boolean canceled = false;
                     try {
-                        info = composeFileInfoText(aedat4, monitor);
-                    } catch (IOException ex) {
-                        canceled = ex.getMessage() != null && ex.getMessage().contains("canceled");
-                        info = canceled ? null : "File info failed: " + ex.getMessage();
-                        if (!canceled) {
-                            log.warning("File info failed: " + ex);
-                        }
+                        info = composeFileInfoText(aedat4);
                     } catch (RuntimeException ex) {
                         log.log(Level.WARNING, "File info failed", ex);
                         info = "File info failed: " + ex.getMessage();
                     }
                     String text = info;
-                    boolean skip = canceled;
                     SwingUtilities.invokeLater(() -> {
                         fileInfoBusy = false;
                         setFileInfoWaitCursor(false);
-                        monitor.close();
-                        if (!skip && text != null) {
+                        if (text != null) {
                             presentFileInfoDialog(text, file);
                         }
                     });

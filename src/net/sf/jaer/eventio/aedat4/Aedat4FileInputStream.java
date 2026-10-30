@@ -189,12 +189,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     private boolean indexComplete;
     /**
-     * Sum of on-disk packet payload sizes. {@code -1} until {@link #ensurePayloadCompressionStats()}.
+     * Sum of indexed on-disk packet payload sizes. {@code -1} until File Info asks.
      */
     private long cachedCompressedPayloadBytes = -1;
     /**
-     * Uncompressed FlatBuffer payload bytes from codec headers.
-     * {@code -1} not computed; {@code -2} headers do not store the size.
+     * Uncompressed payload bytes when they equal the compressed sizes ({@code NONE}).
+     * {@code -1} when the codec header was not read. File Info does not peek packets.
      */
     private long cachedUncompressedPayloadBytes = -1;
 
@@ -742,43 +742,36 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     /**
-     * Summary of this AEDAT-4 recording: event/frame/IMU counts, duration,
-     * on-disk size, and packet-payload compression vs uncompressed FlatBuffers
-     * when codec headers store the original size (ZSTD; LZ4 written by current jAER).
+     * Summary from the open index: event/frame/IMU counts, duration, on-disk
+     * size, and the compressed payload total already stored per packet.
      * Counts are exact {@code long} values; the engineering prefix is only a reading aid.
      */
     @Override
     public String getFileInfo() {
         try {
-            return getFileInfo(null);
+            return buildFileInfo();
         } catch (IOException e) {
             return "File info failed: " + e.getMessage();
         }
     }
 
     /**
-     * Index summary only: counts, duration, size, stream. Does not peek codec
-     * headers. Save As uses this so starting an export does not read every
-     * packet of a multi-hour file on the UI thread. Includes the compression
-     * line when a previous File Info scan already filled the cache.
+     * Same text as {@link #getFileInfo()}. Save As uses this name so an export
+     * does not grow a second reader.
      */
     public String getFileInfoFromIndex() {
-        try {
-            return buildFileInfo(false, null);
-        } catch (IOException e) {
-            return "File info failed: " + e.getMessage();
-        }
+        return getFileInfo();
     }
 
     /**
-     * Same text as {@link #getFileInfo()}. {@code progress} is updated while
-     * peeking codec headers (one read per packet). Cancel throws.
+     * Same text as {@link #getFileInfo()}. {@code progress} is unused; the
+     * index already holds every payload size.
      */
     public String getFileInfo(ProgressMonitor progress) throws IOException {
-        return buildFileInfo(true, progress);
+        return buildFileInfo();
     }
 
-    private String buildFileInfo(boolean scanCompressionHeaders, ProgressMonitor progress) throws IOException {
+    private String buildFileInfo() throws IOException {
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         StringBuilder sb = new StringBuilder();
@@ -801,14 +794,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (file != null) {
             sb.append(String.format("\nSize: %sB on disk", eng.format((double) file.length()).trim()));
         }
-        if (scanCompressionHeaders) {
-            ensurePayloadCompressionStats(progress);
-        }
-        String compressionLine = cachedCompressedPayloadBytes >= 0
-                ? Aedat4Compression.formatPayloadCompression(
-                        compression, cachedUncompressedPayloadBytes > 0 ? cachedUncompressedPayloadBytes : -1,
-                        cachedCompressedPayloadBytes)
-                : "";
+        rememberCompressedPayloadBytes();
+        String compressionLine = payloadCompressionLine();
         if (!compressionLine.isEmpty()) {
             sb.append('\n').append(compressionLine);
         }
@@ -822,108 +809,31 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return sb.toString();
     }
 
-    /**
-     * Sum compressed payload sizes; peek ZSTD/LZ4 frame headers for uncompressed size.
-     * Positional {@link FileChannel} reads do not move the playback cursor.
-     * Cache fields are written only after a finished scan so cancel can be retried.
-     */
-    private void ensurePayloadCompressionStats(ProgressMonitor progress) throws IOException {
+    /** Payload sizes already stored on each indexed packet. No extra file read. */
+    private void rememberCompressedPayloadBytes() {
         if (cachedCompressedPayloadBytes >= 0) {
             return;
         }
-        PacketRef[] events = eventRefs;
-        PacketRef[] frames = frameRefs;
-        PacketRef[] imus = imuRefs;
-        long compressed = sumPayloadBytes(events) + sumPayloadBytes(frames) + sumPayloadBytes(imus);
-        if (compression == CompressionType.NONE) {
-            cachedCompressedPayloadBytes = compressed;
-            cachedUncompressedPayloadBytes = compressed;
-            return;
-        }
-        if (channel == null || !channel.isOpen()) {
-            cachedCompressedPayloadBytes = compressed;
-            cachedUncompressedPayloadBytes = -2;
-            return;
-        }
-        int total = refsLength(events) + refsLength(frames) + refsLength(imus);
-        if (progress != null) {
-            progress.setMinimum(0);
-            progress.setMaximum(100);
-            progress.setProgress(0);
-            progress.setNote("Reading compression headers (0 / " + total + ")");
-        }
-        ByteBuffer peek = ByteBuffer.allocate(Aedat4Compression.UNCOMPRESSED_SIZE_HEADER_BYTES);
-        int[] done = new int[1];
-        long fromEvents = uncompressedFromRefs(events, peek, progress, done, total);
-        if (fromEvents < 0) {
-            cachedCompressedPayloadBytes = compressed;
-            cachedUncompressedPayloadBytes = -2;
-            return;
-        }
-        long fromFrames = uncompressedFromRefs(frames, peek, progress, done, total);
-        if (fromFrames < 0) {
-            cachedCompressedPayloadBytes = compressed;
-            cachedUncompressedPayloadBytes = -2;
-            return;
-        }
-        long fromImu = uncompressedFromRefs(imus, peek, progress, done, total);
-        if (fromImu < 0) {
-            cachedCompressedPayloadBytes = compressed;
-            cachedUncompressedPayloadBytes = -2;
-            return;
-        }
+        long compressed = sumPayloadBytes(eventRefs) + sumPayloadBytes(frameRefs) + sumPayloadBytes(imuRefs);
         cachedCompressedPayloadBytes = compressed;
-        cachedUncompressedPayloadBytes = fromEvents + fromFrames + fromImu;
-        if (progress != null) {
-            progress.setProgress(100);
+        if (compression == CompressionType.NONE) {
+            cachedUncompressedPayloadBytes = compressed;
         }
     }
 
-    private static int refsLength(PacketRef[] refs) {
-        return refs == null ? 0 : refs.length;
-    }
-
-    /** Sum of uncompressed payload sizes, or {@code -1} if any packet header omits it. */
-    private long uncompressedFromRefs(PacketRef[] refs, ByteBuffer peek, ProgressMonitor progress,
-            int[] done, int total) throws IOException {
-        if (refs == null || refs.length == 0) {
-            return 0;
+    private String payloadCompressionLine() {
+        if (cachedCompressedPayloadBytes <= 0 && cachedUncompressedPayloadBytes <= 0) {
+            return "";
         }
-        long n = 0;
-        for (PacketRef r : refs) {
-            if ((done[0] & 8191) == 0) {
-                throwIfCanceled(progress, "File info");
-                if (progress != null && total > 0) {
-                    progress.setProgress((int) Math.min(99, (done[0] * 100L) / total));
-                    progress.setNote("Reading compression headers (" + done[0] + " / " + total + ")");
-                }
-            }
-            done[0]++;
-            if (r.payloadSize <= 0) {
-                continue;
-            }
-            peek.clear();
-            peek.limit(Math.min(peek.capacity(), r.payloadSize));
-            int read;
-            try {
-                read = channel.read(peek, r.payloadOffset);
-            } catch (IOException e) {
-                if (e.getMessage() != null && e.getMessage().contains("canceled")) {
-                    throw e;
-                }
-                log.log(Level.FINE, "Could not peek AEDAT-4 payload header at " + r.payloadOffset, e);
-                return -1;
-            }
-            if (read <= 0) {
-                return -1;
-            }
-            long u = Aedat4Compression.uncompressedSize(peek.array(), 0, read, compression, r.payloadSize);
-            if (u < 0) {
-                return -1;
-            }
-            n += u;
+        if (cachedUncompressedPayloadBytes > 0) {
+            return Aedat4Compression.formatPayloadCompression(
+                    compression, cachedUncompressedPayloadBytes, cachedCompressedPayloadBytes);
         }
-        return n;
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(1);
+        return String.format("Payloads: %sB compressed (%s)",
+                eng.format((double) cachedCompressedPayloadBytes).trim(),
+                Aedat4Compression.nameOf(compression));
     }
 
     private static long sumPayloadBytes(PacketRef[] refs) {
