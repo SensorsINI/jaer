@@ -36,7 +36,13 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
 
     private static final Logger log = Logger.getLogger(NRVConfig.class.getName());
     public static final String PREFS_LAST_SETTINGS_FILE = "NRVConfig.lastSettingsFile";
+    /** CX3 ({@code 04b4:00f1}) and offline default. FX20 uses {@link #DEFAULT_SETTINGS_FILENAME_FX20}. */
     public static final String DEFAULT_SETTINGS_FILENAME = "S5KRC1S_300_CX3.txt";
+    /**
+     * FX20 ({@code 04b4:00f0}) first-open preset. The CX3 PLL/DPHY block does not
+     * stream on this bridge, and a later file load does not recover until replug.
+     */
+    public static final String DEFAULT_SETTINGS_FILENAME_FX20 = "Delta_10_2000FPS.txt";
 
     public static final int I2C_SLAVE = 0x20;
     /** EVTH MSB range bits: REF[4], ON[3], OFF[2] (SDK: CRGS Setting). */
@@ -1188,27 +1194,92 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     /**
+     * Settings filename for a bridge. Unknown PID keeps the CX3 preset so offline
+     * chip construction still has a file; {@link #setHardwareInterface} re-resolves
+     * once the FX20 or CX3 PID is known, before {@code sendConfiguration} writes I2C.
+     */
+    public static String defaultSettingsFilename(short pid) {
+        if (pid == NRVHardwareInterface.PID_FX20) {
+            return DEFAULT_SETTINGS_FILENAME_FX20;
+        }
+        return DEFAULT_SETTINGS_FILENAME;
+    }
+
+    /**
+     * True when {@code file} may be auto-loaded for {@code pid}. A {@code *_CX3.txt}
+     * preset is not applied to an FX20, and a Delta10/FX10/FX20 file is not applied
+     * to a CX3. Custom names with neither token are kept. PID 0 accepts any file.
+     */
+    public static boolean settingsFileMatchesProduct(File file, short pid) {
+        if (file == null || pid == 0) {
+            return true;
+        }
+        final String name = file.getName().toLowerCase();
+        if (pid == NRVHardwareInterface.PID_FX20) {
+            return !name.contains("cx3");
+        }
+        if (pid == NRVHardwareInterface.PID_CX3) {
+            return !(name.contains("fx20") || name.contains("fx10")
+                    || name.contains("delta_10") || name.contains("delta10"));
+        }
+        return true;
+    }
+
+    /**
      * Resolves the settings file to auto-load: saved preference, then BiasgenFrame
-     * last file if it is an NRV {@code .txt}, then default preset in deviceSettings/NRV.
+     * last file if it is an NRV {@code .txt}, then the bridge default in deviceSettings/NRV.
      */
     public File resolveLastSettingsFile(File biasgenFrameLastFile) {
+        final short pid = attachedProductId();
         final String savedPath = getChip().getPrefs().get(PREFS_LAST_SETTINGS_FILE, "");
         if (!savedPath.isEmpty()) {
             final File saved = new File(savedPath);
-            if (saved.isFile()) {
+            if (saved.isFile() && settingsFileMatchesProduct(saved, pid)) {
                 return saved;
             }
-            log.info("Saved NRV settings file no longer exists: " + savedPath);
+            if (saved.isFile()) {
+                log.info("Saved NRV settings " + saved.getName() + " does not match "
+                        + bridgeLabel(pid) + "; using " + defaultSettingsFilename(pid));
+            } else {
+                log.info("Saved NRV settings file no longer exists: " + savedPath);
+            }
         }
         if (biasgenFrameLastFile != null && biasgenFrameLastFile.isFile()
-                && biasgenFrameLastFile.getName().toLowerCase().endsWith(".txt")) {
+                && biasgenFrameLastFile.getName().toLowerCase().endsWith(".txt")
+                && settingsFileMatchesProduct(biasgenFrameLastFile, pid)) {
             return biasgenFrameLastFile;
         }
-        final File defaultFile = new File(getDefaultSettingsFolder(), DEFAULT_SETTINGS_FILENAME);
+        final File defaultFile = new File(getDefaultSettingsFolder(), defaultSettingsFilename(pid));
         if (defaultFile.isFile()) {
             return defaultFile;
         }
         return null;
+    }
+
+    private short attachedProductId() {
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
+            return productIdOrZero(hw);
+        }
+        return 0;
+    }
+
+    private static short productIdOrZero(NRVHardwareInterface hw) {
+        try {
+            return hw.getPID();
+        } catch (RuntimeException e) {
+            log.fine("NRV product id unavailable: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    private static String bridgeLabel(short pid) {
+        if (pid == NRVHardwareInterface.PID_FX20) {
+            return "FX20";
+        }
+        if (pid == NRVHardwareInterface.PID_CX3) {
+            return "CX3";
+        }
+        return "USB";
     }
 
     public static File getDefaultSettingsFolder() {
@@ -1263,13 +1334,21 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     @Override
     public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {
         super.setHardwareInterface(hardwareInterface);
-        if (!(hardwareInterface instanceof NRVHardwareInterface)) {
+        if (!(hardwareInterface instanceof NRVHardwareInterface hw)) {
             return;
         }
         // Do not hw.open() here. Bind runs on the EDT while the previous camera
         // may still be closing; a failed claim leaked the libusb handle so
         // ViewLoop's later openAEMonitor got NOT_FOUND (jAER-0.log 4:36:13).
         // I2C apply is sendConfiguration on jaer-aemon-open after open().
+        // Drop a preset parsed before the PID was known. The first I2C write is
+        // the one that sticks across USB reset; a CX3 file on FX20 needs replug.
+        final short pid = productIdOrZero(hw);
+        if (loadedFile != null && !settingsFileMatchesProduct(loadedFile, pid)) {
+            loadedSettings = null;
+            loadedFile = null;
+            settingsDescription = "";
+        }
         tryEnsureSettingsParsedFromPreferences();
     }
 

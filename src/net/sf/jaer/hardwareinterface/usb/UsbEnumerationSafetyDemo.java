@@ -738,6 +738,8 @@ public final class UsbEnumerationSafetyDemo {
                 "NRV bind must not open USB on the EDT");
         require(cfg.contains("tryEnsureSettingsParsedFromPreferences()"),
                 "NRV bind still pre-parses settings without opening");
+        require(cfg.contains("settingsFileMatchesProduct"),
+                "NRV bind drops the other bridge's settings file before the first I2C write");
         String nrvFactory = Files.readString(
                 Paths.get("src", "nrv", "usb", "NRVHardwareInterfaceFactory.java"),
                 StandardCharsets.UTF_8);

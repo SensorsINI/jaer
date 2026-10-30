@@ -162,7 +162,7 @@ Qualitative behavior (with MSBs fixed as in presets):
 
 ### Preset naming
 
-Settings files use the SDK sensor id **S5KRC1S** in filenames and the `//@ DVS_VERSION` header (not “DELTA01”). Under `deviceSettings/NRV/` they are named by nominal rate and USB bridge, e.g. `S5KRC1S_1000_CX3.txt` (1000 fps, CX3). The default loaded on first run is `S5KRC1S_300_CX3.txt`.
+Settings files use the SDK sensor id **S5KRC1S** in filenames and the `//@ DVS_VERSION` header (not “DELTA01”). Under `deviceSettings/NRV/` they are named by nominal rate and USB bridge, e.g. `S5KRC1S_1000_CX3.txt` (1000 fps, CX3). First open loads `S5KRC1S_300_CX3.txt` for CX3 (`04b4:00f1`) and `Delta_10_2000FPS.txt` for FX20 (`04b4:00f0`). A saved `*_CX3.txt` is not written to an FX20; that PLL does not stream, and USB reset does not undo it.
 
 ### Registers exposed in the UI
 
