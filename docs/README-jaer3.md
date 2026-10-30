@@ -332,9 +332,14 @@ the camera again. The writer stays open. Pause, step, and the slider pause the
 reader only.
 
 The FileDataTable is still written only in `Aedat4FileOutputStream.close`
-(`dataTablePosition` stays at the pending sentinel until then). Seek uses an
-in-memory catalog of the same row fields, published after each packet write.
-Playing into the live edge waits for the next catalog row. The first version
+(`dataTablePosition` stays at the pending sentinel until then). A table that
+fits in one FlatBuffer is one compressed `FTAB`. A longer table is an
+uncompressed `FTCH` directory at `dataTablePosition`, then one compressed
+`FTAB` chunk per 8 million rows after that directory. Seek uses an in-memory
+catalog of the same row fields, published after each packet write. Polarity
+rows close every 100 ms of event time, so the live tail can lag the camera by
+that much. Frames and IMU appear as they are written. Playing into the live
+edge waits for the next catalog row. The first version
 plays the current cassette only; a VCR roll rebinds the reader to the new file.
 Toolbar labels: the scrubber is visible for the whole recording; **Back to live**
 appears beside **Stop recording** only while timeshift playback is on. The

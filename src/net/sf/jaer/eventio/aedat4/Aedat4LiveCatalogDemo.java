@@ -18,22 +18,24 @@ public final class Aedat4LiveCatalogDemo {
     public static void main(String[] args) throws Exception {
         File file = Files.createTempFile("live-catalog-", ".aedat4").toFile();
         file.deleteOnExit();
+        // 100 ms event-time rows. The last window stays out of the catalog until close.
         int[] counts = {4, 7, 3};
+        int[] starts = {0, 100_000, 200_000};
+        int flushedBeforeClose = counts[0] + counts[1];
         AtomicReference<Aedat4FileOutputStream> writerRef = new AtomicReference<>();
         Aedat4FileOutputStream writer = new Aedat4FileOutputStream(file, null,
                 net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, 1_700_000_000_000_000L);
         writerRef.set(writer);
         try {
-            Thread reader = new Thread(() -> readUntil(writerRef, file, sum(counts)), "live-catalog-reader");
+            Thread reader = new Thread(() -> readUntil(writerRef, file, flushedBeforeClose), "live-catalog-reader");
             reader.start();
-            for (int n : counts) {
-                writer.writeBundle(bundle(n, n * 1000));
-                Thread.sleep(20);
+            for (int i = 0; i < counts.length; i++) {
+                writer.writeBundle(bundle(counts[i], starts[i]));
             }
             reader.join(5000);
             assertTrue(!reader.isAlive(), "reader finished");
             List<Aedat4FileOutputStream.LiveCatalogEntry> catalog = writer.copyLiveCatalog();
-            assertTrue(catalog.size() >= counts.length, "catalog rows " + catalog.size());
+            assertTrue(catalog.size() == 2, "catalog rows " + catalog.size());
             long events = 0;
             for (Aedat4FileOutputStream.LiveCatalogEntry e : catalog) {
                 if (e.streamId % Aedat4CameraTrack.STREAMS_PER_CAMERA == 0) {
@@ -41,7 +43,7 @@ public final class Aedat4LiveCatalogDemo {
                     assertTrue(e.byteOffset > 0, "payload offset");
                 }
             }
-            assertTrue(events == sum(counts), "catalog events " + events);
+            assertTrue(events == flushedBeforeClose, "catalog events " + events);
             Aedat4FileInputStream tail = Aedat4FileInputStream.openLiveTail(
                     file, null, catalog, writer.getBaseUnixUs());
             try {
@@ -60,6 +62,8 @@ public final class Aedat4LiveCatalogDemo {
         try {
             assertTrue(closed.getHeaderDataTablePosition() >= 0,
                     "closed dataTablePosition " + closed.getHeaderDataTablePosition());
+            assertTrue(closed.getIndexedEventCount() == sum(counts),
+                    "closed events " + closed.getIndexedEventCount());
         } finally {
             closed.close();
         }

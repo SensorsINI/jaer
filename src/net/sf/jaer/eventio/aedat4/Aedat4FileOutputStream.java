@@ -27,8 +27,6 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
-import net.sf.jaer.eventio.aedat4.dv.FileDataDefinition;
-import net.sf.jaer.eventio.aedat4.dv.FileDataTable;
 import net.sf.jaer.eventio.aedat4.dv.Frame;
 import net.sf.jaer.eventio.aedat4.dv.FrameFormat;
 import net.sf.jaer.eventio.aedat4.dv.FrameSource;
@@ -52,6 +50,17 @@ public class Aedat4FileOutputStream implements Closeable {
     private final FileChannel channel;
     private final AEChip chip;
     private final int compression;
+    /**
+     * Polarity FileDataTable rows close on this much event time (10 Hz).
+     * The view-loop rate does not set the row rate. Frames and IMU are not delayed.
+     */
+    static final long EVENT_PACKET_INTERVAL_US = 100_000L;
+    /**
+     * One polarity row is closed early at this many events so a bright 100 ms
+     * slice cannot grow a single FlatBuffer without bound. Playback reads at
+     * most this many events from one packet.
+     */
+    private static final int EVENT_PACKET_EVENT_CAP = 1 << 20;
     /** {@link Aedat4LossyTimeBins#SHIFT_OFF} or the right-shift for LBEV event packets. */
     private final int lossyTimeShift;
     /** Version-2 LBEV records: one On count and one Off count per pixel. */
@@ -87,6 +96,13 @@ public class Aedat4FileOutputStream implements Closeable {
     private short[] evXs;
     private short[] evYs;
     private boolean[] evPolarities;
+    /** Per-track start of the open 100 ms polarity row, or {@link Long#MIN_VALUE}. */
+    private long[] eventWindowStartUs = new long[0];
+    private int[] pendingCount = new int[0];
+    private long[][] pendingTs = new long[0][];
+    private short[][] pendingX = new short[0][];
+    private short[][] pendingY = new short[0][];
+    private boolean[][] pendingOn = new boolean[0][];
     private FlatBufferBuilder eventBuilder;
     private final ByteBuffer packetHeader;
     /** Polarity Unix-µs range of the bundle currently being written (for IMU align). */
@@ -287,6 +303,14 @@ public class Aedat4FileOutputStream implements Closeable {
             this.tracks = initializedTracks;
             this.currentTrack = initializedTracks.get(0);
             this.snapshot = initializedSnapshot;
+            int nTracks = initializedTracks.size();
+            this.eventWindowStartUs = new long[nTracks];
+            Arrays.fill(this.eventWindowStartUs, Long.MIN_VALUE);
+            this.pendingCount = new int[nTracks];
+            this.pendingTs = new long[nTracks][];
+            this.pendingX = new short[nTracks][];
+            this.pendingY = new short[nTracks][];
+            this.pendingOn = new boolean[nTracks][];
             if (this.lossyTimeShift >= 0) {
                 Aedat4LossyTimeBins.Accumulator[] acc = new Aedat4LossyTimeBins.Accumulator[initializedTracks.size()];
                 for (int i = 0; i < acc.length; i++) {
@@ -336,30 +360,35 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public boolean hasOpenLossyBin() {
+        if (pendingCount != null) {
+            for (int n : pendingCount) {
+                if (n > 0) {
+                    return true;
+                }
+            }
+        }
         if (lossyAcc == null) {
             return false;
         }
         for (Aedat4LossyTimeBins.Accumulator acc : lossyAcc) {
-            if (acc != null && acc.hasOpenBin()) {
+            if (acc != null && acc.hasPending()) {
                 return true;
             }
         }
         return false;
     }
 
-    /** Write any time bin still open so a following copied packet stays in order. */
+    /**
+     * Write polarity rows still held for the 100 ms window, so a following
+     * copied packet stays after them.
+     */
     public synchronized void flushOpenLossyBins() throws IOException {
-        if (lossyAcc == null) {
-            return;
-        }
-        for (int i = 0; i < lossyAcc.length; i++) {
-            Aedat4LossyTimeBins.Encoded encoded = lossyAcc[i].finish();
-            if (encoded == null) {
-                continue;
+        if (lossyAcc != null) {
+            for (int i = 0; i < lossyAcc.length; i++) {
+                flushLossy(i);
             }
-            currentTrack = tracks.get(i);
-            writePacket(currentTrack.eventsStreamId(), encoded.payload, encoded.expanded, encoded.tMin, encoded.tMax);
         }
+        flushPendingRaw();
     }
 
     /** Unix-µs origin used by {@code toUnixUs}; keep this across VCR cassette rolls. */
@@ -479,10 +508,105 @@ public class Aedat4FileOutputStream implements Closeable {
             writeLossyEvents(n);
             return;
         }
-        long tMin = evTimestamps[0];
-        long tMax = evTimestamps[0];
-        for (int i = 1; i < n; i++) {
+        writeRawEvents(n);
+    }
+
+    private void writeRawEvents(int n) throws IOException {
+        int trackPos = trackIndex();
+        long notedLo = evTimestamps[0];
+        long notedHi = evTimestamps[0];
+        for (int i = 0; i < n; i++) {
             long t = evTimestamps[i];
+            if (t < notedLo) {
+                notedLo = t;
+            }
+            if (t > notedHi) {
+                notedHi = t;
+            }
+            appendRaw(trackPos, t, evXs[i], evYs[i], evPolarities[i]);
+        }
+        noteBundlePolarityUnix(notedLo, notedHi);
+    }
+
+    /**
+     * Hold events until {@link #EVENT_PACKET_INTERVAL_US} of event time has passed
+     * since the first event in the open row.
+     */
+    private void appendRaw(int trackPos, long timestampUs, short x, short y, boolean on) throws IOException {
+        int held = pendingCount[trackPos];
+        long start = eventWindowStartUs[trackPos];
+        if (held > 0 && (timestampUs - start >= EVENT_PACKET_INTERVAL_US || held >= EVENT_PACKET_EVENT_CAP)) {
+            flushRaw(trackPos);
+            held = 0;
+        }
+        ensurePending(trackPos, held + 1);
+        if (held == 0) {
+            eventWindowStartUs[trackPos] = timestampUs;
+        }
+        pendingTs[trackPos][held] = timestampUs;
+        pendingX[trackPos][held] = x;
+        pendingY[trackPos][held] = y;
+        pendingOn[trackPos][held] = on;
+        pendingCount[trackPos] = held + 1;
+    }
+
+    private void ensurePending(int trackPos, int needed) {
+        long[] ts = pendingTs[trackPos];
+        if (ts != null && ts.length >= needed) {
+            return;
+        }
+        int cap = ts == null ? Math.max(needed, 256) : ts.length;
+        while (cap < needed) {
+            cap = cap < (1 << 20) ? cap << 1 : cap + (1 << 20);
+        }
+        pendingTs[trackPos] = growLong(ts, cap);
+        pendingX[trackPos] = growShort(pendingX[trackPos], cap);
+        pendingY[trackPos] = growShort(pendingY[trackPos], cap);
+        pendingOn[trackPos] = growBool(pendingOn[trackPos], cap);
+    }
+
+    private static long[] growLong(long[] src, int cap) {
+        long[] dst = new long[cap];
+        if (src != null) {
+            System.arraycopy(src, 0, dst, 0, src.length);
+        }
+        return dst;
+    }
+
+    private static short[] growShort(short[] src, int cap) {
+        short[] dst = new short[cap];
+        if (src != null) {
+            System.arraycopy(src, 0, dst, 0, src.length);
+        }
+        return dst;
+    }
+
+    private static boolean[] growBool(boolean[] src, int cap) {
+        boolean[] dst = new boolean[cap];
+        if (src != null) {
+            System.arraycopy(src, 0, dst, 0, src.length);
+        }
+        return dst;
+    }
+
+    private void flushPendingRaw() throws IOException {
+        for (int i = 0; i < pendingCount.length; i++) {
+            if (pendingCount[i] > 0) {
+                flushRaw(i);
+            }
+        }
+    }
+
+    private void flushRaw(int trackPos) throws IOException {
+        int n = pendingCount[trackPos];
+        if (n <= 0) {
+            return;
+        }
+        long[] ts = pendingTs[trackPos];
+        long tMin = ts[0];
+        long tMax = ts[0];
+        for (int i = 1; i < n; i++) {
+            long t = ts[i];
             if (t < tMin) {
                 tMin = t;
             }
@@ -497,25 +621,30 @@ public class Aedat4FileOutputStream implements Closeable {
             eventBuilder.clear();
         }
         int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(
-                eventBuilder, evTimestamps, evXs, evYs, evPolarities, n);
+                eventBuilder, ts, pendingX[trackPos], pendingY[trackPos], pendingOn[trackPos], n);
         int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(eventBuilder, vector);
         eventBuilder.finishSizePrefixed(root, "EVTS");
         byte[] payload = eventBuilder.sizedByteArray();
-        writePacket(currentTrack.eventsStreamId(), payload, n, tMin, tMax);
-        noteBundlePolarityUnix(tMin, tMax);
+        writePacket(tracks.get(trackPos).eventsStreamId(), payload, n, tMin, tMax);
+        pendingCount[trackPos] = 0;
+        eventWindowStartUs[trackPos] = Long.MIN_VALUE;
     }
 
     private void writeLossyEvents(int n) throws IOException {
-        int trackPos = tracks.indexOf(currentTrack);
-        if (trackPos < 0) {
-            trackPos = 0;
-        }
+        int trackPos = trackIndex();
         Aedat4LossyTimeBins.Accumulator acc = lossyAcc[trackPos];
         long notedLo = Long.MAX_VALUE;
         long notedHi = Long.MIN_VALUE;
         for (int i = 0; i < n; i++) {
             long q = Aedat4LossyTimeBins.quantizeUnixUs(evTimestamps[i], lossyTimeShift);
+            long start = eventWindowStartUs[trackPos];
+            if (start != Long.MIN_VALUE && q - start >= EVENT_PACKET_INTERVAL_US) {
+                flushLossy(trackPos);
+            }
             acc.add(evTimestamps[i], evXs[i], evYs[i], evPolarities[i]);
+            if (eventWindowStartUs[trackPos] == Long.MIN_VALUE) {
+                eventWindowStartUs[trackPos] = q;
+            }
             if (q < notedLo) {
                 notedLo = q;
             }
@@ -526,10 +655,21 @@ public class Aedat4FileOutputStream implements Closeable {
         if (n > 0) {
             noteBundlePolarityUnix(notedLo, notedHi);
         }
-        Aedat4LossyTimeBins.Encoded encoded = acc.pollCompleted();
-        if (encoded != null) {
-            writePacket(currentTrack.eventsStreamId(), encoded.payload, encoded.expanded, encoded.tMin, encoded.tMax);
+    }
+
+    private void flushLossy(int trackPos) throws IOException {
+        Aedat4LossyTimeBins.Encoded encoded = lossyAcc[trackPos].finish();
+        eventWindowStartUs[trackPos] = Long.MIN_VALUE;
+        if (encoded == null) {
+            return;
         }
+        writePacket(tracks.get(trackPos).eventsStreamId(), encoded.payload, encoded.expanded,
+                encoded.tMin, encoded.tMax);
+    }
+
+    private int trackIndex() {
+        int i = tracks.indexOf(currentTrack);
+        return i < 0 ? 0 : i;
     }
 
     private void noteBundlePolarityUnix(long t0, long t1) {
@@ -813,18 +953,43 @@ public class Aedat4FileOutputStream implements Closeable {
         return builder.sizedByteArray();
     }
 
-    private byte[] buildFileDataTable() {
-        FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, dataDefinitions.size() * 64));
-        int[] offsets = new int[dataDefinitions.size()];
-        for (int i = 0; i < dataDefinitions.size(); i++) {
-            DataDefinition d = dataDefinitions.get(i);
-            offsets[i] = FileDataDefinition.createFileDataDefinition(builder, d.byteOffset, d.streamId, d.size,
-                    d.numElements, d.timestampStart, d.timestampEnd);
-        }
-        int vector = FileDataTable.createTableVector(builder, offsets);
-        int root = FileDataTable.createFileDataTable(builder, vector);
-        builder.finishSizePrefixed(root, "FTAB");
-        return builder.sizedByteArray();
+    private Aedat4FileDataIndex.Rows indexRows() {
+        return new Aedat4FileDataIndex.Rows() {
+            @Override
+            public int size() {
+                return dataDefinitions.size();
+            }
+
+            @Override
+            public long byteOffset(int index) {
+                return dataDefinitions.get(index).byteOffset;
+            }
+
+            @Override
+            public int streamId(int index) {
+                return dataDefinitions.get(index).streamId;
+            }
+
+            @Override
+            public int payloadSize(int index) {
+                return dataDefinitions.get(index).size;
+            }
+
+            @Override
+            public long numElements(int index) {
+                return dataDefinitions.get(index).numElements;
+            }
+
+            @Override
+            public long timestampStart(int index) {
+                return dataDefinitions.get(index).timestampStart;
+            }
+
+            @Override
+            public long timestampEnd(int index) {
+                return dataDefinitions.get(index).timestampEnd;
+            }
+        };
     }
 
     /**
@@ -867,9 +1032,7 @@ public class Aedat4FileOutputStream implements Closeable {
         Throwable failure = null;
         try {
             flushOpenLossyBins();
-            long tablePosition = channel.position();
-            byte[] table = Aedat4Compression.compress(buildFileDataTable(), compression);
-            channel.write(ByteBuffer.wrap(table));
+            long tablePosition = Aedat4FileDataIndex.write(channel, compression, indexRows());
             byte[] patchedHeader = buildIOHeader(tablePosition);
             if (patchedHeader.length != headerBytes.length) {
                 throw new IOException(String.format(

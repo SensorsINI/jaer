@@ -86,6 +86,10 @@ Dialog: [`SaveAsExportDialog`](../src/net/sf/jaer/eventio/export/SaveAsExportDia
 
 Playback IN, OUT, and other markers are stored as CSV under `${java.io.tmpdir}/jaer/markers/` and restored when the recording is reopened.
 
+### Large FileDataTable
+
+A packet index that fits in one FlatBuffer is one compressed `FTAB` at `IOHeader.dataTablePosition`. That is the DV layout. Java cannot build or read one FlatBuffer past 2 GiB, which is about 40 million rows. A longer index writes an uncompressed `FTCH` directory at `dataTablePosition` (magic `FTCH`, a chunk count, then each chunk’s file offset and compressed length) and appends one compressed `FTAB` per 8 million rows after that directory. Packets stay before `dataTablePosition`. Open loads each chunk with the same parser and appends the rows. Record, merge, and the LZ4 rerecorder share that writer. A new recording closes a polarity row every 100 ms of event time, so a week of polarity-only capture stays one `FTAB`. A deck that already has one row per view-loop packet can still need chunks when those cassettes are merged.
+
 ---
 
 ## Playback formats (detail)
@@ -142,7 +146,7 @@ Uncompressed EVTS payload, then the chosen codec:
 - Each bin: restored Unix µs u64, record count u32, then records `x` u16, `y` u16, polarity u8, count u16
 - A count above 65535 splits into back-to-back records for that pixel
 
-The writer keeps one open bin and flushes it when the next event’s bin differs, or on close. Packet cadence stays the view-loop packet.
+The writer keeps one open bin and closes it when the next event’s bin differs. A polarity row is written when 100 ms of event time has passed since the first event in that row, when the row holds 1,048,576 events, or on close. That rate follows event timestamps. The view-loop rate does not set it, so several view-loop packets can share one row. Frames and IMU are written as they arrive. The last partial row is written on close.
 
 ### Collapse On and Off
 

@@ -26,6 +26,7 @@ public final class Aedat4ConcatDemo {
         testStitchLeavesSmallBoundaryGap();
         testOpenCassetteStillFeedsHistogram();
         testTrailingZeroTimeDoesNotZeroDuration();
+        testChunkedFileDataTable();
         System.out.println("ALL PASS");
     }
 
@@ -169,7 +170,8 @@ public final class Aedat4ConcatDemo {
             File closed = new File(tmp, "c0001.aedat4");
             File open = new File(tmp, "c0002.aedat4");
             writeLossy(closed, base, new int[] { 1_000, 2_000 }, true);
-            writeLossy(open, base, new int[] { 0, 20_000 }, false);
+            // 150 ms crosses the 100 ms row, so one packet is on disk. The tail stays in the writer.
+            writeLossy(open, base, new int[] { 0, 150_000 }, false);
             File out = new File(tmp, "merged.aedat4");
             Aedat4Concat.mergeFiles(List.of(closed, open), out);
             List<long[]> ranges = Aedat4Concat.packetTimeRanges(out);
@@ -208,6 +210,71 @@ public final class Aedat4ConcatDemo {
         long monotonic = Aedat4FileInputStream.polarityTimelineSpanUs(0L, new long[] { 500L, 2_000L });
         assertTrue(monotonic == 2_000L, "monotonic " + monotonic);
         System.out.println("PASS testTrailingZeroTimeDoesNotZeroDuration");
+    }
+
+    /** Two chunked cassettes merge into a chunked file, and the reader sees every event. */
+    private static void testChunkedFileDataTable() throws Exception {
+        int saved = Aedat4FileDataIndex.rowsPerChunk;
+        Aedat4FileDataIndex.rowsPerChunk = 1;
+        File tmp = Files.createTempDirectory("vcr-ftch-").toFile();
+        try {
+            long base = 1_700_000_000_000_000L;
+            File c1 = new File(tmp, "c0001.aedat4");
+            File c2 = new File(tmp, "c0002.aedat4");
+            writeSpaced(c1, base, new int[] {1_000, 101_000});
+            writeSpaced(c2, base + 300_000L, new int[] {0, 100_000});
+            assertTrue(isFtch(c1) && isFtch(c2), "each source is FTCH");
+            File out = new File(tmp, "merged.aedat4");
+            Aedat4Concat.mergeFiles(List.of(c1, c2), out);
+            assertTrue(isFtch(out), "merged file is FTCH");
+            Aedat4FileInputStream in = new Aedat4FileInputStream(out, null);
+            try {
+                assertTrue(in.getIndexedEventCount() == 4, "events " + in.getIndexedEventCount());
+            } finally {
+                in.close();
+            }
+            assertTrue(Aedat4Concat.packetTimeRanges(out).size() == 4, "four index rows");
+        } finally {
+            Aedat4FileDataIndex.rowsPerChunk = saved;
+            deleteTree(tmp);
+        }
+        System.out.println("PASS testChunkedFileDataTable");
+    }
+
+    private static void writeSpaced(File file, long baseUnixUs, int[] timestamps) throws Exception {
+        PacketBundle bundle = new PacketBundle();
+        net.sf.jaer.event.EventPacket<PolarityEvent> events = new net.sf.jaer.event.EventPacket<>(PolarityEvent.class);
+        OutputEventIterator<PolarityEvent> it = events.outputIterator();
+        for (int i = 0; i < timestamps.length; i++) {
+            PolarityEvent event = it.nextOutput();
+            event.timestamp = timestamps[i];
+            event.x = (short) i;
+            event.y = (short) 1;
+            event.setPolarity(PolarityEvent.Polarity.On);
+        }
+        bundle.add(events);
+        try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(file, null, CompressionType.LZ4, baseUnixUs)) {
+            output.writeBundle(bundle);
+        }
+    }
+
+    private static boolean isFtch(File file) throws Exception {
+        Aedat4FileInputStream in = new Aedat4FileInputStream(file, null);
+        try {
+            long pos = in.getHeaderDataTablePosition();
+            try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(file, "r")) {
+                raf.seek(pos);
+                byte[] magic = new byte[4];
+                if (raf.read(magic) != 4) {
+                    return false;
+                }
+                byte[] expect = Aedat4FileDataIndex.CHUNK_MAGIC;
+                return magic[0] == expect[0] && magic[1] == expect[1]
+                        && magic[2] == expect[2] && magic[3] == expect[3];
+            }
+        } finally {
+            in.close();
+        }
     }
 
     private static void writeLossy(File file, long baseUnixUs, int[] timestamps, boolean close) throws Exception {

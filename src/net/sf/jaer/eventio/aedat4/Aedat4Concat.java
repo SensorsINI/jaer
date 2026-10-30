@@ -240,17 +240,15 @@ public final class Aedat4Concat {
                 progress.setNote("Writing FileDataTable");
                 progress.setProgress(95);
             }
-            long tablePosition = writer.position();
-            byte[] ftab = Aedat4Compression.compress(buildFileDataTable(defs), first.compression);
-            writer.write(ftab);
             writer.flush();
+            long tablePosition = Aedat4FileDataIndex.write(out, first.compression, rowsOf(defs));
             byte[] patched = buildIOHeader(first.compression, tablePosition, first.infoNode);
             if (patched.length != outHeader.length) {
                 throw new IOException(String.format(
                         "IOHeader size changed on concat close (%d -> %d)",
                         outHeader.length, patched.length));
             }
-            long end = writer.position();
+            long end = out.position();
             out.position(headerPosition);
             out.write(ByteBuffer.wrap(patched));
             out.position(end);
@@ -716,47 +714,38 @@ public final class Aedat4Concat {
         if (dataTablePosition < 0 || dataTablePosition >= fileSize) {
             return null;
         }
-        long remaining = fileSize - dataTablePosition;
-        if (remaining < 8 || remaining > Aedat4FileInputStream.MAX_FILE_DATA_TABLE_BYTES) {
-            return null;
-        }
         long saved;
         try {
             saved = in.position();
         } catch (IOException e) {
             return null;
         }
+        List<FtabMeta> list = new ArrayList<>();
         try {
-            in.position(dataTablePosition);
-            ByteBuffer raw = ByteBuffer.allocate((int) remaining).order(ByteOrder.LITTLE_ENDIAN);
-            readFully(in, raw);
-            raw.flip();
-            ByteBuffer tableBytes;
-            if (compression == CompressionType.NONE || looksLikeFtab(raw)) {
-                tableBytes = raw;
-            } else {
-                byte[] compressed = new byte[raw.remaining()];
-                raw.get(compressed);
-                byte[] flat = Aedat4Compression.decompress(compressed, compression);
-                tableBytes = ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
-            }
-            if (!looksLikeFtab(tableBytes)) {
-                return null;
-            }
-            FileDataTable table = FileDataTable.getSizePrefixedRootAsFileDataTable(tableBytes);
-            int n = table.tableLength();
-            if (n <= 0 || n > 10_000_000) {
-                return null;
-            }
-            List<FtabMeta> list = new ArrayList<>(n);
-            FileDataDefinition def = new FileDataDefinition();
-            for (int i = 0; i < n; i++) {
-                FileDataDefinition d = table.table(def, i);
-                if (d == null) {
-                    return null;
+            boolean ok = Aedat4FileDataIndex.forEachTable(in, dataTablePosition, fileSize, compression, tableBytes -> {
+                if (!Aedat4FileDataIndex.looksLikeFtab(tableBytes)) {
+                    throw new IOException("not FTAB");
                 }
-                list.add(new FtabMeta(d.packetInfoStreamID(), d.numElements(),
-                        d.timestampStart(), d.timestampEnd()));
+                FileDataTable table = FileDataTable.getSizePrefixedRootAsFileDataTable(tableBytes);
+                int n = table.tableLength();
+                if (n < 0) {
+                    throw new IOException("bad FileDataTable length " + n);
+                }
+                FileDataDefinition def = new FileDataDefinition();
+                for (int i = 0; i < n; i++) {
+                    FileDataDefinition d = table.table(def, i);
+                    if (d == null) {
+                        throw new IOException("null FileDataTable row");
+                    }
+                    list.add(new FtabMeta(d.packetInfoStreamID(), d.numElements(),
+                            d.timestampStart(), d.timestampEnd()));
+                    if (list.size() > Aedat4FileInputStream.INDEX_CACHE_MAX_PACKETS) {
+                        throw new IOException("FileDataTable longer than the index cap");
+                    }
+                }
+            });
+            if (!ok || list.isEmpty()) {
+                return null;
             }
             return list;
         } catch (Exception e) {
@@ -769,16 +758,6 @@ public final class Aedat4Concat {
         }
     }
 
-    private static boolean looksLikeFtab(ByteBuffer payload) {
-        int p = payload.position();
-        int n = payload.remaining();
-        if (n >= 12) {
-            return payload.get(p + 8) == 'F' && payload.get(p + 9) == 'T'
-                    && payload.get(p + 10) == 'A' && payload.get(p + 11) == 'B';
-        }
-        return false;
-    }
-
     private static byte[] buildIOHeader(int compression, long dataTablePosition, String infoNode) {
         FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, infoNode.length() + 64));
         int info = builder.createString(infoNode);
@@ -787,18 +766,43 @@ public final class Aedat4Concat {
         return builder.sizedByteArray();
     }
 
-    private static byte[] buildFileDataTable(List<DataDef> defs) {
-        FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, defs.size() * 64));
-        int[] offsets = new int[defs.size()];
-        for (int i = 0; i < defs.size(); i++) {
-            DataDef d = defs.get(i);
-            offsets[i] = FileDataDefinition.createFileDataDefinition(builder, d.byteOffset, d.streamId, d.size,
-                    d.numElements, d.timestampStart, d.timestampEnd);
-        }
-        int vector = FileDataTable.createTableVector(builder, offsets);
-        int root = FileDataTable.createFileDataTable(builder, vector);
-        builder.finishSizePrefixed(root, "FTAB");
-        return builder.sizedByteArray();
+    private static Aedat4FileDataIndex.Rows rowsOf(List<DataDef> defs) {
+        return new Aedat4FileDataIndex.Rows() {
+            @Override
+            public int size() {
+                return defs.size();
+            }
+
+            @Override
+            public long byteOffset(int index) {
+                return defs.get(index).byteOffset;
+            }
+
+            @Override
+            public int streamId(int index) {
+                return defs.get(index).streamId;
+            }
+
+            @Override
+            public int payloadSize(int index) {
+                return defs.get(index).size;
+            }
+
+            @Override
+            public long numElements(int index) {
+                return defs.get(index).numElements;
+            }
+
+            @Override
+            public long timestampStart(int index) {
+                return defs.get(index).timestampStart;
+            }
+
+            @Override
+            public long timestampEnd(int index) {
+                return defs.get(index).timestampEnd;
+            }
+        };
     }
 
     private static void throwIfCanceled(ProgressMonitor progressMonitor) throws InterruptedException {

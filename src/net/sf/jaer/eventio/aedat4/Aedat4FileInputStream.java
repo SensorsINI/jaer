@@ -61,8 +61,9 @@ import net.sf.jaer.util.EngineeringFormat;
  * event counts per EVTS/FRME/IMUS packet. Polarity address/timestamp arrays are
  * decoded on demand for the current playback window (not stored for the whole file).
  * <p>
- * First open prefers the trailing FileDataTable (decompress once, no per-packet LZ4);
- * falls back to a linear packet scan when the table is missing or invalid. An
+ * First open prefers the trailing FileDataTable (one FlatBuffer, or an {@code FTCH}
+ * directory of chunks when the table would pass 2 GiB). Falls back to a linear
+ * packet scan when the table is missing or invalid. An
  * index cache under {@link net.sf.jaer.util.JaerTmpdir#aeidx()} then makes reopen
  * skip that scan.
  */
@@ -87,7 +88,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * The old 10 million cap rejected that table and the cache, then decompressed
      * every packet on every open.
      */
-    private static final int INDEX_CACHE_MAX_PACKETS = 64_000_000;
+    static final int INDEX_CACHE_MAX_PACKETS = 64_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
     /** Sparkline uses local day/night colors only when the file is longer than this. */
     static final long DAY_NIGHT_MIN_DURATION_US = 12L * 3_600_000_000L;
@@ -1424,83 +1425,110 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             progressMonitor.setProgress(5);
         }
         throwIfCanceled(progressMonitor, "AEDAT-4 FileDataTable index");
-        final long remaining = fileSize - dataTablePosition;
-        if (remaining < 8 || remaining > MAX_FILE_DATA_TABLE_BYTES) {
-            log.warning("AEDAT-4 FileDataTable remaining bytes implausible (" + remaining + "); scanning packets");
-            return false;
-        }
-        // The FileDataTable uses the IOHeader codec. Legacy jAER files wrote it
-        // uncompressed, so retain raw-FTAB detection. Region is [dataTablePosition, EOF).
-        channel.position(dataTablePosition);
-        ByteBuffer rawTable = ByteBuffer.allocate((int) remaining).order(ByteOrder.LITTLE_ENDIAN);
-        try {
-            readFully(channel, rawTable);
-        } catch (IOException e) {
-            log.warning("AEDAT-4 FileDataTable region read failed; scanning packets: " + e.getMessage());
-            return false;
-        }
-        rawTable.flip();
-        ByteBuffer tableBytes;
-        try {
-            if (compression == CompressionType.NONE || looksLikeFileDataTable(rawTable)) {
-                tableBytes = rawTable;
-            } else {
-                // Decompress entire trailing region (one LZ4/ZSTD frame).
-                byte[] compressed = new byte[rawTable.remaining()];
-                rawTable.get(compressed);
-                byte[] flat = Aedat4Compression.decompress(compressed, compression);
-                tableBytes = ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
-            }
-        } catch (IOException e) {
-            log.warning("AEDAT-4 FileDataTable decompress failed; scanning packets: " + e.getMessage());
-            return false;
-        }
-        if (!looksLikeFileDataTable(tableBytes)) {
-            log.warning("AEDAT-4 FileDataTable after decompress is not FTAB; scanning packets");
-            return false;
-        }
-        // Size-prefixed root: reject absurd prefixes before FlatBuffers walk.
-        if (tableBytes.remaining() >= 4) {
-            int prefix = tableBytes.getInt(tableBytes.position());
-            if (prefix < 8 || prefix + 4L > tableBytes.remaining()) {
-                log.warning("AEDAT-4 FileDataTable size prefix=" + prefix + " vs buffer="
-                        + tableBytes.remaining() + "; scanning packets");
-                return false;
-            }
-        }
-        FileDataTable table;
-        try {
-            table = FileDataTable.getSizePrefixedRootAsFileDataTable(tableBytes);
-        } catch (Exception e) {
-            log.warning("AEDAT-4 FileDataTable parse failed; scanning packets: " + e);
-            return false;
-        }
-        int n = table.tableLength();
-        if (n <= 0 || n > INDEX_CACHE_MAX_PACKETS) {
-            log.warning("AEDAT-4 FileDataTable length=" + n + " unusable; scanning packets");
-            return false;
-        }
         ArrayList<PacketRef> events = new ArrayList<>();
         ArrayList<PacketRef> frames = new ArrayList<>();
         ArrayList<PacketRef> imus = new ArrayList<>();
-        long cumEvents = 0;
-        long imuElems = 0;
-        int used = 0;
-        int skipped = 0;
-        FileDataDefinition def = new FileDataDefinition();
-        final long dataEnd = dataTablePosition; // packets must lie before the table
+        long[] cumEvents = {0L};
+        long[] imuElems = {0L};
+        int[] used = {0};
+        int[] skipped = {0};
+        int[] rows = {0};
         // DV and current jAER store byteOffset at the compressed payload; legacy
-        // jAER stores the PacketHeader.
-        Boolean offsetIsPayload = null;
+        // jAER stores the PacketHeader. Decided from the first row of the first chunk.
+        boolean[] offsetDecided = {false};
+        boolean[] offsetIsPayload = {true};
+        int[] chunkIndex = {0};
+        int[] chunkCount = {1};
+        int[] lastPercent = {0};
+        try {
+            boolean ok = Aedat4FileDataIndex.forEachTable(channel, dataTablePosition, fileSize, compression,
+                    new Aedat4FileDataIndex.TableConsumer() {
+                        @Override
+                        public void beginChunk(int index, int count) {
+                            chunkIndex[0] = index;
+                            chunkCount[0] = Math.max(1, count);
+                            reportIndexProgress(progressMonitor, lastPercent,
+                                    5 + (int) ((50L * index) / chunkCount[0]),
+                                    "Reading FileDataTable chunk " + (index + 1) + " / " + count);
+                        }
+
+                        @Override
+                        public void accept(ByteBuffer tableBytes) throws IOException {
+                            appendFileDataTable(tableBytes, events, frames, imus, cumEvents, imuElems,
+                                    used, skipped, rows, offsetDecided, offsetIsPayload, progressMonitor,
+                                    chunkIndex[0], chunkCount[0], lastPercent);
+                        }
+                    });
+            if (!ok) {
+                log.warning("AEDAT-4 FileDataTable unavailable; scanning packets");
+                return false;
+            }
+        } catch (IOException e) {
+            log.warning("AEDAT-4 FileDataTable index failed; scanning packets: " + e.getMessage());
+            return false;
+        }
+        int n = rows[0];
+        if (n <= 0) {
+            log.warning("AEDAT-4 FileDataTable length=" + n + " unusable; scanning packets");
+            return false;
+        }
+        if (used[0] == 0 && n > 0) {
+            // Table OK but no packets for selected streams — still a valid empty index.
+            log.info("AEDAT-4 FileDataTable has " + n + " entries but none for selected streams "
+                    + eventStreamId + "/" + frameStreamId + "/" + imuStreamId);
+        }
+        imuSampleCount = 0; // finalizeIndex will set from imus
+        finalizeIndex(events, frames, imus, imuElems[0], progressMonitor, lastPercent);
+        log.info(String.format(
+                "Indexed AEDAT-4 %s (%s) stream %d from FileDataTable in %d ms (%d table entries, %d used, %d other-stream): %,d events in %d EVTS packets, %,d frames, %,d IMU samples",
+                file.getName(), Aedat4Compression.nameOf(compression), eventStreamId,
+                System.currentTimeMillis() - t0, n, used[0], skipped[0],
+                eventCount, eventRefs.length, frameCount, imuSampleCount));
+        return true;
+    }
+
+    /**
+     * Append one decompressed FileDataTable chunk. A bad row throws so a later
+     * chunk cannot leave a partial index in place.
+     */
+    private void appendFileDataTable(ByteBuffer tableBytes, ArrayList<PacketRef> events,
+            ArrayList<PacketRef> frames, ArrayList<PacketRef> imus, long[] cumEvents, long[] imuElems,
+            int[] used, int[] skipped, int[] rows, boolean[] offsetDecided, boolean[] offsetIsPayload,
+            ProgressMonitor progressMonitor, int chunkIndex, int chunkCount, int[] lastPercent) throws IOException {
+        if (!looksLikeFileDataTable(tableBytes)) {
+            throw new IOException("AEDAT-4 FileDataTable chunk is not FTAB");
+        }
+        if (tableBytes.remaining() >= 4) {
+            int prefix = tableBytes.getInt(tableBytes.position());
+            if (prefix < 8 || prefix + 4L > tableBytes.remaining()) {
+                throw new IOException("AEDAT-4 FileDataTable size prefix=" + prefix
+                        + " vs buffer=" + tableBytes.remaining());
+            }
+        }
+        final FileDataTable table;
+        try {
+            table = FileDataTable.getSizePrefixedRootAsFileDataTable(tableBytes);
+        } catch (RuntimeException e) {
+            throw new IOException("AEDAT-4 FileDataTable parse failed: " + e, e);
+        }
+        int n = table.tableLength();
+        if (n < 0 || (long) rows[0] + n > INDEX_CACHE_MAX_PACKETS) {
+            throw new IOException("AEDAT-4 FileDataTable length=" + n
+                    + " unusable (running rows=" + rows[0] + ")");
+        }
+        FileDataDefinition def = new FileDataDefinition();
+        final long dataEnd = dataTablePosition;
         for (int i = 0; i < n; i++) {
             throwIfCanceled(progressMonitor, "AEDAT-4 FileDataTable index");
-            if (progressMonitor != null && (i & 1023) == 0) {
-                progressMonitor.setProgress(5 + (int) Math.min(80, (i * 80L) / n));
+            int global = rows[0] + i;
+            if (progressMonitor != null && n > 0 && (i & 4095) == 0) {
+                int percent = 5 + (int) ((50L * chunkIndex * n + 50L * i) / ((long) chunkCount * n));
+                reportIndexProgress(progressMonitor, lastPercent, percent,
+                        String.format("Reading FileDataTable (%,d rows)", global));
             }
             FileDataDefinition d = table.table(def, i);
             if (d == null) {
-                log.warning("AEDAT-4 FileDataTable null entry at " + i + "; scanning packets");
-                return false;
+                throw new IOException("AEDAT-4 FileDataTable null entry at " + global);
             }
             int streamId = d.packetInfoStreamID();
             int payloadSize = d.packetInfoSize();
@@ -1509,58 +1537,45 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             long tStart = d.timestampStart();
             long tEnd = d.timestampEnd();
             if (payloadSize < 0 || byteOffset < 0) {
-                log.warning(String.format(
-                        "AEDAT-4 FileDataTable entry %d invalid (off=%d size=%d); scanning packets",
-                        i, byteOffset, payloadSize));
-                return false;
+                throw new IOException(String.format(
+                        "AEDAT-4 FileDataTable entry %d invalid (off=%d size=%d)",
+                        global, byteOffset, payloadSize));
             }
-            if (offsetIsPayload == null) {
-                offsetIsPayload = detectFtabOffsetIsPayload(byteOffset, streamId, payloadSize, dataEnd);
+            if (!offsetDecided[0]) {
+                offsetIsPayload[0] = detectFtabOffsetIsPayload(byteOffset, streamId, payloadSize, dataEnd);
+                offsetDecided[0] = true;
                 log.fine("AEDAT-4 FileDataTable byteOffset points to "
-                        + (offsetIsPayload ? "payload (DV)" : "PacketHeader (jAER)"));
+                        + (offsetIsPayload[0] ? "payload (DV)" : "PacketHeader (jAER)"));
             }
-            long payloadOffset = offsetIsPayload ? byteOffset : byteOffset + 8L;
+            long payloadOffset = offsetIsPayload[0] ? byteOffset : byteOffset + 8L;
             if (payloadOffset + (long) payloadSize > dataEnd) {
-                log.warning(String.format(
-                        "AEDAT-4 FileDataTable entry %d out of range (off=%d payloadOff=%d size=%d dataEnd=%d); scanning packets",
-                        i, byteOffset, payloadOffset, payloadSize, dataEnd));
-                return false;
+                throw new IOException(String.format(
+                        "AEDAT-4 FileDataTable entry %d out of range (off=%d payloadOff=%d size=%d dataEnd=%d)",
+                        global, byteOffset, payloadOffset, payloadSize, dataEnd));
             }
             boolean known = isIndexedEventStream(streamId)
                     || streamId == frameStreamId
                     || streamId == imuStreamId;
             if (!known) {
-                skipped++;
+                skipped[0]++;
                 continue;
             }
             if (isIndexedEventStream(streamId)) {
                 long count = Math.max(0L, numElements);
-                events.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, cumEvents, 0L, streamId));
-                cumEvents += count;
-                used++;
+                events.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, cumEvents[0], 0L, streamId));
+                cumEvents[0] += count;
+                used[0]++;
             } else if (streamId == frameStreamId) {
                 frames.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, 1, 0));
-                used++;
+                used[0]++;
             } else if (streamId == imuStreamId) {
                 long count = Math.max(0L, numElements);
                 imus.add(new PacketRef(payloadOffset, payloadSize, tStart, tEnd, count, 0));
-                imuElems += count;
-                used++;
+                imuElems[0] += count;
+                used[0]++;
             }
         }
-        if (used == 0 && n > 0) {
-            // Table OK but no packets for selected streams — still a valid empty index.
-            log.info("AEDAT-4 FileDataTable has " + n + " entries but none for selected streams "
-                    + eventStreamId + "/" + frameStreamId + "/" + imuStreamId);
-        }
-        imuSampleCount = 0; // finalizeIndex will set from imus
-        finalizeIndex(events, frames, imus, imuElems);
-        log.info(String.format(
-                "Indexed AEDAT-4 %s (%s) stream %d from FileDataTable in %d ms (%d table entries, %d used, %d other-stream): %,d events in %d EVTS packets, %,d frames, %,d IMU samples",
-                file.getName(), Aedat4Compression.nameOf(compression), eventStreamId,
-                System.currentTimeMillis() - t0, n, used, skipped,
-                eventCount, eventRefs.length, frameCount, imuSampleCount));
-        return true;
+        rows[0] += n;
     }
 
     /**
@@ -1705,7 +1720,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
 
-        finalizeIndex(events, frames, imus, imuElems);
+        finalizeIndex(events, frames, imus, imuElems, progressMonitor, new int[] {0});
         log.info(String.format(
                 "Indexed AEDAT-4 %s (%s) stream %d by packet scan in %d ms (%d packets scanned, %d other-stream skipped): %,d events in %d EVTS packets, %,d frames, %,d IMU samples",
                 file.getName(), Aedat4Compression.nameOf(compression), eventStreamId,
@@ -1714,7 +1729,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private void finalizeIndex(List<PacketRef> events, List<PacketRef> frames, List<PacketRef> imus,
-            long imuElems) {
+            long imuElems, ProgressMonitor progressMonitor, int[] lastPercent) {
         frameCount = frames.size();
         eventCount = 0;
         for (PacketRef r : events) {
@@ -1740,7 +1755,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             baseUnixUs = imus.get(0).unixStart;
         }
 
-        eventRefs = unwrapPacketRefs(toRelativeRefs(events));
+        reportIndexProgress(progressMonitor, lastPercent, 55, "Building playback index");
+        eventRefs = unwrapPacketRefs(toRelativeRefs(events, progressMonitor, lastPercent, 55, 71),
+                progressMonitor, lastPercent, 71, 88);
         frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
         imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
         timelineTimestamps = new int[0];
@@ -1753,6 +1770,24 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         refreshFlyEyeUnixBounds();
         flyEyeCdPlayheadSet = false;
         syncTypedPlayheadFromPosition();
+    }
+
+    /**
+     * Advance the open dialog only when the percent changes. A 47 million row
+     * table must not post a Swing update on every packet.
+     */
+    private static void reportIndexProgress(ProgressMonitor progressMonitor, int[] lastPercent, int percent,
+            String note) {
+        if (progressMonitor == null || lastPercent == null) {
+            return;
+        }
+        int clamped = Math.max(0, Math.min(89, percent));
+        if (clamped <= lastPercent[0]) {
+            return;
+        }
+        lastPercent[0] = clamped;
+        progressMonitor.setNote(note);
+        progressMonitor.setProgress(clamped);
     }
 
     private void refreshFlyEyeUnixBounds() {
@@ -2024,13 +2059,28 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private PacketRef[] toRelativeRefs(List<PacketRef> src) {
+        return toRelativeRefs(src, null, null, 0, 0);
+    }
+
+    private PacketRef[] toRelativeRefs(List<PacketRef> src, ProgressMonitor progressMonitor, int[] lastPercent,
+            int percentFrom, int percentTo) {
         PacketRef[] out = new PacketRef[src.size()];
-        for (int i = 0; i < src.size(); i++) {
+        int n = src.size();
+        for (int i = 0; i < n; i++) {
             PacketRef s = src.get(i);
             out[i] = new PacketRef(s.payloadOffset, s.payloadSize,
                     s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex, 0L, s.streamId);
+            if (progressMonitor != null && n > 0 && (i & 0xffff) == 0) {
+                int percent = percentFrom + (int) (((long) (percentTo - percentFrom) * i) / n);
+                reportIndexProgress(progressMonitor, lastPercent, percent,
+                        String.format("Building playback index (%,d / %,d packets)", i, n));
+            }
         }
         return out;
+    }
+
+    private PacketRef[] unwrapPacketRefs(PacketRef[] refs) {
+        return unwrapPacketRefs(refs, null, null, 0, 0);
     }
 
     /**
@@ -2039,7 +2089,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * and duration use a monotonic long timeline. wrapOffset is applied again
      * when decoding individual event Unix times.
      */
-    private PacketRef[] unwrapPacketRefs(PacketRef[] refs) {
+    private PacketRef[] unwrapPacketRefs(PacketRef[] refs, ProgressMonitor progressMonitor, int[] lastPercent,
+            int percentFrom, int percentTo) {
         if (refs.length == 0) {
             return refs;
         }
@@ -2047,7 +2098,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long lastEnd = Long.MIN_VALUE;
         PacketRef[] out = new PacketRef[refs.length];
         int wraps = 0;
-        for (int i = 0; i < refs.length; i++) {
+        int n = refs.length;
+        for (int i = 0; i < n; i++) {
             PacketRef s = refs[i];
             long start = s.unixStart + wrap;
             long end = s.unixEnd + wrap;
@@ -2064,6 +2116,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out[i] = new PacketRef(s.payloadOffset, s.payloadSize, start, end,
                     s.numElements, s.firstEventIndex, wrap, s.streamId);
             lastEnd = end;
+            if (progressMonitor != null && (i & 0xffff) == 0) {
+                int percent = percentFrom + (int) (((long) (percentTo - percentFrom) * i) / n);
+                reportIndexProgress(progressMonitor, lastPercent, percent,
+                        String.format("Building playback index (%,d / %,d packets)", i, n));
+            }
         }
         if (wraps > 0) {
             log.info(String.format(

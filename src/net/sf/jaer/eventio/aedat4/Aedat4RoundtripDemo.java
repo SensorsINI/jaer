@@ -48,6 +48,7 @@ public class Aedat4RoundtripDemo {
         verifyOwnedConstructorClosesOnInitializationFailure();
         verifyImuRebaseOnlyForHostClock();
         verifyMegaPacketFramesMatchActualEventTime();
+        verifyPolarityRowsAt10Hz();
 
         verifyDvFileDataTable(file);
         int decoded = decodeFirstEventPacketLength(file);
@@ -296,29 +297,34 @@ public class Aedat4RoundtripDemo {
     }
 
     /**
-     * Save-As mega-packets interpolate a later clock than the events they
-     * contain. APS frames must attach to the extracted events' timestamps, not
-     * that interpolation (otherwise frames run ahead of DVS).
+     * A packet longer than 500 ms is read by actual event time. A 20 ms slice
+     * must not include a frame at 50 ms. A 100 ms slice must, and its events
+     * must reach that frame.
      */
     private static void verifyMegaPacketFramesMatchActualEventTime() throws Exception {
         File file = File.createTempFile("jaer-aedat4-megapacket-frames", ".aedat4");
-        PacketBundle bundle = new PacketBundle();
-        net.sf.jaer.event.EventPacket<PolarityEvent> events = new net.sf.jaer.event.EventPacket<>(PolarityEvent.class);
-        OutputEventIterator<PolarityEvent> out = events.outputIterator();
         final int n = 5000;
-        final int lastTs = 400_000;
+        // Span must reach the 500 ms timeslice-scan threshold. Shorter packets
+        // interpolate the table and would attach this frame by packet time.
+        final int lastTs = 600_000;
+        final long base = 1_000_000L;
+        long[] ts = new long[n];
+        short[] xs = new short[n];
+        short[] ys = new short[n];
+        boolean[] on = new boolean[n];
         for (int i = 0; i < n; i++) {
-            PolarityEvent event = out.nextOutput();
-            if (i < 4000) {
-                event.timestamp = i;
-            } else {
-                event.timestamp = 4000 + (int) ((i - 4000) * (long) (lastTs - 4000) / 999);
-            }
-            event.x = 1;
-            event.y = 1;
-            event.setPolarity(PolarityEvent.Polarity.On);
+            int cam = i < 4000 ? i : 4000 + (int) ((i - 4000) * (long) (lastTs - 4000) / 999);
+            ts[i] = base + cam;
+            xs[i] = 1;
+            ys[i] = 1;
+            on[i] = true;
         }
-        bundle.add(events);
+        com.google.flatbuffers.FlatBufferBuilder builder = new com.google.flatbuffers.FlatBufferBuilder(n * 16 + 64);
+        int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(builder, ts, xs, ys, on, n);
+        int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(builder, vector);
+        builder.finishSizePrefixed(root, "EVTS");
+        byte[] payload = builder.sizedByteArray();
+        PacketBundle bundle = new PacketBundle();
         net.sf.jaer.event.FramePacket frame = new net.sf.jaer.event.FramePacket(8, 8,
                 net.sf.jaer.event.FramePacket.ColorMode.GRAYSCALE);
         frame.setTimestampStartUs(50_000);
@@ -327,25 +333,38 @@ public class Aedat4RoundtripDemo {
         bundle.add(frame);
         AEChip chip = new org.objenesis.ObjenesisStd()
                 .newInstance(eu.seebetter.ini.chips.davis.Davis346blue.class);
+        // Objenesis skips the constructor, so setSizeX would notify a null observer list.
+        java.lang.reflect.Field sizeX = net.sf.jaer.chip.Chip2D.class.getDeclaredField("sizeX");
+        java.lang.reflect.Field sizeY = net.sf.jaer.chip.Chip2D.class.getDeclaredField("sizeY");
+        sizeX.setAccessible(true);
+        sizeY.setAccessible(true);
+        sizeX.setInt(chip, 346);
+        sizeY.setInt(chip, 260);
         try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(new FileOutputStream(file), chip,
-                net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, 1_000_000L)) {
+                net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, base)) {
+            // One copied packet keeps the long span. writeBundle would close a row every 100 ms.
+            output.writeCopiedPacket(Aedat4FileOutputStream.STREAM_EVENTS, payload, n, ts[0], ts[n - 1]);
             output.writeBundle(bundle);
         }
         Aedat4FileInputStream in = new Aedat4FileInputStream(file, chip);
         try {
-            in.readPacketByTime(100_000);
-            PacketBundle typed = new PacketBundle();
-            in.appendTypedPackets(typed);
-            int frames = 0;
-            for (net.sf.jaer.event.TypedDataPacket p : typed) {
-                if (p instanceof net.sf.jaer.event.FramePacket) {
-                    frames++;
-                }
+            net.sf.jaer.aemonitor.AEPacketRaw early = in.readPacketByTime(20_000);
+            if (frameCount(in) != 0) {
+                throw new IllegalStateException("20 ms slice attached the 50 ms frame");
             }
-            if (frames != 0) {
+            int earlyLast = lastTimestamp(early);
+            if (earlyLast < 0 || earlyLast >= 50_000) {
+                throw new IllegalStateException("20 ms slice last timestamp " + earlyLast);
+            }
+            in.rewind();
+            net.sf.jaer.aemonitor.AEPacketRaw full = in.readPacketByTime(100_000);
+            if (frameCount(in) != 1) {
+                throw new IllegalStateException("100 ms slice must include the 50 ms frame");
+            }
+            int fullLast = lastTimestamp(full);
+            if (fullLast < 50_000) {
                 throw new IllegalStateException(
-                        "Interpolated 100 ms window must not attach the 50 ms frame to the first ~1 ms of events, got frames="
-                                + frames);
+                        "100 ms slice events end at " + fullLast + " us, before the 50 ms frame");
             }
         } finally {
             in.close();
@@ -354,6 +373,96 @@ public class Aedat4RoundtripDemo {
             file.deleteOnExit();
         }
         System.out.println("PASS mega-packet APS frames follow actual event time");
+    }
+
+    private static int frameCount(Aedat4FileInputStream in) {
+        PacketBundle typed = new PacketBundle();
+        in.appendTypedPackets(typed);
+        int frames = 0;
+        for (net.sf.jaer.event.TypedDataPacket p : typed) {
+            if (p instanceof net.sf.jaer.event.FramePacket) {
+                frames++;
+            }
+        }
+        return frames;
+    }
+
+    private static int lastTimestamp(net.sf.jaer.aemonitor.AEPacketRaw packet) {
+        int n = packet.getNumEvents();
+        if (n <= 0) {
+            return -1;
+        }
+        return packet.getTimestamps()[n - 1];
+    }
+
+    /**
+     * Polarity rows close every 100 ms of event time. Five writes at one
+     * timestamp stay one row.
+     */
+    private static void verifyPolarityRowsAt10Hz() throws Exception {
+        File spaced = File.createTempFile("jaer-aedat4-10hz-", ".aedat4");
+        File repeated = File.createTempFile("jaer-aedat4-10hz-same-", ".aedat4");
+        File lossy = File.createTempFile("jaer-aedat4-10hz-lbev-", ".aedat4");
+        try {
+            int[] stamps = {0, 50_000, 150_000, 250_000};
+            try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(spaced, null,
+                    net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, 1_000_000L)) {
+                output.writeBundle(eventsAt(stamps));
+            }
+            if (Aedat4Concat.packetTimeRanges(spaced).size() != 3) {
+                throw new IllegalStateException("100 ms boundaries should be 3 EVTS rows, got "
+                        + Aedat4Concat.packetTimeRanges(spaced).size());
+            }
+            try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(repeated, null,
+                    net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, 1_000_000L)) {
+                for (int i = 0; i < 5; i++) {
+                    output.writeBundle(eventsAt(new int[] {1_000}));
+                }
+            }
+            if (Aedat4Concat.packetTimeRanges(repeated).size() != 1) {
+                throw new IllegalStateException("same timestamp across writes should be 1 row, got "
+                        + Aedat4Concat.packetTimeRanges(repeated).size());
+            }
+            Aedat4FileInputStream repeatedIn = new Aedat4FileInputStream(repeated, null);
+            try {
+                if (repeatedIn.getIndexedEventCount() != 5) {
+                    throw new IllegalStateException("repeated writes lost events: " + repeatedIn.getIndexedEventCount());
+                }
+            } finally {
+                repeatedIn.close();
+            }
+            // Quantizing can shrink a 100 ms gap by almost one bin, so these gaps stay over 100 ms.
+            int[] lossyStamps = {0, 50_000, 160_000, 270_000};
+            try (Aedat4FileOutputStream output = new Aedat4FileOutputStream(lossy, null,
+                    net.sf.jaer.eventio.aedat4.dv.CompressionType.NONE, 1_000_000L, null,
+                    Aedat4LossyTimeBins.SHIFT_DEFAULT)) {
+                output.writeBundle(eventsAt(lossyStamps));
+            }
+            if (Aedat4Concat.packetTimeRanges(lossy).size() != 3) {
+                throw new IllegalStateException("lossy 100 ms boundaries should be 3 rows, got "
+                        + Aedat4Concat.packetTimeRanges(lossy).size());
+            }
+        } finally {
+            spaced.delete();
+            repeated.delete();
+            lossy.delete();
+        }
+        System.out.println("PASS polarity rows close at 10 Hz of event time");
+    }
+
+    private static PacketBundle eventsAt(int[] timestamps) {
+        PacketBundle bundle = new PacketBundle();
+        net.sf.jaer.event.EventPacket<PolarityEvent> events = new net.sf.jaer.event.EventPacket<>(PolarityEvent.class);
+        OutputEventIterator<PolarityEvent> out = events.outputIterator();
+        for (int i = 0; i < timestamps.length; i++) {
+            PolarityEvent event = out.nextOutput();
+            event.timestamp = timestamps[i];
+            event.x = (short) i;
+            event.y = 1;
+            event.setPolarity(PolarityEvent.Polarity.On);
+        }
+        bundle.add(events);
+        return bundle;
     }
 
     /**

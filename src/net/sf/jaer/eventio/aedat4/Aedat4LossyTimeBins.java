@@ -106,6 +106,11 @@ public final class Aedat4LossyTimeBins {
             return open && n > 0;
         }
 
+        /** Open bin or closed bins not yet written as a packet. */
+        public boolean hasPending() {
+            return (open && n > 0) || !completed.isEmpty();
+        }
+
         public void add(long unixUs, int x, int y, boolean on) {
             long q = quantizeUnixUs(unixUs, shift);
             if (!open || q != openTs) {
