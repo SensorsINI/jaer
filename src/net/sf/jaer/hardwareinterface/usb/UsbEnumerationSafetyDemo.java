@@ -1583,6 +1583,25 @@ public final class UsbEnumerationSafetyDemo {
                 "compact 1h5s");
         require("0s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(0L)),
                 "compact 0s");
+        long dayUs = 86_400_000_000L;
+        require("1d".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(dayUs)),
+                "compact 1d");
+        require("1d1h".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(dayUs + 3_600_000_000L)),
+                "compact 1d1h");
+        require("6d".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(6L * dayUs)),
+                "compact 6d");
+        require("1w".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(7L * dayUs)),
+                "compact 1w");
+        require("2w1d13m12.92s".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(
+                15L * dayUs + 13L * 60_000_000L + 12_920_000L)),
+                "compact 2w1d");
+        require("1mo".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(30L * dayUs)),
+                "compact 1mo");
+        require("1mo6d".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(36L * dayUs)),
+                "compact 1mo6d");
+        require("2y3mo6d13h".equals(net.sf.jaer.graphics.AEViewer.formatRecordingDurationUs(
+                (2L * 365L + 3L * 30L + 6L) * dayUs + 13L * 3_600_000_000L)),
+                "compact 2y3mo6d13h");
         require(net.sf.jaer.graphics.AEViewer.formatRecordingDurationSpoken(5 * 60_000L + 12_000L)
                 .contains("5 minutes 12 seconds"),
                 "spoken duration");

@@ -12783,18 +12783,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Compact recording duration from milliseconds, e.g. {@code 1m37s}, {@code 1.37s}.
+     * Compact recording duration from milliseconds, e.g. {@code 1m37s}, {@code 2w1d}.
      *
      * @param durationMs duration in milliseconds
-     * @return shortest {@code h}/{@code m}/{@code s} form, hundredths only if nonzero
+     * @return shortest form; hundredths of a second only if nonzero
      */
     public static String formatRecordingDurationHms(long durationMs) {
         return formatRecordingDurationUs(durationMs * 1000L);
     }
 
     /**
-     * Compact recording duration from microseconds: omit zero hours/minutes,
-     * omit trailing {@code .00}, e.g. {@code 1m37s}, {@code 37.25s}, {@code 1h5s}.
+     * Compact recording duration from microseconds. Zero units are omitted.
+     * Under a day: {@code 1m37s}, {@code 37.25s}, {@code 1h5s}.
+     * At a day or more the string leads with the largest unit that fits:
+     * days ({@code 6d}), weeks ({@code 2w1d}), 30-day months ({@code 1mo6d}),
+     * then 365-day years ({@code 2y3mo6d13h}). Weeks appear only below one month.
+     * {@code mo} is months; {@code m} stays minutes.
      *
      * @param durationUs duration in microseconds
      */
@@ -12815,7 +12819,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         long s = hundredths / 100L;
         long dd = hundredths % 100L;
-        StringBuilder sb = new StringBuilder(12);
+        long days = h / 24L;
+        if (days > 0L) {
+            h %= 24L;
+        }
+        StringBuilder sb = new StringBuilder(24);
+        if (days > 0L) {
+            appendDurationDays(sb, days);
+        }
         if (h > 0L) {
             sb.append(h).append('h');
         }
@@ -12838,6 +12849,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             sb.append('s');
         }
         return sb.toString();
+    }
+
+    /**
+     * Whole days as years (365), months (30), and weeks (7).
+     * A span of at least a month starts with months, and at least a year with years.
+     * Weeks are only used when the span is under a month.
+     */
+    private static void appendDurationDays(StringBuilder sb, long days) {
+        long years = 0L;
+        long months = 0L;
+        long weeks = 0L;
+        long rem = days;
+        if (rem >= 365L) {
+            years = rem / 365L;
+            rem %= 365L;
+            months = rem / 30L;
+            rem %= 30L;
+        } else if (rem >= 30L) {
+            months = rem / 30L;
+            rem %= 30L;
+        } else if (rem >= 7L) {
+            weeks = rem / 7L;
+            rem %= 7L;
+        }
+        if (years > 0L) {
+            sb.append(years).append('y');
+        }
+        if (months > 0L) {
+            sb.append(months).append("mo");
+        }
+        if (weeks > 0L) {
+            sb.append(weeks).append('w');
+        }
+        if (rem > 0L) {
+            sb.append(rem).append('d');
+        }
     }
 
     /**
