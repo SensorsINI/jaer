@@ -4,16 +4,19 @@
   equal to 3.7.0 (the public number, without -rc.0).
 
   Download links point at tag 3.7.0-rc.0. Installer filenames use 3_7_0.
-  Before tagging public 3.7.0, retarget those URLs from
-  /releases/download/3.7.0-rc.0/ to /releases/download/3.7.0/
-  and drop the release-candidate wording in the lead paragraph.
+  Tag 3.7.0-rc.0 is already published from an earlier commit. Long-recording
+  work below is on master after that tag. Before the next tag
+  (3.7.0-rc.1 or public 3.7.0), retarget the download URLs to that tag.
+  Before tagging public 3.7.0, also drop the release-candidate wording.
   Install steps stay the website guide.
   Image links use raw.githubusercontent.com so they render in the Release body.
 -->
 
 **jAER 3.7.0-rc.0** is a release candidate after **[3.6.2](https://github.com/SensorsINI/jaer/releases/tag/3.6.2)**. It ships **libusb 1.0.30** (usb4java 1.3.1) on Windows, macOS, and Linux so cameras can be opened on each platform before 3.7.0 is published. **Latest** and **Help → Check for release updates** stay on 3.6.2. winget and Homebrew stay on 3.6.2.
 
-jAER had been using usb4java and libusb4java libraries dated 2018. The major change in this release is updating USB support to cover USB 3.1 and USB 3.2 up to 20Gbps device links. 
+jAER had been using usb4java and libusb4java libraries dated 2018. The major change in this release is updating USB support to cover USB 3.1 and USB 3.2 up to 20Gbps device links.
+
+Long AEDAT-4 recordings reopen from the saved index. A file longer than 12 hours colors the event-rate slider by local day and night, and durations past a day are shown in days, weeks, months, and years.
 
 ## Download
 
@@ -32,7 +35,7 @@ Install, update, and uninstall steps are in the **[Install Guide](https://jaerpr
 
 An upgrade from 3.6.2 deletes leftover `usb4java-1.3.0` and `libusb4java-1.3.0` jars. If both 1.3.0 and 1.3.1 remain in the install folder, the launcher loads 1.3.0.
 
-## Testers of this release candiate, please test
+## Testers of this release candidate, please test
 
 If there are any observed problems with this release, please file a git issue.
 
@@ -57,6 +60,9 @@ The jars also contain Linux ARM, Linux aarch64, 32-bit Linux, and 32-bit Windows
 1. [libusb 1.0.30](#libusb-1030)
 2. [USB link rates](#usb-link-rates)
 3. [One USB Interface menu](#usb-interface-menu)
+4. [Day and night on the scrubber](#day-night)
+5. [Durations past a day](#long-durations)
+6. [Opening a multi-day file](#long-index)
 
 <h3 id="libusb-1030">libusb 1.0.30</h3>
 
@@ -82,12 +88,35 @@ The Interface and USB menus are a single **USB Interface** menu. **Biases/HW Con
 
 Prophesee uses **Render events** as its only per-frame cap, the same control as NRV. The separate Live keep setting is gone.
 
+## Long recordings
+
+<h3 id="day-night">Day and night on the scrubber</h3>
+
+A recording longer than 12 hours paints the event-rate slider **blue** for local daytime and **red** for night. Day is 06:00–18:00 in the file’s time zone. A file of 12 hours or less stays a single blue histogram. The clock on the chip view is the playback time.
+
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.7.0/day-night-timeline.png" alt="Multi-day playback with the event-rate slider blue in local daytime and red at night" width="70%" />
+
+<h3 id="long-durations">Durations past a day</h3>
+
+The recording overlay uses a compact duration. Under a day that is still `1h5s` or `1m37s`. At a day or more it leads with the largest unit that fits: `6d`, `2w1d`, `1mo6d`, `2y3mo6d13h`. Weeks are used under a month. **mo** is months, so it stays distinct from minutes (**m**). The disk auto-stop estimate also runs through years (`1y 2mo`). ([fcc38313c](https://github.com/SensorsINI/jaer/commit/fcc38313c))
+
+Minimizing the viewer during a background recording skips chip painting. Acquisition, filters, recording, UDP, ROS 2 / Foxglove, and DNN shared memory keep running. Painting stays on when OpenCV is publishing the chip view or an AVI capture is active. ([52be47764](https://github.com/SensorsINI/jaer/commit/52be47764))
+
+<h3 id="long-index">Opening a multi-day file</h3>
+
+The packet index cache now accepts 64 million packets. A 221-hour file of about 29 million packets reopens with `Reading cached AEDAT-4 index` instead of decompressing every packet. The old cap was 10 million, which rejected that cache on every open. ([c2bb76650](https://github.com/SensorsINI/jaer/commit/c2bb76650))
+
+A FileDataTable that does not fit in one FlatBuffer (about 2 GiB, past roughly 40 million rows) is stored as an **FTCH** directory plus one compressed chunk per 8 million rows. Record, merge, and the LZ4 re-recorder write that form, and open shows progress across every chunk and the in-memory index. New recordings close a polarity row every 100 ms of event time, or at 1,048,576 events, so a week of capture stays one table. Frames and IMU are not delayed to that window. An older file with a single table still opens. ([717a6c6e3](https://github.com/SensorsINI/jaer/commit/717a6c6e3))
+
+**File → Show file info** sums the payload sizes already stored on that index. It does not seek a codec header in every packet. ([ab9daf7f7](https://github.com/SensorsINI/jaer/commit/ab9daf7f7))
+
 ## Also since 3.6.2
 
 - The sensor chooser remembers the last chip for a camera when the host assigns a new USB bus address. ([2f434c263](https://github.com/SensorsINI/jaer/commit/2f434c263))
 - **ApproachCell** and **ObjectMotionCell** are in the filter list and stay off unless **Enable filters on startup** restores a saved enabled state. ([4b0f7aa2a](https://github.com/SensorsINI/jaer/commit/4b0f7aa2a))
 - WitMotion can draw rate-gyro vectors under the compass. **gyroScaleDps** sets the deg/s that reaches the disk rim.
 - The playback direction overlay names **Forward** or **Reverse** after **b** or Toggle playback direction. ([b3303630d](https://github.com/SensorsINI/jaer/commit/b3303630d))
+- NmeaGnssFilter can dial the phone Wi-Fi hotspot. Leave **host** empty, turn **hotspotGateway** on, and jAER uses the Wi-Fi gateway. gpsdRelay stays on `0.0.0.0:2947`. The filter help is the order that sends a fix: TCP, the row switch, NMEA generation, play, then Maps. ([514c85889](https://github.com/SensorsINI/jaer/commit/514c85889))
 
 ## Bug fixes
 
@@ -97,3 +126,5 @@ Prophesee uses **Render events** as its only per-frame cap, the same control as 
 4. The sleep-recording dialog accepts Yes while a long recording is open. The view loop waits for the choice instead of holding the OpenGL thread inside the dialog. ([983717b56](https://github.com/SensorsINI/jaer/commit/983717b56))
 5. Exporting a video asks before replacing an existing file. Cancel leaves the files unchanged. The intermediate AVI is deleted after a successful MP4. ([71b3f68b5](https://github.com/SensorsINI/jaer/commit/71b3f68b5))
 6. Merging a VCR deck keeps the playback histogram when a cassette was still open. ([0195e56a2](https://github.com/SensorsINI/jaer/commit/0195e56a2))
+7. The first open of an FX20 loads the Delta10 bias preset. A CX3 settings file programs a PLL that does not stream on this bridge, and a USB reset does not undo that write. ([86812a126](https://github.com/SensorsINI/jaer/commit/86812a126))
+8. A missing camera calibration is logged at FINE. A calibration file with a bad format is still a warning. ([5d94df9af](https://github.com/SensorsINI/jaer/commit/5d94df9af))
