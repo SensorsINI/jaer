@@ -367,10 +367,9 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
 
         float scale = gyroScaleDps > 0f ? gyroScaleDps : 50f;
         float pxPerDps = radius / scale;
-        float limit = radius * 1.15f;
-        float pan = clampAbs((float) (finiteOrZero(panDps) * pxPerDps), limit);
-        float tilt = clampAbs((float) (finiteOrZero(tiltDps) * pxPerDps), limit);
-        float roll = clampAbs((float) (finiteOrZero(rollDps) * pxPerDps), limit);
+        float pan = (float) (finiteOrZero(panDps) * pxPerDps);
+        float tilt = (float) (finiteOrZero(tiltDps) * pxPerDps);
+        float roll = (float) (finiteOrZero(rollDps) * pxPerDps);
         float head = radius * 0.12f;
         gl.glColor3f(1f, 0f, 1f);
         gl.glLineWidth(Math.max(lw * 1.6f, 1.5f));
@@ -392,6 +391,7 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         }
         DrawGL.drawString(font, labelX, labelY, 0.5f, mag, fmtDps(panDps) + ", " + fmtDps(tiltDps));
         DrawGL.drawString(font, cx + roll, cy + rollAxis + font * 0.45f, 0.5f, mag, fmtDps(rollDps));
+        DrawGL.drawString(font, cx, cy - font * 0.35f, 0.5f, dim, "DPS");
         float axisFont = font / 3f;
         DrawGL.drawString(axisFont, cx + radius * 0.92f, cy + axisFont * 0.15f, 1f, dim, "pan");
         DrawGL.drawString(axisFont, cx + axisFont * 0.3f, cy + radius * 0.78f, 0f, dim, "tilt");
@@ -422,22 +422,13 @@ public class WitMotionImuFilter extends EventFilterSidecarWriter<WitMotionSample
         gl.glEnd();
     }
 
-    private static float clampAbs(float v, float limit) {
-        if (v > limit) {
-            return limit;
-        }
-        if (v < -limit) {
-            return -limit;
-        }
-        return v;
-    }
-
     private static double finiteOrZero(double v) {
         return Double.isFinite(v) ? v : 0d;
     }
 
+    /** One decimal: the HWT906 LSB is {@code 2000/32768} deg/s, about 0.06, not 1. */
     private static String fmtDps(double v) {
-        return Double.isFinite(v) ? String.format("%.0f", v) : "--";
+        return Double.isFinite(v) ? String.format("%.1f", v) : "--";
     }
 
     private void drawCompass(GL2 gl, float cx, float cy, float r, double yawDeg, float lw) {
