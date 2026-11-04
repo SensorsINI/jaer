@@ -66,7 +66,7 @@ Use it to crop borders, isolate a target, or keep only one polarity.</p>
 <hr>
 <h3>Select a rectangle on the display</h3>
 <ol>
-<li>Expand this filter so it is selected (mouse events go to it).</li>
+<li>Expand this filter so its controls are visible. A collapsed panel ignores mouse ROI edits.</li>
 <li>Drag on the AEViewer image to draw a box. That enables <code>x</code> and <code>y</code>
 filtering and sets <code>startX</code>/<code>endX</code> and <code>startY</code>/<code>endY</code>.</li>
 <li>Check <b>Enabled</b> so the ROI is applied. Events outside the box are filtered out.</li>
@@ -505,12 +505,25 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
 
     }
 
+    /**
+     * Collapse does not clear {@link #isSelected()}, so ROI mouse edits apply
+     * only while this filter's controls are expanded.
+     */
+    private boolean ignoreRoiMouse() {
+        return !isControlsVisible();
+    }
+
+    @Override
+    public boolean claimsCanvasLeftDrag() {
+        return !ignoreRoiMouse() && super.claimsCanvasLeftDrag();
+    }
+
     @Override
     public void mousePressed(MouseEvent e) {
         if (lockSelections) {
             return;
         }
-        if (isDontProcessMouse()) {
+        if (isDontProcessMouse() || ignoreRoiMouse()) {
             return;
         }
         Point p = canvas.getPixelFromMouseEvent(e);
@@ -522,6 +535,10 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     @Override
     public void mouseReleased(MouseEvent e) {
         if (lockSelections) {
+            return;
+        }
+        if (ignoreRoiMouse()) {
+            selecting = false;
             return;
         }
         if (isDontProcessMouse()) {
@@ -566,7 +583,7 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         if (startPoint == null) {
             return;
         }
-        if (isDontProcessMouse()) {
+        if (isDontProcessMouse() || ignoreRoiMouse()) {
             return;
         }
         getSelection(e);
@@ -596,6 +613,9 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (ignoreRoiMouse()) {
+            return;
+        }
         Point p = canvas.getPixelFromMouseEvent(e);
         log.fine(e.getSource().toString());
         clickedPoint = p;
