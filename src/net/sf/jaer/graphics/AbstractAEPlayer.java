@@ -7,6 +7,7 @@ package net.sf.jaer.graphics;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -64,6 +65,8 @@ public abstract class AbstractAEPlayer {
     public final RewindAction rewindAction = new RewindAction();
     public final AccumulationIncreaseAction fasterAction = new AccumulationIncreaseAction();
     public final AccumulationDecreaseAction slowerAction = new AccumulationDecreaseAction();
+    public final CoarseAccumulationIncreaseAction coarseFasterAction = new CoarseAccumulationIncreaseAction();
+    public final CoarseAccumulationDecreaseAction coarseSlowerAction = new CoarseAccumulationDecreaseAction();
     public final ReverseAction reverseAction = new ReverseAction();
     public final StepForwardAction stepForwardAction = new StepForwardAction();
     public final StepBackwardAction stepBackwardAction = new StepBackwardAction();
@@ -134,6 +137,7 @@ public abstract class AbstractAEPlayer {
         repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
         jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 100);
         viewHistory.setJogPacketCount(jogPacketCount);
+        coarseSpeedFactor = clampCoarseSpeedFactor(prefs.getInt(PREF_COARSE_SPEED_FACTOR, COARSE_SPEED_FACTOR_DEFAULT));
         try {
             playbackMode = PlaybackMode.valueOf(prefs.get("AbstractAEPlayer.playbackMode", PlaybackMode.FixedTimeSlice.name()));
         } catch (IllegalArgumentException e) {
@@ -297,6 +301,15 @@ public abstract class AbstractAEPlayer {
      * actions
      */
     public static double SPEED_UP_SLOW_DOWN_FACTOR = Math.pow(2, 0.25);
+    /**
+     * Shift+F / Shift+S multiply or divide the slice by this factor.
+     * CountDuration duration, ConstantCount events, and AreaEventCount events/area.
+     */
+    public static final int COARSE_SPEED_FACTOR_DEFAULT = 100;
+    public static final int COARSE_SPEED_FACTOR_MIN = 2;
+    public static final int COARSE_SPEED_FACTOR_MAX = 1_000_000;
+    private static final String PREF_COARSE_SPEED_FACTOR = "AbstractAEPlayer.coarseSpeedFactor";
+    private int coarseSpeedFactor = COARSE_SPEED_FACTOR_DEFAULT;
 
     /**
      * Speeds up the playback so that more time or more events are displayed per
@@ -304,24 +317,7 @@ public abstract class AbstractAEPlayer {
      *
      */
     public void speedUp() {
-        if (isAreaEventCountEnabled()) {
-            AreaEventCountExposer exposer = getAreaEventCountExposer();
-            if (exposer != null) {
-                exposer.scaleEventCount(SPEED_UP_SLOW_DOWN_FACTOR);
-            }
-        } else if (isFlexTimeEnabled()) {
-            int newCount = (int) Math.round(getPacketSizeEvents() * SPEED_UP_SLOW_DOWN_FACTOR);
-            if (newCount == getPacketSizeEvents()) {
-                newCount += 1; // make sure we don't get stuck at 1
-            }
-            setPacketSizeEvents(newCount);
-        } else {
-            long newTimeSlice = (long) Math.round(getTimesliceUs() * SPEED_UP_SLOW_DOWN_FACTOR);
-            if (newTimeSlice > (long) Integer.MAX_VALUE) {
-                newTimeSlice = Integer.MAX_VALUE; // clip to avoid negative slices sizes for slices > 2G us
-            }
-            setTimesliceUs((int) newTimeSlice);
-        }
+        scaleAccumulation(SPEED_UP_SLOW_DOWN_FACTOR);
         log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
     }
 
@@ -331,30 +327,110 @@ public abstract class AbstractAEPlayer {
      *
      */
     public void slowDown() {
+        scaleAccumulation(1.0 / SPEED_UP_SLOW_DOWN_FACTOR);
+    }
+
+    /** Shift+F: multiply the current slice duration or event count by {@link #getCoarseSpeedFactor()}. */
+    public void speedUpCoarse() {
+        scaleAccumulation(getCoarseSpeedFactor());
+        log.info("coarse accumulation ×" + getCoarseSpeedFactor()
+                + " -> timeslice " + getTimesliceUs() + " us, packet " + getPacketSizeEvents() + " events");
+    }
+
+    /** Shift+S: divide the current slice duration or event count by {@link #getCoarseSpeedFactor()}. */
+    public void slowDownCoarse() {
+        scaleAccumulation(1.0 / getCoarseSpeedFactor());
+        log.info("coarse accumulation ÷" + getCoarseSpeedFactor()
+                + " -> timeslice " + getTimesliceUs() + " us, packet " + getPacketSizeEvents() + " events");
+    }
+
+    /**
+     * Scale the active accumulation (AreaEventCount, ConstantCount, or CountDuration / RealTime slice).
+     * {@code factor > 1} lengthens the slice. Values stay at least 1 in magnitude and within int range.
+     */
+    private void scaleAccumulation(double factor) {
+        if (!(factor > 0.0) || !Double.isFinite(factor)) {
+            return;
+        }
         if (isAreaEventCountEnabled()) {
             AreaEventCountExposer exposer = getAreaEventCountExposer();
             if (exposer != null) {
-                exposer.scaleEventCount(1.0 / SPEED_UP_SLOW_DOWN_FACTOR);
+                exposer.scaleEventCount(factor);
             }
         } else if (isFlexTimeEnabled()) {
-            setPacketSizeEvents((int) Math.round(getPacketSizeEvents() / SPEED_UP_SLOW_DOWN_FACTOR));
-            if (getPacketSizeEvents() == 0) {
-                setPacketSizeEvents(1);
-            }
+            setPacketSizeEvents(scalePacketCount(getPacketSizeEvents(), factor));
         } else {
-            setTimesliceUs((int) Math.round(getTimesliceUs() / SPEED_UP_SLOW_DOWN_FACTOR));
-            if (getTimesliceUs() == 0) {
-                log.info("tried to reduce timeslice below 1us, clipped to 1us");
-                setTimesliceUs(1);
+            setTimesliceUs(scaleTimesliceUs(getTimesliceUs(), factor));
+        }
+        if (factor < 1.0) {
+            if (Math.abs(getPacketSizeEvents()) < 1) {
+                setPacketSizeEvents((int) Math.signum(getPacketSizeEvents()));
+            }
+            if (Math.abs(getTimesliceUs()) < 1) {
+                setTimesliceUs((int) Math.signum(getTimesliceUs()));
             }
         }
-        if (Math.abs(getPacketSizeEvents()) < 1) {
-            setPacketSizeEvents((int) Math.signum(getPacketSizeEvents()));
+    }
+
+    /** ConstantCount size. Growing by a factor that rounds to the same int steps by 1, matching {@code f}. */
+    private static int scalePacketCount(int current, double factor) {
+        long rounded = roundScaled(current, factor);
+        if (factor > 1.0 && rounded == current && current < Integer.MAX_VALUE) {
+            rounded = current + 1L;
         }
-        if (Math.abs(getTimesliceUs()) < 1) {
-            setTimesliceUs((int) Math.signum(getTimesliceUs()));
+        if (rounded == 0) {
+            rounded = current < 0 ? -1L : 1L;
         }
-//        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
+        if (rounded > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        if (rounded < Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        }
+        return (int) rounded;
+    }
+
+    private int scaleTimesliceUs(int current, double factor) {
+        long rounded = roundScaled(current, factor);
+        if (factor < 1.0 && rounded == 0) {
+            log.info("tried to reduce timeslice below 1us, clipped to 1us");
+            return current < 0 ? -1 : 1;
+        }
+        return (int) rounded;
+    }
+
+    private static long roundScaled(int current, double factor) {
+        double scaled = current * factor;
+        if (Double.isNaN(scaled)) {
+            return current;
+        }
+        if (scaled >= Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        if (scaled <= Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        }
+        return Math.round(scaled);
+    }
+
+    public static int clampCoarseSpeedFactor(int factor) {
+        if (factor < COARSE_SPEED_FACTOR_MIN) {
+            return COARSE_SPEED_FACTOR_MIN;
+        }
+        if (factor > COARSE_SPEED_FACTOR_MAX) {
+            return COARSE_SPEED_FACTOR_MAX;
+        }
+        return factor;
+    }
+
+    /** Shift+F/S factor. Default {@value #COARSE_SPEED_FACTOR_DEFAULT}. */
+    public int getCoarseSpeedFactor() {
+        return coarseSpeedFactor;
+    }
+
+    public void setCoarseSpeedFactor(int coarseSpeedFactor) {
+        this.coarseSpeedFactor = clampCoarseSpeedFactor(coarseSpeedFactor);
+        prefs.putInt(PREF_COARSE_SPEED_FACTOR, this.coarseSpeedFactor);
     }
 
     public void jogForwards(int packets) {
@@ -1545,6 +1621,38 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             slowDown();
+            showAccumulationAction(speedText(false));
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class CoarseAccumulationIncreaseAction extends MyAction {
+
+        public CoarseAccumulationIncreaseAction() {
+            super("Increase event accumulation a lot", "Faster16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK));
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Shift+F. Multiply slice duration or event count by the coarse factor (default 100×). File → Preferences → Playback.");
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            speedUpCoarse();
+            showAccumulationAction(speedText(true));
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class CoarseAccumulationDecreaseAction extends MyAction {
+
+        public CoarseAccumulationDecreaseAction() {
+            super("Decrease event accumulation a lot", "Slower16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.SHIFT_DOWN_MASK));
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Shift+S. Divide slice duration or event count by the coarse factor (default 100×). File → Preferences → Playback.");
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            slowDownCoarse();
             showAccumulationAction(speedText(false));
             putValue(Action.SELECTED_KEY, true);
         }

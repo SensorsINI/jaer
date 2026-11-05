@@ -625,7 +625,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean aedat4LossyCollapsePolarities = prefs.getBoolean("AEViewer.aedat4LossyCollapsePolarities", false);
     /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
-            + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower) @ event timestamp (seconds)<br>"
+            + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower; Shift+F/S: ×N, default 100, File → Preferences → Playback) @ event timestamp (seconds)<br>"
             + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime<br>"
             + "<b>(overrun)</b> — live events discarded because the display frame filled; bar turns red. Increase USB tuning Render events, or lower the DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
             + "<b>eps</b> — event rate (events per second)<br>"
@@ -650,6 +650,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEViewerPreferencesDialog preferencesDialog;
     /** Playback menu: choose EventExposureMode-equivalent packet slicing (not a boolean). */
     private JMenu playbackModeMenu;
+    private JMenuItem coarseIncreasePlaybackSpeedMenuItem;
+    private JMenuItem coarseDecreasePlaybackSpeedMenuItem;
     private final HashMap<AbstractAEPlayer.PlaybackMode, JRadioButtonMenuItem> playbackModeMenuItems = new HashMap<>();
     /** True while Tab View/Playback overlay is the current action text. */
     private boolean tabOverlayVisible;
@@ -6757,7 +6759,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.FixedPacketSize, "Fixed event count (ConstantCount)",
                 "Accumulate a fixed number of events (flextime). Default is nearest power of two of (pixels/64): 256 for DVS128, 16k for EVK4.");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.AreaEventCount, "Area event count (AreaEventCount)",
-                "Expose when any spatial area reaches N events (f/s changes N). Set # areas in File → Preferences → Playback.");
+                "Expose when any spatial area reaches N events (f/s changes N; Shift+F/S changes N by the coarse factor). Set # areas in File → Preferences → Playback.");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.RealTime, "Real time",
                 "Play at recorded real time (T does not cycle this)");
 
@@ -6779,7 +6781,54 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         updatePlaybackModeMenuSelection();
 
         showRenderingModeMI.setText("Show View and Playback modes");
-        showRenderingModeMI.setToolTipText("Overlay color mode and event accumulation (Tab). c / t cycle them; f / s faster/slower.");
+        showRenderingModeMI.setToolTipText("Overlay color mode and event accumulation (Tab). c / t cycle them; f / s faster/slower; Shift+F/S jumps by the coarse factor.");
+        installCoarseAccumulationMenuItems();
+    }
+
+    /** Shift+F / Shift+S menu items. Accelerators come from the player actions. */
+    private void installCoarseAccumulationMenuItems() {
+        if (aePlayer == null || playbackMenu == null || decreasePlaybackSpeedMenuItem == null) {
+            return;
+        }
+        coarseIncreasePlaybackSpeedMenuItem = new JMenuItem(aePlayer.coarseFasterAction);
+        coarseDecreasePlaybackSpeedMenuItem = new JMenuItem(aePlayer.coarseSlowerAction);
+        coarseIncreasePlaybackSpeedMenuItem.setEnabled(false);
+        coarseDecreasePlaybackSpeedMenuItem.setEnabled(false);
+        updateCoarseSpeedFactorMenuItemText();
+        int idx = playbackMenu.getPopupMenu().getComponentIndex(decreasePlaybackSpeedMenuItem);
+        if (idx >= 0) {
+            playbackMenu.insert(coarseDecreasePlaybackSpeedMenuItem, idx + 1);
+            playbackMenu.insert(coarseIncreasePlaybackSpeedMenuItem, idx + 1);
+        } else {
+            playbackMenu.add(coarseIncreasePlaybackSpeedMenuItem);
+            playbackMenu.add(coarseDecreasePlaybackSpeedMenuItem);
+        }
+    }
+
+    /** Menu labels follow File → Preferences → Playback coarse factor. */
+    public void updateCoarseSpeedFactorMenuItemText() {
+        if (aePlayer == null || coarseIncreasePlaybackSpeedMenuItem == null) {
+            return;
+        }
+        int n = aePlayer.getCoarseSpeedFactor();
+        String detail = "the CountDuration slice, ConstantCount, or AreaEventCount by " + n
+                + ".<br>File → Preferences → Playback. Default 100×. "
+                + "A 1 ms slice with Shift+F becomes " + n + " ms.";
+        coarseIncreasePlaybackSpeedMenuItem.setText("Increase accumulation ×" + n);
+        coarseIncreasePlaybackSpeedMenuItem.setToolTipText("<html>Shift+F. Multiply " + detail);
+        coarseDecreasePlaybackSpeedMenuItem.setText("Decrease accumulation ×" + n);
+        coarseDecreasePlaybackSpeedMenuItem.setToolTipText("<html>Shift+S. Divide " + detail);
+    }
+
+    private void setPlaybackSpeedMenuEnabled(boolean enabled) {
+        if (increasePlaybackSpeedMenuItem != null) {
+            increasePlaybackSpeedMenuItem.setEnabled(enabled);
+            decreasePlaybackSpeedMenuItem.setEnabled(enabled);
+        }
+        if (coarseIncreasePlaybackSpeedMenuItem != null) {
+            coarseIncreasePlaybackSpeedMenuItem.setEnabled(enabled);
+            coarseDecreasePlaybackSpeedMenuItem.setEnabled(enabled);
+        }
     }
 
     private void addPlaybackModeMenuItem(ButtonGroup group, AbstractAEPlayer.PlaybackMode mode, String label, String tip) {
@@ -6897,6 +6946,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         sb.append("\nc cycles color, t cycles accumulation");
         sb.append("\nf/s: faster/slower");
+        if (player != null) {
+            sb.append("\nShift+F/S: ×").append(player.getCoarseSpeedFactor());
+        }
         sb.append("\nSee View/Playback menus");
         return sb.toString();
     }
@@ -6917,8 +6969,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         saveAsMenuItem.setEnabled(yes);
         showFileInfoMenuItem.setEnabled(yes && isShowFileInfoAvailable());
         boolean timeshiftView = liveTimeshift != null && liveTimeshift.isViewingFile();
-        increasePlaybackSpeedMenuItem.setEnabled(yes || timeshiftView);
-        decreasePlaybackSpeedMenuItem.setEnabled(yes || timeshiftView);
+        setPlaybackSpeedMenuEnabled(yes || timeshiftView);
         rewindPlaybackMenuItem.setEnabled(yes);
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes && !synchronizedPlaybackRequiresCountDuration());
         if (playbackModeMenu != null) {
@@ -6981,10 +7032,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         boolean timeshiftView = show && liveTimeshift != null && liveTimeshift.isViewingFile();
-        if (increasePlaybackSpeedMenuItem != null) {
-            increasePlaybackSpeedMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
-            decreasePlaybackSpeedMenuItem.setEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
-        }
+        setPlaybackSpeedMenuEnabled(getPlayMode() == PlayMode.PLAYBACK || timeshiftView);
         boolean canMark = getPlayMode() == PlayMode.PLAYBACK || show;
         if (setMarkInMI != null) {
             setMarkInMI.setEnabled(canMark);

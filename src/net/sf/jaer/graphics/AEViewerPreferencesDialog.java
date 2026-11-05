@@ -167,6 +167,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
 
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
+    private JSpinner coarseSpeedFactorSpinner;
     private JSpinner markerReactionTimeSpinner;
     private JTextField minExposureTimeTF;
     private JTextField maxExposureTimeTF;
@@ -1404,6 +1405,24 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
+        p.add(new JLabel("Shift+F/S factor:"), gbcLabel(y));
+        coarseSpeedFactorSpinner = new JSpinner(new SpinnerNumberModel(
+                AbstractAEPlayer.COARSE_SPEED_FACTOR_DEFAULT,
+                AbstractAEPlayer.COARSE_SPEED_FACTOR_MIN,
+                AbstractAEPlayer.COARSE_SPEED_FACTOR_MAX,
+                10));
+        coarseSpeedFactorSpinner.setToolTipText("Shift+F multiplies the CountDuration slice, ConstantCount, or AreaEventCount by this factor. Shift+S divides by it. Default 100 (1 ms becomes 100 ms).");
+        coarseSpeedFactorSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                applyCoarseSpeedFactor(((Number) coarseSpeedFactorSpinner.getValue()).intValue());
+            }
+        });
+        p.add(coarseSpeedFactorSpinner, gbcField(y++));
+
         p.add(new JLabel("Marker reaction time (ms):"), gbcLabel(y));
         markerReactionTimeSpinner = new JSpinner(new SpinnerNumberModel(
                 AbstractAEPlayer.MARKER_REACTION_TIME_MS_DEFAULT, 0, 2000, 50));
@@ -1930,6 +1949,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             if (player != null) {
                 repeatPlaybackCB.setSelected(player.isRepeat());
                 jogPacketCountSpinner.setValue(Math.max(1, player.getJogPacketCount()));
+                coarseSpeedFactorSpinner.setValue(player.getCoarseSpeedFactor());
                 markerReactionTimeSpinner.setValue(Math.max(0, player.getMarkerReactionTimeMs()));
                 numAreasSpinner.setValue(Math.max(1, player.getNumAreas()));
                 refreshMinExposureTextFromPlayer();
@@ -2020,6 +2040,25 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         acquisitionModeRB.setEnabled(hasChain);
         showAcquisitionOverlayCB.setEnabled(hasChain || hasChipPrefs);
         updateIntervalSpinner.setEnabled(hasChain || frame != null);
+    }
+
+    /** Shared AEViewer pref. Apply to every open viewer so Shift+F/S match. */
+    private void applyCoarseSpeedFactor(int factor) {
+        if (viewer.getJaerViewer() != null) {
+            for (AEViewer v : viewer.getJaerViewer().getViewers()) {
+                AbstractAEPlayer player = v.getAePlayer();
+                if (player != null) {
+                    player.setCoarseSpeedFactor(factor);
+                }
+                v.updateCoarseSpeedFactorMenuItemText();
+            }
+            return;
+        }
+        AbstractAEPlayer player = viewer.getAePlayer();
+        if (player != null) {
+            player.setCoarseSpeedFactor(factor);
+        }
+        viewer.updateCoarseSpeedFactorMenuItemText();
     }
 
     private void refreshMinExposureTextFromPlayer() {
