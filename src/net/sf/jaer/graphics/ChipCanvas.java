@@ -641,6 +641,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         drawAcquisitionOverlayIfNeeded(drawable);
         drawRecordingOverlayIfNeeded(drawable);
+        drawBackwardsPlaybackOverlayIfNeeded(drawable);
         drawFrozenTimestampOverlayIfNeeded(drawable);
         drawRemoteOutputOverlaysIfNeeded(drawable);
         drawSliderSeekTimeOverlayIfNeeded(drawable);
@@ -765,6 +766,44 @@ public class ChipCanvas implements GLEventListener, Observer {
             endHudChipScale(gl);
         } catch (GLException e) {
             log.log(Level.FINE, "recording overlay: {0}", e.toString());
+        }
+    }
+
+    /** Amber reminder while file playback direction is backwards. */
+    private static final Color BACKWARDS_PLAYBACK_OVERLAY_COLOR = new Color(1f, 0.78f, 0.15f, 0.95f);
+
+    /**
+     * Stays on while the file playhead is moving backward (negative timeslice),
+     * near the top of the view. Drops toward the bottom while the recording
+     * overlay is using the top. Uses {@link AbstractAEPlayer#isPlayingForwards()}
+     * because that sign is what {@code readPacketByTime} and the clock follow.
+     * {@link AbstractAEPlayer.PlaybackDirection} can disagree after a reverse
+     * slice is re-read forward.
+     */
+    private void drawBackwardsPlaybackOverlayIfNeeded(final GLAutoDrawable drawable) {
+        AEViewer viewer = resolveAeViewer();
+        if (viewer == null || viewer.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+            return;
+        }
+        AbstractAEPlayer player = viewer.getAePlayer();
+        if (player == null || player.isPlayingForwards()) {
+            return;
+        }
+        String line = "Backwards";
+        boolean recording = viewer.isShowRecordingOverlay() && viewer.isRecordingEnabled();
+        float yFrac = recording ? 0.12f : 0.90f;
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            float maxW = Math.max(8f, chip.getSizeX() * 0.85f);
+            float fontsize = overlayFontSize(10f);
+            fontsize = DrawGL.fontSizeToFitWidth(fontsize, new String[]{line}, maxW);
+            float xpos = getViewportCenterX();
+            float y = getViewportYAtFraction(yFrac);
+            beginHudChipScale(gl, xpos, y);
+            DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, BACKWARDS_PLAYBACK_OVERLAY_COLOR, line);
+            endHudChipScale(gl);
+        } catch (GLException e) {
+            log.log(Level.FINE, "backwards playback overlay: {0}", e.toString());
         }
     }
 

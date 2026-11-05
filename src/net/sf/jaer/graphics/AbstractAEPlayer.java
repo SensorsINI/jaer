@@ -835,7 +835,7 @@ public abstract class AbstractAEPlayer {
         int sign = forwards ? 1 : -1;
         setPacketSizeEvents(sign * Math.abs(getPacketSizeEvents()));
         setTimesliceUs(sign * Math.abs(getTimesliceUs()));
-        setPlaybackDirection(PlaybackDirection.Forward);
+        setPlaybackDirection(forwards ? PlaybackDirection.Forward : PlaybackDirection.Backward);
     }
 
     /**
@@ -847,7 +847,8 @@ public abstract class AbstractAEPlayer {
         int sign = forwards ? 1 : -1;
         setPacketSizeEvents(-sign * Math.abs(getPacketSizeEvents()));
         setTimesliceUs(-sign * Math.abs(getTimesliceUs()));
-        setPlaybackDirection(PlaybackDirection.Backward);
+        // Parameter true means backwards (negative slice), matching the javadoc.
+        setPlaybackDirection(forwards ? PlaybackDirection.Backward : PlaybackDirection.Forward);
     }
 
     /**
@@ -1478,7 +1479,13 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             toggleDirection();
-            showAction(getPlaybackDirection() == PlaybackDirection.Backward ? "Reverse" : "Forward");
+            if (isPlayingForwards()) {
+                showAction("Forward");
+            } else if (viewer != null && viewer.getChipCanvas() != null) {
+                // Persistent "Backwards" caption is drawn by ChipCanvas; repaint
+                // so a paused player shows it immediately.
+                viewer.getChipCanvas().repaint();
+            }
             putValue(Action.SELECTED_KEY, true);
         }
     }
