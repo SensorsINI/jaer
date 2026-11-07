@@ -254,9 +254,34 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
 
     /**
      * Approx timestamp at the current read position, unwrapped µs from file time base.
+     * Values past ~71.6 min (2<sup>32</sup> µs) do not fit in {@link #getMostRecentTimestamp()}.
      */
     default long getPositionTimestampUs() {
         return getMostRecentTimestamp() & 0xffffffffL;
+    }
+
+    /**
+     * First timestamp in unwrapped µs. Default is the unsigned 32-bit
+     * {@link #getFirstTimestamp()}; AEDAT-4 returns the full packet-table time.
+     */
+    default long getFirstTimestampUs() {
+        return getFirstTimestamp() & 0xffffffffL;
+    }
+
+    /**
+     * Last timestamp in unwrapped µs. Default is the unsigned 32-bit
+     * {@link #getLastTimestamp()}; AEDAT-4 returns the full packet-table end.
+     * A recording longer than ~71.6 min does not fit in the int timestamp.
+     */
+    default long getLastTimestampUs() {
+        return getLastTimestamp() & 0xffffffffL;
+    }
+
+    /**
+     * Seek using unwrapped µs. Default narrows to {@link #setPositionFromTimestamp(int)}.
+     */
+    default void setPositionFromTimestampUs(long timestampUs) {
+        setPositionFromTimestamp((int) timestampUs);
     }
 
     /** Adds or removes a marker at current position() of AEFileInputStream.

@@ -1492,10 +1492,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      * @param resetFilters false while the origin playback slider is dragged
      */
     public void seekToTimestamp(int timestampUs, boolean resetFilters) {
+        seekToTimestampUs(timestampUs & 0xffffffffL, resetFilters);
+    }
+
+    /**
+     * @param resetFilters false while the origin playback slider is dragged
+     */
+    public void seekToTimestampUs(long timestampUs, boolean resetFilters) {
         if (aeInputStream == null) {
             return;
         }
-        aeInputStream.setPositionFromTimestamp(timestampUs);
+        aeInputStream.setPositionFromTimestampUs(timestampUs);
         resetPlaybackView(resetFilters, true);
     }
 

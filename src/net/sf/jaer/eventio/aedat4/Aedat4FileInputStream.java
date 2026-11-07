@@ -119,6 +119,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     private static final long TIMESLICE_SCAN_MIN_PACKET_SPAN_US = 500_000L;
     /**
+     * A tail packet that starts this far before the previous packet's end is
+     * dropped. The light-table concat's last EVTS packet held 114 million events
+     * and a start 237 s before the previous end, so ConstantCount decompressed
+     * the whole packet and then rewound.
+     */
+    private static final long BACKWARD_TAIL_JUMP_US = 1_000_000L;
+    /**
      * Concatenated independent cameras (FlyEye, no sync cable) put a seconds-scale
      * timestamp drop in file order. USB jitter is ≪ this; a 20 ms timeslice must
      * not swallow the other camera until the 1 Mi event cap.
@@ -726,11 +733,47 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public long getPositionTimestampUs() {
+        if (!hasPolarity() && typedPlayheadSet) {
+            return typedPlayheadUs;
+        }
         if (!hasPolarity() || playableSize() == 0) {
             return getMostRecentTimestamp() & 0xffffffffL;
         }
         long index = Math.max(0, Math.min(position == 0 ? 0 : position - 1, playableSize() - 1));
         return timestampApproxLong(index);
+    }
+
+    @Override
+    public long getFirstTimestampUs() {
+        if (flyEyeNativePair && eventRefs.length > 0) {
+            return flyEyeUnixMin;
+        }
+        if (hasPolarity() && eventRefs.length > 0) {
+            return timelineOriginUs();
+        }
+        if (timelineTimestamps.length > 0) {
+            return timelineTimestamps[0] & 0xffffffffL;
+        }
+        return getFirstTimestamp() & 0xffffffffL;
+    }
+
+    /**
+     * Unwrapped end of the playable timeline. {@link #getLastTimestamp()} keeps
+     * only the low 32 bits, so a merged recording longer than ~71.6 min looks
+     * shorter than a mid-file slider position.
+     */
+    @Override
+    public long getLastTimestampUs() {
+        if (flyEyeNativePair && eventRefs.length > 0) {
+            return flyEyeUnixMax;
+        }
+        if (hasPolarity() && eventRefs.length > 0) {
+            return timelineOriginUs() + Math.max(0L, getDurationUsLong());
+        }
+        if (timelineTimestamps.length > 0) {
+            return timelineTimestamps[timelineTimestamps.length - 1] & 0xffffffffL;
+        }
+        return getLastTimestamp() & 0xffffffffL;
     }
 
     public long getFrameCount() {
@@ -1668,6 +1711,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         reportIndexProgress(progressMonitor, lastPercent, 55, "Building playback index");
         eventRefs = unwrapPacketRefs(toRelativeRefs(events, progressMonitor, lastPercent, 55, 71),
                 progressMonitor, lastPercent, 71, 88);
+        dropBackwardJumpTail();
         frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
         imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
         timelineTimestamps = new int[0];
@@ -1730,6 +1774,39 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         long span = r.unixEnd - r.unixStart;
         return span <= 0 || span >= TIMESLICE_SCAN_MIN_PACKET_SPAN_US;
+    }
+
+    /**
+     * Drop a suffix of EVTS packets whose start jumps backward by more than
+     * {@link #BACKWARD_TAIL_JUMP_US}. Those packets are not on the recording
+     * timeline; reading one decompresses every event in the packet.
+     */
+    private void dropBackwardJumpTail() {
+        if (eventRefs == null || eventRefs.length < 2) {
+            return;
+        }
+        int keep = eventRefs.length;
+        while (keep >= 2) {
+            PacketRef prev = eventRefs[keep - 2];
+            PacketRef cur = eventRefs[keep - 1];
+            long jump = cur.unixStart - prev.unixEnd;
+            if (jump >= -BACKWARD_TAIL_JUMP_US) {
+                break;
+            }
+            log.warning(String.format(
+                    "AEDAT-4 dropping tail EVTS packet at event %,d: start %.3fs is %.3fs before the previous packet end (%,d events not played)",
+                    cur.firstEventIndex, cur.unixStart / 1e6, (-jump) / 1e6, cur.numElements));
+            keep--;
+        }
+        if (keep == eventRefs.length) {
+            return;
+        }
+        eventRefs = Arrays.copyOf(eventRefs, keep);
+        eventCount = 0;
+        for (PacketRef r : eventRefs) {
+            eventCount += r.numElements;
+        }
+        durationUsCache = Long.MIN_VALUE;
     }
 
     private boolean eventRangeNeedsTimesliceScan(long start, long exclusiveEnd) {
@@ -3138,6 +3215,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 timelineTimestamps[i] = in.readInt();
             }
             eventRefs = readEventRefs(in, progressMonitor);
+            dropBackwardJumpTail();
             frameRefs = readRefs(in);
             imuRefs = readRefs(in);
             markOut = playableSize();

@@ -1001,6 +1001,44 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
+        // Shift+F / Shift+S. The Playback menu accelerator does not arrive when
+        // the heavyweight GL canvas has focus, and macOS does not deliver
+        // Shift+letter menu shortcuts. Key repeat while held scales again.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || !e.isShiftDown()
+                        || e.isControlDown() || e.isAltDown() || e.isMetaDown()) {
+                    return false;
+                }
+                int code = e.getKeyCode();
+                if (code != KeyEvent.VK_F && code != KeyEvent.VK_S) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focus instanceof JTextField || focus instanceof JTextArea) {
+                    return false;
+                }
+                boolean timeshiftView = liveTimeshift != null && liveTimeshift.isViewingFile();
+                if (getPlayMode() != PlayMode.PLAYBACK && !timeshiftView) {
+                    return false;
+                }
+                if (aePlayer == null) {
+                    return false;
+                }
+                if (code == KeyEvent.VK_F) {
+                    aePlayer.speedUpCoarse();
+                } else {
+                    aePlayer.slowDownCoarse();
+                }
+                e.consume();
+                return true;
+            }
+        });
         // Page Up/Down and Home/End are unbound. Function-key mode on some
         // keyboards sends these instead of the arrow keys (contrast and
         // render rate). Menu accelerators miss keys when the GL canvas has focus.

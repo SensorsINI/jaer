@@ -72,7 +72,12 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     JAERViewer outer;
     JFileChooser fileChooser;
-    int currentTime = 0;
+    /**
+     * Shared playhead in unwrapped microseconds. A signed int wraps at ~35.8 min
+     * and the low 32 bits wrap again at ~71.6 min, which made a slider seek in a
+     * long merged file look like EOF.
+     */
+    long playheadUs = 0;
 //        boolean paused=false;
     File lastFile;
     volatile CyclicBarrier barrier;
@@ -158,6 +163,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             barrier = null;
             return;
         }
+        CyclicBarrier existing = barrier;
+        if (existing != null && !existing.isBroken() && existing.getParties() == numPlayers) {
+            return;
+        }
         log.info("making barrier for " + this);
         barrier = new CyclicBarrier(numPlayers, new Runnable() {
 
@@ -166,14 +175,25 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 // generation after this action. reset() races a fast viewer into
                 // BrokenBarrierException and the views drift (seen mid-file).
                 if (rewindRequested.get() || sliceEndedPrematurely.get()) {
-                    log.info("synchronized rewind (R or EOF) at t=" + getTime()
-                            + " us requested=" + rewindRequested.get()
-                            + " eof=" + sliceEndedPrematurely.get());
-                    applyGroupRewind();
-                    rewindRequested.set(false);
-                    sliceEndedPrematurely.set(false);
+                    // A slider interrupt can break the barrier after EOF was
+                    // latched and before this action runs. If the playhead was
+                    // moved back inside the file, do not rewind to the start.
+                    boolean requested = rewindRequested.get();
+                    boolean eof = sliceEndedPrematurely.get();
+                    if (eof && !requested && !playheadPastGroupEnd()) {
+                        log.info("ignoring stale sync EOF; playhead " + playheadUs
+                                + " us is still inside the recording");
+                        sliceEndedPrematurely.set(false);
+                    } else {
+                        log.info("synchronized rewind (R or EOF) at t=" + playheadUs
+                                + " us requested=" + requested
+                                + " eof=" + eof);
+                        applyGroupRewind();
+                        rewindRequested.set(false);
+                        sliceEndedPrematurely.set(false);
+                    }
                 } else if (!isPaused()) {
-                    currentTime = getTime() + getTimesliceUs();
+                    playheadUs = playheadUs + getTimesliceUs();
                 }
             }
         });
@@ -507,10 +527,14 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     // iniitalizes time pointer for all viewers by getting first timestep for each viewer's ae input stream
     // and setting global time to minimum value
     void initTime() {
-        int minTime = Integer.MAX_VALUE;
+        long minTime = Long.MAX_VALUE;
         for (AEViewer v : outer.getViewers()) {
             try {
-                int t = v.aePlayer.getAEInputStream().getFirstTimestamp();
+                AEFileInputStreamInterface s = v.aePlayer.getAEInputStream();
+                if (s == null) {
+                    continue;
+                }
+                long t = s.getFirstTimestampUs();
                 if (t < minTime) {
                     minTime = t;
                 }
@@ -519,11 +543,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             }
         }
         log.info("JAERViewer.SyncPlayer.initialized time min value found: " + minTime);
-        if (minTime == Integer.MAX_VALUE) {
+        if (minTime == Long.MAX_VALUE) {
             log.fine("initTime: no streams ready yet");
             return;
         }
-        setTime(minTime);
+        setTimeUs(minTime);
     }
 
     /**
@@ -620,7 +644,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             awaitSyncBarrier();
             return empty;
         }
-        player.seekPlayhead(getTime());
+        player.seekPlayheadUs(playheadUs);
         AEPacketRaw ae = player.getNextPacket(player);
         awaitSyncBarrier();
         return ae;
@@ -631,10 +655,17 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      * {@code readPacketByTime} never throws EOF and the playhead sits on the
      * last packet. Repeat must be decided here from the shared time, not from
      * a per-stream auto-rewind (that seeks back to the end on the next slice).
+     * <p>
+     * The end is the unwrapped stream time. Equality still shows the last
+     * slice; the next timeslice steps past it. Comparing low 32 bits made a
+     * seek past ~71.6 min look like EOF whenever those bits were numerically
+     * smaller than the scrub time.
      */
     private boolean playheadPastGroupEnd() {
-        long t = getTime() & 0xffffffffL;
-        Long shortest = null;
+        long t = playheadUs;
+        // Repeat when the shared playhead passes the longest stream. A shorter
+        // camera stays clamped on its last event so the longer file can be scrubbed.
+        Long longest = null;
         for (AEViewer v : getPlayingViewers()) {
             AEFileInputStreamInterface s = v.getAeFileInputStream();
             if (s == null) {
@@ -643,12 +674,125 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             if (s instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets()) {
                 continue;
             }
-            long last = s.getLastTimestamp() & 0xffffffffL;
-            if (shortest == null || last < shortest) {
-                shortest = last;
+            long last = s.getLastTimestampUs();
+            if (longest == null || last > longest) {
+                longest = last;
             }
         }
-        return shortest != null && t >= shortest;
+        return longest != null && playheadPastEnd(t, longest);
+    }
+
+    /** Earliest unwrapped timestamp among playing streams, or the current playhead. */
+    public long groupStartUs() {
+        long min = Long.MAX_VALUE;
+        for (AEViewer v : syncGroup()) {
+            AEFileInputStreamInterface s = fileStream(v);
+            if (s == null) {
+                continue;
+            }
+            long t = s.getFirstTimestampUs();
+            if (t < min) {
+                min = t;
+            }
+        }
+        return min == Long.MAX_VALUE ? playheadUs : min;
+    }
+
+    /** Latest unwrapped timestamp among playing streams, or the current playhead. */
+    public long groupEndUs() {
+        long max = Long.MIN_VALUE;
+        for (AEViewer v : syncGroup()) {
+            AEFileInputStreamInterface s = fileStream(v);
+            if (s == null) {
+                continue;
+            }
+            long t = s.getLastTimestampUs();
+            if (t > max) {
+                max = t;
+            }
+        }
+        return max == Long.MIN_VALUE ? playheadUs : max;
+    }
+
+    /**
+     * Slider fraction 0–1 on the shared axis (earliest start through latest end).
+     * Each viewer's own duration is not the axis: a 2 h stream beside a 4 h
+     * stream used to put the short handle at the end when the long one was halfway.
+     */
+    public float sliderFractionForPlayhead() {
+        return fractionOnSpan(playheadUs, groupStartUs(), groupEndUs());
+    }
+
+    /** Shared-axis timestamp for a slider fraction in 0–1. */
+    public long timestampForSliderFraction(float frac) {
+        if (frac < 0f) {
+            frac = 0f;
+        } else if (frac > 1f) {
+            frac = 1f;
+        }
+        long start = groupStartUs();
+        long span = groupEndUs() - start;
+        if (span <= 0L) {
+            return start;
+        }
+        return start + (long) ((double) frac * span);
+    }
+
+    /**
+     * Where {@code stream}'s own timeline sits on the shared slider, as fractions
+     * of the track. A camera that ends at half the group duration returns {@code 0.5}.
+     */
+    public float streamEndFraction(AEFileInputStreamInterface stream) {
+        return fractionOnGroupAxis(stream == null ? playheadUs : stream.getLastTimestampUs());
+    }
+
+    public float streamStartFraction(AEFileInputStreamInterface stream) {
+        return fractionOnGroupAxis(stream == null ? playheadUs : stream.getFirstTimestampUs());
+    }
+
+    private float fractionOnGroupAxis(long timeUs) {
+        return fractionOnSpan(timeUs, groupStartUs(), groupEndUs());
+    }
+
+    /** Fraction of {@code [startUs, endUs]} at {@code timeUs}, clamped to 0–1. */
+    static float fractionOnSpan(long timeUs, long startUs, long endUs) {
+        long span = endUs - startUs;
+        if (span <= 0L) {
+            return 0f;
+        }
+        double f = (timeUs - startUs) / (double) span;
+        if (f < 0d) {
+            return 0f;
+        }
+        if (f > 1d) {
+            return 1f;
+        }
+        return (float) f;
+    }
+
+    private static AEFileInputStreamInterface fileStream(AEViewer v) {
+        if (v == null || v.aePlayer == null) {
+            return null;
+        }
+        return v.aePlayer.getAEInputStream();
+    }
+
+    /** Re-place every synced sparkline on the shared time axis. */
+    public void refreshSyncedSliderAxes() {
+        if (getPlayingViewers().size() < 2 && syncGroup().size() < 2) {
+            return;
+        }
+        for (AEViewer v : syncGroup()) {
+            if (v.getPlayerControls() == null) {
+                continue;
+            }
+            SwingUtilities.invokeLater(v.getPlayerControls()::applySyncedSparklineSpan);
+        }
+    }
+
+    /** Regression: a mid-file scrub must not count as past an unwrapped end. */
+    static boolean playheadPastEnd(long playheadUs, long endUs) {
+        return playheadUs > endUs;
     }
 
     private boolean groupRepeatEnabled() {
@@ -670,7 +814,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             }
             barrier.await();
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            // Slider single-step interrupts a view thread blocked in await().
+            // Restoring the flag breaks the next barrier immediately.
+            log.fine("sync barrier wait interrupted; remaking so the next slice can join");
+            makeBarrier();
         } catch (BrokenBarrierException e) {
             log.warning("sync barrier broken; remaking so the next slice can join");
             makeBarrier();
@@ -760,7 +907,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     public void setPacketSizeEvents(int packetSizeEvents) {
         super.setPacketSizeEvents(packetSizeEvents);
         for (AEViewer v : getPlayingViewers()) {
-            v.aePlayer.setTimesliceUs(packetSizeEvents);
+            if (v.aePlayer != null) {
+                v.aePlayer.setPacketSizeEvents(packetSizeEvents);
+            }
         }
     }
 
@@ -771,11 +920,18 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     @Override
     public void setTime(int time) {
-        currentTime = time;
+        setTimeUs(time & 0xffffffffL);
+    }
+
+    /**
+     * Sets the shared playhead in unwrapped µs and each viewer's start timestamp.
+     */
+    public void setTimeUs(long timeUs) {
+        playheadUs = timeUs;
         try {
             for (AEViewer v : getPlayingViewers()) {
                 if (v.aePlayer.getAEInputStream() != null) {
-                    v.aePlayer.setTime(getTime());
+                    v.aePlayer.setTime((int) timeUs);
                 }
             }
         } catch (ConcurrentModificationException e) {
@@ -788,7 +944,19 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      * {@code timeUs}. {@code origin} is already at that time.
      */
     public void seekAllToTimestamp(int timeUs, AEViewer origin) {
-        currentTime = timeUs;
+        seekAllToTimestamp(timeUs & 0xffffffffL, origin);
+    }
+
+    /**
+     * Slider / jog: move every playing viewer to the packet nearest
+     * {@code timeUs}. {@code origin} is already at that time.
+     * {@code timeUs} is unwrapped microseconds, not a 32-bit timestamp.
+     */
+    public void seekAllToTimestamp(long timeUs, AEViewer origin) {
+        playheadUs = timeUs;
+        if (!playheadPastGroupEnd()) {
+            sliceEndedPrematurely.set(false);
+        }
         List<AEViewer> group = getPlayingViewers().isEmpty() ? outer.getViewers() : getPlayingViewers();
         boolean resetFilters = origin == null || origin.getPlayerControls() == null
                 || !origin.getPlayerControls().isSliderBeingAdjusted();
@@ -796,7 +964,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             if (v == origin || v.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
                 continue;
             }
-            v.aePlayer.seekToTimestamp(timeUs, resetFilters);
+            v.aePlayer.seekToTimestampUs(timeUs, resetFilters);
         }
     }
 
@@ -805,7 +973,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     @Override
     public int getTime() {
-        return currentTime;
+        return (int) playheadUs;
     }
 
     /**
@@ -921,6 +1089,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             }
             log.info("synchronized playback: CountDuration timesliceUs=" + sliceUs
                     + " viewers=" + group.size());
+            refreshSyncedSliderAxes();
         } finally {
             enforcingCountDuration = false;
         }

@@ -137,7 +137,7 @@ public abstract class AbstractAEPlayer {
         repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
         jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 100);
         viewHistory.setJogPacketCount(jogPacketCount);
-        coarseSpeedFactor = clampCoarseSpeedFactor(prefs.getInt(PREF_COARSE_SPEED_FACTOR, COARSE_SPEED_FACTOR_DEFAULT));
+        coarseSpeedFactor = clampCoarseSpeedFactor(readCoarseSpeedFactor());
         try {
             playbackMode = PlaybackMode.valueOf(prefs.get("AbstractAEPlayer.playbackMode", PlaybackMode.FixedTimeSlice.name()));
         } catch (IllegalArgumentException e) {
@@ -308,7 +308,10 @@ public abstract class AbstractAEPlayer {
     public static final int COARSE_SPEED_FACTOR_DEFAULT = 100;
     public static final int COARSE_SPEED_FACTOR_MIN = 2;
     public static final int COARSE_SPEED_FACTOR_MAX = 1_000_000;
-    private static final String PREF_COARSE_SPEED_FACTOR = "AbstractAEPlayer.coarseSpeedFactor";
+    /** Stored under the AEViewer node. The name contains "playback" so a prefs search finds it. */
+    private static final String PREF_COARSE_SPEED_FACTOR = "AbstractAEPlayer.playbackCoarseSpeedFactor";
+    /** Key written by bc9890c before the name included "playback". */
+    private static final String PREF_COARSE_SPEED_FACTOR_OLD = "AbstractAEPlayer.coarseSpeedFactor";
     private int coarseSpeedFactor = COARSE_SPEED_FACTOR_DEFAULT;
 
     /**
@@ -419,6 +422,27 @@ public abstract class AbstractAEPlayer {
         }
         if (factor > COARSE_SPEED_FACTOR_MAX) {
             return COARSE_SPEED_FACTOR_MAX;
+        }
+        return factor;
+    }
+
+    /**
+     * AEViewer node key {@code AbstractAEPlayer.playbackCoarseSpeedFactor}.
+     * Written on first use so a prefs search for "playback" finds it. The
+     * earlier key {@code AbstractAEPlayer.coarseSpeedFactor} is still read.
+     */
+    private int readCoarseSpeedFactor() {
+        String stored = prefs.get(PREF_COARSE_SPEED_FACTOR, null);
+        int factor = COARSE_SPEED_FACTOR_DEFAULT;
+        if (stored != null) {
+            try {
+                factor = Integer.parseInt(stored.trim());
+            } catch (NumberFormatException e) {
+                factor = COARSE_SPEED_FACTOR_DEFAULT;
+            }
+        } else {
+            factor = prefs.getInt(PREF_COARSE_SPEED_FACTOR_OLD, COARSE_SPEED_FACTOR_DEFAULT);
+            prefs.putInt(PREF_COARSE_SPEED_FACTOR, clampCoarseSpeedFactor(factor));
         }
         return factor;
     }
@@ -768,12 +792,20 @@ public abstract class AbstractAEPlayer {
      * CountDuration window.
      */
     public void seekPlayhead(int timeUs) {
+        seekPlayheadUs(timeUs & 0xffffffffL);
+    }
+
+    /**
+     * Move the file playhead to an unwrapped timestamp. Synchronized playback
+     * of recordings longer than ~71.6 min must not narrow this to 32 bits.
+     */
+    public void seekPlayheadUs(long timeUs) {
         AEFileInputStreamInterface stream = getAEInputStream();
         if (stream == null) {
             return;
         }
-        stream.setPositionFromTimestamp(timeUs);
-        stream.setCurrentStartTimestamp(timeUs);
+        stream.setPositionFromTimestampUs(timeUs);
+        stream.setCurrentStartTimestamp((int) timeUs);
     }
 
     abstract public int getTime();
@@ -893,8 +925,14 @@ public abstract class AbstractAEPlayer {
      * Toggles the direction of playback
      */
     public void toggleDirection() {
-        setPacketSizeEvents(getPacketSizeEvents() * -1);
-        setTimesliceUs(getTimesliceUs() * -1);
+        // Capture both magnitudes first. SyncPlayer.setPacketSizeEvents used to
+        // write the packet count into the shared timeslice, so the next line
+        // flipped ±256 µs instead of the real slice (b did not reverse, and
+        // the duration stayed at that packet count).
+        int nextPacket = getPacketSizeEvents() * -1;
+        int nextSlice = getTimesliceUs() * -1;
+        setPacketSizeEvents(nextPacket);
+        setTimesliceUs(nextSlice);
         if (getPlaybackDirection() == PlaybackDirection.Forward) {
             setPlaybackDirection(PlaybackDirection.Backward);
         } else {
@@ -909,8 +947,10 @@ public abstract class AbstractAEPlayer {
      */
     public void setDirectionForwards(boolean forwards) {
         int sign = forwards ? 1 : -1;
-        setPacketSizeEvents(sign * Math.abs(getPacketSizeEvents()));
-        setTimesliceUs(sign * Math.abs(getTimesliceUs()));
+        int nextPacket = sign * Math.abs(getPacketSizeEvents());
+        int nextSlice = sign * Math.abs(getTimesliceUs());
+        setPacketSizeEvents(nextPacket);
+        setTimesliceUs(nextSlice);
         setPlaybackDirection(forwards ? PlaybackDirection.Forward : PlaybackDirection.Backward);
     }
 
@@ -921,8 +961,10 @@ public abstract class AbstractAEPlayer {
      */
     public void setDirectionBackwards(boolean forwards) {
         int sign = forwards ? 1 : -1;
-        setPacketSizeEvents(-sign * Math.abs(getPacketSizeEvents()));
-        setTimesliceUs(-sign * Math.abs(getTimesliceUs()));
+        int nextPacket = -sign * Math.abs(getPacketSizeEvents());
+        int nextSlice = -sign * Math.abs(getTimesliceUs());
+        setPacketSizeEvents(nextPacket);
+        setTimesliceUs(nextSlice);
         // Parameter true means backwards (negative slice), matching the javadoc.
         setPlaybackDirection(forwards ? PlaybackDirection.Backward : PlaybackDirection.Forward);
     }

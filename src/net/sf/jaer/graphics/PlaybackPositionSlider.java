@@ -46,6 +46,13 @@ public class PlaybackPositionSlider extends JSlider {
     private float[] logRelativeRates;
     /** Same length as {@link #logRelativeRates}, or null for a single blue fill. */
     private boolean[] nightBins;
+    /**
+     * Where this stream's sparkline sits on the slider. 0–1 is the whole track.
+     * Synchronized viewers share one time axis, so a shorter camera occupies
+     * only the left part of the track.
+     */
+    private float sparklineStartFrac = 0f;
+    private float sparklineEndFrac = 1f;
     private Integer markInValue;
     private Integer markOutValue;
     private final List<Integer> otherMarkValues = new ArrayList<>();
@@ -76,7 +83,36 @@ public class PlaybackPositionSlider extends JSlider {
     public void setLogRelativeRates(float[] bins, boolean[] night) {
         this.logRelativeRates = bins;
         this.nightBins = night != null && bins != null && night.length == bins.length ? night : null;
+        this.sparklineStartFrac = 0f;
+        this.sparklineEndFrac = 1f;
         repaint();
+    }
+
+    /**
+     * Draw the sparkline between these fractions of the track. Fractions are
+     * clamped to 0–1. A shorter synced stream uses {@code 0} … {@code duration/group}.
+     */
+    public void setSparklineTimeSpan(float startFrac, float endFrac) {
+        float a = clampFrac(startFrac);
+        float b = clampFrac(endFrac);
+        if (b < a) {
+            float tmp = a;
+            a = b;
+            b = tmp;
+        }
+        this.sparklineStartFrac = a;
+        this.sparklineEndFrac = b;
+        repaint();
+    }
+
+    private static float clampFrac(float f) {
+        if (f < 0f) {
+            return 0f;
+        }
+        if (f > 1f) {
+            return 1f;
+        }
+        return f;
     }
 
     /**
@@ -267,8 +303,11 @@ public class PlaybackPositionSlider extends JSlider {
             if (rates == null || rates.length == 0) {
                 return;
             }
-            int x0 = xPositionForValue(slider.getMinimum());
-            int x1 = xPositionForValue(slider.getMaximum());
+            int track0 = xPositionForValue(slider.getMinimum());
+            int track1 = xPositionForValue(slider.getMaximum());
+            PlaybackPositionSlider p = playback();
+            int x0 = track0 + Math.round((track1 - track0) * p.sparklineStartFrac);
+            int x1 = track0 + Math.round((track1 - track0) * p.sparklineEndFrac);
             int w = Math.max(1, x1 - x0);
             int yBase = slider.getHeight() - slider.getInsets().bottom - 3;
             int maxH = Math.max(6, slider.getHeight() - slider.getInsets().top - slider.getInsets().bottom - 6);

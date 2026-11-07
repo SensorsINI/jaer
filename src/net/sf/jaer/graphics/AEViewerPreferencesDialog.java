@@ -1405,7 +1405,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
-        p.add(new JLabel("Shift+F/S factor:"), gbcLabel(y));
+        p.add(new JLabel("Shift+F/S playback factor:"), gbcLabel(y));
         coarseSpeedFactorSpinner = new JSpinner(new SpinnerNumberModel(
                 AbstractAEPlayer.COARSE_SPEED_FACTOR_DEFAULT,
                 AbstractAEPlayer.COARSE_SPEED_FACTOR_MIN,
@@ -2046,11 +2046,15 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private void applyCoarseSpeedFactor(int factor) {
         if (viewer.getJaerViewer() != null) {
             for (AEViewer v : viewer.getJaerViewer().getViewers()) {
-                AbstractAEPlayer player = v.getAePlayer();
-                if (player != null) {
-                    player.setCoarseSpeedFactor(factor);
+                // getAePlayer() is SyncPlayer while synchronized, which would
+                // leave each window's player on the old factor.
+                if (v.getLocalAePlayer() != null) {
+                    v.getLocalAePlayer().setCoarseSpeedFactor(factor);
                 }
                 v.updateCoarseSpeedFactorMenuItemText();
+            }
+            if (viewer.getJaerViewer().getSyncPlayer() != null) {
+                viewer.getJaerViewer().getSyncPlayer().setCoarseSpeedFactor(factor);
             }
             return;
         }

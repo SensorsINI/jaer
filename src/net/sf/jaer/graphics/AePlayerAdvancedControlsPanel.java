@@ -35,6 +35,7 @@ import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import net.sf.jaer.JAERViewer;
+import net.sf.jaer.SyncPlayer;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -192,7 +193,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     sliderDontProcess = true;
                     // note this cool semaphore/flag trick to avoid processing the
                     // event generated when we programmatically set the slider position here
-                    playerSlider.setValue(Math.round(getPlaybackSliderFraction() * playerSlider.getMaximum()));
+                    playerSlider.setValue(Math.round(sliderFractionForThumb() * playerSlider.getMaximum()));
                     if (moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null) {
                         eventField.setText(Long.toString(aeViewer.aePlayer.position()));
                         timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
@@ -331,6 +332,46 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         return stream.getPlaybackSliderFraction();
     }
 
+    /**
+     * Thumb position. Synced viewers share one axis from the earliest start to
+     * the latest end, so both handles show the same fraction of that span.
+     */
+    private float sliderFractionForThumb() {
+        SyncPlayer sync = syncedPlayer();
+        if (sync != null) {
+            return sync.sliderFractionForPlayhead();
+        }
+        return getPlaybackSliderFraction();
+    }
+
+    /**
+     * Place this stream's sparkline on the shared time axis. A 2 h camera next
+     * to a 4 h camera draws only on the left half of the track.
+     */
+    public void applySyncedSparklineSpan() {
+        if (playerSlider == null) {
+            return;
+        }
+        SyncPlayer sync = syncedPlayer();
+        AEFileInputStreamInterface stream = playbackStream();
+        if (sync == null || stream == null || !stream.usesTimeMappedSlider()) {
+            playerSlider.setSparklineTimeSpan(0f, 1f);
+            return;
+        }
+        playerSlider.setSparklineTimeSpan(sync.streamStartFraction(stream), sync.streamEndFraction(stream));
+    }
+
+    private SyncPlayer syncedPlayer() {
+        if (aeViewer == null) {
+            return null;
+        }
+        JAERViewer jv = aeViewer.getJaerViewer();
+        if (jv == null || !jv.isSyncEnabled() || jv.getViewers().size() < 2 || jv.getSyncPlayer() == null) {
+            return null;
+        }
+        return jv.getSyncPlayer();
+    }
+
     private void bindSliderToStream(AEFileInputStreamInterface stream) {
         if (stream instanceof net.sf.jaer.eventio.aedat4.Aedat4FileInputStream a4 && a4.isLiveTail()) {
             playerSlider.setToolTipText(
@@ -342,6 +383,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         boolean[] night = stream != null ? stream.getEventRateBinNight() : null;
         boolean timeMapped = stream != null && stream.usesTimeMappedSlider();
         playerSlider.setLogRelativeRates(timeMapped ? rates : null, timeMapped ? night : null);
+        applySyncedSparklineSpan();
         if (timeMapped && night != null) {
             playerSlider.setToolTipText(
                     "Playback position in recording time. Overlay is log event rate vs time. Blue is local daytime (06:00–18:00), red is night.");
@@ -776,7 +818,21 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         if (stream == null || playerSlider == null) {
             return null;
         }
-        return stream.eventPositionToSliderValue(pos, playerSlider.getMaximum());
+        int local = stream.eventPositionToSliderValue(pos, playerSlider.getMaximum());
+        SyncPlayer sync = syncedPlayer();
+        if (sync == null || playerSlider.getMaximum() <= 0) {
+            return local;
+        }
+        float streamFrac = local / (float) playerSlider.getMaximum();
+        float start = sync.streamStartFraction(stream);
+        float end = sync.streamEndFraction(stream);
+        float groupFrac = start + streamFrac * (end - start);
+        if (groupFrac < 0f) {
+            groupFrac = 0f;
+        } else if (groupFrac > 1f) {
+            groupFrac = 1f;
+        }
+        return Math.round(groupFrac * playerSlider.getMaximum());
     }
 
     /**
@@ -1381,16 +1437,24 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         synchronized (aePlayer) {
             JAERViewer jv = aeViewer.getJaerViewer();
             try {
-                aeViewer.aePlayer.setPlaybackSliderFraction(fracPos);
                 AEFileInputStreamInterface stream = aeViewer.aePlayer.getAEInputStream();
-                int time = stream.getMostRecentTimestamp();
-                stream.setCurrentStartTimestamp(time);
-                String s = String.format("%8.3f s, %10d position",
-                        stream.getPositionTimestampUs() * 1e-6, stream.position());
-                aeViewer.setStatusMessage(s);
-                if (jv != null && jv.isSyncEnabled() && jv.getViewers().size() > 1) {
-                    jv.getSyncPlayer().seekAllToTimestamp(time, aeViewer);
+                SyncPlayer sync = syncedPlayer();
+                long timeUs;
+                if (sync != null) {
+                    // Fraction of the shared axis, not of this camera's own duration.
+                    // Set the playhead before seeking so both thumbs read the same fraction.
+                    timeUs = sync.timestampForSliderFraction(fracPos);
+                    boolean resetFilters = !playerSlider.getValueIsAdjusting();
+                    sync.seekAllToTimestamp(timeUs, aeViewer);
+                    aeViewer.aePlayer.seekToTimestampUs(timeUs, resetFilters);
+                } else {
+                    aeViewer.aePlayer.setPlaybackSliderFraction(fracPos);
+                    timeUs = stream.getPositionTimestampUs();
+                    stream.setCurrentStartTimestamp((int) timeUs);
                 }
+                String s = String.format("%8.3f s, %10d position",
+                        timeUs * 1e-6, stream.position());
+                aeViewer.setStatusMessage(s);
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
