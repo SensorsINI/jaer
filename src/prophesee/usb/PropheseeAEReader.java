@@ -117,6 +117,12 @@ public class PropheseeAEReader {
         return numBuffers;
     }
 
+    /** True while {@code USBTransferThread} is alive, including the queue wait. */
+    boolean isTransferThreadAlive() {
+        final Thread t = usbTransfer;
+        return t != null && t.isAlive();
+    }
+
     public void startThread() throws HardwareInterfaceException {
         if (usbTransfer != null && usbTransfer.isAlive()) {
             return;

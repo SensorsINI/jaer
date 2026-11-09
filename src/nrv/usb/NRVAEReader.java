@@ -302,6 +302,12 @@ public class NRVAEReader {
         return usbTransfer == Thread.currentThread();
     }
 
+    /** True while {@code USBTransferThread} is alive, including the queue wait. */
+    boolean isTransferThreadAlive() {
+        final Thread t = usbTransfer;
+        return t != null && t.isAlive();
+    }
+
     public boolean stopThread() {
         bufferLifecycle.discardPendingRestart();
         bufferLifecycle.markQuiescing();

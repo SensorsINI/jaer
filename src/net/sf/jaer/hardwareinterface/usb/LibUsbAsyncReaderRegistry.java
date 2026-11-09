@@ -82,11 +82,23 @@ public final class LibUsbAsyncReaderRegistry {
     }
 
     public static int liveEventLoopCount() {
+        return liveEventLoopCount(false);
+    }
+
+    /**
+     * @param ignoreNrv EVK4 open leaves the NRV AEReader up; do not treat it as
+     *        a loop that must be stopped before ISSD
+     */
+    public static int liveEventLoopCount(boolean ignoreNrv) {
         int n = 0;
         for (Thread t : Thread.getAllStackTraces().keySet()) {
-            if (isLibusbEventLoopThread(t)) {
-                n++;
+            if (!isLibusbEventLoopThread(t)) {
+                continue;
             }
+            if (ignoreNrv && t.getName() != null && t.getName().contains("NRVAEReader")) {
+                continue;
+            }
+            n++;
         }
         return n;
     }
@@ -96,7 +108,14 @@ public final class LibUsbAsyncReaderRegistry {
      *        running (counts as one of {@link #liveEventLoopCount()})
      */
     public static boolean siblingEventLoopsLive(boolean selfReaderAlive) {
-        final int n = liveEventLoopCount();
+        return siblingEventLoopsLive(selfReaderAlive, false);
+    }
+
+    /**
+     * @param ignoreNrv do not count an NRV AEReader left streaming on purpose
+     */
+    public static boolean siblingEventLoopsLive(boolean selfReaderAlive, boolean ignoreNrv) {
+        final int n = liveEventLoopCount(ignoreNrv);
         if (selfReaderAlive) {
             return n > 1;
         }

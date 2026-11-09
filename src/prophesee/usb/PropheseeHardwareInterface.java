@@ -152,6 +152,12 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private volatile boolean openAbortRequested = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
+    /**
+     * ViewLoop acquire and {@code resumeSiblingEventAcquisition} both enable
+     * streaming after an exclusive open. The second must not ISSD-start while
+     * the first is still waiting for URBs to queue.
+     */
+    private final Object acquisitionLock = new Object();
     /** True after {@link Imx636Init#startStreaming}; USB URBs must be queued before this. */
     private volatile boolean sensorStreaming = false;
     private int eventCounter = 0;
@@ -723,6 +729,13 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             if (viewer != null && viewer.isLiveUsbPausedForRecordingDialog()) {
                 return aePacketRawPool.readBuffer();
             }
+            // Exclusive open (NRV I2C, classic DVX SPI) stopped this reader.
+            // Restarting here put EVK4 bulk IN back during that open and the
+            // FX20 dropped off the bus (04b4:00f0, 9 Nov 2026 17:26:38).
+            if (net.sf.jaer.hardwareinterface.usb.LibUsbAsyncReaderRegistry
+                    .eventLoopsPausedForExclusiveSync()) {
+                return aePacketRawPool.readBuffer();
+            }
             setEventAcquisitionEnabled(true);
         }
         final AEPacketRaw lastEventsAcquired;
@@ -866,28 +879,33 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
-        if (enable) {
-            if (closing || !isOpen()) {
-                return;
-            }
-            if (aeReader == null) {
-                aeReader = new PropheseeAEReader(this);
-                synchronized (aePacketRawPool) {
-                    aePacketRawPool.allocateMemory();
+        synchronized (acquisitionLock) {
+            if (enable) {
+                if (closing || !isOpen()) {
+                    return;
+                }
+                if (eventAcquisitionEnabled && aeReader != null && aeReader.isTransferThreadAlive()) {
+                    return;
+                }
+                if (aeReader == null) {
+                    aeReader = new PropheseeAEReader(this);
+                    synchronized (aePacketRawPool) {
+                        aePacketRawPool.allocateMemory();
+                    }
+                }
+                log.fine("Prophesee open: starting event reader thread");
+                aeReader.startThread();
+                startSensorStreaming();
+            } else if (aeReader != null) {
+                stopSensorStreaming();
+                aeReader.prepareForStop();
+                if (!aeReader.finishStop() && !closing) {
+                    recoverFailedBufferReconfig(new HardwareInterfaceException(
+                            "Prophesee AEReader did not stop when disabling acquisition"));
                 }
             }
-            log.fine("Prophesee open: starting event reader thread");
-            aeReader.startThread();
-            startSensorStreaming();
-        } else if (aeReader != null) {
-            stopSensorStreaming();
-            aeReader.prepareForStop();
-            if (!aeReader.finishStop() && !closing) {
-                recoverFailedBufferReconfig(new HardwareInterfaceException(
-                        "Prophesee AEReader did not stop when disabling acquisition"));
-            }
+            eventAcquisitionEnabled = enable;
         }
-        eventAcquisitionEnabled = enable;
     }
 
     /** True after {@link Imx636Init#startStreaming}, i.e. the sensor is pushing data into 0x81. */

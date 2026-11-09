@@ -137,6 +137,12 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private boolean settingsApplied = false;
     /** True after {@code MODE_SELECT=1} (settings file or resume). */
     private volatile boolean sensorStreaming = false;
+    /**
+     * ViewLoop acquire and {@code resumeSiblingEventAcquisition} both call
+     * {@link #setEventAcquisitionEnabled(boolean)} after an exclusive open.
+     * The second must not write {@code MODE_SELECT} until the first has queued URBs.
+     */
+    private final Object acquisitionLock = new Object();
     /** Save As keeps bulk IN queued and drops events instead of MODE_SELECT=0. */
     private volatile boolean liveStreamHeld;
     private int eventCounter = 0;
@@ -924,29 +930,37 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
-        if (closing) {
-            return;
-        }
-        if (enable) {
-            ensureSettingsBeforeAcquisition();
-            if (!settingsApplied) {
-                log.warning("NRV: event reader not started until settings are applied "
-                        + "(Biases > File > Load settings, or " + defaultSettingsPath() + ")");
+        synchronized (acquisitionLock) {
+            if (closing) {
                 return;
             }
-            if (aeReader == null) {
-                aeReader = new NRVAEReader(this);
-                allocateAEBuffers();
+            if (enable) {
+                // The in-progress start owns the restart edge. A second caller
+                // that sees the thread already alive used to write MODE_SELECT
+                // before awaitQueued returned, and FX20 bulk IN stayed at 0.
+                if (eventAcquisitionEnabled && aeReader != null && aeReader.isTransferThreadAlive()) {
+                    return;
+                }
+                ensureSettingsBeforeAcquisition();
+                if (!settingsApplied) {
+                    log.warning("NRV: event reader not started until settings are applied "
+                            + "(Biases > File > Load settings, or " + defaultSettingsPath() + ")");
+                    return;
+                }
+                if (aeReader == null) {
+                    aeReader = new NRVAEReader(this);
+                    allocateAEBuffers();
+                }
+                syncParserTimestampScale();
+                aeReader.startThread();
+                resumeStreamingAfterUsbRestart();
+            } else if (aeReader != null) {
+                liveStreamHeld = false;
+                aeReader.setDiscardEvents(false);
+                aeReader.stopThread();
             }
-            syncParserTimestampScale();
-            aeReader.startThread();
-            resumeStreamingAfterUsbRestart();
-        } else if (aeReader != null) {
-            liveStreamHeld = false;
-            aeReader.setDiscardEvents(false);
-            aeReader.stopThread();
+            eventAcquisitionEnabled = enable;
         }
-        eventAcquisitionEnabled = enable;
     }
 
     @Override

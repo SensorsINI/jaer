@@ -281,6 +281,13 @@ acquisition whenever any sibling loop is live (classic DVX SPI OUT as well as
 ISSD), **clears the pause flag**, then resumes those AEReaders (resuming while
 the flag was still set deadlocked Davis `enable IN` for 20 s and held
 `USB_OPEN_SERIAL_LOCK`, so classic DVX never left defer; jAER 12:59:51).
+Prophesee `acquireAvailableEventsFromDriver` honors that pause. Without the
+check, EVK4 ViewLoop restarted bulk IN during an NRV open and the FX20 dropped
+off the bus (`04b4:00f0` hotplug remove, then reconnect; 9 Nov 2026 17:26:38).
+An EVK4 open does **not** pause a live NRV and does not write `MODE_SELECT`.
+`MODE_SELECT` 0 then 1 after the URBs were already queued still left FX20 bulk
+IN at 0 completions (17:37:11). Close, playback pause, and FIFO replace still
+stand the sensor down so the reader can join.
 Stopping one sibling `USBTransferThread` on the shared libusb context empties
 other cameras' URBs (`LIBUSB_TRANSFER_ERROR`); that must not `close()` the live
 camera (Davis dropped while opening EVK4, jAER 14:58:42). A failed firmware

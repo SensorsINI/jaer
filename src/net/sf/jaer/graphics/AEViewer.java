@@ -5435,8 +5435,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Stop sibling USB AEReaders before exclusive sync USB (EVK4 Treuzell
      * bulk or classic DVX SPI). WinUSB times those out while other cameras
      * sit in {@code handleEventsTimeout}.
+     *
+     * @param leaveNrvStreaming EVK4 open must not {@code MODE_SELECT=0} the FX20.
+     *        Standing the sensor down and restarting it left bulk IN at 0
+     *        completions (9 Nov 2026 17:37:11). The NRV reader stays queued.
      */
-    private java.util.List<AEMonitorInterface> pauseSiblingEventAcquisition() {
+    private java.util.List<AEMonitorInterface> pauseSiblingEventAcquisition(boolean leaveNrvStreaming) {
         java.util.ArrayList<AEMonitorInterface> paused = new java.util.ArrayList<>();
         if (jaerViewer == null) {
             return paused;
@@ -5450,6 +5454,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 continue;
             }
             try {
+                if (leaveNrvStreaming && m instanceof NRVHardwareInterface) {
+                    log.info("leaving NRV streaming during EVK4 open (no MODE_SELECT): " + m);
+                    continue;
+                }
                 if (m instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3 fx3) {
                     if (fx3.getAeReader() == null) {
                         continue;
@@ -5488,9 +5496,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    private static void waitForSiblingEventLoopsToStop(long timeoutMs) {
+    private static void waitForSiblingEventLoopsToStop(long timeoutMs, boolean ignoreNrv) {
         long end = System.currentTimeMillis() + Math.max(0L, timeoutMs);
-        while (LibUsbAsyncReaderRegistry.liveEventLoopCount() > 0
+        while (LibUsbAsyncReaderRegistry.liveEventLoopCount(ignoreNrv) > 0
                 && System.currentTimeMillis() < end) {
             try {
                 Thread.sleep(20L);
@@ -5499,7 +5507,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
         }
-        int left = LibUsbAsyncReaderRegistry.liveEventLoopCount();
+        int left = LibUsbAsyncReaderRegistry.liveEventLoopCount(ignoreNrv);
         if (left > 0) {
             log.warning("exclusive USB open: " + left + " USB event loops still live");
         }
@@ -5765,12 +5773,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     Thread opener = new Thread(() -> {
                         log.fine("openAEMonitor worker begin open() of " + opening + " " + UsbLog.t());
                         java.util.List<AEMonitorInterface> pausedSiblings = java.util.List.of();
-                        boolean pausedLoops = LibUsbAsyncReaderRegistry.siblingEventLoopsLive(false);
+                        // FX20 bulk IN does not survive MODE_SELECT 0→1. Leave it
+                        // queued through EVK4 ISSD instead of pausing the sibling.
+                        final boolean leaveNrvStreaming = opening instanceof PropheseeHardwareInterface;
+                        boolean pausedLoops = LibUsbAsyncReaderRegistry.siblingEventLoopsLive(
+                                false, leaveNrvStreaming);
                         try {
                             if (pausedLoops) {
                                 LibUsbAsyncReaderRegistry.beginPauseEventLoops();
-                                pausedSiblings = pauseSiblingEventAcquisition();
-                                waitForSiblingEventLoopsToStop(2000L);
+                                pausedSiblings = pauseSiblingEventAcquisition(leaveNrvStreaming);
+                                waitForSiblingEventLoopsToStop(2000L, leaveNrvStreaming);
                                 try {
                                     Thread.sleep(300L);
                                 } catch (InterruptedException ie) {

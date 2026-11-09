@@ -920,17 +920,42 @@ public final class UsbEnumerationSafetyDemo {
                 "AEViewer.java"),
                 "private void openAEMonitor() {",
                 "private void showUsbLinkOverlayAfterOpen()");
-        require(aeViewerOpen.contains("pauseSiblingEventAcquisition()"),
+        require(aeViewerOpen.contains("pauseSiblingEventAcquisition(leaveNrvStreaming)"),
                 "exclusive USB open pauses sibling USB AEReaders (WinUSB bulk/SPI timeout)");
+        require(aeViewerOpen.contains("leaveNrvStreaming = opening instanceof PropheseeHardwareInterface"),
+                "EVK4 open leaves NRV streaming and does not write MODE_SELECT");
+        String pauseSiblings = methodBody(Paths.get("src", "net", "sf", "jaer", "graphics",
+                "AEViewer.java"),
+                "private java.util.List<AEMonitorInterface> pauseSiblingEventAcquisition(boolean leaveNrvStreaming) {",
+                "private void resumeSiblingEventAcquisition(");
+        require(pauseSiblings.contains("leaving NRV streaming during EVK4 open"),
+                "NRV sibling is not stopped for an EVK4 open");
+        require(pauseSiblings.contains("instanceof NRVHardwareInterface"),
+                "the EVK4 pause skip is the NRV interface, not every sibling");
         require(aeViewerOpen.contains("LibUsbAsyncReaderRegistry.beginPauseEventLoops()"),
                 "sibling acquire must not restart AEReaders during exclusive USB");
-        require(aeViewerOpen.contains("siblingEventLoopsLive(false)"),
+        require(aeViewerOpen.contains("siblingEventLoopsLive("),
                 "pause whenever any sibling USBTransferThread is LIVE, not only EVK4");
         require(aeViewerOpen.contains("shouldDeferUntilEvk4Open(this)"),
                 "ViewLoop defers non-EVK4 open until ISSD finishes");
         require(aeViewerOpen.indexOf("endPauseEventLoops()")
                         < aeViewerOpen.indexOf("resumeSiblingEventAcquisition("),
                 "clear the ISSD pause flag before resuming sibling AEReaders (self-deadlock)");
+        String propheseeAcquire = methodBody(Paths.get("src", "prophesee", "usb",
+                "PropheseeHardwareInterface.java"),
+                "public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {",
+                "public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {");
+        int pauseGuard = propheseeAcquire.indexOf("eventLoopsPausedForExclusiveSync()");
+        int autostart = propheseeAcquire.indexOf("setEventAcquisitionEnabled(true)");
+        require(pauseGuard >= 0 && autostart > pauseGuard,
+                "Prophesee acquire must not restart the AEReader during an exclusive sibling open");
+        String nrvEnable = methodBody(Paths.get("src", "nrv", "usb", "NRVHardwareInterface.java"),
+                "public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {",
+                "public boolean isEventAcquisitionEnabled() {");
+        require(nrvEnable.contains("synchronized (acquisitionLock)"),
+                "NRV enable is single-threaded so MODE_SELECT waits until URBs are queued");
+        require(nrvEnable.contains("isTransferThreadAlive()"),
+                "a second NRV enable must not pulse MODE_SELECT while the first start is in awaitQueued");
         String releasePartial = methodBody(Paths.get("src", "prophesee", "usb",
                 "PropheseeHardwareInterface.java"),
                 "private void releasePartialOpen() {",
