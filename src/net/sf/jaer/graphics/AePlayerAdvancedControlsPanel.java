@@ -1461,8 +1461,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             // Preview the new packet. doSingleStep always pauses; restore on mouse up.
             // After a click, mouseClicked can fire after we already restored play — do not pause again.
             if (playerSliderGestureActive || aeViewer.isPaused()) {
-                if (jv != null) {
-                    jv.getSyncPlayer().doSingleStep();
+                if (jv != null && jv.getSyncPlayer() != null) {
+                    jv.getSyncPlayer().refreshPausedFrame();
                 } else {
                     aeViewer.doSingleStep();
                 }

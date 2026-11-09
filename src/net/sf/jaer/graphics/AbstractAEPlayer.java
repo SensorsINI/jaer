@@ -1367,10 +1367,6 @@ public abstract class AbstractAEPlayer {
             putValue(Action.SHORT_DESCRIPTION, succeeded ? "Jumped to previous marker" : "No previous marker");
             showAction();
         }
-
-        private boolean jumpToPreviousMarker() {
-            return aeInputStream.jumpToPrevMarker();
-        }
     }
 
     final public class JumpNextMarkerkAction extends MyAction {
@@ -1392,10 +1388,22 @@ public abstract class AbstractAEPlayer {
             putValue(Action.SHORT_DESCRIPTION, succeeded ? "Jumped to next marker" : "No next marker");
             showAction();
         }
+    }
 
-        private boolean jumpToNextMarker() {
-            return aeInputStream.jumpToNextMarker();
+    /** j. Synchronized playback moves every viewer to this marker's time. */
+    protected boolean jumpToPreviousMarker() {
+        if (aeInputStream == null) {
+            return false;
         }
+        return aeInputStream.jumpToPrevMarker();
+    }
+
+    /** k. Synchronized playback moves every viewer to this marker's time. */
+    protected boolean jumpToNextMarker() {
+        if (aeInputStream == null) {
+            return false;
+        }
+        return aeInputStream.jumpToNextMarker();
     }
 
     private File marksCSVFileChooserShower() {
@@ -1772,8 +1780,10 @@ public abstract class AbstractAEPlayer {
                 return;
             }
             jogBackwards(getJogPacketCount());
-            if (isPaused()) {
-                doSingleStep(); // ViewLoop is parked while paused; drain the history jump now
+            // Sync playback already moved the shared playhead and refreshed.
+            // A single-file jog only queues history; the parked ViewLoop must be woken.
+            if (isPaused() && (viewer == null || !viewer.synchronizedPlaybackRequiresCountDuration())) {
+                doSingleStep();
             }
             putValue(Action.SELECTED_KEY, true);
         }

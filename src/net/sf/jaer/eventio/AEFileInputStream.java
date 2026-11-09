@@ -1894,19 +1894,64 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * not share marks.
      */
     public static String marksCacheFileName(File file) {
+        return marksCacheFileName(file, -1);
+    }
+
+    /**
+     * Per-stream sidecar. A multi-camera AEDAT-4 file has one path and several
+     * event indices; stream {@code 0}'s event count must not become stream
+     * {@code 3}'s OUT marker.
+     *
+     * @param streamId AEDAT-4 stream id, or negative for the whole file
+     */
+    public static String marksCacheFileName(File file, int streamId) {
         if (file == null) {
-            return "unknown.marks.csv";
+            return streamId < 0 ? "unknown.marks.csv" : "unknown.s" + streamId + ".marks.csv";
         }
         String name = file.getName();
         if (name == null || name.isEmpty()) {
             name = "unknown";
         }
-        return name + "." + Integer.toHexString(file.getAbsolutePath().hashCode()) + ".marks.csv";
+        String base = name + "." + Integer.toHexString(file.getAbsolutePath().hashCode());
+        if (streamId >= 0) {
+            base = base + ".s" + streamId;
+        }
+        return base + ".marks.csv";
     }
 
     /** Write/read location for this recording's marks CSV ({@code jaer/markers/…}). */
     public static File marksCacheFile(File file) {
         return JaerTmpdir.markersFile(marksCacheFileName(file));
+    }
+
+    /** Per-stream marks CSV. {@code streamId < 0} is the whole-file sidecar. */
+    public static File marksCacheFile(File file, int streamId) {
+        return JaerTmpdir.markersFile(marksCacheFileName(file, streamId));
+    }
+
+    /**
+     * True when a whole-file sidecar can belong to a stream of {@code eventCount}
+     * events. Unset OUT used to be stored as that count. Another camera in the
+     * same file has a different count, so it must not treat the number as OUT.
+     * An explicit OUT (any index short of {@code eventCount}) is not claimed:
+     * the old sidecar does not say which camera set it.
+     */
+    public static boolean marksBelongToStream(Marks marks, long eventCount) {
+        if (marks == null || eventCount <= 0) {
+            return false;
+        }
+        if (marks.markIn < 0 || marks.markIn > eventCount) {
+            return false;
+        }
+        if (marks.otherMarks != null) {
+            for (Long m : marks.otherMarks) {
+                if (m == null || m < 0 || m >= eventCount) {
+                    return false;
+                }
+            }
+        }
+        long out = marks.markOut;
+        return out == eventCount || out == Long.MAX_VALUE || out < 0;
     }
 
     /**
@@ -1952,16 +1997,27 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * Used by AEDAT-4 and other {@link AEFileInputStreamInterface} implementations.
      */
     public static Marks marksGetForFile(File file) {
+        return marksGetForFile(file, -1);
+    }
+
+    /**
+     * Cached marks for one AEDAT-4 stream. Does not fall back to the whole-file
+     * sidecar or to Preferences; those are shared by every camera in the file.
+     */
+    public static Marks marksGetForFile(File file, int streamId) {
         if (file == null) {
             return null;
         }
-        File csv = JaerTmpdir.resolveMarkers(marksCacheFileName(file));
-        if (csv.isFile() && csv.canRead() && csv.length() > 0) {
-            try {
-                return readMarksFromCsv(csv);
-            } catch (Exception e) {
-                log.warning(String.format("Could not read marks from %s: %s", csv, e));
-            }
+        if (streamId < 0) {
+            return marksGetForWholeFile(file);
+        }
+        return readMarksSidecar(JaerTmpdir.resolveMarkers(marksCacheFileName(file, streamId)));
+    }
+
+    private static Marks marksGetForWholeFile(File file) {
+        Marks fromCsv = readMarksSidecar(JaerTmpdir.resolveMarkers(marksCacheFileName(file)));
+        if (fromCsv != null) {
+            return fromCsv;
         }
         marksLoadMapFromPreferences();
         Marks fromPrefs = marksFilesMap.get(file.getAbsolutePath());
@@ -1974,6 +2030,18 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
         }
         return fromPrefs;
+    }
+
+    private static Marks readMarksSidecar(File csv) {
+        if (csv == null || !csv.isFile() || !csv.canRead() || csv.length() <= 0) {
+            return null;
+        }
+        try {
+            return readMarksFromCsv(csv);
+        } catch (Exception e) {
+            log.warning(String.format("Could not read marks from %s: %s", csv, e));
+            return null;
+        }
     }
 
     /**
@@ -2003,10 +2071,19 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     public static void marksPutForFile(File file, Marks marks) {
+        marksPutForFile(file, -1, marks);
+    }
+
+    /**
+     * Stores (or clears with null) marks for one stream. {@code streamId < 0}
+     * is the whole-file sidecar used by AEDAT-2 and by recordings with one
+     * event stream.
+     */
+    public static void marksPutForFile(File file, int streamId, Marks marks) {
         if (file == null) {
             return;
         }
-        File csv = marksCacheFile(file);
+        File csv = streamId < 0 ? marksCacheFile(file) : marksCacheFile(file, streamId);
         try {
             if (marks == null) {
                 if (csv.isFile() && !csv.delete()) {
@@ -2018,7 +2095,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         } catch (Exception e) {
             log.warning(String.format("Could not store marks to %s: %s", csv, e));
         }
-        marksRemoveFromPreferences(file);
+        if (streamId < 0) {
+            marksRemoveFromPreferences(file);
+        }
     }
 
     /** Drop this recording from the legacy preferences map if it is present. */

@@ -87,6 +87,16 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     private boolean enforcingCountDuration;
     /** R or EOF: rewind every playback viewer on the next barrier, not one stream alone. */
     private final AtomicBoolean rewindRequested = new AtomicBoolean();
+    /**
+     * Jog or step already placed {@link #playheadUs}. The in-flight barrier must
+     * not add another slice on top of that jump.
+     */
+    private final AtomicBoolean playheadPlaced = new AtomicBoolean();
+    /**
+     * False after a seek past OUT, so playback can continue to the file end.
+     * Stepping back to or before OUT arms it again.
+     */
+    private volatile boolean outLoopArmed = true;
     /** One viewer hit EOF this slice; group-rewind after the barrier. */
     private final AtomicBoolean sliceEndedPrematurely = new AtomicBoolean();
     private boolean applyingGroupRewind;
@@ -192,6 +202,8 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                         rewindRequested.set(false);
                         sliceEndedPrematurely.set(false);
                     }
+                } else if (playheadPlaced.compareAndSet(true, false)) {
+                    // Jog/step already stored the new time.
                 } else if (!isPaused()) {
                     playheadUs = playheadUs + getTimesliceUs();
                 }
@@ -570,12 +582,40 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     void applyGroupRewind() {
         applyingGroupRewind = true;
         try {
-            for (AEViewer v : syncGroup()) {
+            List<AEViewer> group = syncGroup();
+            long[] inUs = new long[group.size()];
+            boolean[] inSet = new boolean[group.size()];
+            long fallback = Long.MAX_VALUE;
+            for (int i = 0; i < group.size(); i++) {
+                AEViewer v = group.get(i);
                 if (v.aePlayer != null) {
                     v.aePlayer.rewindStreamOnly();
                 }
+                AEFileInputStreamInterface s = fileStream(v);
+                if (s == null) {
+                    inUs[i] = Long.MAX_VALUE;
+                    continue;
+                }
+                long start = s.getFirstTimestampUs();
+                if (start < fallback) {
+                    fallback = start;
+                }
+                if (s.isMarkInSet()) {
+                    long t = s.timestampUsAt(s.getMarkInPosition());
+                    if (t < 0) {
+                        t = s.getPositionTimestampUs();
+                    }
+                    inUs[i] = t;
+                    inSet[i] = true;
+                }
             }
-            initTime();
+            if (fallback == Long.MAX_VALUE) {
+                fallback = 0;
+            }
+            // Shared playhead must follow IN. initTime() is the file start, and the
+            // next slice would seek every viewer back there.
+            playheadUs = syncedRewindUs(inUs, inSet, fallback);
+            outLoopArmed = true;
         } finally {
             applyingGroupRewind = false;
         }
@@ -656,30 +696,98 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      * last packet. Repeat must be decided here from the shared time, not from
      * a per-stream auto-rewind (that seeks back to the end on the next slice).
      * <p>
-     * The end is the unwrapped stream time. Equality still shows the last
-     * slice; the next timeslice steps past it. Comparing low 32 bits made a
-     * seek past ~71.6 min look like EOF whenever those bits were numerically
-     * smaller than the scrub time.
+     * The end is the unwrapped stream time, or the latest OUT when that loop is
+     * armed. Equality still shows the last slice; the next timeslice steps past
+     * it. Comparing low 32 bits made a seek past ~71.6 min look like EOF
+     * whenever those bits were numerically smaller than the scrub time.
      */
     private boolean playheadPastGroupEnd() {
         long t = playheadUs;
         // Repeat when the shared playhead passes the longest stream. A shorter
         // camera stays clamped on its last event so the longer file can be scrubbed.
         Long longest = null;
-        for (AEViewer v : getPlayingViewers()) {
+        List<AEViewer> group = getPlayingViewers();
+        long[] outUs = new long[group.size()];
+        boolean[] outSet = new boolean[group.size()];
+        int i = 0;
+        for (AEViewer v : group) {
             AEFileInputStreamInterface s = v.getAeFileInputStream();
             if (s == null) {
+                i++;
                 continue;
             }
             if (s instanceof Aedat4FileInputStream a4 && !a4.hasEventPackets()) {
+                i++;
                 continue;
             }
             long last = s.getLastTimestampUs();
             if (longest == null || last > longest) {
                 longest = last;
             }
+            if (s.isMarkOutSet()) {
+                long ot = s.timestampUsAt(s.getMarkOutPosition());
+                if (ot >= 0) {
+                    outUs[i] = ot;
+                    outSet[i] = true;
+                }
+            }
+            i++;
         }
-        return longest != null && playheadPastEnd(t, longest);
+        if (longest == null) {
+            return false;
+        }
+        long end = longest;
+        Long out = syncedOutLimitUs(outUs, outSet);
+        if (out != null) {
+            if (t <= out) {
+                outLoopArmed = true;
+            }
+            if (outLoopArmed && out < end) {
+                end = out;
+            }
+        }
+        return playheadPastEnd(t, end);
+    }
+
+    /**
+     * Earliest set IN, so a camera whose file starts later does not skip the
+     * section. {@code fallbackUs} is the file start when no IN is set.
+     */
+    static long syncedRewindUs(long[] inUs, boolean[] set, long fallbackUs) {
+        long min = Long.MAX_VALUE;
+        boolean any = false;
+        int n = inUs == null ? 0 : inUs.length;
+        for (int i = 0; i < n; i++) {
+            if (set != null && (i >= set.length || !set[i])) {
+                continue;
+            }
+            if (inUs[i] < min) {
+                min = inUs[i];
+                any = true;
+            }
+        }
+        return any ? min : fallbackUs;
+    }
+
+    /**
+     * Latest set OUT. A camera that ended before the mark clamps its own OUT
+     * earlier; that must not cut the longer file.
+     * Null when no OUT timestamp is known.
+     */
+    static Long syncedOutLimitUs(long[] outUs, boolean[] set) {
+        long max = Long.MIN_VALUE;
+        boolean any = false;
+        int n = outUs == null ? 0 : outUs.length;
+        for (int i = 0; i < n; i++) {
+            if (set != null && (i >= set.length || !set[i])) {
+                continue;
+            }
+            if (outUs[i] > max) {
+                max = outUs[i];
+                any = true;
+            }
+        }
+        return any ? Long.valueOf(max) : null;
     }
 
     /** Earliest unwrapped timestamp among playing streams, or the current playhead. */
@@ -830,9 +938,77 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     @Override
     public void clearMarks() {
-        for (AEViewer v : outer.getViewers()) {
-            v.aePlayer.clearMarks();
+        for (AEViewer v : markGroup()) {
+            if (v.aePlayer != null) {
+                v.aePlayer.clearMarksHere();
+            }
         }
+        outLoopArmed = true;
+    }
+
+    /** Playback viewers that should share IN, OUT, and markers. */
+    private List<AEViewer> markGroup() {
+        if (getPlayingViewers().size() < 2 && outer.isSyncEnabled()) {
+            rebuildPlayingViewersFromOpenPlayback();
+        }
+        List<AEViewer> group = syncGroup();
+        ArrayList<AEViewer> playing = new ArrayList<>();
+        for (AEViewer v : group) {
+            if (v.getPlayMode() == AEViewer.PlayMode.PLAYBACK && fileStream(v) != null) {
+                playing.add(v);
+            }
+        }
+        return playing.isEmpty() ? group : playing;
+    }
+
+    /** A seek past OUT plays through to the file end. A seek back to OUT re-arms it. */
+    private void noteOutLoopForSeek(long timeUs) {
+        Long out = groupOutLimitUs();
+        outLoopArmed = out == null || timeUs <= out;
+    }
+
+    private Long groupOutLimitUs() {
+        List<AEViewer> group = markGroup();
+        long[] outUs = new long[group.size()];
+        boolean[] outSet = new boolean[group.size()];
+        for (int i = 0; i < group.size(); i++) {
+            AEFileInputStreamInterface s = fileStream(group.get(i));
+            if (s == null || !s.isMarkOutSet()) {
+                continue;
+            }
+            long t = s.timestampUsAt(s.getMarkOutPosition());
+            if (t < 0) {
+                continue;
+            }
+            outUs[i] = t;
+            outSet[i] = true;
+        }
+        return syncedOutLimitUs(outUs, outSet);
+    }
+
+    private static long markerTimeUs(AEFileInputStreamInterface s) {
+        long t = s.timestampUsAt(s.position());
+        return t < 0 ? s.getPositionTimestampUs() : t;
+    }
+
+    /** j on one viewer: every stream seeks to that marker's time. */
+    public boolean jumpGroupToPreviousMarker(AEViewer origin) {
+        AEFileInputStreamInterface s = fileStream(origin);
+        if (s == null || !s.jumpToPrevMarker()) {
+            return false;
+        }
+        seekAllToTimestamp(markerTimeUs(s), origin);
+        return true;
+    }
+
+    /** k on one viewer: every stream seeks to that marker's time. */
+    public boolean jumpGroupToNextMarker(AEViewer origin) {
+        AEFileInputStreamInterface s = fileStream(origin);
+        if (s == null || !s.jumpToNextMarker()) {
+            return false;
+        }
+        seekAllToTimestamp(markerTimeUs(s), origin);
+        return true;
     }
 
     public long position(AEFileInputStreamInterface stream) {
@@ -954,6 +1130,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     public void seekAllToTimestamp(long timeUs, AEViewer origin) {
         playheadUs = timeUs;
+        noteOutLoopForSeek(timeUs);
         if (!playheadPastGroupEnd()) {
             sliceEndedPrematurely.set(false);
         }
@@ -1011,11 +1188,77 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         }
     }
 
+    /**
+     * One slice in the current direction, then one rendered frame on every viewer.
+     * {@code .} and {@code ,} come here. The shared playhead must move; a local
+     * packet read is seeked back to this time on the next slice.
+     */
+    @Override
     public void doSingleStep() {
+        long slice = getTimesliceUs();
+        if (slice == 0) {
+            slice = 1;
+        }
+        placePlayhead(clampPlayhead(playheadUs + slice));
+        refreshPausedFrame();
+    }
+
+    /** Render the current playhead without moving it. Slider preview uses this. */
+    public void refreshPausedFrame() {
         setPaused(true);
         for (AEViewer v : outer.getViewers()) {
             v.doSingleStep();
         }
+    }
+
+    @Override
+    public void jogForwards(int packets) {
+        movePlayheadSlices(packets);
+    }
+
+    @Override
+    public void jogBackwards(int packets) {
+        movePlayheadSlices(-packets);
+    }
+
+    /** Positive moves later in the file. CountDuration slices, which sync playback uses. */
+    private void movePlayheadSlices(int signedSlices) {
+        if (signedSlices == 0) {
+            return;
+        }
+        long slice = Math.abs((long) getTimesliceUs());
+        if (slice < 1L) {
+            slice = 1L;
+        }
+        placePlayhead(clampPlayhead(playheadUs + signedSlices * slice));
+        if (isPaused()) {
+            refreshPausedFrame();
+        }
+    }
+
+    private void placePlayhead(long timeUs) {
+        seekAllToTimestamp(timeUs, null);
+        CyclicBarrier waiting = barrier;
+        if (!isPaused() && waiting != null && waiting.getNumberWaiting() > 0) {
+            playheadPlaced.set(true);
+        }
+    }
+
+    /** Keep a jog or step inside the recording, and inside OUT while that loop is armed. */
+    private long clampPlayhead(long target) {
+        long start = groupStartUs();
+        if (target < start) {
+            target = start;
+        }
+        long end = groupEndUs();
+        Long out = groupOutLimitUs();
+        if (outLoopArmed && out != null && out < end) {
+            end = out;
+        }
+        if (target > end) {
+            target = end;
+        }
+        return target;
     }
 
     public void adjustTimesliceForRealtimePlayback() {
@@ -1183,36 +1426,61 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     }
 
     /**
-     * Sets IN marker on all viewers.
+     * Sets IN on every playback viewer at the shared playhead.
      *
-     * @return always 0, because every player has its own position.
+     * @return always 0; each file stores its own event index for that time.
      */
     @Override
     public long setMarkIn() {
-        for (AEViewer v : getPlayingViewers()) {
-            v.aePlayer.setMarkIn();
+        long t = playheadUs;
+        for (AEViewer v : markGroup()) {
+            if (v.aePlayer != null) {
+                v.aePlayer.setMarkInAtTimestamp(t);
+            }
         }
         return 0;
     }
 
     /**
-     * Sets OUT marker on all viewers.
+     * Sets OUT on every playback viewer at the shared playhead.
+     * The next slice past that time rewinds the group to IN.
      *
-     * @return always 0, because every player has its own position.
+     * @return always 0; each file stores its own event index for that time.
      */
     @Override
     public long setMarkOut() {
-        for (AEViewer v : getPlayingViewers()) {
-            v.aePlayer.setMarkOut();
+        long t = playheadUs;
+        for (AEViewer v : markGroup()) {
+            if (v.aePlayer != null) {
+                v.aePlayer.setMarkOutAtTimestamp(t);
+            }
         }
+        outLoopArmed = true;
         return 0;
     }
 
     @Override
     public boolean toggleMarker() {
-        boolean added=false;
-        for (AEViewer v : getPlayingViewers()) {
-            added=v.aePlayer.toggleMarker();
+        long t = playheadUs;
+        int reactionMs = 0;
+        for (AEViewer v : markGroup()) {
+            if (v.aePlayer != null) {
+                reactionMs = v.aePlayer.getMarkerReactionTimeMs();
+                break;
+            }
+        }
+        if (!isPaused() && getTimesliceUs() > 0 && reactionMs > 0) {
+            t -= reactionMs * 1000L;
+            long start = groupStartUs();
+            if (t < start) {
+                t = start;
+            }
+        }
+        boolean added = false;
+        for (AEViewer v : markGroup()) {
+            if (v.aePlayer != null) {
+                added = v.aePlayer.toggleMarkerAtTimestamp(t);
+            }
         }
         return added;
     }

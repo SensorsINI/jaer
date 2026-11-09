@@ -626,7 +626,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
             + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower; Shift+F/S: ×N, default 100, File → Preferences → Playback) @ event timestamp (seconds)<br>"
-            + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime<br>"
+            + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime. "
+            + "While recording the live view, each slice is one render frame and the label stays CD<br>"
             + "<b>(overrun)</b> — live events discarded because the display frame filled; bar turns red. Increase USB tuning Render events, or lower the DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
             + "<b>eps</b> — event rate (events per second)<br>"
             + "<b>nX</b> — playback speedup vs real time (1X = realtime); Live/Seq or Paused otherwise<br>"
@@ -6952,6 +6953,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Live recording takes one USB slice per rendered frame, so the slice
+     * duration is the rendering period. ConstantCount and AreaEventCount do
+     * not apply to that view. Timeshift playback of the file still uses the
+     * player's accumulation mode.
+     */
+    private boolean liveRecordingSliceFollowsRenderRate() {
+        if (!isRecordingEnabled() || getPlayMode() == PlayMode.PLAYBACK) {
+            return false;
+        }
+        return liveTimeshift == null || !liveTimeshift.isViewingFile();
+    }
+
+    /**
      * Short Tab overlay: color mode, event accumulation mode, and key hints.
      */
     private String formatViewAndPlaybackStatus() {
@@ -6963,7 +6977,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         sb.append("\nEvent Accumulation Mode: ");
         AbstractAEPlayer player = getAePlayer();
-        if (player != null) {
+        if (liveRecordingSliceFollowsRenderRate()) {
+            sb.append("CountDuration");
+        } else if (player != null) {
             switch (player.getPlaybackMode()) {
                 case FixedTimeSlice:
                     sb.append("CountDuration");
@@ -8434,7 +8450,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         /** CD / CC / AEC / RT after the event count (ConstantDuration, ConstantCount, AreaEventCount, RealTime). */
         private void appendAccumulationModeAbbrev(StringBuilder buf) {
             AbstractAEPlayer player = getAePlayer();
-            if (player == null) {
+            if (player == null || liveRecordingSliceFollowsRenderRate()) {
                 buf.append(" CD ");
                 return;
             }
@@ -9996,12 +10012,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         setMarkInMI.setAction(aePlayer.markInAction);
         setMarkInMI.setText("Set IN marker");
-        setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
+        setMarkInMI.setToolTipText("Rewind returns here. Synchronized playback sets IN on every viewer at this time.");
         playbackMenu.add(setMarkInMI);
 
         setMarkOutMI.setAction(aePlayer.markOutAction);
         setMarkOutMI.setText("Set OUT marker");
-        setMarkOutMI.setToolTipText("Playback rewinds to IN (or stops) when this mark is reached; dragging the slider past it continues");
+        setMarkOutMI.setToolTipText("Playback rewinds to IN (or stops) when this time is reached. Synchronized playback sets OUT on every viewer. Dragging the slider past it continues.");
         playbackMenu.add(setMarkOutMI);
 
         toggleMarkerMI.setAction(aePlayer.toggleMarkerAction);
@@ -10018,7 +10034,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         clearMarksMI.setAction(aePlayer.clearMarksAction);
         clearMarksMI.setText("Clear IN and OUT markers");
-        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
+        clearMarksMI.setToolTipText("Clears IN, OUT, and markers. Synchronized playback clears them on every viewer.");
         playbackMenu.add(clearMarksMI);
 
         exportMarksMI.setAction(aePlayer.exportMarksAction);
@@ -13037,7 +13053,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             elapsedUs = posUs;
         }
         if (isSliderTimeOverlayAbsolute()) {
-            long startMs = stream.getAbsoluteStartingTimeMs();
+            long startMs = absoluteClockOriginMs(stream);
             if (startMs > 0) {
                 ZoneId zone = stream.getZoneId();
                 if (zone == null) {
@@ -13059,6 +13075,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return new SliderSeekOverlay(formatSliderSeekRelative(elapsedUs), null,
                 formatSliderSeekAnalogDigitalTime(rel.hourOfDay, rel.minute, rel.second, rel.milli), false,
                 rel.hour12, rel.minute, rel.second, rel.milli, rel.hourOfDay);
+    }
+
+    /**
+     * Epoch for the absolute clock. During synchronized playback every viewer
+     * uses the recording-start time in the filename, plus time since that
+     * stream's first event. Each camera's own first-packet Unix time includes
+     * its timestamp-counter offset, so those epochs disagree by seconds even
+     * when the pictures are the same moment.
+     */
+    private long absoluteClockOriginMs(AEFileInputStreamInterface stream) {
+        long packetMs = stream.getAbsoluteStartingTimeMs();
+        if (!synchronizedPlaybackRequiresCountDuration()) {
+            return packetMs;
+        }
+        AEDataFile.FilenameStart named = AEDataFile.parseFilenameStart(stream.getFile());
+        if (named != null && named.epochMs > 0) {
+            return named.epochMs;
+        }
+        return packetMs;
     }
 
     /**

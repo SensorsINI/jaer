@@ -4182,7 +4182,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      */
     @Override
     public void marksInitialize() {
-        Marks saved = AEFileInputStream.marksGetForFile(file);
+        Marks saved = AEFileInputStream.marksGetForFile(file, eventStreamId);
+        if (saved == null) {
+            saved = claimLegacySharedMarks();
+        }
         if (saved == null) {
             clearMarks();
             return;
@@ -4194,14 +4197,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         markIn = clampMark(saved.markIn, 0, n);
         long out = saved.markOut;
-        if (out == Long.MAX_VALUE || out < 0) {
+        // MAX, negative, or this stream's event count means OUT was never set.
+        boolean explicitOut = out != Long.MAX_VALUE && out >= 0 && out < n;
+        if (!explicitOut) {
             out = n;
         }
         markOut = clampMark(out, markIn, n);
-        // Legacy / cleared: treat end-of-file OUT as unset
         if (markOut >= n) {
             markOut = n;
+            explicitOut = false;
         }
+        liveMarkOutFollowsEnd = !explicitOut;
         markers.clear();
         if (saved.otherMarks != null) {
             for (Long m : saved.otherMarks) {
@@ -4216,7 +4222,41 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         support.firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, applied);
         // Do not call setMarks here: AEPlayer has not assigned aeInputStream yet.
         // AEPlayer.done() applies marks on the EDT after the stream is live.
-        log.info(String.format("Restored AEDAT-4 marks for %s: %s", file.getName(), applied));
+        log.info(String.format("Restored AEDAT-4 marks for %s stream %d: %s",
+                file.getName(), eventStreamId, applied));
+    }
+
+    /**
+     * Older builds stored every camera in one sidecar, and stored an unset OUT
+     * as that camera's event count. Keep the sidecar only for the camera whose
+     * length matches, and drop it so the other camera does not reopen it as OUT.
+     */
+    private Marks claimLegacySharedMarks() {
+        Marks legacy = AEFileInputStream.marksGetForFile(file);
+        long n = playableSize();
+        if (!AEFileInputStream.marksBelongToStream(legacy, n)) {
+            if (legacy != null && file != null) {
+                log.info("Ignoring shared marks for AEDAT-4 stream " + eventStreamId
+                        + " of " + file.getName()
+                        + " (saved from another camera, markOut=" + legacy.markOut + ")");
+            }
+            return null;
+        }
+        Marks copy = new Marks();
+        copy.markIn = legacy.markIn;
+        copy.markOut = Long.MAX_VALUE;
+        if (legacy.otherMarks != null) {
+            copy.otherMarks.addAll(legacy.otherMarks);
+        }
+        AEFileInputStream.marksPutForFile(file, eventStreamId, copy);
+        File dest = AEFileInputStream.marksCacheFile(file, eventStreamId);
+        if (!dest.isFile()) {
+            log.warning("Could not store per-stream marks; leaving the shared sidecar");
+            return copy;
+        }
+        AEFileInputStream.marksPutForFile(file, null);
+        log.info("Moved shared marks onto AEDAT-4 stream " + eventStreamId + " for " + file.getName());
+        return copy;
     }
 
     /** Current IN/OUT/other marks (for player UI after open). */
@@ -4266,17 +4306,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             return;
         }
         if (isMarkInSet() || isMarkOutSet() || !markers.isEmpty()) {
-            AEFileInputStream.marksPutForFile(file, snapshotMarks());
-            log.fine("Persisted AEDAT-4 marks for " + file.getAbsolutePath());
+            AEFileInputStream.marksPutForFile(file, eventStreamId, snapshotMarks());
+            log.fine("Persisted AEDAT-4 marks for stream " + eventStreamId + " of " + file.getAbsolutePath());
         } else {
-            AEFileInputStream.marksPutForFile(file, null);
+            AEFileInputStream.marksPutForFile(file, eventStreamId, null);
         }
     }
 
     private Marks snapshotMarks() {
         Marks m = new Marks();
         m.markIn = markIn;
-        m.markOut = markOut;
+        // Unset OUT is a sentinel, not this stream's event count. The count of
+        // the shorter camera was reloaded as a real OUT on the longer one.
+        boolean unsetOut = liveMarkOutFollowsEnd || markOut < 0 || markOut >= playableSize();
+        m.markOut = unsetOut ? Long.MAX_VALUE : markOut;
         m.otherMarks.addAll(markers);
         return m;
     }
@@ -4594,23 +4637,54 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public long setMarkIn() {
-        if (position <= markOut) {
+        return setMarkInIndex(position);
+    }
+
+    private long setMarkInIndex(long idx) {
+        if (idx <= markOut) {
             long old = markIn;
-            markIn = position;
+            markIn = idx;
             support.firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, markIn);
         }
         return markIn;
     }
 
     @Override
+    public synchronized long markInAtTimestampUs(long timestampUs) {
+        return setMarkInIndex(eventIndexNearestTimestamp(timestampUs));
+    }
+
+    @Override
     public long setMarkOut() {
-        if (position > markIn) {
+        return setMarkOutIndex(position);
+    }
+
+    private long setMarkOutIndex(long idx) {
+        if (idx > markIn) {
             long old = markOut;
             liveMarkOutFollowsEnd = false;
-            markOut = position;
+            markOut = idx;
             support.firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, markOut);
         }
         return markOut;
+    }
+
+    @Override
+    public synchronized long markOutAtTimestampUs(long timestampUs) {
+        return setMarkOutIndex(eventIndexNearestTimestamp(timestampUs));
+    }
+
+    @Override
+    public synchronized boolean toggleMarkerAtTimestampUs(long timestampUs) {
+        return toggleMarkerAt(eventIndexNearestTimestamp(timestampUs));
+    }
+
+    @Override
+    public long timestampUsAt(long eventIndex) {
+        if (eventIndex < 0 || playableSize() <= 0) {
+            return -1L;
+        }
+        return timestampApproxLong(eventIndex);
     }
 
     @Override

@@ -25,6 +25,7 @@ import com.jogamp.opengl.GLException;
 import java.time.ZoneId;
 import java.util.logging.Level;
 
+import net.sf.jaer.SyncPlayer;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.EventExtractor2D;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
@@ -150,7 +151,32 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void doSingleStep() {
+        SyncPlayer sync = activeSyncPlayer();
+        if (sync != null) {
+            sync.doSingleStep();
+            return;
+        }
         viewer.doSingleStep();
+    }
+
+    @Override
+    public void jogForwards(int packets) {
+        SyncPlayer sync = activeSyncPlayer();
+        if (sync != null) {
+            sync.jogForwards(packets);
+            return;
+        }
+        super.jogForwards(packets);
+    }
+
+    @Override
+    public void jogBackwards(int packets) {
+        SyncPlayer sync = activeSyncPlayer();
+        if (sync != null) {
+            sync.jogBackwards(packets);
+            return;
+        }
+        super.jogBackwards(packets);
     }
 
     @Override
@@ -229,6 +255,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public boolean jumpToNextMarker() {
+        SyncPlayer sync = activeSyncPlayer();
+        if (sync != null) {
+            return sync.jumpGroupToNextMarker(viewer);
+        }
         if (aeInputStream != null) {
             return aeInputStream.jumpToNextMarker();
         }
@@ -237,10 +267,20 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public boolean jumpToPrevMarker() {
-        if (aeInputStream != null) {
-            return aeInputStream.jumpToPrevMarker();
+        return jumpToPreviousMarker();
+    }
+
+    /**
+     * {@code j}. The menu action calls this name. {@link #jumpToPrevMarker()} is
+     * the stream interface; both must share the synchronized-group seek.
+     */
+    @Override
+    protected boolean jumpToPreviousMarker() {
+        SyncPlayer sync = activeSyncPlayer();
+        if (sync != null) {
+            return sync.jumpGroupToPreviousMarker(viewer);
         }
-        return false;
+        return super.jumpToPreviousMarker();
     }
 
     public class FileDeleter extends KeyAdapter implements PropertyChangeListener {
@@ -1322,6 +1362,18 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public void clearMarks() {
         if (aeInputStream != null) {
+            SyncPlayer sync = activeSyncPlayer();
+            if (sync != null) {
+                sync.clearMarks();
+                return;
+            }
+        }
+        clearMarksHere();
+    }
+
+    /** This viewer's marks only. {@link SyncPlayer} calls this for every member. */
+    public void clearMarksHere() {
+        if (aeInputStream != null) {
             aeInputStream.clearMarks();
             if (viewer != null) {
                 viewer.captureLiveRecordingMarks();
@@ -1365,6 +1417,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public long setMarkIn() {
+        if (aeInputStream != null) {
+            SyncPlayer sync = activeSyncPlayer();
+            if (sync != null) {
+                return sync.setMarkIn();
+            }
+        }
+        return setMarkInHere();
+    }
+
+    /** IN at this viewer's cursor. {@link SyncPlayer} uses {@link #setMarkInAtTimestamp}. */
+    long setMarkInHere() {
         if (aeInputStream == null) {
             return viewer != null && viewer.liveRecordingMarksArmed()
                     ? viewer.offerLiveRecordingMarkIn() : -1;
@@ -1376,8 +1439,30 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return v;
     }
 
+    /** IN at {@code timestampUs} on this file, without moving the playhead. */
+    public long setMarkInAtTimestamp(long timestampUs) {
+        if (aeInputStream == null) {
+            return -1;
+        }
+        long v = aeInputStream.markInAtTimestampUs(timestampUs);
+        if (viewer != null) {
+            viewer.captureLiveRecordingMarks();
+        }
+        return v;
+    }
+
     @Override
     public long setMarkOut() {
+        if (aeInputStream != null) {
+            SyncPlayer sync = activeSyncPlayer();
+            if (sync != null) {
+                return sync.setMarkOut();
+            }
+        }
+        return setMarkOutHere();
+    }
+
+    long setMarkOutHere() {
         if (aeInputStream == null) {
             return viewer != null && viewer.liveRecordingMarksArmed()
                     ? viewer.offerLiveRecordingMarkOut() : -1;
@@ -1389,8 +1474,46 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return v;
     }
 
+    /** OUT at {@code timestampUs} on this file, without moving the playhead. */
+    public long setMarkOutAtTimestamp(long timestampUs) {
+        if (aeInputStream == null) {
+            return -1;
+        }
+        long v = aeInputStream.markOutAtTimestampUs(timestampUs);
+        if (viewer != null) {
+            viewer.captureLiveRecordingMarks();
+        }
+        return v;
+    }
+
     @Override
     public boolean toggleMarker() {
+        if (aeInputStream != null) {
+            SyncPlayer sync = activeSyncPlayer();
+            if (sync != null) {
+                lastMarkerReactionOffsetMs = 0;
+                if (!sync.isPaused() && sync.getTimesliceUs() > 0 && markerReactionTimeMs > 0) {
+                    lastMarkerReactionOffsetMs = markerReactionTimeMs;
+                }
+                return sync.toggleMarker();
+            }
+        }
+        return toggleMarkerHere();
+    }
+
+    /** Marker at {@code timestampUs} on this file, without moving the playhead. */
+    public boolean toggleMarkerAtTimestamp(long timestampUs) {
+        if (aeInputStream == null) {
+            return false;
+        }
+        boolean added = aeInputStream.toggleMarkerAtTimestampUs(timestampUs);
+        if (viewer != null) {
+            viewer.captureLiveRecordingMarks();
+        }
+        return added;
+    }
+
+    private boolean toggleMarkerHere() {
         lastMarkerReactionOffsetMs = 0;
         if (aeInputStream == null) {
             if (viewer != null && viewer.liveRecordingMarksArmed()) {
@@ -1418,6 +1541,20 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             viewer.captureLiveRecordingMarks();
         }
         return added;
+    }
+
+    /**
+     * Sync player while two or more viewers are in playback together.
+     * Null for a single file, so marks stay on this stream.
+     */
+    private SyncPlayer activeSyncPlayer() {
+        if (viewer == null || !viewer.synchronizedPlaybackRequiresCountDuration()) {
+            return null;
+        }
+        if (viewer.getJaerViewer() == null) {
+            return null;
+        }
+        return viewer.getJaerViewer().getSyncPlayer();
     }
 
     @Override

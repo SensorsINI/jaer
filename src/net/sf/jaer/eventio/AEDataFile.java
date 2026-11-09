@@ -19,6 +19,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.logging.Logger;
@@ -182,9 +184,16 @@ public interface AEDataFile {
     }
 
     /**
-     * Parses the chip-class timestamp in a jAER filename, including the offset
-     * ({@code +0200}). AEDAT-4 packet times are Unix µs (UTC); this offset is
-     * only display metadata for the recording site.
+     * {@code yyyy-MM-ddTHH-mm-ss±HHmm} anywhere in the name. Muxed recordings put
+     * camera serials before this token, so it is not always the first dash.
+     */
+    static final Pattern FILENAME_START = Pattern.compile(
+            "(\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}[+-]\\d{4})");
+
+    /**
+     * Parses the recording-start timestamp in a jAER filename, including the
+     * offset ({@code -0500}). AEDAT-4 packet times are Unix µs (UTC); this
+     * offset is the recording site's wall clock.
      *
      * @return parsed start, or {@code null} if the name has no datetime
      */
@@ -195,16 +204,11 @@ public interface AEDataFile {
         Logger log = Logger.getLogger("net.sf.jaer");
         try {
             String fn = f.getName();
-            int dash = fn.indexOf('-');
-            if (dash < 0) {
+            Matcher m = FILENAME_START.matcher(fn);
+            if (!m.find()) {
                 return null;
             }
-            String dateStr = fn.substring(dash + 1);
-            if (dateStr.length() < 24) {
-                log.warning(fn + " name is too short to hold date/time string, not trying to parse time from it");
-                return null;
-            }
-            dateStr = dateStr.substring(0, 24);
+            String dateStr = m.group(1);
             try {
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern(YYYY_M_MDD_TH_HMMSS_Z)
                         .withResolverStyle(ResolverStyle.SMART);

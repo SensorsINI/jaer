@@ -298,6 +298,50 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
         return toggleMarker();
     }
 
+    /**
+     * Unwrapped µs at {@code eventIndex} without moving the cursor.
+     * {@code -1} when this format cannot answer without a seek.
+     */
+    default long timestampUsAt(long eventIndex) {
+        return -1L;
+    }
+
+    /**
+     * Set IN at the event nearest {@code timestampUs} without moving the cursor.
+     * Default seeks, marks, and restores the cursor.
+     */
+    default long markInAtTimestampUs(long timestampUs) {
+        long saved = position();
+        try {
+            setPositionFromTimestampUs(timestampUs);
+            return setMarkIn();
+        } finally {
+            position(saved);
+        }
+    }
+
+    /** Set OUT at the event nearest {@code timestampUs} without moving the cursor. */
+    default long markOutAtTimestampUs(long timestampUs) {
+        long saved = position();
+        try {
+            setPositionFromTimestampUs(timestampUs);
+            return setMarkOut();
+        } finally {
+            position(saved);
+        }
+    }
+
+    /** Add or remove a marker at the event nearest {@code timestampUs} without moving the cursor. */
+    default boolean toggleMarkerAtTimestampUs(long timestampUs) {
+        long saved = position();
+        try {
+            setPositionFromTimestampUs(timestampUs);
+            return toggleMarker();
+        } finally {
+            position(saved);
+        }
+    }
+
     public boolean jumpToNextMarker();
 
     public boolean jumpToPrevMarker();
