@@ -23,8 +23,9 @@ import javax.swing.plaf.basic.BasicSliderUI;
  * AEPlayer position slider. Indexed AEDAT-4 maps the thumb by recording time.
  * Log-relative event rate is painted in the slider (no extra layout height —
  * growing the bottom bar reshapes the GL canvas and tears the image).
- * IN/OUT/other marks are drawn on top of that overlay because JSlider labels
- * sit under the sparkline.
+ * IN/OUT/other marks are drawn after the thumb. JSlider labels sit under the
+ * sparkline, and an opaque thumb hides the mark you are trying to land on.
+ * The thumb fill stays translucent so the rate trace shows through it.
  * <p>
  * Always uses {@link PlaybackSliderUI} (not Aqua). Aqua's round thumb is 25×25
  * and {@code BasicSliderUI.paintThumb} then fills that rectangle, so the handle
@@ -187,6 +188,7 @@ public class PlaybackPositionSlider extends JSlider {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 paintTrack(g2);
                 paintThumb(g2);
+                paintMarks(g2);
             } finally {
                 g2.dispose();
             }
@@ -202,7 +204,6 @@ public class PlaybackPositionSlider extends JSlider {
                 g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.drawLine(trackRect.x, cy, trackRect.x + trackRect.width, cy);
                 paintSparkline(g2);
-                paintMarks(g2);
             } finally {
                 g2.dispose();
             }
@@ -217,13 +218,14 @@ public class PlaybackPositionSlider extends JSlider {
                 int y = thumbRect.y;
                 int w = thumbRect.width;
                 int h = thumbRect.height;
-                g2.setColor(new Color(0, 0, 0, 90));
-                g2.fillRoundRect(x + 1, y + 1, w - 1, h - 1, 6, 6);
-                g2.setColor(slider.hasFocus() ? new Color(235, 242, 255) : new Color(248, 248, 250));
+                g2.setColor(slider.hasFocus() ? new Color(235, 242, 255, 70) : new Color(255, 255, 255, 48));
                 g2.fillRoundRect(x, y, w - 1, h - 1, 6, 6);
-                g2.setColor(new Color(40, 90, 180));
+                g2.setColor(new Color(40, 90, 180, 230));
                 g2.setStroke(new BasicStroke(1.5f));
                 g2.drawRoundRect(x, y, w - 1, h - 1, 6, 6);
+                int cx = xPositionForValue(slider.getValue());
+                g2.setStroke(new BasicStroke(1.25f));
+                g2.drawLine(cx, y + 2, cx, y + h - 3);
             } finally {
                 g2.dispose();
             }
