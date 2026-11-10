@@ -44,9 +44,9 @@
         <li>If <strong>Smart App Control</strong> blocks the launcher, allow the app or turn that feature off.</li>
       </ul>
       <h3>Unattended (winget)</h3>
-      <p>After the winget catalog entry is published (it is not, until Microsoft merges it):</p>
-      <pre><code>winget install --silent SensorsINI.jAER</code></pre>
-      <p>That can install the signed build even while SmartScreen still warns. Until the catalog entry is merged, use the <code>.exe</code> above.</p>
+      <p>Windows Package Manager installs the current signed release:</p>
+      <pre><code>winget install SensorsINI.jAER</code></pre>
+      <p>That shows a progress window and asks no installer questions. <code>winget install --silent SensorsINI.jAER</code> skips the window. Upgrade later with <code>winget upgrade SensorsINI.jAER</code>, not Help → Download and install.</p>
       <h3>USB cameras</h3>
       <ul>
         <li>If jAER reports <code>LIBUSB_ERROR_NOT_SUPPORTED</code>, bind <strong>WinUSB</strong> with <a href="https://zadig.akeo.ie/">Zadig</a> (not libusb-win32).</li>
@@ -123,7 +123,7 @@ sudo apt install ./jAER_linux-amd64_3_5_3.deb</code></pre>
       <h2>Uninstall</h2>
       <p>Quit jAER first. Use the install4j uninstaller — do not only delete the folder. It removes the program, Start menu / desktop entries, file associations, and <code>jaer/jaerSampleData</code> in the install folder (including extra files you copied there, and a leftover <code>sampleData</code> folder). It does <strong>not</strong> delete a <code>jaerSampleData</code> folder outside the install directory, Java preferences, USB driver changes, or udev rules you added by hand. If files remain in the install folder, that folder may open so you can inspect them.</p>
       <h3>Windows</h3>
-      <p>Settings → Apps → Installed apps → search <strong>jAER</strong> → Uninstall. Or run <code>uninstall.exe</code> in the install folder (often <code>C:\Program Files\jAER</code>). A Zadig WinUSB binding is left as-is.</p>
+      <p>Settings → Apps → Installed apps → search <strong>jAER</strong> → Uninstall. Or <code>winget uninstall SensorsINI.jAER</code>. Or run <code>uninstall.exe</code> in the install folder (often <code>C:\Program Files\jAER</code>). A Zadig WinUSB binding is left as-is.</p>
       <h3>macOS</h3>
       <p>A DMG install: in the folder you chose (<code>~/Applications/jAER</code>, <code>~/jaer</code>, or <code>/Applications/jAER</code>), double-click the <strong>Uninstall jAER</strong> app. A Homebrew install: <code>brew uninstall --cask jaer</code> (removes <code>/Applications/jAER</code> and the <code>jAER.app</code> symlink). Homebrew <code>libusb</code> is not removed.</p>
       <h3>Linux</h3>
