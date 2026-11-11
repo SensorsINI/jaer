@@ -3,7 +3,7 @@
 **Welcome to jAER**
 
 **News:** 
- * **Current development:** Packaging (snapshot builds and winget listing)
+ * **Current development (Nov 2026):** Packaging (signed installers, snapshot builds, winget, and homebrew are all working). Long, multicamera recording support and bug fixes.
  * **Do you have a device that is not supported by jAER?** See [Adding devices](docs/README-adding-devices.md).
  * **[Give Anonymous Feedback](https://docs.google.com/forms/d/e/1FAIpQLSe1YZNLg1gN7n82YnSK3ilgSV-YBkcaKEunx5woUJ7inE9cvw/viewform?usp=header)** for desired features and fixes
 
