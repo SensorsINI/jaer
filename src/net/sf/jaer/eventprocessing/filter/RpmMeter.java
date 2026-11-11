@@ -79,7 +79,6 @@ public class RpmMeter extends EventFilter2DMouseROI implements FrameAnnotater {
     private int currentBinStartTs = Integer.MIN_VALUE;
     private boolean binningInitialized = false;
 
-    private volatile float instantaneousRoiRateHz = 0;
     private volatile float filteredRoiRateHz = 0;
     private volatile float fundamentalFreqHz = Float.NaN; // before pulsesPerRevolution
     private volatile float filteredRps = Float.NaN;
@@ -248,7 +247,6 @@ public class RpmMeter extends EventFilter2DMouseROI implements FrameAnnotater {
         if (rateCount < rateBins.length) {
             rateCount++;
         }
-        instantaneousRoiRateHz = rateHz;
         int midTs = currentBinStartTs + binUs / 2;
         filteredRoiRateHz = rateLp.filter(rateHz, midTs);
     }
@@ -438,7 +436,7 @@ public class RpmMeter extends EventFilter2DMouseROI implements FrameAnnotater {
             drawRateTrace(gl, sx, sy);
         }
 
-        MultilineAnnotationTextRenderer.setFontSize(fontSize);
+        MultilineAnnotationTextRenderer.setFontSize((float) fontSize);
         MultilineAnnotationTextRenderer.setColor(Color.white);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(sy * 0.95f);
         MultilineAnnotationTextRenderer.setXPosition(2);
@@ -668,11 +666,9 @@ public class RpmMeter extends EventFilter2DMouseROI implements FrameAnnotater {
     }
 
     public void setUpdateIntervalMs(int updateIntervalMs) {
-        if (updateIntervalMs < 10) {
-            updateIntervalMs = 10;
-        }
-        this.updateIntervalMs = updateIntervalMs;
-        putInt("updateIntervalMs", updateIntervalMs);
+        final int clampedMs = Math.max(updateIntervalMs, 10);
+        this.updateIntervalMs = clampedMs;
+        putInt("updateIntervalMs", clampedMs);
     }
 
     /** Instantaneous RPS after pulsesPerRevolution scaling (filtered). */
