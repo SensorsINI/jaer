@@ -513,6 +513,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private final AtomicBoolean exitWatchdogArmed = new AtomicBoolean(false);
     FilterChain filterChain = null;
     private FilterFrame filterFrame = null;
+    /** Replaces the form Filters toggle. Click toggles the filter window; the arrow is Disable all. */
+    private FiltersDropDownButton filtersMenuButton;
+    private FilterChain filtersButtonChain;
+    private boolean filtersButtonRefreshQueued;
+    private final PropertyChangeListener filtersButtonChainListener = this::onFiltersButtonChainEvent;
     RecentFiles recentFiles = null;
     File lastFile = null;
     public File lastRecordingFolder = null;//changed pol
@@ -881,6 +886,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         initComponents();
         installBackToLiveButton();
+        installFiltersDropDownButton();
         Logger.getLogger("").addHandler(loggingHandler);
         // Cypress FX2 monitor/sequencer menu: historical and rarely used.
         monSeqMenu.setVisible(false);
@@ -3815,7 +3821,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             disposeRosOutputDialog();
             disposeDnnSharedMemoryDialog();
             disposeOpenCvOutputDialog();
-            filtersToggleButton.setVisible(false);
+            setFiltersButtonVisible(false);
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
             cleanup(); // close sockets so they can be reused
@@ -3919,11 +3925,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fixRecordingControls();
             filterChain = chip.getFilterChain();
             if (filterChain == null) {
-                filtersToggleButton.setVisible(false);
+                setFiltersButtonVisible(false);
                 viewFiltersMenuItem.setEnabled(false);
             } else {
                 filterChain.reset();
-                filtersToggleButton.setVisible(true);
+                setFiltersButtonVisible(true);
                 viewFiltersMenuItem.setEnabled(true);
             }
             HardwareInterface hw = chip.getHardwareInterface();
@@ -3939,6 +3945,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else {
                 suspendFiltersWhenDisabledAtStartup();
             }
+            attachFiltersButton(filterChain);
             // fix selected radio button for chip class
             if (deviceMenu.getItemCount() == 0) {
                 log.warning("tried to select device in menu but no device menu has been built yet");
@@ -7074,6 +7081,87 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buttonsPanel.add(backToLiveButton, index);
     }
 
+    /**
+     * The form still builds a Filters toggle. Swap it for a split button so a
+     * click (and Ctrl-F) toggles the filter window, and the arrow can Disable all.
+     */
+    private void installFiltersDropDownButton() {
+        int index = 0;
+        for (int i = 0; i < buttonsPanel.getComponentCount(); i++) {
+            if (buttonsPanel.getComponent(i) == filtersToggleButton) {
+                index = i;
+                break;
+            }
+        }
+        int height = filtersToggleButton.getPreferredSize().height;
+        buttonsPanel.remove(filtersToggleButton);
+        filtersMenuButton = new FiltersDropDownButton(filtersToggleButton.getFont(),
+                this::toggleFiltersWindow, this::setFilteringDisabledFromMenu);
+        filtersMenuButton.matchHeight(height);
+        buttonsPanel.add(filtersMenuButton, index);
+    }
+
+    private void setFiltersButtonVisible(boolean visible) {
+        if (filtersMenuButton != null) {
+            filtersMenuButton.setVisible(visible);
+        }
+    }
+
+    private void setFilteringDisabledFromMenu(boolean disabled) {
+        if (filterChain != null) {
+            filterChain.setFilteringEnabled(!disabled);
+        }
+    }
+
+    private void onFiltersButtonChainEvent(PropertyChangeEvent evt) {
+        String name = evt.getPropertyName();
+        if (!"filteringEnabled".equals(name) && !"filterEnabled".equals(name) && !"filtersRebuilt".equals(name)) {
+            return;
+        }
+        queueFiltersButtonRefresh();
+    }
+
+    private void attachFiltersButton(FilterChain chain) {
+        if (filtersButtonChain != chain) {
+            if (filtersButtonChain != null) {
+                filtersButtonChain.getSupport().removePropertyChangeListener(filtersButtonChainListener);
+            }
+            filtersButtonChain = chain;
+            if (chain != null) {
+                chain.getSupport().addPropertyChangeListener(filtersButtonChainListener);
+            }
+        }
+        refreshFiltersButton();
+    }
+
+    private void queueFiltersButtonRefresh() {
+        if (filtersButtonRefreshQueued) {
+            return;
+        }
+        filtersButtonRefreshQueued = true;
+        SwingUtilities.invokeLater(() -> {
+            filtersButtonRefreshQueued = false;
+            refreshFiltersButton();
+        });
+    }
+
+    private void refreshFiltersButton() {
+        if (filtersMenuButton == null) {
+            return;
+        }
+        FilterChain chain = filterChain;
+        if (chain == null) {
+            filtersMenuButton.setVisible(false);
+            return;
+        }
+        boolean paused = !chain.isFilteringEnabled();
+        filtersMenuButton.setFilterActivity(paused ? List.of() : chain.enabledFilterShortNames(), paused);
+        filtersMenuButton.setVisible(true);
+        if (filterFrame != null) {
+            filterFrame.setDisableAllSelected(paused);
+        }
+    }
+
     boolean isAedat4RecordingOwnedHere() {
         return aedat4RecordingOwnsClose;
     }
@@ -9708,8 +9796,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         viewFiltersMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         viewFiltersMenuItem.setMnemonic('f');
-        viewFiltersMenuItem.setText("Show filters");
-        viewFiltersMenuItem.setToolTipText("Shows filter controls");
+        viewFiltersMenuItem.setText("Show/hide filters");
+        viewFiltersMenuItem.setToolTipText("Shows or hides the filter window");
         viewFiltersMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewFiltersMenuItemActionPerformed(evt);
@@ -10873,7 +10961,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
-            showFilters(filtersToggleButton.isSelected());
+            toggleFiltersWindow();
 	}//GEN-LAST:event_filtersToggleButtonActionPerformed
 
 	private void biasesToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_biasesToggleButtonActionPerformed
@@ -11120,7 +11208,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
 	private void viewFiltersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewFiltersMenuItemActionPerformed
-            showFilters(true);
+            toggleFiltersWindow();
 	}//GEN-LAST:event_viewFiltersMenuItemActionPerformed
 
 	private void viewBiasesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewBiasesMenuItemActionPerformed
@@ -11193,28 +11281,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } finally {
                 setCursor(Cursor.getDefaultCursor());
             }
-            filterFrame.addWindowListener(new WindowAdapter() {
-
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    //                    log.info(e.toString());
-                    filtersToggleButton.setSelected(false);
-                }
-
-                @Override
-                public void windowOpened(WindowEvent e) {
-                    filtersToggleButton.setSelected(true);
-                }
-            });
             filterFrameBuilt = true;
         }
 
         if (filterFrame != null) {
             filterFrame.setVisible(yes);
-            filterFrame.setState(Frame.NORMAL);
+            if (yes) {
+                filterFrame.setState(Frame.NORMAL);
+            }
         }
+    }
 
-        filtersToggleButton.setSelected(yes);
+    /** Click on Filters, or Ctrl-F. Shows the window, or hides it when it is already open. */
+    public void toggleFiltersWindow() {
+        showFilters(!isFiltersWindowShowing());
+    }
+
+    private boolean isFiltersWindowShowing() {
+        return filterFrame != null && filterFrame.isVisible()
+                && (filterFrame.getExtendedState() & Frame.ICONIFIED) == 0;
     }
 
     /**
@@ -16419,6 +16504,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             extractor = chip.getEventExtractor();
             renderer = chip.getRenderer();
             filterChain = chip.getFilterChain();
+            attachFiltersButton(filterChain);
 
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
             if (chip.getFilterChain() != null) {

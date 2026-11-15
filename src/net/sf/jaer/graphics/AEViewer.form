@@ -243,8 +243,8 @@
                   <KeyStroke key="Ctrl+F"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="102"/>
-                <Property name="text" type="java.lang.String" value="Show filters"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows filter controls"/>
+                <Property name="text" type="java.lang.String" value="Show/hide filters"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows or hides the filter window"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewFiltersMenuItemActionPerformed"/>

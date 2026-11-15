@@ -10,6 +10,7 @@ import java.awt.Desktop;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -25,6 +26,7 @@ import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
@@ -200,7 +202,35 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         ToolTipManager toolTipManager = ToolTipManager.sharedInstance();
         toolTipManager.setInitialDelay(100); // Set initial delay to 500 milliseconds
         toolTipManager.setDismissDelay(2000); // Set dismiss delay to 2000 milliseconds
+        if (filterChain != null && !filterChain.isFilteringEnabled()) {
+            disableFilteringToggleButton.setSelected(true);
+        }
+        installFiltersWindowToggleKey();
         pack();
+    }
+
+    /** Ctrl-F toggles this window the same way as the AEViewer Filters button. */
+    private void installFiltersWindowToggleKey() {
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK), "toggleFiltersWindow");
+        getRootPane().getActionMap().put("toggleFiltersWindow", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (chip != null && chip.getAeViewer() != null) {
+                    chip.getAeViewer().toggleFiltersWindow();
+                }
+            }
+        });
+    }
+
+    /**
+     * Keeps the toolbar Disable all button in step with
+     * {@link FilterChain#setFilteringEnabled}. Does not run the button action.
+     */
+    public void setDisableAllSelected(boolean selected) {
+        if (disableFilteringToggleButton != null && disableFilteringToggleButton.isSelected() != selected) {
+            disableFilteringToggleButton.setSelected(selected);
+        }
     }
 
     /**

@@ -3,6 +3,7 @@
  * Created on January 30, 2006, 7:58 PM */
 package net.sf.jaer.eventprocessing;
 
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,6 +45,8 @@ import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
  * <ul>
  * <li> processingmode - when the processing mode is changed
  * <li> filteringEnabled - when {@link #setFilteringEnabled} changes
+ * <li> filterEnabled - when a filter in this chain is enabled or disabled, or the chain contents change
+ * <li> filtersRebuilt - after {@link #contructPreferredFilters}
  * </ul>
  * FilterChains should be constructed as in the following example taken from a
  * filter:
@@ -78,6 +81,12 @@ import net.sf.jaer.util.avioutput.DNNOutputViaSharedMemory;
 public class FilterChain extends LinkedList<EventFilter2D> {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    /** Forwards each member's {@code filterEnabled} event onto this chain. */
+    private final PropertyChangeListener childEnabledListener = evt -> {
+        if ("filterEnabled".equals(evt.getPropertyName())) {
+            getSupport().firePropertyChange("filterEnabled", evt.getOldValue(), evt.getNewValue());
+        }
+    };
     private boolean measurePerformanceEnabled = false;
     volatile private boolean resetPerformanceMeasurementStatistics = false; // flag to reset everyone on this cycle
     static final Logger log = Logger.getLogger("net.sf.jaer");
@@ -390,6 +399,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 //            chip.getFilterFrame().rebuildContents();
 //        }
         filter.setControlsVisible(false);
+        watchFilter(filter);
+        if (filter.isFilterEnabled()) {
+            getSupport().firePropertyChange("filterEnabled", Boolean.FALSE, Boolean.TRUE);
+        }
         return ret;
     }
 
@@ -401,6 +414,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public void add(int index, EventFilter2D filter) {
         super.add(index, filter);
         filter.setControlsVisible(false);
+        watchFilter(filter);
+        if (filter.isFilterEnabled()) {
+            getSupport().firePropertyChange("filterEnabled", Boolean.FALSE, Boolean.TRUE);
+        }
     }
 
     /**
@@ -409,8 +426,50 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @return true if successful
      */
     public boolean remove(EventFilter2D filter) {
-        boolean ret = super.remove(filter);
+        return remove((Object) filter);
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        boolean ret = super.remove(o);
+        if (ret && o instanceof EventFilter2D f) {
+            unwatchFilter(f);
+            if (f.isFilterEnabled()) {
+                getSupport().firePropertyChange("filterEnabled", Boolean.TRUE, Boolean.FALSE);
+            }
+        }
         return ret;
+    }
+
+    @Override
+    public EventFilter2D remove(int index) {
+        EventFilter2D f = super.remove(index);
+        unwatchFilter(f);
+        if (f != null && f.isFilterEnabled()) {
+            getSupport().firePropertyChange("filterEnabled", Boolean.TRUE, Boolean.FALSE);
+        }
+        return f;
+    }
+
+    @Override
+    public void clear() {
+        for (EventFilter2D f : this) {
+            unwatchFilter(f);
+        }
+        super.clear();
+        getSupport().firePropertyChange("filterEnabled", Boolean.TRUE, Boolean.FALSE);
+    }
+
+    private void watchFilter(EventFilter2D filter) {
+        if (filter != null) {
+            filter.getSupport().addPropertyChangeListener("filterEnabled", childEnabledListener);
+        }
+    }
+
+    private void unwatchFilter(EventFilter2D filter) {
+        if (filter != null) {
+            filter.getSupport().removePropertyChangeListener("filterEnabled", childEnabledListener);
+        }
     }
 
     public boolean isTimeLimitEnabled() {
@@ -519,6 +578,24 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
         acquisitionLastLogNs = now;
         log.info(text);
+    }
+
+    /**
+     * Short names of enabled filters in chain order. Empty if none are enabled.
+     * Does not look at {@link #isFilteringEnabled()}.
+     */
+    public List<String> enabledFilterShortNames() {
+        List<String> names = new ArrayList<>();
+        try {
+            for (EventFilter2D f : this) {
+                if (f != null && f.isFilterEnabled()) {
+                    names.add(f.getShortName());
+                }
+            }
+        } catch (ConcurrentModificationException e) {
+            log.warning(e + " during enabled-filter list");
+        }
+        return names;
     }
 
     /**
@@ -676,6 +753,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         } catch (Exception e) {
             log.warning(e.getMessage());
         }
+        getSupport().firePropertyChange("filtersRebuilt", null, size());
         StartupProfiler.mark("FilterChain.contructPreferredFilters end size=" + size());
     }
 
@@ -792,16 +870,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             return "<html><b>Filter processing is globally off.</b> " + kind
                     + " will be unfiltered.<br>Turn it on in the Filters window.";
         }
-        List<String> names = new ArrayList<>();
-        try {
-            for (EventFilter2D f : this) {
-                if (f != null && f.isFilterEnabled()) {
-                    names.add(f.getShortName());
-                }
-            }
-        } catch (ConcurrentModificationException e) {
-            log.warning(e + " during enabled-filter confirmation");
-        }
+        List<String> names = enabledFilterShortNames();
         if (names.isEmpty()) {
             return "<html>No EventFilters are enabled — " + kind
                     + " will be <b>unfiltered</b>.<br>Enable a filter in Filters if you meant to clean the data.";
@@ -825,6 +894,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * <ul>
      * <li> processingmode - when the processing mode is changed
      * <li> filteringEnabled - when {@link #setFilteringEnabled} changes
+     * <li> filterEnabled - when a filter in this chain is enabled or disabled, or the chain contents change
+     * <li> filtersRebuilt - after {@link #contructPreferredFilters}
      * </ul>
      */
     public PropertyChangeSupport getSupport() {
