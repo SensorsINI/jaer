@@ -567,6 +567,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean sliderTimeOverlayAbsolute = prefs.getBoolean("AEViewer.sliderTimeOverlayAbsolute", false);
     /** When true, chip-view time overlay is shown during playback, not only while dragging the slider. */
     private boolean sliderTimeOverlayAlways = prefs.getBoolean("AEViewer.sliderTimeOverlayAlways", false);
+    /** Minimum sparkline rise (0–1) for Shift+J / Shift+K activity jumps. */
+    private float activityJumpThreshold = ActivityJump.clampThreshold(
+            prefs.getFloat(ActivityJump.PREF_KEY, ActivityJump.THRESHOLD_DEFAULT));
     /** Analog clock at lower-left of the chip view for the same time as the digital overlay. */
     private boolean showAnalogClock = prefs.getBoolean("AEViewer.showAnalogClock", false);
     private boolean showRosOutputOverlay = prefs.getBoolean("AEViewer.showRosOutputOverlay", true);
@@ -1008,9 +1011,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
-        // Shift+F / Shift+S. The Playback menu accelerator does not arrive when
-        // the heavyweight GL canvas has focus, and macOS does not deliver
-        // Shift+letter menu shortcuts. Key repeat while held scales again.
+        // Shift+F / Shift+S / Shift+J / Shift+K. The Playback menu accelerator
+        // does not arrive when the heavyweight GL canvas has focus, and macOS
+        // does not deliver Shift+letter menu shortcuts. Key repeat while held
+        // scales again, or jumps to the next activity rise.
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
@@ -1019,7 +1023,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return false;
                 }
                 int code = e.getKeyCode();
-                if (code != KeyEvent.VK_F && code != KeyEvent.VK_S) {
+                if (code != KeyEvent.VK_F && code != KeyEvent.VK_S
+                        && code != KeyEvent.VK_J && code != KeyEvent.VK_K) {
                     return false;
                 }
                 Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
@@ -1039,8 +1044,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 if (code == KeyEvent.VK_F) {
                     aePlayer.speedUpCoarse();
-                } else {
+                } else if (code == KeyEvent.VK_S) {
                     aePlayer.slowDownCoarse();
+                } else if (code == KeyEvent.VK_K) {
+                    aePlayer.jumpNextActivityAction.actionPerformed(null);
+                } else {
+                    aePlayer.jumpPrevActivityAction.actionPerformed(null);
                 }
                 e.consume();
                 return true;
@@ -6841,6 +6850,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         showRenderingModeMI.setText("Show View and Playback modes");
         showRenderingModeMI.setToolTipText("Overlay color mode and event accumulation (Tab). c / t cycle them; f / s faster/slower; Shift+F/S jumps by the coarse factor.");
         installCoarseAccumulationMenuItems();
+        installActivityJumpMenuItems();
+    }
+
+    /** Shift+J / Shift+K, after the marker jumps. Accelerators come from the player actions. */
+    private void installActivityJumpMenuItems() {
+        if (aePlayer == null || playbackMenu == null || jumpNextMarkerMI == null) {
+            return;
+        }
+        jumpPrevActivityMI = new JMenuItem(aePlayer.jumpPrevActivityAction);
+        jumpNextActivityMI = new JMenuItem(aePlayer.jumpNextActivityAction);
+        jumpPrevActivityMI.setText("Jump to previous activity");
+        jumpNextActivityMI.setText("Jump to next activity");
+        String tip = "<html>Sparkline rise of at least the activity-jump threshold "
+                + "(File → Preferences → Playback).<br>"
+                + "Lands at the start of the bin just before the rise. "
+                + "A second Shift+J within 1 s skips the rise just landed on. "
+                + "Synchronized playback seeks every viewer to that time.<br>"
+                + "Off while playing backwards.</html>";
+        jumpPrevActivityMI.setToolTipText(tip);
+        jumpNextActivityMI.setToolTipText(tip);
+        jumpPrevActivityMI.setEnabled(false);
+        jumpNextActivityMI.setEnabled(false);
+        int idx = playbackMenu.getPopupMenu().getComponentIndex(jumpNextMarkerMI);
+        if (idx >= 0) {
+            playbackMenu.insert(jumpPrevActivityMI, idx + 1);
+            playbackMenu.insert(jumpNextActivityMI, idx + 2);
+        } else {
+            playbackMenu.add(jumpPrevActivityMI);
+            playbackMenu.add(jumpNextActivityMI);
+        }
+    }
+
+    private void setActivityJumpMenuEnabled(boolean enabled) {
+        if (jumpPrevActivityMI != null) {
+            jumpPrevActivityMI.setEnabled(enabled);
+            jumpNextActivityMI.setEnabled(enabled);
+        }
     }
 
     /** Shift+F / Shift+S menu items. Accelerators come from the player actions. */
@@ -7022,6 +7068,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (player != null) {
             sb.append("\nShift+F/S: ×").append(player.getCoarseSpeedFactor());
         }
+        sb.append("\nShift+J/K: previous/next activity");
         sb.append("\nSee View/Playback menus");
         return sb.toString();
     }
@@ -7058,6 +7105,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (toggleMarkerMI != null) {
             toggleMarkerMI.setEnabled(canMark);
         }
+        setActivityJumpMenuEnabled(canMark);
         //        if ( !playerControlPanel.isVisible() ){ // TODO why only do this if not visible?
         playerControlPanel.setVisible(yes || (liveTimeshift != null && liveTimeshift.isScrubberShowing()));
         //        }
@@ -7194,6 +7242,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             clearMarksMI.setEnabled(canMark);
             toggleMarkerMI.setEnabled(canMark);
         }
+        setActivityJumpMenuEnabled(canMark);
     }
 
     boolean liveRecordingMarksArmed() {
@@ -13278,6 +13327,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         prefs.putBoolean("AEViewer.sliderTimeOverlayAlways", sliderTimeOverlayAlways);
     }
 
+    /** Minimum log-relative sparkline rise for Shift+J / Shift+K. */
+    public float getActivityJumpThreshold() {
+        return activityJumpThreshold;
+    }
+
+    public void setActivityJumpThreshold(float activityJumpThreshold) {
+        this.activityJumpThreshold = ActivityJump.clampThreshold(activityJumpThreshold);
+        prefs.putFloat(ActivityJump.PREF_KEY, this.activityJumpThreshold);
+    }
+
     public boolean isShowAnalogClock() {
         return showAnalogClock;
     }
@@ -17005,6 +17064,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem jogForwardMI;
     private javax.swing.JMenuItem jumpNextMarkerMI;
     private javax.swing.JMenuItem jumpPrevMarkerMI;
+    private javax.swing.JMenuItem jumpNextActivityMI;
+    private javax.swing.JMenuItem jumpPrevActivityMI;
     private javax.swing.JCheckBoxMenuItem recordFilteredEventsCheckBoxMenuItem;
     private javax.swing.JToggleButton recordingButton;
     private javax.swing.JMenu loggingLevelMenu;

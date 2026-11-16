@@ -168,6 +168,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
     private JCheckBox repeatPlaybackCB;
     private JSpinner jogPacketCountSpinner;
     private JSpinner coarseSpeedFactorSpinner;
+    private JSpinner activityJumpThresholdSpinner;
     private JSpinner markerReactionTimeSpinner;
     private JTextField minExposureTimeTF;
     private JTextField maxExposureTimeTF;
@@ -1423,6 +1424,29 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(coarseSpeedFactorSpinner, gbcField(y++));
 
+        p.add(new JLabel("Activity jump threshold:"), gbcLabel(y));
+        activityJumpThresholdSpinner = new JSpinner(new SpinnerNumberModel(
+                (double) ActivityJump.THRESHOLD_DEFAULT,
+                (double) ActivityJump.THRESHOLD_MIN,
+                (double) ActivityJump.THRESHOLD_MAX,
+                0.01));
+        activityJumpThresholdSpinner.setEditor(new JSpinner.NumberEditor(activityJumpThresholdSpinner, "0.00"));
+        activityJumpThresholdSpinner.setToolTipText(
+                "<html>Shift+J / Shift+K. Minimum rise on the log-relative event-rate sparkline (0–1) "
+                + "that counts as an activity jump.<br>"
+                + "The playhead lands at the start of the bin just before the rise. "
+                + "Off while playing backwards. Default 0.20.</html>");
+        activityJumpThresholdSpinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                applyActivityJumpThreshold(((Number) activityJumpThresholdSpinner.getValue()).floatValue());
+            }
+        });
+        p.add(activityJumpThresholdSpinner, gbcField(y++));
+
         p.add(new JLabel("Marker reaction time (ms):"), gbcLabel(y));
         markerReactionTimeSpinner = new JSpinner(new SpinnerNumberModel(
                 AbstractAEPlayer.MARKER_REACTION_TIME_MS_DEFAULT, 0, 2000, 50));
@@ -1950,6 +1974,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
                 repeatPlaybackCB.setSelected(player.isRepeat());
                 jogPacketCountSpinner.setValue(Math.max(1, player.getJogPacketCount()));
                 coarseSpeedFactorSpinner.setValue(player.getCoarseSpeedFactor());
+                activityJumpThresholdSpinner.setValue((double) viewer.getActivityJumpThreshold());
                 markerReactionTimeSpinner.setValue(Math.max(0, player.getMarkerReactionTimeMs()));
                 numAreasSpinner.setValue(Math.max(1, player.getNumAreas()));
                 refreshMinExposureTextFromPlayer();
@@ -2063,6 +2088,17 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
             player.setCoarseSpeedFactor(factor);
         }
         viewer.updateCoarseSpeedFactorMenuItemText();
+    }
+
+    private void applyActivityJumpThreshold(float value) {
+        float t = ActivityJump.clampThreshold(value);
+        if (viewer.getJaerViewer() != null) {
+            for (AEViewer v : viewer.getJaerViewer().getViewers()) {
+                v.setActivityJumpThreshold(t);
+            }
+            return;
+        }
+        viewer.setActivityJumpThreshold(t);
     }
 
     private void refreshMinExposureTextFromPlayer() {

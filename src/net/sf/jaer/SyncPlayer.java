@@ -35,6 +35,7 @@ import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.graphics.ActivityJump;
 import net.sf.jaer.util.IndexFileFilter;
 import net.sf.jaer.util.JaerAllowedSubclasses;
 import net.sf.jaer.util.SubclassFinder;
@@ -1009,6 +1010,125 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         }
         seekAllToTimestamp(markerTimeUs(s), origin);
         return true;
+    }
+
+    /**
+     * Forward landing already offered. See {@code AEPlayer} activityJumpPastUs.
+     */
+    private long activityJumpPastUs = Long.MIN_VALUE;
+    /** Wall time of the last Shift+J that sought. 0 means none yet. */
+    private long lastActivityJumpBackMs;
+
+    /**
+     * Shift+J / Shift+K. Nearest sparkline rise on any playing camera, then every
+     * viewer seeks to that time so CountDuration playback stays aligned.
+     *
+     * @return overlay text
+     */
+    public String jumpGroupToActivity(AEViewer origin, boolean forward) {
+        float threshold = origin == null ? ActivityJump.THRESHOLD_DEFAULT : origin.getActivityJumpThreshold();
+        long fromUs = playheadUs;
+        AEFileInputStreamInterface originStream = fileStream(origin);
+        if (originStream != null) {
+            fromUs = originStream.getPositionTimestampUs();
+        }
+        int backSteps = 1;
+        if (!forward) {
+            activityJumpPastUs = Long.MIN_VALUE;
+            if (ActivityJump.repeatJumpBack(lastActivityJumpBackMs)) {
+                backSteps = 2;
+            }
+        } else {
+            lastActivityJumpBackMs = 0L;
+            if (activityJumpPastUs != Long.MIN_VALUE) {
+                long span = Math.max(1L, groupEndUs() - groupStartUs());
+                long binUs = Math.max(1L, span / 1024L);
+                if (fromUs + binUs < activityJumpPastUs) {
+                    activityJumpPastUs = Long.MIN_VALUE;
+                } else if (activityJumpPastUs > fromUs) {
+                    fromUs = activityJumpPastUs;
+                }
+            }
+        }
+        List<AEViewer> playing = getPlayingViewers().isEmpty() ? outer.getViewers() : getPlayingViewers();
+        ArrayList<AEViewer> group = new ArrayList<>();
+        for (AEViewer v : playing) {
+            if (fileStream(v) != null) {
+                group.add(v);
+            }
+        }
+        if (origin != null && fileStream(origin) != null && !group.contains(origin)) {
+            group.add(origin);
+        }
+        Long best = nearestActivityLanding(group, fromUs, threshold, forward, backSteps);
+        if (best == null && !groupHasActivityTrace(group)) {
+            return "No event-rate sparkline";
+        }
+        if (best == null) {
+            return ActivityJump.noneMessage(forward, threshold);
+        }
+        if (forward) {
+            activityJumpPastUs = best;
+        } else {
+            lastActivityJumpBackMs = System.currentTimeMillis();
+        }
+        boolean paused = origin != null && origin.isPaused();
+        if (origin != null && origin.aePlayer != null) {
+            origin.aePlayer.seekToTimestampUs(best, true);
+        }
+        seekAllToTimestamp(best, origin);
+        if (paused) {
+            refreshPausedFrame();
+        }
+        long originUs = originStream != null ? originStream.getFirstTimestampUs() : groupStartUs();
+        return ActivityJump.formatAt(best, originUs);
+    }
+
+    /**
+     * Nearest sparkline landing on the shared clock. {@code backSteps} 2 walks
+     * the merged rises, so a rise on another camera still counts as the one to skip.
+     */
+    private Long nearestActivityLanding(List<AEViewer> group, long fromUs, float threshold,
+            boolean forward, int backSteps) {
+        Long nearest = nearestActivityLanding(group, fromUs, threshold, forward);
+        if (forward || backSteps < 2 || nearest == null) {
+            return nearest;
+        }
+        Long earlier = nearestActivityLanding(group, nearest, threshold, false);
+        return earlier != null ? earlier : nearest;
+    }
+
+    private Long nearestActivityLanding(List<AEViewer> group, long fromUs, float threshold, boolean forward) {
+        Long best = null;
+        for (AEViewer v : group) {
+            AEFileInputStreamInterface s = fileStream(v);
+            if (s == null) {
+                continue;
+            }
+            float[] rates = s.getLogRelativeEventRateByTime();
+            if (rates == null) {
+                continue;
+            }
+            Long t = ActivityJump.landingUs(rates, s.getFirstTimestampUs(), s.getDurationUsLong(),
+                    fromUs, threshold, forward);
+            if (t == null) {
+                continue;
+            }
+            if (best == null || (forward ? t < best : t > best)) {
+                best = t;
+            }
+        }
+        return best;
+    }
+
+    private static boolean groupHasActivityTrace(List<AEViewer> group) {
+        for (AEViewer v : group) {
+            AEFileInputStreamInterface s = fileStream(v);
+            if (s != null && s.getLogRelativeEventRateByTime() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public long position(AEFileInputStreamInterface stream) {

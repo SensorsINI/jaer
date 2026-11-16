@@ -283,6 +283,83 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return super.jumpToPreviousMarker();
     }
 
+    @Override
+    protected String jumpToNextActivity() {
+        return jumpToActivity(true);
+    }
+
+    @Override
+    protected String jumpToPreviousActivity() {
+        return jumpToActivity(false);
+    }
+
+    /**
+     * Forward jump target already offered. The nearest event is often a few
+     * microseconds before that time; without this, Shift+K repeats the same rise.
+     * Cleared on Shift+J and when the playhead moves back by more than one bin.
+     */
+    private long activityJumpPastUs = Long.MIN_VALUE;
+    /** Wall time of the last Shift+J that sought. 0 means none yet. */
+    private long lastActivityJumpBackMs;
+
+    /**
+     * Shift+K / Shift+J. Synchronized playback seeks every camera to the nearest
+     * rise on any sparkline. A single file uses its own trace.
+     */
+    private String jumpToActivity(boolean forward) {
+        if (aeInputStream == null) {
+            return "No file is playing";
+        }
+        SyncPlayer sync = activeSyncPlayer();
+        if (sync != null) {
+            return sync.jumpGroupToActivity(viewer, forward);
+        }
+        float threshold = viewer == null ? ActivityJump.THRESHOLD_DEFAULT : viewer.getActivityJumpThreshold();
+        float[] rates = aeInputStream.getLogRelativeEventRateByTime();
+        if (rates == null) {
+            return "No event-rate sparkline";
+        }
+        long durationUs = aeInputStream.getDurationUsLong();
+        long fromUs = aeInputStream.getPositionTimestampUs();
+        int backSteps = 1;
+        if (!forward) {
+            activityJumpPastUs = Long.MIN_VALUE;
+            if (ActivityJump.repeatJumpBack(lastActivityJumpBackMs)) {
+                backSteps = 2;
+            }
+        } else {
+            fromUs = activitySearchFrom(fromUs, durationUs, rates.length);
+            lastActivityJumpBackMs = 0L;
+        }
+        Long landing = ActivityJump.landingUs(rates, aeInputStream.getFirstTimestampUs(),
+                durationUs, fromUs, threshold, forward, backSteps);
+        if (landing == null) {
+            return ActivityJump.noneMessage(forward, threshold);
+        }
+        if (forward) {
+            activityJumpPastUs = landing;
+        } else {
+            lastActivityJumpBackMs = System.currentTimeMillis();
+        }
+        boolean paused = viewer != null && viewer.isPaused();
+        seekToTimestampUs(landing, true);
+        if (paused) {
+            viewer.doSingleStep();
+        }
+        return ActivityJump.formatAt(landing, aeInputStream.getFirstTimestampUs());
+    }
+
+    private long activitySearchFrom(long fromUs, long durationUs, int nBins) {
+        long binUs = nBins > 0 && durationUs > 0L ? Math.max(1L, durationUs / nBins) : 1L;
+        if (activityJumpPastUs != Long.MIN_VALUE && fromUs + binUs < activityJumpPastUs) {
+            activityJumpPastUs = Long.MIN_VALUE;
+        }
+        if (activityJumpPastUs > fromUs) {
+            return activityJumpPastUs;
+        }
+        return fromUs;
+    }
+
     public class FileDeleter extends KeyAdapter implements PropertyChangeListener {
 
         private JFileChooser chooser;

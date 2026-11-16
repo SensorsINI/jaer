@@ -81,6 +81,8 @@ public abstract class AbstractAEPlayer {
     public final ToggleMarkAction toggleMarkerAction = new ToggleMarkAction();
     public final JumpNextMarkerkAction jumpNextMarkerAction = new JumpNextMarkerkAction();
     public final JumpPrevMarkerkAction jumpPrevMarkerAction = new JumpPrevMarkerkAction();
+    public final JumpNextActivityAction jumpNextActivityAction = new JumpNextActivityAction();
+    public final JumpPrevActivityAction jumpPrevActivityAction = new JumpPrevActivityAction();
     public final ExportMarksAction exportMarksAction = new ExportMarksAction();
     public final ImportMarksAction importMarksAction = new ImportMarksAction();
     /**
@@ -1390,6 +1392,44 @@ public abstract class AbstractAEPlayer {
         }
     }
 
+    /** Shift+K. Sparkline rise; lands just before it. Off while playing backwards. */
+    final public class JumpNextActivityAction extends MyAction {
+
+        public JumpNextActivityAction() {
+            super("Jump to next activity", null);
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.SHIFT_DOWN_MASK));
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Shift+K. Seek to just before the next sparkline activity increase. Off while playing backwards.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (activityJumpPlayingBackwards()) {
+                return;
+            }
+            showAction(jumpToNextActivity());
+        }
+    }
+
+    /** Shift+J. Earlier sparkline rise. Off while playing backwards. */
+    final public class JumpPrevActivityAction extends MyAction {
+
+        public JumpPrevActivityAction() {
+            super("Jump to previous activity", null);
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.SHIFT_DOWN_MASK));
+            putValue(Action.SHORT_DESCRIPTION,
+                    "Shift+J. Seek to just before the previous sparkline activity increase. A second press within 1 s skips the rise just landed on. Off while playing backwards.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (activityJumpPlayingBackwards()) {
+                return;
+            }
+            showAction(jumpToPreviousActivity());
+        }
+    }
+
     /** j. Synchronized playback moves every viewer to this marker's time. */
     protected boolean jumpToPreviousMarker() {
         if (aeInputStream == null) {
@@ -1404,6 +1444,30 @@ public abstract class AbstractAEPlayer {
             return false;
         }
         return aeInputStream.jumpToNextMarker();
+    }
+
+    /**
+     * Shift+K. Overlay text: landed time, or why there was no jump.
+     * Playing backwards does not call this.
+     */
+    protected String jumpToNextActivity() {
+        return "No file is playing";
+    }
+
+    /** Shift+J. Same contract as {@link #jumpToNextActivity()}. */
+    protected String jumpToPreviousActivity() {
+        return "No file is playing";
+    }
+
+    private boolean activityJumpPlayingBackwards() {
+        AbstractAEPlayer active = viewer == null ? this : viewer.getAePlayer();
+        if (active != null && active.getPlaybackDirection() == PlaybackDirection.Backward) {
+            if (viewer != null) {
+                viewer.showActionText("Activity jump is off while playing backwards");
+            }
+            return true;
+        }
+        return false;
     }
 
     private File marksCSVFileChooserShower() {
