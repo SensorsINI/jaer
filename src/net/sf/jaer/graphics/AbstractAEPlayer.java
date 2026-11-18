@@ -304,7 +304,7 @@ public abstract class AbstractAEPlayer {
      */
     public static double SPEED_UP_SLOW_DOWN_FACTOR = Math.pow(2, 0.25);
     /**
-     * Shift+F / Shift+S multiply or divide the slice by this factor.
+     * Alt+F / Alt+S multiply or divide the slice by this factor.
      * CountDuration duration, ConstantCount events, and AreaEventCount events/area.
      */
     public static final int COARSE_SPEED_FACTOR_DEFAULT = 100;
@@ -335,14 +335,14 @@ public abstract class AbstractAEPlayer {
         scaleAccumulation(1.0 / SPEED_UP_SLOW_DOWN_FACTOR);
     }
 
-    /** Shift+F: multiply the current slice duration or event count by {@link #getCoarseSpeedFactor()}. */
+    /** Alt+F: multiply the current slice duration or event count by {@link #getCoarseSpeedFactor()}. */
     public void speedUpCoarse() {
         scaleAccumulation(getCoarseSpeedFactor());
         log.info("coarse accumulation ×" + getCoarseSpeedFactor()
                 + " -> timeslice " + getTimesliceUs() + " us, packet " + getPacketSizeEvents() + " events");
     }
 
-    /** Shift+S: divide the current slice duration or event count by {@link #getCoarseSpeedFactor()}. */
+    /** Alt+S: divide the current slice duration or event count by {@link #getCoarseSpeedFactor()}. */
     public void slowDownCoarse() {
         scaleAccumulation(1.0 / getCoarseSpeedFactor());
         log.info("coarse accumulation ÷" + getCoarseSpeedFactor()
@@ -449,7 +449,7 @@ public abstract class AbstractAEPlayer {
         return factor;
     }
 
-    /** Shift+F/S factor. Default {@value #COARSE_SPEED_FACTOR_DEFAULT}. */
+    /** Alt+F/S factor. Default {@value #COARSE_SPEED_FACTOR_DEFAULT}. */
     public int getCoarseSpeedFactor() {
         return coarseSpeedFactor;
     }
@@ -1744,9 +1744,9 @@ public abstract class AbstractAEPlayer {
 
         public CoarseAccumulationIncreaseAction() {
             super("Increase event accumulation a lot", "Faster16");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.ALT_DOWN_MASK));
             putValue(Action.SHORT_DESCRIPTION,
-                    "Shift+F. Multiply slice duration or event count by the coarse factor (default 100×). File → Preferences → Playback.");
+                    "Alt+F. Multiply slice duration or event count by the coarse factor (default 100×). File → Preferences → Playback.");
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -1760,9 +1760,9 @@ public abstract class AbstractAEPlayer {
 
         public CoarseAccumulationDecreaseAction() {
             super("Decrease event accumulation a lot", "Slower16");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.SHIFT_DOWN_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.ALT_DOWN_MASK));
             putValue(Action.SHORT_DESCRIPTION,
-                    "Shift+S. Divide slice duration or event count by the coarse factor (default 100×). File → Preferences → Playback.");
+                    "Alt+S. Divide slice duration or event count by the coarse factor (default 100×). File → Preferences → Playback.");
         }
 
         public void actionPerformed(ActionEvent e) {

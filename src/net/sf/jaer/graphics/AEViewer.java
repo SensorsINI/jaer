@@ -633,7 +633,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean aedat4LossyCollapsePolarities = prefs.getBoolean("AEViewer.aedat4LossyCollapsePolarities", false);
     /** Click-to-show legend for the statistics line; keep tokens in sync with appendStatisticsLabelForPacket. */
     private static final String STATISTICS_BAR_HELP_HTML = "<html>"
-            + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower; Shift+F/S: ×N, default 100, File → Preferences → Playback) @ event timestamp (seconds)<br>"
+            + "<b>Xs@Ys</b> — slice duration (f/s: faster/slower; Alt+F/S: ×N, default 100, File → Preferences → Playback) @ event timestamp (seconds)<br>"
             + "<b>N/M evts CD|CC|AEC</b> — events this slice before/after filters (N evts if no filter), then accumulation: ConstantDuration, ConstantCount, or AreaEventCount. t cycles them; RT = RealTime. "
             + "While recording the live view, each slice is one render frame and the label stays CD<br>"
             + "<b>(overrun)</b> — live events discarded because the display frame filled; bar turns red. Increase USB tuning Render events, or lower the DVS rate: raise threshold or refractory, or enable DVS Auto Controller<br>"
@@ -1011,20 +1011,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return true;
             }
         });
-        // Shift+F / Shift+S / Shift+J / Shift+K. The Playback menu accelerator
-        // does not arrive when the heavyweight GL canvas has focus, and macOS
-        // does not deliver Shift+letter menu shortcuts. Key repeat while held
-        // scales again, or jumps to the next activity rise.
+        // Alt+F / Alt+S scale the slice. Shift+F is the DAVIS frame toggle.
+        // Shift+J / Shift+K jump activity. The Playback menu accelerator does
+        // not arrive when the heavyweight GL canvas has focus. Key repeat
+        // while held scales again, or jumps to the next activity rise.
+        // Alt+F and Alt+S are also the File and Sensor menu mnemonics; this
+        // dispatcher consumes them only during playback.
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
-                if (e.getID() != KeyEvent.KEY_PRESSED || !e.isShiftDown()
-                        || e.isControlDown() || e.isAltDown() || e.isMetaDown()) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.isControlDown() || e.isMetaDown()) {
                     return false;
                 }
                 int code = e.getKeyCode();
-                if (code != KeyEvent.VK_F && code != KeyEvent.VK_S
-                        && code != KeyEvent.VK_J && code != KeyEvent.VK_K) {
+                boolean coarse = e.isAltDown() && !e.isShiftDown()
+                        && (code == KeyEvent.VK_F || code == KeyEvent.VK_S);
+                boolean activity = e.isShiftDown() && !e.isAltDown()
+                        && (code == KeyEvent.VK_J || code == KeyEvent.VK_K);
+                if (!coarse && !activity) {
                     return false;
                 }
                 Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
@@ -6826,7 +6830,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.FixedPacketSize, "Fixed event count (ConstantCount)",
                 "Accumulate a fixed number of events (flextime). Default is nearest power of two of (pixels/64): 256 for DVS128, 16k for EVK4.");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.AreaEventCount, "Area event count (AreaEventCount)",
-                "Expose when any spatial area reaches N events (f/s changes N; Shift+F/S changes N by the coarse factor). Set # areas in File → Preferences → Playback.");
+                "Expose when any spatial area reaches N events (f/s changes N; Alt+F/S changes N by the coarse factor). Set # areas in File → Preferences → Playback.");
         addPlaybackModeMenuItem(group, AbstractAEPlayer.PlaybackMode.RealTime, "Real time",
                 "Play at recorded real time (T does not cycle this)");
 
@@ -6848,7 +6852,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         updatePlaybackModeMenuSelection();
 
         showRenderingModeMI.setText("Show View and Playback modes");
-        showRenderingModeMI.setToolTipText("Overlay color mode and event accumulation (Tab). c / t cycle them; f / s faster/slower; Shift+F/S jumps by the coarse factor.");
+        showRenderingModeMI.setToolTipText("Overlay color mode and event accumulation (Tab). c / t cycle them; f / s faster/slower; Alt+F/S jumps by the coarse factor.");
         installCoarseAccumulationMenuItems();
         installActivityJumpMenuItems();
     }
@@ -6889,7 +6893,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    /** Shift+F / Shift+S menu items. Accelerators come from the player actions. */
+    /** Alt+F / Alt+S menu items. Accelerators come from the player actions. */
     private void installCoarseAccumulationMenuItems() {
         if (aePlayer == null || playbackMenu == null || decreasePlaybackSpeedMenuItem == null) {
             return;
@@ -6917,11 +6921,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int n = aePlayer.getCoarseSpeedFactor();
         String detail = "the CountDuration slice, ConstantCount, or AreaEventCount by " + n
                 + ".<br>File → Preferences → Playback. Default 100×. "
-                + "A 1 ms slice with Shift+F becomes " + n + " ms.";
+                + "A 1 ms slice with Alt+F becomes " + n + " ms.";
         coarseIncreasePlaybackSpeedMenuItem.setText("Increase accumulation ×" + n);
-        coarseIncreasePlaybackSpeedMenuItem.setToolTipText("<html>Shift+F. Multiply " + detail);
+        coarseIncreasePlaybackSpeedMenuItem.setToolTipText("<html>Alt+F. Multiply " + detail);
         coarseDecreasePlaybackSpeedMenuItem.setText("Decrease accumulation ×" + n);
-        coarseDecreasePlaybackSpeedMenuItem.setToolTipText("<html>Shift+S. Divide " + detail);
+        coarseDecreasePlaybackSpeedMenuItem.setToolTipText("<html>Alt+S. Divide " + detail);
     }
 
     private void setPlaybackSpeedMenuEnabled(boolean enabled) {
@@ -7066,7 +7070,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         sb.append("\nc cycles color, t cycles accumulation");
         sb.append("\nf/s: faster/slower");
         if (player != null) {
-            sb.append("\nShift+F/S: ×").append(player.getCoarseSpeedFactor());
+            sb.append("\nAlt+F/S: ×").append(player.getCoarseSpeedFactor());
         }
         sb.append("\nShift+J/K: previous/next activity");
         sb.append("\nSee View/Playback menus");

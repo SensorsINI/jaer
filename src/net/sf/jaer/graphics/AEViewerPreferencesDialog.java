@@ -1406,13 +1406,13 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         });
         p.add(jogPacketCountSpinner, gbcField(y++));
 
-        p.add(new JLabel("Shift+F/S playback factor:"), gbcLabel(y));
+        p.add(new JLabel("Alt+F/S playback factor:"), gbcLabel(y));
         coarseSpeedFactorSpinner = new JSpinner(new SpinnerNumberModel(
                 AbstractAEPlayer.COARSE_SPEED_FACTOR_DEFAULT,
                 AbstractAEPlayer.COARSE_SPEED_FACTOR_MIN,
                 AbstractAEPlayer.COARSE_SPEED_FACTOR_MAX,
                 10));
-        coarseSpeedFactorSpinner.setToolTipText("Shift+F multiplies the CountDuration slice, ConstantCount, or AreaEventCount by this factor. Shift+S divides by it. Default 100 (1 ms becomes 100 ms).");
+        coarseSpeedFactorSpinner.setToolTipText("Alt+F multiplies the CountDuration slice, ConstantCount, or AreaEventCount by this factor. Alt+S divides by it. Default 100 (1 ms becomes 100 ms).");
         coarseSpeedFactorSpinner.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
@@ -2067,7 +2067,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         updateIntervalSpinner.setEnabled(hasChain || frame != null);
     }
 
-    /** Shared AEViewer pref. Apply to every open viewer so Shift+F/S match. */
+    /** Shared AEViewer pref. Apply to every open viewer so Alt+F/S match. */
     private void applyCoarseSpeedFactor(int factor) {
         if (viewer.getJaerViewer() != null) {
             for (AEViewer v : viewer.getJaerViewer().getViewers()) {
