@@ -555,18 +555,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             frameCount = frames.size();
             imuSampleCount = imuElems;
             baseUnixUs = liveBaseUnixUs;
-            eventRefs = unwrapPacketRefs(toRelativeRefs(events));
-            frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
-            imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
+            eventRefs = toPlaybackRefs(events, null, null, 0, 0);
+            frameRefs = toPlaybackRefs(frames, null, null, 0, 0);
+            imuRefs = toPlaybackRefs(imus, null, null, 0, 0);
             addedEvents = eventRefs;
             timesliceScanPacketCount = 0;
             scanTimesliceInPacket = false;
         } else if (!events.isEmpty() || !frames.isEmpty() || !imus.isEmpty()) {
             baseUnixUs = liveBaseUnixUs;
-            addedEvents = unwrapPacketRefs(toRelativeRefs(events));
+            addedEvents = toPlaybackRefs(events, null, null, 0, 0);
             eventRefs = concatRefs(eventRefs, addedEvents);
-            frameRefs = concatRefs(frameRefs, unwrapPacketRefs(toRelativeRefs(frames)));
-            imuRefs = concatRefs(imuRefs, unwrapPacketRefs(toRelativeRefs(imus)));
+            frameRefs = concatRefs(frameRefs, toPlaybackRefs(frames, null, null, 0, 0));
+            imuRefs = concatRefs(imuRefs, toPlaybackRefs(imus, null, null, 0, 0));
             eventCount = cumEvents;
             frameCount += frames.size();
             imuSampleCount += imuElems;
@@ -1709,11 +1709,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
 
         reportIndexProgress(progressMonitor, lastPercent, 55, "Building playback index");
-        eventRefs = unwrapPacketRefs(toRelativeRefs(events, progressMonitor, lastPercent, 55, 71),
-                progressMonitor, lastPercent, 71, 88);
+        if (events.size() >= 5_000_000) {
+            log.info(String.format("Building playback index for %,d EVTS packets (event total %,d)",
+                    events.size(), eventCount));
+        }
+        // One pass. A second and third PacketRef copy (relative times, then unwrap)
+        // kept three full tables live. Six FileDataTable chunks are up to 48 million
+        // packets, about 3.5 GB each, which exhausts the 10 GB heap. Packet slots stay
+        // int. The event cursor is already a long when the total passes 2^31.
+        eventRefs = toPlaybackRefs(events, progressMonitor, lastPercent, 55, 88);
         dropBackwardJumpTail();
-        frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
-        imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
+        frameRefs = toPlaybackRefs(frames, null, null, 0, 0);
+        imuRefs = toPlaybackRefs(imus, null, null, 0, 0);
         timelineTimestamps = new int[0];
         if (eventRefs.length == 0 && (!frames.isEmpty() || !imus.isEmpty())) {
             synthesizeTimelineFromTypedStreams(frames, imus);
@@ -2045,51 +2052,36 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
     }
 
-    private PacketRef[] toRelativeRefs(List<PacketRef> src) {
-        return toRelativeRefs(src, null, null, 0, 0);
-    }
-
-    private PacketRef[] toRelativeRefs(List<PacketRef> src, ProgressMonitor progressMonitor, int[] lastPercent,
-            int percentFrom, int percentTo) {
-        PacketRef[] out = new PacketRef[src.size()];
-        int n = src.size();
-        for (int i = 0; i < n; i++) {
-            PacketRef s = src.get(i);
-            out[i] = new PacketRef(s.payloadOffset, s.payloadSize,
-                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex, 0L, s.streamId);
-            if (progressMonitor != null && n > 0 && (i & 0xffff) == 0) {
-                int percent = percentFrom + (int) (((long) (percentTo - percentFrom) * i) / n);
-                reportIndexProgress(progressMonitor, lastPercent, percent,
-                        String.format("Building playback index (%,d / %,d packets)", i, n));
-            }
-        }
-        return out;
-    }
-
-    private PacketRef[] unwrapPacketRefs(PacketRef[] refs) {
-        return unwrapPacketRefs(refs, null, null, 0, 0);
-    }
-
     /**
-     * Packet table Unix times from a buggy writer jump backward by ~2^32 µs
+     * One playback table: times relative to {@link #baseUnixUs}, then unwrapped.
+     * <p>
+     * Packet-table Unix times from a buggy writer jump backward by ~2^32 µs
      * every ~35.8 min (sign-extended camera timestamps). Add 2^32 so seeking
-     * and duration use a monotonic long timeline. wrapOffset is applied again
-     * when decoding individual event Unix times.
+     * and duration use a monotonic long timeline. {@code wrapOffset} is applied
+     * again when decoding individual event Unix times.
+     * <p>
+     * Source entries are dropped as the output is filled so the input table can
+     * be collected before the output table is finished. Short recordings allocate
+     * the same single array.
      */
-    private PacketRef[] unwrapPacketRefs(PacketRef[] refs, ProgressMonitor progressMonitor, int[] lastPercent,
+    private PacketRef[] toPlaybackRefs(List<PacketRef> src, ProgressMonitor progressMonitor, int[] lastPercent,
             int percentFrom, int percentTo) {
-        if (refs.length == 0) {
-            return refs;
+        int n = src.size();
+        PacketRef[] out = new PacketRef[n];
+        if (n == 0) {
+            return out;
         }
+        boolean dropSource = src instanceof ArrayList<?>;
         long wrap = 0;
         long lastEnd = Long.MIN_VALUE;
-        PacketRef[] out = new PacketRef[refs.length];
         int wraps = 0;
-        int n = refs.length;
         for (int i = 0; i < n; i++) {
-            PacketRef s = refs[i];
-            long start = s.unixStart + wrap;
-            long end = s.unixEnd + wrap;
+            PacketRef s = src.get(i);
+            if (dropSource) {
+                src.set(i, null);
+            }
+            long start = s.unixStart - baseUnixUs + wrap;
+            long end = s.unixEnd - baseUnixUs + wrap;
             if (end < start && start - end > TimestampUnwrapper.WRAP_DETECT_US) {
                 end += TimestampUnwrapper.UINT32_US;
             }
@@ -2108,6 +2100,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 reportIndexProgress(progressMonitor, lastPercent, percent,
                         String.format("Building playback index (%,d / %,d packets)", i, n));
             }
+        }
+        if (dropSource) {
+            src.clear();
         }
         if (wraps > 0) {
             log.info(String.format(

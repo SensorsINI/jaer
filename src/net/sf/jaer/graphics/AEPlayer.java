@@ -561,7 +561,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         progressMonitor.setMillisToDecideToPopup(300);
         final Timer[] cancelPollRef = new Timer[1];
         final SwingWorker<AEFileInputStreamInterface, Void> worker = new SwingWorker<AEFileInputStreamInterface, Void>() {
-            volatile Exception exception = null;
+            volatile Throwable exception = null;
 
             @Override
             protected AEFileInputStreamInterface doInBackground() throws Exception {
@@ -623,8 +623,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             return null;
                         }
                         exception = e;
-                        log.warning("Could not construct input stream: " + e);
-                        e.printStackTrace();
+                        log.log(Level.WARNING, "Could not construct input stream: " + playFile.getName(), e);
+                        return null;
+                    } catch (OutOfMemoryError oom) {
+                        exception = oom;
+                        log.log(Level.WARNING, "Out of memory opening " + playFile.getName(), oom);
                         return null;
                     }
                     if (isCancelled() || progressMonitor.isCanceled()) {
@@ -659,7 +662,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     return stream;
                 } catch (Exception e) {
                     exception = e;
-                    log.warning("AEPlayer.startPlayback background failed: " + e);
+                    log.log(Level.WARNING, "AEPlayer.startPlayback background failed: " + playFile.getName(), e);
+                    if (stream != null) {
+                        try {
+                            stream.close();
+                        } catch (IOException ignore) {
+                        }
+                    }
+                    return null;
+                } catch (OutOfMemoryError oom) {
+                    exception = oom;
+                    log.log(Level.WARNING, "Out of memory opening " + playFile.getName(), oom);
                     if (stream != null) {
                         try {
                             stream.close();
@@ -682,9 +695,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         stream = isCancelled() ? null : get();
                         log.fine("done(): get() -> " + (stream == null ? "null" : stream.getClass().getSimpleName()));
                     } catch (Exception e) {
-                        log.fine("done(): get() threw " + e);
+                        log.log(Level.WARNING, "AEPlayer.startPlayback failed: " + playFile.getName(), e);
                         if (exception == null) {
-                            exception = e;
+                            exception = e.getCause() != null ? e.getCause() : e;
                         }
                     }
                     if (exception != null) {
