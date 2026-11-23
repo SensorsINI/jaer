@@ -814,42 +814,38 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return buildFileInfo();
     }
 
-    private String buildFileInfo() throws IOException {
-        EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(3);
-        StringBuilder sb = new StringBuilder();
-        if (file != null) {
-            sb.append(file.getAbsolutePath()).append('\n');
-        }
-        long durationUs = getDurationUsLong();
-        String durationStr = AEViewer.formatRecordingDurationUs(durationUs);
-        sb.append(String.format(
-                "AEDAT-4 %s: %s (%,d) events, %s (%,d) frames, %s (%,d) IMU samples, duration=%s",
-                Aedat4Compression.nameOf(compression),
-                eng.format((double) eventCount).trim(), eventCount,
-                eng.format((double) frameCount).trim(), frameCount,
-                eng.format((double) imuSampleCount).trim(), imuSampleCount,
-                durationStr));
-        if (lossyTimeShift >= 0) {
-            sb.append(String.format("\nLossy time bins: right shift %d bits (jAER-only EVTS)%s",
-                    lossyTimeShift, lossyCollapsePolarities ? ", On and Off collapsed" : ""));
-        }
-        if (file != null) {
-            sb.append(String.format("\nSize: %sB on disk", eng.format((double) file.length()).trim()));
-        }
+    /**
+     * Table rows for File → Show file info. Also produces {@link #getFileInfo()}'s
+     * text via {@link Aedat4FileInfo#toSummaryText()}.
+     */
+    public Aedat4FileInfo snapshotFileInfo() {
         rememberCompressedPayloadBytes();
-        String compressionLine = payloadCompressionLine();
-        if (!compressionLine.isEmpty()) {
-            sb.append('\n').append(compressionLine);
-        }
-        sb.append(String.format("\nStream %d%s, %,d EVTS packets indexed",
+        long durationUs = getDurationUsLong();
+        return Aedat4FileInfo.fromRecording(
+                file == null ? null : file.getAbsolutePath(),
+                compression,
+                eventCount,
+                frameCount,
+                imuSampleCount,
+                AEViewer.formatRecordingDurationUs(durationUs),
+                durationUs,
+                lossyTimeShift,
+                lossyCollapsePolarities,
+                file == null ? null : Long.valueOf(file.length()),
+                cachedCompressedPayloadBytes,
+                cachedUncompressedPayloadBytes,
                 eventStreamId,
-                selectedSource == null ? "" : " (" + selectedSource + ")",
-                eventRefs.length));
-        if (chip != null) {
-            sb.append("\nChip: ").append(chip.getClass().getSimpleName());
-        }
-        return sb.toString();
+                selectedSource,
+                eventRefs.length,
+                frameRefs.length,
+                imuRefs.length,
+                chip == null ? null : chip.getClass().getSimpleName(),
+                baseUnixUs,
+                getZoneId());
+    }
+
+    private String buildFileInfo() throws IOException {
+        return snapshotFileInfo().toSummaryText();
     }
 
     /** Payload sizes already stored on each indexed packet. No extra file read. */
@@ -862,21 +858,6 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (compression == CompressionType.NONE) {
             cachedUncompressedPayloadBytes = compressed;
         }
-    }
-
-    private String payloadCompressionLine() {
-        if (cachedCompressedPayloadBytes <= 0 && cachedUncompressedPayloadBytes <= 0) {
-            return "";
-        }
-        if (cachedUncompressedPayloadBytes > 0) {
-            return Aedat4Compression.formatPayloadCompression(
-                    compression, cachedUncompressedPayloadBytes, cachedCompressedPayloadBytes);
-        }
-        EngineeringFormat eng = new EngineeringFormat();
-        eng.setPrecision(1);
-        return String.format("Payloads: %sB compressed (%s)",
-                eng.format((double) cachedCompressedPayloadBytes).trim(),
-                Aedat4Compression.nameOf(compression));
     }
 
     private static long sumPayloadBytes(PacketRef[] refs) {

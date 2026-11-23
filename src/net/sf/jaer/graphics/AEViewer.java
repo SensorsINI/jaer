@@ -180,6 +180,7 @@ import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventio.aedat4.Aedat4PlaybackAssignment;
 import net.sf.jaer.eventio.aedat4.Aedat4CameraTrack;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInfo;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
@@ -649,7 +650,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private JaerUpdaterFrame jaerUpdaterFrame = null;
     /** Nonmodal File/Show file info window; reused while this viewer is open. */
     private JFrame fileInfoDialog;
-    private JTextArea fileInfoTextArea;
+    private FileInfoTablePanel fileInfoTable;
     /** File info header scan is off the EDT; ignore a second click until it finishes. */
     private volatile boolean fileInfoBusy;
     /** Last File → Save As output, for File info input/output compression summary. */
@@ -9644,7 +9645,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         showFileInfoMenuItem.setMnemonic('I');
         showFileInfoMenuItem.setText("Show file info...");
-        showFileInfoMenuItem.setToolTipText("Show summary information about the recording being played (AEDAT-4)");
+        showFileInfoMenuItem.setToolTipText("Table of this AEDAT-4 recording (counts, size, compression). Copy pastes tab-separated text.");
         showFileInfoMenuItem.setEnabled(false);
         showFileInfoMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -15262,7 +15263,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             AEFileInputStreamInterface stream = getAePlayer() == null ? null : getAePlayer().getAEInputStream();
             if (!(stream instanceof Aedat4FileInputStream) || fileInfoBusy) {
                 if (!fileInfoBusy) {
-                    presentFileInfoDialog(composeFileInfoText(stream), stream == null ? null : stream.getFile());
+                    presentFileInfoDialog(Aedat4FileInfo.parseSections(composeFileInfoText(stream)),
+                            stream == null ? null : stream.getFile());
                 }
                 return;
             }
@@ -15274,25 +15276,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // do not open a progress dialog or reread packet headers.
             SwingUtilities.invokeLater(() -> {
                 Thread worker = new Thread(() -> {
-                    String info;
+                    List<Aedat4FileInfo.Section> sections;
                     try {
-                        info = composeFileInfoText(aedat4);
+                        sections = fileInfoSections(aedat4, file);
                     } catch (RuntimeException ex) {
                         log.log(Level.WARNING, "File info failed", ex);
-                        info = "File info failed: " + ex.getMessage();
+                        sections = List.of(Aedat4FileInfo.message(null, "File info failed: " + ex.getMessage()));
                     }
-                    String text = info;
+                    List<Aedat4FileInfo.Section> ready = sections;
                     SwingUtilities.invokeLater(() -> {
                         fileInfoBusy = false;
                         setFileInfoWaitCursor(false);
-                        if (text != null) {
-                            presentFileInfoDialog(text, file);
-                        }
+                        presentFileInfoDialog(ready, file);
                     });
                 }, "file-info");
                 worker.setDaemon(true);
                 worker.start();
             });
+        }
+
+        /** Open recording as a table, plus the last Save As original when this file is that export. */
+        private List<Aedat4FileInfo.Section> fileInfoSections(Aedat4FileInputStream aedat4, File file) {
+            Aedat4FileInfo info = aedat4.snapshotFileInfo();
+            String source = lastSaveAsSourceInfoFor(file);
+            if (source == null || source.isEmpty()) {
+                return List.of(info.asSection(null));
+            }
+            List<Aedat4FileInfo.Section> sections = new ArrayList<>(2);
+            sections.add(Aedat4FileInfo.parseSummary("Original (input)", source));
+            sections.add(info.asSection("Exported (output)"));
+            return sections;
         }
 
         private void setFileInfoWaitCursor(boolean wait) {
@@ -15306,45 +15319,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             glass.setVisible(wait);
         }
 
-        private void presentFileInfoDialog(String info, File f) {
+        private void presentFileInfoDialog(List<Aedat4FileInfo.Section> sections, File f) {
             boolean firstShow = fileInfoDialog == null;
             if (firstShow) {
-                fileInfoTextArea = new JTextArea();
-                fileInfoTextArea.setEditable(false);
-                fileInfoTextArea.setLineWrap(false);
-                fileInfoTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
-                JScrollPane scroll = new JScrollPane(fileInfoTextArea);
-                JButton close = new JButton("Close");
                 fileInfoDialog = new FileInfoFrame();
+                fileInfoTable = new FileInfoTablePanel(() -> fileInfoDialog.setVisible(false));
                 fileInfoDialog.setIconImage(getIconImage());
-                fileInfoDialog.getContentPane().add(scroll, BorderLayout.CENTER);
-                JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-                buttons.add(close);
-                fileInfoDialog.getContentPane().add(buttons, BorderLayout.SOUTH);
-                close.addActionListener(e -> fileInfoDialog.setVisible(false));
-                fileInfoDialog.getRootPane().setDefaultButton(close);
+                fileInfoDialog.setContentPane(fileInfoTable);
+                fileInfoDialog.getRootPane().setDefaultButton(fileInfoTable.closeButton());
                 fileInfoDialog.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+                fileInfoDialog.setMinimumSize(new Dimension(560, 280));
             }
-            fileInfoTextArea.setForeground(Color.BLACK);
-            fileInfoTextArea.setDisabledTextColor(Color.BLACK);
-            fileInfoTextArea.setBackground(Color.WHITE);
-            fileInfoTextArea.setOpaque(true);
-            fileInfoTextArea.setCaretColor(Color.BLACK);
             fileInfoDialog.setTitle(f != null ? "File info — " + f.getName() : "Recording file info");
-            fileInfoTextArea.setText(info);
-            fileInfoTextArea.setCaretPosition(0);
-            String[] lines = info.split("\n", -1);
-            int cols = 40;
-            for (String line : lines) {
-                cols = Math.max(cols, line.length());
-            }
-            fileInfoTextArea.setColumns(cols);
-            fileInfoTextArea.setRows(Math.max(8, lines.length + 1));
+            fileInfoTable.setSections(sections);
             fileInfoDialog.pack();
             Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
             Dimension size = fileInfoDialog.getSize();
             int maxW = (int) (screen.width * 0.9);
-            int maxH = (int) (screen.height * 0.8);
+            int maxH = (int) (screen.height * 0.85);
             if (size.width > maxW || size.height > maxH) {
                 fileInfoDialog.setSize(Math.min(size.width, maxW), Math.min(size.height, maxH));
             }
@@ -15390,7 +15382,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
     /**
-     * File → Show file info. Packed to content; {@link WindowSaver.DontResize}
+     * File → Show file info. Packed to the table; {@link WindowSaver.DontResize}
      * so a saved huge size cannot stretch it. Stable {@code FileInfo} name so
      * position restore is not keyed on the per-file title.
      */
@@ -16183,6 +16175,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (fileInfoDialog != null) {
             fileInfoDialog.dispose();
             fileInfoDialog = null;
+            fileInfoTable = null;
         }
         if (preferencesDialog != null) {
             preferencesDialog.dispose();
