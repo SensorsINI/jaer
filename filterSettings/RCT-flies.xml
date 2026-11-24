@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="NRVS5KRC1S">
+          <map/>
+          <node name="RectangularClusterTracker">
+            <map>
+              <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="73358"/>
+              <entry key="RectangularClusterTracker.fontSize" value="7"/>
+              <entry key="RectangularClusterTracker.useNearestCluster" value="true"/>
+              <entry key="RectangularClusterTracker.velocityInitialization" value="InitialEstimate"/>
+              <entry key="RectangularClusterTracker.helpDialogShown" value="true"/>
+              <entry key="RectangularClusterTracker.maxNumClusters" value="5"/>
+              <entry key="RectangularClusterTracker.useEllipticalClusters" value="false"/>
+              <entry key="RectangularClusterTracker.velocityVectorScaling" value="0.062500186"/>
+              <entry key="RectangularClusterTracker.eventRatePerPixelLowpassTauS" value="0.03385642"/>
+              <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
+              <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="68.885605"/>
+              <entry key="RectangularClusterTracker.locationMixingFactor" value="0.010976593"/>
+              <entry key="RectangularClusterTracker.showClusterVelocity" value="false"/>
+              <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
+              <entry key="RectangularClusterTracker.showClusterEpsPerPx" value="false"/>
+              <entry key="RectangularClusterTracker.useVelocity" value="true"/>
+              <entry key="RectangularClusterTracker.thresholdEventRatePerPixelForVisibleClusterHz" value="1.006559"/>
+              <entry key="RectangularClusterTracker.useEventRatePerPixelForVisibilty" value="true"/>
+              <entry key="RectangularClusterTracker.enableClusterExitPurging" value="false"/>
+              <entry key="RectangularClusterTracker.showPaths" value="false"/>
+              <entry key="RectangularClusterTracker.limitSpeedByNearbyClusters" value="false"/>
+              <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+              <entry key="RectangularClusterTracker.purgeIfClusterOverlapsBorder" value="false"/>
+              <entry key="RectangularClusterTracker.clusterSize" value="0.038905207"/>
+              <entry key="RectangularClusterTracker.showAllClusters" value="false"/>
+              <entry key="RectangularClusterTracker.velocityTauMs" value="19.277668"/>
+              <entry key="RectangularClusterTracker.filterEnabled" value="true"/>
+              <entry key="RectangularClusterTracker.showClusterVelocityVector" value="true"/>
+            </map>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
