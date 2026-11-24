@@ -851,15 +851,20 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         private File playingFile() {
+            AEFileInputStreamInterface in = playbackStream();
+            return in == null ? null : in.getFile();
+        }
+
+        /**
+         * File stream for this viewer. {@code getAePlayer()} is the SyncPlayer
+         * while two viewers are synced, and that player has no input stream.
+         */
+        private AEFileInputStreamInterface playbackStream() {
             AEViewer viewer = chip == null ? null : chip.getAeViewer();
-            if (viewer == null || viewer.getPlayMode() != AEViewer.PlayMode.PLAYBACK || viewer.getAePlayer() == null) {
+            if (viewer == null || viewer.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
                 return null;
             }
-            AEFileInputStreamInterface in = viewer.getAePlayer().getAEInputStream();
-            if (in == null) {
-                return null;
-            }
-            return in.getFile();
+            return viewer.getAeFileInputStream();
         }
 
         /**
@@ -873,9 +878,8 @@ public class RectangularClusterTracker extends EventFilter2D
                 return true;
             }
             AEViewer viewer = chip == null ? null : chip.getAeViewer();
-            if (viewer != null && viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK
-                    && viewer.getAePlayer() != null && viewer.getAePlayer().getAEInputStream() != null) {
-                AEFileInputStreamInterface in = viewer.getAePlayer().getAEInputStream();
+            AEFileInputStreamInterface in = playbackStream();
+            if (in != null) {
                 File f = in.getFile();
                 if (f != null) {
                     sourceDescription = f.getAbsolutePath();
