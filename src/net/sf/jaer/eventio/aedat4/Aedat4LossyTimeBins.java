@@ -416,6 +416,52 @@ public final class Aedat4LossyTimeBins {
         return new Summary(expanded, tMin, tMax);
     }
 
+    /**
+     * Replace every bin timestamp. Zero is left alone. No effect on DV FlatBuffers.
+     *
+     * @return false when the payload is not a complete LBEV packet
+     */
+    public static boolean mapBinTimestamps(ByteBuffer src, java.util.function.LongUnaryOperator map) {
+        if (src == null || map == null || !isLossyPayload(src)) {
+            return false;
+        }
+        ByteBuffer buf;
+        try {
+            buf = lossyBuffer(src);
+        } catch (IOException e) {
+            return false;
+        }
+        int version = buf.getShort() & 0xffff;
+        if (version != VERSION && version != VERSION_PAIRS) {
+            return false;
+        }
+        int recordBytes = version == VERSION_PAIRS ? PAIR_RECORD_BYTES : RECORD_BYTES;
+        int nBins = buf.getInt();
+        if (nBins < 0) {
+            return false;
+        }
+        for (int b = 0; b < nBins; b++) {
+            if (buf.remaining() < 12) {
+                return false;
+            }
+            int tsPos = buf.position();
+            long ts = buf.getLong();
+            if (ts != 0L) {
+                buf.putLong(tsPos, map.applyAsLong(ts));
+            }
+            int nRecs = buf.getInt();
+            if (nRecs < 0) {
+                return false;
+            }
+            long skip = (long) nRecs * recordBytes;
+            if (skip > buf.remaining()) {
+                return false;
+            }
+            buf.position(buf.position() + (int) skip);
+        }
+        return true;
+    }
+
     /** Add {@code deltaUs} to every bin timestamp. No effect on DV FlatBuffers. */
     public static void addDeltaToBinTimestamps(ByteBuffer src, long deltaUs) {
         if (src == null || deltaUs == 0L || !isLossyPayload(src)) {

@@ -38,6 +38,7 @@ import net.sf.jaer.eventio.aedat4.dv.IOHeader;
  *
  * <pre>
  *   scripts/measure-clock-drift.sh recording.aedat4
+ *   scripts/measure-clock-drift.ps1 recording.aedat4
  *   scripts/measure-clock-drift.sh --self-check
  * </pre>
  */
@@ -46,6 +47,8 @@ public final class MulticameraClockDrift {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     /** Activity histograms longer than this are refused; widen the bin. */
     static final int MAX_BINS = 2_000_000;
+    /** Report lines fit the measurement dialog's monospaced text area. */
+    public static final int REPORT_WIDTH = 72;
     private static final DateTimeFormatter INSTANT_FORMAT
             = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z", Locale.ROOT);
 
@@ -301,6 +304,28 @@ public final class MulticameraClockDrift {
         if (Math.abs(fastFit.offsetAtStartUs - 30_000.0) > 150_000.0) {
             throw new AssertionError("scale-case offset " + fastFit.offsetAtStartUs + "\n" + scaleResult.report);
         }
+        if (!offsetResult.report.contains("Conclusion:") || !offsetResult.report.contains("after")) {
+            throw new AssertionError(offsetResult.report);
+        }
+        if (!scaleResult.report.contains(" fast versus ")) {
+            throw new AssertionError(scaleResult.report);
+        }
+        assertWrapped(offsetResult.report);
+        assertWrapped(scaleResult.report);
+        String wrappedPath = wrapReport("/Volumes/" + "n".repeat(80) + " dr mel.aedat4\n");
+        if (!wrappedPath.contains("\n  ")) {
+            throw new AssertionError("wrapped path was not indented:\n" + wrappedPath);
+        }
+        assertWrapped(wrappedPath);
+        Aedat4ClockCorrection.selfCheck();
+    }
+
+    private static void assertWrapped(String text) {
+        for (String line : text.split("\n", -1)) {
+            if (line.length() > REPORT_WIDTH) {
+                throw new AssertionError("line longer than " + REPORT_WIDTH + ": " + line);
+            }
+        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -311,6 +336,7 @@ public final class MulticameraClockDrift {
         }
         Options options = new Options();
         File file = null;
+        File writeTo = null;
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if ("--help".equals(arg) || "-h".equals(arg)) {
@@ -319,6 +345,8 @@ public final class MulticameraClockDrift {
             }
             if ("--bin-ms".equals(arg)) {
                 options.binUs = Long.parseLong(req(args, ++i, arg)) * 1_000L;
+            } else if ("--write".equals(arg)) {
+                writeTo = new File(req(args, ++i, arg));
             } else if ("--window-min".equals(arg)) {
                 options.windowUs = Long.parseLong(req(args, ++i, arg)) * 60L * 1_000_000L;
             } else if ("--step-min".equals(arg)) {
@@ -351,16 +379,24 @@ public final class MulticameraClockDrift {
             return true;
         });
         System.out.print(result.report);
+        if (writeTo != null) {
+            File out = Aedat4ClockCorrection.writeCorrectedCopy(file, writeTo, result, (note, percent) -> {
+                System.err.println(percent + "% " + note);
+                return true;
+            });
+            System.out.println("Wrote " + out.getAbsolutePath());
+        }
     }
 
     private static void usage() {
         System.err.println("""
-                Usage: measure-clock-drift.sh [options] recording.aedat4
+                Usage: measure-clock-drift.sh or measure-clock-drift.ps1 [options] recording.aedat4
                   --bin-ms N       activity bin width (default 250)
                   --window-min N   correlation window (default 10)
                   --step-min N     window step (default 5)
                   --max-lag-s N    lag search, either side (default 120)
                   --min-corr X     drop windows below this correlation (default 0.2)
+                  --write FILE     after measuring, write a corrected AEDAT-4 copy
                   --self-check     run the built-in numeric check""");
     }
 
@@ -1043,25 +1079,8 @@ public final class MulticameraClockDrift {
                 .append(".\n");
         sb.append("Reference camera (most events): ").append(referenceLabel).append('\n');
         sb.append(computerNote).append('\n');
-        boolean anyFit = false;
-        for (CameraFit c : fits) {
-            if (!c.rateWasFit()) {
-                continue;
-            }
-            anyFit = true;
-            sb.append(c.label).append(" versus reference: scale ")
-                    .append(String.format(Locale.ROOT, "%.8f (%s)", c.scaleVsReference, ppm(c.scaleVsReference)))
-                    .append(", lag at end ").append(formatSignedUs(c.lagAtEndUs)).append('\n');
-        }
-        if (!anyFit) {
-            sb.append("No camera produced a cross-correlation rate. Details are below.\n");
-        }
         sb.append('\n');
-        sb.append("A scale above 1 means that camera's clock ran fast: its timestamps grow too quickly. ");
-        sb.append("Divide elapsed time by the scale to slow them down.\n");
-        sb.append("  corrected_elapsed = (timestamp - first_timestamp - offset) / scale\n");
-        sb.append("Offset is the lag at the reference camera's first timestamp. ");
-        sb.append("Positive offset means this camera's timestamps are already later.\n\n");
+        boolean anyFit = false;
         for (CameraFit c : fits) {
             sb.append(c.label).append('\n');
             sb.append(String.format(Locale.ROOT, "  events %,d in %,d packets, span %s\n",
@@ -1069,6 +1088,7 @@ public final class MulticameraClockDrift {
             if (c.reference) {
                 sb.append("  cross-correlation reference (scale 1)\n");
             } else if (c.rateWasFit()) {
+                anyFit = true;
                 sb.append(String.format(Locale.ROOT,
                         "  scale versus reference: %.8f (%s)\n",
                         c.scaleVsReference, ppm(c.scaleVsReference)));
@@ -1109,10 +1129,113 @@ public final class MulticameraClockDrift {
             }
             sb.append('\n');
         }
-        sb.append("To put another camera on the reference clock, divide its elapsed microseconds by the scale versus reference, ");
-        sb.append("after subtracting the offset. The reference is the camera with the most events. ");
-        sb.append("When that camera was already stamped on the computer clock during recording, this is the correction onto the computer clock.\n");
-        return sb.toString();
+        if (!anyFit) {
+            sb.append("No camera produced a cross-correlation rate.\n");
+            return wrapReport(sb.toString());
+        }
+        String referenceName = shortName(referenceLabel);
+        for (CameraFit c : fits) {
+            if (!c.rateWasFit()) {
+                continue;
+            }
+            String direction = c.scaleVsReference < 1.0 ? "slow" : "fast";
+            String start = c.offsetAtStartUs >= 0.0 ? "after" : "before";
+            String end = c.lagAtEndUs < 0.0 ? "earlier" : "later";
+            sb.append("Conclusion: ").append(shortName(c.label)).append(" is ")
+                    .append(ppm(c.scaleVsReference)).append(' ').append(direction)
+                    .append(" versus ").append(referenceName)
+                    .append(" and starts ").append(formatAbsUs(c.offsetAtStartUs)).append(' ').append(start)
+                    .append(" it. At the end its timestamps are ")
+                    .append(formatAbsUs(c.lagAtEndUs)).append(' ').append(end).append(".\n");
+        }
+        sb.append("  corrected = referenceFirst + (timestamp - referenceFirst - offset) / scale\n\n");
+        sb.append("Save corrected copy writes a new file with that map applied to packet times and to event, frame, and IMU timestamps. ");
+        sb.append(referenceName).append(" is copied unchanged.\n");
+        return wrapReport(sb.toString());
+    }
+
+    /** Wrap each line to {@link #REPORT_WIDTH}. Continuation lines keep a hanging indent. */
+    public static String wrapReport(String text) {
+        if (text == null || text.isEmpty()) {
+            return text == null ? "" : text;
+        }
+        StringBuilder out = new StringBuilder(text.length() + 64);
+        int start = 0;
+        for (int i = 0; i <= text.length(); i++) {
+            if (i == text.length() || text.charAt(i) == '\n') {
+                wrapLine(out, text.substring(start, i), REPORT_WIDTH);
+                if (i < text.length()) {
+                    out.append('\n');
+                }
+                start = i + 1;
+            }
+        }
+        return out.toString();
+    }
+
+    private static void wrapLine(StringBuilder out, String line, int width) {
+        if (line.length() <= width) {
+            out.append(line);
+            return;
+        }
+        int indent = 0;
+        while (indent < line.length() && line.charAt(indent) == ' ') {
+            indent++;
+        }
+        int hangCount = indent == 0 ? 2 : Math.min(indent + 2, width / 2);
+        String hang = " ".repeat(hangCount);
+        int pos = 0;
+        boolean first = true;
+        while (pos < line.length()) {
+            int room = first ? width : width - hang.length();
+            if (room < 8) {
+                room = 8;
+            }
+            if (pos + room >= line.length()) {
+                if (!first) {
+                    out.append(hang);
+                }
+                out.append(line.substring(pos));
+                return;
+            }
+            int breakAt = line.lastIndexOf(' ', pos + room);
+            if (breakAt <= pos) {
+                breakAt = Math.min(line.length(), pos + room);
+            }
+            if (!first) {
+                out.append(hang);
+            }
+            out.append(line.substring(pos, breakAt).stripTrailing());
+            pos = breakAt;
+            while (pos < line.length() && line.charAt(pos) == ' ') {
+                pos++;
+            }
+            if (pos < line.length()) {
+                out.append('\n');
+            }
+            first = false;
+        }
+    }
+
+    static String shortName(String label) {
+        if (label == null || label.isEmpty()) {
+            return "the reference";
+        }
+        int colon = label.indexOf(": ");
+        String name = colon >= 0 ? label.substring(colon + 2) : label;
+        int paren = name.lastIndexOf(" (");
+        if (paren > 0) {
+            name = name.substring(0, paren);
+        }
+        return name;
+    }
+
+    static String formatAbsUs(double us) {
+        String signed = formatSignedUs(us);
+        if (signed.startsWith("+") || signed.startsWith("-")) {
+            return signed.substring(1);
+        }
+        return signed;
     }
 
     private static String oneLine(Result result) {
@@ -1173,8 +1296,9 @@ public final class MulticameraClockDrift {
         return progress.update(note, percent);
     }
 
-    private static final class Cancelled extends RuntimeException {
-        Cancelled() {
+    /** Thrown when a measurement or corrected-copy write is stopped. */
+    public static final class Cancelled extends RuntimeException {
+        public Cancelled() {
             super("Clock drift measurement cancelled");
         }
     }

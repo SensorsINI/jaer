@@ -24,6 +24,18 @@ public final class IMU extends Table {
             bb.putLong(o + bb_pos, bb.getLong(o + bb_pos) + deltaUs);
         }
     }
+
+    /** Replace a present non-zero timestamp. Zero means the field is absent. */
+    public void mapTimestamp(java.util.function.LongUnaryOperator map) {
+        int o = __offset(4);
+        if (o == 0 || map == null) {
+            return;
+        }
+        long t = bb.getLong(o + bb_pos);
+        if (t != 0L) {
+            bb.putLong(o + bb_pos, map.applyAsLong(t));
+        }
+    }
     public float temperature() { int o = __offset(6); return o != 0 ? bb.getFloat(o + bb_pos) : 0; }
     public float accelerometerX() { int o = __offset(8); return o != 0 ? bb.getFloat(o + bb_pos) : 0; }
     public float accelerometerY() { int o = __offset(10); return o != 0 ? bb.getFloat(o + bb_pos) : 0; }

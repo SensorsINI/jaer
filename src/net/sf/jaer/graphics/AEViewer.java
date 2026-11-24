@@ -9666,7 +9666,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         measureClockDriftMenuItem.setMnemonic('M');
         measureClockDriftMenuItem.setText("Measure clock drift...");
-        measureClockDriftMenuItem.setToolTipText("Cross-correlate packet activity of each camera to estimate clock scale against the others and the computer clock.");
+        measureClockDriftMenuItem.setToolTipText("Cross-correlate packet activity of each camera, then save a copy with the other cameras mapped onto the reference clock.");
         measureClockDriftMenuItem.setEnabled(false);
         measureClockDriftMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

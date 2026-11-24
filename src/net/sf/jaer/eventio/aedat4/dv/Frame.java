@@ -46,6 +46,26 @@ public final class Frame extends Table {
         addToLongField(12, deltaUs);
     }
 
+    /** Replace each present non-zero timestamp. Zero means the field is absent. */
+    public void mapTimestamps(java.util.function.LongUnaryOperator map) {
+        mapLongField(4, map);
+        mapLongField(6, map);
+        mapLongField(8, map);
+        mapLongField(10, map);
+        mapLongField(12, map);
+    }
+
+    private void mapLongField(int vtableOffset, java.util.function.LongUnaryOperator map) {
+        int o = __offset(vtableOffset);
+        if (o == 0 || map == null) {
+            return;
+        }
+        long t = bb.getLong(o + bb_pos);
+        if (t != 0L) {
+            bb.putLong(o + bb_pos, map.applyAsLong(t));
+        }
+    }
+
     private void addToLongField(int vtableOffset, long deltaUs) {
         int o = __offset(vtableOffset);
         if (o != 0) {

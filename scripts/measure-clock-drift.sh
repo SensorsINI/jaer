@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cross-correlate packet activity in a multi-camera AEDAT-4 file and print clock scales.
-# Compile first: ant compile
+# --write FILE also writes a corrected copy. Compile first: ant compile
 set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
