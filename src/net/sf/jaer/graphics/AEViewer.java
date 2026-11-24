@@ -651,6 +651,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Nonmodal File/Show file info window; reused while this viewer is open. */
     private JFrame fileInfoDialog;
     private FileInfoTablePanel fileInfoTable;
+    /** File → Measure clock drift. Reused while this viewer is open. */
+    private ClockDriftDialog clockDriftDialog;
+    private JMenuItem measureClockDriftMenuItem;
+    /** Header peek for the clock-drift menu, keyed by the open recording path. */
+    private File clockDriftMenuFile;
+    private boolean clockDriftMenuAvailable;
     /** File info header scan is off the EDT; ignore a second click until it finishes. */
     private volatile boolean fileInfoBusy;
     /** Last File → Save As output, for File info input/output compression summary. */
@@ -7093,6 +7099,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         closeMenuItem.setEnabled(true);
         saveAsMenuItem.setEnabled(yes);
         showFileInfoMenuItem.setEnabled(yes && isShowFileInfoAvailable());
+        if (measureClockDriftMenuItem != null) {
+            measureClockDriftMenuItem.setEnabled(yes && isMeasureClockDriftAvailable());
+        }
         boolean timeshiftView = liveTimeshift != null && liveTimeshift.isViewingFile();
         setPlaybackSpeedMenuEnabled(yes || timeshiftView);
         rewindPlaybackMenuItem.setEnabled(yes);
@@ -9378,6 +9387,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
         showFileInfoMenuItem = new javax.swing.JMenuItem();
+        measureClockDriftMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
         saveAsMenuItem = new javax.swing.JMenuItem();
         exportVideoMenuItem = new javax.swing.JMenuItem();
@@ -9654,6 +9664,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(showFileInfoMenuItem);
 
+        measureClockDriftMenuItem.setMnemonic('M');
+        measureClockDriftMenuItem.setText("Measure clock drift...");
+        measureClockDriftMenuItem.setToolTipText("Cross-correlate packet activity of each camera to estimate clock scale against the others and the computer clock.");
+        measureClockDriftMenuItem.setEnabled(false);
+        measureClockDriftMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                measureClockDriftMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(measureClockDriftMenuItem);
+
         closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         closeMenuItem.setMnemonic('C');
         closeMenuItem.setText("Close");
@@ -9701,6 +9722,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 updateStopVideoExportMenuItemEnabled();
                 updateSaveAsMenuItemEnabled();
                 updateShowFileInfoMenuItemEnabled();
+                updateMeasureClockDriftMenuItemEnabled();
             }
             public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
@@ -15250,17 +15272,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showFileInfoMenuItem.setEnabled(isShowFileInfoAvailable());
         }
 
-        /** AEDAT-4 playback only; other formats return an empty {@code getFileInfo()}. */
+        private void updateMeasureClockDriftMenuItemEnabled() {
+            if (measureClockDriftMenuItem != null) {
+                measureClockDriftMenuItem.setEnabled(isMeasureClockDriftAvailable());
+            }
+        }
+
+        /**
+         * AEDAT-4 playback only. {@link #getAePlayer()} is the shared SyncPlayer
+         * during synchronized playback and that player has no file stream.
+         */
         private boolean isShowFileInfoAvailable() {
-            if (getPlayMode() != PlayMode.PLAYBACK || getAePlayer() == null) {
+            if (getPlayMode() != PlayMode.PLAYBACK) {
                 return false;
             }
-            AEFileInputStreamInterface stream = getAePlayer().getAEInputStream();
-            return stream instanceof Aedat4FileInputStream;
+            return getAeFileInputStream() instanceof Aedat4FileInputStream;
+        }
+
+        /** Muxed AEDAT-4 playback with at least two event cameras. */
+        private boolean isMeasureClockDriftAvailable() {
+            if (getPlayMode() != PlayMode.PLAYBACK) {
+                return false;
+            }
+            AEFileInputStreamInterface stream = getAeFileInputStream();
+            if (!(stream instanceof Aedat4FileInputStream) || stream.getFile() == null) {
+                clockDriftMenuFile = null;
+                return false;
+            }
+            File file = stream.getFile();
+            if (file.equals(clockDriftMenuFile)) {
+                return clockDriftMenuAvailable;
+            }
+            int cameras = RecordingChipDetector.listAedat4PlaybackCameras(file).size();
+            clockDriftMenuFile = file;
+            clockDriftMenuAvailable = cameras >= 2;
+            return clockDriftMenuAvailable;
+        }
+
+        private void measureClockDriftMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            AEFileInputStreamInterface stream = getAeFileInputStream();
+            if (stream == null || stream.getFile() == null) {
+                return;
+            }
+            if (clockDriftDialog == null) {
+                clockDriftDialog = new ClockDriftDialog(this);
+            }
+            clockDriftDialog.showFor(stream.getFile());
         }
 
         private void showFileInfoDialog() {
-            AEFileInputStreamInterface stream = getAePlayer() == null ? null : getAePlayer().getAEInputStream();
+            AEFileInputStreamInterface stream = getAeFileInputStream();
             if (!(stream instanceof Aedat4FileInputStream) || fileInfoBusy) {
                 if (!fileInfoBusy) {
                     presentFileInfoDialog(Aedat4FileInfo.parseSections(composeFileInfoText(stream)),
@@ -16176,6 +16237,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileInfoDialog.dispose();
             fileInfoDialog = null;
             fileInfoTable = null;
+        }
+        if (clockDriftDialog != null) {
+            clockDriftDialog.dispose();
+            clockDriftDialog = null;
         }
         if (preferencesDialog != null) {
             preferencesDialog.dispose();
