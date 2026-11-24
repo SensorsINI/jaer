@@ -86,7 +86,9 @@ per pixel falls below threshold. Best for compact blobs, not long lines
 <code>locationMixingFactor</code> is how far each event pulls the cluster
 (smaller = smoother / slower).</li>
 <li>Turn on <code>useVelocity</code> and <code>showClusterVelocityVector</code> once tracking
-is stable. <code>limitSpeedByNearbyClusters</code> rejects speed outliers.</li>
+is stable. Velocity is the motion of the cluster location between path points,
+sampled at the global filter update interval (default 1&nbsp;ms), so row/column
+readout order is not treated as speed. <code>limitSpeedByNearbyClusters</code> rejects speed outliers.</li>
 </ol>
 <h3>Useful options</h3>
 <ul>
@@ -353,10 +355,11 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(mov, "velocityPoints",
                 "the number of recent path points (one per packet of events) to use for velocity vector regression");
         setPropertyTooltipBold(mov, "velocityTauMs",
-                "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
+                "lowpass time constant in ms for velocity measured from cluster path points at the global update interval; limits acceleration");
         setPropertyTooltip(mov, "frictionTauMs",
                 "velocities decay towards zero with this time constant to mimic friction; set to NaN to disable friction");
-        setPropertyTooltipBold(mov, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled "
+        setPropertyTooltipBold(mov, "useVelocity", "predicts cluster position from velocity measured between path points "
+                + "(global update interval, not per event); vectors are scaled "
                 + String.format("%.1f pix/pix/s", (VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US) * 1e-6));
         setPropertyTooltip(mov, "useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
         setPropertyTooltip(mov, "predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
@@ -2150,7 +2153,7 @@ public class RectangularClusterTracker extends EventFilter2D
 
             updateMass(event.timestamp);
 
-            updatePosition(event); // updates velocity too
+            updatePosition(event);
 
             updateEventRate(event.timestamp, true);
             updateAverageEventDistance();
@@ -2160,36 +2163,19 @@ public class RectangularClusterTracker extends EventFilter2D
             lastEventTimestamp = event.timestamp;
         }
 
+        /**
+         * Moves the cluster toward the event. Velocity is not measured here: the
+         * step points at whichever pixel the readout just emitted, and a
+         * row/column scan then looks like object speed. Speed is the
+         * displacement between path points in {@link #updateVelocity()}, sampled
+         * at the filter-chain update interval.
+         *
+         * @param event the event that pulls the cluster
+         */
         protected void updatePosition(final BasicEvent event) {
             float m1 = 1 - effectiveMixingFactor;
-
-            float prevX = location.x, prevY = location.y;
-            float newX = event.x;
-            float newY = event.y;
-            location.x = ((m1 * location.x) + (effectiveMixingFactor * newX));
-            location.y = ((m1 * location.y) + (effectiveMixingFactor * newY));
-
-            // update velocity of cluster using last two locations
-            float dt = 1e-6f * (event.timestamp - lastEventTimestamp);
-            if (dt > 0) {
-                float vx = (location.x - prevX) / dt;
-                float vy = (location.y - prevY) / dt;
-                velocity.x = velFilterX.filter(vx, event.timestamp);
-                velocity.y = velFilterY.filter(vy, event.timestamp);
-                if (!Float.isNaN(frictionTauMs)) {
-                    float factor = (float) Math.exp(-dt / (frictionTauMs * 1000));
-                    velocity.x = velocity.x * factor;
-                    velocity.y = velocity.y * factor;
-                }
-                if (velocityInitialization == VelocityInitialization.Average) {
-                    // update average velocity metric for construction of new Clusters
-                    averageVelocity.x = ((1 - AVERAGE_VELOCITY_MIXING_FACTOR) * averageVelocity.x)
-                            + (AVERAGE_VELOCITY_MIXING_FACTOR * velocity.x);
-                    averageVelocity.y = ((1 - AVERAGE_VELOCITY_MIXING_FACTOR) * averageVelocity.y)
-                            + (AVERAGE_VELOCITY_MIXING_FACTOR * velocity.y);
-                }
-                setVelocityValid(true);
-            }
+            location.x = ((m1 * location.x) + (effectiveMixingFactor * event.x));
+            location.y = ((m1 * location.y) + (effectiveMixingFactor * event.y));
         }
 
         /**
@@ -2516,7 +2502,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * @param t current timestamp.
          */
         public void updatePath(int t) {
-            if (!showPaths && !useVelocity) {
+            if (!showPaths && !useVelocity && !showClusterVelocityVector && !showClusterVelocity) {
                 return;
             }
             if (numEvents == previousNumEvents) {
@@ -2527,7 +2513,7 @@ public class RectangularClusterTracker extends EventFilter2D
             p.setnEvents(numEvents - previousNumEvents);
             path.add(p);
             previousNumEvents = numEvents;
-//            updateVelocity(); // moved to updatePosition
+            updateVelocity();
 
             if (path.size() > pathLength) {
                 if (!logDataEnabled || (clusterLoggingMethod != ClusterLoggingMethod.LogClusters)) {
@@ -2540,20 +2526,29 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
-         * Updates velocity of cluster and last path point lowpass filtered
-         * velocity.
+         * Updates velocity from the last two path points. Those points are the
+         * rendered cluster locations at successive global updates
+         * ({@link net.sf.jaer.eventprocessing.FilterChain#getUpdateIntervalMs()}).
+         * A fixed readout bias shifts where the cluster sits, not how fast it
+         * moves between samples.
+         * <p>
+         * Not gated on {@link #isVisible()}: {@code thresholdVelocityForVisibleCluster}
+         * needs a speed before the cluster can become visible.
          */
-        protected void updateVelocity() { // TODO not used now, see updatePosition
-            if (path.size() < 2 || !isVisible()) {
+        protected void updateVelocity() {
+            if (path.size() < 2) {
                 return;
             }
 
-            // update velocity of cluster using last two path points
             Iterator<ClusterPathPoint> itr = path.descendingIterator();
             ClusterPathPoint plast = itr.next();
             ClusterPathPoint pfirst = itr.next();
 
-            float dt = 1e-6f * (plast.t - pfirst.t);
+            long dtUs = (long) plast.t - (long) pfirst.t;
+            if (dtUs <= 0) {
+                return;
+            }
+            float dt = 1e-6f * dtUs;
             float vx = (plast.x - pfirst.x) / dt;
             float vy = (plast.y - pfirst.y) / dt;
             velocity.x = velFilterX.filter(vx, plast.t);

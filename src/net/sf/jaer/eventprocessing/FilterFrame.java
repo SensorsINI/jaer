@@ -491,7 +491,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         updateIntervalPanel.add(updateIntervalLabel);
 
         updateIntervalField.setColumns(8);
-        updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers, e.g. RectangularClusterTracker");
+        updateIntervalField.setToolTipText("How often filters are notified during a packet (ms). RectangularClusterTracker measures velocity from cluster path points at this interval.");
         updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 30));
         updateIntervalField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

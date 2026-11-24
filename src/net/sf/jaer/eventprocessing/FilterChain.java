@@ -109,6 +109,12 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     private boolean timedOut = false;
 
     /**
+     * Default {@link #updateIntervalMs} when no preference is stored.
+     * RectangularClusterTracker samples cluster velocity from path points at this interval.
+     */
+    public static final float DEFAULT_UPDATE_INTERVAL_MS = 1f;
+
+    /**
      * The updateIntervalMs is used by EventFilter2D's to ensure maximum update
      * intervals while iterating over packets of events. Subclasses of
      * EventFilter2D should check for Observers which may wish to be informed of
@@ -164,7 +170,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         getSupport().addPropertyChangeListener(chip.getFilterFrame());
         timeLimitEnabled = chip.getPrefs().getBoolean("FilterChain.timeLimitEnabled", false);
         timeLimitMs = chip.getPrefs().getInt("FilterChain.timeLimitMs", 10);
-        updateIntervalMs = chip.getPrefs().getFloat("FilterChain.updateIntervalMs", 10);
+        updateIntervalMs = chip.getPrefs().getFloat("FilterChain.updateIntervalMs", DEFAULT_UPDATE_INTERVAL_MS);
 
         timedOut = false;
         try {

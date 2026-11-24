@@ -673,8 +673,8 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         p.add(showAcquisitionOverlayCB, gbc(y++));
 
         p.add(new JLabel("Global update interval (ms):"), gbcLabel(y));
-        updateIntervalSpinner = new JSpinner(new SpinnerNumberModel(10.0, 0.001, 10000.0, 1.0));
-        updateIntervalSpinner.setToolTipText("Maximum update interval for filters that notify observers");
+        updateIntervalSpinner = new JSpinner(new SpinnerNumberModel((double) FilterChain.DEFAULT_UPDATE_INTERVAL_MS, 0.001, 10000.0, 1.0));
+        updateIntervalSpinner.setToolTipText("How often filters are notified during a packet (ms). RectangularClusterTracker measures velocity from cluster path points at this interval.");
         updateIntervalSpinner.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
@@ -2042,7 +2042,7 @@ public class AEViewerPreferencesDialog extends JFrame implements WindowSaver.Don
         hideDisabledFiltersCB.setSelected(hideDisabled);
 
         FilterChain.ProcessingMode mode = FilterChain.ProcessingMode.RENDERING;
-        float updateInterval = 10f;
+        float updateInterval = FilterChain.DEFAULT_UPDATE_INTERVAL_MS;
         boolean showAcquisitionOverlay = true;
         if (chain != null) {
             mode = chain.getProcessingMode();
