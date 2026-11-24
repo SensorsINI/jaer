@@ -14,7 +14,9 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -40,6 +42,10 @@ import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.RecordingFilename;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -97,7 +103,9 @@ readout order is not treated as speed. <code>limitSpeedByNearbyClusters</code> r
 (traffic).</li>
 <li><code>filterEventsEnabled</code> outputs only events assigned to clusters.</li>
 <li><code>showAllClusters</code> draws hypotheses that are not yet &ldquo;visible&rdquo;.</li>
-<li><code>logging</code> writes cluster CSV; <code>zoomOnTrackedCluster</code> follows one cluster.</li>
+<li><code>logging</code> with <code>LogClusters</code> writes one YAML cluster path per flight
+(<code>RCT-&lt;camera&gt;_&lt;time&gt;.yml</code>) into the folder of the recording being played.
+Lines starting with <code>#</code> describe the fields. <code>zoomOnTrackedCluster</code> follows one cluster.</li>
 </ul>
 </body>
 </html>
@@ -417,11 +425,11 @@ public class RectangularClusterTracker extends EventFilter2D
 
         setPropertyTooltip(logg, "logging", "toggles cluster logging according to method (see logDataEnabled)");
         setPropertyTooltip(logg, "logDataEnabled",
-                "writes a cluster log matlab file called RectangularClusterTrackerLog.m in the startup folder host/java");
+                "LogClusters writes RCT-<camera>_<time>.yml (one YAML document per cluster, # comment header) into the folder of the recording being played");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written log file");
         setPropertyTooltip(logg, "loggingIntervalUs", "interval in us between logging cluster info to logging file");
         setPropertyTooltip(logg, "clusterLoggingMethod",
-                "method for logging cluster data: LogFrames logs at specified time intervals; LogClusters logs each valid cluster on its death");
+                "LogClusters writes each visible cluster's full path when the cluster dies; LogFrames is the older periodic MATLAB log");
 
         setPropertyTooltip(options, "filterEventsEnabled",
                 "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
@@ -505,6 +513,10 @@ public class RectangularClusterTracker extends EventFilter2D
         }
     }
 
+    private boolean logClustersToFile() {
+        return logDataEnabled && clusterLoggingMethod == ClusterLoggingMethod.LogClusters;
+    }
+
     /**
      * Updates mass field of all clusters using time t as update time.
      *
@@ -554,6 +566,12 @@ public class RectangularClusterTracker extends EventFilter2D
         private PrintStream logStream = null;
         private int clusterCounter = 0;
         final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
+        /** Unix µs added to the unsigned camera timestamp. Null until known. */
+        private Long timeOriginUs = null;
+        /** aedat4, filename, recording, or host. */
+        private String timeOriginKind = "host";
+        private String sourceDescription = "live";
+        private boolean headerDocumentWritten = false;
 
         /**
          * Writes the footer, closes the file and nulls the stream.
@@ -592,22 +610,58 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
-         * Opens the file and prints the header to it. The file is written to
-         * the startup folder.
+         * Opens the file and prints the header. LogClusters writes
+         * {@code RCT-<camera>_<time>.yml} into the folder of the recording
+         * being played (or the live recording folder). LogFrames still writes
+         * a MATLAB file in the startup folder.
          */
         protected void open() {
             try {
                 clusterCounter = 0;
+                timeOriginUs = null;
+                timeOriginKind = "host";
+                sourceDescription = "live";
+                headerDocumentWritten = false;
                 dateString = DATE_FORMAT.format(new Date());
-                functionName = "RectangularClusterTrackerLog_" + dateString;
-                filename = functionName + ".m";
-                file = new File(filename);
-                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(file)));
-                log.info("created cluster logging file at " + file.getAbsolutePath());
-                writeHeader();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                if (clusterLoggingMethod == ClusterLoggingMethod.LogClusters) {
+                    String camera = cameraAbbrev();
+                    functionName = "RCT-" + camera + "_" + dateString;
+                    filename = functionName + ".yml";
+                    File dir = logDirectory();
+                    if (!dir.isDirectory() && !dir.mkdirs()) {
+                        log.warning("could not create log directory " + dir.getAbsolutePath());
+                    }
+                    file = uniqueFile(dir, filename);
+                    logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(file)), false, StandardCharsets.UTF_8);
+                    log.info("created cluster logging file at " + file.getAbsolutePath());
+                    ClusterFlightLog.writeGuide(logStream);
+                    if (resolveTimeOrigin(null)) {
+                        writeClusterFileHeader();
+                    }
+                } else {
+                    functionName = "RectangularClusterTrackerLog_" + dateString;
+                    filename = functionName + ".m";
+                    file = new File(filename);
+                    logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(file)), false, StandardCharsets.UTF_8);
+                    log.info("created cluster logging file at " + file.getAbsolutePath());
+                    writeHeader();
+                }
+            } catch (IOException e) {
+                log.warning("could not open cluster log: " + e);
             }
+        }
+
+        private void writeClusterFileHeader() {
+            if (logStream == null || headerDocumentWritten || timeOriginUs == null) {
+                return;
+            }
+            ClusterFlightLog.writeHeader(logStream, new ClusterFlightLog.Header(
+                    cameraAbbrev(),
+                    chip == null ? "" : chip.getClass().getSimpleName(),
+                    sourceDescription,
+                    timeOriginUs,
+                    timeOriginKind));
+            headerDocumentWritten = true;
         }
 
         /**
@@ -686,14 +740,7 @@ public class RectangularClusterTracker extends EventFilter2D
                     logStream.println("switch (frameN)");
                     break;
                 case LogClusters:
-                    logStream.println("function [path]=" + functionName + "(clusterNumber)");
-                    logStream.println("% written " + new Date());
-                    logStream.println("% each case is one 'cluster' history and the case switch number is the cluster number. ");
-                    logStream.println(
-                            "% loggingIntervalUs = " + loggingIntervalUs + "; % not relevant here since each cluster is logged on its death");
-                    logStream.println("% fields for each particle are ");
-                    logStream.println("% " + getFieldDescription());
-                    logStream.println("switch (clusterNumber)");
+                    ClusterFlightLog.writeGuide(logStream);
                     break;
             }
         }
@@ -709,7 +756,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 case LogFrames:
                     return "particles: lasttimestampus x y xvel yvel";
                 case LogClusters:
-                    return "path: timestampus, x, y, nevents, averageRadius";
+                    return "samples: absoluteTimeUs timestampUs x y vx vy";
                 default:
                     return "unknown logging method";
             }
@@ -722,16 +769,12 @@ public class RectangularClusterTracker extends EventFilter2D
             if (logStream == null) {
                 return;
             }
-            logStream.println("otherwise");
-            switch (clusterLoggingMethod) {
-                case LogFrames:
-                    logStream.println("particles=[];");
-                    break;
-                case LogClusters:
-                    logStream.println("clusters=[];");
+            if (clusterLoggingMethod == ClusterLoggingMethod.LogClusters) {
+                logStream.println("# end");
+                return;
             }
-            // logStream.println("cla;");
-            // logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
+            logStream.println("otherwise");
+            logStream.println("particles=[];");
             logStream.println("end; %switch");
         }
 
@@ -752,25 +795,144 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
-         * logs the cluster history to the logging using the clusterLogger
+         * Writes one YAML document for this cluster's path.
          */
         private void logClusterHistory(Cluster c) {
-            PrintStream s = clusterLogger.getLogStream();
-            if (s == null) {
+            if (logStream == null) {
                 return;
             }
-            // s.println("case " + c.getClusterNumber());
-            s.println("case " + clusterCounter++);
-            s.print("path=[");
             java.util.List<ClusterPathPoint> path = c.getPath();
-            for (ClusterPathPoint p : path) {
-                s.print(p + ";");
+            if (path.isEmpty()) {
+                return;
             }
-            s.println("];");
+            if (!headerDocumentWritten) {
+                resolveTimeOrigin(path.get(0).getT());
+                writeClusterFileHeader();
+            }
+            java.util.List<ClusterFlightLog.Sample> samples = new ArrayList<>(path.size());
+            for (ClusterPathPoint p : path) {
+                Float vx = null;
+                Float vy = null;
+                if (p.velocity != null && !Float.isNaN(p.velocity.x) && !Float.isNaN(p.velocity.y)) {
+                    vx = p.velocity.x;
+                    vy = p.velocity.y;
+                }
+                long timestampUs = p.getT() & 0xffffffffL;
+                samples.add(new ClusterFlightLog.Sample(
+                        absoluteTimeUs(p.getT()), timestampUs, p.x, p.y, vx, vy));
+            }
+            ClusterFlightLog.writeCluster(logStream, new ClusterFlightLog.ClusterRecord(
+                    clusterCounter++, c.getClusterNumber(), samples));
+            if (logStream.checkError()) {
+                log.warning("error logging cluster path");
+            }
         }
 
         private boolean isLoggable(Cluster c) {
             return c.isWasEverVisible();
+        }
+
+        private String cameraAbbrev() {
+            String name = chip == null ? "jAER" : chip.getClass().getSimpleName();
+            return RecordingFilename.deviceAbbrev(name);
+        }
+
+        /** Folder of the file being played, else the live recording folder, else the startup directory. */
+        private File logDirectory() {
+            File playing = playingFile();
+            if (playing != null && playing.getParentFile() != null) {
+                return playing.getParentFile();
+            }
+            AEViewer viewer = chip == null ? null : chip.getAeViewer();
+            if (viewer != null && viewer.getRecordingFile() != null && viewer.getRecordingFile().getParentFile() != null) {
+                return viewer.getRecordingFile().getParentFile();
+            }
+            return new File(System.getProperty("user.dir", "."));
+        }
+
+        private File playingFile() {
+            AEViewer viewer = chip == null ? null : chip.getAeViewer();
+            if (viewer == null || viewer.getPlayMode() != AEViewer.PlayMode.PLAYBACK || viewer.getAePlayer() == null) {
+                return null;
+            }
+            AEFileInputStreamInterface in = viewer.getAePlayer().getAEInputStream();
+            if (in == null) {
+                return null;
+            }
+            return in.getFile();
+        }
+
+        /**
+         * Sets {@link #timeOriginUs} so {@code absoluteTimeUs = timeOriginUs + timestampUs}.
+         *
+         * @param timestampUs camera timestamp used to anchor a live host clock, or null if none yet
+         * @return true when an origin is known
+         */
+        private boolean resolveTimeOrigin(Integer timestampUs) {
+            if (timeOriginUs != null) {
+                return true;
+            }
+            AEViewer viewer = chip == null ? null : chip.getAeViewer();
+            if (viewer != null && viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                    && viewer.getAePlayer() != null && viewer.getAePlayer().getAEInputStream() != null) {
+                AEFileInputStreamInterface in = viewer.getAePlayer().getAEInputStream();
+                File f = in.getFile();
+                if (f != null) {
+                    sourceDescription = f.getAbsolutePath();
+                    if (in instanceof Aedat4FileInputStream) {
+                        timeOriginUs = ((Aedat4FileInputStream) in).getBaseUnixUs();
+                        timeOriginKind = "aedat4";
+                        return true;
+                    }
+                    long startMs = in.getAbsoluteStartingTimeMs();
+                    if (startMs > 0) {
+                        timeOriginUs = startMs * 1000L;
+                        timeOriginKind = "filename";
+                        return true;
+                    }
+                }
+            }
+            if (viewer != null && viewer.getAedat4RecordingOutputStream() != null) {
+                Aedat4FileOutputStream writer = viewer.getAedat4RecordingOutputStream();
+                timeOriginUs = writer.getBaseUnixUs();
+                timeOriginKind = "recording";
+                if (viewer.getRecordingFile() != null) {
+                    sourceDescription = viewer.getRecordingFile().getAbsolutePath();
+                }
+                return true;
+            }
+            if (timestampUs != null) {
+                timeOriginUs = System.currentTimeMillis() * 1000L - (timestampUs & 0xffffffffL);
+                timeOriginKind = "host";
+                sourceDescription = "live";
+                return true;
+            }
+            return false;
+        }
+
+        private long absoluteTimeUs(int timestampUs) {
+            if (timeOriginUs == null) {
+                resolveTimeOrigin(timestampUs);
+            }
+            long origin = timeOriginUs == null ? 0L : timeOriginUs;
+            return origin + (timestampUs & 0xffffffffL);
+        }
+
+        private static File uniqueFile(File dir, String name) {
+            File candidate = new File(dir, name);
+            if (!candidate.exists()) {
+                return candidate;
+            }
+            int dot = name.lastIndexOf('.');
+            String stem = dot > 0 ? name.substring(0, dot) : name;
+            String ext = dot > 0 ? name.substring(dot) : "";
+            for (int n = 2; n < 1000; n++) {
+                candidate = new File(dir, stem + "-" + n + ext);
+                if (!candidate.exists()) {
+                    return candidate;
+                }
+            }
+            return new File(dir, stem + "-" + System.currentTimeMillis() + ext);
         }
     }
 
@@ -2493,7 +2655,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * @param t current timestamp.
          */
         public void updatePath(int t) {
-            if (!showPaths && !useVelocity && !showClusterVelocityVector && !showClusterVelocity) {
+            if (!showPaths && !useVelocity && !showClusterVelocityVector && !showClusterVelocity && !logClustersToFile()) {
                 return;
             }
             if (numEvents == previousNumEvents) {
@@ -3714,13 +3876,20 @@ public class RectangularClusterTracker extends EventFilter2D
     }
 
     public synchronized void setLogDataEnabled(boolean logDataEnabled) {
-        getSupport().firePropertyChange("logDataEnabled", this.logDataEnabled, logDataEnabled);
+        if (this.logDataEnabled == logDataEnabled) {
+            return;
+        }
+        // Assign before the property change. The filter panel applies the change
+        // by calling this setter again; firing first recurses until the undo
+        // event's toString fails with BootstrapMethodError.
+        boolean old = this.logDataEnabled;
         this.logDataEnabled = logDataEnabled;
         if (!logDataEnabled) {
             clusterLogger.close();
         } else {
             clusterLogger.open();
         }
+        getSupport().firePropertyChange("logDataEnabled", old, logDataEnabled);
     }
     // </editor-fold>
 

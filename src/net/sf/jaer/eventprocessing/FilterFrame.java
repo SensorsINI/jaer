@@ -249,7 +249,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         public void undoableEditHappened(UndoableEditEvent e) {
             //Remember the edit and update the menus
-            log.fine("adding undoable edit event" + e);
+            // Do not stringify the event. Its source is the UndoableEditSupport,
+            // and that toString runs while postEdit still holds the support.
+            UndoableEdit edit = e.getEdit();
+            log.fine("adding undoable edit " + (edit == null ? "" : edit.getPresentationName()));
             undoManager.addEdit(e.getEdit());
             fixUndoRedo();
         }
