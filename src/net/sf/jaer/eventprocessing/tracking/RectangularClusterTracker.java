@@ -32,7 +32,6 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.awt.GLCanvas;
-import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Desktop;
 
 import net.sf.jaer.Description;
@@ -200,7 +199,7 @@ public class RectangularClusterTracker extends EventFilter2D
     protected float velAngDiffDegToNotMerge = getFloat("velAngDiffDegToNotMerge", 60);
 
     @Preferred
-    private int fontSize = getInt("fontSize", 8);
+    private int fontSize = getInt("fontSize", 18);
 
     @Preferred
     protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
@@ -392,7 +391,7 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(sizing, "updateClustersOnlyFromEventsNearEdge", "true only update circular clusters from events near cluster radius");
         setPropertyTooltip(sizing, "ellipticalClusterEdgeThickness", "thickness of elliptical cluster edge for updating it");
 
-        setPropertyTooltip(disp, "fontSize", "sets font size for cluster information");
+        setPropertyTooltipBold(disp, "fontSize", "annotation text size in chip pixels; scales with the view");
         setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltipBold(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
@@ -1976,7 +1975,6 @@ public class RectangularClusterTracker extends EventFilter2D
          */
         public void draw(GLAutoDrawable drawable) {
             GL2 gl = drawable.getGL().getGL2();
-            GLUT cGLUT = chip.getCanvas().getGlut();
 
             final float BOX_LINE_WIDTH = 2f; // in chip
             final float PATH_POINT_SIZE = 4f;
@@ -2036,32 +2034,25 @@ public class RectangularClusterTracker extends EventFilter2D
                 gl.glEnd();
             }
 
-            // text annoations on clusters, setup
-            final int font = GLUT.BITMAP_HELVETICA_18;
             if (showClusterMass || showClusterEps || showClusterNumber || showClusterVelocity || showClusterEpsPerPx) {
-//                gl.glColor3f(1, 1, 1);
-                gl.glRasterPos3f(location.x, location.y, 0);
-            }
-
-            // cGLUT.glutBitmapString(font, String.format("%.0fdeg", instantaneousAngle*180/Math.PI)); // annotate with
-            // instantaneousAngle (debug)
-            if (showClusterVelocity) {
-                cGLUT.glutBitmapString(font, String.format("v(vx,vy)=%.0f(%.0f,%.0f) pps ", getSpeedPPS(), getVelocity().x, getVelocity().y));
-            }
-            // if (showClusterRadius) cGLUT.glutBitmapString(font, String.format("rad=%.1f ", getRadius()));
-            if (showClusterEps) {
-                cGLUT.glutBitmapString(font, String.format("eps=%sHz ", fmt.format(getAvgEventRateHz()))); // annotate
-                // the cluster with the event rate
-            }
-            if (showClusterEpsPerPx) {
-                cGLUT.glutBitmapString(font, String.format("eps/px=%sHz ", fmt.format(avgEventRateHzPerPx))); // annotate
-                // the cluster with the event rate per pixel
-            }
-            if (showClusterNumber) {
-                cGLUT.glutBitmapString(font, String.format("#=%d ", hashCode())); // annotate the cluster with hash ID
-            }
-            if (showClusterMass) {
-                cGLUT.glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTimestamp)));
+                StringBuilder label = new StringBuilder();
+                if (showClusterVelocity) {
+                    label.append(String.format("v(vx,vy)=%.0f(%.0f,%.0f) pps ", getSpeedPPS(), getVelocity().x, getVelocity().y));
+                }
+                if (showClusterEps) {
+                    label.append(String.format("eps=%sHz ", fmt.format(getAvgEventRateHz())));
+                }
+                if (showClusterEpsPerPx) {
+                    label.append(String.format("eps/px=%sHz ", fmt.format(avgEventRateHzPerPx)));
+                }
+                if (showClusterNumber) {
+                    label.append(String.format("#=%d ", hashCode()));
+                }
+                if (showClusterMass) {
+                    label.append(String.format("m=%.1f ", getMassNow(lastUpdateTimestamp)));
+                }
+                Color textColor = isVisible() ? getColor() : Color.GRAY;
+                DrawGL.drawString(fontSize, location.x, location.y, 0, textColor, label.toString());
             }
         }
 
@@ -4334,25 +4325,35 @@ public class RectangularClusterTracker extends EventFilter2D
         putFloat("angleFollowsVelLead", angleFollowsVelLead);
     }
 
-//    /**
-//     * @return the fontSize
-//     */
-//    public int getFontSize() {
-//        return fontSize;
-//    }
-//
-//    /**
-//     * @param fontSize the fontSize to set
-//     */
-//    public void setFontSize(int fontSize) {
-//        if (fontSize < 2) {
-//            fontSize = 2;
-//        } else if (fontSize > 36) {
-//            fontSize = 36;
-//        }
-//        this.fontSize = fontSize;
-//        putInt("fontSize", fontSize);
-//    }
+    /**
+     * Annotation text size in chip pixels.
+     *
+     * @return the fontSize
+     */
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    /**
+     * @param fontSize annotation text size in chip pixels
+     */
+    public void setFontSize(int fontSize) {
+        if (fontSize < getMinFontSize()) {
+            fontSize = getMinFontSize();
+        } else if (fontSize > getMaxFontSize()) {
+            fontSize = getMaxFontSize();
+        }
+        this.fontSize = fontSize;
+        putInt("fontSize", fontSize);
+    }
+
+    public int getMinFontSize() {
+        return 4;
+    }
+
+    public int getMaxFontSize() {
+        return 72;
+    }
     /**
      * @return the zoomOnTrackedCluster
      */
