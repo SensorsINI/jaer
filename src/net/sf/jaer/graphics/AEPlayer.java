@@ -1176,6 +1176,31 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             setDirectionForwards(true);
             cancelJog();
             return new AEPacketRaw(0);
+        } catch (IOException e) {
+            if (!isPlaybackStorageFailure(e)) {
+                // Interrupt wraps a closed FileChannel as IOException. Same as
+                // ClosedChannelException: empty packet, no dialog.
+                long now = System.currentTimeMillis();
+                if (now - lastClosedChannelWarnMs > 2000) {
+                    lastClosedChannelWarnMs = now;
+                    log.warning("playback file channel closed; returning empty packet: " + e);
+                }
+                setDirectionForwards(true);
+                cancelJog();
+                return new AEPacketRaw(0);
+            }
+            // Disk unplug / stale volume. An empty packet makes ViewLoop spin and
+            // SyncPlayer.await blocks the other viewer. Pause and show the exception.
+            cancelJog();
+            long now = System.currentTimeMillis();
+            if (now - lastGetNextPacketWarnMs > 2000) {
+                lastGetNextPacketWarnMs = now;
+                log.log(Level.WARNING, "playback read failed", e);
+            }
+            if (viewer != null) {
+                viewer.playbackReadFailed(e);
+            }
+            return new AEPacketRaw(0);
         } catch (Exception anyOtherException) {
             setDirectionForwards(true);
             cancelJog();
@@ -1387,6 +1412,30 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         System.arraycopy(src.getTimestamps(), from, dest.getTimestamps(), 0, len);
         dest.setNumEvents(len);
         return dest;
+    }
+
+    /**
+     * True when a playback read failed because the file or volume is gone
+     * (or the bytes are unreadable). Closed-channel IOExceptions are interrupts
+     * and must not pause playback or open a dialog.
+     */
+    static boolean isPlaybackStorageFailure(IOException e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof java.nio.channels.ClosedChannelException) {
+                return false;
+            }
+            String m = t.getMessage();
+            if (m == null) {
+                continue;
+            }
+            String lower = m.toLowerCase();
+            if (lower.contains("filechannel is closed")
+                    || lower.contains("filechannel unexpectedly was closed")
+                    || lower.contains("channel closed and file is null")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private long lastGetNextPacketWarnMs;
