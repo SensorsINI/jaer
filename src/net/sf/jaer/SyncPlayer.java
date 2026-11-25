@@ -100,6 +100,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     private volatile boolean outLoopArmed = true;
     /** One viewer hit EOF this slice; group-rewind after the barrier. */
     private final AtomicBoolean sliceEndedPrematurely = new AtomicBoolean();
+    /**
+     * A playback read failed (disk disappeared). Do not {@code barrier.await}:
+     * the other viewer is often paused or blocked and the wait never finishes.
+     */
+    private final AtomicBoolean playbackReadFailed = new AtomicBoolean();
     private boolean applyingGroupRewind;
     static Preferences prefs;
 
@@ -659,6 +664,12 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         // if the viewer is paused during the await call, then we may get a timeout here.
         // therefore we do not stop playback if the viewers are paused, only very slowly step along
 
+        // A failed read must not enter await(). The other ViewLoop is often not
+        // in this call (paused, or stuck on the same dead volume).
+        if (playbackReadFailed.get()) {
+            return new AEPacketRaw(0);
+        }
+
         // We first set all the player's currentStartTimestamp to the same values, based on all the player's values.
         // Since currentStartTimestamp is set by each player to whatever time it happens to end at
         // (which is not nessarily the last timestamp plust the delta time), we have to keep synchrnozing the players
@@ -687,8 +698,31 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         }
         player.seekPlayheadUs(playheadUs);
         AEPacketRaw ae = player.getNextPacket(player);
+        if (playbackReadFailed.get()) {
+            return ae != null ? ae : new AEPacketRaw(0);
+        }
         awaitSyncBarrier();
         return ae;
+    }
+
+    /**
+     * Disk read failed. Break the barrier so a viewer already in {@code await}
+     * returns, and keep later slices from waiting.
+     */
+    public synchronized void notePlaybackReadFailure() {
+        playbackReadFailed.set(true);
+        CyclicBarrier existing = barrier;
+        barrier = null;
+        if (existing != null) {
+            try {
+                existing.reset();
+            } catch (RuntimeException ignore) {
+            }
+        }
+    }
+
+    public synchronized void clearPlaybackReadFailure() {
+        playbackReadFailed.set(false);
     }
 
     /**
@@ -923,11 +957,19 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             }
             barrier.await();
         } catch (InterruptedException e) {
+            if (playbackReadFailed.get()) {
+                log.fine("sync barrier wait ended after a playback read failure");
+                return;
+            }
             // Slider single-step interrupts a view thread blocked in await().
             // Restoring the flag breaks the next barrier immediately.
             log.fine("sync barrier wait interrupted; remaking so the next slice can join");
             makeBarrier();
         } catch (BrokenBarrierException e) {
+            if (playbackReadFailed.get()) {
+                log.warning("sync barrier broken after a playback read failure");
+                return;
+            }
             log.warning("sync barrier broken; remaking so the next slice can join");
             makeBarrier();
         }

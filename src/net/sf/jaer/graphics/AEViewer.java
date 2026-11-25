@@ -499,6 +499,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * paints and then ignores clicks after resume).
      */
     private volatile boolean viewLoopSuspendedForRecordingDialog = false;
+    /**
+     * Playback file read failed (disk disappeared). ViewLoop parks on
+     * {@link #viewLoopPauseLock} so the error dialog can paint. Do not
+     * {@link #interruptViewloop()}: interrupt closes the playback FileChannel.
+     */
+    private volatile boolean viewLoopSuspendedForPlaybackError = false;
+    /** ViewLoop is inside the playback-error park, not in grab or GL render. */
+    private volatile boolean viewLoopParkedForPlaybackError = false;
+    /** One dialog per failure; cleared when the user resumes playback. */
+    private final AtomicBoolean playbackReadFailureDialogShown = new AtomicBoolean();
     /** ViewLoop has left grabInput and is waiting on {@link #viewLoopPauseLock}. */
     private volatile boolean viewLoopParkedForOfflineExport = false;
     /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
@@ -7419,7 +7429,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
                 maybeStopRecordingAfterSleepResume(!skipSleepDetect);
-                if (viewLoopSuspendedForRecordingDialog || viewLoopSuspendedForOfflineExport) {
+                if (viewLoopSuspendedForRecordingDialog || viewLoopSuspendedForOfflineExport
+                        || viewLoopSuspendedForPlaybackError) {
                     // Dialog or Save As owns the loop. Do not grabInput/render.
                     continue;
                 }
@@ -8370,6 +8381,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         } catch (InterruptedException e) {
                             interrupted();
                         }
+                    }
+                }
+                return;
+            }
+            if (viewLoopSuspendedForPlaybackError) {
+                // Park until the read-error dialog is dismissed. Do not
+                // interruptViewloop(): interrupt closes FileChannel.
+                interrupted();
+                synchronized (viewLoopPauseLock) {
+                    viewLoopParkedForPlaybackError = true;
+                    viewLoopPauseLock.notifyAll();
+                    try {
+                        while (viewLoopSuspendedForPlaybackError && !stop) {
+                            try {
+                                viewLoopPauseLock.wait();
+                            } catch (InterruptedException e) {
+                                interrupted();
+                            }
+                        }
+                    } finally {
+                        viewLoopParkedForPlaybackError = false;
                     }
                 }
                 return;
@@ -15843,7 +15875,96 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 && (getJaerViewer().getNumViewers() > 1)) {
             interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         }
+        if (!paused) {
+            clearPlaybackReadFailure();
+        }
         getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());
+    }
+
+    /**
+     * A playback file read threw {@link IOException} (volume unplugged, stale
+     * network mount). Pause without interrupting ViewLoop, drop the sync
+     * barrier, and show the exception. Returning an empty packet here used to
+     * spin ViewLoop and block the other viewer on the barrier.
+     */
+    void playbackReadFailed(IOException e) {
+        if (playbackUsesSyncPlayer()) {
+            jaerViewer.getSyncPlayer().notePlaybackReadFailure();
+        }
+        pauseForPlaybackReadFailure();
+        if (!playbackReadFailureDialogShown.compareAndSet(false, true)) {
+            return;
+        }
+        String file = playbackReadFailureFileLabel();
+        String detail = e == null ? "IOException" : e.toString();
+        log.log(Level.WARNING, "playback stopped; cannot read " + file, e);
+        if (GraphicsEnvironment.isHeadless()) {
+            return;
+        }
+        final String html = "<html>Playback stopped because the recording could not be read.<br><br>"
+                + ShowFolderSaveConfirmation.escapeHtml(file)
+                + "<br>"
+                + ShowFolderSaveConfirmation.escapeHtml(detail)
+                + "<br><br>The disk or file may have disappeared. Playback is paused.</html>";
+        // Park before the dialog paints. invokeAndWait on this thread (the JOGL
+        // thread) deadlocks: the dialog repaint waits for ViewLoop.
+        viewLoopSuspendedForPlaybackError = true;
+        SwingUtilities.invokeLater(() -> {
+            try {
+                if (pauseRenderingCheckBoxMenuItem != null) {
+                    pauseRenderingCheckBoxMenuItem.setSelected(true);
+                }
+                JOptionPane.showMessageDialog(this, html, "Playback read error", JOptionPane.ERROR_MESSAGE);
+            } finally {
+                viewLoopSuspendedForPlaybackError = false;
+                synchronized (viewLoopPauseLock) {
+                    viewLoopPauseLock.notifyAll();
+                }
+            }
+        });
+    }
+
+    private void pauseForPlaybackReadFailure() {
+        boolean old = isPaused();
+        AbstractAEPlayer player = getAePlayer();
+        if (player != null && !player.isPaused()) {
+            player.setPaused(true);
+        }
+        if (aePlayer != null && aePlayer != player && !aePlayer.isPaused()) {
+            aePlayer.setPaused(true);
+        }
+        singleStepDone();
+        if (playbackUsesSyncPlayer()) {
+            for (AEViewer other : jaerViewer.getViewers().toArray(AEViewer[]::new)) {
+                if (other != null && other != this) {
+                    other.singleStepDone();
+                }
+            }
+        }
+        if (old != isPaused()) {
+            getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());
+        }
+    }
+
+    private void clearPlaybackReadFailure() {
+        playbackReadFailureDialogShown.set(false);
+        if (jaerViewer != null && jaerViewer.getSyncPlayer() != null) {
+            jaerViewer.getSyncPlayer().clearPlaybackReadFailure();
+        }
+    }
+
+    private boolean playbackUsesSyncPlayer() {
+        return jaerViewer != null && jaerViewer.isSyncEnabled()
+                && jaerViewer.getViewers().size() > 1
+                && jaerViewer.getSyncPlayer() != null;
+    }
+
+    private String playbackReadFailureFileLabel() {
+        AEFileInputStreamInterface in = getAeFileInputStream();
+        if (in == null || in.getFile() == null) {
+            return "(no file)";
+        }
+        return in.getFile().getAbsolutePath();
     }
 
     /**
