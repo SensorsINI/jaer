@@ -366,7 +366,10 @@ open a window per camera. Events keep each camera's `x,y`;
 Recording writes one native track per vision slot (file `x` and the timestamp
 before the slot offset). One viewer per stream remains the default for every
 other chip. Declare a rig by subclassing `MultiDeviceChip` and calling
-`addSlot`. See `net.sf.jaer.chip.multidevice`.
+`addSlot`. `FlyBox2Cam` is that rig for the fly box: NRV
+(`NRVS5KRC1S`) images the yz plane and Prophesee EVK4
+(`PropheseeIMX636HD`) images the xy plane. See
+`net.sf.jaer.chip.multidevice`.
 
 ---
 

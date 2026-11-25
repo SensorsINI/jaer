@@ -425,8 +425,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             log.fine("Aedat4FileInputStream live-tail constructor returning");
             return;
         }
+        String multi = multiDeviceIndexSummary();
         log.info(String.format(
-                "Opened AEDAT-4 %s (%s): stream %d%s: %s (%,d) events, %s frames, %s IMU samples, duration=%s (%d EVTS packets indexed)",
+                "Opened AEDAT-4 %s (%s): stream %d%s: %s (%,d) events, %s frames, %s IMU samples, duration=%s (%d EVTS packets indexed)%s",
                 file.getName(),
                 Aedat4Compression.nameOf(compression),
                 this.eventStreamId,
@@ -436,7 +437,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
                 AEViewer.formatRecordingDurationUs(getDurationUsLong()),
-                eventRefs.length));
+                eventRefs.length,
+                multi.isEmpty() ? "" : " | " + multi));
         support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
         log.fine("Aedat4FileInputStream constructor returning");
     }
@@ -1259,7 +1261,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
             }
         }
-        if (evts.size() > 1) {
+        if (evts.size() > 1 && !(chip instanceof MultiDeviceChip)) {
             log.info(String.format(
                     "AEDAT-4 multi-camera file: playing EVTS stream %d (%s); %d EVTS streams available",
                     eventStreamId, selectedSource, evts.size()));
@@ -3206,8 +3208,68 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private String indexCacheFileName() {
-        return String.format("%s.%d.%d.s%d-%d.aedat4idx",
-                file.getName(), file.length(), file.lastModified(), eventStreamId, flyEyeRightEventStreamId);
+        return String.format("%s.%d.%d.s%s.aedat4idx",
+                file.getName(), file.length(), file.lastModified(), indexStreamToken());
+    }
+
+    /**
+     * One-camera and FlyEye keys stay {@code 0--1} and {@code left-right}.
+     * A {@link MultiDeviceChip} lists every bound EVTS id ({@code m0+3}) so a
+     * cache built for stream 0 alone is not reused for the tiled viewer.
+     */
+    private String indexStreamToken() {
+        if (multiDevicePlayback && chip instanceof MultiDeviceChip multi) {
+            StringBuilder sb = new StringBuilder("m");
+            boolean any = false;
+            for (DeviceSlot slot : multi.getSlots()) {
+                int id = slot.getBoundStreamId();
+                if (id < 0) {
+                    continue;
+                }
+                if (any) {
+                    sb.append('+');
+                }
+                any = true;
+                sb.append(id);
+            }
+            if (any) {
+                return sb.toString();
+            }
+        }
+        return eventStreamId + "-" + flyEyeRightEventStreamId;
+    }
+
+    /** Per-slot event counts after the index is loaded. Empty when this open is one camera. */
+    private String multiDeviceIndexSummary() {
+        if (!multiDevicePlayback || !(chip instanceof MultiDeviceChip multi) || eventRefs == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (DeviceSlot slot : multi.getSlots()) {
+            int id = slot.getBoundStreamId();
+            if (id < 0) {
+                continue;
+            }
+            long events = 0;
+            int packets = 0;
+            for (PacketRef ref : eventRefs) {
+                if (ref.streamId == id) {
+                    packets++;
+                    events += ref.numElements;
+                }
+            }
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(slot.getId()).append(" stream ").append(id).append(": ");
+            sb.append(String.format("%,d events in %d packets", events, packets));
+            if (packets == 0) {
+                sb.append(" (none indexed)");
+                log.warning("AEDAT-4 MultiDeviceChip " + multi.getName()
+                        + " slot " + slot.getId() + " stream " + id + " has no indexed EVTS packets");
+            }
+        }
+        return sb.toString();
     }
 
     private File indexCacheFile() {
