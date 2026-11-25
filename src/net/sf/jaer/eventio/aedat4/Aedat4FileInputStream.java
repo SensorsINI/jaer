@@ -45,6 +45,9 @@ import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.graphics.AEViewer;
 import ch.unizh.ini.jaer.chip.flyeye.FlyEye;
 import ch.unizh.ini.jaer.chip.flyeye.FlyEyeGeometry;
+import net.sf.jaer.chip.multidevice.DeviceSlot;
+import net.sf.jaer.chip.multidevice.MultiDeviceAddress;
+import net.sf.jaer.chip.multidevice.MultiDeviceChip;
 import net.sf.jaer.stereopsis.Stereopsis;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.FileDataDefinition;
@@ -159,6 +162,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     /** Second EVTS stream for native FlyEye-right; {@code -1} if unused. */
     private int flyEyeRightEventStreamId = -1;
     private boolean flyEyeNativePair;
+    /**
+     * {@link MultiDeviceChip} indexes every bound EVTS stream and packs
+     * {@link MultiDeviceAddress} so one viewer merges the file.
+     */
+    private boolean multiDevicePlayback;
     /** Requested EVTS stream before header parse; null = first EVTS in infoNode. */
     private final Integer requestedEventStreamId;
     private String selectedSource;
@@ -1173,6 +1181,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         frameStreamId = Aedat4FileOutputStream.STREAM_FRAMES;
         imuStreamId = Aedat4FileOutputStream.STREAM_IMU;
         selectedSource = null;
+        multiDevicePlayback = false;
         List<RecordingChipDetector.StreamHint> streams
                 = RecordingChipDetector.streamsFromInfoNodeXml(infoNode);
         logAedat4InfoNodeSummary(streams);
@@ -1256,6 +1265,39 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     eventStreamId, selectedSource, evts.size()));
         }
         resolveFlyEyeNativePair(evts);
+        resolveMultiDeviceStreams(evts);
+    }
+
+    /**
+     * Bind every EVTS stream the open {@link MultiDeviceChip} claims and index
+     * them together. Playback then uses the FlyEye unix-window reader so one
+     * timeslice contains every camera, packed as {@link MultiDeviceAddress}.
+     */
+    private void resolveMultiDeviceStreams(List<RecordingChipDetector.StreamHint> evts) {
+        multiDevicePlayback = false;
+        if (flyEyeNativePair || !(chip instanceof MultiDeviceChip multi)) {
+            return;
+        }
+        int bound = multi.bindPlaybackStreams(evts);
+        if (bound <= 0) {
+            return;
+        }
+        multiDevicePlayback = true;
+        int first = multi.firstBoundStreamId();
+        if (first >= 0) {
+            eventStreamId = first;
+        }
+        StringBuilder ids = new StringBuilder();
+        for (DeviceSlot slot : multi.getSlots()) {
+            if (slot.getBoundStreamId() < 0) {
+                continue;
+            }
+            if (ids.length() > 0) {
+                ids.append(", ");
+            }
+            ids.append(slot.getId()).append('=').append(slot.getBoundStreamId());
+        }
+        log.info("AEDAT-4 MultiDeviceChip " + multi.getName() + " EVTS " + ids);
     }
 
     /**
@@ -1300,7 +1342,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private boolean isIndexedEventStream(int streamId) {
         return streamId == eventStreamId
-                || (flyEyeNativePair && streamId == flyEyeRightEventStreamId);
+                || (flyEyeNativePair && streamId == flyEyeRightEventStreamId)
+                || (multiDevicePlayback && chip instanceof MultiDeviceChip multi && multi.isBoundStream(streamId));
     }
 
     /** One INFO line per stream so DV source / size / colorFilter are visible on open. */
@@ -1735,7 +1778,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private void refreshFlyEyeUnixBounds() {
         flyEyeUnixMin = 0;
         flyEyeUnixMax = 0;
-        if (!flyEyeNativePair || eventRefs.length == 0) {
+        if ((!flyEyeNativePair && !multiDevicePlayback) || eventRefs.length == 0) {
             return;
         }
         long lo = eventRefs[0].unixStart;
@@ -2642,7 +2685,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             profSlices++;
             profEvents += pkt.getNumEvents();
             profNsRead += System.nanoTime() - tRead;
-            logPlaybackRead("readPacketByTime FlyEye-pair dt=%d pos %d->%d packed=%d t=%d..%d%s%s",
+            String pairLabel = multiDevicePlayback ? "MultiDevice" : "FlyEye-pair";
+            logPlaybackRead("readPacketByTime " + pairLabel + " dt=%d pos %d->%d packed=%d t=%d..%d%s%s",
                     dt, pos0, position, pkt.getNumEvents(), t0, flyEyeCdPlayheadUs,
                     capped ? " capped" : "",
                     flyEyeSliceMerged ? " merged L=" + flyEyeMergeLeftN + " R=" + flyEyeMergeRightN : "");
@@ -2675,7 +2719,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         collectTypedForWindow(flyEyeCdPlayheadUs, t1);
         firePosition();
         notePositionAfterRead();
-        logPlaybackRead("readPacketByTime FlyEye-pair dt=%d (back) pos %d->%d packed=%d t=%d..%d%s%s",
+        String pairLabel = multiDevicePlayback ? "MultiDevice" : "FlyEye-pair";
+        logPlaybackRead("readPacketByTime " + pairLabel + " dt=%d (back) pos %d->%d packed=%d t=%d..%d%s%s",
                 dt, pos0, position, pkt.getNumEvents(), flyEyeCdPlayheadUs, t1,
                 capped ? " capped" : "",
                 flyEyeSliceMerged ? " merged L=" + flyEyeMergeLeftN + " R=" + flyEyeMergeRightN : "");
@@ -2704,6 +2749,26 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private int packAddress(int x, int y, int type, PacketRef ref) {
+        if (multiDevicePlayback && chip instanceof MultiDeviceChip multi && ref != null) {
+            int source = multi.sourceForStream(ref.streamId);
+            if (source < 0) {
+                return -1;
+            }
+            DeviceSlot slot = multi.slotBySource((byte) source);
+            if (slot == null || slot.getChild() == null) {
+                return -1;
+            }
+            int sx = slot.getChild().getSizeX();
+            int sy = slot.getChild().getSizeY();
+            int py = y;
+            if (dvOpenCvCoordinates && sy > 1) {
+                py = sy - 1 - y;
+            }
+            if (x < 0 || py < 0 || x >= sx || py >= sy) {
+                return -1;
+            }
+            return MultiDeviceAddress.pack(x, py, type, source);
+        }
         if (flyEyeNativePair) {
             boolean right = ref != null && ref.streamId == flyEyeRightEventStreamId;
             if (x >= FlyEyeGeometry.NATIVE_W || y >= FlyEyeGeometry.NATIVE_H) {
@@ -3415,7 +3480,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (!hasPolarity()) {
             return readTypedSliceByTime(dt, pos0, tRead);
         }
-        if (flyEyeNativePair) {
+        if (flyEyeNativePair || multiDevicePlayback) {
             return readFlyEyeNativePairByTime(dt, pos0, tRead, limitOut);
         }
         if (forwards) {

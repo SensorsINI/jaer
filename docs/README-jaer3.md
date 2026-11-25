@@ -360,6 +360,14 @@ two streams are the same chip. Unmatched windows are reused (chip switched);
 new windows open only if needed. Soft cap is 8 viewers unless the file has
 more cameras (`Aedat4PlaybackAssignment`).
 
+A `MultiDeviceChip` plays every EVTS stream in that one viewer. It does not
+open a window per camera. Events keep each camera's `x,y`;
+`BasicEvent.source` is the slot. The canvas tiles the cameras for display.
+Recording writes one native track per vision slot (file `x` and the timestamp
+before the slot offset). One viewer per stream remains the default for every
+other chip. Declare a rig by subclassing `MultiDeviceChip` and calling
+`addSlot`. See `net.sf.jaer.chip.multidevice`.
+
 ---
 
 ## Sources of input (PlayMode)

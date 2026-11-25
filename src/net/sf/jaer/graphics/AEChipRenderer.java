@@ -337,6 +337,22 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * Canvas column used to index the pixmap. Subclasses may tile several
+     * sensors without changing {@link BasicEvent#x}.
+     */
+    protected int displayX(BasicEvent e) {
+        return e.x;
+    }
+
+    /**
+     * Canvas row used to index the pixmap. Subclasses may tile several
+     * sensors without changing {@link BasicEvent#y}.
+     */
+    protected int displayY(BasicEvent e) {
+        return e.y;
+    }
+
+    /**
      * Does the rendering using selected method.
      *
      * @param packet a packet of events (already extracted from raw events)
@@ -397,10 +413,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             continue;
                         }
                         int type = e.getType();
-                        if ((e.x == xsel) && (e.y == ysel)) {
+                        if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                             playSpike(type);
                         }
-                        int ind = getPixMapIndex(e.x, e.y);
+                        int ind = getPixMapIndex(displayX(e), displayY(e));
                         if (ind < 0) {
                             continue;
                         }
@@ -434,10 +450,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                     continue;
                                 }
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int ind = getPixMapIndex(e.x, e.y);
+                                int ind = getPixMapIndex(displayX(e), displayY(e));
                                 if (ind < 0) {
                                     continue;
                                 }
@@ -465,10 +481,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     continue;
                                 }
                                 // System.out.println("x: " + e.x + " y:" + e.y);
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int ind = getPixMapIndex(e.x, e.y);
+                                int ind = getPixMapIndex(displayX(e), displayY(e));
                                 if (ind < 0) {
                                     continue;
                                 }
@@ -485,10 +501,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                     continue;
                                 }
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int ind = getPixMapIndex(e.x, e.y);
+                                int ind = getPixMapIndex(displayX(e), displayY(e));
                                 if (ind < 0) {
                                     continue;
                                 }
@@ -518,10 +534,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
                                     continue;
                                 }
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int index = getPixMapIndex(e.x, e.y);
+                                int index = getPixMapIndex(displayX(e), displayY(e));
                                 if (index < 0) {
                                     continue;
                                 }
@@ -556,10 +572,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     setSpecialCount(getSpecialCount() + 1);
                                     continue;
                                 }
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int index = getPixMapIndex(e.x, e.y);
+                                int index = getPixMapIndex(displayX(e), displayY(e));
                                 if (index < 0) {
                                     continue;
                                 }
@@ -583,10 +599,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     setSpecialCount(specialCount + 1);
                                     continue;
                                 }
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int index = getPixMapIndex(e.x, e.y);
+                                int index = getPixMapIndex(displayX(e), displayY(e));
                                 if (index < 0) {
                                     continue;
                                 }
@@ -610,10 +626,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     setSpecialCount(specialCount + 1);
                                     continue;
                                 }
-                                if ((e.x == xsel) && (e.y == ysel)) {
+                                if ((displayX(e) == xsel) && (displayY(e) == ysel)) {
                                     playSpike(type);
                                 }
-                                int ind = getPixMapIndex(e.x, e.y);
+                                int ind = getPixMapIndex(displayX(e), displayY(e));
                                 if (ind < 0) {
                                     continue;
                                 }

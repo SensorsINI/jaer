@@ -156,6 +156,7 @@ import net.sf.jaer.biasgen.BiasgenFrame;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
+import net.sf.jaer.chip.multidevice.MultiDeviceChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FramePacket;
@@ -3143,6 +3144,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             List<RecordingChipDetector.StreamHint> eventStreams
                     = RecordingChipDetector.listAedat4PlaybackCameras(file);
             if (eventStreams.size() > 1) {
+                if (chip instanceof MultiDeviceChip multi) {
+                    clearPendingAedat4Playback();
+                    log.info("MultiDeviceChip " + multi.getName()
+                            + " binding " + eventStreams.size()
+                            + " EVTS streams in this viewer");
+                    return true;
+                }
                 RecordingChipDetector.StreamHint chosen;
                 if (alreadyPending != null) {
                     chosen = streamById(eventStreams, alreadyPending);
@@ -8274,7 +8282,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         // File → "Enable filtering of recorded events" still applies to AEDAT-2.
                         boolean skipFilteredOut = isRecordFilteredEventsEnabled()
                                 || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
-                        if (chip instanceof FlyEye fly && aedat4RecordingOutputStream.getTrackCount() == 2) {
+                        if (chip instanceof MultiDeviceChip multi
+                                && aedat4RecordingOutputStream.getTrackCount() == multi.visionSlotCount()
+                                && multi.visionSlotCount() > 0) {
+                            multi.recordNativeAedat4(aedat4RecordingOutputStream, bundle, skipFilteredOut);
+                        } else if (chip instanceof FlyEye fly && aedat4RecordingOutputStream.getTrackCount() == 2) {
                             fly.recordNativeAedat4(aedat4RecordingOutputStream, bundle, skipFilteredOut);
                         } else {
                             aedat4RecordingOutputStream.writeBundle(bundle, skipFilteredOut, aedat4RecordingTrackIndex);
@@ -11849,7 +11861,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aedzRecordingOutputStream = null;
                 opened = openWithFrozenSnapshot(chip, recordingFile);
                 constructRecordingWriter(chip, opened, (stream, snapshot) -> {
-                    if (chip instanceof FlyEye fly) {
+                    if (chip instanceof MultiDeviceChip multi && multi.visionSlotCount() > 0) {
+                        aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream,
+                                multi.aedat4RecordingTracks(snapshot), getAedat4Compression(),
+                                System.currentTimeMillis() * 1000L, aedat4LossyTimeShiftForRecording(),
+                                aedat4LossyCollapseForRecording());
+                    } else if (chip instanceof FlyEye fly) {
                         aedat4RecordingOutputStream = new Aedat4FileOutputStream(stream,
                                 fly.aedat4RecordingTracks(snapshot), getAedat4Compression(),
                                 System.currentTimeMillis() * 1000L, aedat4LossyTimeShiftForRecording(),
