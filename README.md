@@ -80,6 +80,8 @@ Adding a camera and opening a pull request: [`docs/README-adding-devices.md`](do
 
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 
+Handy reference: [Online camera calibration chart generator](https://calib.io/pages/camera-calibration-pattern-generator)
+
 ## Quick start sample data
 
 * The installer can download curated files into `jaer/jaerSampleData`. **Help → Sample data → Download jAER sample data** does the same, always into a folder named `jaerSampleData`. File list: [`jaerSampleData/README.md`](jaerSampleData/README.md). Packing: [`docs/README-sample-data.md`](docs/README-sample-data.md).
