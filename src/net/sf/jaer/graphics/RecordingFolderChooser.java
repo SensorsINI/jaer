@@ -82,14 +82,8 @@ public final class RecordingFolderChooser {
             if (ret != JFileChooser.APPROVE_OPTION) {
                 return null;
             }
-            File dir = chooser.getSelectedFile();
+            File dir = resolveChosenDirectory(chooser.getCurrentDirectory(), chooser.getSelectedFile());
             if (dir == null) {
-                dir = chooser.getCurrentDirectory();
-            }
-            if (dir != null && FileAccessTimeout.isFile(dir)) {
-                dir = dir.getParentFile();
-            }
-            if (dir == null || FileAccessTimeout.directoryOrNull(dir) == null) {
                 JOptionPane.showMessageDialog(parent,
                         "That is not a usable folder. Choose another location.",
                         "Recording folder", JOptionPane.WARNING_MESSAGE);
@@ -105,6 +99,40 @@ public final class RecordingFolderChooser {
                     + RecordingDiskSpace.minFreeSpaceLabel() + " to record.</html>",
                     "Not enough free space", JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    /**
+     * Directory accepted by Use this folder.
+     * <p>
+     * On macOS Aqua a custom approve button keeps the filename field. Opening
+     * already inside a folder puts that folder's name in the field
+     * ({@code setSelectedFile} on a directory). Approve then resolves the name
+     * under the open folder, so {@code flybox} becomes {@code flybox/flybox}.
+     * That child is not the folder on screen. A different existing directory
+     * (go up one level; the field still names the child) is left as chosen.
+     */
+    static File resolveChosenDirectory(File current, File selected) {
+        File open = FileAccessTimeout.directoryOrNull(current);
+        if (open != null && isNameOfOpenFolder(open, selected)) {
+            return open;
+        }
+        File dir = selected != null ? selected : open;
+        if (dir != null && FileAccessTimeout.isFile(dir)) {
+            dir = dir.getParentFile();
+        }
+        return FileAccessTimeout.directoryOrNull(dir);
+    }
+
+    /**
+     * True when {@code selected} is {@code open/open.getName()}, the path Aqua
+     * builds by resolving the open folder's own name against itself.
+     */
+    private static boolean isNameOfOpenFolder(File open, File selected) {
+        if (selected == null || !selected.getName().equals(open.getName())) {
+            return false;
+        }
+        File parent = selected.getParentFile();
+        return parent != null && parent.equals(open);
     }
 
     static final class FreeSpaceAccessory extends JPanel implements PropertyChangeListener {
