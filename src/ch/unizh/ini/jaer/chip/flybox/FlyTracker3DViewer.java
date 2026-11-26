@@ -24,7 +24,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 /**
- * Shows the 3D path, its points, and the XYZ axes.
+ * Shows each flight, its points, and the XYZ axes.
  * Drag rotates, the wheel zooms, right-drag pans, double-click resets the view.
  */
 final class FlyTracker3DViewer extends JFrame {
@@ -120,22 +120,20 @@ final class FlyTracker3DViewer extends JFrame {
             int h = getHeight();
             Basis basis = basis();
             drawAxes(g2, w, h, basis);
-            List<float[]> path = tracker.copyPath();
+            List<FlyTracker3D.Trajectory> flights = tracker.copyTrajectories();
             g2.setStroke(new BasicStroke(1.5f));
-            g2.setColor(new Color(255, 220, 40));
-            float[] previous = null;
-            for (float[] point : path) {
-                float[] screen = project(point, w, h, basis);
-                if (previous != null) {
-                    float[] prevScreen = project(previous, w, h, basis);
-                    g2.draw(new Line2D.Float(prevScreen[0], prevScreen[1], screen[0], screen[1]));
+            for (FlyTracker3D.Trajectory flight : flights) {
+                g2.setColor(flightColor(flight.colorIndex));
+                float[] previous = null;
+                for (float[] point : flight.points) {
+                    float[] screen = project(point, w, h, basis);
+                    if (previous != null) {
+                        float[] prevScreen = project(previous, w, h, basis);
+                        g2.draw(new Line2D.Float(prevScreen[0], prevScreen[1], screen[0], screen[1]));
+                    }
+                    g2.fill(new Ellipse2D.Float(screen[0] - 2f, screen[1] - 2f, 4f, 4f));
+                    previous = point;
                 }
-                previous = point;
-            }
-            g2.setColor(Color.WHITE);
-            for (float[] point : path) {
-                float[] screen = project(point, w, h, basis);
-                g2.fill(new Ellipse2D.Float(screen[0] - 2f, screen[1] - 2f, 4f, 4f));
             }
             float[] now = tracker.getCurrentMm();
             String where = now == null
@@ -144,6 +142,12 @@ final class FlyTracker3DViewer extends JFrame {
             g2.setColor(new Color(180, 180, 180));
             g2.drawString(where, 12, h - 28);
             g2.drawString("drag rotate    wheel zoom    right-drag pan    double-click reset", 12, h - 12);
+        }
+
+        /** Golden-ratio step so successive flights land on different hues. */
+        private static Color flightColor(int index) {
+            float hue = (index * 0.618034f) % 1f;
+            return Color.getHSBColor(hue, 0.85f, 1f);
         }
 
         private void drawAxes(Graphics2D g2, int w, int h, Basis basis) {

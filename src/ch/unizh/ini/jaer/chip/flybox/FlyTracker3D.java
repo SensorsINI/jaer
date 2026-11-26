@@ -78,6 +78,7 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     private float evk4DistanceMm = getFloat("evk4DistanceMm", 100f);
     private float evk4FocalLengthMm = getFloat("evk4FocalLengthMm", 6f);
     private int pathLength = getInt("pathLength", 300);
+    private int trajectoriesToShow = getInt("trajectoriesToShow", 8);
 
     /**
      * {@code clusterSize} is a fraction of the chip the tracker was built on
@@ -97,7 +98,9 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     private final Evk4Tracker evk4Tracker;
     private final EventPacket<PolarityEvent> nrvPacket = new EventPacket<>(PolarityEvent.class);
     private final EventPacket<PolarityEvent> evk4Packet = new EventPacket<>(PolarityEvent.class);
-    private final List<float[]> path = new ArrayList<>();
+    private final List<Trajectory> flights = new ArrayList<>();
+    private Trajectory openFlight;
+    private int nextColor;
     private float[] current;
     private FlyTracker3DViewer viewer;
     private boolean showViewer;
@@ -125,7 +128,9 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("lens", "evk4DistanceMm",
                 "Distance of the EVK4 lens from the center of the box, in mm. The lens is on the +z side and looks toward -z.");
         setPropertyTooltip("lens", "evk4FocalLengthMm", "EVK4 lens focal length in mm.");
-        setPropertyTooltip("display", "pathLength", "3D path keeps at most this many points.");
+        setPropertyTooltip("display", "pathLength", "Points kept on each flight.");
+        setPropertyTooltip("display", "trajectoriesToShow",
+                "Flights kept in the 3D window. A flight ends when either camera loses its cluster. The oldest flight is dropped.");
         setPropertyTooltip("ShowViewer", "Open or close the 3D path window.");
         pushSharedParameters();
         watch(nrvTracker);
@@ -395,7 +400,9 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     synchronized public void resetFilter() {
         nrvTracker.resetFilter();
         evk4Tracker.resetFilter();
-        path.clear();
+        flights.clear();
+        openFlight = null;
+        nextColor = 0;
         current = null;
         repaintViewer();
     }
@@ -465,25 +472,53 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         }
         RectangularClusterTracker.Cluster nrvCluster = strongest(nrvTracker);
         RectangularClusterTracker.Cluster evk4Cluster = strongest(evk4Tracker);
-        if (nrvCluster != null && evk4Cluster != null) {
-            float[] xyz = intersectRays(
-                    evk4Cluster.getLocation().x - (evk4.getChild().getSizeX() - 1) * 0.5f,
-                    evk4Cluster.getLocation().y - (evk4.getChild().getSizeY() - 1) * 0.5f,
-                    evk4FocalLengthMm, evk4DistanceMm,
-                    nrvCluster.getLocation().x - (nrv.getChild().getSizeX() - 1) * 0.5f,
-                    nrvCluster.getLocation().y - (nrv.getChild().getSizeY() - 1) * 0.5f,
-                    nrvFocalLengthMm, nrvDistanceMm);
-            if (xyz != null) {
-                current = xyz;
-                path.add(xyz);
-                int keep = Math.max(2, pathLength);
-                while (path.size() > keep) {
-                    path.remove(0);
-                }
-                repaintViewer();
+        if (nrvCluster == null || evk4Cluster == null) {
+            endFlight();
+            return in;
+        }
+        float[] xyz = intersectRays(
+                evk4Cluster.getLocation().x - (evk4.getChild().getSizeX() - 1) * 0.5f,
+                evk4Cluster.getLocation().y - (evk4.getChild().getSizeY() - 1) * 0.5f,
+                evk4FocalLengthMm, evk4DistanceMm,
+                nrvCluster.getLocation().x - (nrv.getChild().getSizeX() - 1) * 0.5f,
+                nrvCluster.getLocation().y - (nrv.getChild().getSizeY() - 1) * 0.5f,
+                nrvFocalLengthMm, nrvDistanceMm);
+        if (xyz != null) {
+            if (openFlight == null) {
+                openFlight = new Trajectory(nextColor++);
+                flights.add(openFlight);
+                trimFlightCount();
             }
+            current = xyz;
+            openFlight.points.add(xyz);
+            trimFlightPoints(openFlight);
+            repaintViewer();
         }
         return in;
+    }
+
+    /** Stop appending. The flight stays in the list until a newer one displaces it. */
+    private void endFlight() {
+        if (openFlight == null && current == null) {
+            return;
+        }
+        openFlight = null;
+        current = null;
+        repaintViewer();
+    }
+
+    private void trimFlightCount() {
+        int keep = Math.max(1, trajectoriesToShow);
+        while (flights.size() > keep) {
+            flights.remove(0);
+        }
+    }
+
+    private void trimFlightPoints(Trajectory flight) {
+        int keep = Math.max(2, pathLength);
+        while (flight.points.size() > keep) {
+            flight.points.remove(0);
+        }
     }
 
     private DeviceSlot slot(String id, int visionFallback) {
@@ -574,11 +609,15 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    /** Copy of the 3D path, each point {@code {x, y, z}} millimeters. */
-    public synchronized List<float[]> copyPath() {
-        List<float[]> copy = new ArrayList<>(path.size());
-        for (float[] point : path) {
-            copy.add(point.clone());
+    /** Flights still on screen. Each point is {@code {x, y, z}} millimeters. */
+    public synchronized List<Trajectory> copyTrajectories() {
+        List<Trajectory> copy = new ArrayList<>(flights.size());
+        for (Trajectory flight : flights) {
+            List<float[]> points = new ArrayList<>(flight.points.size());
+            for (float[] point : flight.points) {
+                points.add(point.clone());
+            }
+            copy.add(new Trajectory(flight.colorIndex, points));
         }
         return copy;
     }
@@ -712,6 +751,40 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     public void setPathLength(int pathLength) {
         this.pathLength = Math.max(2, pathLength);
         putInt("pathLength", this.pathLength);
+        synchronized (this) {
+            for (Trajectory flight : flights) {
+                trimFlightPoints(flight);
+            }
+        }
+        repaintViewer();
+    }
+
+    public int getTrajectoriesToShow() {
+        return trajectoriesToShow;
+    }
+
+    public void setTrajectoriesToShow(int trajectoriesToShow) {
+        this.trajectoriesToShow = Math.max(1, trajectoriesToShow);
+        putInt("trajectoriesToShow", this.trajectoriesToShow);
+        synchronized (this) {
+            trimFlightCount();
+        }
+        repaintViewer();
+    }
+
+    /** One flight. {@code colorIndex} selects the rotating hue and does not change when older flights are dropped. */
+    public static final class Trajectory {
+        public final int colorIndex;
+        public final List<float[]> points;
+
+        Trajectory(int colorIndex) {
+            this(colorIndex, new ArrayList<>());
+        }
+
+        Trajectory(int colorIndex, List<float[]> points) {
+            this.colorIndex = colorIndex;
+            this.points = points;
+        }
     }
 
     /** Enclosed NRV tracker. The panel title is this class name. */
