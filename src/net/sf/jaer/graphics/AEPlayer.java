@@ -1652,6 +1652,39 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return added;
     }
 
+    /**
+     * Flight marker at {@code timestampUs} on this file, without moving the playhead.
+     * A marker already at that event is left in place.
+     *
+     * @return the event index, or {@code -1} when none was added
+     */
+    public long addFlightMarkerAtTimestamp(long timestampUs) {
+        return addFlightMarkerAtTimestamp(timestampUs, 0L);
+    }
+
+    /**
+     * @param nearbyWindowUs do not add when a marker is already within this many
+     *        microseconds of {@code timestampUs}
+     */
+    public long addFlightMarkerAtTimestamp(long timestampUs, long nearbyWindowUs) {
+        if (aeInputStream == null) {
+            return -1L;
+        }
+        return aeInputStream.addFlightMarkerAtTimestampUs(timestampUs, nearbyWindowUs);
+    }
+
+    /**
+     * Remove automatic flight markers on this file. Manual markers and IN/OUT stay.
+     *
+     * @return how many markers were removed
+     */
+    public int clearFlightMarkers() {
+        if (aeInputStream == null) {
+            return 0;
+        }
+        return aeInputStream.clearFlightMarkers();
+    }
+
     private boolean toggleMarkerHere() {
         lastMarkerReactionOffsetMs = 0;
         if (aeInputStream == null) {

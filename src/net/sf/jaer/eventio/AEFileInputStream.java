@@ -42,6 +42,7 @@ import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -166,6 +167,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
         public long markIn = 0, markOut = Long.MAX_VALUE;
         public TreeSet<Long> otherMarks = new TreeSet();
+        /** Playback markers placed by a filter. A subset of {@link #otherMarks}. */
+        public TreeSet<Long> flightMarks = new TreeSet<>();
 
         @Override
         public String toString() {
@@ -403,6 +406,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        long oldOut = savedMarks.markOut;
         marks.markOut = savedMarks.markOut;
         marks.otherMarks.addAll(savedMarks.otherMarks);
+        if (savedMarks.flightMarks != null) {
+            marks.flightMarks.addAll(savedMarks.flightMarks);
+        }
         getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks); // so that AEPlayerAdvanceControlPanel computes the slider markers
         // Do not call setMarks here: AEPlayer may not have assigned aeInputStream yet.
         // AEPlayer.done() applies marks on the EDT after the stream is live.
@@ -1179,6 +1185,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         marks.markOut = size() - 1;
         marks.markIn = 0;
         marks.otherMarks.clear();
+        if (marks.flightMarks != null) {
+            marks.flightMarks.clear();
+        }
         long[] newMarks = {marks.markIn, marks.markOut};
 
         getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, null, newMarks); // always send p;op change, e.g. on opening file
@@ -2122,10 +2131,20 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         String otherMarksString = marks.otherMarks == null ? ""
                 : marks.otherMarks.stream().map(String::valueOf).collect(Collectors.joining(","));
+        boolean tagged = marks.flightMarks != null && !marks.flightMarks.isEmpty();
+        String flightMarksString = tagged
+                ? marks.flightMarks.stream().map(String::valueOf).collect(Collectors.joining(","))
+                : "";
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            writer.write("markIn,markOut,otherMarks\n");
-            writer.write(String.format("%d,%d,\"%s\"\n",
-                    marks.markIn, marks.markOut, otherMarksString));
+            if (tagged) {
+                writer.write("markIn,markOut,otherMarks,flightMarks\n");
+                writer.write(String.format("%d,%d,\"%s\",\"%s\"\n",
+                        marks.markIn, marks.markOut, otherMarksString, flightMarksString));
+            } else {
+                writer.write("markIn,markOut,otherMarks\n");
+                writer.write(String.format("%d,%d,\"%s\"\n",
+                        marks.markIn, marks.markOut, otherMarksString));
+            }
         }
     }
 
@@ -2146,24 +2165,21 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if ((line = reader.readLine()) != null) {
                 lineNumber++;
                 String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-                if (parts.length != 3) {
+                if (parts.length != 3 && parts.length != 4) {
                     throw new IllegalArgumentException("Unexpected number of columns in CSV line "
-                            + lineNumber + ": " + line + ". Expected 3, found " + parts.length);
+                            + lineNumber + ": " + line + ". Expected 3 or 4, found " + parts.length);
                 }
                 try {
                     marks.markIn = Long.parseLong(parts[0].trim());
                     marks.markOut = Long.parseLong(parts[1].trim());
-                    String otherMarksCsv = parts[2].trim();
-                    if (otherMarksCsv.startsWith("\"") && otherMarksCsv.endsWith("\"")) {
-                        otherMarksCsv = otherMarksCsv.substring(1, otherMarksCsv.length() - 1);
-                    }
                     marks.otherMarks.clear();
-                    if (!otherMarksCsv.isEmpty()) {
-                        Arrays.stream(otherMarksCsv.split(","))
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty())
-                                .map(Long::parseLong)
-                                .forEach(marks.otherMarks::add);
+                    parseMarkList(parts[2], marks.otherMarks);
+                    if (marks.flightMarks == null) {
+                        marks.flightMarks = new TreeSet<>();
+                    }
+                    marks.flightMarks.clear();
+                    if (parts.length == 4) {
+                        parseMarkList(parts[3], marks.flightMarks);
                     }
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("Invalid number format in CSV line "
@@ -2194,7 +2210,113 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         marks.markOut = imported.markOut;
         marks.otherMarks.clear();
         marks.otherMarks.addAll(imported.otherMarks);
+        if (marks.flightMarks == null) {
+            marks.flightMarks = new TreeSet<>();
+        }
+        marks.flightMarks.clear();
+        if (imported.flightMarks != null) {
+            marks.flightMarks.addAll(imported.flightMarks);
+        }
         getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks);
+    }
+
+    private static void parseMarkList(String csv, TreeSet<Long> into) {
+        if (csv == null || into == null) {
+            return;
+        }
+        String text = csv.trim();
+        if (text.startsWith("\"") && text.endsWith("\"") && text.length() >= 2) {
+            text = text.substring(1, text.length() - 1);
+        }
+        if (text.isEmpty()) {
+            return;
+        }
+        Arrays.stream(text.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .forEach(into::add);
+    }
+
+    @Override
+    public long addFlightMarkerAtTimestampUs(long timestampUs) {
+        return addFlightMarkerAtTimestampUs(timestampUs, 0L);
+    }
+
+    @Override
+    public long addFlightMarkerAtTimestampUs(long timestampUs, long nearbyWindowUs) {
+        final long here;
+        synchronized (this) {
+            long saved = position();
+            try {
+                setPositionFromTimestampUs(timestampUs);
+                here = (position() / eventSizeBytes) * eventSizeBytes;
+                long reach = 1_000_000L;
+                int durationUs = getDurationUs();
+                if (nearbyWindowUs > 0 && durationUs > 0 && fileSize > 0) {
+                    long fromTime = (nearbyWindowUs * fileSize) / durationUs;
+                    if (fromTime > reach) {
+                        reach = fromTime;
+                    }
+                }
+                Long ceil = marks.otherMarks.ceiling(here);
+                Long floor = marks.otherMarks.floor(here);
+                if (marks.otherMarks.contains(here)
+                        || (ceil != null && ceil - here < reach)
+                        || (floor != null && here - floor < reach)) {
+                    return -1L;
+                }
+                marks.otherMarks.add(here);
+                if (marks.flightMarks == null) {
+                    marks.flightMarks = new TreeSet<>();
+                }
+                marks.flightMarks.add(here);
+            } finally {
+                position(saved);
+            }
+        }
+        fireMarkToggledOnEdt(null, here);
+        return here;
+    }
+
+    @Override
+    public boolean removeMarkerAt(long eventPos) {
+        final boolean removed;
+        synchronized (this) {
+            removed = marks.otherMarks.remove(eventPos);
+            if (marks.flightMarks != null) {
+                marks.flightMarks.remove(eventPos);
+            }
+        }
+        if (removed) {
+            fireMarkToggledOnEdt(eventPos, null);
+        }
+        return removed;
+    }
+
+    /** Slider update on the EDT, after this stream's lock is released. */
+    private void fireMarkToggledOnEdt(Long oldValue, Long newValue) {
+        Runnable r = () -> getSupport().firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, oldValue, newValue);
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    @Override
+    public synchronized int clearFlightMarkers() {
+        if (marks.flightMarks == null || marks.flightMarks.isEmpty()) {
+            return 0;
+        }
+        int n = 0;
+        for (Long pos : new ArrayList<>(marks.flightMarks)) {
+            if (removeMarkerAt(pos)) {
+                n++;
+            }
+        }
+        marks.flightMarks.clear();
+        return n;
     }
 
 }

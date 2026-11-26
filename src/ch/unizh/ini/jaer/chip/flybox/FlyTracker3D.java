@@ -16,6 +16,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.prefs.PreferenceChangeEvent;
@@ -26,6 +28,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.chip.multidevice.DeviceRelation;
@@ -38,6 +41,8 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.graphics.AEPlayer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -59,11 +64,14 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * </ul>
  * {@code locationMixingFactor}, {@code velocityTauMs}, and {@code clusterSize}
  * are set here and written to both trackers. {@code clusterSize} is a fraction
- * of each sensor's longer side.
+ * of each sensor's longer side. A 3D point is recorded when a tracker fires
+ * its update and the other camera's last update is still within that camera's
+ * own update period. The two clocks can sit a millisecond or two apart. A
+ * camera that misses its period, or loses its cluster, ends the flight.
  */
 @Description("3D fly track from NRV (yz) and EVK4 (xy) pinhole cameras")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
+public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Observer {
 
     /** NRV Samsung S5KRC1S pixel pitch. */
     public static final float NRV_PITCH_MM = 0.009f;
@@ -79,6 +87,11 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     private float evk4FocalLengthMm = getFloat("evk4FocalLengthMm", 6f);
     private int pathLength = getInt("pathLength", 300);
     private int trajectoriesToShow = getInt("trajectoriesToShow", 8);
+    /** Seconds. Flights shorter than this are not shown. */
+    private float minFlightDuration = getFloat("minFlightDuration", 0.1f);
+    private boolean markFlights = getBoolean("markFlights", false);
+    /** Playback marker is placed this far before the flight's first point. */
+    private static final int FLIGHT_MARK_LEAD_US = 100_000;
 
     /**
      * {@code clusterSize} is a fraction of the chip the tracker was built on
@@ -99,9 +112,18 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     private final EventPacket<PolarityEvent> nrvPacket = new EventPacket<>(PolarityEvent.class);
     private final EventPacket<PolarityEvent> evk4Packet = new EventPacket<>(PolarityEvent.class);
     private final List<Trajectory> flights = new ArrayList<>();
+    private final List<Fix> pendingFixes = new ArrayList<>();
     private Trajectory openFlight;
     private int nextColor;
     private float[] current;
+    private Fix lastNrv;
+    private Fix lastEvk;
+    private boolean haveSample;
+    private int lastSampleUs;
+    /** Gap between the last two ticks of each camera. Zero until it has ticked twice. */
+    private int nrvPeriodUs;
+    private int evkPeriodUs;
+    private boolean loggedRays;
     private FlyTracker3DViewer viewer;
     private boolean showViewer;
     private boolean warnedGeometry;
@@ -131,10 +153,30 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("display", "pathLength", "Points kept on each flight.");
         setPropertyTooltip("display", "trajectoriesToShow",
                 "Flights kept in the 3D window. A flight ends when either camera loses its cluster. The oldest flight is dropped.");
+        setPropertyTooltip("display", "minFlightDuration",
+                "Discard a flight shorter than this, in seconds. 0.1 is 100 ms.");
+        setPropertyTooltip("display", "markFlights",
+                "When a flight reaches minFlightDuration, put a playback marker 100 ms before it started.");
+        setPropertyTooltip("ClearFlightMarkers",
+                "Remove playback markers placed by markFlights. Manual markers and IN/OUT stay.");
         setPropertyTooltip("ShowViewer", "Open or close the 3D path window.");
         pushSharedParameters();
         watch(nrvTracker);
         watch(evk4Tracker);
+        observeAfterClusterUpdate(nrvTracker);
+        observeAfterClusterUpdate(evk4Tracker);
+    }
+
+    /**
+     * {@link java.util.Observable} notifies in reverse registration order.
+     * The tracker registers itself first and would otherwise refresh the
+     * cluster list after this snapshot. Register it last so the visible
+     * cluster is the one just updated.
+     */
+    private void observeAfterClusterUpdate(RectangularClusterTracker tracker) {
+        tracker.deleteObserver(tracker);
+        tracker.addObserver(this);
+        tracker.addObserver(tracker);
     }
 
     /** Latest tracker for this preferences node. Renewing the chain replaces it. */
@@ -397,22 +439,40 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    synchronized public void resetFilter() {
+    public void resetFilter() {
+        // Playback holds each cluster tracker, then this monitor (the update
+        // callback). Rewind runs on the EDT and must take the trackers first,
+        // or the two threads deadlock.
         nrvTracker.resetFilter();
         evk4Tracker.resetFilter();
-        flights.clear();
-        openFlight = null;
-        nextColor = 0;
-        current = null;
+        synchronized (this) {
+            flights.clear();
+            openFlight = null;
+            nextColor = 0;
+            current = null;
+            pendingFixes.clear();
+            lastNrv = null;
+            lastEvk = null;
+            haveSample = false;
+            nrvPeriodUs = 0;
+            evkPeriodUs = 0;
+            loggedRays = false;
+        }
         repaintViewer();
     }
 
     @Override
-    public synchronized void cleanup() {
+    public void cleanup() {
+        nrvTracker.deleteObserver(this);
+        evk4Tracker.deleteObserver(this);
         super.cleanup();
-        if (viewer != null) {
-            javax.swing.SwingUtilities.invokeLater(viewer::dispose);
+        FlyTracker3DViewer closing;
+        synchronized (this) {
+            closing = viewer;
             viewer = null;
+        }
+        if (closing != null) {
+            javax.swing.SwingUtilities.invokeLater(closing::dispose);
         }
     }
 
@@ -448,7 +508,7 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!isFilterEnabled() || in == null) {
             return in;
         }
@@ -464,47 +524,264 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         warnedGeometry = false;
         fill(nrvPacket, in, nrv.getSource());
         fill(evk4Packet, in, evk4.getSource());
+        // Cluster tracking can take a long packet. Do not hold this monitor across it:
+        // the 3D view paints on the EDT and needs the same monitor to copy the path.
         if (nrvPacket.getSize() > 0) {
             nrvTracker.filterPacket(nrvPacket);
         }
         if (evk4Packet.getSize() > 0) {
             evk4Tracker.filterPacket(evk4Packet);
         }
-        RectangularClusterTracker.Cluster nrvCluster = strongest(nrvTracker);
-        RectangularClusterTracker.Cluster evk4Cluster = strongest(evk4Tracker);
-        if (nrvCluster == null || evk4Cluster == null) {
-            endFlight();
-            return in;
+        List<Trajectory> toMark = new ArrayList<>();
+        synchronized (this) {
+            replayFixes(toMark);
         }
-        float[] xyz = intersectRays(
-                evk4Cluster.getLocation().x - (evk4.getChild().getSizeX() - 1) * 0.5f,
-                evk4Cluster.getLocation().y - (evk4.getChild().getSizeY() - 1) * 0.5f,
-                evk4FocalLengthMm, evk4DistanceMm,
-                nrvCluster.getLocation().x - (nrv.getChild().getSizeX() - 1) * 0.5f,
-                nrvCluster.getLocation().y - (nrv.getChild().getSizeY() - 1) * 0.5f,
-                nrvFocalLengthMm, nrvDistanceMm);
-        if (xyz != null) {
-            if (openFlight == null) {
-                openFlight = new Trajectory(nextColor++);
-                flights.add(openFlight);
-                trimFlightCount();
-            }
-            current = xyz;
-            openFlight.points.add(xyz);
-            trimFlightPoints(openFlight);
-            repaintViewer();
+        for (Trajectory flight : toMark) {
+            markFlightStart(flight);
         }
         return in;
     }
 
-    /** Stop appending. The flight stays in the list until a newer one displaces it. */
-    private void endFlight() {
-        if (openFlight == null && current == null) {
+    /**
+     * A tracker ticked at the filter-chain update interval. The cluster list
+     * for that camera has already been refreshed. The fix is stored and
+     * applied after both cameras in this packet have run, so a tick is matched
+     * with the other camera's latest fix.
+     */
+    @Override
+    public void update(Observable o, Object arg) {
+        if (!(o instanceof RectangularClusterTracker source) || !(arg instanceof EventFilter2D.UpdateMessage msg)) {
             return;
+        }
+        boolean nrv = source == nrvTracker;
+        if (!nrv && source != evk4Tracker) {
+            return;
+        }
+        RectangularClusterTracker.Cluster cluster = strongest(source);
+        Fix fix = cluster == null
+                ? new Fix(msg.timestamp, 0f, 0f, false, nrv)
+                : new Fix(msg.timestamp, cluster.getLocation().x, cluster.getLocation().y, true, nrv);
+        synchronized (this) {
+            pendingFixes.add(fix);
+        }
+    }
+
+    private void replayFixes(List<Trajectory> toMark) {
+        if (pendingFixes.isEmpty()) {
+            return;
+        }
+        pendingFixes.sort((a, b) -> Integer.compare(a.t, b.t));
+        Fix nrv = lastNrv;
+        Fix evk = lastEvk;
+        int interval = updateIntervalUs();
+        for (Fix fix : pendingFixes) {
+            if (fix.nrv) {
+                int period = periodUs(nrv, fix, interval);
+                if (period > 0) {
+                    nrvPeriodUs = period;
+                }
+                nrv = fix;
+                lastNrv = fix;
+            } else {
+                int period = periodUs(evk, fix, interval);
+                if (period > 0) {
+                    evkPeriodUs = period;
+                }
+                evk = fix;
+                lastEvk = fix;
+            }
+            consider(fix.t, nrv, evk, interval, toMark);
+        }
+        pendingFixes.clear();
+    }
+
+    /**
+     * Gap between two ticks of one camera, ignoring a pause long enough to be
+     * a missed track rather than the normal period.
+     */
+    private static int periodUs(Fix previous, Fix next, int intervalUs) {
+        if (previous == null) {
+            return 0;
+        }
+        int dt = next.t - previous.t;
+        if (dt <= 0 || dt > intervalUs * 10) {
+            return 0;
+        }
+        return dt;
+    }
+
+    /**
+     * Record a point when both cameras have a visible cluster and each has
+     * updated within two of its own recent periods. One point per interval.
+     * A lost cluster ends the flight immediately. One skipped update does not.
+     */
+    private void consider(int timestamp, Fix nrv, Fix evk, int interval, List<Trajectory> toMark) {
+        if (nrv == null || evk == null) {
+            return;
+        }
+        int sinceNrv = timestamp - nrv.t;
+        int sinceEvk = timestamp - evk.t;
+        int limitNrv = freshLimit(nrvPeriodUs, interval);
+        int limitEvk = freshLimit(evkPeriodUs, interval);
+        boolean nrvStale = sinceNrv < -limitNrv || sinceNrv > limitNrv;
+        boolean evkStale = sinceEvk < -limitEvk || sinceEvk > limitEvk;
+        if (nrvStale || evkStale) {
+            String cause = nrvStale ? staleCause("NRV", sinceNrv, limitNrv) : null;
+            if (evkStale) {
+                String evkCause = staleCause("EVK4", sinceEvk, limitEvk);
+                cause = cause == null ? evkCause : cause + "; " + evkCause;
+            }
+            endFlight(cause);
+            return;
+        }
+        if (sinceNrv < 0 || sinceEvk < 0) {
+            return;
+        }
+        if (!nrv.visible || !evk.visible) {
+            String which = !nrv.visible && !evk.visible ? "both clusters lost" : !nrv.visible ? "NRV cluster lost" : "EVK4 cluster lost";
+            endFlight(which);
+            return;
+        }
+        if (haveSample) {
+            int sinceSample = timestamp - lastSampleUs;
+            if (sinceSample >= 0 && sinceSample < interval) {
+                return;
+            }
+        }
+        DeviceSlot nrvSlot = slot("nrv", 0);
+        DeviceSlot evkSlot = slot("evk4", 1);
+        if (nrvSlot == null || evkSlot == null || nrvSlot.getChild() == null || evkSlot.getChild() == null) {
+            return;
+        }
+        float[] xyz = intersectRays(
+                evk.x - (evkSlot.getChild().getSizeX() - 1) * 0.5f,
+                evk.y - (evkSlot.getChild().getSizeY() - 1) * 0.5f,
+                evk4FocalLengthMm, evk4DistanceMm,
+                nrv.x - (nrvSlot.getChild().getSizeX() - 1) * 0.5f,
+                nrv.y - (nrvSlot.getChild().getSizeY() - 1) * 0.5f,
+                nrvFocalLengthMm, nrvDistanceMm);
+        if (xyz == null) {
+            if (!loggedRays) {
+                loggedRays = true;
+                log.fine("FlyTracker3D no point: rays are parallel or a lens distance or focal length is not positive");
+            }
+            return;
+        }
+        if (openFlight == null) {
+            openFlight = new Trajectory(nextColor++);
+            openFlight.startUs = timestamp;
+        }
+        current = xyz;
+        openFlight.lastUs = timestamp;
+        openFlight.points.add(xyz);
+        trimFlightPoints(openFlight);
+        if (flightLongEnough(openFlight) && !flights.contains(openFlight)) {
+            flights.add(openFlight);
+            trimFlightCount();
+        }
+        if (markFlights && flightLongEnough(openFlight) && !openFlight.marked) {
+            openFlight.marked = true;
+            toMark.add(openFlight);
+        }
+        haveSample = true;
+        lastSampleUs = timestamp;
+        repaintViewer();
+    }
+
+    /**
+     * How old the other camera's last tick may be. Two measured periods cover a
+     * clock offset and one skipped update. Until a period is known, four update
+     * intervals stand in for that.
+     */
+    private static int freshLimit(int periodUs, int intervalUs) {
+        if (periodUs <= 0) {
+            return intervalUs * 4;
+        }
+        return periodUs * 2 + intervalUs;
+    }
+
+    private static String staleCause(String camera, int ageUs, int limitUs) {
+        if (ageUs < 0) {
+            return String.format("%s update %,d us ahead (allowed %,d us)", camera, -ageUs, limitUs);
+        }
+        return String.format("%s update %,d us old (allowed %,d us)", camera, ageUs, limitUs);
+    }
+
+    /** Same clock as {@link EventFilter2D#maybeCallUpdateObservers}. */
+    private int updateIntervalUs() {
+        float ms = 1f;
+        if (chip != null && chip.getFilterChain() != null) {
+            ms = chip.getFilterChain().getUpdateIntervalMs();
+        }
+        int ticks = (int) ((ms * 1000f) / AEConstants.TICK_DEFAULT_US);
+        return Math.max(1, ticks);
+    }
+
+    /** Stop appending. The flight stays in the list until a newer one displaces it. */
+    private void endFlight(String cause) {
+        Trajectory ended = openFlight;
+        if (ended == null && current == null) {
+            return;
+        }
+        if (ended != null && !ended.points.isEmpty()) {
+            long durationMs = Math.round(((long) ended.lastUs - ended.startUs) / 1000.0);
+            String msg = String.format("FlyTracker3D flight %d ended: %d pts, %d ms, %s",
+                    ended.colorIndex, ended.points.size(), durationMs, cause);
+            if (!flightLongEnough(ended)) {
+                flights.remove(ended);
+                log.fine(msg + String.format(" (shorter than %.0f ms)", minFlightDuration * 1000f));
+            } else {
+                log.info(msg);
+            }
         }
         openFlight = null;
         current = null;
         repaintViewer();
+    }
+
+    /**
+     * Marker 100 ms before the first point, in the file's playback time.
+     * Event timestamps are the low 32 bits of that time. A marker already
+     * within {@link #minFlightDuration} of that time is left as it is.
+     */
+    private void markFlightStart(Trajectory flight) {
+        if (chip == null || chip.getAeViewer() == null) {
+            return;
+        }
+        AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+        if (!(player instanceof AEPlayer aePlayer)) {
+            return;
+        }
+        long atUs = (flight.startUs & 0xffffffffL) - FLIGHT_MARK_LEAD_US;
+        if (atUs < 0L) {
+            atUs = 0L;
+        }
+        long windowUs = Math.max(0L, (long) (minFlightDuration * 1_000_000f));
+        long index = aePlayer.addFlightMarkerAtTimestamp(atUs, windowUs);
+        if (index < 0L) {
+            return;
+        }
+        log.fine(String.format("FlyTracker3D flight %d marker 100 ms before start t=%,d us",
+                flight.colorIndex, flight.startUs));
+    }
+
+    /** Remove markers placed by {@link #markFlights}. Manual markers and IN/OUT stay. */
+    public void doClearFlightMarkers() {
+        if (chip == null || chip.getAeViewer() == null) {
+            return;
+        }
+        AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+        if (!(player instanceof AEPlayer aePlayer)) {
+            return;
+        }
+        int n = aePlayer.clearFlightMarkers();
+        log.info(String.format("FlyTracker3D cleared %d flight marker%s", n, n == 1 ? "" : "s"));
+    }
+
+    /** Event-time span of the flight, compared with {@link #minFlightDuration}. */
+    private boolean flightLongEnough(Trajectory flight) {
+        long durationUs = (long) flight.lastUs - flight.startUs;
+        return durationUs >= (long) (minFlightDuration * 1_000_000f);
     }
 
     private void trimFlightCount() {
@@ -759,6 +1036,28 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         repaintViewer();
     }
 
+    public boolean isMarkFlights() {
+        return markFlights;
+    }
+
+    public void setMarkFlights(boolean markFlights) {
+        this.markFlights = markFlights;
+        putBoolean("markFlights", markFlights);
+    }
+
+    public float getMinFlightDuration() {
+        return minFlightDuration;
+    }
+
+    public void setMinFlightDuration(float minFlightDuration) {
+        this.minFlightDuration = Math.max(0f, minFlightDuration);
+        putFloat("minFlightDuration", this.minFlightDuration);
+        synchronized (this) {
+            flights.removeIf(flight -> flight != openFlight && !flightLongEnough(flight));
+        }
+        repaintViewer();
+    }
+
     public int getTrajectoriesToShow() {
         return trajectoriesToShow;
     }
@@ -772,10 +1071,33 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater {
         repaintViewer();
     }
 
+    /** One camera at one update tick. Location is native pixels. */
+    private static final class Fix {
+        final int t;
+        final float x;
+        final float y;
+        final boolean visible;
+        final boolean nrv;
+
+        Fix(int t, float x, float y, boolean visible, boolean nrv) {
+            this.t = t;
+            this.x = x;
+            this.y = y;
+            this.visible = visible;
+            this.nrv = nrv;
+        }
+    }
+
     /** One flight. {@code colorIndex} selects the rotating hue and does not change when older flights are dropped. */
     public static final class Trajectory {
         public final int colorIndex;
         public final List<float[]> points;
+        /** Timestamp of the first sample, in the same ticks as the events. */
+        private int startUs;
+        /** Timestamp of the latest sample. */
+        private int lastUs;
+        /** A playback marker was already written for this flight. */
+        private boolean marked;
 
         Trajectory(int colorIndex) {
             this(colorIndex, new ArrayList<>());

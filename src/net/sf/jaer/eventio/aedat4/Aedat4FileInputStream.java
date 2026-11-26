@@ -30,6 +30,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
@@ -140,6 +141,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
     private final TreeSet<Long> markers = new TreeSet<>();
+    /** Subset of {@link #markers} written by a filter, so they can be cleared alone. */
+    private final TreeSet<Long> flightMarkers = new TreeSet<>();
     /** For quick double-prev: skip marker just landed on via next/prev (see {@link #jumpToPrevMarker()}). */
     private long lastJumpTimeMs;
     private File file;
@@ -4312,10 +4315,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         liveMarkOutFollowsEnd = !explicitOut;
         markers.clear();
+        flightMarkers.clear();
         if (saved.otherMarks != null) {
             for (Long m : saved.otherMarks) {
                 if (m != null && m >= 0 && m < n) {
                     markers.add(m);
+                }
+            }
+        }
+        if (saved.flightMarks != null) {
+            for (Long m : saved.flightMarks) {
+                if (m != null && markers.contains(m)) {
+                    flightMarkers.add(m);
                 }
             }
         }
@@ -4393,10 +4404,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         markers.clear();
+        flightMarkers.clear();
         if (saved.otherMarks != null) {
             for (Long m : saved.otherMarks) {
                 if (m != null && m >= 0 && (n <= 0 || m <= n)) {
                     markers.add(m);
+                }
+            }
+        }
+        if (saved.flightMarks != null) {
+            for (Long m : saved.flightMarks) {
+                if (m != null && markers.contains(m)) {
+                    flightMarkers.add(m);
                 }
             }
         }
@@ -4424,6 +4443,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         boolean unsetOut = liveMarkOutFollowsEnd || markOut < 0 || markOut >= playableSize();
         m.markOut = unsetOut ? Long.MAX_VALUE : markOut;
         m.otherMarks.addAll(markers);
+        m.flightMarks.addAll(flightMarkers);
         return m;
     }
 
@@ -4551,9 +4571,87 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         boolean added = markers.add(here);
         if (!added) {
             markers.remove(here);
+            flightMarkers.remove(here);
         }
-        support.firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, added ? null : here, added ? here : null);
+        fireMarkToggledOnEdt(added ? null : here, added ? here : null);
         return added;
+    }
+
+    @Override
+    public long addFlightMarkerAtTimestampUs(long timestampUs) {
+        return addFlightMarkerAtTimestampUs(timestampUs, 0L);
+    }
+
+    @Override
+    public long addFlightMarkerAtTimestampUs(long timestampUs, long nearbyWindowUs) {
+        final Long here;
+        synchronized (this) {
+            here = eventIndexNearestTimestamp(timestampUs);
+            if (hasMarkerWithin(here, nearbyWindowUs) || !markers.add(here)) {
+                return -1L;
+            }
+            flightMarkers.add(here);
+        }
+        fireMarkToggledOnEdt(null, here);
+        return here;
+    }
+
+    /** True when some marker's packet-table time is within {@code windowUs} of {@code eventIndex}. */
+    private boolean hasMarkerWithin(long eventIndex, long windowUs) {
+        if (windowUs <= 0) {
+            return false;
+        }
+        long t = timestampApproxLong(eventIndex);
+        for (Long mark : markers) {
+            long dt = timestampApproxLong(mark) - t;
+            if (dt < 0) {
+                dt = -dt;
+            }
+            if (dt <= windowUs) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean removeMarkerAt(long eventPos) {
+        Long here = eventPos;
+        final boolean removed;
+        synchronized (this) {
+            removed = markers.remove(here);
+            flightMarkers.remove(here);
+        }
+        if (removed) {
+            fireMarkToggledOnEdt(here, null);
+        }
+        return removed;
+    }
+
+    /**
+     * Slider labels are Swing. Post the event to the EDT and return. The view
+     * loop must not update the slider while it still holds a stream or filter lock,
+     * or the EDT stays blocked in the 3D view paint.
+     */
+    private void fireMarkToggledOnEdt(Long oldValue, Long newValue) {
+        Runnable r = () -> support.firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, oldValue, newValue);
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    @Override
+    public synchronized int clearFlightMarkers() {
+        int n = 0;
+        for (Long pos : new ArrayList<>(flightMarkers)) {
+            if (removeMarkerAt(pos)) {
+                n++;
+            }
+        }
+        flightMarkers.clear();
+        return n;
     }
 
     @Override
@@ -4735,6 +4833,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         markOut = playableSize();
         outLoopArmed = true;
         markers.clear();
+        flightMarkers.clear();
         support.firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, oldMarks, new long[]{markIn, markOut});
     }
 

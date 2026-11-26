@@ -125,6 +125,7 @@ final class FlyTracker3DViewer extends JFrame {
             for (FlyTracker3D.Trajectory flight : flights) {
                 g2.setColor(flightColor(flight.colorIndex));
                 float[] previous = null;
+                float[] end = null;
                 for (float[] point : flight.points) {
                     float[] screen = project(point, w, h, basis);
                     if (previous != null) {
@@ -133,6 +134,11 @@ final class FlyTracker3DViewer extends JFrame {
                     }
                     g2.fill(new Ellipse2D.Float(screen[0] - 2f, screen[1] - 2f, 4f, 4f));
                     previous = point;
+                    end = screen;
+                }
+                if (end != null) {
+                    g2.setColor(Color.WHITE);
+                    g2.fill(new Ellipse2D.Float(end[0] - 3.5f, end[1] - 3.5f, 7f, 7f));
                 }
             }
             float[] now = tracker.getCurrentMm();

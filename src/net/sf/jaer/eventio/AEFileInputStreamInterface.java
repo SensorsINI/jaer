@@ -331,6 +331,47 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
         }
     }
 
+    /**
+     * Add a playback marker at the event nearest {@code timestampUs} and remember
+     * it as an automatic flight marker. An existing marker at that event is left
+     * alone, including a manual one. Does not change IN or OUT.
+     *
+     * @return the event index, or {@code -1} when no marker was added
+     */
+    default long addFlightMarkerAtTimestampUs(long timestampUs) {
+        return -1L;
+    }
+
+    /**
+     * Same as {@link #addFlightMarkerAtTimestampUs(long)}, and also leave existing
+     * markers in place when one is already within {@code nearbyWindowUs} of the
+     * event nearest {@code timestampUs}.
+     *
+     * @param nearbyWindowUs microseconds. Zero checks only the exact event
+     * @return the event index, or {@code -1} when no marker was added
+     */
+    default long addFlightMarkerAtTimestampUs(long timestampUs, long nearbyWindowUs) {
+        return addFlightMarkerAtTimestampUs(timestampUs);
+    }
+
+    /**
+     * Remove the playback marker at {@code eventPos}. IN and OUT stay.
+     *
+     * @return true when a marker was removed
+     */
+    default boolean removeMarkerAt(long eventPos) {
+        return false;
+    }
+
+    /**
+     * Remove automatic flight markers. Manual markers and IN/OUT stay.
+     *
+     * @return how many markers were removed
+     */
+    default int clearFlightMarkers() {
+        return 0;
+    }
+
     /** Add or remove a marker at the event nearest {@code timestampUs} without moving the cursor. */
     default boolean toggleMarkerAtTimestampUs(long timestampUs) {
         long saved = position();
