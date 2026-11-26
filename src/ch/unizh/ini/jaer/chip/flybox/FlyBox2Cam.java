@@ -5,6 +5,8 @@
  */
 package ch.unizh.ini.jaer.chip.flybox;
 
+import java.util.ArrayList;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.UsbDevices;
@@ -13,6 +15,8 @@ import net.sf.jaer.chip.multidevice.Modality;
 import net.sf.jaer.chip.multidevice.MultiDeviceChip;
 import net.sf.jaer.chip.multidevice.TiledNativeRelation;
 import net.sf.jaer.chip.multidevice.ViewingPose;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import nrv.chip.NRVS5KRC1S;
 import prophesee.chip.PropheseeIMX636HD;
 
@@ -51,8 +55,35 @@ public class FlyBox2Cam extends MultiDeviceChip {
         DeviceSlot evk4 = addSlot("evk4", PropheseeIMX636HD.class, Modality.VISION);
         evk4.setSourceName(PropheseeIMX636HD.class.getSimpleName());
         setRelation(new TiledNativeRelation());
+        addDefaultEventFilter(FlyTracker3D.class);
+        ensureFlyTracker();
         applyDefaultPose(nrv, NRV_AZIMUTH_DEG, NRV_ELEVATION_DEG);
         applyDefaultPose(evk4, EVK4_AZIMUTH_DEG, EVK4_ELEVATION_DEG);
+    }
+
+    /**
+     * Preferred filters are loaded inside {@link net.sf.jaer.chip.AEChip}'s
+     * constructor, before this list is registered, and a failed construct
+     * drops the class from the saved chain. Put it on the chain once the
+     * slots exist.
+     */
+    private void ensureFlyTracker() {
+        FilterChain chain = getFilterChain();
+        if (chain == null || chain.findFilter(FlyTracker3D.class) != null) {
+            return;
+        }
+        try {
+            FlyTracker3D tracker = new FlyTracker3D(this);
+            chain.add(tracker);
+            tracker.initFilter();
+            ArrayList<String> names = new ArrayList<>();
+            for (EventFilter2D filter : chain) {
+                names.add(filter.getClass().getName());
+            }
+            chain.storePreferredFiltersForChip(names);
+        } catch (Exception e) {
+            log.warning("Could not add FlyTracker3D: " + e);
+        }
     }
 
     /**

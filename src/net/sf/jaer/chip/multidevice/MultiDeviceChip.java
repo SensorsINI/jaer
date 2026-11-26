@@ -91,7 +91,7 @@ public abstract class MultiDeviceChip extends AEChip {
     }
 
     public List<DeviceSlot> getSlots() {
-        return Collections.unmodifiableList(slots);
+        return Collections.unmodifiableList(liveSlots());
     }
 
     public DeviceRelation getRelation() {
@@ -121,7 +121,7 @@ public abstract class MultiDeviceChip extends AEChip {
     }
 
     public DeviceSlot slotBySource(byte source) {
-        for (DeviceSlot slot : slots) {
+        for (DeviceSlot slot : liveSlots()) {
             if (slot.getSource() == source) {
                 return slot;
             }
@@ -131,7 +131,7 @@ public abstract class MultiDeviceChip extends AEChip {
 
     public List<DeviceSlot> visionSlots() {
         List<DeviceSlot> vision = new ArrayList<>();
-        for (DeviceSlot slot : slots) {
+        for (DeviceSlot slot : liveSlots()) {
             if (slot.getModality() == Modality.VISION) {
                 vision.add(slot);
             }
@@ -141,12 +141,21 @@ public abstract class MultiDeviceChip extends AEChip {
 
     public int visionSlotCount() {
         int n = 0;
-        for (DeviceSlot slot : slots) {
+        for (DeviceSlot slot : liveSlots()) {
             if (slot.getModality() == Modality.VISION) {
                 n++;
             }
         }
         return n;
+    }
+
+    /**
+     * Empty while {@link AEChip}'s constructor is still running. This class's
+     * field initializers, including {@link #slots}, run only after that
+     * constructor returns. Preferred filters are built during that window.
+     */
+    private List<DeviceSlot> liveSlots() {
+        return slots == null ? List.of() : slots;
     }
 
     /**

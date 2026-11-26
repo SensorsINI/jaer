@@ -1,6 +1,7 @@
 package ch.unizh.ini.jaer.chip.flybox;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import org.junit.After;
 import org.junit.Before;
@@ -55,5 +56,6 @@ public class FlyBox2CamTest {
         assertEquals(720, chip.getSizeY());
         assertEquals(0, chip.getRelation().tileOriginX(chip, nrv));
         assertEquals(960, chip.getRelation().tileOriginX(chip, evk4));
+        assertNotNull(chip.getFilterChain().findFilter(FlyTracker3D.class));
     }
 }
