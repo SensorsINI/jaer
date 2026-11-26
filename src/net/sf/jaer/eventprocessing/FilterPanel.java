@@ -2515,7 +2515,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         importB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         importB.setText("Import");
-        importB.setToolTipText("Import the preferences for this filter from an XML preferences file");
+        importB.setToolTipText("Import matching properties from an XML preferences file. The file can be from another chip, or from this filter enclosed in a different filter. You are asked before the filter chain is renewed.");
         importB.setMargin(new java.awt.Insets(1, 5, 1, 5));
         importB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

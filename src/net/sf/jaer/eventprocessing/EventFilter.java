@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -30,7 +31,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
@@ -43,7 +43,6 @@ import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.HasPropertyTooltips;
@@ -837,20 +836,113 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
-     * Import preferences for this EventFilter from a file
+     * True once, for a preference key just written by {@link #importPrefs}.
+     * The change event is delivered later on another thread; consuming it
+     * keeps a listener from copying that burst onto another filter.
+     */
+    public static boolean consumeImportedPreference(Preferences prefs, String key, String value) {
+        return FilterPrefsImporter.consumeWrite(prefs, key, value);
+    }
+
+    /**
+     * Import preferences for this filter from an XML file exported by
+     * {@link #exportPrefs}. Matching properties are stored on this filter even
+     * when the file was saved for another {@link AEChip} or for the same filter
+     * enclosed somewhere else. The chip path in the file is ignored.
+     * <p>
+     * When a filter window is open, asks before
+     * {@link FilterFrame#renewContents()} so the new chain loads the values.
      *
-     * @param file
+     * @param file preferences XML
+     * @see #consumeImportedPreference(java.util.prefs.Preferences, String, String)
      */
     public void importPrefs(File file) {
         try {
-            PreferencesMover.immportPrefs(file);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
-            log.info("imported preferences from " + file.toPath().toString());
-            chip.getFilterFrame().renewContents();
-            JOptionPane.showMessageDialog(chip.getFilterFrame(), String.format("<html>Loaded Preferences from <br>\t%s<br>and reconstructed the entire FilterChain", file.toPath()));
+            FilterPrefsImporter.Result result = FilterPrefsImporter.apply(this, file);
+            if (result.isEmpty()) {
+                String msg = "No properties in " + file.getName() + " match " + getShortName();
+                log.warning(msg);
+                showImportMessage(msg, JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            log.info(result.summary(file.getName()));
+            if (chip == null || chip.getFilterFrame() == null) {
+                log.info("Stored imported properties. No filter window is open, so the filter chain was not renewed.");
+                return;
+            }
+            String question = result.summary(file.getName())
+                    + "\n\nRenew the filter chain now so these values are loaded?\nThe current filters will be replaced.";
+            int choice = confirmImport(question);
+            if (choice != JOptionPane.YES_OPTION) {
+                showImportMessage("Saved. Renew the filter chain later to load them.", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            Runnable renew = () -> {
+                chip.getFilterFrame().renewContents();
+                FilterChain chain = chip.getFilterChain();
+                if (chain != null) {
+                    for (EventFilter f : chain) {
+                        restoreImportedEnabled(f);
+                    }
+                }
+            };
+            if (SwingUtilities.isEventDispatchThread()) {
+                renew.run();
+            } else {
+                SwingUtilities.invokeAndWait(renew);
+            }
+            showImportMessage("Renewed the filter chain with the imported properties.", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warning("Could not import preferences from " + file + ": " + e);
+            showImportMessage("Could not import preferences: " + e.getMessage(), JOptionPane.WARNING_MESSAGE);
         }
+    }
 
+    private int confirmImport(String message) throws Exception {
+        AtomicInteger choice = new AtomicInteger(JOptionPane.NO_OPTION);
+        Runnable ask = () -> choice.set(JOptionPane.showConfirmDialog(
+                chip.getFilterFrame(),
+                toHtml(message),
+                "Import preferences",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE));
+        if (SwingUtilities.isEventDispatchThread()) {
+            ask.run();
+        } else {
+            SwingUtilities.invokeAndWait(ask);
+        }
+        return choice.get();
+    }
+
+    private void showImportMessage(String message, int messageType) {
+        if (chip == null || chip.getFilterFrame() == null) {
+            return;
+        }
+        Runnable show = () -> JOptionPane.showMessageDialog(
+                chip.getFilterFrame(), toHtml(message), "Import preferences", messageType);
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            SwingUtilities.invokeLater(show);
+        }
+    }
+
+    private static String toHtml(String message) {
+        return "<html>" + message.replace("\n", "<br>") + "</html>";
+    }
+
+    /** {@code filterEnabled} is not read in field initializers. Apply it after renew. */
+    private static void restoreImportedEnabled(EventFilter filter) {
+        filter.setPreferredEnabledState();
+        if (filter.getEnclosedFilter() != null) {
+            restoreImportedEnabled(filter.getEnclosedFilter());
+        }
+        FilterChain chain = filter.getEnclosedFilterChain();
+        if (chain != null) {
+            for (EventFilter child : chain) {
+                restoreImportedEnabled(child);
+            }
+        }
     }
 
     /**

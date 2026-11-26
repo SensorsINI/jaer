@@ -214,7 +214,7 @@
                   <Font name="Tahoma" size="9" style="0"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Import"/>
-                <Property name="toolTipText" type="java.lang.String" value="Import the preferences for this filter from an XML preferences file"/>
+                <Property name="toolTipText" type="java.lang.String" value="Import matching properties from an XML preferences file. The file can be from another chip, or from this filter enclosed in a different filter. You are asked before the filter chain is renewed."/>
                 <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
                   <Insets value="[1, 5, 1, 5]"/>
                 </Property>
