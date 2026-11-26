@@ -2732,6 +2732,181 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return pkt;
     }
 
+    /**
+     * ConstantCount / AreaEventCount for a multi-camera index. Takes the next
+     * {@code n} events by packet time, not by file-order index, and stops at the
+     * armed OUT time.
+     */
+    private AEPacketRaw readFlyEyeNativePairByCount(int n) throws IOException {
+        syncFlyEyeCdPlayheadFromPositionIfNeeded();
+        boolean forwards = n > 0;
+        int want = Math.min(Math.abs(n), MAX_EVENTS_PER_READ);
+        if (want < 1) {
+            want = 1;
+        }
+        long tFirst = flyEyeUnixMin;
+        long tLast = flyEyeUnixMax;
+        long limitOut = forwardReadLimit();
+        if (outLoopArmed && isMarkOutSet() && limitOut < playableSize() && limitOut > 0) {
+            tLast = Math.min(tLast, timestampApproxLong(Math.max(0, limitOut - 1)));
+        }
+        long pos0 = position;
+        if (forwards) {
+            if (flyEyeCdPlayheadUs > tLast) {
+                throw new EOFException();
+            }
+            long t0 = flyEyeCdPlayheadUs;
+            long t1 = timeAfterEventCount(t0, want, tLast);
+            if (t1 <= t0) {
+                t1 = Math.min(tLast + 1, t0 + 1);
+            }
+            AEPacketRaw pkt = extractPolarityByUnixWindow(t0, t1, MAX_EVENTS_PER_READ);
+            boolean capped = pkt.getNumEvents() >= MAX_EVENTS_PER_READ;
+            if (capped) {
+                flyEyeCdPlayheadUs = lastFlyEyePackedUnixUs + 1;
+                profCappedSlices++;
+            } else {
+                flyEyeCdPlayheadUs = t1;
+            }
+            if (flyEyeCdPlayheadUs <= t0) {
+                flyEyeCdPlayheadUs = t0 + 1;
+            }
+            currentStartTimestamp = (int) t0;
+            applyFlyEyeCdPlayheadToPosition(flyEyeCdPlayheadUs);
+            collectTypedForWindow(t0, Math.max(t0, flyEyeCdPlayheadUs - 1));
+            firePosition();
+            notePositionAfterRead();
+            String pairLabel = multiDevicePlayback ? "MultiDevice" : "FlyEye";
+            logPlaybackRead("readPacketByNumber " + pairLabel + " n=%d pos %d->%d packed=%d t=%d..%d%s",
+                    n, pos0, position, pkt.getNumEvents(), t0, flyEyeCdPlayheadUs, capped ? " capped" : "");
+            return pkt;
+        }
+        if (flyEyeCdPlayheadUs <= tFirst) {
+            throw new EOFException("reached start of file");
+        }
+        long t1 = flyEyeCdPlayheadUs;
+        long t0 = timeBeforeEventCount(t1, want, tFirst);
+        if (t0 >= t1) {
+            t0 = Math.max(tFirst, t1 - 1);
+        }
+        AEPacketRaw pkt = extractPolarityByUnixWindow(t0, t1, MAX_EVENTS_PER_READ);
+        boolean capped = pkt.getNumEvents() >= MAX_EVENTS_PER_READ;
+        if (capped) {
+            flyEyeCdPlayheadUs = lastFlyEyePackedUnixUs;
+            if (flyEyeCdPlayheadUs >= t1) {
+                flyEyeCdPlayheadUs = t1 - 1;
+            }
+            profCappedSlices++;
+        } else {
+            flyEyeCdPlayheadUs = t0;
+        }
+        if (flyEyeCdPlayheadUs >= t1) {
+            flyEyeCdPlayheadUs = t1 - 1;
+        }
+        currentStartTimestamp = (int) flyEyeCdPlayheadUs;
+        applyFlyEyeCdPlayheadToPosition(flyEyeCdPlayheadUs);
+        collectTypedForWindow(flyEyeCdPlayheadUs, t1);
+        firePosition();
+        notePositionAfterRead();
+        String pairLabel = multiDevicePlayback ? "MultiDevice" : "FlyEye";
+        logPlaybackRead("readPacketByNumber " + pairLabel + " n=%d (back) pos %d->%d packed=%d t=%d..%d%s",
+                n, pos0, position, pkt.getNumEvents(), flyEyeCdPlayheadUs, t1, capped ? " capped" : "");
+        return pkt;
+    }
+
+    /**
+     * Exclusive end of about {@code count} events at or after {@code t0}, not past
+     * {@code tLast}. Times inside a packet are interpolated.
+     */
+    private long timeAfterEventCount(long t0, int count, long tLast) {
+        long need = Math.max(1, count);
+        long seen = 0;
+        for (PacketRef r : eventRefs) {
+            if (r.numElements <= 0 || r.unixEnd < t0 || r.unixStart > tLast) {
+                continue;
+            }
+            if (r.unixEnd <= r.unixStart) {
+                if (r.unixStart < t0) {
+                    continue;
+                }
+                if (seen + r.numElements >= need) {
+                    return Math.min(tLast + 1, r.unixStart + 1);
+                }
+                seen += r.numElements;
+                continue;
+            }
+            long from = Math.max(r.unixStart, t0);
+            long to = Math.min(r.unixEnd, tLast);
+            if (to < from) {
+                continue;
+            }
+            double span = (double) (r.unixEnd - r.unixStart);
+            long inPacket = Math.max(0, Math.round(((to - r.unixStart) / span - (from - r.unixStart) / span) * r.numElements));
+            if (inPacket <= 0) {
+                continue;
+            }
+            if (seen + inPacket >= need) {
+                double take = (need - seen) / (double) inPacket;
+                long hit = from + Math.round(take * (to - from));
+                if (hit <= t0) {
+                    hit = t0 + 1;
+                }
+                return Math.min(tLast + 1, hit);
+            }
+            seen += inPacket;
+        }
+        return tLast + 1;
+    }
+
+    /** Inclusive start of about {@code count} events before {@code t1}, not before {@code tFirst}. */
+    private long timeBeforeEventCount(long t1, int count, long tFirst) {
+        long total = 0;
+        for (PacketRef r : eventRefs) {
+            total += eventsInTimeRange(r, tFirst, t1 - 1);
+        }
+        long skip = total - Math.max(1, count);
+        if (skip <= 0) {
+            return tFirst;
+        }
+        long seen = 0;
+        for (PacketRef r : eventRefs) {
+            long inPacket = eventsInTimeRange(r, tFirst, t1 - 1);
+            if (inPacket <= 0) {
+                continue;
+            }
+            if (seen + inPacket >= skip) {
+                if (r.unixEnd <= r.unixStart) {
+                    return Math.max(tFirst, r.unixStart);
+                }
+                long from = Math.max(r.unixStart, tFirst);
+                long to = Math.min(r.unixEnd, t1 - 1);
+                double take = (skip - seen) / (double) inPacket;
+                long hit = from + Math.round(take * Math.max(0, to - from));
+                return Math.max(tFirst, Math.min(hit, t1 - 1));
+            }
+            seen += inPacket;
+        }
+        return tFirst;
+    }
+
+    /** Interpolated event count with timestamp in {@code [fromUs, toUs]} inclusive. */
+    private static long eventsInTimeRange(PacketRef r, long fromUs, long toUs) {
+        if (r == null || r.numElements <= 0 || toUs < fromUs || r.unixEnd < fromUs || r.unixStart > toUs) {
+            return 0;
+        }
+        if (r.unixEnd <= r.unixStart) {
+            return r.unixStart >= fromUs && r.unixStart <= toUs ? r.numElements : 0;
+        }
+        long from = Math.max(r.unixStart, fromUs);
+        long to = Math.min(r.unixEnd, toUs);
+        if (to < from) {
+            return 0;
+        }
+        double span = (double) (r.unixEnd - r.unixStart);
+        long n = Math.round(((to - r.unixStart) / span - (from - r.unixStart) / span) * r.numElements);
+        return Math.max(0, n);
+    }
+
 
     /**
      * File Unix µs → 32-bit relative timestamp, applying packet wrapOffset and
@@ -3474,12 +3649,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public synchronized AEPacketRaw readPacketByNumber(int n) throws IOException {
         ensureChannelOpen();
-        flyEyeCdPlayheadSet = false;
         if (n == 0) {
             n = 1;
         }
         boolean forwards = n > 0;
         ensureReadableOrThrow(forwards);
+        // Two EVTS streams share one index that is not time order. Count slices
+        // must follow the same unix playhead as CountDuration, or IN/OUT replay
+        // loops a short file-order burst instead of the marked interval.
+        if (flyEyeNativePair || multiDevicePlayback) {
+            return readFlyEyeNativePairByCount(n);
+        }
+        flyEyeCdPlayheadSet = false;
         long limitOut = forwardReadLimit();
         long limitIn = 0;
         long pos0 = position;
