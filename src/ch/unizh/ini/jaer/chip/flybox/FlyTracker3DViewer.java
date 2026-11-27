@@ -120,6 +120,7 @@ final class FlyTracker3DViewer extends JFrame {
             int h = getHeight();
             Basis basis = basis();
             drawAxes(g2, w, h, basis);
+            drawBox(g2, w, h, basis);
             List<FlyTracker3D.Trajectory> flights = tracker.copyTrajectories();
             g2.setStroke(new BasicStroke(1.5f));
             for (FlyTracker3D.Trajectory flight : flights) {
@@ -171,6 +172,35 @@ final class FlyTracker3DViewer extends JFrame {
             g2.setColor(color);
             g2.draw(new Line2D.Float(origin[0], origin[1], tip[0], tip[1]));
             g2.drawString(label, tip[0] + 4, tip[1] - 4);
+        }
+
+        /** Twelve edges of the box centered on the origin. */
+        private void drawBox(Graphics2D g2, int w, int h, Basis basis) {
+            if (!tracker.isShowBox()) {
+                return;
+            }
+            float hx = tracker.getBoxWidth() * 0.5f;
+            float hy = tracker.getBoxDepth() * 0.5f;
+            float hz = tracker.getBoxHeight() * 0.5f;
+            if (hx <= 0f && hy <= 0f && hz <= 0f) {
+                return;
+            }
+            float[][] corner = {
+                {-hx, -hy, -hz}, {hx, -hy, -hz}, {hx, hy, -hz}, {-hx, hy, -hz},
+                {-hx, -hy, hz}, {hx, -hy, hz}, {hx, hy, hz}, {-hx, hy, hz}
+            };
+            int[][] edge = {
+                {0, 1}, {1, 2}, {2, 3}, {3, 0},
+                {4, 5}, {5, 6}, {6, 7}, {7, 4},
+                {0, 4}, {1, 5}, {2, 6}, {3, 7}
+            };
+            g2.setColor(Color.LIGHT_GRAY);
+            g2.setStroke(new BasicStroke(1f));
+            for (int[] e : edge) {
+                float[] a = project(corner[e[0]], w, h, basis);
+                float[] b = project(corner[e[1]], w, h, basis);
+                g2.draw(new Line2D.Float(a[0], a[1], b[0], b[1]));
+            }
         }
 
         private float[] project(float[] p, int w, int h, Basis basis) {

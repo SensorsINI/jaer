@@ -29,10 +29,10 @@ public class FlyTracker3DTest {
         float nrvF = 8f;
         float nrvD = 80f;
         float evk4Depth = evk4D - z;
-        float evk4Du = x * evk4F / (evk4Depth * FlyTracker3D.EVK4_PITCH_MM);
+        float evk4Du = -x * evk4F / (evk4Depth * FlyTracker3D.EVK4_PITCH_MM);
         float evk4Dv = y * evk4F / (evk4Depth * FlyTracker3D.EVK4_PITCH_MM);
         float nrvDepth = x + nrvD;
-        float nrvDu = -y * nrvF / (nrvDepth * FlyTracker3D.NRV_PITCH_MM);
+        float nrvDu = y * nrvF / (nrvDepth * FlyTracker3D.NRV_PITCH_MM);
         float nrvDv = z * nrvF / (nrvDepth * FlyTracker3D.NRV_PITCH_MM);
 
         float[] xyz = FlyTracker3D.intersectRays(

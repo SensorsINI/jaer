@@ -57,10 +57,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * jAER y increases upward.
  * <ul>
  * <li><b>evk4</b> lens at {@code (0, 0, +distance)}. It looks along -z and
- * images xy. Image +x is world +x. Image +y is world +y.</li>
+ * images xy. Image +x is world -x. Image +y is world +y.</li>
  * <li><b>nrv</b> lens at {@code (-distance, 0, 0)}. It looks along +x and
- * images yz. Image +y is world +z. Image +x is world -y, so the camera
- * frame stays right-handed.</li>
+ * images yz. Image +x is world +y. Image +y is world +z.</li>
  * </ul>
  * {@code locationMixingFactor}, {@code velocityTauMs}, and {@code clusterSize}
  * are set here and written to both trackers. {@code clusterSize} is a fraction
@@ -85,6 +84,11 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
     private float nrvFocalLengthMm = getFloat("nrvFocalLengthMm", 6f);
     private float evk4DistanceMm = getFloat("evk4DistanceMm", 100f);
     private float evk4FocalLengthMm = getFloat("evk4FocalLengthMm", 6f);
+    /** Full size of the box. The origin is its center. */
+    private float boxWidth = getFloat("boxWidth", 100f);
+    private float boxDepth = getFloat("boxDepth", 100f);
+    private float boxHeight = getFloat("boxHeight", 100f);
+    private boolean showBox = getBoolean("showBox", true);
     private int pathLength = getInt("pathLength", 300);
     private int trajectoriesToShow = getInt("trajectoriesToShow", 8);
     /** Seconds. Flights shorter than this are not shown. */
@@ -146,12 +150,16 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
                 "Time constant of the velocity lowpass on both cameras, in milliseconds.");
         setPropertyTooltip("tracker", "clusterSize",
                 "Starting cluster size as a fraction of each sensor's longer side.");
-        setPropertyTooltip("lens", "nrvDistanceMm",
+        setPropertyTooltip("Geometry", "boxWidth", "Box size along x, in mm. The origin is the center.");
+        setPropertyTooltip("Geometry", "boxDepth", "Box size along y, in mm. The origin is the center.");
+        setPropertyTooltip("Geometry", "boxHeight", "Box size along z, in mm. The origin is the center.");
+        setPropertyTooltip("Geometry", "showBox", "Draw the box edges in the 3D window.");
+        setPropertyTooltip("Geometry", "nrvDistanceMm",
                 "Distance of the NRV lens from the center of the box, in mm. The lens is on the -x side and looks toward +x.");
-        setPropertyTooltip("lens", "nrvFocalLengthMm", "NRV lens focal length in mm.");
-        setPropertyTooltip("lens", "evk4DistanceMm",
+        setPropertyTooltip("Geometry", "nrvFocalLengthMm", "NRV lens focal length in mm.");
+        setPropertyTooltip("Geometry", "evk4DistanceMm",
                 "Distance of the EVK4 lens from the center of the box, in mm. The lens is on the +z side and looks toward -z.");
-        setPropertyTooltip("lens", "evk4FocalLengthMm", "EVK4 lens focal length in mm.");
+        setPropertyTooltip("Geometry", "evk4FocalLengthMm", "EVK4 lens focal length in mm.");
         setPropertyTooltip("display", "pathLength", "Points kept on each flight.");
         setPropertyTooltip("display", "trajectoriesToShow",
                 "Flights kept in the 3D window. A flight ends when either camera loses its cluster. The oldest flight is dropped.");
@@ -392,10 +400,12 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
         }
         double ax = (evk4DuPx * EVK4_PITCH_MM) / evk4FocalMm;
         double ay = (evk4DvPx * EVK4_PITCH_MM) / evk4FocalMm;
-        double by = -((nrvDuPx * NRV_PITCH_MM) / nrvFocalMm);
+        double by = (nrvDuPx * NRV_PITCH_MM) / nrvFocalMm;
         double bz = (nrvDvPx * NRV_PITCH_MM) / nrvFocalMm;
+        // EVK4 looks along -z: image +x is world -x, image +y is world +y.
+        // NRV looks along +x: image +x is world +y, image +y is world +z.
         return closestPoint(
-                0, 0, evk4DistanceMm, ax, ay, -1,
+                0, 0, evk4DistanceMm, -ax, ay, -1,
                 -nrvDistanceMm, 0, 0, 1, by, bz);
     }
 
@@ -1047,6 +1057,46 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
     public void setEvk4FocalLengthMm(float evk4FocalLengthMm) {
         this.evk4FocalLengthMm = Math.max(0f, evk4FocalLengthMm);
         putFloat("evk4FocalLengthMm", this.evk4FocalLengthMm);
+    }
+
+    public float getBoxWidth() {
+        return boxWidth;
+    }
+
+    public void setBoxWidth(float boxWidth) {
+        this.boxWidth = Math.max(0f, boxWidth);
+        putFloat("boxWidth", this.boxWidth);
+        repaintViewer();
+    }
+
+    public float getBoxDepth() {
+        return boxDepth;
+    }
+
+    public void setBoxDepth(float boxDepth) {
+        this.boxDepth = Math.max(0f, boxDepth);
+        putFloat("boxDepth", this.boxDepth);
+        repaintViewer();
+    }
+
+    public float getBoxHeight() {
+        return boxHeight;
+    }
+
+    public void setBoxHeight(float boxHeight) {
+        this.boxHeight = Math.max(0f, boxHeight);
+        putFloat("boxHeight", this.boxHeight);
+        repaintViewer();
+    }
+
+    public boolean isShowBox() {
+        return showBox;
+    }
+
+    public void setShowBox(boolean showBox) {
+        this.showBox = showBox;
+        putBoolean("showBox", showBox);
+        repaintViewer();
     }
 
     public int getPathLength() {
