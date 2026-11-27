@@ -113,6 +113,8 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
     private final EventPacket<PolarityEvent> evk4Packet = new EventPacket<>(PolarityEvent.class);
     private final List<Trajectory> flights = new ArrayList<>();
     private final List<Fix> pendingFixes = new ArrayList<>();
+    /** Guards {@link #pendingFixes} only. The update callback must not lock this filter. */
+    private final Object fixesLock = new Object();
     private Trajectory openFlight;
     private int nextColor;
     private float[] current;
@@ -446,11 +448,13 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
         nrvTracker.resetFilter();
         evk4Tracker.resetFilter();
         synchronized (this) {
+            synchronized (fixesLock) {
+                pendingFixes.clear();
+            }
             flights.clear();
             openFlight = null;
             nextColor = 0;
             current = null;
-            pendingFixes.clear();
             lastNrv = null;
             lastEvk = null;
             haveSample = false;
@@ -561,20 +565,27 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
         Fix fix = cluster == null
                 ? new Fix(msg.timestamp, 0f, 0f, false, nrv)
                 : new Fix(msg.timestamp, cluster.getLocation().x, cluster.getLocation().y, true, nrv);
-        synchronized (this) {
+        // The cluster tracker is already locked by filterPacket. Do not lock this
+        // filter here: disabling it on the EDT locks this filter, then the tracker.
+        synchronized (fixesLock) {
             pendingFixes.add(fix);
         }
     }
 
     private void replayFixes(List<Trajectory> toMark) {
-        if (pendingFixes.isEmpty()) {
-            return;
+        List<Fix> batch;
+        synchronized (fixesLock) {
+            if (pendingFixes.isEmpty()) {
+                return;
+            }
+            batch = new ArrayList<>(pendingFixes);
+            pendingFixes.clear();
         }
-        pendingFixes.sort((a, b) -> Integer.compare(a.t, b.t));
+        batch.sort((a, b) -> Integer.compare(a.t, b.t));
         Fix nrv = lastNrv;
         Fix evk = lastEvk;
         int interval = updateIntervalUs();
-        for (Fix fix : pendingFixes) {
+        for (Fix fix : batch) {
             if (fix.nrv) {
                 int period = periodUs(nrv, fix, interval);
                 if (period > 0) {
@@ -592,7 +603,6 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
             }
             consider(fix.t, nrv, evk, interval, toMark);
         }
-        pendingFixes.clear();
     }
 
     /**
@@ -740,9 +750,9 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
     }
 
     /**
-     * Marker 100 ms before the first point, in the file's playback time.
-     * Event timestamps are the low 32 bits of that time. A marker already
-     * within {@link #minFlightDuration} of that time is left as it is.
+     * Marker 100 ms before the first point. Event timestamps wrap every 2^32 µs,
+     * so the low 32 bits are placed on the current unwrapped playhead. A marker
+     * already within {@link #minFlightDuration} of that time is left as it is.
      */
     private void markFlightStart(Trajectory flight) {
         if (chip == null || chip.getAeViewer() == null) {
@@ -752,7 +762,7 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
         if (!(player instanceof AEPlayer aePlayer)) {
             return;
         }
-        long atUs = (flight.startUs & 0xffffffffL) - FLIGHT_MARK_LEAD_US;
+        long atUs = unwrappedFlightUs(aePlayer, flight.startUs) - FLIGHT_MARK_LEAD_US;
         if (atUs < 0L) {
             atUs = 0L;
         }
@@ -763,6 +773,24 @@ public class FlyTracker3D extends EventFilter2D implements FrameAnnotater, Obser
         }
         log.fine(String.format("FlyTracker3D flight %d marker 100 ms before start t=%,d us",
                 flight.colorIndex, flight.startUs));
+    }
+
+    /**
+     * File playback time of {@code timestampUs}. Values from events are the low
+     * 32 bits; a recording longer than ~71 min repeats them. The current playhead
+     * supplies the high bits.
+     */
+    private static long unwrappedFlightUs(AEPlayer player, int timestampUs) {
+        long wrapped = timestampUs & 0xffffffffL;
+        if (!(player.getAEInputStream() instanceof net.sf.jaer.eventio.aedat4.Aedat4FileInputStream a4)) {
+            return wrapped;
+        }
+        long now = a4.currentPlaybackTimeUs();
+        long unwrapped = (now & ~0xffffffffL) + wrapped;
+        if (unwrapped > now + 1_000_000L) {
+            unwrapped -= 0x1_0000_0000L;
+        }
+        return unwrapped < 0L ? 0L : unwrapped;
     }
 
     /** Remove markers placed by {@link #markFlights}. Manual markers and IN/OUT stay. */

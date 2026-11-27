@@ -1510,6 +1510,25 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         clearMarksHere();
     }
 
+    @Override
+    public int clearJumpMarkers() {
+        if (aeInputStream != null) {
+            SyncPlayer sync = activeSyncPlayer();
+            if (sync != null) {
+                return sync.clearJumpMarkers();
+            }
+        }
+        return clearJumpMarkersHere();
+    }
+
+    /** Jump markers on this viewer. IN and OUT stay. */
+    public int clearJumpMarkersHere() {
+        if (aeInputStream == null) {
+            return 0;
+        }
+        return aeInputStream.clearJumpMarkers();
+    }
+
     /** This viewer's marks only. {@link SyncPlayer} calls this for every member. */
     public void clearMarksHere() {
         if (aeInputStream != null) {

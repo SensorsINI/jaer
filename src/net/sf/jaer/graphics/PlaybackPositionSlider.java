@@ -155,6 +155,22 @@ public class PlaybackPositionSlider extends JSlider {
         }
     }
 
+    /** Slider value under a pixel in this control. */
+    public int valueAtX(int x) {
+        if (getUI() instanceof PlaybackSliderUI ui) {
+            return ui.valueAt(x);
+        }
+        return getValue();
+    }
+
+    /** Pixel of a slider value, matching the painted mark. */
+    public int xAtValue(int value) {
+        if (getUI() instanceof PlaybackSliderUI ui) {
+            return ui.xAt(value);
+        }
+        return 0;
+    }
+
     /**
      * Compact BasicSliderUI: narrow thumb, sparkline under it, click/drag
      * anywhere on the control seeks. Package-visible for tests.
@@ -166,6 +182,14 @@ public class PlaybackPositionSlider extends JSlider {
 
         PlaybackSliderUI(JSlider slider) {
             super(slider);
+        }
+
+        int valueAt(int x) {
+            return valueForXPosition(x);
+        }
+
+        int xAt(int value) {
+            return xPositionForValue(value);
         }
 
         @Override

@@ -372,6 +372,15 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
         return 0;
     }
 
+    /**
+     * Remove jump markers (manual and automatic). IN and OUT stay.
+     *
+     * @return how many markers were removed
+     */
+    default int clearJumpMarkers() {
+        return 0;
+    }
+
     /** Add or remove a marker at the event nearest {@code timestampUs} without moving the cursor. */
     default boolean toggleMarkerAtTimestampUs(long timestampUs) {
         long saved = position();

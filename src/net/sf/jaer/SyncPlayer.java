@@ -989,6 +989,17 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         outLoopArmed = true;
     }
 
+    @Override
+    public int clearJumpMarkers() {
+        int n = 0;
+        for (AEViewer v : markGroup()) {
+            if (v.aePlayer != null) {
+                n += v.aePlayer.clearJumpMarkersHere();
+            }
+        }
+        return n;
+    }
+
     /** Playback viewers that should share IN, OUT, and markers. */
     private List<AEViewer> markGroup() {
         if (getPlayingViewers().size() < 2 && outer.isSyncEnabled()) {

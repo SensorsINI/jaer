@@ -2319,4 +2319,19 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return n;
     }
 
+    @Override
+    public int clearJumpMarkers() {
+        ArrayList<Long> jump;
+        synchronized (this) {
+            jump = new ArrayList<>(marks.otherMarks);
+        }
+        int n = 0;
+        for (Long pos : jump) {
+            if (removeMarkerAt(pos)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
 }

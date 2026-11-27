@@ -10241,7 +10241,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackMenu.add(setMarkOutMI);
 
         toggleMarkerMI.setAction(aePlayer.toggleMarkerAction);
-        toggleMarkerMI.setText("Toggle marker");
+        toggleMarkerMI.setText("Toggle Jump Marker");
         playbackMenu.add(toggleMarkerMI);
 
         jumpPrevMarkerMI.setAction(aePlayer.jumpPrevMarkerAction);
@@ -10252,9 +10252,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jumpNextMarkerMI.setText("Jump to next marker");
         playbackMenu.add(jumpNextMarkerMI);
 
+        javax.swing.JMenuItem clearJumpMarkersMI = new javax.swing.JMenuItem(aePlayer.clearJumpMarkersAction);
+        clearJumpMarkersMI.setText("Clear Jump Markers");
+        clearJumpMarkersMI.setToolTipText("Clears jump markers. IN and OUT stay.");
+        playbackMenu.add(clearJumpMarkersMI);
+
         clearMarksMI.setAction(aePlayer.clearMarksAction);
-        clearMarksMI.setText("Clear IN and OUT markers");
-        clearMarksMI.setToolTipText("Clears IN, OUT, and markers. Synchronized playback clears them on every viewer.");
+        clearMarksMI.setText("Clear All Markers");
+        clearMarksMI.setToolTipText("Clears IN, OUT, and jump markers. Synchronized playback clears them on every viewer.");
         playbackMenu.add(clearMarksMI);
 
         exportMarksMI.setAction(aePlayer.exportMarksAction);

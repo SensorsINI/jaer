@@ -11,6 +11,8 @@
 package net.sf.jaer.graphics;
 
 import java.awt.Component;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
@@ -34,6 +36,9 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.SyncPlayer;
 import net.sf.jaer.eventio.AEFileInputStream;
@@ -77,6 +82,9 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private final JLabel markInLabel, markOutLabel, markerLabel;
     private Integer markInPosition = null, markOutPosition = null, markPosition = null; // store keys in markTable so we can remove them
     private JPopupMenu markerPopupMenu = null;
+    /** Slider x of the right-click that opened the marker menu, or -1. */
+    private int popupClickX = -1;
+    private static final int JUMP_MARKER_HIT_PX = 10;
 
     /**
      * Creates new form AePlayerAdvancedControlsPanel.
@@ -105,7 +113,29 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markerPopupMenu.add(aePlayer.markInAction);
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.toggleMarkerAction);
+        markerPopupMenu.add(aePlayer.clearJumpMarkersAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
+        markerPopupMenu.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                java.awt.PointerInfo info = MouseInfo.getPointerInfo();
+                if (info == null) {
+                    popupClickX = -1;
+                    return;
+                }
+                Point p = new Point(info.getLocation());
+                SwingUtilities.convertPointFromScreen(p, playerSlider);
+                popupClickX = p.x;
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+            }
+        });
         // PlaybackSliderUI click-to-seek; begin/end before setValue so doSingleStep
         // does not steal the pause state. Do not replace TrackListener as a
         // MouseListener only — that drops mouseDragged on Aqua (fIsDragging).
@@ -666,6 +696,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             markerPopupMenu.add(aePlayer.markInAction);
             markerPopupMenu.add(aePlayer.markOutAction);
             markerPopupMenu.add(aePlayer.toggleMarkerAction);
+            markerPopupMenu.add(aePlayer.clearJumpMarkersAction);
             markerPopupMenu.add(aePlayer.clearMarksAction);
         }
 
@@ -805,6 +836,68 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playerSlider.setLabelTable(marksTable);
         playerSlider.setPaintLabels(false);
         playerSlider.repaint();
+    }
+
+    /**
+     * Toggle the jump marker under the slider right-click. A marker within
+     * {@link #JUMP_MARKER_HIT_PX} is removed. Otherwise one is added at the click.
+     *
+     * @return true when a marker was added
+     */
+    public boolean toggleJumpMarkerAtPopup() {
+        AEFileInputStreamInterface stream = playbackStream();
+        if (stream == null || playerSlider == null || popupClickX < 0) {
+            return aePlayer.toggleMarker();
+        }
+        long nearest = -1L;
+        int best = Integer.MAX_VALUE;
+        for (Long pos : jumpMarkerPositions(stream)) {
+            Integer sv = convertToSlider(stream, pos);
+            if (sv == null) {
+                continue;
+            }
+            int d = Math.abs(playerSlider.xAtValue(sv) - popupClickX);
+            if (d < best) {
+                best = d;
+                nearest = pos;
+            }
+        }
+        if (nearest >= 0L && best <= JUMP_MARKER_HIT_PX) {
+            stream.removeMarkerAt(nearest);
+            return false;
+        }
+        int max = Math.max(1, playerSlider.getMaximum());
+        float groupFrac = playerSlider.valueAtX(popupClickX) / (float) max;
+        float streamFrac = groupFrac;
+        SyncPlayer sync = syncedPlayer();
+        if (sync != null) {
+            float start = sync.streamStartFraction(stream);
+            float end = sync.streamEndFraction(stream);
+            float span = end - start;
+            if (span > 0f) {
+                streamFrac = (groupFrac - start) / span;
+            }
+        }
+        long index;
+        if (stream instanceof Aedat4FileInputStream a4) {
+            index = a4.eventIndexForSliderFraction(streamFrac);
+        } else {
+            long n = stream.size();
+            index = (long) (Math.max(0f, Math.min(1f, streamFrac)) * n);
+        }
+        return stream.toggleMarkerAt(index);
+    }
+
+    private List<Long> jumpMarkerPositions(AEFileInputStreamInterface stream) {
+        if (stream instanceof Aedat4FileInputStream a4) {
+            Marks marks = a4.getPlaybackMarks();
+            return marks.otherMarks == null ? List.of() : new ArrayList<>(marks.otherMarks);
+        }
+        if (stream instanceof AEFileInputStream a2) {
+            Marks marks = a2.getMarks();
+            return marks.otherMarks == null ? List.of() : new ArrayList<>(marks.otherMarks);
+        }
+        return List.of();
     }
 
     private Integer convertToSlider(long pos) {

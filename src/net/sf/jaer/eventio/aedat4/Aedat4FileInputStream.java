@@ -4767,14 +4767,84 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public long addFlightMarkerAtTimestampUs(long timestampUs, long nearbyWindowUs) {
         final Long here;
         synchronized (this) {
-            here = eventIndexNearestTimestamp(timestampUs);
-            if (hasMarkerWithin(here, nearbyWindowUs) || !markers.add(here)) {
+            here = indexForPlaybackTime(timestampUs);
+            if (hasMarkerNearTime(timestampUs, nearbyWindowUs) || !markers.add(here)) {
                 return -1L;
             }
             flightMarkers.add(here);
         }
         fireMarkToggledOnEdt(null, here);
         return here;
+    }
+
+    /** Event index for a playback-slider fraction, without moving the playhead. */
+    public long eventIndexForSliderFraction(float frac) {
+        double f = frac;
+        if (f < 0d) {
+            f = 0d;
+        } else if (f > 1d) {
+            f = 1d;
+        }
+        if (!usesTimeMappedSlider()) {
+            return (long) (f * playableSize());
+        }
+        long dur = getDurationUsLong();
+        if (dur <= 0) {
+            return (long) (f * playableSize());
+        }
+        long t = timelineOriginUs() + Math.round(f * dur);
+        return indexForPlaybackTime(t);
+    }
+
+    public long currentPlaybackTimeUs() {
+        if ((flyEyeNativePair || multiDevicePlayback) && flyEyeCdPlayheadSet) {
+            return flyEyeCdPlayheadUs;
+        }
+        if (!hasPolarity() || eventCount <= 0) {
+            return 0L;
+        }
+        long idx = position <= 0 ? 0 : Math.min(position - 1, eventCount - 1);
+        return timestampApproxLong(idx);
+    }
+
+    /**
+     * Event index for an unwrapped playback time. Two-camera indexes are not
+     * time-sorted, so the binary search used for one camera would land in the
+     * first hour of a long file.
+     */
+    private long indexForPlaybackTime(long timestampUs) {
+        if (flyEyeNativePair || multiDevicePlayback) {
+            if (eventCount <= 0) {
+                return 0L;
+            }
+            long idx = eventCountBeforeTime(timestampUs);
+            if (idx < 0L) {
+                return 0L;
+            }
+            if (idx >= eventCount) {
+                return eventCount - 1;
+            }
+            return idx;
+        }
+        return eventIndexNearestTimestamp(timestampUs);
+    }
+
+    /** True when some marker already lies within {@code windowUs} of {@code timestampUs}. */
+    private boolean hasMarkerNearTime(long timestampUs, long windowUs) {
+        if (windowUs <= 0 || markers.isEmpty()) {
+            return false;
+        }
+        if (flyEyeNativePair || multiDevicePlayback) {
+            long lo = eventCountBeforeTime(Math.max(0L, timestampUs - windowUs));
+            long hi = eventCountBeforeTime(timestampUs + windowUs);
+            for (Long mark : markers) {
+                if (mark != null && mark >= lo && mark <= hi) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return hasMarkerWithin(eventIndexNearestTimestamp(timestampUs), windowUs);
     }
 
     /** True when some marker's packet-table time is within {@code windowUs} of {@code eventIndex}. */
@@ -4832,6 +4902,17 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
         }
         flightMarkers.clear();
+        return n;
+    }
+
+    @Override
+    public int clearJumpMarkers() {
+        int n = 0;
+        for (Long pos : new ArrayList<>(markers)) {
+            if (removeMarkerAt(pos)) {
+                n++;
+            }
+        }
         return n;
     }
 

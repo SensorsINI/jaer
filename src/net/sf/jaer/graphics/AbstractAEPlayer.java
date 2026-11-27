@@ -78,6 +78,7 @@ public abstract class AbstractAEPlayer {
     public final MarkInAction markInAction = new MarkInAction();
     public final MarkOutAction markOutAction = new MarkOutAction();
     public final ClearMarksAction clearMarksAction = new ClearMarksAction();
+    public final ClearJumpMarkersAction clearJumpMarkersAction = new ClearJumpMarkersAction();
     public final ToggleMarkAction toggleMarkerAction = new ToggleMarkAction();
     public final JumpNextMarkerkAction jumpNextMarkerAction = new JumpNextMarkerkAction();
     public final JumpPrevMarkerkAction jumpPrevMarkerAction = new JumpPrevMarkerkAction();
@@ -820,6 +821,9 @@ public abstract class AbstractAEPlayer {
 
     abstract public void clearMarks();
 
+    /** Remove jump markers. IN and OUT stay. */
+    abstract public int clearJumpMarkers();
+
     abstract public long setMarkIn();
 
     abstract public long setMarkOut();
@@ -1283,9 +1287,9 @@ public abstract class AbstractAEPlayer {
     final public class ClearMarksAction extends MyAction {
 
         public ClearMarksAction() {
-            super("Clear Marks", "ClearMarks16");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("control M"));
-            putValue(Action.SHORT_DESCRIPTION, "Clear all markers (IN, OUT, and others)");
+            super("Clear All Markers", "ClearMarks16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("control shift M"));
+            putValue(Action.SHORT_DESCRIPTION, "Clear IN, OUT, and jump markers");
         }
 
         @Override
@@ -1293,6 +1297,22 @@ public abstract class AbstractAEPlayer {
             clearMarks();
             putValue(Action.SELECTED_KEY, true);
             showAction();
+        }
+    }
+
+    final public class ClearJumpMarkersAction extends MyAction {
+
+        public ClearJumpMarkersAction() {
+            super("Clear Jump Markers", "ClearMarks16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("control M"));
+            putValue(Action.SHORT_DESCRIPTION, "Clear jump markers. IN and OUT stay. Ctrl+Shift+M also clears IN and OUT.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            int n = clearJumpMarkers();
+            putValue(Action.SELECTED_KEY, true);
+            showAction(n == 1 ? "Cleared 1 jump marker" : "Cleared " + n + " jump markers");
         }
     }
 
@@ -1331,13 +1351,22 @@ public abstract class AbstractAEPlayer {
     final public class ToggleMarkAction extends MyAction {
 
         public ToggleMarkAction() {
-            super("Toggle marker", "ToggleMarker16");
+            super("Toggle Jump Marker", "ToggleMarker16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed m"));
-            putValue(Action.SHORT_DESCRIPTION, "Add or remove a marker. While playing, places it ~reaction-time earlier (Preferences).");
+            putValue(Action.SHORT_DESCRIPTION, "Add a jump marker, or remove the one under the pointer. The m key uses the playhead.");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            if (e.getSource() instanceof javax.swing.JMenuItem item
+                    && item.getParent() instanceof javax.swing.JPopupMenu popup
+                    && popup.getInvoker() instanceof PlaybackPositionSlider
+                    && viewer != null && viewer.getPlayerControls() != null) {
+                boolean added = viewer.getPlayerControls().toggleJumpMarkerAtPopup();
+                putValue(Action.SELECTED_KEY, true);
+                showAction(added ? "Added jump marker" : "Removed jump marker");
+                return;
+            }
             boolean addedMarker = toggleMarker();
             putValue(Action.SELECTED_KEY, true);
             int off = getLastMarkerReactionOffsetMs();
